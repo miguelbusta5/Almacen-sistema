@@ -6,9 +6,56 @@ datasource db {
   provider = "postgresql"
 }
 
-// ─────────────────────────────────────────
-//  AUTH
-// ─────────────────────────────────────────
+// ═══════════════════════════════════════════
+// TABLAS EXISTENTES (no modificar)
+// ═══════════════════════════════════════════
+
+model Novedad {
+  id              Int       @id @default(autoincrement())
+  plu             String    @db.VarChar(255)
+  posicion        String    @db.VarChar(255)
+  fecha           DateTime  @db.Date
+  estado          String    @default("PENDIENTE") @db.VarChar(50)
+  descripcion     String?
+  cantidad        Int?
+  fabricante      String?   @db.VarChar(255)
+  costoUnitario   Int?      @map("costo_unitario")
+  costoIncidencia Int?      @map("costo_incidencia")
+  created_at      DateTime? @default(now()) @db.Timestamp(6)
+  updated_at      DateTime? @default(now()) @db.Timestamp(6)
+
+  @@unique([plu, posicion, fecha])
+  @@index([plu, posicion, fecha], map: "idx_plu_posicion_fecha")
+  @@map("novedades")
+}
+
+model TransporteGuardado {
+  id             Int       @id @default(autoincrement())
+  client_id      String    @unique @db.VarChar(100)
+  fecha          DateTime  @db.Date
+  documento      String    @db.VarChar(255)
+  ubicacion      String
+  estado         String    @default("PENDIENTE DESPACHO") @db.VarChar(60)
+  fecha_despacho DateTime? @db.Date
+  nota           String?
+  created_at     DateTime? @default(now()) @db.Timestamp(6)
+  updated_at     DateTime? @default(now()) @db.Timestamp(6)
+
+  @@index([client_id], map: "idx_transporte_client_id")
+  @@map("transporte_guardados")
+}
+
+model TransporteDeleted {
+  client_id  String    @id @db.VarChar(100)
+  deleted_at DateTime? @default(now()) @db.Timestamp(6)
+
+  @@map("transporte_deleted")
+}
+
+// ═══════════════════════════════════════════
+// NUEVAS TABLAS - AUTH & AUDITORIA
+// ═══════════════════════════════════════════
+
 model User {
   id        String   @id @default(cuid())
   email     String   @unique
@@ -16,8 +63,8 @@ model User {
   password  String
   role      Role     @default(OPERADOR)
   active    Boolean  @default(true)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
 
   activityLogs ActivityLog[]
 
@@ -31,18 +78,15 @@ enum Role {
   OPERADOR
 }
 
-// ─────────────────────────────────────────
-//  ACTIVIDAD / AUDITORÍA
-// ─────────────────────────────────────────
 model ActivityLog {
   id        String   @id @default(cuid())
-  userId    String
+  userId    String   @map("user_id")
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  action    String   // CREATE | UPDATE | DELETE | LOGIN
-  module    String   // muebles | transporte | auth
-  recordId  String
-  detail    String?
-  createdAt DateTime @default(now())
+  action    String
+  module    String
+  recordId  String   @map("record_id")
+  details   String?
+  createdAt DateTime @default(now()) @map("created_at")
 
   @@index([userId, createdAt])
   @@index([module, createdAt])

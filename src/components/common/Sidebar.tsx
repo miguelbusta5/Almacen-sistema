@@ -1,156 +1,88 @@
-"use client";
+﻿"use client";
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { signOut, useSession } from "next-auth/react";
-import { Package, Truck, LayoutDashboard, Users, LogOut } from "lucide-react";
-import { cn } from "@/lib/utils";
 
-const navItems = [
-  { href: "/dashboard",           label: "Inicio",      icon: LayoutDashboard },
-  { href: "/dashboard/muebles",   label: "Muebles",     icon: Package,  color: "var(--blue)"   },
-  { href: "/dashboard/transporte",label: "Transporte",  icon: Truck,    color: "var(--orange)" },
+interface SidebarProps {
+  role?: string;
+}
+
+const links = [
+  { href: "/dashboard",            label: "Inicio",        icon: "🏠" },
+  { href: "/dashboard/muebles",    label: "Muebles",       icon: "📦" },
+  { href: "/dashboard/transporte", label: "Transporte",    icon: "🚛" },
 ];
 
-const adminItems = [
-  { href: "/dashboard/usuarios",  label: "Usuarios",    icon: Users },
+const adminLinks = [
+  { href: "/dashboard/usuarios",   label: "Usuarios",      icon: "👥" },
 ];
 
-export function Sidebar() {
-  const pathname = usePathname();
-  const { data: session } = useSession();
-  const isAdmin = session?.user?.role === "ADMIN";
+export default function Sidebar({ role }: SidebarProps) {
+  const path = usePathname();
 
   return (
-    <aside
-      style={{
-        width: 220,
-        background: "var(--text)",
-        display: "flex",
-        flexDirection: "column",
-        borderRight: "1px solid #1e293b",
-        flexShrink: 0,
-      }}
-      className="hidden md:flex"
-    >
-      {/* Logo */}
-      <div style={{ padding: "1.5rem 1.25rem", borderBottom: "1px solid #1e293b" }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-          <div style={{ width: 32, height: 32, borderRadius: 8, background: "#38bdf820", display: "flex", alignItems: "center", justifyContent: "center" }}>
-            <Package size={16} color="#38bdf8" />
-          </div>
-          <div>
-            <div style={{ color: "#ffffff", fontWeight: 800, fontSize: 13, letterSpacing: "-0.01em" }}>Almacén</div>
-            <div style={{ color: "#38bdf8", fontWeight: 800, fontSize: 13, letterSpacing: "-0.01em" }}>/ Inventarios</div>
-          </div>
+    <aside style={{
+      width: 220, background: "#0f172a", display: "flex", flexDirection: "column",
+      padding: "1.5rem 0", position: "sticky", top: 0, height: "100vh", flexShrink: 0
+    }}>
+      {/* Brand */}
+      <div style={{ padding: "0 1.25rem 1.5rem", borderBottom: "1px solid #1e293b" }}>
+        <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.2em",
+          textTransform: "uppercase", color: "#475569", marginBottom: 4 }}>
+          Sistema de gestión
+        </div>
+        <div style={{ fontSize: 18, fontWeight: 800, color: "#fff" }}>
+          Almacén <span style={{ color: "#38bdf8" }}>/</span>
         </div>
       </div>
 
-      {/* Navigation */}
-      <nav style={{ flex: 1, padding: "1rem 0.75rem", display: "flex", flexDirection: "column", gap: 2 }}>
-        <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: "0.15em", textTransform: "uppercase", color: "#475569", padding: "0.5rem 0.5rem 0.25rem" }}>
-          Módulos
-        </div>
+      {/* Nav links */}
+      <nav style={{ flex: 1, padding: "1rem 0" }}>
+        {links.map(l => (
+          <Link key={l.href} href={l.href} style={{ textDecoration: "none" }}>
+            <div style={{
+              display: "flex", alignItems: "center", gap: "0.75rem",
+              padding: "0.65rem 1.25rem", margin: "0.1rem 0.75rem",
+              borderRadius: 10, fontSize: 13, fontWeight: 600,
+              color: path === l.href ? "#fff" : "#94a3b8",
+              background: path === l.href ? "#1e293b" : "transparent",
+              transition: "all 0.15s"
+            }}>
+              <span style={{ fontSize: 16 }}>{l.icon}</span>
+              {l.label}
+            </div>
+          </Link>
+        ))}
 
-        {navItems.map((item) => {
-          const active = pathname === item.href;
-          const Icon = item.icon;
-          return (
-            <Link
-              key={item.href}
-              href={item.href}
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: 10,
-                padding: "0.6rem 0.75rem",
-                borderRadius: 8,
-                textDecoration: "none",
-                fontSize: 13,
-                fontWeight: active ? 700 : 500,
-                color: active ? "#ffffff" : "#94a3b8",
-                background: active ? "#1e293b" : "transparent",
-                transition: "background .15s, color .15s",
-              }}
-              className="hover:bg-slate-800 hover:text-white"
-            >
-              <Icon size={16} color={active ? (item.color || "#38bdf8") : "#64748b"} />
-              {item.label}
-              {active && <div style={{ marginLeft: "auto", width: 4, height: 4, borderRadius: "50%", background: item.color || "#38bdf8" }} />}
-            </Link>
-          );
-        })}
-
-        {isAdmin && (
+        {role === "ADMIN" && (
           <>
-            <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: "0.15em", textTransform: "uppercase", color: "#475569", padding: "1rem 0.5rem 0.25rem", marginTop: "0.5rem" }}>
+            <div style={{ padding: "0.75rem 1.25rem 0.25rem",
+              fontSize: 10, fontWeight: 700, letterSpacing: "0.12em",
+              textTransform: "uppercase", color: "#334155" }}>
               Administración
             </div>
-            {adminItems.map((item) => {
-              const active = pathname === item.href;
-              const Icon = item.icon;
-              return (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 10,
-                    padding: "0.6rem 0.75rem",
-                    borderRadius: 8,
-                    textDecoration: "none",
-                    fontSize: 13,
-                    fontWeight: active ? 700 : 500,
-                    color: active ? "#ffffff" : "#94a3b8",
-                    background: active ? "#1e293b" : "transparent",
-                  }}
-                  className="hover:bg-slate-800 hover:text-white"
-                >
-                  <Icon size={16} color={active ? "#a78bfa" : "#64748b"} />
-                  {item.label}
-                </Link>
-              );
-            })}
+            {adminLinks.map(l => (
+              <Link key={l.href} href={l.href} style={{ textDecoration: "none" }}>
+                <div style={{
+                  display: "flex", alignItems: "center", gap: "0.75rem",
+                  padding: "0.65rem 1.25rem", margin: "0.1rem 0.75rem",
+                  borderRadius: 10, fontSize: 13, fontWeight: 600,
+                  color: path === l.href ? "#fff" : "#94a3b8",
+                  background: path === l.href ? "#1e293b" : "transparent"
+                }}>
+                  <span style={{ fontSize: 16 }}>{l.icon}</span>
+                  {l.label}
+                </div>
+              </Link>
+            ))}
           </>
         )}
       </nav>
 
-      {/* User + Logout */}
-      <div style={{ padding: "1rem 0.75rem", borderTop: "1px solid #1e293b" }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: "0.75rem" }}>
-          <div style={{ width: 32, height: 32, borderRadius: 8, background: "#334155", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 13, fontWeight: 700, color: "#94a3b8" }}>
-            {session?.user?.name?.[0]?.toUpperCase() ?? "?"}
-          </div>
-          <div style={{ flex: 1, overflow: "hidden" }}>
-            <div style={{ fontSize: 12, fontWeight: 700, color: "#ffffff", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
-              {session?.user?.name ?? "Usuario"}
-            </div>
-            <div style={{ fontSize: 10, color: "#64748b", fontFamily: "var(--mono)" }}>
-              {session?.user?.role ?? "OPERADOR"}
-            </div>
-          </div>
-        </div>
-        <button
-          onClick={() => signOut({ callbackUrl: "/login" })}
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: 8,
-            width: "100%",
-            padding: "0.5rem 0.75rem",
-            borderRadius: 8,
-            border: "none",
-            background: "transparent",
-            cursor: "pointer",
-            fontSize: 12,
-            color: "#64748b",
-            fontFamily: "var(--sans)",
-          }}
-          className="hover:bg-slate-800 hover:text-white transition-colors"
-        >
-          <LogOut size={14} /> Cerrar sesión
-        </button>
+      {/* Version */}
+      <div style={{ padding: "1rem 1.25rem", borderTop: "1px solid #1e293b",
+        fontSize: 10, color: "#334155", fontFamily: "DM Mono, monospace" }}>
+        v2.0.0 · Next.js
       </div>
     </aside>
   );
