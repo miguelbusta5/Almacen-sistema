@@ -33,13 +33,15 @@ export async function POST(req: NextRequest) {
   if (!parsed.success) {
     return NextResponse.json({ error: parsed.error.issues[0].message }, { status: 400 });
   }
-  const existing = await prisma.user.findUnique({ where: { email: parsed.data.email } });
+  // Normalizar email a minúsculas (los correos son insensibles a mayúsculas)
+  const email = parsed.data.email.toLowerCase().trim();
+  const existing = await prisma.user.findUnique({ where: { email } });
   if (existing) {
     return NextResponse.json({ error: "Email ya registrado" }, { status: 400 });
   }
   const hashed = await bcrypt.hash(parsed.data.password, 12);
   const user = await prisma.user.create({
-    data: { ...parsed.data, password: hashed },
+    data: { ...parsed.data, email, password: hashed },
     select: { id: true, email: true, name: true, role: true, active: true },
   });
   return NextResponse.json({ success: true, data: user }, { status: 201 });
