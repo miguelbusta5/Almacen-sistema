@@ -1,0 +1,49 @@
+@import "tailwindcss";
+
+:root {
+  --bg: #f5f7fa;
+  --surface: #ffffff;
+  --surface2: #f1f5f9;
+  --border: #e2e8f0;
+  --blue: #0ea5e9;
+  --blue-light: #e0f2fe;
+  --orange: #f97316;
+  --orange-light: #fff7ed;
+  --green: #10b981;
+  --red: #ef4444;
+  --amber: #f59e0b;
+  --purple: #6366f1;
+  --text: #0f172a;
+  --muted: #64748b;
+  --muted2: #475569;
+  --shadow: 0 1px 3px #0f172a14;
+  --shadow-md: 0 4px 14px #0f172a1a;
+  --shadow-lg: 0 8px 28px #0f172a22;
+  --sans: "Syne", sans-serif;
+  --mono: "DM Mono", monospace;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--sans);
+  min-height: 100vh;
+  -webkit-font-smoothing: antialiased;
+}
+
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: var(--surface2); }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--muted); }
+
+@keyframes pulse-dot { 0%,100%{opacity:1} 50%{opacity:.4} }
+@keyframes badge-pop { from{transform:scale(.5);opacity:0} to{transform:scale(1);opacity:1} }
+@keyframes fade-in   { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:translateY(0)} }
+@keyframes slide-in  { from{opacity:0;transform:translateX(-12px)} to{opacity:1;transform:translateX(0)} }
+
+.animate-pulse-dot { animation: pulse-dot 1.2s ease-in-out infinite; }
+.animate-badge-pop { animation: badge-pop .3s ease; }
+.animate-fade-in   { animation: fade-in .4s ease both; }
+.animate-slide-in  { animation: slide-in .3s ease both; }
