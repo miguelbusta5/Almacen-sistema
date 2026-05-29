@@ -160,7 +160,7 @@ function Dashboard({ kpis, donutData, fabData, lineData, onFilter }: {
         <Kpi label="Fabricantes" val={kpis.fabricantes} color="#0ea5e9" />
         <Kpi label="Impacto total" val={fmtCOP(kpis.impacto)} color="#6366f1" small />
       </div>
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem" }}>
+      <div className="grid-2">
         <ChartCard title="Tasa de resolución"><div style={{ height: 240 }}><Doughnut data={donutData} options={{ maintainAspectRatio: false, plugins: { legend: { position: "bottom" } } }} /></div></ChartCard>
         <ChartCard title="Evolución diaria de novedades"><div style={{ height: 240 }}><Line data={lineData} options={{ maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, ticks: { precision: 0 } } } }} /></div></ChartCard>
       </div>
@@ -251,7 +251,7 @@ function FormNuevo({ onSaved, onError }: { onSaved: () => void; onError: (m: str
   return (
     <form onSubmit={submit} style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 14, padding: "1.5rem", maxWidth: 640 }}>
       <h2 style={{ fontSize: 16, fontWeight: 800, marginBottom: "1.25rem", color: "var(--text)" }}>Nueva novedad</h2>
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem" }}>
+      <div className="grid-2">
         <Field label="PLU *"><input value={plu} onChange={e => setPlu(e.target.value)} placeholder="Código" style={inp} /></Field>
         <Field label="Posición *"><input value={posicion} onChange={e => setPos(e.target.value)} placeholder="05-H-14-04-02" style={inp} /></Field>
         <Field label="Descripción" full><input value={descripcion} onChange={e => setDesc(e.target.value)} placeholder="Nombre del producto" style={inp} /></Field>

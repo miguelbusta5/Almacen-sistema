@@ -12,7 +12,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
       <Sidebar role={(session.user as any)?.role} />
       <div style={{ flex: 1, display: "flex", flexDirection: "column", minWidth: 0 }}>
         <Header user={session.user} />
-        <main style={{ flex: 1, padding: "1.5rem", maxWidth: 1400, width: "100%", margin: "0 auto" }}>
+        <main className="dash-main" style={{ flex: 1, maxWidth: 1400, width: "100%", margin: "0 auto" }}>
           {children}
         </main>
       </div>

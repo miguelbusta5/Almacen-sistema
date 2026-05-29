@@ -153,7 +153,7 @@ function Dashboard({ kpis, donutData, barData, guardados, onFilter, onDetail }: 
         <Kpi label="Costo almacenaje" val={fmtCOP(kpis.costoTotal)} color="#6366f1" icon="💰" small />
       </div>
 
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem" }}>
+      <div className="grid-2">
         <ChartCard title="Estados"><div style={{ height: 240 }}><Doughnut data={donutData} options={{ maintainAspectRatio: false, plugins: { legend: { position: "bottom" } } }} /></div></ChartCard>
         <ChartCard title="Guardados por mes"><div style={{ height: 240 }}><Bar data={barData} options={{ maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, ticks: { precision: 0 } } } }} /></div></ChartCard>
       </div>
@@ -330,7 +330,7 @@ function FormNuevo({ onSaved, onError }: { onSaved: () => void; onError: (m: str
   return (
     <form onSubmit={submit} style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 14, padding: "1.5rem", maxWidth: 600 }}>
       <h2 style={{ fontSize: 16, fontWeight: 800, marginBottom: "1.25rem", color: "var(--text)" }}>Nuevo guardado</h2>
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem" }}>
+      <div className="grid-2">
         <Field label="Fecha *"><input type="date" value={fecha} onChange={e => setFecha(e.target.value)} style={inp} /></Field>
         <Field label="N° Documento *"><input value={documento} onChange={e => setDoc(e.target.value)} placeholder="Factura / remisión" style={inp} /></Field>
         <Field label="Ubicación *" full><input value={ubicacion} onChange={e => setUbic(e.target.value)} placeholder="Bodega, estante…" style={inp} /></Field>

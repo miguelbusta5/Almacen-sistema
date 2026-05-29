@@ -73,3 +73,16 @@ body {
 /* Fila de tabla clickeable */
 .hover-row { transition: background-color .12s ease; }
 .hover-row:hover { background: var(--surface2); }
+
+/* ── Responsive ── */
+/* Grids de 2 columnas que se apilan en móvil */
+.grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+@media (max-width: 760px) {
+  .grid-2 { grid-template-columns: 1fr; gap: 0.85rem; }
+}
+
+/* Padding del contenido principal del dashboard */
+.dash-main { padding: 1.5rem; }
+@media (max-width: 760px) {
+  .dash-main { padding: 1rem 0.85rem 2rem; }
+}
