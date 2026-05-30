@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 import { useSession } from "next-auth/react";
+import { can } from "@/lib/permissions";
 import {
   Chart as ChartJS, ArcElement, BarElement, CategoryScale, LinearScale, Tooltip, Legend,
 } from "chart.js";
@@ -19,7 +20,9 @@ type View = "dashboard" | "lista" | "nuevo";
 
 export default function TransportePage() {
   const { data: session } = useSession();
-  const canDelete = (session?.user as { role?: string } | undefined)?.role === "ADMIN";
+  const role = (session?.user as { role?: string } | undefined)?.role;
+  const canEdit = can(role, "edit");
+  const canDelete = can(role, "delete");
   const [guardados, setGuardados] = useState<Guardado[]>([]);
   const [loading, setLoading] = useState(true);
   const [view, setView] = useState<View>("dashboard");
@@ -103,12 +106,12 @@ export default function TransportePage() {
       {loading ? <Loading /> : (
         <>
           {view === "dashboard" && <Dashboard kpis={kpis} donutData={donutData} barData={barData} guardados={guardados} onFilter={goFilter} onDetail={setDetail} />}
-          {view === "lista" && <Lista data={filtered} total={guardados.length} fq={fq} setFq={setFq} fEstado={fEstado} setFEstado={setFEstado} fAlerta={fAlerta} setFAlerta={setFAlerta} onDetail={setDetail} onEdit={setEditing} onDelete={setDeleting} canDelete={canDelete} />}
+          {view === "lista" && <Lista data={filtered} total={guardados.length} fq={fq} setFq={setFq} fEstado={fEstado} setFEstado={setFEstado} fAlerta={fAlerta} setFAlerta={setFAlerta} onDetail={setDetail} onEdit={setEditing} onDelete={setDeleting} canEdit={canEdit} canDelete={canDelete} />}
           {view === "nuevo" && <FormNuevo onSaved={() => { load(); setView("lista"); showToast("Guardado registrado ✓"); }} onError={m => showToast(m, true)} />}
         </>
       )}
 
-      {detail && <ModalDetalle g={detail} onClose={() => setDetail(null)} onEdit={() => { setEditing(detail); setDetail(null); }} />}
+      {detail && <ModalDetalle g={detail} onClose={() => setDetail(null)} onEdit={() => { setEditing(detail); setDetail(null); }} canEdit={canEdit} />}
       {editing && <ModalEditar g={editing} onClose={() => setEditing(null)} onSaved={() => { setEditing(null); load(); showToast("Guardado actualizado ✓"); }} onError={m => showToast(m, true)} />}
       {deleting && <ModalBorrar g={deleting} onClose={() => setDeleting(null)} onDeleted={() => { setDeleting(null); load(); showToast("Registro eliminado"); }} onError={m => showToast(m, true)} />}
 
@@ -206,9 +209,9 @@ function ChartCard({ title, children }: { title: string; children: React.ReactNo
   return <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 14, padding: "1.25rem 1.4rem", marginBottom: "1rem" }}><div style={{ fontSize: 12, fontWeight: 700, letterSpacing: ".06em", textTransform: "uppercase", color: "var(--muted2)", marginBottom: "1rem" }}>{title}</div>{children}</div>;
 }
 
-function Lista({ data, total, fq, setFq, fEstado, setFEstado, fAlerta, setFAlerta, onDetail, onEdit, onDelete, canDelete }: {
+function Lista({ data, total, fq, setFq, fEstado, setFEstado, fAlerta, setFAlerta, onDetail, onEdit, onDelete, canEdit, canDelete }: {
   data: Guardado[]; total: number; fq: string; setFq: (v: string) => void; fEstado: string; setFEstado: (v: string) => void;
-  fAlerta: boolean; setFAlerta: (v: boolean) => void; onDetail: (g: Guardado) => void; onEdit: (g: Guardado) => void; onDelete: (g: Guardado) => void; canDelete: boolean;
+  fAlerta: boolean; setFAlerta: (v: boolean) => void; onDetail: (g: Guardado) => void; onEdit: (g: Guardado) => void; onDelete: (g: Guardado) => void; canEdit: boolean; canDelete: boolean;
 }) {
   return (
     <div>
@@ -230,7 +233,7 @@ function Lista({ data, total, fq, setFq, fEstado, setFEstado, fAlerta, setFAlert
             </tr></thead>
             <tbody>
               {data.length === 0 && <tr><td colSpan={7} style={{ padding: "2rem", textAlign: "center", color: "var(--muted)" }}>Sin resultados</td></tr>}
-              {data.map(g => <Fila key={g.clientId} g={g} onDetail={onDetail} onEdit={onEdit} onDelete={onDelete} canDelete={canDelete} />)}
+              {data.map(g => <Fila key={g.clientId} g={g} onDetail={onDetail} onEdit={onEdit} onDelete={onDelete} canEdit={canEdit} canDelete={canDelete} />)}
             </tbody>
           </table>
         </div>
@@ -239,7 +242,7 @@ function Lista({ data, total, fq, setFq, fEstado, setFEstado, fAlerta, setFAlert
   );
 }
 
-function Fila({ g, onDetail, onEdit, onDelete, canDelete }: { g: Guardado; onDetail: (g: Guardado) => void; onEdit: (g: Guardado) => void; onDelete: (g: Guardado) => void; canDelete: boolean }) {
+function Fila({ g, onDetail, onEdit, onDelete, canEdit, canDelete }: { g: Guardado; onDetail: (g: Guardado) => void; onEdit: (g: Guardado) => void; onDelete: (g: Guardado) => void; canEdit: boolean; canDelete: boolean }) {
   const esDesp = g.estado === "DESPACHADO";
   const alm = calcAlmacenaje(g.fecha, esDesp ? g.fechaDespacho : null);
   const u = urgencia(g);
@@ -258,8 +261,9 @@ function Fila({ g, onDetail, onEdit, onDelete, canDelete }: { g: Guardado; onDet
         {u && u.tipo !== "ok" ? <span style={{ fontSize: 11, fontWeight: 700, color: u.tipo === "vencida" ? "#ef4444" : "#f59e0b" }}>{u.tipo === "vencida" ? `⚠ -${u.dias}d` : `🔔 ${u.dias}d`}</span> : <span style={{ color: "var(--border)" }}>—</span>}
       </td>
       <td style={{ padding: "0.6rem 0.75rem", whiteSpace: "nowrap" }} onClick={e => e.stopPropagation()}>
-        <button onClick={() => onEdit(g)} title="Editar" style={iconBtn}><Pencil size={14} /></button>
+        {canEdit && <button onClick={() => onEdit(g)} title="Editar" style={iconBtn}><Pencil size={14} /></button>}
         {canDelete && <button onClick={() => onDelete(g)} title="Borrar" style={{ ...iconBtn, color: "#ef4444" }}><Trash2 size={14} /></button>}
+        {!canEdit && !canDelete && <span style={{ color: "var(--muted)", fontSize: 11 }}>—</span>}
       </td>
     </tr>
   );
@@ -267,7 +271,7 @@ function Fila({ g, onDetail, onEdit, onDelete, canDelete }: { g: Guardado; onDet
 const iconBtn: React.CSSProperties = { background: "var(--surface2)", border: "1px solid var(--border)", borderRadius: 7, padding: "5px 7px", marginLeft: 4, cursor: "pointer", color: "var(--muted2)" };
 
 // ── DETALLE (click en fila) — tiempos + desglose de almacenaje ──
-function ModalDetalle({ g, onClose, onEdit }: { g: Guardado; onClose: () => void; onEdit: () => void }) {
+function ModalDetalle({ g, onClose, onEdit, canEdit }: { g: Guardado; onClose: () => void; onEdit: () => void; canEdit: boolean }) {
   const esDesp = g.estado === "DESPACHADO";
   const alm = calcAlmacenaje(g.fecha, esDesp ? g.fechaDespacho : null);
   const entrega = parseEntrega(g.nota);
@@ -308,7 +312,7 @@ function ModalDetalle({ g, onClose, onEdit }: { g: Guardado; onClose: () => void
         </div>
       )}
 
-      <button onClick={onEdit} style={{ width: "100%", padding: "0.6rem", background: "#f97316", color: "#fff", border: "none", borderRadius: 9, fontSize: 13, fontWeight: 700, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}><Pencil size={15} />Editar guardado</button>
+      {canEdit && <button onClick={onEdit} style={{ width: "100%", padding: "0.6rem", background: "#f97316", color: "#fff", border: "none", borderRadius: 9, fontSize: 13, fontWeight: 700, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}><Pencil size={15} />Editar guardado</button>}
     </Modal>
   );
 }

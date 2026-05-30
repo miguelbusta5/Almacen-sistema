@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import type { UserRole } from "@/types";
+import { can, type Action } from "@/lib/permissions";
 
 export interface SessionUser {
   id: string;
@@ -42,6 +43,24 @@ export async function requireRole(
   const user = await getSessionUser();
   if (!user) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
   if (!roles.includes(user.role)) {
+    return NextResponse.json(
+      { error: "No tienes permisos para realizar esta acción" },
+      { status: 403 }
+    );
+  }
+  return user;
+}
+
+/**
+ * Exige permiso para una acción según la matriz de permisos.
+ * Devuelve el usuario, o un NextResponse 401 (sin sesión) / 403 (sin permiso).
+ */
+export async function requireCan(
+  action: Action
+): Promise<SessionUser | NextResponse> {
+  const user = await getSessionUser();
+  if (!user) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
+  if (!can(user.role, action)) {
     return NextResponse.json(
       { error: "No tienes permisos para realizar esta acción" },
       { status: 403 }

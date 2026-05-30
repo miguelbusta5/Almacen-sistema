@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@/lib/auth";
-import { requireRole } from "@/lib/authz";
+import { requireCan } from "@/lib/authz";
 import { prisma } from "@/lib/prisma";
 import { z } from "zod";
 
@@ -20,8 +19,8 @@ export async function PUT(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const session = await auth();
-  if (!session) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
+  const actor = await requireCan("edit");
+  if (actor instanceof NextResponse) return actor;
 
   const { id } = await params;
   const numId = parseInt(id, 10);
@@ -64,7 +63,7 @@ export async function PUT(
 
   await prisma.activityLog.create({
     data: {
-      userId: (session.user as { id: string }).id,
+      userId: actor.id,
       action: "UPDATE",
       module: "muebles",
       recordId: id,
@@ -80,7 +79,7 @@ export async function DELETE(
   _req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const actor = await requireRole(["ADMIN"]);
+  const actor = await requireCan("delete");
   if (actor instanceof NextResponse) return actor;
 
   const { id } = await params;

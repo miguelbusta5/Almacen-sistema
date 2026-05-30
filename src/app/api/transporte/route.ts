@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@/lib/auth";
+import { requireAuth, requireCan } from "@/lib/authz";
 import { prisma } from "@/lib/prisma";
 import { z } from "zod";
 
@@ -37,8 +37,8 @@ const createSchema = z.object({
 
 // GET /api/transporte — lista todos los guardados
 export async function GET() {
-  const session = await auth();
-  if (!session) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
+  const actor = await requireAuth();
+  if (actor instanceof NextResponse) return actor;
 
   const rows = await prisma.transporteGuardado.findMany({
     orderBy: [{ fecha: "desc" }, { created_at: "desc" }],
@@ -49,8 +49,8 @@ export async function GET() {
 
 // POST /api/transporte — crea un nuevo guardado
 export async function POST(req: NextRequest) {
-  const session = await auth();
-  if (!session) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
+  const actor = await requireCan("create");
+  if (actor instanceof NextResponse) return actor;
 
   const body = await req.json();
   const parsed = createSchema.safeParse(body);
@@ -76,7 +76,7 @@ export async function POST(req: NextRequest) {
 
   await prisma.activityLog.create({
     data: {
-      userId: (session.user as { id: string }).id,
+      userId: actor.id,
       action: "CREATE",
       module: "transporte",
       recordId: clientId,

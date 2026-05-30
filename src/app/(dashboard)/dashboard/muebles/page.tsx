@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 import { useSession } from "next-auth/react";
+import { can } from "@/lib/permissions";
 import {
   Chart as ChartJS, ArcElement, BarElement, CategoryScale, LinearScale,
   PointElement, LineElement, Tooltip, Legend,
@@ -21,7 +22,9 @@ type View = "dashboard" | "lista" | "nuevo";
 
 export default function MueblesPage() {
   const { data: session } = useSession();
-  const canDelete = (session?.user as { role?: string } | undefined)?.role === "ADMIN";
+  const role = (session?.user as { role?: string } | undefined)?.role;
+  const canEdit = can(role, "edit");
+  const canDelete = can(role, "delete");
   const [items, setItems] = useState<Novedad[]>([]);
   const [loading, setLoading] = useState(true);
   const [view, setView] = useState<View>("dashboard");
@@ -118,12 +121,12 @@ export default function MueblesPage() {
       {loading ? <Loading /> : (
         <>
           {view === "dashboard" && <Dashboard kpis={kpis} donutData={donutData} fabData={fabData} lineData={lineData} onFilter={goFilter} />}
-          {view === "lista" && <Lista data={filtered} total={items.length} fq={fq} setFq={setFq} fEstado={fEstado} setFEstado={setFEstado} fFab={fFab} setFFab={setFFab} fabricantes={fabricantesList} onDetail={setDetail} onEdit={setEditing} onDelete={setDeleting} canDelete={canDelete} />}
+          {view === "lista" && <Lista data={filtered} total={items.length} fq={fq} setFq={setFq} fEstado={fEstado} setFEstado={setFEstado} fFab={fFab} setFFab={setFFab} fabricantes={fabricantesList} onDetail={setDetail} onEdit={setEditing} onDelete={setDeleting} canEdit={canEdit} canDelete={canDelete} />}
           {view === "nuevo" && <FormNuevo onSaved={() => { load(); setView("lista"); showToast("Novedad registrada ✓"); }} onError={m => showToast(m, true)} />}
         </>
       )}
 
-      {detail && <ModalDetalle n={detail} onClose={() => setDetail(null)} onEdit={() => { setEditing(detail); setDetail(null); }} />}
+      {detail && <ModalDetalle n={detail} onClose={() => setDetail(null)} onEdit={() => { setEditing(detail); setDetail(null); }} canEdit={canEdit} />}
       {editing && <ModalEditar n={editing} onClose={() => setEditing(null)} onSaved={() => { setEditing(null); load(); showToast("Novedad actualizada ✓"); }} onError={m => showToast(m, true)} />}
       {deleting && <ModalBorrar n={deleting} onClose={() => setDeleting(null)} onDeleted={() => { setDeleting(null); load(); showToast("Novedad eliminada"); }} onError={m => showToast(m, true)} />}
 
@@ -187,10 +190,10 @@ function ChartCard({ title, children }: { title: string; children: React.ReactNo
 function EstadoBadge({ estado }: { estado: EstadoNovedad }) { const c = ESTADO_COLOR[estado]; return <span style={{ fontSize: 11, fontWeight: 700, padding: "2px 8px", borderRadius: 20, background: c + "18", color: c }}>{estadoLabel(estado)}</span>; }
 function Cantidad({ n }: { n: number }) { if (n === 0) return <span style={{ color: "var(--muted)" }}>0</span>; const pos = n > 0; return <span style={{ fontFamily: "var(--mono)", fontWeight: 700, color: pos ? "#10b981" : "#ef4444" }}>{pos ? "+" : ""}{n}</span>; }
 
-function Lista({ data, total, fq, setFq, fEstado, setFEstado, fFab, setFFab, fabricantes, onDetail, onEdit, onDelete, canDelete }: {
+function Lista({ data, total, fq, setFq, fEstado, setFEstado, fFab, setFFab, fabricantes, onDetail, onEdit, onDelete, canEdit, canDelete }: {
   data: Novedad[]; total: number; fq: string; setFq: (v: string) => void; fEstado: string; setFEstado: (v: string) => void;
   fFab: string; setFFab: (v: string) => void; fabricantes: string[];
-  onDetail: (n: Novedad) => void; onEdit: (n: Novedad) => void; onDelete: (n: Novedad) => void; canDelete: boolean;
+  onDetail: (n: Novedad) => void; onEdit: (n: Novedad) => void; onDelete: (n: Novedad) => void; canEdit: boolean; canDelete: boolean;
 }) {
   return (
     <div>
@@ -219,8 +222,9 @@ function Lista({ data, total, fq, setFq, fEstado, setFEstado, fFab, setFFab, fab
                   <td style={{ padding: "0.6rem 0.75rem", fontFamily: "var(--mono)", fontSize: 11, color: (n.costoIncidencia || 0) < 0 ? "#ef4444" : "var(--muted2)" }}>{n.costoIncidencia ? fmtCOP(n.costoIncidencia) : "—"}</td>
                   <td style={{ padding: "0.6rem 0.75rem" }}><EstadoBadge estado={n.estado} /></td>
                   <td style={{ padding: "0.6rem 0.75rem", whiteSpace: "nowrap" }} onClick={e => e.stopPropagation()}>
-                    <button onClick={() => onEdit(n)} title="Editar" style={iconBtn}><Pencil size={14} /></button>
+                    {canEdit && <button onClick={() => onEdit(n)} title="Editar" style={iconBtn}><Pencil size={14} /></button>}
                     {canDelete && <button onClick={() => onDelete(n)} title="Borrar" style={{ ...iconBtn, color: "#ef4444" }}><Trash2 size={14} /></button>}
+                    {!canEdit && !canDelete && <span style={{ color: "var(--muted)", fontSize: 11 }}>—</span>}
                   </td>
                 </tr>
               ))}
@@ -274,7 +278,7 @@ function Field({ label, children, full }: { label: string; children: React.React
 const inp: React.CSSProperties = { border: "1px solid var(--border)", borderRadius: 8, padding: "0.6rem 0.85rem", fontSize: 13, fontFamily: "var(--mono)", outline: "none", background: "var(--bg)", width: "100%", boxSizing: "border-box" };
 
 // ── DETALLE (click en fila) ──
-function ModalDetalle({ n, onClose, onEdit }: { n: Novedad; onClose: () => void; onEdit: () => void }) {
+function ModalDetalle({ n, onClose, onEdit, canEdit }: { n: Novedad; onClose: () => void; onEdit: () => void; canEdit: boolean }) {
   return (
     <Modal onClose={onClose} title={`PLU ${n.plu}`} sub={n.descripcion || ""}>
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.9rem", fontSize: 13 }}>
@@ -290,7 +294,7 @@ function ModalDetalle({ n, onClose, onEdit }: { n: Novedad; onClose: () => void;
           </span>
         </Info>
       </div>
-      <button onClick={onEdit} style={{ marginTop: "1.25rem", width: "100%", padding: "0.65rem", background: "#0ea5e9", color: "#fff", border: "none", borderRadius: 9, fontSize: 13, fontWeight: 700, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}><Pencil size={15} />Editar novedad</button>
+      {canEdit && <button onClick={onEdit} style={{ marginTop: "1.25rem", width: "100%", padding: "0.65rem", background: "#0ea5e9", color: "#fff", border: "none", borderRadius: 9, fontSize: 13, fontWeight: 700, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}><Pencil size={15} />Editar novedad</button>}
     </Modal>
   );
 }
