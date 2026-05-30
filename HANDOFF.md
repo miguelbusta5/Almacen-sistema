@@ -1,6 +1,6 @@
 # 📦 HANDOFF — Sistema de Gestión de Almacén (Grupo Ambiente)
 
-> Documento de traspaso técnico. Última actualización: 2026-05-30.
+> Documento de traspaso técnico. Última actualización: 2026-05-30 (sesión 2).
 >
 > ⚠️ **Nunca pongas contraseñas, tokens ni cadenas de conexión en este archivo** (está versionado en git). Usa solo nombres de variables de entorno.
 
@@ -157,8 +157,18 @@ Se aplica en **servidor** (`requireCan` en cada API) y en **UI** (botones Editar
 ### Módulo Guardados Transporte
 - ✅ Dashboard con KPIs; alertas de entrega; cobros de almacenaje (gracia + $150k/mes); lista; CRUD + marcar despachado; borrado con tombstone.
 
-### Auditoría  ← NUEVO
+### Auditoría
 - ✅ `/dashboard/auditoria` (solo ADMIN): tabla de `activity_logs` con usuario, acción, módulo, registro y detalle; filtros (módulo/acción/usuario/fechas/búsqueda) y paginación.
+- ✅ **Exportar CSV** — botón en cabecera, descarga todos los registros filtrados (hasta 5.000) como CSV UTF-8 con BOM (abre bien en Excel).
+
+### Pulido visual (sesión 2)
+- ✅ **Skeletons shimmer** en la carga inicial de Muebles y Transporte (imitan KPIs + gráficos).
+- ✅ **Tooltips personalizados** en gráficos: Donut con %, Línea con unidades, Barras de impacto con COP.
+- ✅ **Ordenamiento por columna** en tablas de Muebles (8 cols) y Transporte (6 cols incl. almacenaje y alerta calculados). Clic → asc; segundo clic → desc. Acento de color por módulo.
+
+### Calidad (sesión 2)
+- ✅ **Tests unitarios** (Vitest) — 44 tests cubriendo `permissions.ts`, `almacenaje.ts`, `muebles.ts` y `transporte.ts`. `npm test`.
+- ✅ **GitHub Actions CI** — type-check + tests en cada push/PR a `master` (`.github/workflows/ci.yml`).
 
 ### UX / Diseño — Identidad Grupo Ambiente  ← NUEVO
 - ✅ Paleta de **azules intensos** + base tinta (tokens en `globals.css`), dark mode afinado, focus-ring y sombras de marca.
@@ -175,12 +185,12 @@ Se aplica en **servidor** (`requireCan` en cada API) y en **UI** (botones Editar
 ## 6. Pendientes
 
 - [ ] **(Acción del dueño) Cambiar la contraseña del admin** desde la pantalla de Usuarios (la inicial era un default conocido).
-- [ ] **Pantalla de usuarios/auditoría:** la auditoría ya existe; falta exportación (CSV/PDF) si se desea.
-- [ ] **Profundizar pulido visual de módulos** (tablas con orden por columna, skeletons en listas, tooltips de gráficos personalizados) — el recolor de identidad ya está.
-- [ ] **Tests automatizados** (Vitest/Testing Library; e2e con Playwright). No hay aún.
-- [ ] **CI/CD** (GitHub Actions + previews por PR). Hoy deploy manual por CLI.
+- [x] **Exportar auditoría a CSV** — botón en `/dashboard/auditoria`, respeta filtros activos, hasta 5.000 filas.
+- [x] **Pulido visual de módulos** — skeletons shimmer en carga, tooltips personalizados en gráficos (COP, %), ordenamiento por columna en tablas (Muebles y Transporte).
+- [x] **Tests unitarios** — Vitest (44 tests): permisos, almacenaje, utilidades de formato y parseEntrega. `npm test`.
+- [x] **CI/CD** — GitHub Actions (`.github/workflows/ci.yml`): type-check + tests en cada push/PR a `master`.
+- [ ] **Recuperación de contraseña** ("olvidé mi contraseña") — requiere proveedor de email (Resend/SendGrid).
 - [ ] **Conectar el repo a GitHub en Vercel** para deploys automáticos (opcional).
-- [ ] **Recuperación de contraseña** ("olvidé mi contraseña").
 - [ ] **Pooling de DB** para escala (Prisma Accelerate / PgBouncer) si crece el tráfico.
 - [ ] **Dominio propio** (.com) si se desea.
 
@@ -236,11 +246,17 @@ Comandos de verificación: `node -v`, `claude --version`, `git remote -v` (debe 
 
 ---
 
-## 10. Historial de cambios (esta sesión, 2026-05-30)
+## 10. Historial de cambios
 
+### Sesión 1 (2026-05-30)
 - `027eaf0` — seguridad: autorización por rol server-side; elimina credenciales hardcodeadas; quita DELETE_PIN.
 - `a4f9f17` — feat: pantalla de auditoría (activity_logs), solo ADMIN.
 - `60e20b8` — feat: permisos por rol finos (crear/editar/eliminar).
 - `73f8b50` — feat(ui): identidad Grupo Ambiente; rediseño login/shell/dashboard.
 - (módulos) — feat(ui): aplicar identidad a Muebles (azul) y Transporte (cian).
-- Operativo: contraseña de PostgreSQL rotada en Railway; `DATABASE_URL` actualizada en `.env.local` y Vercel; rediseño desplegado a producción.
+- Operativo: contraseña de PostgreSQL rotada en Railway; `DATABASE_URL` actualizada en `.env.local` y Vercel.
+
+### Sesión 2 (2026-05-30)
+- `d529d05` — feat: exportar auditoría CSV, skeletons en listas, tooltips en gráficos.
+- `7d25f9d` — feat: ordenamiento por columna en tablas de Muebles y Transporte.
+- (este commit) — test: Vitest 44 tests + GitHub Actions CI + actualización HANDOFF.
