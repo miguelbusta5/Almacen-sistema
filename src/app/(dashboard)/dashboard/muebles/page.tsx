@@ -208,6 +208,36 @@ function Lista({ data, total, fq, setFq, fEstado, setFEstado, fFab, setFFab, fab
   fFab: string; setFFab: (v: string) => void; fabricantes: string[];
   onDetail: (n: Novedad) => void; onEdit: (n: Novedad) => void; onDelete: (n: Novedad) => void; canEdit: boolean; canDelete: boolean;
 }) {
+  const [sortCol, setSortCol] = useState("fecha");
+  const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
+  function toggleSort(col: string) {
+    if (sortCol === col) setSortDir(d => d === "asc" ? "desc" : "asc");
+    else { setSortCol(col); setSortDir("asc"); }
+  }
+  const sorted = useMemo(() => {
+    const dir = sortDir === "asc" ? 1 : -1;
+    return [...data].sort((a, b) => {
+      switch (sortCol) {
+        case "fecha":        return dir * a.fecha.localeCompare(b.fecha);
+        case "plu":          return dir * a.plu.localeCompare(b.plu);
+        case "descripcion":  return dir * (a.descripcion || "").localeCompare(b.descripcion || "");
+        case "fabricante":   return dir * (a.fabricante || "").localeCompare(b.fabricante || "");
+        case "posicion":     return dir * a.posicion.localeCompare(b.posicion);
+        case "cantidad":     return dir * (a.cantidad - b.cantidad);
+        case "impacto":      return dir * (Math.abs(a.costoIncidencia || 0) - Math.abs(b.costoIncidencia || 0));
+        case "estado":       return dir * a.estado.localeCompare(b.estado);
+        default: return 0;
+      }
+    });
+  }, [data, sortCol, sortDir]);
+  const Th = ({ col, label }: { col: string; label: string }) => {
+    const active = sortCol === col;
+    return (
+      <th onClick={() => toggleSort(col)} style={{ padding: "0.6rem 0.75rem", textAlign: "left", fontSize: 10, fontWeight: 700, letterSpacing: ".06em", textTransform: "uppercase", color: active ? "#2563eb" : "var(--muted)", whiteSpace: "nowrap", cursor: "pointer", userSelect: "none" }}>
+        <span style={{ display: "inline-flex", alignItems: "center", gap: 2 }}>{label}<span style={{ opacity: active ? 1 : 0.35, fontSize: 11 }}>{active ? (sortDir === "asc" ? " ↑" : " ↓") : " ↕"}</span></span>
+      </th>
+    );
+  };
   return (
     <div>
       <div style={{ display: "flex", gap: 10, flexWrap: "wrap", background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 12, padding: "0.75rem 1rem", marginBottom: "1rem" }}>
@@ -220,11 +250,12 @@ function Lista({ data, total, fq, setFq, fEstado, setFEstado, fFab, setFFab, fab
         <div style={{ overflowX: "auto" }}>
           <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
             <thead><tr style={{ borderBottom: "1px solid var(--border)", background: "var(--surface2)" }}>
-              {["Fecha", "PLU", "Descripción", "Fabricante", "Posición", "Cant.", "Impacto", "Estado", ""].map(h => <th key={h} style={{ padding: "0.6rem 0.75rem", textAlign: "left", fontSize: 10, fontWeight: 700, letterSpacing: ".06em", textTransform: "uppercase", color: "var(--muted)", whiteSpace: "nowrap" }}>{h}</th>)}
+              <Th col="fecha" label="Fecha" /><Th col="plu" label="PLU" /><Th col="descripcion" label="Descripción" /><Th col="fabricante" label="Fabricante" /><Th col="posicion" label="Posición" /><Th col="cantidad" label="Cant." /><Th col="impacto" label="Impacto" /><Th col="estado" label="Estado" />
+              <th style={{ padding: "0.6rem 0.75rem" }} />
             </tr></thead>
             <tbody>
-              {data.length === 0 && <tr><td colSpan={9} style={{ padding: "2rem", textAlign: "center", color: "var(--muted)" }}>Sin resultados</td></tr>}
-              {data.map(n => (
+              {sorted.length === 0 && <tr><td colSpan={9} style={{ padding: "2rem", textAlign: "center", color: "var(--muted)" }}>Sin resultados</td></tr>}
+              {sorted.map(n => (
                 <tr key={n.id} onClick={() => onDetail(n)} style={{ borderBottom: "1px solid var(--border)", cursor: "pointer" }} className="hover-row">
                   <td style={{ padding: "0.6rem 0.75rem", fontFamily: "var(--mono)", whiteSpace: "nowrap" }}>{fmtFecha(n.fecha)}</td>
                   <td style={{ padding: "0.6rem 0.75rem", fontFamily: "var(--mono)", fontWeight: 600 }}>{n.plu}</td>

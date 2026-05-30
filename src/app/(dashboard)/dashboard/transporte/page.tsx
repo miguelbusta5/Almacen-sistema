@@ -226,6 +226,41 @@ function Lista({ data, total, fq, setFq, fEstado, setFEstado, fAlerta, setFAlert
   data: Guardado[]; total: number; fq: string; setFq: (v: string) => void; fEstado: string; setFEstado: (v: string) => void;
   fAlerta: boolean; setFAlerta: (v: boolean) => void; onDetail: (g: Guardado) => void; onEdit: (g: Guardado) => void; onDelete: (g: Guardado) => void; canEdit: boolean; canDelete: boolean;
 }) {
+  const [sortCol, setSortCol] = useState("fecha");
+  const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
+  function toggleSort(col: string) {
+    if (sortCol === col) setSortDir(d => d === "asc" ? "desc" : "asc");
+    else { setSortCol(col); setSortDir("asc"); }
+  }
+  const sorted = useMemo(() => {
+    const dir = sortDir === "asc" ? 1 : -1;
+    return [...data].sort((a, b) => {
+      switch (sortCol) {
+        case "fecha":      return dir * a.fecha.localeCompare(b.fecha);
+        case "documento":  return dir * a.documento.localeCompare(b.documento);
+        case "ubicacion":  return dir * a.ubicacion.localeCompare(b.ubicacion);
+        case "estado":     return dir * a.estado.localeCompare(b.estado);
+        case "almacenaje": {
+          const ca = calcAlmacenaje(a.fecha, a.estado === "DESPACHADO" ? a.fechaDespacho : null);
+          const cb = calcAlmacenaje(b.fecha, b.estado === "DESPACHADO" ? b.fechaDespacho : null);
+          return dir * (ca.costo - cb.costo);
+        }
+        case "alerta": {
+          const uo = (g: Guardado) => { const u = urgencia(g); if (!u || u.tipo === "ok") return 2; return u.tipo === "proxima" ? 1 : 0; };
+          return dir * (uo(a) - uo(b));
+        }
+        default: return 0;
+      }
+    });
+  }, [data, sortCol, sortDir]);
+  const Th = ({ col, label }: { col: string; label: string }) => {
+    const active = sortCol === col;
+    return (
+      <th onClick={() => toggleSort(col)} style={{ padding: "0.6rem 0.75rem", textAlign: "left", fontSize: 10, fontWeight: 700, letterSpacing: ".06em", textTransform: "uppercase", color: active ? "#0e7490" : "var(--muted)", whiteSpace: "nowrap", cursor: "pointer", userSelect: "none" }}>
+        <span style={{ display: "inline-flex", alignItems: "center", gap: 2 }}>{label}<span style={{ opacity: active ? 1 : 0.35, fontSize: 11 }}>{active ? (sortDir === "asc" ? " ↑" : " ↓") : " ↕"}</span></span>
+      </th>
+    );
+  };
   return (
     <div>
       <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center", background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 12, padding: "0.75rem 1rem", marginBottom: "1rem" }}>
@@ -242,11 +277,12 @@ function Lista({ data, total, fq, setFq, fEstado, setFEstado, fAlerta, setFAlert
         <div style={{ overflowX: "auto" }}>
           <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
             <thead><tr style={{ borderBottom: "1px solid var(--border)", background: "var(--surface2)" }}>
-              {["Fecha", "Documento", "Ubicación", "Estado", "Almacenaje", "Alerta", ""].map(h => <th key={h} style={{ padding: "0.6rem 0.75rem", textAlign: "left", fontSize: 10, fontWeight: 700, letterSpacing: ".06em", textTransform: "uppercase", color: "var(--muted)", whiteSpace: "nowrap" }}>{h}</th>)}
+              <Th col="fecha" label="Fecha" /><Th col="documento" label="Documento" /><Th col="ubicacion" label="Ubicación" /><Th col="estado" label="Estado" /><Th col="almacenaje" label="Almacenaje" /><Th col="alerta" label="Alerta" />
+              <th style={{ padding: "0.6rem 0.75rem" }} />
             </tr></thead>
             <tbody>
-              {data.length === 0 && <tr><td colSpan={7} style={{ padding: "2rem", textAlign: "center", color: "var(--muted)" }}>Sin resultados</td></tr>}
-              {data.map(g => <Fila key={g.clientId} g={g} onDetail={onDetail} onEdit={onEdit} onDelete={onDelete} canEdit={canEdit} canDelete={canDelete} />)}
+              {sorted.length === 0 && <tr><td colSpan={7} style={{ padding: "2rem", textAlign: "center", color: "var(--muted)" }}>Sin resultados</td></tr>}
+              {sorted.map(g => <Fila key={g.clientId} g={g} onDetail={onDetail} onEdit={onEdit} onDelete={onDelete} canEdit={canEdit} canDelete={canDelete} />)}
             </tbody>
           </table>
         </div>
