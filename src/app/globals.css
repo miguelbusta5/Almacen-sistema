@@ -1,42 +1,75 @@
 @import "tailwindcss";
 
 :root {
-  --bg: #f5f7fa;
+  /* ── Marca GRUPO AMBIENTE · azules intensos + base tinta ── */
+  --bg: #eef1f7;
   --surface: #ffffff;
-  --surface2: #f1f5f9;
-  --border: #e2e8f0;
-  --blue: #0ea5e9;
-  --blue-light: #e0f2fe;
-  --orange: #f97316;
-  --orange-light: #fff7ed;
-  --green: #10b981;
-  --red: #ef4444;
-  --amber: #f59e0b;
-  --purple: #6366f1;
-  --text: #0f172a;
-  --muted: #64748b;
-  --muted2: #475569;
-  --shadow: 0 1px 3px #0f172a14;
-  --shadow-md: 0 4px 14px #0f172a1a;
-  --shadow-lg: 0 8px 28px #0f172a22;
+  --surface2: #e7ecf5;
+  --border: #d6deea;
+
+  --brand: #1d4ed8;          /* azul principal */
+  --brand-600: #2563eb;
+  --brand-700: #1e40af;
+  --brand-bright: #3b82f6;
+  --brand-grad: linear-gradient(135deg, #1e40af 0%, #2563eb 55%, #3b82f6 100%);
+  --brand-tint: #1d4ed814;
+
+  /* compat con componentes existentes */
+  --blue: #1d4ed8;
+  --blue-light: #1d4ed814;
+  --orange: #0e7490;         /* transporte → cian intenso (familia azul) */
+  --orange-light: #0e749014;
+  --green: #059669;
+  --red: #dc2626;
+  --amber: #d97706;
+  --purple: #4338ca;
+
+  --text: #0a1733;
+  --muted: #5b6b86;
+  --muted2: #38486a;
+
+  --shadow: 0 1px 2px #0a173312, 0 1px 3px #0a173310;
+  --shadow-md: 0 6px 18px #0a173318;
+  --shadow-lg: 0 16px 40px #0a17331f;
+  --ring: 0 0 0 3px #2563eb33;
+
   --sans: "Syne", sans-serif;
   --mono: "DM Mono", monospace;
+  --logo: "Archivo", "Syne", sans-serif;
+  --radius: 14px;
 }
 
 /* ── TEMA OSCURO ── */
 html[data-theme="dark"] {
-  --bg: #0b1120;
-  --surface: #131c2e;
-  --surface2: #1c2840;
-  --border: #2a3b57;
-  --blue-light: #0c2a3e;
-  --orange-light: #2e1c0c;
-  --text: #e8eef7;
-  --muted: #8294b0;
-  --muted2: #aab8d0;
-  --shadow: 0 1px 3px #00000040;
-  --shadow-md: 0 4px 14px #00000055;
-  --shadow-lg: 0 8px 28px #00000070;
+  --bg: #070d1c;
+  --surface: #0f1a30;
+  --surface2: #17243f;
+  --border: #25344f;
+
+  --brand: #3b82f6;
+  --brand-600: #60a5fa;
+  --brand-700: #2563eb;
+  --brand-bright: #60a5fa;
+  --brand-grad: linear-gradient(135deg, #1e3a8a 0%, #2563eb 55%, #3b82f6 100%);
+  --brand-tint: #3b82f622;
+
+  --blue: #3b82f6;
+  --blue-light: #3b82f622;
+  --orange: #22d3ee;
+  --orange-light: #22d3ee22;
+  --green: #10b981;
+  --red: #f87171;
+  --amber: #fbbf24;
+  --purple: #818cf8;
+
+  --text: #e8eefb;
+  --muted: #8395b5;
+  --muted2: #b3c1dd;
+
+  --shadow: 0 1px 3px #00000055;
+  --shadow-md: 0 8px 22px #00000066;
+  --shadow-lg: 0 18px 44px #00000077;
+  --ring: 0 0 0 3px #3b82f644;
 }
 
 html { transition: background .25s ease; }
@@ -73,6 +106,45 @@ body {
 /* Fila de tabla clickeable */
 .hover-row { transition: background-color .12s ease; }
 .hover-row:hover { background: var(--surface2); }
+
+/* ── Lenguaje visual Grupo Ambiente ── */
+.lift { transition: transform .2s ease, box-shadow .2s ease, border-color .2s ease; }
+.lift:hover { transform: translateY(-4px); box-shadow: var(--shadow-lg); }
+
+.brand-text {
+  background: var(--brand-grad);
+  -webkit-background-clip: text; background-clip: text;
+  -webkit-text-fill-color: transparent; color: transparent;
+}
+
+/* Logo: inversión a blanco en fondos oscuros */
+.logo-invert { filter: invert(1) brightness(1.85); }
+html[data-theme="dark"] .logo-auto { filter: invert(1) brightness(1.85); }
+
+/* Skeletons de carga */
+.skeleton { position: relative; overflow: hidden; background: var(--surface2); border-radius: 8px; }
+.skeleton::after {
+  content: ""; position: absolute; inset: 0; transform: translateX(-100%);
+  background: linear-gradient(90deg, transparent, #ffffff35, transparent);
+  animation: shimmer 1.3s infinite;
+}
+html[data-theme="dark"] .skeleton::after { background: linear-gradient(90deg, transparent, #ffffff10, transparent); }
+@keyframes shimmer { 100% { transform: translateX(100%); } }
+
+/* Entrada escalonada */
+@keyframes fade-up { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
+.fade-up { animation: fade-up .45s cubic-bezier(.2,.7,.3,1) both; }
+.stagger > * { animation: fade-up .45s cubic-bezier(.2,.7,.3,1) both; }
+.stagger > *:nth-child(2) { animation-delay: .06s; }
+.stagger > *:nth-child(3) { animation-delay: .12s; }
+.stagger > *:nth-child(4) { animation-delay: .18s; }
+.stagger > *:nth-child(5) { animation-delay: .24s; }
+.stagger > *:nth-child(6) { animation-delay: .30s; }
+
+@media (prefers-reduced-motion: reduce) {
+  .fade-up, .stagger > *, .animate-fade-in, .animate-slide-in { animation: none !important; }
+  .lift:hover { transform: none; }
+}
 
 /* ── Responsive ── */
 /* Grids de 2 columnas que se apilan en móvil */

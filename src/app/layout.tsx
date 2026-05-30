@@ -3,12 +3,12 @@ import "./globals.css";
 import { Providers } from "@/components/common/Providers";
 
 export const metadata: Metadata = {
-  title: "Almacén / Sistema de Gestión",
-  description: "Plataforma de gestión de inventarios, novedades y transporte",
+  title: "Grupo Ambiente · Sistema de gestión",
+  description: "Plataforma de gestión de inventarios, novedades y transporte — Grupo Ambiente",
 };
 
 export const viewport: Viewport = {
-  themeColor: "#0f172a",
+  themeColor: "#0a1326",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
@@ -17,7 +17,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <head>
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link
-          href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Syne:wght@400;600;700;800&display=swap"
+          href="https://fonts.googleapis.com/css2?family=Archivo:wght@600;700;800&family=DM+Mono:wght@400;500&family=Syne:wght@400;600;700;800&display=swap"
           rel="stylesheet"
         />
         {/* Aplica el tema guardado antes del primer paint (evita parpadeo) */}

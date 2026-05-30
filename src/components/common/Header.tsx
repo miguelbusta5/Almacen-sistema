@@ -3,6 +3,7 @@
 import { signOut } from "next-auth/react";
 import { LogOut } from "lucide-react";
 import ThemeToggle from "./ThemeToggle";
+import Logo from "./Logo";
 import { useIsMobile } from "@/lib/useIsMobile";
 
 interface HeaderProps {
@@ -23,9 +24,7 @@ export default function Header({ user }: HeaderProps) {
       }}
     >
       {isMobile ? (
-        <div style={{ fontSize: 14, fontWeight: 800, color: "var(--text)" }}>
-          MATEC <span style={{ color: "var(--blue)" }}>CEDI</span>
-        </div>
+        <Logo variant="auto" height={18} />
       ) : (
         <div style={{ fontSize: 13, color: "var(--muted)", fontFamily: "var(--mono)", textTransform: "capitalize", overflow: "hidden", whiteSpace: "nowrap", textOverflow: "ellipsis" }}>
           {new Date().toLocaleDateString("es-CO", { weekday: "long", year: "numeric", month: "long", day: "numeric" })}
