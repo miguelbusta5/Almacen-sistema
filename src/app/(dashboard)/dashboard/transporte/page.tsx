@@ -123,7 +123,20 @@ export default function TransportePage() {
 function TabBtn({ icon, label, active, onClick, accent }: { icon: React.ReactNode; label: string; active: boolean; onClick: () => void; accent?: boolean }) {
   return <button onClick={onClick} style={{ display: "flex", alignItems: "center", gap: 6, padding: "0.5rem 0.9rem", borderRadius: 9, fontSize: 12, fontWeight: 700, cursor: "pointer", border: "1px solid " + (active ? "#0e7490" : "var(--border)"), background: active ? "#0e7490" : (accent ? "#0e749015" : "var(--surface)"), color: active ? "#fff" : (accent ? "#0e7490" : "var(--muted2)"), transition: "all .15s" }}>{icon}{label}</button>;
 }
-function Loading() { return <div style={{ padding: "4rem", textAlign: "center", color: "var(--muted)", fontSize: 14 }}>Cargando…</div>; }
+function Loading() {
+  return (
+    <div>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(150px,1fr))", gap: "0.75rem", marginBottom: "1.25rem" }}>
+        {Array.from({ length: 6 }).map((_, i) => <div key={i} className="skeleton" style={{ height: 76, borderRadius: 12 }} />)}
+      </div>
+      <div className="grid-2" style={{ marginBottom: "1rem" }}>
+        <div className="skeleton" style={{ height: 280, borderRadius: 14 }} />
+        <div className="skeleton" style={{ height: 280, borderRadius: 14 }} />
+      </div>
+      <div className="skeleton" style={{ height: 240, borderRadius: 14 }} />
+    </div>
+  );
+}
 
 function Dashboard({ kpis, donutData, barData, guardados, onFilter, onDetail }: {
   kpis: { total: number; pend: number; desp: number; proximos: number; vencidas: number; costoTotal: number };
@@ -159,8 +172,8 @@ function Dashboard({ kpis, donutData, barData, guardados, onFilter, onDetail }: 
       </div>
 
       <div className="grid-2">
-        <ChartCard title="Estados"><div style={{ height: 240 }}><Doughnut data={donutData} options={{ maintainAspectRatio: false, plugins: { legend: { position: "bottom" } } }} /></div></ChartCard>
-        <ChartCard title="Guardados por mes"><div style={{ height: 240 }}><Bar data={barData} options={{ maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, ticks: { precision: 0 } } } }} /></div></ChartCard>
+        <ChartCard title="Estados"><div style={{ height: 240 }}><Doughnut data={donutData} options={{ maintainAspectRatio: false, plugins: { legend: { position: "bottom" }, tooltip: { callbacks: { label: (ctx) => { const total = (ctx.dataset.data as number[]).reduce((a, b) => a + b, 0); const pct = total > 0 ? Math.round((ctx.parsed as number) / total * 100) : 0; return ` ${ctx.parsed} (${pct}%)`; } } } } }} /></div></ChartCard>
+        <ChartCard title="Guardados por mes"><div style={{ height: 240 }}><Bar data={barData} options={{ maintainAspectRatio: false, plugins: { legend: { display: false }, tooltip: { callbacks: { label: (ctx) => ` ${ctx.parsed.y} guardado${ctx.parsed.y !== 1 ? "s" : ""}` } } }, scales: { y: { beginAtZero: true, ticks: { precision: 0 } } } }} /></div></ChartCard>
       </div>
 
       {/* ── PANEL DE ALMACENAJE ── */}

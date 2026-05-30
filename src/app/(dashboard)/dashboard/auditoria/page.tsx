@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
-import { ScrollText, ShieldAlert, ChevronLeft, ChevronRight, RefreshCw } from "lucide-react";
+import { ScrollText, ShieldAlert, ChevronLeft, ChevronRight, RefreshCw, Download } from "lucide-react";
 
 type Role = "ADMIN" | "GERENTE" | "OPERADOR";
 
@@ -92,6 +92,25 @@ export default function AuditoriaPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [fModule, fAction, fUser, fFrom, fTo, fq, role]);
 
+  async function doExportCsv() {
+    const p = new URLSearchParams();
+    if (fModule) p.set("module", fModule);
+    if (fAction) p.set("action", fAction);
+    if (fUser) p.set("userId", fUser);
+    if (fFrom) p.set("from", fFrom);
+    if (fTo) p.set("to", fTo);
+    if (fq.trim()) p.set("q", fq.trim());
+    p.set("export", "csv");
+    const res = await fetch(`/api/activity?${p.toString()}`);
+    const blob = await res.blob();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `auditoria-${new Date().toISOString().slice(0, 10)}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
   function clearFilters() {
     setFModule(""); setFAction(""); setFUser(""); setFFrom(""); setFTo(""); setFq("");
   }
@@ -120,9 +139,14 @@ export default function AuditoriaPage() {
             <p style={{ fontSize: 12, color: "var(--muted)" }}>{total} evento{total !== 1 ? "s" : ""} registrado{total !== 1 ? "s" : ""}</p>
           </div>
         </div>
-        <button onClick={() => load(page)} style={{ display: "flex", alignItems: "center", gap: 6, padding: "0.5rem 0.9rem", background: "var(--surface2)", color: "var(--muted2)", border: "1px solid var(--border)", borderRadius: 9, fontSize: 12, fontWeight: 700, cursor: "pointer" }}>
-          <RefreshCw size={14} />Actualizar
-        </button>
+        <div style={{ display: "flex", gap: 8 }}>
+          <button onClick={doExportCsv} style={{ display: "flex", alignItems: "center", gap: 6, padding: "0.5rem 0.9rem", background: "#2563eb15", color: "#2563eb", border: "1px solid #2563eb40", borderRadius: 9, fontSize: 12, fontWeight: 700, cursor: "pointer" }}>
+            <Download size={14} />Exportar CSV
+          </button>
+          <button onClick={() => load(page)} style={{ display: "flex", alignItems: "center", gap: 6, padding: "0.5rem 0.9rem", background: "var(--surface2)", color: "var(--muted2)", border: "1px solid var(--border)", borderRadius: 9, fontSize: 12, fontWeight: 700, cursor: "pointer" }}>
+            <RefreshCw size={14} />Actualizar
+          </button>
+        </div>
       </div>
 
       {/* Filtros */}

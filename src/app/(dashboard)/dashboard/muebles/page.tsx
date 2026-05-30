@@ -138,7 +138,20 @@ export default function MueblesPage() {
 function TabBtn({ icon, label, active, onClick, accent }: { icon: React.ReactNode; label: string; active: boolean; onClick: () => void; accent?: boolean }) {
   return <button onClick={onClick} style={{ display: "flex", alignItems: "center", gap: 6, padding: "0.5rem 0.9rem", borderRadius: 9, fontSize: 12, fontWeight: 700, cursor: "pointer", border: "1px solid " + (active ? "#2563eb" : "var(--border)"), background: active ? "#2563eb" : (accent ? "#2563eb15" : "var(--surface)"), color: active ? "#fff" : (accent ? "#2563eb" : "var(--muted2)"), transition: "all .15s" }}>{icon}{label}</button>;
 }
-function Loading() { return <div style={{ padding: "4rem", textAlign: "center", color: "var(--muted)", fontSize: 14 }}>Cargando…</div>; }
+function Loading() {
+  return (
+    <div>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(140px,1fr))", gap: "0.75rem", marginBottom: "1.25rem" }}>
+        {Array.from({ length: 7 }).map((_, i) => <div key={i} className="skeleton" style={{ height: 76, borderRadius: 12 }} />)}
+      </div>
+      <div className="grid-2" style={{ marginBottom: "1rem" }}>
+        <div className="skeleton" style={{ height: 280, borderRadius: 14 }} />
+        <div className="skeleton" style={{ height: 280, borderRadius: 14 }} />
+      </div>
+      <div className="skeleton" style={{ height: 300, borderRadius: 14 }} />
+    </div>
+  );
+}
 
 function Dashboard({ kpis, donutData, fabData, lineData, onFilter }: {
   kpis: { total: number; pend: number; proc: number; sol: number; plus: number; fabricantes: number; impacto: number };
@@ -166,11 +179,11 @@ function Dashboard({ kpis, donutData, fabData, lineData, onFilter }: {
         <Kpi label="Impacto total" val={fmtCOP(kpis.impacto)} color="#4338ca" small />
       </div>
       <div className="grid-2">
-        <ChartCard title="Tasa de resolución"><div style={{ height: 240 }}><Doughnut data={donutData} options={{ maintainAspectRatio: false, plugins: { legend: { position: "bottom" } } }} /></div></ChartCard>
-        <ChartCard title="Evolución diaria de novedades"><div style={{ height: 240 }}><Line data={lineData} options={{ maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, ticks: { precision: 0 } } } }} /></div></ChartCard>
+        <ChartCard title="Tasa de resolución"><div style={{ height: 240 }}><Doughnut data={donutData} options={{ maintainAspectRatio: false, plugins: { legend: { position: "bottom" }, tooltip: { callbacks: { label: (ctx) => { const total = (ctx.dataset.data as number[]).reduce((a, b) => a + b, 0); const pct = total > 0 ? Math.round((ctx.parsed as number) / total * 100) : 0; return ` ${ctx.parsed} (${pct}%)`; } } } } }} /></div></ChartCard>
+        <ChartCard title="Evolución diaria de novedades"><div style={{ height: 240 }}><Line data={lineData} options={{ maintainAspectRatio: false, plugins: { legend: { display: false }, tooltip: { callbacks: { label: (ctx) => ` ${ctx.parsed.y} novedad${ctx.parsed.y !== 1 ? "es" : ""}` } } }, scales: { y: { beginAtZero: true, ticks: { precision: 0 } } } }} /></div></ChartCard>
       </div>
       <ChartCard title="Impacto de novedades por fabricante">
-        <div style={{ height: 280 }}><Bar data={fabData} options={{ maintainAspectRatio: false, indexAxis: "y", plugins: { legend: { display: false } }, scales: { x: { beginAtZero: true, ticks: { callback: (v: any) => "$" + (v / 1e6).toFixed(0) + "M" } } } }} /></div>
+        <div style={{ height: 280 }}><Bar data={fabData} options={{ maintainAspectRatio: false, indexAxis: "y", plugins: { legend: { display: false }, tooltip: { callbacks: { label: (ctx) => " " + fmtCOP(ctx.parsed.x ?? 0) } } }, scales: { x: { beginAtZero: true, ticks: { callback: (v: any) => "$" + (v / 1e6).toFixed(0) + "M" } } } }} /></div>
       </ChartCard>
     </div>
   );
