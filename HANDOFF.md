@@ -220,7 +220,23 @@ Se aplica en **servidor** (`requireCan` en cada API) y en **UI** (botones Editar
 
 ---
 
-## 9. Historial de cambios (esta sesión, 2026-05-30)
+## 9. Cómo continuar desde VS Code (Claude Code)
+
+Entorno requerido: Node 18+ (hay v24), Git. Claude Code CLI instalado globalmente (`@anthropic-ai/claude-code`).
+
+1. **Extensión:** en VS Code → Extensions (`Ctrl+Shift+X`) → instalar **"Claude Code"** (Anthropic).
+   (o abrir la terminal integrada y escribir `claude`, que instala la extensión la primera vez).
+2. **Abrir la carpeta correcta:** `C:\Users\USUARIO\Desktop\almacen-sistema` (no "Aplicacion Inventarios").
+3. **Iniciar Claude:** `Ctrl+Esc` o el ícono en la barra lateral; autenticarse en el navegador la primera vez.
+4. **Contexto automático:** Claude lee `CLAUDE.md` (que importa `AGENTS.md`) al abrir el proyecto.
+   Para ponerse al día por completo, pídele: **"Lee HANDOFF.md y continúa desde ahí."**
+5. **Comando `code` en PATH** (opcional): en VS Code `Ctrl+Shift+P` → *Shell Command: Install 'code' command in PATH*.
+
+Comandos de verificación: `node -v`, `claude --version`, `git remote -v` (debe mostrar `origin`).
+
+---
+
+## 10. Historial de cambios (esta sesión, 2026-05-30)
 
 - `027eaf0` — seguridad: autorización por rol server-side; elimina credenciales hardcodeadas; quita DELETE_PIN.
 - `a4f9f17` — feat: pantalla de auditoría (activity_logs), solo ADMIN.
