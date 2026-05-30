@@ -73,7 +73,7 @@ export default function TransportePage() {
     for (const g of guardados) { const mes = g.fecha.slice(0, 7); meses[mes] = (meses[mes] || 0) + 1; }
     const keys = Object.keys(meses).sort().slice(-6);
     const M = ["Ene","Feb","Mar","Abr","May","Jun","Jul","Ago","Sep","Oct","Nov","Dic"];
-    return { labels: keys.map(k => { const [y, m] = k.split("-"); return M[+m - 1] + " " + y.slice(2); }), datasets: [{ label: "Guardados", data: keys.map(k => meses[k]), backgroundColor: "#f97316", borderRadius: 6 }] };
+    return { labels: keys.map(k => { const [y, m] = k.split("-"); return M[+m - 1] + " " + y.slice(2); }), datasets: [{ label: "Guardados", data: keys.map(k => meses[k]), backgroundColor: "#0e7490", borderRadius: 6 }] };
   }, [guardados]);
 
   const filtered = useMemo(() => {
@@ -90,7 +90,7 @@ export default function TransportePage() {
     <div className="animate-fade-in">
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 12, marginBottom: "1.5rem" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-          <div style={{ width: 40, height: 40, borderRadius: 10, background: "#f9731615", display: "flex", alignItems: "center", justifyContent: "center" }}><Truck size={20} color="#f97316" /></div>
+          <div style={{ width: 40, height: 40, borderRadius: 10, background: "#0e749015", display: "flex", alignItems: "center", justifyContent: "center" }}><Truck size={20} color="#0e7490" /></div>
           <div>
             <h1 style={{ fontSize: 22, fontWeight: 800, color: "var(--text)", letterSpacing: "-0.02em" }}>Guardados Transporte</h1>
             <p style={{ fontSize: 12, color: "var(--muted)" }}>{kpis.total} registros · {kpis.pend} pendientes</p>
@@ -121,7 +121,7 @@ export default function TransportePage() {
 }
 
 function TabBtn({ icon, label, active, onClick, accent }: { icon: React.ReactNode; label: string; active: boolean; onClick: () => void; accent?: boolean }) {
-  return <button onClick={onClick} style={{ display: "flex", alignItems: "center", gap: 6, padding: "0.5rem 0.9rem", borderRadius: 9, fontSize: 12, fontWeight: 700, cursor: "pointer", border: "1px solid " + (active ? "#f97316" : "var(--border)"), background: active ? "#f97316" : (accent ? "#f9731615" : "var(--surface)"), color: active ? "#fff" : (accent ? "#f97316" : "var(--muted2)"), transition: "all .15s" }}>{icon}{label}</button>;
+  return <button onClick={onClick} style={{ display: "flex", alignItems: "center", gap: 6, padding: "0.5rem 0.9rem", borderRadius: 9, fontSize: 12, fontWeight: 700, cursor: "pointer", border: "1px solid " + (active ? "#0e7490" : "var(--border)"), background: active ? "#0e7490" : (accent ? "#0e749015" : "var(--surface)"), color: active ? "#fff" : (accent ? "#0e7490" : "var(--muted2)"), transition: "all .15s" }}>{icon}{label}</button>;
 }
 function Loading() { return <div style={{ padding: "4rem", textAlign: "center", color: "var(--muted)", fontSize: 14 }}>Cargando…</div>; }
 
@@ -150,12 +150,12 @@ function Dashboard({ kpis, donutData, barData, guardados, onFilter, onDetail }: 
       )}
 
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(150px,1fr))", gap: "0.75rem", marginBottom: "1.25rem" }}>
-        <Kpi label="Total guardados" val={kpis.total} color="#f97316" onClick={() => onFilter({})} />
+        <Kpi label="Total guardados" val={kpis.total} color="#0e7490" onClick={() => onFilter({})} />
         <Kpi label="Pendiente despacho" val={kpis.pend} color="#f59e0b" onClick={() => onFilter({ estado: "PENDIENTE DESPACHO" })} />
         <Kpi label="Despachados" val={kpis.desp} color="#10b981" onClick={() => onFilter({ estado: "DESPACHADO" })} />
         <Kpi label="Próximos 5 días" val={kpis.proximos} color="#f59e0b" icon="🔔" onClick={() => onFilter({ alerta: true })} />
         <Kpi label="Entregas vencidas" val={kpis.vencidas} color="#ef4444" onClick={() => onFilter({ alerta: true })} />
-        <Kpi label="Costo almacenaje" val={fmtCOP(kpis.costoTotal)} color="#6366f1" icon="💰" small />
+        <Kpi label="Costo almacenaje" val={fmtCOP(kpis.costoTotal)} color="#4338ca" icon="💰" small />
       </div>
 
       <div className="grid-2">
@@ -173,7 +173,7 @@ function Dashboard({ kpis, donutData, barData, guardados, onFilter, onDetail }: 
               {pendientes.map(({ g, alm }) => {
                 let color = "#10b981", costo = "EN GRACIA", info = `Gracia vence ${fmtFecha(alm.finGracia)} · faltan ${(alm as any).diasRestantes}d`;
                 if (alm.fase === "cobro" && alm.meses === 0) { color = "#f59e0b"; costo = `DÍA ${alm.diasEnPeriodo}/30`; info = `Primer cobro ${fmtCOP(TARIFA_ALM)} en ${alm.diasHastaProxima}d (${fmtFecha(alm.proximaCarga)})`; }
-                else if (alm.fase === "cobro") { color = "#6366f1"; costo = fmtCOP(alm.costo); info = `Mes ${alm.meses} · próx. ${fmtCOP(alm.costoProximo)} en ${alm.diasHastaProxima}d`; }
+                else if (alm.fase === "cobro") { color = "#4338ca"; costo = fmtCOP(alm.costo); info = `Mes ${alm.meses} · próx. ${fmtCOP(alm.costoProximo)} en ${alm.diasHastaProxima}d`; }
                 return (
                   <div key={g.clientId} onClick={() => onDetail(g)} className="hover-row" style={{ display: "flex", alignItems: "center", gap: 10, padding: "0.5rem 0.6rem", borderRadius: 8, cursor: "pointer", fontSize: 12 }}>
                     <span style={{ width: 8, height: 8, borderRadius: "50%", background: color, flexShrink: 0 }} />
@@ -187,7 +187,7 @@ function Dashboard({ kpis, donutData, barData, guardados, onFilter, onDetail }: 
             </div>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: "0.75rem", paddingTop: "0.75rem", borderTop: "1px solid var(--border)", fontSize: 12 }}>
               <span style={{ color: "var(--muted2)", fontWeight: 600 }}>Total acumulado activo</span>
-              <span style={{ fontFamily: "var(--mono)", fontWeight: 800, color: "#6366f1", fontSize: 15 }}>{fmtCOP(totalActivo)}</span>
+              <span style={{ fontFamily: "var(--mono)", fontWeight: 800, color: "#4338ca", fontSize: 15 }}>{fmtCOP(totalActivo)}</span>
               <span style={{ color: "var(--muted)" }}>Próx. proyectado: <strong style={{ color: "var(--text)" }}>{fmtCOP(totalProximo)}</strong></span>
             </div>
           </>
@@ -255,7 +255,7 @@ function Fila({ g, onDetail, onEdit, onDelete, canEdit, canDelete }: { g: Guarda
       <td style={{ padding: "0.6rem 0.75rem", whiteSpace: "nowrap" }}>
         {alm.fase === "gracia" ? <span style={{ fontSize: 11, color: "#10b981", fontWeight: 700 }}>EN GRACIA</span>
           : alm.meses === 0 ? <span style={{ fontSize: 11, color: "#f59e0b", fontWeight: 700 }}>Día {alm.diasEnPeriodo}/30</span>
-          : <span style={{ fontFamily: "var(--mono)", fontWeight: 700, color: "#6366f1" }}>{fmtCOP(alm.costo)}</span>}
+          : <span style={{ fontFamily: "var(--mono)", fontWeight: 700, color: "#4338ca" }}>{fmtCOP(alm.costo)}</span>}
       </td>
       <td style={{ padding: "0.6rem 0.75rem", whiteSpace: "nowrap" }}>
         {u && u.tipo !== "ok" ? <span style={{ fontSize: 11, fontWeight: 700, color: u.tipo === "vencida" ? "#ef4444" : "#f59e0b" }}>{u.tipo === "vencida" ? `⚠ -${u.dias}d` : `🔔 ${u.dias}d`}</span> : <span style={{ color: "var(--border)" }}>—</span>}
@@ -278,7 +278,7 @@ function ModalDetalle({ g, onClose, onEdit, canEdit }: { g: Guardado; onClose: (
   const u = urgencia(g);
   const diasGuardado = Math.floor((new Date(esDesp && g.fechaDespacho ? g.fechaDespacho : todayISO()).getTime() - new Date(g.fecha).getTime()) / 86400000);
 
-  const almColor = alm.fase === "gracia" ? "#10b981" : alm.meses === 0 ? "#f59e0b" : "#6366f1";
+  const almColor = alm.fase === "gracia" ? "#10b981" : alm.meses === 0 ? "#f59e0b" : "#4338ca";
   const almBig = alm.fase === "gracia" ? "EN GRACIA" : alm.meses === 0 ? `Día ${alm.diasEnPeriodo}/30` : fmtCOP(alm.costo);
   const almInfo = alm.fase === "gracia"
     ? <>Gracia vence el <b>{fmtFecha(alm.finGracia)}</b>{!esDesp && ` · faltan ${alm.diasRestantes}d`}</>
@@ -312,7 +312,7 @@ function ModalDetalle({ g, onClose, onEdit, canEdit }: { g: Guardado; onClose: (
         </div>
       )}
 
-      {canEdit && <button onClick={onEdit} style={{ width: "100%", padding: "0.6rem", background: "#f97316", color: "#fff", border: "none", borderRadius: 9, fontSize: 13, fontWeight: 700, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}><Pencil size={15} />Editar guardado</button>}
+      {canEdit && <button onClick={onEdit} style={{ width: "100%", padding: "0.6rem", background: "#0e7490", color: "#fff", border: "none", borderRadius: 9, fontSize: 13, fontWeight: 700, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}><Pencil size={15} />Editar guardado</button>}
     </Modal>
   );
 }
@@ -344,7 +344,7 @@ function FormNuevo({ onSaved, onError }: { onSaved: () => void; onError: (m: str
         {estado === "DESPACHADO" && <Field label="Fecha despacho"><input type="date" value={fechaDespacho} onChange={e => setFDesp(e.target.value)} style={inp} /></Field>}
         <Field label="Nota (incluye fecha de entrega ej. 15/06/2026)" full><textarea value={nota} onChange={e => setNota(e.target.value)} rows={3} style={{ ...inp, resize: "vertical" }} /></Field>
       </div>
-      <button type="submit" disabled={saving} style={{ marginTop: "1.25rem", padding: "0.7rem 1.5rem", background: saving ? "#94a3b8" : "#f97316", color: "#fff", border: "none", borderRadius: 9, fontSize: 13, fontWeight: 700, cursor: saving ? "not-allowed" : "pointer" }}>{saving ? "Guardando…" : "Registrar guardado"}</button>
+      <button type="submit" disabled={saving} style={{ marginTop: "1.25rem", padding: "0.7rem 1.5rem", background: saving ? "#94a3b8" : "#0e7490", color: "#fff", border: "none", borderRadius: 9, fontSize: 13, fontWeight: 700, cursor: saving ? "not-allowed" : "pointer" }}>{saving ? "Guardando…" : "Registrar guardado"}</button>
     </form>
   );
 }
@@ -373,7 +373,7 @@ function ModalEditar({ g, onClose, onSaved, onError }: { g: Guardado; onClose: (
         <Field label="Nota"><textarea value={nota} onChange={e => setNota(e.target.value)} rows={2} style={{ ...inp, resize: "vertical" }} /></Field>
       </div>
       <div style={{ display: "flex", gap: 8, marginTop: "1.25rem" }}>
-        <button onClick={() => save()} disabled={saving} style={{ flex: 1, padding: "0.65rem", background: "#f97316", color: "#fff", border: "none", borderRadius: 9, fontSize: 13, fontWeight: 700, cursor: "pointer" }}>Guardar cambios</button>
+        <button onClick={() => save()} disabled={saving} style={{ flex: 1, padding: "0.65rem", background: "#0e7490", color: "#fff", border: "none", borderRadius: 9, fontSize: 13, fontWeight: 700, cursor: "pointer" }}>Guardar cambios</button>
         {estado !== "DESPACHADO" && <button onClick={() => save(true)} disabled={saving} style={{ padding: "0.65rem 1rem", background: "#ecfdf5", color: "#10b981", border: "1px solid #10b981", borderRadius: 9, fontSize: 13, fontWeight: 700, cursor: "pointer", display: "flex", alignItems: "center", gap: 6 }}><CheckCircle2 size={15} />Despachar</button>}
       </div>
     </Modal>

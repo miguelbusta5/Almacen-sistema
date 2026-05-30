@@ -75,7 +75,7 @@ export default function MueblesPage() {
     const top = Object.entries(byFab).sort((a, b) => b[1] - a[1]).slice(0, 8);
     return {
       labels: top.map(([f]) => f),
-      datasets: [{ label: "Impacto", data: top.map(([, v]) => v), backgroundColor: "#0ea5e9", borderRadius: 5 }],
+      datasets: [{ label: "Impacto", data: top.map(([, v]) => v), backgroundColor: "#2563eb", borderRadius: 5 }],
     };
   }, [items]);
 
@@ -85,7 +85,7 @@ export default function MueblesPage() {
     const keys = Object.keys(byDate).sort().slice(-14);
     return {
       labels: keys.map(k => fmtFecha(k).slice(0, 5)),
-      datasets: [{ label: "Novedades", data: keys.map(k => byDate[k]), borderColor: "#6366f1", backgroundColor: "#6366f130", fill: true, tension: 0.3, pointRadius: 3 }],
+      datasets: [{ label: "Novedades", data: keys.map(k => byDate[k]), borderColor: "#4338ca", backgroundColor: "#4338ca30", fill: true, tension: 0.3, pointRadius: 3 }],
     };
   }, [items]);
 
@@ -105,7 +105,7 @@ export default function MueblesPage() {
     <div className="animate-fade-in">
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 12, marginBottom: "1.5rem" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-          <div style={{ width: 40, height: 40, borderRadius: 10, background: "#0ea5e915", display: "flex", alignItems: "center", justifyContent: "center" }}><Package size={20} color="#0ea5e9" /></div>
+          <div style={{ width: 40, height: 40, borderRadius: 10, background: "#2563eb15", display: "flex", alignItems: "center", justifyContent: "center" }}><Package size={20} color="#2563eb" /></div>
           <div>
             <h1 style={{ fontSize: 22, fontWeight: 800, color: "var(--text)", letterSpacing: "-0.02em" }}>Novedades Muebles</h1>
             <p style={{ fontSize: 12, color: "var(--muted)" }}>{kpis.total} novedades · {kpis.pend + kpis.proc} sin resolver</p>
@@ -136,7 +136,7 @@ export default function MueblesPage() {
 }
 
 function TabBtn({ icon, label, active, onClick, accent }: { icon: React.ReactNode; label: string; active: boolean; onClick: () => void; accent?: boolean }) {
-  return <button onClick={onClick} style={{ display: "flex", alignItems: "center", gap: 6, padding: "0.5rem 0.9rem", borderRadius: 9, fontSize: 12, fontWeight: 700, cursor: "pointer", border: "1px solid " + (active ? "#0ea5e9" : "var(--border)"), background: active ? "#0ea5e9" : (accent ? "#0ea5e915" : "var(--surface)"), color: active ? "#fff" : (accent ? "#0ea5e9" : "var(--muted2)"), transition: "all .15s" }}>{icon}{label}</button>;
+  return <button onClick={onClick} style={{ display: "flex", alignItems: "center", gap: 6, padding: "0.5rem 0.9rem", borderRadius: 9, fontSize: 12, fontWeight: 700, cursor: "pointer", border: "1px solid " + (active ? "#2563eb" : "var(--border)"), background: active ? "#2563eb" : (accent ? "#2563eb15" : "var(--surface)"), color: active ? "#fff" : (accent ? "#2563eb" : "var(--muted2)"), transition: "all .15s" }}>{icon}{label}</button>;
 }
 function Loading() { return <div style={{ padding: "4rem", textAlign: "center", color: "var(--muted)", fontSize: 14 }}>Cargando…</div>; }
 
@@ -148,22 +148,22 @@ function Dashboard({ kpis, donutData, fabData, lineData, onFilter }: {
   return (
     <div>
       {sinResolver > 0 && (
-        <div onClick={() => onFilter("PENDIENTE")} style={{ background: "#eff6ff", border: "2px solid #0ea5e9", borderRadius: 14, padding: "1.1rem 1.4rem", marginBottom: "1.25rem", cursor: "pointer", display: "flex", alignItems: "center", gap: 16 }}>
-          <AlertTriangle size={32} color="#0ea5e9" />
+        <div onClick={() => onFilter("PENDIENTE")} style={{ background: "#eff6ff", border: "2px solid #2563eb", borderRadius: 14, padding: "1.1rem 1.4rem", marginBottom: "1.25rem", cursor: "pointer", display: "flex", alignItems: "center", gap: 16 }}>
+          <AlertTriangle size={32} color="#2563eb" />
           <div style={{ flex: 1 }}>
-            <div style={{ fontSize: 22, fontWeight: 800, color: "#0ea5e9" }}>{sinResolver} novedad{sinResolver !== 1 ? "es" : ""} sin resolver</div>
+            <div style={{ fontSize: 22, fontWeight: 800, color: "#2563eb" }}>{sinResolver} novedad{sinResolver !== 1 ? "es" : ""} sin resolver</div>
             <div style={{ fontSize: 12, color: "#1e40af" }}>{kpis.pend} pendiente{kpis.pend !== 1 ? "s" : ""} · {kpis.proc} en proceso. Click para ver la lista.</div>
           </div>
         </div>
       )}
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(140px,1fr))", gap: "0.75rem", marginBottom: "1.25rem" }}>
-        <Kpi label="Total" val={kpis.total} color="#0ea5e9" onClick={() => onFilter("")} />
+        <Kpi label="Total" val={kpis.total} color="#2563eb" onClick={() => onFilter("")} />
         <Kpi label="Pendientes" val={kpis.pend} color="#ef4444" onClick={() => onFilter("PENDIENTE")} />
         <Kpi label="En proceso" val={kpis.proc} color="#f59e0b" onClick={() => onFilter("EN PROCESO")} />
         <Kpi label="Solucionadas" val={kpis.sol} color="#10b981" onClick={() => onFilter("SOLUCIONADO")} />
-        <Kpi label="PLUs únicos" val={kpis.plus} color="#8b5cf6" />
-        <Kpi label="Fabricantes" val={kpis.fabricantes} color="#0ea5e9" />
-        <Kpi label="Impacto total" val={fmtCOP(kpis.impacto)} color="#6366f1" small />
+        <Kpi label="PLUs únicos" val={kpis.plus} color="#4338ca" />
+        <Kpi label="Fabricantes" val={kpis.fabricantes} color="#2563eb" />
+        <Kpi label="Impacto total" val={fmtCOP(kpis.impacto)} color="#4338ca" small />
       </div>
       <div className="grid-2">
         <ChartCard title="Tasa de resolución"><div style={{ height: 240 }}><Doughnut data={donutData} options={{ maintainAspectRatio: false, plugins: { legend: { position: "bottom" } } }} /></div></ChartCard>
@@ -267,7 +267,7 @@ function FormNuevo({ onSaved, onError }: { onSaved: () => void; onError: (m: str
         <Field label="Costo unitario (COP)"><input type="number" value={costoUnitario} onChange={e => setCu(e.target.value)} placeholder="0" style={inp} /></Field>
         <Field label="Estado" full><select value={estado} onChange={e => setEstado(e.target.value as EstadoNovedad)} style={inp}>{ESTADOS.map(e => <option key={e} value={e}>{estadoLabel(e)}</option>)}</select></Field>
       </div>
-      <button type="submit" disabled={saving} style={{ marginTop: "1.25rem", padding: "0.7rem 1.5rem", background: saving ? "#94a3b8" : "#0ea5e9", color: "#fff", border: "none", borderRadius: 9, fontSize: 13, fontWeight: 700, cursor: saving ? "not-allowed" : "pointer" }}>{saving ? "Guardando…" : "Registrar novedad"}</button>
+      <button type="submit" disabled={saving} style={{ marginTop: "1.25rem", padding: "0.7rem 1.5rem", background: saving ? "#94a3b8" : "#2563eb", color: "#fff", border: "none", borderRadius: 9, fontSize: 13, fontWeight: 700, cursor: saving ? "not-allowed" : "pointer" }}>{saving ? "Guardando…" : "Registrar novedad"}</button>
     </form>
   );
 }
@@ -294,7 +294,7 @@ function ModalDetalle({ n, onClose, onEdit, canEdit }: { n: Novedad; onClose: ()
           </span>
         </Info>
       </div>
-      {canEdit && <button onClick={onEdit} style={{ marginTop: "1.25rem", width: "100%", padding: "0.65rem", background: "#0ea5e9", color: "#fff", border: "none", borderRadius: 9, fontSize: 13, fontWeight: 700, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}><Pencil size={15} />Editar novedad</button>}
+      {canEdit && <button onClick={onEdit} style={{ marginTop: "1.25rem", width: "100%", padding: "0.65rem", background: "#2563eb", color: "#fff", border: "none", borderRadius: 9, fontSize: 13, fontWeight: 700, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}><Pencil size={15} />Editar novedad</button>}
     </Modal>
   );
 }
@@ -329,7 +329,7 @@ function ModalEditar({ n, onClose, onSaved, onError }: { n: Novedad; onClose: ()
         <Field label="Estado"><select value={estado} onChange={e => setEstado(e.target.value as EstadoNovedad)} style={inp}>{ESTADOS.map(e => <option key={e} value={e}>{estadoLabel(e)}</option>)}</select></Field>
       </div>
       <div style={{ display: "flex", gap: 8, marginTop: "1.25rem" }}>
-        <button onClick={() => save()} disabled={saving} style={{ flex: 1, padding: "0.65rem", background: "#0ea5e9", color: "#fff", border: "none", borderRadius: 9, fontSize: 13, fontWeight: 700, cursor: "pointer" }}>Guardar cambios</button>
+        <button onClick={() => save()} disabled={saving} style={{ flex: 1, padding: "0.65rem", background: "#2563eb", color: "#fff", border: "none", borderRadius: 9, fontSize: 13, fontWeight: 700, cursor: "pointer" }}>Guardar cambios</button>
         {estado !== "SOLUCIONADO" && <button onClick={() => save("SOLUCIONADO")} disabled={saving} style={{ padding: "0.65rem 1rem", background: "#ecfdf5", color: "#10b981", border: "1px solid #10b981", borderRadius: 9, fontSize: 13, fontWeight: 700, cursor: "pointer", display: "flex", alignItems: "center", gap: 6 }}><CheckCircle2 size={15} />Solucionar</button>}
       </div>
     </Modal>
