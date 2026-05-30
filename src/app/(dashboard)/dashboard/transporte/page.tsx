@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
+import { useSession } from "next-auth/react";
 import {
   Chart as ChartJS, ArcElement, BarElement, CategoryScale, LinearScale, Tooltip, Legend,
 } from "chart.js";
@@ -14,10 +15,11 @@ import { calcAlmacenaje, TARIFA_ALM } from "@/lib/almacenaje";
 
 ChartJS.register(ArcElement, BarElement, CategoryScale, LinearScale, Tooltip, Legend);
 
-const DELETE_PIN = "0000";
 type View = "dashboard" | "lista" | "nuevo";
 
 export default function TransportePage() {
+  const { data: session } = useSession();
+  const canDelete = (session?.user as { role?: string } | undefined)?.role === "ADMIN";
   const [guardados, setGuardados] = useState<Guardado[]>([]);
   const [loading, setLoading] = useState(true);
   const [view, setView] = useState<View>("dashboard");
@@ -101,7 +103,7 @@ export default function TransportePage() {
       {loading ? <Loading /> : (
         <>
           {view === "dashboard" && <Dashboard kpis={kpis} donutData={donutData} barData={barData} guardados={guardados} onFilter={goFilter} onDetail={setDetail} />}
-          {view === "lista" && <Lista data={filtered} total={guardados.length} fq={fq} setFq={setFq} fEstado={fEstado} setFEstado={setFEstado} fAlerta={fAlerta} setFAlerta={setFAlerta} onDetail={setDetail} onEdit={setEditing} onDelete={setDeleting} />}
+          {view === "lista" && <Lista data={filtered} total={guardados.length} fq={fq} setFq={setFq} fEstado={fEstado} setFEstado={setFEstado} fAlerta={fAlerta} setFAlerta={setFAlerta} onDetail={setDetail} onEdit={setEditing} onDelete={setDeleting} canDelete={canDelete} />}
           {view === "nuevo" && <FormNuevo onSaved={() => { load(); setView("lista"); showToast("Guardado registrado ✓"); }} onError={m => showToast(m, true)} />}
         </>
       )}
@@ -204,9 +206,9 @@ function ChartCard({ title, children }: { title: string; children: React.ReactNo
   return <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 14, padding: "1.25rem 1.4rem", marginBottom: "1rem" }}><div style={{ fontSize: 12, fontWeight: 700, letterSpacing: ".06em", textTransform: "uppercase", color: "var(--muted2)", marginBottom: "1rem" }}>{title}</div>{children}</div>;
 }
 
-function Lista({ data, total, fq, setFq, fEstado, setFEstado, fAlerta, setFAlerta, onDetail, onEdit, onDelete }: {
+function Lista({ data, total, fq, setFq, fEstado, setFEstado, fAlerta, setFAlerta, onDetail, onEdit, onDelete, canDelete }: {
   data: Guardado[]; total: number; fq: string; setFq: (v: string) => void; fEstado: string; setFEstado: (v: string) => void;
-  fAlerta: boolean; setFAlerta: (v: boolean) => void; onDetail: (g: Guardado) => void; onEdit: (g: Guardado) => void; onDelete: (g: Guardado) => void;
+  fAlerta: boolean; setFAlerta: (v: boolean) => void; onDetail: (g: Guardado) => void; onEdit: (g: Guardado) => void; onDelete: (g: Guardado) => void; canDelete: boolean;
 }) {
   return (
     <div>
@@ -228,7 +230,7 @@ function Lista({ data, total, fq, setFq, fEstado, setFEstado, fAlerta, setFAlert
             </tr></thead>
             <tbody>
               {data.length === 0 && <tr><td colSpan={7} style={{ padding: "2rem", textAlign: "center", color: "var(--muted)" }}>Sin resultados</td></tr>}
-              {data.map(g => <Fila key={g.clientId} g={g} onDetail={onDetail} onEdit={onEdit} onDelete={onDelete} />)}
+              {data.map(g => <Fila key={g.clientId} g={g} onDetail={onDetail} onEdit={onEdit} onDelete={onDelete} canDelete={canDelete} />)}
             </tbody>
           </table>
         </div>
@@ -237,7 +239,7 @@ function Lista({ data, total, fq, setFq, fEstado, setFEstado, fAlerta, setFAlert
   );
 }
 
-function Fila({ g, onDetail, onEdit, onDelete }: { g: Guardado; onDetail: (g: Guardado) => void; onEdit: (g: Guardado) => void; onDelete: (g: Guardado) => void }) {
+function Fila({ g, onDetail, onEdit, onDelete, canDelete }: { g: Guardado; onDetail: (g: Guardado) => void; onEdit: (g: Guardado) => void; onDelete: (g: Guardado) => void; canDelete: boolean }) {
   const esDesp = g.estado === "DESPACHADO";
   const alm = calcAlmacenaje(g.fecha, esDesp ? g.fechaDespacho : null);
   const u = urgencia(g);
@@ -257,7 +259,7 @@ function Fila({ g, onDetail, onEdit, onDelete }: { g: Guardado; onDetail: (g: Gu
       </td>
       <td style={{ padding: "0.6rem 0.75rem", whiteSpace: "nowrap" }} onClick={e => e.stopPropagation()}>
         <button onClick={() => onEdit(g)} title="Editar" style={iconBtn}><Pencil size={14} /></button>
-        <button onClick={() => onDelete(g)} title="Borrar" style={{ ...iconBtn, color: "#ef4444" }}><Trash2 size={14} /></button>
+        {canDelete && <button onClick={() => onDelete(g)} title="Borrar" style={{ ...iconBtn, color: "#ef4444" }}><Trash2 size={14} /></button>}
       </td>
     </tr>
   );
@@ -375,18 +377,20 @@ function ModalEditar({ g, onClose, onSaved, onError }: { g: Guardado; onClose: (
 }
 
 function ModalBorrar({ g, onClose, onDeleted, onError }: { g: Guardado; onClose: () => void; onDeleted: () => void; onError: (m: string) => void }) {
-  const [pin, setPin] = useState(""); const [pinErr, setPinErr] = useState(false); const [deleting, setDeleting] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   async function confirm() {
-    if (pin !== DELETE_PIN) { setPinErr(true); return; }
     setDeleting(true);
-    try { const res = await fetch(`/api/transporte/${encodeURIComponent(g.clientId)}`, { method: "DELETE" }); const json = await res.json(); if (json.success) onDeleted(); else onError(json.error || "Error"); }
+    try {
+      const res = await fetch(`/api/transporte/${encodeURIComponent(g.clientId)}`, { method: "DELETE" });
+      const json = await res.json().catch(() => ({}));
+      if (res.ok && json.success) onDeleted();
+      else onError(json.error || (res.status === 403 ? "Solo un administrador puede eliminar" : "Error"));
+    }
     catch { onError("Error de conexión"); } finally { setDeleting(false); }
   }
   return (
     <Modal onClose={onClose} title="Eliminar guardado" sub={`${g.documento} · ${g.ubicacion}`}>
-      <p style={{ fontSize: 13, color: "var(--muted2)", marginBottom: "1rem" }}>Esta acción es permanente. Ingresa el PIN de seguridad.</p>
-      <input type="password" value={pin} autoFocus onChange={e => { setPin(e.target.value); setPinErr(false); }} onKeyDown={e => e.key === "Enter" && confirm()} placeholder="PIN de 4 dígitos" style={{ ...inp, borderColor: pinErr ? "#ef4444" : "var(--border)" }} />
-      {pinErr && <div style={{ color: "#ef4444", fontSize: 12, marginTop: 6 }}>PIN incorrecto</div>}
+      <p style={{ fontSize: 13, color: "var(--muted2)", marginBottom: "1rem" }}>Esta acción es permanente y no se puede deshacer. ¿Eliminar este guardado?</p>
       <div style={{ display: "flex", gap: 8, marginTop: "1.25rem" }}>
         <button onClick={onClose} style={{ flex: 1, padding: "0.65rem", background: "var(--surface2)", color: "var(--muted2)", border: "1px solid var(--border)", borderRadius: 9, fontSize: 13, fontWeight: 700, cursor: "pointer" }}>Cancelar</button>
         <button onClick={confirm} disabled={deleting} style={{ flex: 1, padding: "0.65rem", background: "#ef4444", color: "#fff", border: "none", borderRadius: 9, fontSize: 13, fontWeight: 700, cursor: "pointer" }}>{deleting ? "Borrando…" : "Eliminar"}</button>

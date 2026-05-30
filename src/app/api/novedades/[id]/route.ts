@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
+import { requireRole } from "@/lib/authz";
 import { prisma } from "@/lib/prisma";
 import { z } from "zod";
 
@@ -74,13 +75,13 @@ export async function PUT(
   return NextResponse.json({ success: true });
 }
 
-// DELETE /api/novedades/[id]
+// DELETE /api/novedades/[id] — solo ADMIN
 export async function DELETE(
   _req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const session = await auth();
-  if (!session) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
+  const actor = await requireRole(["ADMIN"]);
+  if (actor instanceof NextResponse) return actor;
 
   const { id } = await params;
   const numId = parseInt(id, 10);
@@ -90,7 +91,7 @@ export async function DELETE(
 
   await prisma.activityLog.create({
     data: {
-      userId: (session.user as { id: string }).id,
+      userId: actor.id,
       action: "DELETE",
       module: "muebles",
       recordId: id,

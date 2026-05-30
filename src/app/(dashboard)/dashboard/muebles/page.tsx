@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
+import { useSession } from "next-auth/react";
 import {
   Chart as ChartJS, ArcElement, BarElement, CategoryScale, LinearScale,
   PointElement, LineElement, Tooltip, Legend,
@@ -16,10 +17,11 @@ import {
 
 ChartJS.register(ArcElement, BarElement, CategoryScale, LinearScale, PointElement, LineElement, Tooltip, Legend);
 
-const DELETE_PIN = "0000";
 type View = "dashboard" | "lista" | "nuevo";
 
 export default function MueblesPage() {
+  const { data: session } = useSession();
+  const canDelete = (session?.user as { role?: string } | undefined)?.role === "ADMIN";
   const [items, setItems] = useState<Novedad[]>([]);
   const [loading, setLoading] = useState(true);
   const [view, setView] = useState<View>("dashboard");
@@ -116,7 +118,7 @@ export default function MueblesPage() {
       {loading ? <Loading /> : (
         <>
           {view === "dashboard" && <Dashboard kpis={kpis} donutData={donutData} fabData={fabData} lineData={lineData} onFilter={goFilter} />}
-          {view === "lista" && <Lista data={filtered} total={items.length} fq={fq} setFq={setFq} fEstado={fEstado} setFEstado={setFEstado} fFab={fFab} setFFab={setFFab} fabricantes={fabricantesList} onDetail={setDetail} onEdit={setEditing} onDelete={setDeleting} />}
+          {view === "lista" && <Lista data={filtered} total={items.length} fq={fq} setFq={setFq} fEstado={fEstado} setFEstado={setFEstado} fFab={fFab} setFFab={setFFab} fabricantes={fabricantesList} onDetail={setDetail} onEdit={setEditing} onDelete={setDeleting} canDelete={canDelete} />}
           {view === "nuevo" && <FormNuevo onSaved={() => { load(); setView("lista"); showToast("Novedad registrada ✓"); }} onError={m => showToast(m, true)} />}
         </>
       )}
@@ -185,10 +187,10 @@ function ChartCard({ title, children }: { title: string; children: React.ReactNo
 function EstadoBadge({ estado }: { estado: EstadoNovedad }) { const c = ESTADO_COLOR[estado]; return <span style={{ fontSize: 11, fontWeight: 700, padding: "2px 8px", borderRadius: 20, background: c + "18", color: c }}>{estadoLabel(estado)}</span>; }
 function Cantidad({ n }: { n: number }) { if (n === 0) return <span style={{ color: "var(--muted)" }}>0</span>; const pos = n > 0; return <span style={{ fontFamily: "var(--mono)", fontWeight: 700, color: pos ? "#10b981" : "#ef4444" }}>{pos ? "+" : ""}{n}</span>; }
 
-function Lista({ data, total, fq, setFq, fEstado, setFEstado, fFab, setFFab, fabricantes, onDetail, onEdit, onDelete }: {
+function Lista({ data, total, fq, setFq, fEstado, setFEstado, fFab, setFFab, fabricantes, onDetail, onEdit, onDelete, canDelete }: {
   data: Novedad[]; total: number; fq: string; setFq: (v: string) => void; fEstado: string; setFEstado: (v: string) => void;
   fFab: string; setFFab: (v: string) => void; fabricantes: string[];
-  onDetail: (n: Novedad) => void; onEdit: (n: Novedad) => void; onDelete: (n: Novedad) => void;
+  onDetail: (n: Novedad) => void; onEdit: (n: Novedad) => void; onDelete: (n: Novedad) => void; canDelete: boolean;
 }) {
   return (
     <div>
@@ -218,7 +220,7 @@ function Lista({ data, total, fq, setFq, fEstado, setFEstado, fFab, setFFab, fab
                   <td style={{ padding: "0.6rem 0.75rem" }}><EstadoBadge estado={n.estado} /></td>
                   <td style={{ padding: "0.6rem 0.75rem", whiteSpace: "nowrap" }} onClick={e => e.stopPropagation()}>
                     <button onClick={() => onEdit(n)} title="Editar" style={iconBtn}><Pencil size={14} /></button>
-                    <button onClick={() => onDelete(n)} title="Borrar" style={{ ...iconBtn, color: "#ef4444" }}><Trash2 size={14} /></button>
+                    {canDelete && <button onClick={() => onDelete(n)} title="Borrar" style={{ ...iconBtn, color: "#ef4444" }}><Trash2 size={14} /></button>}
                   </td>
                 </tr>
               ))}
@@ -331,18 +333,20 @@ function ModalEditar({ n, onClose, onSaved, onError }: { n: Novedad; onClose: ()
 }
 
 function ModalBorrar({ n, onClose, onDeleted, onError }: { n: Novedad; onClose: () => void; onDeleted: () => void; onError: (m: string) => void }) {
-  const [pin, setPin] = useState(""); const [pinErr, setPinErr] = useState(false); const [deleting, setDeleting] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   async function confirm() {
-    if (pin !== DELETE_PIN) { setPinErr(true); return; }
     setDeleting(true);
-    try { const res = await fetch(`/api/novedades/${n.id}`, { method: "DELETE" }); const json = await res.json(); if (json.success) onDeleted(); else onError(json.error || "Error"); }
+    try {
+      const res = await fetch(`/api/novedades/${n.id}`, { method: "DELETE" });
+      const json = await res.json().catch(() => ({}));
+      if (res.ok && json.success) onDeleted();
+      else onError(json.error || (res.status === 403 ? "Solo un administrador puede eliminar" : "Error"));
+    }
     catch { onError("Error de conexión"); } finally { setDeleting(false); }
   }
   return (
     <Modal onClose={onClose} title="Eliminar novedad" sub={`PLU ${n.plu} · ${n.posicion}`}>
-      <p style={{ fontSize: 13, color: "var(--muted2)", marginBottom: "1rem" }}>Esta acción es permanente. Ingresa el PIN de seguridad.</p>
-      <input type="password" value={pin} autoFocus onChange={e => { setPin(e.target.value); setPinErr(false); }} onKeyDown={e => e.key === "Enter" && confirm()} placeholder="PIN de 4 dígitos" style={{ ...inp, borderColor: pinErr ? "#ef4444" : "var(--border)" }} />
-      {pinErr && <div style={{ color: "#ef4444", fontSize: 12, marginTop: 6 }}>PIN incorrecto</div>}
+      <p style={{ fontSize: 13, color: "var(--muted2)", marginBottom: "1rem" }}>Esta acción es permanente y no se puede deshacer. ¿Eliminar esta novedad?</p>
       <div style={{ display: "flex", gap: 8, marginTop: "1.25rem" }}>
         <button onClick={onClose} style={{ flex: 1, padding: "0.65rem", background: "var(--surface2)", color: "var(--muted2)", border: "1px solid var(--border)", borderRadius: 9, fontSize: 13, fontWeight: 700, cursor: "pointer" }}>Cancelar</button>
         <button onClick={confirm} disabled={deleting} style={{ flex: 1, padding: "0.65rem", background: "#ef4444", color: "#fff", border: "none", borderRadius: 9, fontSize: 13, fontWeight: 700, cursor: "pointer" }}>{deleting ? "Borrando…" : "Eliminar"}</button>
