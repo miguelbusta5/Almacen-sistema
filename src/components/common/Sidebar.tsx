@@ -17,6 +17,7 @@ const links = [
 ];
 const adminLinks = [
   { href: "/dashboard/usuarios",   label: "Usuarios",   icon: "👥" },
+  { href: "/dashboard/auditoria",  label: "Auditoría",  icon: "📋" },
 ];
 
 export default function Sidebar({ role }: SidebarProps) {
