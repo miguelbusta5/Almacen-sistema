@@ -167,8 +167,20 @@ Se aplica en **servidor** (`requireCan` en cada API) y en **UI** (botones Editar
 - ✅ **Ordenamiento por columna** en tablas de Muebles (8 cols) y Transporte (6 cols incl. almacenaje y alerta calculados). Clic → asc; segundo clic → desc. Acento de color por módulo.
 
 ### Calidad (sesión 2)
-- ✅ **Tests unitarios** (Vitest) — 44 tests cubriendo `permissions.ts`, `almacenaje.ts`, `muebles.ts` y `transporte.ts`. `npm test`.
+- ✅ **Tests unitarios** (Vitest) — 56 tests cubriendo `permissions.ts`, `almacenaje.ts`, `muebles.ts`, `transporte.ts` y `logistica.ts`. `npm test`.
 - ✅ **GitHub Actions CI** — type-check + tests en cada push/PR a `master` (`.github/workflows/ci.yml`).
+
+### Módulo Logística (sesión 3)
+- ✅ **5 tablas nuevas**: `vehiculos`, `transportistas`, `rutas`, `paradas`, `ubicaciones_gps`.
+- ✅ **Gestión de flota**: CRUD de vehículos (placa, tipo, capacidad, estado) y transportistas (nombre, teléfono, vehículo asignado, cuenta de usuario opcional).
+- ✅ **Gestión de rutas**: crear ruta con paradas, asignar conductor, estados (Pendiente → En curso → Finalizada / Cancelada), progreso por parada.
+- ✅ **Optimización de ruta**: botón ⚡ Optimizar reordena las paradas automáticamente con el algoritmo **Nearest Neighbor** (Haversine) si todas tienen coordenadas GPS.
+- ✅ **Confirmación de entrega**: cada parada puede marcarse como Entregado / No entregado; registra hora, GPS del conductor y observaciones. Si la parada tiene `pedidoId`, auto-marca el pedido de Transporte como DESPACHADO.
+- ✅ **Mapa en tiempo real**: panel supervisor con mapa Leaflet (OpenStreetMap); muestra posición de cada conductor activo con polling cada 30 s.
+- ✅ **Vista conductor** (`/dashboard/logistica/mi-ruta`): muestra la ruta asignada del día, envía GPS automáticamente cada 30 s, botón "Iniciar navegación" → Google Maps, confirmación desde bottom sheet optimizado para móvil.
+- ✅ **Permiso nuevo** `manageLogistica` (GERENTE + ADMIN) en `permissions.ts`.
+- ✅ **Color del módulo**: violeta `#7c3aed`, familia fría distinta de azul (Muebles) y cian (Transporte).
+- ✅ **Integración sidebar**: enlaces "Logística" y "Mi ruta" visibles según rol.
 
 ### UX / Diseño — Identidad Grupo Ambiente  ← NUEVO
 - ✅ Paleta de **azules intensos** + base tinta (tokens en `globals.css`), dark mode afinado, focus-ring y sombras de marca.
@@ -189,7 +201,9 @@ Se aplica en **servidor** (`requireCan` en cada API) y en **UI** (botones Editar
 - [x] **Pulido visual de módulos** — skeletons shimmer en carga, tooltips personalizados en gráficos (COP, %), ordenamiento por columna en tablas (Muebles y Transporte).
 - [x] **Tests unitarios** — Vitest (44 tests): permisos, almacenaje, utilidades de formato y parseEntrega. `npm test`.
 - [x] **CI/CD** — GitHub Actions (`.github/workflows/ci.yml`): type-check + tests en cada push/PR a `master`.
+- [x] **Módulo Logística** — rutas, GPS en tiempo real, mapa supervisor, vista conductor, optimización nearest-neighbor, confirmación de entrega.
 - [ ] **Recuperación de contraseña** ("olvidé mi contraseña") — requiere proveedor de email (Resend/SendGrid).
+- [ ] **Foto de evidencia real** en confirmación de entrega — actualmente solo registra el flag `foto_tomada: true`; falta almacenamiento real (Vercel Blob / Cloudinary).
 - [ ] **Conectar el repo a GitHub en Vercel** para deploys automáticos (opcional).
 - [ ] **Pooling de DB** para escala (Prisma Accelerate / PgBouncer) si crece el tráfico.
 - [ ] **Dominio propio** (.com) si se desea.
@@ -259,4 +273,11 @@ Comandos de verificación: `node -v`, `claude --version`, `git remote -v` (debe 
 ### Sesión 2 (2026-05-30)
 - `d529d05` — feat: exportar auditoría CSV, skeletons en listas, tooltips en gráficos.
 - `7d25f9d` — feat: ordenamiento por columna en tablas de Muebles y Transporte.
-- (este commit) — test: Vitest 44 tests + GitHub Actions CI + actualización HANDOFF.
+- `0714868` — test: Vitest 56 tests + GitHub Actions CI + HANDOFF actualizado.
+
+### Sesión 3 (2026-05-31)
+- `1cd8f40` — feat: módulo logística completo (rutas, GPS, mapa, conductor, flota).
+  - 5 tablas nuevas: vehiculos, transportistas, rutas, paradas, ubicaciones_gps.
+  - 10 endpoints API bajo `/api/logistica/`.
+  - Páginas: `/dashboard/logistica` (supervisor) + `/dashboard/logistica/mi-ruta` (conductor).
+  - Mapa Leaflet + polling GPS 30s + algoritmo nearest-neighbor + confirmación de entrega.

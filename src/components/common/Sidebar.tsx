@@ -21,8 +21,10 @@ const links: NavLink[] = [
   { href: "/dashboard", label: "Inicio", icon: <Home size={18} /> },
   { href: "/dashboard/muebles", label: "Muebles", icon: <Package size={18} /> },
   { href: "/dashboard/transporte", label: "Transporte", icon: <Truck size={18} /> },
+  { href: "/dashboard/logistica/mi-ruta", label: "Mi ruta", icon: <Route size={18} /> },
+];
+const gestionLinks: NavLink[] = [
   { href: "/dashboard/logistica", label: "Logística", icon: <Route size={18} /> },
-  { href: "/dashboard/logistica/mi-ruta", label: "Mi ruta", icon: <Truck size={18} /> },
 ];
 const adminLinks: NavLink[] = [
   { href: "/dashboard/usuarios", label: "Usuarios", icon: <Users size={18} /> },
@@ -68,6 +70,14 @@ export default function Sidebar({ role }: SidebarProps) {
     <>
       <nav style={{ flex: 1, padding: "0.75rem 0" }}>
         {links.map((l) => <Item key={l.href} l={l} onNav={onNav} />)}
+        {(role === "GERENTE" || role === "ADMIN") && (
+          <>
+            <div style={{ padding: "1rem 1.25rem 0.35rem", fontSize: 10, fontWeight: 700, letterSpacing: "0.14em", textTransform: "uppercase", color: "#3a4a6b" }}>
+              Operaciones
+            </div>
+            {gestionLinks.map((l) => <Item key={l.href} l={l} onNav={onNav} />)}
+          </>
+        )}
         {role === "ADMIN" && (
           <>
             <div style={{ padding: "1rem 1.25rem 0.35rem", fontSize: 10, fontWeight: 700, letterSpacing: "0.14em", textTransform: "uppercase", color: "#3a4a6b" }}>
