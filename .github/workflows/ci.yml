@@ -40,25 +40,31 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 20
-          cache: npm
-
-      - name: Instalar dependencias
-        run: npm ci
-
       - name: Instalar Vercel CLI
         run: npm install -g vercel@latest
 
-      - name: Crear .vercel/project.json
+      - name: Verificar token (whoami)
+        run: vercel whoami --token=${{ secrets.VERCEL_TOKEN }}
+
+      - name: Verificar acceso al proyecto via API
         run: |
-          mkdir -p .vercel
-          printf '{"projectId":"%s","orgId":"%s","settings":{}}' \
-            '${{ secrets.VERCEL_PROJECT_ID }}' \
-            '${{ secrets.VERCEL_ORG_ID }}' \
-            > .vercel/project.json
-          cat .vercel/project.json
+          HTTP=$(curl -s -o /tmp/proj.json -w "%{http_code}" \
+            "https://api.vercel.com/v9/projects/prj_xosOGb6BZ7iSaT5vv1TMlfjkx8pa?teamId=team_VwT84Fy6eq9nKShqLWM0O8tY" \
+            -H "Authorization: Bearer ${{ secrets.VERCEL_TOKEN }}")
+          echo "HTTP status: $HTTP"
+          cat /tmp/proj.json
+          [ "$HTTP" = "200" ] || exit 1
+
+      - name: Vincular proyecto con vercel link
+        run: vercel link --yes --project=almacen-sistema --token=${{ secrets.VERCEL_TOKEN }}
+        env:
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+
+      - name: Ver project.json generado
+        run: cat .vercel/project.json
 
       - name: Deploy a Vercel (producción)
         run: vercel deploy --prod --yes --token=${{ secrets.VERCEL_TOKEN }}
+        env:
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
