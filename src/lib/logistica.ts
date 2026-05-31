@@ -36,6 +36,7 @@ export interface Parada {
   estado: ParadaEstado;
   observaciones: string | null;
   fotoTomada: boolean;
+  fotoUrl: string | null;
   latEntrega: number | null;
   lngEntrega: number | null;
   entregadoAt: string | null;

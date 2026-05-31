@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
 import { useSession } from "next-auth/react";
-import { Navigation, MapPin, CheckCircle2, XCircle, RefreshCw, Camera, Route } from "lucide-react";
+import { Navigation, MapPin, CheckCircle2, XCircle, RefreshCw, Camera, Route, ImageIcon } from "lucide-react";
 import {
   Ruta, Parada, PARADA_ESTADO_COLOR, PARADA_ESTADO_LABEL, RUTA_ESTADO_LABEL, RUTA_ESTADO_COLOR, fmtFecha, navUrl,
 } from "@/lib/logistica";
@@ -180,6 +180,11 @@ function ParadaCard({ parada: p, numero, onConfirmar, enCurso }: {
           {p.pedidoId && <div style={{ fontSize: 11, color: "var(--muted)", fontFamily: "var(--mono)" }}>Pedido: {p.pedidoId}</div>}
           {p.observaciones && <div style={{ fontSize: 12, color: "var(--muted2)", marginTop: 3 }}>{p.observaciones}</div>}
           {p.entregadoAt && <div style={{ fontSize: 11, color: "#10b981", marginTop: 2 }}>Entregado a las {new Date(p.entregadoAt).toLocaleTimeString("es-CO", { hour: "2-digit", minute: "2-digit" })}</div>}
+          {p.fotoUrl && (
+            <a href={p.fotoUrl} target="_blank" rel="noreferrer" style={{ display: "inline-flex", alignItems: "center", gap: 4, marginTop: 6 }}>
+              <img src={p.fotoUrl} alt="Evidencia" style={{ width: 56, height: 56, objectFit: "cover", borderRadius: 8, border: "1px solid var(--border)" }} />
+            </a>
+          )}
         </div>
 
         {/* Badge estado */}
@@ -210,9 +215,13 @@ function ModalConfirmar({ parada, onClose, onConfirmado, onError }: {
   onError: (m: string) => void;
 }) {
   const [obs, setObs] = useState("");
-  const [foto, setFoto] = useState(false);
+  const [fotoFile, setFotoFile] = useState<File | null>(null);
+  const [fotoPreview, setFotoPreview] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const [savingStep, setSavingStep] = useState("");
   const [mounted, setMounted] = useState(false);
+  const fileRef = useRef<HTMLInputElement>(null);
+
   useEffect(() => { setMounted(true); }, []);
   useEffect(() => {
     const h = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
@@ -221,27 +230,63 @@ function ModalConfirmar({ parada, onClose, onConfirmado, onError }: {
     return () => { window.removeEventListener("keydown", h); document.body.style.overflow = ""; };
   }, [onClose]);
 
+  const handleFoto = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const f = e.target.files?.[0] ?? null;
+    setFotoFile(f);
+    if (f) {
+      const url = URL.createObjectURL(f);
+      setFotoPreview(url);
+    } else {
+      setFotoPreview(null);
+    }
+  }, []);
+
   async function confirmar(estado: "ENTREGADO" | "NO_ENTREGADO") {
     setSaving(true);
+
+    // 1. GPS
     let lat: number | null = null, lng: number | null = null;
     if (estado === "ENTREGADO" && navigator.geolocation) {
       try {
+        setSavingStep("Obteniendo ubicación…");
         const pos = await new Promise<GeolocationPosition>((res, rej) => navigator.geolocation.getCurrentPosition(res, rej, { timeout: 6000 }));
         lat = pos.coords.latitude; lng = pos.coords.longitude;
       } catch { /* continúa sin GPS */ }
     }
+
+    // 2. Subir foto si la hay
+    let fotoUrl: string | null = null;
+    if (fotoFile && estado === "ENTREGADO") {
+      try {
+        setSavingStep("Subiendo foto…");
+        const form = new FormData();
+        form.append("foto", fotoFile);
+        const uploadRes = await fetch("/api/logistica/foto", { method: "POST", body: form });
+        const uploadJson = await uploadRes.json();
+        if (uploadJson.success) fotoUrl = uploadJson.url;
+        else onError("No se pudo subir la foto, pero se registrará la entrega");
+      } catch { /* foto falla silenciosamente, entrega continúa */ }
+    }
+
+    // 3. Confirmar parada
+    setSavingStep("Guardando…");
     const res = await fetch(`/api/logistica/paradas/${parada.id}`, {
       method: "PUT", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ estado, observaciones: obs.trim() || null, fotoTomada: foto, latEntrega: lat, lngEntrega: lng }),
+      body: JSON.stringify({
+        estado, observaciones: obs.trim() || null,
+        fotoTomada: !!fotoFile, fotoUrl,
+        latEntrega: lat, lngEntrega: lng,
+      }),
     });
     const json = await res.json();
     if (json.success) onConfirmado(parada.id, estado); else onError(json.error || "Error");
     setSaving(false);
+    setSavingStep("");
   }
 
   if (!mounted) return null;
   return createPortal(
-    <div onClick={onClose} style={{ position: "fixed", inset: 0, background: "#0f172a80", display: "flex", alignItems: "flex-end", justifyContent: "center", zIndex: 9999, padding: "0 0 0" }}>
+    <div onClick={onClose} style={{ position: "fixed", inset: 0, background: "#0f172a80", display: "flex", alignItems: "flex-end", justifyContent: "center", zIndex: 9999 }}>
       <div onClick={(e) => e.stopPropagation()} style={{ background: "var(--surface)", borderRadius: "16px 16px 0 0", width: "100%", maxWidth: 520, padding: "1.5rem", boxShadow: "0 -12px 40px #0f172a30" }}>
         <div style={{ width: 36, height: 4, background: "var(--border)", borderRadius: 2, margin: "0 auto 1.25rem" }} />
         <h3 style={{ fontSize: 16, fontWeight: 800, color: "var(--text)", marginBottom: 4 }}>Confirmar parada</h3>
@@ -249,18 +294,36 @@ function ModalConfirmar({ parada, onClose, onConfirmado, onError }: {
 
         <div style={{ display: "flex", flexDirection: "column", gap: "0.85rem", marginBottom: "1.25rem" }}>
           <textarea value={obs} onChange={(e) => setObs(e.target.value)} placeholder="Observaciones (opcional)…" rows={2} style={{ ...inp, resize: "none" }} />
-          <label style={{ display: "flex", alignItems: "center", gap: 10, fontSize: 13, cursor: "pointer" }}>
-            <input type="checkbox" checked={foto} onChange={(e) => setFoto(e.target.checked)} style={{ width: 18, height: 18 }} />
-            <Camera size={16} style={{ color: "var(--muted)" }} />
-            Foto de evidencia tomada
-          </label>
+
+          {/* Captura de foto */}
+          <div>
+            <input ref={fileRef} type="file" accept="image/*" capture="environment" onChange={handleFoto} style={{ display: "none" }} />
+            {fotoPreview ? (
+              <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                <img src={fotoPreview} alt="Vista previa" style={{ width: 72, height: 72, objectFit: "cover", borderRadius: 10, border: "1px solid var(--border)" }} />
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontSize: 12, fontWeight: 600, color: "#10b981" }}>Foto lista para subir</div>
+                  <div style={{ fontSize: 11, color: "var(--muted)" }}>{fotoFile?.name}</div>
+                  <button onClick={() => { setFotoFile(null); setFotoPreview(null); if (fileRef.current) fileRef.current.value = ""; }} style={{ marginTop: 4, fontSize: 11, color: "#ef4444", background: "none", border: "none", cursor: "pointer", padding: 0 }}>Quitar foto</button>
+                </div>
+              </div>
+            ) : (
+              <button onClick={() => fileRef.current?.click()} style={{ width: "100%", padding: "0.7rem", background: "var(--surface2)", border: "1px dashed var(--border)", borderRadius: 10, fontSize: 13, color: "var(--muted2)", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
+                <Camera size={16} />Tomar foto de evidencia (opcional)
+              </button>
+            )}
+          </div>
         </div>
 
+        {saving && savingStep && (
+          <div style={{ textAlign: "center", fontSize: 12, color: "var(--muted)", marginBottom: "0.75rem" }}>{savingStep}</div>
+        )}
+
         <div style={{ display: "flex", gap: 10 }}>
-          <button onClick={() => confirmar("ENTREGADO")} disabled={saving} style={{ flex: 2, padding: "0.85rem", background: "#10b981", color: "#fff", border: "none", borderRadius: 12, fontSize: 14, fontWeight: 800, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
-            <CheckCircle2 size={18} />{saving ? "…" : "Entregado"}
+          <button onClick={() => confirmar("ENTREGADO")} disabled={saving} style={{ flex: 2, padding: "0.85rem", background: saving ? "#94a3b8" : "#10b981", color: "#fff", border: "none", borderRadius: 12, fontSize: 14, fontWeight: 800, cursor: saving ? "not-allowed" : "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
+            <CheckCircle2 size={18} />{saving ? savingStep || "…" : "Entregado"}
           </button>
-          <button onClick={() => confirmar("NO_ENTREGADO")} disabled={saving} style={{ flex: 1, padding: "0.85rem", background: "#ef444415", color: "#ef4444", border: "1px solid #ef444440", borderRadius: 12, fontSize: 13, fontWeight: 700, cursor: "pointer" }}>
+          <button onClick={() => confirmar("NO_ENTREGADO")} disabled={saving} style={{ flex: 1, padding: "0.85rem", background: "#ef444415", color: "#ef4444", border: "1px solid #ef444440", borderRadius: 12, fontSize: 13, fontWeight: 700, cursor: saving ? "not-allowed" : "pointer" }}>
             No entregado
           </button>
         </div>

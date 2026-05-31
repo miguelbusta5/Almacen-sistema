@@ -146,6 +146,7 @@ model Parada {
   estado        String    @default("PENDIENTE") @db.VarChar(20) // PENDIENTE | ENTREGADO | NO_ENTREGADO
   observaciones String?
   fotoTomada    Boolean   @default(false) @map("foto_tomada")
+  fotoUrl       String?   @map("foto_url")
   latEntrega    Float?    @map("lat_entrega")
   lngEntrega    Float?    @map("lng_entrega")
   entregadoAt   DateTime? @map("entregado_at")

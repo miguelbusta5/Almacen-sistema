@@ -424,6 +424,7 @@ function ModalDetalleRuta({ ruta, onClose, onCambiarEstado, onOptimizar, onParad
                 <div style={{ fontWeight: 600, fontSize: 13 }}>{p.direccion}</div>
                 {p.pedidoId && <div style={{ fontSize: 11, color: "var(--muted)", fontFamily: "var(--mono)" }}>Pedido: {p.pedidoId}</div>}
                 {p.observaciones && <div style={{ fontSize: 11, color: "var(--muted2)", marginTop: 2 }}>{p.observaciones}</div>}
+                {p.fotoUrl && <a href={p.fotoUrl} target="_blank" rel="noreferrer" style={{ display: "inline-flex", marginTop: 4 }}><img src={p.fotoUrl} alt="Evidencia" style={{ width: 48, height: 48, objectFit: "cover", borderRadius: 6, border: "1px solid var(--border)" }} /></a>}
               </div>
               <div style={{ display: "flex", gap: 6, alignItems: "center", flexShrink: 0 }}>
                 <Badge label={PARADA_ESTADO_LABEL[p.estado as keyof typeof PARADA_ESTADO_LABEL]} color={PARADA_ESTADO_COLOR[p.estado as keyof typeof PARADA_ESTADO_COLOR]} />

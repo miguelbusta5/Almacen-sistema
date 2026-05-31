@@ -7,6 +7,7 @@ const confirmarSchema = z.object({
   estado: z.enum(["ENTREGADO", "NO_ENTREGADO"]),
   observaciones: z.string().nullable().optional(),
   fotoTomada: z.boolean().optional(),
+  fotoUrl: z.string().url().nullable().optional(),
   latEntrega: z.number().nullable().optional(),
   lngEntrega: z.number().nullable().optional(),
 });
@@ -28,6 +29,7 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
         estado: d.estado,
         observaciones: d.observaciones ?? null,
         fotoTomada: d.fotoTomada ?? false,
+        fotoUrl: d.fotoUrl ?? null,
         latEntrega: d.latEntrega ?? null,
         lngEntrega: d.lngEntrega ?? null,
         entregadoAt: d.estado === "ENTREGADO" ? new Date() : null,

@@ -27,7 +27,7 @@ function mapRuta(r: any) {
     paradas: (r.paradas ?? []).map((p: any) => ({
       id: p.id, rutaId: p.rutaId, orden: p.orden, direccion: p.direccion,
       lat: p.lat, lng: p.lng, pedidoId: p.pedidoId, estado: p.estado,
-      observaciones: p.observaciones, fotoTomada: p.fotoTomada,
+      observaciones: p.observaciones, fotoTomada: p.fotoTomada, fotoUrl: p.fotoUrl,
       latEntrega: p.latEntrega, lngEntrega: p.lngEntrega,
       entregadoAt: p.entregadoAt ? p.entregadoAt.toISOString() : null,
     })),
