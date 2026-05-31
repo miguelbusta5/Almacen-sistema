@@ -184,7 +184,7 @@ Se aplica en **servidor** (`requireCan` en cada API) y en **UI** (botones Editar
 
 ## 6. Pendientes
 
-- [ ] **(Acción del dueño) Cambiar la contraseña del admin** desde la pantalla de Usuarios (la inicial era un default conocido).
+- [x] **(Acción del dueño) Cambiar la contraseña del admin** — completado.
 - [x] **Exportar auditoría a CSV** — botón en `/dashboard/auditoria`, respeta filtros activos, hasta 5.000 filas.
 - [x] **Pulido visual de módulos** — skeletons shimmer en carga, tooltips personalizados en gráficos (COP, %), ordenamiento por columna en tablas (Muebles y Transporte).
 - [x] **Tests unitarios** — Vitest (44 tests): permisos, almacenaje, utilidades de formato y parseEntrega. `npm test`.

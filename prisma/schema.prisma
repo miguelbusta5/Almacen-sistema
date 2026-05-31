@@ -66,7 +66,8 @@ model User {
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
-  activityLogs ActivityLog[]
+  activityLogs  ActivityLog[]
+  transportista Transportista?
 
   @@index([email])
   @@map("users")
@@ -76,6 +77,97 @@ enum Role {
   ADMIN
   GERENTE
   OPERADOR
+}
+
+// ═══════════════════════════════════════════
+// MÓDULO LOGÍSTICA
+// ═══════════════════════════════════════════
+
+model Vehiculo {
+  id          String   @id @default(cuid())
+  placa       String   @unique @db.VarChar(20)
+  tipo        String   @db.VarChar(20)   // CAMION | FURGON | VAN | MOTO
+  capacidadKg Int?     @map("capacidad_kg")
+  estado      String   @default("ACTIVO") @db.VarChar(20) // ACTIVO | MANTENIMIENTO | INACTIVO
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  transportistas Transportista[]
+
+  @@map("vehiculos")
+}
+
+model Transportista {
+  id         String    @id @default(cuid())
+  nombre     String    @db.VarChar(255)
+  telefono   String?   @db.VarChar(30)
+  vehiculoId String?   @map("vehiculo_id")
+  vehiculo   Vehiculo? @relation(fields: [vehiculoId], references: [id], onDelete: SetNull)
+  userId     String?   @unique @map("user_id")
+  user       User?     @relation(fields: [userId], references: [id], onDelete: SetNull)
+  activo     Boolean   @default(true)
+  createdAt  DateTime  @default(now()) @map("created_at")
+  updatedAt  DateTime  @updatedAt @map("updated_at")
+
+  rutas       Ruta[]
+  ubicaciones UbicacionGps[]
+
+  @@map("transportistas")
+}
+
+model Ruta {
+  id              String        @id @default(cuid())
+  nombre          String        @db.VarChar(255)
+  fecha           DateTime      @db.Date
+  transportistaId String        @map("transportista_id")
+  transportista   Transportista @relation(fields: [transportistaId], references: [id])
+  estado          String        @default("PENDIENTE") @db.VarChar(20) // PENDIENTE | EN_CURSO | FINALIZADA | CANCELADA
+  notas           String?
+  createdAt       DateTime      @default(now()) @map("created_at")
+  updatedAt       DateTime      @updatedAt @map("updated_at")
+
+  paradas     Parada[]
+  ubicaciones UbicacionGps[]
+
+  @@index([fecha])
+  @@index([transportistaId, estado])
+  @@map("rutas")
+}
+
+model Parada {
+  id            String    @id @default(cuid())
+  rutaId        String    @map("ruta_id")
+  ruta          Ruta      @relation(fields: [rutaId], references: [id], onDelete: Cascade)
+  orden         Int
+  direccion     String
+  lat           Float?
+  lng           Float?
+  pedidoId      String?   @map("pedido_id")
+  estado        String    @default("PENDIENTE") @db.VarChar(20) // PENDIENTE | ENTREGADO | NO_ENTREGADO
+  observaciones String?
+  fotoTomada    Boolean   @default(false) @map("foto_tomada")
+  latEntrega    Float?    @map("lat_entrega")
+  lngEntrega    Float?    @map("lng_entrega")
+  entregadoAt   DateTime? @map("entregado_at")
+  createdAt     DateTime  @default(now()) @map("created_at")
+  updatedAt     DateTime  @updatedAt @map("updated_at")
+
+  @@index([rutaId, orden])
+  @@map("paradas")
+}
+
+model UbicacionGps {
+  id              Int           @id @default(autoincrement())
+  transportistaId String        @map("transportista_id")
+  transportista   Transportista @relation(fields: [transportistaId], references: [id], onDelete: Cascade)
+  rutaId          String?       @map("ruta_id")
+  ruta            Ruta?         @relation(fields: [rutaId], references: [id], onDelete: SetNull)
+  lat             Float
+  lng             Float
+  registradoAt    DateTime      @default(now()) @map("registrado_at")
+
+  @@index([transportistaId, registradoAt])
+  @@map("ubicaciones_gps")
 }
 
 model ActivityLog {
