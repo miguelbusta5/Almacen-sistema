@@ -202,8 +202,8 @@ Se aplica en **servidor** (`requireCan` en cada API) y en **UI** (botones Editar
 - [x] **Tests unitarios** — Vitest (44 tests): permisos, almacenaje, utilidades de formato y parseEntrega. `npm test`.
 - [x] **CI/CD** — GitHub Actions (`.github/workflows/ci.yml`): type-check + tests en cada push/PR a `master`.
 - [x] **Módulo Logística** — rutas, GPS en tiempo real, mapa supervisor, vista conductor, optimización nearest-neighbor, confirmación de entrega.
-- [ ] **Recuperación de contraseña** ("olvidé mi contraseña") — requiere proveedor de email (Resend/SendGrid).
-- [ ] **Foto de evidencia real** en confirmación de entrega — actualmente solo registra el flag `foto_tomada: true`; falta almacenamiento real (Vercel Blob / Cloudinary).
+- [x] **Foto de evidencia real** — subida a Vercel Blob desde el móvil del conductor; miniatura visible para supervisor. Columna `foto_url` en `paradas`.
+- [~] **Recuperación de contraseña** — descartada por ahora. El admin restablece la contraseña manualmente desde la pantalla de Usuarios.
 - [ ] **Conectar el repo a GitHub en Vercel** para deploys automáticos (opcional).
 - [ ] **Pooling de DB** para escala (Prisma Accelerate / PgBouncer) si crece el tráfico.
 - [ ] **Dominio propio** (.com) si se desea.
