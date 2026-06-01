@@ -116,9 +116,10 @@ prisma/
 | Hosting | Vercel | — | team `matec`, proyecto `almacen-sistema` |
 
 **Variables de entorno:**
-- Producción (Vercel): `DATABASE_URL`, `NEXTAUTH_SECRET`, `AUTH_SECRET`.
+- Producción (Vercel): `DATABASE_URL`, `NEXTAUTH_SECRET`, `AUTH_SECRET`, `BLOB_READ_WRITE_TOKEN`.
 - Local (`.env.local`, no se commitea): `DATABASE_URL`, `NEXTAUTH_SECRET`, `NEXTAUTH_URL`, `ADMIN_EMAIL`, `ADMIN_PASSWORD`, `NEXT_PUBLIC_API_URL`.
 - El **seed** (`prisma/seed.js`) lee `DATABASE_URL`, `ADMIN_EMAIL`, `ADMIN_PASSWORD` del entorno; **ya no hay credenciales hardcodeadas**.
+- `DATABASE_POOL_URL` *(opcional)*: si se define, el cliente Prisma lo usa en lugar de `DATABASE_URL` y activa `max: 1` (modo PgBouncer). Para activar: en Railway → PostgreSQL → Settings → habilitar PgBouncer → copiar la URL pooled → agregar a Vercel como `DATABASE_POOL_URL`.
 
 ---
 
@@ -244,7 +245,7 @@ Se aplica en **servidor** (`requireCan` en cada API) y en **UI** (botones y secc
 - [x] **GPS watchPosition** — Mi ruta usa `watchPosition` nativo en lugar de polling; mejor feedback de permisos.
 - [x] **Paginación server-side** en Muebles y Transporte — APIs con `page/pageSize/q/estado/tipo`.
 - [⏸] **Módulo Conteo Cíclico** — en PAUSA, en producción pero pendiente de completar. Ver detalle en §5 y pendientes internos abajo.
-- [ ] **Pooling de DB** (Prisma Accelerate / PgBouncer) si crece el tráfico.
+- [x] **Pooling de DB optimizado** — `pg.Pool` configurado con `max: 3`, `idleTimeoutMillis: 30s`, `connectionTimeoutMillis: 5s`, `allowExitOnIdle: true`. Soporte de `DATABASE_POOL_URL` para activar PgBouncer sin cambiar código. Ver §3 para activar Railway PgBouncer cuando se necesite.
 - [ ] **Dominio propio** (.com) si se desea.
 
 ---
