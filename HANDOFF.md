@@ -204,7 +204,7 @@ Se aplica en **servidor** (`requireCan` en cada API) y en **UI** (botones Editar
 - [x] **Módulo Logística** — rutas, GPS en tiempo real, mapa supervisor, vista conductor, optimización nearest-neighbor, confirmación de entrega.
 - [x] **Foto de evidencia real** — subida a Vercel Blob desde el móvil del conductor; miniatura visible para supervisor. Columna `foto_url` en `paradas`.
 - [~] **Recuperación de contraseña** — descartada por ahora. El admin restablece la contraseña manualmente desde la pantalla de Usuarios.
-- [x] **Deploy automático desde GitHub** — GitHub Actions despliega a Vercel en cada push a `master` que pase los checks. Secretos requeridos: `VERCEL_TOKEN`, `VERCEL_ORG_ID`, `VERCEL_PROJECT_ID` (ya configurados en el repo).
+- [x] **Deploy automático desde GitHub** — GitHub Actions despliega a Vercel en cada push a `master` que pase los checks. Secretos en el repo: `VERCEL_TOKEN` (tipo `vcp_`, Full Account), `VERCEL_ORG_ID`, `VERCEL_PROJECT_ID`. Nota: los valores deben guardarse sin newlines — usar `gh secret set --body "valor"`, nunca pipe desde PowerShell (añade BOM).
 - [ ] **Pooling de DB** para escala (Prisma Accelerate / PgBouncer) si crece el tráfico.
 - [ ] **Dominio propio** (.com) si se desea.
 
