@@ -1,6 +1,6 @@
 # 📦 HANDOFF — Sistema de Gestión de Almacén (Grupo Ambiente)
 
-> Documento de traspaso técnico. Última actualización: 2026-05-30 (sesión 2).
+> Documento de traspaso técnico. Última actualización: 2026-06-01 (sesión 4).
 >
 > ⚠️ **Nunca pongas contraseñas, tokens ni cadenas de conexión en este archivo** (está versionado en git). Usa solo nombres de variables de entorno.
 
@@ -156,6 +156,8 @@ Se aplica en **servidor** (`requireCan` en cada API) y en **UI** (botones Editar
 
 ### Módulo Guardados Transporte
 - ✅ Dashboard con KPIs; alertas de entrega; cobros de almacenaje (gracia + $150k/mes); lista; CRUD + marcar despachado; borrado con tombstone.
+- ✅ **Tipo de guardado** (`COMUN` / `ECOMMERCE`) — campo en DB, badge visual en tabla, filtro en lista, selector en formulario de creación y edición. Registros existentes quedan como `COMUN`.
+- ✅ **Acciones para OPERADOR**: botón "Enviado" (marca DESPACHADO al instante) y botón "📅 Fecha entrega" (edita la nota con la fecha comprometida) visibles para todos los roles. API dedicada: `POST /api/transporte/[clientId]/acciones`.
 
 ### Auditoría
 - ✅ `/dashboard/auditoria` (solo ADMIN): tabla de `activity_logs` con usuario, acción, módulo, registro y detalle; filtros (módulo/acción/usuario/fechas/búsqueda) y paginación.
@@ -190,7 +192,8 @@ Se aplica en **servidor** (`requireCan` en cada API) y en **UI** (botones Editar
 - ✅ Microinteracciones: `lift` (hover elevado), `skeleton` (shimmer), `stagger`/`fade-up`, respeto a `prefers-reduced-motion`.
 
 ### Despliegue
-- ✅ Producción: **https://matec-cedi.vercel.app**. Deploy CLI (`vercel deploy --prod`). El proyecto **no** está conectado a GitHub (deploys manuales por CLI).
+- ✅ Producción: **https://matec-cedi.vercel.app**.
+- ✅ **Deploy automático**: cada push a `master` que pase los checks (tsc + 56 tests) despliega automáticamente via GitHub Actions. Secretos requeridos en el repo: `VERCEL_TOKEN` (tipo `vcp_`), `VERCEL_ORG_ID`, `VERCEL_PROJECT_ID`.
 
 ---
 
@@ -205,6 +208,7 @@ Se aplica en **servidor** (`requireCan` en cada API) y en **UI** (botones Editar
 - [x] **Foto de evidencia real** — subida a Vercel Blob desde el móvil del conductor; miniatura visible para supervisor. Columna `foto_url` en `paradas`.
 - [~] **Recuperación de contraseña** — descartada por ahora. El admin restablece la contraseña manualmente desde la pantalla de Usuarios.
 - [x] **Deploy automático desde GitHub** — GitHub Actions despliega a Vercel en cada push a `master` que pase los checks. Secretos en el repo: `VERCEL_TOKEN` (tipo `vcp_`, Full Account), `VERCEL_ORG_ID`, `VERCEL_PROJECT_ID`. Nota: los valores deben guardarse sin newlines — usar `gh secret set --body "valor"`, nunca pipe desde PowerShell (añade BOM).
+- [ ] **Paginación server-side en Muebles y Transporte** ← *escalabilidad, dificultad baja, importancia media* — Hoy los GET de `/api/novedades` y `/api/transporte` devuelven todos los registros y el frontend filtra/ordena en memoria con `useMemo`. El módulo de Auditoría ya tiene paginación implementada (`skip/take` + `total`); replicar ese patrón en los otros dos endpoints y adaptar la UI (igual que la paginación de auditoría) reducirá el tiempo de carga inicial y el uso de memoria conforme crezca el inventario.
 - [ ] **Pooling de DB** para escala (Prisma Accelerate / PgBouncer) si crece el tráfico.
 - [ ] **Dominio propio** (.com) si se desea.
 
@@ -281,3 +285,13 @@ Comandos de verificación: `node -v`, `claude --version`, `git remote -v` (debe 
   - 10 endpoints API bajo `/api/logistica/`.
   - Páginas: `/dashboard/logistica` (supervisor) + `/dashboard/logistica/mi-ruta` (conductor).
   - Mapa Leaflet + polling GPS 30s + algoritmo nearest-neighbor + confirmación de entrega.
+- `5103b92` — feat: fotos de evidencia reales en entregas (Vercel Blob).
+- `d960e02` — ci: deploy automático via GitHub Actions (tsc + tests + vercel deploy).
+
+### Sesión 4 (2026-06-01)
+- `cb4601d` — feat(transporte): botón "Enviado" y "Editar fecha entrega" para operadores.
+  - Nuevo endpoint `POST /api/transporte/[clientId]/acciones`.
+  - Acciones `despachar` y `fecha_entrega` disponibles para todos los roles.
+- `9555954` — feat(transporte): tipo de guardado (COMUN / ECOMMERCE).
+  - Columna `tipo` en `transporte_guardados` (default COMUN).
+  - Badge, filtro, selector en formulario/edición y modal de detalle.
