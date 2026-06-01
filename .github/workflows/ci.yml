@@ -40,10 +40,22 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Diagnostico API Vercel
+        run: |
+          echo "=== Token primeros 10 chars ==="
+          echo "${{ secrets.VERCEL_TOKEN }}" | cut -c1-10
+          echo "=== Llamada API proyecto ==="
+          curl -s -w "\nHTTP_STATUS:%{http_code}" \
+            "https://api.vercel.com/v9/projects/${{ secrets.VERCEL_PROJECT_ID }}?teamId=${{ secrets.VERCEL_ORG_ID }}" \
+            -H "Authorization: Bearer ${{ secrets.VERCEL_TOKEN }}" | tail -5
+
       - name: Crear .vercel/project.json
         run: |
           mkdir -p .vercel
-          echo '{"projectId":"${{ secrets.VERCEL_PROJECT_ID }}","orgId":"${{ secrets.VERCEL_ORG_ID }}"}' > .vercel/project.json
+          printf '{"projectId":"%s","orgId":"%s"}' \
+            '${{ secrets.VERCEL_PROJECT_ID }}' \
+            '${{ secrets.VERCEL_ORG_ID }}' > .vercel/project.json
+          echo "project.json: $(cat .vercel/project.json)"
 
       - name: Deploy a producción
         run: npx vercel deploy --prod --yes --token=${{ secrets.VERCEL_TOKEN }}
