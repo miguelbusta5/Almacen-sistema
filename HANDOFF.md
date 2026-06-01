@@ -1,6 +1,6 @@
 # 📦 HANDOFF — Sistema de Gestión de Almacén (Grupo Ambiente)
 
-> Documento de traspaso técnico. Última actualización: 2026-06-01 (sesión 4).
+> Documento de traspaso técnico. Última actualización: 2026-06-01 (sesión 5).
 >
 > ⚠️ **Nunca pongas contraseñas, tokens ni cadenas de conexión en este archivo** (está versionado en git). Usa solo nombres de variables de entorno.
 
@@ -124,16 +124,21 @@ prisma/
 
 ## 4. Modelo de permisos por rol
 
-| Acción | OPERADOR | GERENTE | ADMIN |
-|--------|:--:|:--:|:--:|
-| Ver dashboards / listas (GET) | ✅ | ✅ | ✅ |
-| Registrar (crear) | ✅ | ✅ | ✅ |
-| Editar | ❌ | ✅ | ✅ |
-| Eliminar | ❌ | ❌ | ✅ |
-| Gestionar usuarios | ❌ | ❌ | ✅ |
-| Ver auditoría | ❌ | ❌ | ✅ |
+| Acción | TRANSPORTISTA | OPERADOR | GERENTE | ADMIN |
+|--------|:---:|:--:|:--:|:--:|
+| Ver dashboards / listas (GET) | ⚠️ solo Mi ruta | ✅ | ✅ | ✅ |
+| Registrar (crear) | ❌ | ✅ | ✅ | ✅ |
+| Editar | ❌ | ❌ | ✅ | ✅ |
+| Eliminar | ❌ | ❌ | ❌ | ✅ |
+| Gestionar usuarios | ❌ | ❌ | ❌ | ✅ |
+| Ver auditoría | ❌ | ❌ | ❌ | ✅ |
+| Logística (rutas/flota) | ❌ | ❌ | ✅ | ✅ |
+| Conteo cíclico (admin) | ❌ | ❌ | ❌ | ✅ |
+| GPS / Mi ruta | ✅ | ✅ | ✅ | ✅ |
 
-Se aplica en **servidor** (`requireCan` en cada API) y en **UI** (botones Editar/Eliminar ocultos según rol). Para cambiar el modelo, edita la matriz en `src/lib/permissions.ts`.
+**TRANSPORTISTA** — rol nuevo (sesión 5). Solo ve `/dashboard/logistica/mi-ruta`. Su sidebar muestra únicamente "Mi ruta". Se vincula a un registro de `transportistas` mediante `userId`. Para crear: Usuarios → Nuevo → rol Transportista + vincular al transportista en Logística → Flota.
+
+Se aplica en **servidor** (`requireCan` en cada API) y en **UI** (botones y secciones ocultos según rol). Para cambiar el modelo, edita la matriz en `src/lib/permissions.ts`.
 
 ---
 
@@ -141,8 +146,9 @@ Se aplica en **servidor** (`requireCan` en cada API) y en **UI** (botones Editar
 
 ### Autenticación y usuarios
 - ✅ Login email + contraseña (Auth.js v5, JWT 8h), emails insensibles a mayúsculas.
-- ✅ Roles `ADMIN` / `GERENTE` / `OPERADOR` con permisos finos (ver §4).
+- ✅ Roles `ADMIN` / `GERENTE` / `OPERADOR` / **`TRANSPORTISTA`** con permisos finos (ver §4).
 - ✅ Gestión de usuarios (solo ADMIN): crear, editar nombre/rol/estado, resetear contraseña.
+- ✅ **Rol TRANSPORTISTA**: sidebar reducido (solo Mi ruta), vinculable a un registro de `transportistas`. Al crear el usuario se puede vincular directamente con `transportistaId`.
 - ✅ Protección anti-autobloqueo del admin.
 
 ### Seguridad (endurecida en esta entrega)
@@ -193,6 +199,11 @@ Se aplica en **servidor** (`requireCan` en cada API) y en **UI** (botones Editar
 - [ ] Notificación visual cuando todos los PLUs del día están contados.
 - [ ] Tests unitarios de la lógica de conteo.
 
+### Escalabilidad y rendimiento (sesión 5)
+- ✅ **Paginación server-side** en `/api/novedades` y `/api/transporte` — soportan parámetros `page`, `pageSize` (máx 500), `q`, `estado`, `fabricante`/`tipo`. Los módulos de UI piden 500 registros por defecto en lugar de todos.
+- ✅ **GPS `watchPosition`** en Mi ruta — reemplaza el `setInterval + getCurrentPosition` que fallaba silenciosamente. El dispositivo reporta posición en cada movimiento significativo. Mejor feedback: muestra coordenadas actuales, detecta permiso denegado, botón "Activar GPS".
+- ✅ **Polling supervisor reducido a 15s** (antes 30s) para el mapa de posiciones en tiempo real.
+
 ### Módulo Logística (sesión 3)
 - ✅ **5 tablas nuevas**: `vehiculos`, `transportistas`, `rutas`, `paradas`, `ubicaciones_gps`.
 - ✅ **Gestión de flota**: CRUD de vehículos (placa, tipo, capacidad, estado) y transportistas (nombre, teléfono, vehículo asignado, cuenta de usuario opcional).
@@ -229,9 +240,11 @@ Se aplica en **servidor** (`requireCan` en cada API) y en **UI** (botones Editar
 - [x] **Foto de evidencia real** — subida a Vercel Blob desde el móvil del conductor; miniatura visible para supervisor. Columna `foto_url` en `paradas`.
 - [~] **Recuperación de contraseña** — descartada por ahora. El admin restablece la contraseña manualmente desde la pantalla de Usuarios.
 - [x] **Deploy automático desde GitHub** — GitHub Actions despliega a Vercel en cada push a `master` que pase los checks. Secretos en el repo: `VERCEL_TOKEN` (tipo `vcp_`, Full Account), `VERCEL_ORG_ID`, `VERCEL_PROJECT_ID`. Nota: los valores deben guardarse sin newlines — usar `gh secret set --body "valor"`, nunca pipe desde PowerShell (añade BOM).
+- [x] **Rol TRANSPORTISTA** — nuevo rol con acceso solo a Mi ruta; vinculable a transportista en Logística; sidebar reducido.
+- [x] **GPS watchPosition** — Mi ruta usa `watchPosition` nativo en lugar de polling; mejor feedback de permisos.
+- [x] **Paginación server-side** en Muebles y Transporte — APIs con `page/pageSize/q/estado/tipo`.
 - [⏸] **Módulo Conteo Cíclico** — en PAUSA, en producción pero pendiente de completar. Ver detalle en §5 y pendientes internos abajo.
-- [ ] **Paginación server-side en Muebles y Transporte** ← *escalabilidad, dificultad baja, importancia media* — Hoy los GET de `/api/novedades` y `/api/transporte` devuelven todos los registros y el frontend filtra/ordena en memoria con `useMemo`. El módulo de Auditoría ya tiene paginación implementada (`skip/take` + `total`); replicar ese patrón en los otros dos endpoints y adaptar la UI (igual que la paginación de auditoría) reducirá el tiempo de carga inicial y el uso de memoria conforme crezca el inventario.
-- [ ] **Pooling de DB** para escala (Prisma Accelerate / PgBouncer) si crece el tráfico.
+- [ ] **Pooling de DB** (Prisma Accelerate / PgBouncer) si crece el tráfico.
 - [ ] **Dominio propio** (.com) si se desea.
 
 ---
@@ -312,8 +325,14 @@ Comandos de verificación: `node -v`, `claude --version`, `git remote -v` (debe 
 
 ### Sesión 4 (2026-06-01)
 - `cb4601d` — feat(transporte): botón "Enviado" y "Editar fecha entrega" para operadores.
-  - Nuevo endpoint `POST /api/transporte/[clientId]/acciones`.
-  - Acciones `despachar` y `fecha_entrega` disponibles para todos los roles.
 - `9555954` — feat(transporte): tipo de guardado (COMUN / ECOMMERCE).
-  - Columna `tipo` en `transporte_guardados` (default COMUN).
-  - Badge, filtro, selector en formulario/edición y modal de detalle.
+- `ecf98e2` — feat: módulo conteo cíclico completo (importar CSV, asignar, contar, reconteo, Excel).
+- `51d934f` — fix(conteo): auto-fill correcto (Recolección+RETIRO=contar, Almacenamiento+Etapas=auto).
+- `e04c43f` — feat(conteo): borrar ciclos + CRUD operarios. Módulo en pausa.
+
+### Sesión 5 (2026-06-01)
+- `88455d2` — feat: rol TRANSPORTISTA + GPS watchPosition + paginación server-side.
+  - Nuevo rol `TRANSPORTISTA` en enum Role de DB; sidebar reducido (solo Mi ruta).
+  - GPS fix: `watchPosition` nativo reemplaza polling; mejor UX de permisos en móvil.
+  - Paginación server-side en `/api/novedades` y `/api/transporte` (hasta 500 registros, filtros en servidor).
+  - Polling supervisor de GPS: 30s → 15s.
