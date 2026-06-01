@@ -172,6 +172,27 @@ Se aplica en **servidor** (`requireCan` en cada API) y en **UI** (botones Editar
 - ✅ **Tests unitarios** (Vitest) — 56 tests cubriendo `permissions.ts`, `almacenaje.ts`, `muebles.ts`, `transporte.ts` y `logistica.ts`. `npm test`.
 - ✅ **GitHub Actions CI** — type-check + tests en cada push/PR a `master` (`.github/workflows/ci.yml`).
 
+### Módulo Conteo Cíclico ⏸ EN PAUSA
+- ✅ **4 tablas**: `ciclos_conteo`, `lineas_conteo`, `operarios_ciclo`, `importaciones_teorico`.
+- ✅ **Importación CSV/Excel del WMS** — detecta columnas automáticamente; clasifica líneas por `WMS: PASILLO`: `Recolección` + `RETIRO` = conteo físico; `Almacenamiento` + `Etapas salientes` = auto-fill OK.
+- ✅ **CRUD operarios** desde el módulo (gestión de ~44 operarios del CEDI).
+- ✅ **Asignación de bloques** a operarios por rango de depósito A→Z + día (1-4).
+- ✅ **Vista operario** (`/conteo/contar`): cuenta compartida, selección de nombre, lista A→Z, formulario cajas+und/emp+reguero o total directo.
+- ✅ **Cálculo de diferencias**: todas las diferencias → EN_RECONTEO; diferencia=0 → OK.
+- ✅ **Reconteo**: operario recuenta; diferencia_final=0→OK, ≠0→NOVEDAD.
+- ✅ **Reporte Excel**: descarga con novedades primero, luego OK. Sin columna Operario.
+- ✅ **Borrar ciclos** con confirmación.
+- ✅ **Recalcular auto-fill** sin borrar conteos ya ingresados.
+- **Color del módulo**: verde `#16a34a`.
+- **Rutas**: `/dashboard/conteo` (admin) · `/dashboard/conteo/contar` (operario).
+
+**Pendientes internos del módulo (para reanudar):**
+- [ ] Editar nombre/notas de un ciclo existente.
+- [ ] Pantalla de progreso por operario (cuántos contó cada uno).
+- [ ] Filtro por marca/fabricante al asignar bloques.
+- [ ] Notificación visual cuando todos los PLUs del día están contados.
+- [ ] Tests unitarios de la lógica de conteo.
+
 ### Módulo Logística (sesión 3)
 - ✅ **5 tablas nuevas**: `vehiculos`, `transportistas`, `rutas`, `paradas`, `ubicaciones_gps`.
 - ✅ **Gestión de flota**: CRUD de vehículos (placa, tipo, capacidad, estado) y transportistas (nombre, teléfono, vehículo asignado, cuenta de usuario opcional).
@@ -208,6 +229,7 @@ Se aplica en **servidor** (`requireCan` en cada API) y en **UI** (botones Editar
 - [x] **Foto de evidencia real** — subida a Vercel Blob desde el móvil del conductor; miniatura visible para supervisor. Columna `foto_url` en `paradas`.
 - [~] **Recuperación de contraseña** — descartada por ahora. El admin restablece la contraseña manualmente desde la pantalla de Usuarios.
 - [x] **Deploy automático desde GitHub** — GitHub Actions despliega a Vercel en cada push a `master` que pase los checks. Secretos en el repo: `VERCEL_TOKEN` (tipo `vcp_`, Full Account), `VERCEL_ORG_ID`, `VERCEL_PROJECT_ID`. Nota: los valores deben guardarse sin newlines — usar `gh secret set --body "valor"`, nunca pipe desde PowerShell (añade BOM).
+- [⏸] **Módulo Conteo Cíclico** — en PAUSA, en producción pero pendiente de completar. Ver detalle en §5 y pendientes internos abajo.
 - [ ] **Paginación server-side en Muebles y Transporte** ← *escalabilidad, dificultad baja, importancia media* — Hoy los GET de `/api/novedades` y `/api/transporte` devuelven todos los registros y el frontend filtra/ordena en memoria con `useMemo`. El módulo de Auditoría ya tiene paginación implementada (`skip/take` + `total`); replicar ese patrón en los otros dos endpoints y adaptar la UI (igual que la paginación de auditoría) reducirá el tiempo de carga inicial y el uso de memoria conforme crezca el inventario.
 - [ ] **Pooling de DB** para escala (Prisma Accelerate / PgBouncer) si crece el tráfico.
 - [ ] **Dominio propio** (.com) si se desea.

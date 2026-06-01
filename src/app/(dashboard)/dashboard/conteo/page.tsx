@@ -7,7 +7,7 @@ import { can } from "@/lib/permissions";
 import {
   ClipboardList, Plus, X, Upload, Users, BarChart3, List,
   ChevronRight, Download, RefreshCw, CheckCircle2, AlertTriangle,
-  Settings, Play, Calculator,
+  Settings, Play, Calculator, Trash2, Pencil, UserPlus,
 } from "lucide-react";
 import {
   CicloConteo, OperarioCiclo, LineaConteo,
@@ -220,6 +220,57 @@ function ModalAsignar({ ciclo, operarios, onClose, onAsignado }: { ciclo: CicloC
   );
 }
 
+// ── Modal: CRUD Operarios ─────────────────────────────
+function ModalOperarios({ operarios, onClose, onCambio }: { operarios: OperarioCiclo[]; onClose: () => void; onCambio: () => void }) {
+  const [lista, setLista] = useState<OperarioCiclo[]>(operarios);
+  const [nuevo, setNuevo] = useState("");
+  const [guardando, setGuardando] = useState(false);
+
+  async function agregar(e: React.FormEvent) {
+    e.preventDefault();
+    if (!nuevo.trim()) return;
+    setGuardando(true);
+    const res = await fetch("/api/conteo/operarios", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ nombre: nuevo.trim() }) });
+    const json = await res.json();
+    if (json.success) { setLista((p) => [...p, json.data]); setNuevo(""); onCambio(); }
+    setGuardando(false);
+  }
+
+  async function toggleActivo(op: OperarioCiclo) {
+    const res = await fetch(`/api/conteo/operarios/${op.id}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ activo: !op.activo }) });
+    const json = await res.json();
+    if (json.success) { setLista((p) => p.map((o) => o.id === op.id ? { ...o, activo: !o.activo } : o)); onCambio(); }
+  }
+
+  async function eliminar(op: OperarioCiclo) {
+    const res = await fetch(`/api/conteo/operarios/${op.id}`, { method: "DELETE" });
+    if (res.ok) { setLista((p) => p.filter((o) => o.id !== op.id)); onCambio(); }
+  }
+
+  return (
+    <Modal onClose={onClose} title="Gestión de operarios" wide>
+      <form onSubmit={agregar} style={{ display: "flex", gap: 8, marginBottom: "1rem" }}>
+        <input value={nuevo} onChange={(e) => setNuevo(e.target.value)} placeholder="Nombre del operario…" style={{ ...inp, flex: 1 }} />
+        <button type="submit" disabled={guardando || !nuevo.trim()} style={{ padding: "0.55rem 1rem", background: COLOR_CONTEO, color: "#fff", border: "none", borderRadius: 9, fontSize: 13, fontWeight: 700, cursor: "pointer", display: "flex", alignItems: "center", gap: 6, whiteSpace: "nowrap" }}>
+          <UserPlus size={14} />Agregar
+        </button>
+      </form>
+      <div style={{ maxHeight: 400, overflowY: "auto", border: "1px solid var(--border)", borderRadius: 10, overflow: "hidden" }}>
+        {lista.length === 0 && <div style={{ padding: "1.5rem", textAlign: "center", color: "var(--muted)", fontSize: 13 }}>Sin operarios. Agrega el primero.</div>}
+        {lista.map((op, i) => (
+          <div key={op.id} style={{ display: "flex", alignItems: "center", gap: 10, padding: "0.65rem 0.9rem", borderBottom: i < lista.length - 1 ? "1px solid var(--border)" : "none", background: op.activo ? "var(--surface)" : "var(--surface2)", opacity: op.activo ? 1 : 0.6 }}>
+            <span style={{ flex: 1, fontSize: 13, fontWeight: 600, color: "var(--text)" }}>{op.nombre}</span>
+            <span style={{ fontSize: 11, fontWeight: 700, padding: "2px 8px", borderRadius: 20, background: op.activo ? "#10b98118" : "#94a3b818", color: op.activo ? "#10b981" : "#94a3b8" }}>{op.activo ? "Activo" : "Inactivo"}</span>
+            <button onClick={() => toggleActivo(op)} style={{ ...iconBtn, fontSize: 11, padding: "4px 8px" }} title={op.activo ? "Desactivar" : "Activar"}>{op.activo ? "Pausar" : "Activar"}</button>
+            <button onClick={() => eliminar(op)} style={{ ...iconBtn, color: "#ef4444" }} title="Eliminar"><Trash2 size={13} /></button>
+          </div>
+        ))}
+      </div>
+      <div style={{ fontSize: 11, color: "var(--muted)", marginTop: "0.75rem" }}>Los operarios inactivos no aparecen en la lista de selección al contar.</div>
+    </Modal>
+  );
+}
+
 // ══════════════════════════════════════════════════════════════
 // PÁGINA PRINCIPAL
 // ══════════════════════════════════════════════════════════════
@@ -242,6 +293,8 @@ export default function ConteoPage() {
   const [showNuevo, setShowNuevo] = useState(false);
   const [showImportar, setShowImportar] = useState(false);
   const [showAsignar, setShowAsignar] = useState(false);
+  const [showOperarios, setShowOperarios] = useState(false);
+  const [cicloABorrar, setCicloABorrar] = useState<CicloConteo | null>(null);
 
   // Filtros de líneas
   const [fq, setFq] = useState("");
@@ -294,6 +347,12 @@ export default function ConteoPage() {
     else showToast(json.error, true);
   }
 
+  async function borrarCiclo(ciclo: CicloConteo) {
+    const res = await fetch(`/api/conteo/ciclos/${ciclo.id}`, { method: "DELETE" });
+    if (res.ok) { setCiclos((p) => p.filter((c) => c.id !== ciclo.id)); setCicloABorrar(null); showToast("Ciclo eliminado"); }
+    else showToast("Error al eliminar", true);
+  }
+
   async function descargarReporte(ciclo: CicloConteo) {
     const res = await fetch(`/api/conteo/ciclos/${ciclo.id}/reporte`);
     if (!res.ok) { showToast("Error al generar reporte", true); return; }
@@ -335,6 +394,7 @@ export default function ConteoPage() {
             </button>
           ))}
           <button onClick={loadCiclos} style={{ ...iconBtn }}><RefreshCw size={14} /></button>
+          {canManage && <button onClick={() => setShowOperarios(true)} style={{ display: "flex", alignItems: "center", gap: 6, padding: "0.5rem 0.9rem", background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 9, fontSize: 12, fontWeight: 700, cursor: "pointer", color: "var(--muted2)" }}><Users size={14} />Operarios</button>}
           {canManage && <button onClick={() => setShowNuevo(true)} style={{ display: "flex", alignItems: "center", gap: 6, padding: "0.5rem 0.9rem", background: COLOR_CONTEO, color: "#fff", border: "none", borderRadius: 9, fontSize: 12, fontWeight: 700, cursor: "pointer" }}><Plus size={14} />Nuevo ciclo</button>}
         </div>
       </div>
@@ -416,6 +476,7 @@ export default function ConteoPage() {
                         <button onClick={() => descargarReporte(c)} style={{ ...iconBtn, color: COLOR_CONTEO }} title="Descargar reporte"><Download size={13} /></button>
                       )}
                       <button onClick={() => { setCicloActivo(c); setView("lineas"); }} style={{ ...iconBtn, marginLeft: 4 }} title="Ver líneas"><ChevronRight size={13} /></button>
+                      {canManage && <button onClick={() => setCicloABorrar(c)} style={{ ...iconBtn, marginLeft: 4, color: "#ef4444" }} title="Eliminar ciclo"><Trash2 size={13} /></button>}
                     </td>
                   </tr>
                 );
@@ -493,6 +554,16 @@ export default function ConteoPage() {
       {showNuevo && <ModalNuevoCiclo onClose={() => setShowNuevo(false)} onCreado={(c) => { setCiclos((p) => [c as CicloConteo, ...p]); setShowNuevo(false); showToast("Ciclo creado ✓"); }} />}
       {showImportar && cicloActivo && <ModalImportar ciclo={cicloActivo} onClose={() => setShowImportar(false)} onImportado={async () => { await loadCiclos(); }} />}
       {showAsignar && cicloActivo && <ModalAsignar ciclo={cicloActivo} operarios={operarios} onClose={() => setShowAsignar(false)} onAsignado={async () => { await loadCiclos(); showToast("Asignación guardada ✓"); }} />}
+      {showOperarios && <ModalOperarios operarios={operarios} onClose={() => setShowOperarios(false)} onCambio={async () => { const r = await fetch("/api/conteo/operarios"); const j = await r.json(); if (j.success) setOperarios(j.data); }} />}
+      {cicloABorrar && (
+        <Modal onClose={() => setCicloABorrar(null)} title="Eliminar ciclo" sub={cicloABorrar.nombre}>
+          <p style={{ fontSize: 13, color: "var(--muted2)", marginBottom: "1rem" }}>Esta acción eliminará el ciclo y todas sus líneas de conteo. No se puede deshacer.</p>
+          <div style={{ display: "flex", gap: 8 }}>
+            <button onClick={() => setCicloABorrar(null)} style={{ flex: 1, padding: "0.65rem", background: "var(--surface2)", color: "var(--muted2)", border: "1px solid var(--border)", borderRadius: 9, fontSize: 13, fontWeight: 700, cursor: "pointer" }}>Cancelar</button>
+            <button onClick={() => borrarCiclo(cicloABorrar)} style={{ flex: 1, padding: "0.65rem", background: "#ef4444", color: "#fff", border: "none", borderRadius: 9, fontSize: 13, fontWeight: 700, cursor: "pointer" }}>Eliminar</button>
+          </div>
+        </Modal>
+      )}
 
       {toast && <div style={{ position: "fixed", bottom: 24, right: 24, zIndex: 10000, background: toast.err ? "#ef4444" : "#0f172a", color: "#fff", padding: "0.8rem 1.2rem", borderRadius: 10, fontSize: 13, fontWeight: 600, boxShadow: "0 8px 28px #0f172a40" }}>{toast.msg}</div>}
     </div>
