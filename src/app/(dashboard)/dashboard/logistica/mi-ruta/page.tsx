@@ -15,6 +15,8 @@ function Badge({ label, color }: { label: string; color: string }) {
 const COLOR = "#7c3aed";
 const inp: React.CSSProperties = { border: "1px solid var(--border)", borderRadius: 8, padding: "0.55rem 0.85rem", fontSize: 13, outline: "none", background: "var(--bg)", width: "100%", boxSizing: "border-box" };
 
+type GpsStatus = "idle" | "ok" | "err" | "sin-permiso" | "sin-soporte";
+
 export default function MiRutaPage() {
   const { data: session } = useSession();
   const nombre = (session?.user as { name?: string } | undefined)?.name ?? "Conductor";
@@ -22,10 +24,50 @@ export default function MiRutaPage() {
   const [loading, setLoading] = useState(true);
   const [toast, setToast] = useState<{ msg: string; err?: boolean } | null>(null);
   const [confirmando, setConfirmando] = useState<Parada | null>(null);
-  const [gpsEnvio, setGpsEnvio] = useState<"idle" | "ok" | "err">("idle");
-  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const [gpsStatus, setGpsStatus] = useState<GpsStatus>("idle");
+  const [ultimaPos, setUltimaPos] = useState<{ lat: number; lng: number } | null>(null);
+  const watchRef = useRef<number | null>(null);
+  const rutaIdRef = useRef<string | undefined>(undefined);
 
   function showToast(msg: string, err = false) { setToast({ msg, err }); setTimeout(() => setToast(null), 3500); }
+
+  async function enviarPosicion(lat: number, lng: number) {
+    try {
+      await fetch("/api/logistica/gps", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ lat, lng, rutaId: rutaIdRef.current ?? null }),
+      });
+      setGpsStatus("ok");
+      setUltimaPos({ lat, lng });
+    } catch { /* silencioso, no cortar el watchPosition */ }
+  }
+
+  function iniciarGps(rutaId: string) {
+    if (!navigator.geolocation) { setGpsStatus("sin-soporte"); return; }
+    rutaIdRef.current = rutaId;
+
+    // Detener watch anterior si existe
+    if (watchRef.current != null) navigator.geolocation.clearWatch(watchRef.current);
+
+    watchRef.current = navigator.geolocation.watchPosition(
+      (pos) => { enviarPosicion(pos.coords.latitude, pos.coords.longitude); },
+      (err) => {
+        if (err.code === err.PERMISSION_DENIED) setGpsStatus("sin-permiso");
+        else setGpsStatus("err");
+      },
+      { enableHighAccuracy: true, maximumAge: 15000, timeout: 20000 }
+    );
+    setGpsStatus("ok");
+  }
+
+  async function solicitarGpsManual() {
+    if (!navigator.geolocation) { setGpsStatus("sin-soporte"); return; }
+    navigator.geolocation.getCurrentPosition(
+      (pos) => { enviarPosicion(pos.coords.latitude, pos.coords.longitude); if (ruta?.id) iniciarGps(ruta.id); },
+      (err) => { setGpsStatus(err.code === err.PERMISSION_DENIED ? "sin-permiso" : "err"); },
+      { enableHighAccuracy: true, timeout: 10000 }
+    );
+  }
 
   async function loadRuta() {
     setLoading(true);
@@ -38,32 +80,13 @@ export default function MiRutaPage() {
     finally { setLoading(false); }
   }
 
-  async function enviarGps(rutaId?: string) {
-    if (!navigator.geolocation) return;
-    navigator.geolocation.getCurrentPosition(
-      async (pos) => {
-        try {
-          await fetch("/api/logistica/gps", {
-            method: "POST", headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ lat: pos.coords.latitude, lng: pos.coords.longitude, rutaId: rutaId ?? null }),
-          });
-          setGpsEnvio("ok");
-          setTimeout(() => setGpsEnvio("idle"), 3000);
-        } catch { setGpsEnvio("err"); }
-      },
-      () => setGpsEnvio("err")
-    );
-  }
-
-  useEffect(() => {
-    loadRuta();
-  }, []);
+  useEffect(() => { loadRuta(); }, []);
 
   useEffect(() => {
     if (!ruta || ruta.estado !== "EN_CURSO") return;
-    enviarGps(ruta.id);
-    intervalRef.current = setInterval(() => enviarGps(ruta.id), 30000);
-    return () => { if (intervalRef.current) clearInterval(intervalRef.current); };
+    iniciarGps(ruta.id);
+    return () => { if (watchRef.current != null) navigator.geolocation.clearWatch(watchRef.current); };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ruta?.id, ruta?.estado]);
 
   function paradaActualizada(paradaId: string, estado: Parada["estado"]) {
@@ -109,13 +132,13 @@ export default function MiRutaPage() {
             <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
               <Badge label={RUTA_ESTADO_LABEL[ruta.estado as keyof typeof RUTA_ESTADO_LABEL]} color={RUTA_ESTADO_COLOR[ruta.estado as keyof typeof RUTA_ESTADO_COLOR]} />
               <span style={{ fontSize: 12, color: "var(--muted)" }}>{entregadas}/{ruta.paradas.length} entregadas · {pendientes} pendientes</span>
-              <span style={{ fontSize: 11, color: gpsEnvio === "ok" ? "#10b981" : gpsEnvio === "err" ? "#ef4444" : "var(--muted)", fontFamily: "var(--mono)" }}>
-                {gpsEnvio === "ok" ? "📍 GPS enviado" : gpsEnvio === "err" ? "⚠ GPS no disponible" : "📍 GPS activo"}
+              <span style={{ fontSize: 11, color: gpsStatus === "ok" ? "#10b981" : gpsStatus === "sin-permiso" || gpsStatus === "err" ? "#ef4444" : "var(--muted)", fontFamily: "var(--mono)" }}>
+                {gpsStatus === "ok" ? `📍 GPS activo${ultimaPos ? ` · ${ultimaPos.lat.toFixed(4)}, ${ultimaPos.lng.toFixed(4)}` : ""}` : gpsStatus === "sin-permiso" ? "⚠ Permiso GPS denegado" : gpsStatus === "sin-soporte" ? "⚠ GPS no disponible" : gpsStatus === "err" ? "⚠ Error GPS" : "📍 Iniciando GPS…"}
               </span>
             </div>
           </div>
           <div style={{ display: "flex", gap: 8 }}>
-            <button onClick={() => enviarGps(ruta.id)} style={{ display: "flex", alignItems: "center", gap: 5, padding: "0.5rem 0.85rem", background: COLOR + "15", color: COLOR, border: `1px solid ${COLOR}40`, borderRadius: 9, fontSize: 12, fontWeight: 700, cursor: "pointer" }}><MapPin size={13} />Mi ubicación</button>
+            <button onClick={solicitarGpsManual} style={{ display: "flex", alignItems: "center", gap: 5, padding: "0.5rem 0.85rem", background: COLOR + "15", color: COLOR, border: `1px solid ${COLOR}40`, borderRadius: 9, fontSize: 12, fontWeight: 700, cursor: "pointer" }}><MapPin size={13} />{gpsStatus === "sin-permiso" ? "Activar GPS" : "Mi ubicación"}</button>
             <button onClick={loadRuta} style={{ padding: "0.5rem 0.75rem", background: "var(--surface2)", border: "1px solid var(--border)", borderRadius: 9, cursor: "pointer", color: "var(--muted2)", display: "flex" }}><RefreshCw size={15} /></button>
           </div>
         </div>

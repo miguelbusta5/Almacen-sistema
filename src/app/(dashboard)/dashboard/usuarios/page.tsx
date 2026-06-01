@@ -5,7 +5,7 @@ import { createPortal } from "react-dom";
 import { useSession } from "next-auth/react";
 import { Users, Plus, Pencil, X, Shield, ShieldCheck, ShieldAlert } from "lucide-react";
 
-type Role = "ADMIN" | "GERENTE" | "OPERADOR";
+type Role = "ADMIN" | "GERENTE" | "OPERADOR" | "TRANSPORTISTA";
 
 interface User {
   id: string;
@@ -17,9 +17,10 @@ interface User {
 }
 
 const ROLE_META: Record<Role, { label: string; color: string; icon: React.ReactNode }> = {
-  ADMIN:    { label: "Administrador", color: "#6366f1", icon: <ShieldCheck size={13} /> },
-  GERENTE:  { label: "Gerente",       color: "#0ea5e9", icon: <Shield size={13} /> },
-  OPERADOR: { label: "Operador",      color: "#64748b", icon: <ShieldAlert size={13} /> },
+  ADMIN:          { label: "Administrador", color: "#6366f1", icon: <ShieldCheck size={13} /> },
+  GERENTE:        { label: "Gerente",       color: "#0ea5e9", icon: <Shield size={13} /> },
+  OPERADOR:       { label: "Operador",      color: "#64748b", icon: <ShieldAlert size={13} /> },
+  TRANSPORTISTA:  { label: "Transportista", color: "#0e7490", icon: <ShieldAlert size={13} /> },
 };
 
 export default function UsuariosPage() {
@@ -157,7 +158,7 @@ function FormNuevo({ onClose, onSaved, onError }: { onClose: () => void; onSaved
         <Field label="Nombre"><input value={name} onChange={e => setName(e.target.value)} style={inp} placeholder="Nombre completo" /></Field>
         <Field label="Email"><input type="email" value={email} onChange={e => setEmail(e.target.value)} style={inp} placeholder="usuario@almacen.com" /></Field>
         <Field label="Contraseña (mín. 8)"><input type="password" value={password} onChange={e => setPassword(e.target.value)} style={inp} placeholder="••••••••" /></Field>
-        <Field label="Rol"><select value={role} onChange={e => setRole(e.target.value as Role)} style={inp}><option value="OPERADOR">Operador</option><option value="GERENTE">Gerente</option><option value="ADMIN">Administrador</option></select></Field>
+        <Field label="Rol"><select value={role} onChange={e => setRole(e.target.value as Role)} style={inp}><option value="OPERADOR">Operador</option><option value="TRANSPORTISTA">Transportista</option><option value="GERENTE">Gerente</option><option value="ADMIN">Administrador</option></select></Field>
       </div>
       <div style={{ display: "flex", gap: 8, marginTop: "1.25rem" }}>
         <button onClick={onClose} style={btnSec}>Cancelar</button>
@@ -192,7 +193,7 @@ function ModalEditar({ u, selfId, onClose, onSaved, onError }: { u: User; selfId
     <Modal title="Editar usuario" sub={u.email} onClose={onClose}>
       <div style={{ display: "flex", flexDirection: "column", gap: "0.9rem" }}>
         <Field label="Nombre"><input value={name} onChange={e => setName(e.target.value)} style={inp} /></Field>
-        <Field label="Rol"><select value={role} onChange={e => setRole(e.target.value as Role)} disabled={isSelf} style={{ ...inp, opacity: isSelf ? 0.5 : 1 }}><option value="OPERADOR">Operador</option><option value="GERENTE">Gerente</option><option value="ADMIN">Administrador</option></select></Field>
+        <Field label="Rol"><select value={role} onChange={e => setRole(e.target.value as Role)} disabled={isSelf} style={{ ...inp, opacity: isSelf ? 0.5 : 1 }}><option value="OPERADOR">Operador</option><option value="TRANSPORTISTA">Transportista</option><option value="GERENTE">Gerente</option><option value="ADMIN">Administrador</option></select></Field>
         <Field label="Nueva contraseña (opcional)"><input type="password" value={password} onChange={e => setPassword(e.target.value)} style={inp} placeholder="Dejar vacío para no cambiar" /></Field>
         <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, cursor: isSelf ? "not-allowed" : "pointer", opacity: isSelf ? 0.5 : 1 }}>
           <input type="checkbox" checked={active} disabled={isSelf} onChange={e => setActive(e.target.checked)} />

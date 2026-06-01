@@ -6,7 +6,7 @@ import { z } from "zod";
 
 const updateSchema = z.object({
   name: z.string().min(2).optional(),
-  role: z.enum(["ADMIN", "GERENTE", "OPERADOR"]).optional(),
+  role: z.enum(["ADMIN", "GERENTE", "OPERADOR", "TRANSPORTISTA"]).optional(),
   active: z.boolean().optional(),
   password: z.string().min(8, "Contraseña mínimo 8 caracteres").optional(),
 });

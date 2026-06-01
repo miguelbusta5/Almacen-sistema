@@ -28,11 +28,32 @@ const createSchema = z.object({
   nota: z.string().nullable().optional(),
 });
 
-export async function GET() {
+// GET /api/transporte?page=1&pageSize=200&q=&estado=&tipo=
+export async function GET(req: NextRequest) {
   const actor = await requireAuth();
   if (actor instanceof NextResponse) return actor;
-  const rows = await prisma.transporteGuardado.findMany({ orderBy: [{ fecha: "desc" }, { created_at: "desc" }] });
-  return NextResponse.json({ success: true, data: rows.map(mapRow) });
+
+  const sp = req.nextUrl.searchParams;
+  const page = Math.max(1, parseInt(sp.get("page") ?? "1") || 1);
+  const pageSize = Math.min(500, Math.max(50, parseInt(sp.get("pageSize") ?? "200") || 200));
+  const q = sp.get("q")?.trim() ?? "";
+  const estado = sp.get("estado") ?? "";
+  const tipo = sp.get("tipo") ?? "";
+
+  const where: any = {};
+  if (estado) where.estado = estado;
+  if (tipo) where.tipo = tipo;
+  if (q) where.OR = [
+    { documento: { contains: q, mode: "insensitive" } },
+    { ubicacion: { contains: q, mode: "insensitive" } },
+  ];
+
+  const [rows, total] = await prisma.$transaction([
+    prisma.transporteGuardado.findMany({ where, orderBy: [{ fecha: "desc" }, { created_at: "desc" }], skip: (page - 1) * pageSize, take: pageSize }),
+    prisma.transporteGuardado.count({ where }),
+  ]);
+
+  return NextResponse.json({ success: true, data: rows.map(mapRow), total, page, pageSize, pages: Math.max(1, Math.ceil(total / pageSize)) });
 }
 
 export async function POST(req: NextRequest) {

@@ -68,10 +68,15 @@ export default function Sidebar({ role }: SidebarProps) {
     );
   };
 
+  // TRANSPORTISTA solo ve Mi ruta
+  const linksVisibles = role === "TRANSPORTISTA"
+    ? links.filter((l) => l.href === "/dashboard/logistica/mi-ruta")
+    : links;
+
   const NavLinks = ({ onNav }: { onNav?: () => void }) => (
     <>
       <nav style={{ flex: 1, padding: "0.75rem 0" }}>
-        {links.map((l) => <Item key={l.href} l={l} onNav={onNav} />)}
+        {linksVisibles.map((l) => <Item key={l.href} l={l} onNav={onNav} />)}
         {(role === "GERENTE" || role === "ADMIN") && (
           <>
             <div style={{ padding: "1rem 1.25rem 0.35rem", fontSize: 10, fontWeight: 700, letterSpacing: "0.14em", textTransform: "uppercase", color: "#3a4a6b" }}>

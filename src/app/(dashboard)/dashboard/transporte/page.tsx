@@ -39,7 +39,7 @@ export default function TransportePage() {
   async function load() {
     setLoading(true);
     try {
-      const res = await fetch("/api/transporte");
+      const res = await fetch("/api/transporte?pageSize=500");
       const json = await res.json();
       if (json.success) setGuardados(json.data);
     } catch { showToast("Error al cargar datos", true); }

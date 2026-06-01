@@ -8,7 +8,8 @@ const createUserSchema = z.object({
   email: z.string().email("Email invalido"),
   name: z.string().min(2, "Nombre muy corto"),
   password: z.string().min(8, "Contrasena minimo 8 caracteres"),
-  role: z.enum(["ADMIN", "GERENTE", "OPERADOR"]).default("OPERADOR"),
+  role: z.enum(["ADMIN", "GERENTE", "OPERADOR", "TRANSPORTISTA"]).default("OPERADOR"),
+  transportistaId: z.string().nullable().optional(), // vincular a transportista existente
 });
 
 export async function GET() {
@@ -40,9 +41,19 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Email ya registrado" }, { status: 400 });
   }
   const hashed = await bcrypt.hash(parsed.data.password, 12);
+  const { transportistaId, ...userData } = parsed.data;
   const user = await prisma.user.create({
-    data: { ...parsed.data, email, password: hashed },
+    data: { ...userData, email, password: hashed },
     select: { id: true, email: true, name: true, role: true, active: true },
   });
+
+  // Si viene transportistaId, vincular el usuario al transportista
+  if (transportistaId) {
+    await prisma.transportista.update({
+      where: { id: transportistaId },
+      data: { userId: user.id },
+    }).catch(() => {});
+  }
+
   return NextResponse.json({ success: true, data: user }, { status: 201 });
 }

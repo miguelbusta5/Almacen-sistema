@@ -39,7 +39,8 @@ export default function MueblesPage() {
   async function load() {
     setLoading(true);
     try {
-      const res = await fetch("/api/novedades");
+      // Carga hasta 500 registros por llamada (paginación simple)
+      const res = await fetch("/api/novedades?pageSize=500");
       const json = await res.json();
       if (json.success) setItems(json.data);
     } catch { showToast("Error al cargar datos", true); }

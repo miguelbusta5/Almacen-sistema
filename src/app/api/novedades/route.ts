@@ -40,15 +40,34 @@ const createSchema = z.object({
   costoUnitario: z.coerce.number().int().nullable().optional(),
 });
 
-// GET /api/novedades — lista todas
-export async function GET() {
+// GET /api/novedades?page=1&pageSize=200&q=&estado=&fabricante=
+export async function GET(req: NextRequest) {
   const actor = await requireAuth();
   if (actor instanceof NextResponse) return actor;
 
-  const rows = await prisma.novedad.findMany({
-    orderBy: [{ fecha: "desc" }, { created_at: "desc" }],
-  });
-  return NextResponse.json({ success: true, data: rows.map(mapRow) });
+  const sp = req.nextUrl.searchParams;
+  const page = Math.max(1, parseInt(sp.get("page") ?? "1") || 1);
+  const pageSize = Math.min(500, Math.max(50, parseInt(sp.get("pageSize") ?? "200") || 200));
+  const q = sp.get("q")?.trim() ?? "";
+  const estado = sp.get("estado") ?? "";
+  const fabricante = sp.get("fabricante") ?? "";
+
+  const where: any = {};
+  if (estado) where.estado = estado;
+  if (fabricante) where.fabricante = fabricante;
+  if (q) where.OR = [
+    { plu: { contains: q, mode: "insensitive" } },
+    { posicion: { contains: q, mode: "insensitive" } },
+    { descripcion: { contains: q, mode: "insensitive" } },
+    { fabricante: { contains: q, mode: "insensitive" } },
+  ];
+
+  const [rows, total] = await prisma.$transaction([
+    prisma.novedad.findMany({ where, orderBy: [{ fecha: "desc" }, { created_at: "desc" }], skip: (page - 1) * pageSize, take: pageSize }),
+    prisma.novedad.count({ where }),
+  ]);
+
+  return NextResponse.json({ success: true, data: rows.map(mapRow), total, page, pageSize, pages: Math.max(1, Math.ceil(total / pageSize)) });
 }
 
 // POST /api/novedades — crea una novedad

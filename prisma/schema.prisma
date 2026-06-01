@@ -79,6 +79,7 @@ enum Role {
   ADMIN
   GERENTE
   OPERADOR
+  TRANSPORTISTA
 }
 
 // ═══════════════════════════════════════════

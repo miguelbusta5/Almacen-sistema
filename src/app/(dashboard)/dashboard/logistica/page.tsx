@@ -144,7 +144,7 @@ export default function LogisticaPage() {
         const j = await r.json();
         if (j.success) setGpsActivos(j.data);
       } catch { /* silent */ }
-    }, 30000);
+    }, 15000); // 15s — más responsivo para el supervisor
     return () => clearInterval(id);
   }, []);
 

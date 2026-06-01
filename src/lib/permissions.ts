@@ -14,6 +14,10 @@ const MATRIX: Record<Action, UserRole[]> = {
   manageConteo: ["ADMIN"],
 };
 
+// TRANSPORTISTA: puede ver su ruta + enviar GPS + confirmar entregas.
+// Usa las mismas acciones que OPERADOR (create) pero no tiene acceso a otros módulos.
+// El control de acceso a módulos se hace en el sidebar y en cada página.
+
 /** ¿El rol puede ejecutar la acción? */
 export function can(role: UserRole | string | undefined | null, action: Action): boolean {
   if (!role) return false;
@@ -24,4 +28,5 @@ export const ROLE_LABEL: Record<UserRole, string> = {
   ADMIN: "Administrador",
   GERENTE: "Gerente",
   OPERADOR: "Operador",
+  TRANSPORTISTA: "Transportista",
 };
