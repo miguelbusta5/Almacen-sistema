@@ -69,6 +69,7 @@ model User {
 
   activityLogs  ActivityLog[]
   transportista Transportista?
+  ciclosConteo  CicloConteo[]
 
   @@index([email])
   @@map("users")
@@ -170,6 +171,97 @@ model UbicacionGps {
 
   @@index([transportistaId, registradoAt])
   @@map("ubicaciones_gps")
+}
+
+// ═══════════════════════════════════════════
+// MÓDULO CONTEO CÍCLICO
+// ═══════════════════════════════════════════
+
+model CicloConteo {
+  id           String   @id @default(cuid())
+  nombre       String   @db.VarChar(255)
+  fechaInicio  DateTime @db.Date @map("fecha_inicio")
+  estado       String   @default("PLANIFICADO") @db.VarChar(20)
+  // PLANIFICADO | EN_PROGRESO | EN_RECONTEO | CERRADO
+  totalLineas  Int      @default(0) @map("total_lineas")
+  creadoPor    String   @map("creado_por")
+  creadoPorUser User    @relation(fields: [creadoPor], references: [id])
+  notas        String?
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  lineas       LineaConteo[]
+  importaciones ImportacionTeorico[]
+
+  @@index([estado])
+  @@map("ciclos_conteo")
+}
+
+model LineaConteo {
+  id            String   @id @default(cuid())
+  cicloId       String   @map("ciclo_id")
+  ciclo         CicloConteo @relation(fields: [cicloId], references: [id], onDelete: Cascade)
+
+  // Datos importados del WMS
+  plu           String   @db.VarChar(100)
+  descripcion   String
+  marca         String?  @db.VarChar(255)
+  codigoBarras  String?  @map("codigo_barras") @db.VarChar(100)
+  ubicacion     String   @db.VarChar(100)  // Número de depósito
+  tipoPasillo   String   @default("Almacenamiento") @map("tipo_pasillo") @db.VarChar(50)
+  autoFill      Boolean  @default(false) @map("auto_fill")
+  teorico       Decimal  @db.Decimal(12, 2)
+  precioBase    Decimal? @map("precio_base") @db.Decimal(12, 2)
+  ultimoPrecio  Decimal? @map("ultimo_precio") @db.Decimal(12, 2)
+
+  // Asignación
+  operarioNombre String? @map("operario_nombre") @db.VarChar(255)
+  diaAsignado    Int?    @map("dia_asignado")  // 1 | 2 | 3 | 4
+
+  // Primer conteo
+  estado         String  @default("PENDIENTE") @db.VarChar(20)
+  // PENDIENTE | CONTADO | EN_RECONTEO | OK | NOVEDAD
+  cajas          Int?
+  undEmp         Int?    @map("und_emp")
+  reguero        Int?
+  cantidadContada Decimal? @map("cantidad_contada") @db.Decimal(12, 2)
+  contadoPor     String?  @map("contado_por") @db.VarChar(255)
+  contadoAt      DateTime? @map("contado_at")
+
+  // Reconteo
+  cantidadRecontada Decimal? @map("cantidad_recontada") @db.Decimal(12, 2)
+  recontadoPor   String?  @map("recontado_por") @db.VarChar(255)
+  recontadoAt    DateTime? @map("recontado_at")
+  diferenciaFinal Decimal? @map("diferencia_final") @db.Decimal(12, 2)
+
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  @@index([cicloId, estado])
+  @@index([cicloId, ubicacion])
+  @@index([cicloId, operarioNombre, diaAsignado])
+  @@map("lineas_conteo")
+}
+
+model OperarioCiclo {
+  id        String   @id @default(cuid())
+  nombre    String   @db.VarChar(255)
+  activo    Boolean  @default(true)
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@map("operarios_ciclo")
+}
+
+model ImportacionTeorico {
+  id          String   @id @default(cuid())
+  cicloId     String   @map("ciclo_id")
+  ciclo       CicloConteo @relation(fields: [cicloId], references: [id], onDelete: Cascade)
+  archivo     String   @db.VarChar(255)
+  totalFilas  Int      @map("total_filas")
+  importadoPor String  @map("importado_por")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  @@map("importaciones_teorico")
 }
 
 model ActivityLog {

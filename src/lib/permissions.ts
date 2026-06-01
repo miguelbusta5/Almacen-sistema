@@ -2,7 +2,7 @@
 // poder usarlo tanto en API routes como en componentes cliente.
 import type { UserRole } from "@/types";
 
-export type Action = "create" | "edit" | "delete" | "manageUsers" | "viewAudit" | "manageLogistica";
+export type Action = "create" | "edit" | "delete" | "manageUsers" | "viewAudit" | "manageLogistica" | "manageConteo";
 
 const MATRIX: Record<Action, UserRole[]> = {
   create: ["OPERADOR", "GERENTE", "ADMIN"],
@@ -11,6 +11,7 @@ const MATRIX: Record<Action, UserRole[]> = {
   manageUsers: ["ADMIN"],
   viewAudit: ["ADMIN"],
   manageLogistica: ["GERENTE", "ADMIN"],
+  manageConteo: ["ADMIN"],
 };
 
 /** ¿El rol puede ejecutar la acción? */

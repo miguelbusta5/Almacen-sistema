@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState, useEffect } from "react";
-import { Menu, X, Home, Package, Truck, Users, ScrollText, Route } from "lucide-react";
+import { Menu, X, Home, Package, Truck, Users, ScrollText, Route, ClipboardList } from "lucide-react";
 import { useIsMobile } from "@/lib/useIsMobile";
 import Logo from "./Logo";
 
@@ -22,9 +22,11 @@ const links: NavLink[] = [
   { href: "/dashboard/muebles", label: "Muebles", icon: <Package size={18} /> },
   { href: "/dashboard/transporte", label: "Transporte", icon: <Truck size={18} /> },
   { href: "/dashboard/logistica/mi-ruta", label: "Mi ruta", icon: <Route size={18} /> },
+  { href: "/dashboard/conteo/contar", label: "Contar", icon: <ClipboardList size={18} /> },
 ];
 const gestionLinks: NavLink[] = [
   { href: "/dashboard/logistica", label: "Logística", icon: <Route size={18} /> },
+  { href: "/dashboard/conteo", label: "Conteo", icon: <ClipboardList size={18} /> },
 ];
 const adminLinks: NavLink[] = [
   { href: "/dashboard/usuarios", label: "Usuarios", icon: <Users size={18} /> },
