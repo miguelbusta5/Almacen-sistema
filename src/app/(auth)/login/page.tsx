@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { signIn } from "next-auth/react";
 import { useRouter } from "next/navigation";
-import { Eye, EyeOff, Loader2, ShieldCheck, Boxes, Truck } from "lucide-react";
+import { Eye, EyeOff, Loader2, Boxes, Truck, Route } from "lucide-react";
 import Logo from "@/components/common/Logo";
 
 export default function LoginPage() {
@@ -16,102 +16,145 @@ export default function LoginPage() {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    setLoading(true);
-    setError("");
-
+    setLoading(true); setError("");
     const result = await signIn("credentials", {
-      email: email.trim().toLowerCase(),
-      password,
-      redirect: false,
+      email: email.trim().toLowerCase(), password, redirect: false,
     });
-
-    if (result?.error) {
-      setError("Credenciales incorrectas. Verifica tu email y contraseña.");
-      setLoading(false);
-    } else {
-      router.push("/dashboard");
-    }
+    if (result?.error) { setError("Email o contraseña incorrectos."); setLoading(false); }
+    else router.push("/dashboard");
   }
 
-  const inputStyle: React.CSSProperties = {
-    background: "var(--bg)", border: "1px solid var(--border)", borderRadius: 10,
-    padding: "0.7rem 0.95rem", fontFamily: "var(--mono)", fontSize: 13,
-    color: "var(--text)", outline: "none", width: "100%", transition: "border-color .15s, box-shadow .15s",
+  const inputBase: React.CSSProperties = {
+    background: "var(--surface2)",
+    border: "1px solid var(--border)",
+    borderRadius: 10,
+    padding: "0.72rem 0.95rem",
+    fontSize: 15,
+    color: "var(--text)",
+    outline: "none",
+    width: "100%",
+    fontFamily: "var(--sans)",
+    transition: "border-color .15s, box-shadow .15s, background .15s",
+    WebkitAppearance: "none",
   };
 
+  const features = [
+    { icon: <Boxes size={15} />, text: "Novedades de inventario" },
+    { icon: <Truck size={15} />, text: "Guardados y despachos" },
+    { icon: <Route size={15} />, text: "Logística y rutas en tiempo real" },
+  ];
+
   return (
-    <div className="min-h-screen flex items-center justify-center p-4" style={{ background: "var(--bg)" }}>
+    <div
+      style={{
+        minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center",
+        padding: "1.5rem",
+        background: "var(--bg)",
+      }}
+    >
       <div
-        className="grid md:grid-cols-2 animate-fade-in"
-        style={{ width: "100%", maxWidth: 880, background: "var(--surface)", borderRadius: 24, overflow: "hidden", boxShadow: "var(--shadow-lg)", border: "1px solid var(--border)" }}
+        className="animate-scale-in"
+        style={{
+          width: "100%", maxWidth: 860,
+          display: "grid", gridTemplateColumns: "1fr 1fr",
+          background: "var(--surface)",
+          borderRadius: 22,
+          boxShadow: "var(--shadow-xl)",
+          border: "1px solid var(--border)",
+          overflow: "hidden",
+        }}
       >
-        {/* ── Panel de marca ── */}
+        {/* ── Panel izquierdo — marca ── */}
         <div
           style={{
-            position: "relative", padding: "2.5rem 2.25rem", color: "#fff",
-            background:
-              "radial-gradient(120% 90% at 0% 0%, #1e40af 0%, transparent 55%)," +
-              "radial-gradient(120% 120% at 100% 100%, #2563eb55 0%, transparent 50%)," +
-              "linear-gradient(155deg, #0a1326 0%, #0d1c39 100%)",
+            padding: "2.75rem 2.5rem",
+            background: "linear-gradient(155deg, #0c1a3a 0%, #0a1020 100%)",
             display: "flex", flexDirection: "column", justifyContent: "space-between",
-            minHeight: 340,
+            position: "relative", overflow: "hidden",
           }}
         >
-          <Logo variant="dark" height={22} tagline />
+          {/* Decoración de fondo */}
+          <div style={{
+            position: "absolute", inset: 0, pointerEvents: "none",
+            background: "radial-gradient(ellipse 80% 60% at 0% 0%, rgba(37,99,235,0.25) 0%, transparent 60%)",
+          }} />
+          <div style={{
+            position: "absolute", inset: 0, pointerEvents: "none",
+            background: "radial-gradient(ellipse 60% 40% at 100% 100%, rgba(99,102,241,0.15) 0%, transparent 60%)",
+          }} />
 
-          <div style={{ marginTop: "2rem" }}>
-            <div style={{ fontSize: 26, fontWeight: 800, lineHeight: 1.15, letterSpacing: "-0.02em" }}>
-              Control total de tu<br /><span className="brand-text" style={{ filter: "brightness(1.6)" }}>almacén</span> en un solo lugar.
-            </div>
-            <div style={{ marginTop: "1.75rem", display: "flex", flexDirection: "column", gap: "0.85rem" }}>
-              {[
-                { icon: <Boxes size={16} />, t: "Novedades de inventario con impacto económico" },
-                { icon: <Truck size={16} />, t: "Guardados y despachos con cobro de almacenaje" },
-                { icon: <ShieldCheck size={16} />, t: "Acceso por roles y auditoría de cambios" },
-              ].map((f, i) => (
-                <div key={i} style={{ display: "flex", alignItems: "center", gap: 11, fontSize: 13, color: "#c3d0e8" }}>
-                  <span style={{ display: "flex", width: 30, height: 30, borderRadius: 9, background: "#ffffff14", color: "#9cc0ff", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>{f.icon}</span>
-                  {f.t}
+          <div style={{ position: "relative" }}>
+            <Logo variant="dark" height={20} tagline />
+          </div>
+
+          <div style={{ position: "relative", marginTop: "2.5rem" }}>
+            <h2 style={{ fontSize: 28, fontWeight: 700, color: "#fff", lineHeight: 1.2, letterSpacing: "-0.03em", marginBottom: "1.5rem" }}>
+              Control total de tu almacén.
+            </h2>
+
+            <div style={{ display: "flex", flexDirection: "column", gap: "0.7rem" }}>
+              {features.map((f, i) => (
+                <div key={i} style={{ display: "flex", alignItems: "center", gap: 10, fontSize: 13, color: "rgba(200,215,255,0.75)" }}>
+                  <span style={{ width: 28, height: 28, borderRadius: 8, background: "rgba(255,255,255,0.1)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, color: "rgba(147,185,255,0.9)" }}>
+                    {f.icon}
+                  </span>
+                  {f.text}
                 </div>
               ))}
             </div>
           </div>
         </div>
 
-        {/* ── Formulario ── */}
-        <div style={{ padding: "2.75rem 2.25rem", display: "flex", flexDirection: "column", justifyContent: "center" }}>
-          <h1 style={{ fontSize: 22, fontWeight: 800, color: "var(--text)", letterSpacing: "-0.01em" }}>Iniciar sesión</h1>
-          <p style={{ fontSize: 13, color: "var(--muted)", marginTop: 4, marginBottom: "1.75rem" }}>Ingresa tus credenciales para continuar</p>
+        {/* ── Panel derecho — formulario ── */}
+        <div style={{ padding: "2.75rem 2.5rem", display: "flex", flexDirection: "column", justifyContent: "center" }}>
+          <div style={{ marginBottom: "2rem" }}>
+            <h1 style={{ fontSize: 24, fontWeight: 700, color: "var(--text)", letterSpacing: "-0.02em", marginBottom: 6 }}>
+              Iniciar sesión
+            </h1>
+            <p style={{ fontSize: 14, color: "var(--muted)" }}>
+              Ingresa tus credenciales para continuar
+            </p>
+          </div>
 
-          <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-            <div className="flex flex-col gap-1.5">
-              <label style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: "var(--muted)" }}>Email</label>
+          <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
+            <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+              <label style={{ fontSize: 13, fontWeight: 500, color: "var(--muted2)", letterSpacing: "-0.01em" }}>
+                Correo electrónico
+              </label>
               <input
                 type="email" value={email} onChange={(e) => setEmail(e.target.value)}
-                placeholder="tu@email.com" required style={inputStyle}
-                onFocus={(e) => { e.target.style.borderColor = "var(--brand)"; e.target.style.boxShadow = "var(--ring)"; }}
-                onBlur={(e) => { e.target.style.borderColor = "var(--border)"; e.target.style.boxShadow = "none"; }}
+                placeholder="tu@email.com" required
+                style={inputBase}
+                onFocus={(e) => { e.target.style.borderColor = "var(--brand)"; e.target.style.boxShadow = "var(--ring)"; e.target.style.background = "var(--surface)"; }}
+                onBlur={(e) => { e.target.style.borderColor = "var(--border)"; e.target.style.boxShadow = "none"; e.target.style.background = "var(--surface2)"; }}
               />
             </div>
 
-            <div className="flex flex-col gap-1.5">
-              <label style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: "var(--muted)" }}>Contraseña</label>
+            <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+              <label style={{ fontSize: 13, fontWeight: 500, color: "var(--muted2)", letterSpacing: "-0.01em" }}>
+                Contraseña
+              </label>
               <div style={{ position: "relative" }}>
                 <input
-                  type={showPass ? "text" : "password"} value={password} onChange={(e) => setPassword(e.target.value)}
-                  placeholder="••••••••" required style={{ ...inputStyle, paddingRight: "2.5rem" }}
-                  onFocus={(e) => { e.target.style.borderColor = "var(--brand)"; e.target.style.boxShadow = "var(--ring)"; }}
-                  onBlur={(e) => { e.target.style.borderColor = "var(--border)"; e.target.style.boxShadow = "none"; }}
+                  type={showPass ? "text" : "password"} value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="••••••••" required
+                  style={{ ...inputBase, paddingRight: "2.75rem" }}
+                  onFocus={(e) => { e.target.style.borderColor = "var(--brand)"; e.target.style.boxShadow = "var(--ring)"; e.target.style.background = "var(--surface)"; }}
+                  onBlur={(e) => { e.target.style.borderColor = "var(--border)"; e.target.style.boxShadow = "none"; e.target.style.background = "var(--surface2)"; }}
                 />
-                <button type="button" onClick={() => setShowPass(!showPass)} aria-label="Mostrar/ocultar contraseña"
-                  style={{ position: "absolute", right: 10, top: "50%", transform: "translateY(-50%)", background: "none", border: "none", cursor: "pointer", color: "var(--muted)", padding: 4 }}>
-                  {showPass ? <EyeOff size={15} /> : <Eye size={15} />}
+                <button
+                  type="button" onClick={() => setShowPass(!showPass)}
+                  aria-label="Mostrar/ocultar contraseña"
+                  style={{ position: "absolute", right: 12, top: "50%", transform: "translateY(-50%)", background: "none", border: "none", cursor: "pointer", color: "var(--muted)", padding: 4, display: "flex" }}
+                >
+                  {showPass ? <EyeOff size={14} /> : <Eye size={14} />}
                 </button>
               </div>
             </div>
 
             {error && (
-              <div style={{ background: "#dc262615", border: "1px solid #dc262635", borderRadius: 10, padding: "0.6rem 0.9rem", fontSize: 12, color: "var(--red)" }}>
+              <div style={{ background: "rgba(220,38,38,0.08)", border: "1px solid rgba(220,38,38,0.2)", borderRadius: 10, padding: "0.6rem 0.9rem", fontSize: 13, color: "var(--red)", letterSpacing: "-0.01em" }}>
                 {error}
               </div>
             )}
@@ -119,21 +162,36 @@ export default function LoginPage() {
             <button
               type="submit" disabled={loading}
               style={{
-                background: loading ? "var(--muted)" : "var(--brand-grad)", color: "#fff", border: "none", borderRadius: 11,
-                padding: "0.85rem", fontFamily: "var(--sans)", fontWeight: 700, fontSize: 14,
-                cursor: loading ? "not-allowed" : "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
-                marginTop: "0.5rem", boxShadow: loading ? "none" : "0 8px 20px #1d4ed840", transition: "opacity .15s, box-shadow .15s",
+                marginTop: "0.25rem",
+                background: loading ? "var(--muted)" : "var(--brand-grad)",
+                color: "#fff", border: "none", borderRadius: 12,
+                padding: "0.9rem",
+                fontSize: 15, fontWeight: 600, letterSpacing: "-0.01em",
+                cursor: loading ? "not-allowed" : "pointer",
+                display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
+                boxShadow: loading ? "none" : "0 4px 18px rgba(29,78,216,0.35)",
+                transition: "opacity .15s, box-shadow .15s, transform .15s",
               }}
+              onMouseEnter={(e) => { if (!loading) { e.currentTarget.style.transform = "translateY(-1px)"; e.currentTarget.style.boxShadow = "0 6px 22px rgba(29,78,216,0.45)"; } }}
+              onMouseLeave={(e) => { e.currentTarget.style.transform = ""; e.currentTarget.style.boxShadow = loading ? "none" : "0 4px 18px rgba(29,78,216,0.35)"; }}
             >
-              {loading ? <><Loader2 size={16} className="animate-spin" /> Verificando…</> : "Iniciar sesión →"}
+              {loading ? <><Loader2 size={16} className="animate-spin" /> Verificando…</> : "Iniciar sesión"}
             </button>
           </form>
 
-          <div style={{ marginTop: "1.75rem", textAlign: "center", fontSize: 11, color: "var(--muted)", fontFamily: "var(--mono)" }}>
-            ¿No tienes cuenta? Contacta al administrador del sistema.
-          </div>
+          <p style={{ marginTop: "1.5rem", textAlign: "center", fontSize: 12, color: "var(--muted)", fontFamily: "var(--mono)" }}>
+            ¿Sin cuenta? Contacta al administrador.
+          </p>
         </div>
       </div>
+
+      {/* Responsive: apilar en mobile */}
+      <style>{`
+        @media (max-width: 640px) {
+          .login-grid { grid-template-columns: 1fr !important; }
+          .login-brand { display: none !important; }
+        }
+      `}</style>
     </div>
   );
 }

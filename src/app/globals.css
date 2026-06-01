@@ -1,83 +1,109 @@
 @import "tailwindcss";
 
 :root {
-  /* ── Marca GRUPO AMBIENTE · azules intensos + base tinta ── */
-  --bg: #eef1f7;
-  --surface: #ffffff;
-  --surface2: #e7ecf5;
-  --border: #d6deea;
+  /* ── Sistema de diseño Apple-inspired · Grupo Ambiente ── */
 
-  --brand: #1d4ed8;          /* azul principal */
-  --brand-600: #2563eb;
-  --brand-700: #1e40af;
-  --brand-bright: #3b82f6;
-  --brand-grad: linear-gradient(135deg, #1e40af 0%, #2563eb 55%, #3b82f6 100%);
-  --brand-tint: #1d4ed814;
+  /* Fondos (iOS System Background) */
+  --bg:        #F2F2F7;
+  --bg-alt:    #E5E5EA;
+
+  /* Superficies */
+  --surface:   #FFFFFF;
+  --surface2:  #F2F2F7;
+  --surface3:  #E5E5EA;
+
+  /* Bordes — muy sutiles, sin azul */
+  --border:        rgba(60, 60, 67, 0.13);
+  --border-strong: rgba(60, 60, 67, 0.28);
+
+  /* Colores de marca Grupo Ambiente (acentos de módulo) */
+  --brand:       #1d4ed8;
+  --brand-600:   #2563eb;
+  --brand-700:   #1e40af;
+  --brand-bright:#3b82f6;
+  --brand-grad:  linear-gradient(135deg, #1e40af 0%, #2563eb 55%, #3b82f6 100%);
+  --brand-tint:  #2563eb14;
 
   /* compat con componentes existentes */
-  --blue: #1d4ed8;
-  --blue-light: #1d4ed814;
-  --orange: #0e7490;         /* transporte → cian intenso (familia azul) */
+  --blue:         #2563eb;
+  --blue-light:   #2563eb14;
+  --orange:       #0e7490;
   --orange-light: #0e749014;
-  --green: #059669;
-  --red: #dc2626;
-  --amber: #d97706;
-  --purple: #4338ca;
+  --green:        #059669;
+  --red:          #dc2626;
+  --amber:        #d97706;
+  --purple:       #4338ca;
 
-  --text: #0a1733;
-  --muted: #5b6b86;
-  --muted2: #38486a;
+  /* Texto (Apple label system) */
+  --text:   #1C1C1E;   /* Primary Label */
+  --muted:  #6C6C70;   /* Secondary Label */
+  --muted2: #3C3C43;   /* Tertiary Label */
 
-  --shadow: 0 1px 2px #0a173312, 0 1px 3px #0a173310;
-  --shadow-md: 0 6px 18px #0a173318;
-  --shadow-lg: 0 16px 40px #0a17331f;
-  --ring: 0 0 0 3px #2563eb33;
+  /* Sombras multi-capa Apple */
+  --shadow:    0 1px 3px rgba(0,0,0,0.04), 0 1px 2px rgba(0,0,0,0.04);
+  --shadow-md: 0 4px 12px rgba(0,0,0,0.07), 0 2px 4px rgba(0,0,0,0.05);
+  --shadow-lg: 0 10px 32px rgba(0,0,0,0.09), 0 4px 10px rgba(0,0,0,0.05);
+  --shadow-xl: 0 20px 50px rgba(0,0,0,0.12), 0 8px 20px rgba(0,0,0,0.07);
+  --ring:      0 0 0 3px rgba(37,99,235,0.28);
 
-  --sans: "Syne", sans-serif;
-  --mono: "DM Mono", monospace;
-  --logo: "Archivo", "Syne", sans-serif;
-  --radius: 14px;
+  /* Tipografía — sistema nativo (SF Pro en Apple, Segoe UI en Windows) */
+  --sans: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text",
+          "Helvetica Neue", "Inter", system-ui, sans-serif;
+  --mono: "SF Mono", ui-monospace, "SFMono-Regular", "Menlo", "Monaco",
+          "Consolas", monospace;
+  --logo: "Archivo", -apple-system, "Helvetica Neue", sans-serif;
+
+  --radius:    14px;
+  --radius-sm: 10px;
+  --radius-lg: 20px;
 }
 
-/* ── TEMA OSCURO ── */
+/* ── TEMA OSCURO (Apple Dark Mode) ── */
 html[data-theme="dark"] {
-  --bg: #070d1c;
-  --surface: #0f1a30;
-  --surface2: #17243f;
-  --border: #25344f;
+  --bg:        #000000;   /* True black para OLED */
+  --bg-alt:    #0A0A0A;
 
-  --brand: #3b82f6;
-  --brand-600: #60a5fa;
-  --brand-700: #2563eb;
-  --brand-bright: #60a5fa;
-  --brand-grad: linear-gradient(135deg, #1e3a8a 0%, #2563eb 55%, #3b82f6 100%);
-  --brand-tint: #3b82f622;
+  --surface:   #1C1C1E;   /* Elevated 1 */
+  --surface2:  #2C2C2E;   /* Elevated 2 */
+  --surface3:  #3A3A3C;   /* Elevated 3 */
 
-  --blue: #3b82f6;
-  --blue-light: #3b82f622;
-  --orange: #22d3ee;
+  --border:        rgba(255, 255, 255, 0.08);
+  --border-strong: rgba(255, 255, 255, 0.18);
+
+  --brand:       #3b82f6;
+  --brand-600:   #60a5fa;
+  --brand-700:   #2563eb;
+  --brand-bright:#60a5fa;
+  --brand-grad:  linear-gradient(135deg, #1e3a8a 0%, #2563eb 55%, #3b82f6 100%);
+  --brand-tint:  #3b82f622;
+
+  --blue:         #3b82f6;
+  --blue-light:   #3b82f622;
+  --orange:       #22d3ee;
   --orange-light: #22d3ee22;
-  --green: #10b981;
-  --red: #f87171;
-  --amber: #fbbf24;
-  --purple: #818cf8;
+  --green:        #34d399;
+  --red:          #f87171;
+  --amber:        #fbbf24;
+  --purple:       #a78bfa;
 
-  --text: #e8eefb;
-  --muted: #8395b5;
-  --muted2: #b3c1dd;
+  --text:   #FFFFFF;
+  --muted:  #8E8E93;    /* Secondary Label dark */
+  --muted2: #AEAEB2;    /* Tertiary Label dark */
 
-  --shadow: 0 1px 3px #00000055;
-  --shadow-md: 0 8px 22px #00000066;
-  --shadow-lg: 0 18px 44px #00000077;
-  --ring: 0 0 0 3px #3b82f644;
+  --shadow:    0 1px 3px rgba(0,0,0,0.50);
+  --shadow-md: 0 4px 12px rgba(0,0,0,0.60);
+  --shadow-lg: 0 10px 32px rgba(0,0,0,0.70);
+  --shadow-xl: 0 20px 50px rgba(0,0,0,0.80);
+  --ring:      0 0 0 3px rgba(96,165,250,0.30);
 }
 
-html { transition: background .25s ease; }
-body, .theme-tr,
-[style*="--surface"], [style*="var(--bg)"] {
-  transition: background-color .25s ease, border-color .25s ease, color .25s ease;
+/* ── Transiciones de tema ── */
+html { transition: background .2s ease; }
+body, .theme-tr {
+  transition: background-color .2s ease, border-color .2s ease, color .2s ease;
 }
 
+/* ── Reset base ── */
 * { box-sizing: border-box; margin: 0; padding: 0; }
 
 body {
@@ -86,75 +112,101 @@ body {
   font-family: var(--sans);
   min-height: 100vh;
   -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  font-feature-settings: "kern" 1, "liga" 1;
 }
 
+/* ── Scrollbar minimal ── */
 ::-webkit-scrollbar { width: 6px; height: 6px; }
-::-webkit-scrollbar-track { background: var(--surface2); }
-::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border-strong); border-radius: 3px; }
 ::-webkit-scrollbar-thumb:hover { background: var(--muted); }
 
+/* ── Animaciones ── */
 @keyframes pulse-dot { 0%,100%{opacity:1} 50%{opacity:.4} }
-@keyframes badge-pop { from{transform:scale(.5);opacity:0} to{transform:scale(1);opacity:1} }
-@keyframes fade-in   { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:translateY(0)} }
-@keyframes slide-in  { from{opacity:0;transform:translateX(-12px)} to{opacity:1;transform:translateX(0)} }
+@keyframes badge-pop { from{transform:scale(.7);opacity:0} to{transform:scale(1);opacity:1} }
+@keyframes fade-in   { from{opacity:0;transform:translateY(6px)} to{opacity:1;transform:translateY(0)} }
+@keyframes slide-in  { from{opacity:0;transform:translateX(-10px)} to{opacity:1;transform:translateX(0)} }
+@keyframes shimmer   { 100% { transform: translateX(100%); } }
+@keyframes fade-up   { from{opacity:0;transform:translateY(10px)} to{opacity:1;transform:translateY(0)} }
+@keyframes scale-in  { from{opacity:0;transform:scale(.95)} to{opacity:1;transform:scale(1)} }
 
 .animate-pulse-dot { animation: pulse-dot 1.2s ease-in-out infinite; }
-.animate-badge-pop { animation: badge-pop .3s ease; }
-.animate-fade-in   { animation: fade-in .4s ease both; }
-.animate-slide-in  { animation: slide-in .3s ease both; }
+.animate-badge-pop { animation: badge-pop .25s cubic-bezier(.34,1.56,.64,1); }
+.animate-fade-in   { animation: fade-in .35s cubic-bezier(.16,1,.3,1) both; }
+.animate-slide-in  { animation: slide-in .3s cubic-bezier(.16,1,.3,1) both; }
+.animate-scale-in  { animation: scale-in .25s cubic-bezier(.16,1,.3,1) both; }
 
-/* Fila de tabla clickeable */
-.hover-row { transition: background-color .12s ease; }
+/* ── Filas de tabla ── */
+.hover-row { transition: background-color .1s ease; }
 .hover-row:hover { background: var(--surface2); }
 
-/* ── Lenguaje visual Grupo Ambiente ── */
-.lift { transition: transform .2s ease, box-shadow .2s ease, border-color .2s ease; }
-.lift:hover { transform: translateY(-4px); box-shadow: var(--shadow-lg); }
+/* ── Efectos de elevación Apple ── */
+.lift {
+  transition: transform .2s cubic-bezier(.16,1,.3,1),
+              box-shadow .2s cubic-bezier(.16,1,.3,1);
+}
+.lift:hover {
+  transform: translateY(-3px) scale(1.005);
+  box-shadow: var(--shadow-lg);
+}
 
+/* ── Texto degradado de marca ── */
 .brand-text {
   background: var(--brand-grad);
   -webkit-background-clip: text; background-clip: text;
   -webkit-text-fill-color: transparent; color: transparent;
 }
 
-/* Logo: inversión a blanco en fondos oscuros */
+/* ── Logo inversión en fondos oscuros ── */
 .logo-invert { filter: invert(1) brightness(1.85); }
 html[data-theme="dark"] .logo-auto { filter: invert(1) brightness(1.85); }
 
-/* Skeletons de carga */
-.skeleton { position: relative; overflow: hidden; background: var(--surface2); border-radius: 8px; }
+/* ── Skeletons shimmer ── */
+.skeleton {
+  position: relative; overflow: hidden;
+  background: var(--surface2); border-radius: var(--radius-sm);
+}
 .skeleton::after {
   content: ""; position: absolute; inset: 0; transform: translateX(-100%);
-  background: linear-gradient(90deg, transparent, #ffffff35, transparent);
-  animation: shimmer 1.3s infinite;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,.5), transparent);
+  animation: shimmer 1.4s ease-in-out infinite;
 }
-html[data-theme="dark"] .skeleton::after { background: linear-gradient(90deg, transparent, #ffffff10, transparent); }
-@keyframes shimmer { 100% { transform: translateX(100%); } }
+html[data-theme="dark"] .skeleton::after {
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,.07), transparent);
+}
 
-/* Entrada escalonada */
-@keyframes fade-up { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
-.fade-up { animation: fade-up .45s cubic-bezier(.2,.7,.3,1) both; }
-.stagger > * { animation: fade-up .45s cubic-bezier(.2,.7,.3,1) both; }
-.stagger > *:nth-child(2) { animation-delay: .06s; }
-.stagger > *:nth-child(3) { animation-delay: .12s; }
-.stagger > *:nth-child(4) { animation-delay: .18s; }
-.stagger > *:nth-child(5) { animation-delay: .24s; }
-.stagger > *:nth-child(6) { animation-delay: .30s; }
+/* ── Entrada escalonada ── */
+.fade-up { animation: fade-up .4s cubic-bezier(.16,1,.3,1) both; }
+.stagger > * { animation: fade-up .4s cubic-bezier(.16,1,.3,1) both; }
+.stagger > *:nth-child(2) { animation-delay: .05s; }
+.stagger > *:nth-child(3) { animation-delay: .10s; }
+.stagger > *:nth-child(4) { animation-delay: .15s; }
+.stagger > *:nth-child(5) { animation-delay: .20s; }
+.stagger > *:nth-child(6) { animation-delay: .25s; }
 
 @media (prefers-reduced-motion: reduce) {
-  .fade-up, .stagger > *, .animate-fade-in, .animate-slide-in { animation: none !important; }
-  .lift:hover { transform: none; }
+  .fade-up, .stagger > *, .animate-fade-in, .animate-slide-in,
+  .animate-scale-in, .lift:hover { animation: none !important; transform: none !important; }
 }
 
-/* ── Responsive ── */
-/* Grids de 2 columnas que se apilan en móvil */
+/* ── Layout ── */
 .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
 @media (max-width: 760px) {
   .grid-2 { grid-template-columns: 1fr; gap: 0.85rem; }
 }
 
-/* Padding del contenido principal del dashboard */
-.dash-main { padding: 1.5rem; }
+.dash-main { padding: 1.5rem 1.75rem; }
 @media (max-width: 760px) {
-  .dash-main { padding: 1rem 0.85rem 2rem; }
+  .dash-main { padding: 1rem 1rem 2rem; }
+}
+
+/* ── Glass effect (Header, Modal overlays) ── */
+.glass {
+  background: rgba(255,255,255,0.82);
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+}
+html[data-theme="dark"] .glass {
+  background: rgba(28,28,30,0.85);
 }

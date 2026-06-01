@@ -8,16 +8,17 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: "#0a1326",
+  themeColor: "#0c1a3a",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="es" className="h-full">
       <head>
+        {/* Archivo solo para el wordmark del logo */}
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link
-          href="https://fonts.googleapis.com/css2?family=Archivo:wght@600;700;800&family=DM+Mono:wght@400;500&family=Syne:wght@400;600;700;800&display=swap"
+          href="https://fonts.googleapis.com/css2?family=Archivo:wght@700;800&display=swap"
           rel="stylesheet"
         />
         {/* Aplica el tema guardado antes del primer paint (evita parpadeo) */}
