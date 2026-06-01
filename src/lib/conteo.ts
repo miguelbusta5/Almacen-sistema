@@ -180,8 +180,11 @@ export function detectarColumnas(headers: string[]): CsvColMap | null {
   };
 }
 
-// auto_fill si el pasillo NO es "Almacenamiento"
+// Se cuentan físicamente: Recolección y RETIRO.
+// Todo lo demás (Almacenamiento, Etapas salientes, etc.) → auto-fill OK.
 export function esAutoFill(tipoPasillo: string | null): boolean {
-  if (!tipoPasillo) return false;
-  return tipoPasillo.toLowerCase() !== "almacenamiento";
+  if (!tipoPasillo) return true;
+  const t = tipoPasillo.toLowerCase().trim();
+  const esParaContar = t.includes("recolec") || t.includes("retiro");
+  return !esParaContar;
 }

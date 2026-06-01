@@ -360,6 +360,12 @@ export default function ConteoPage() {
           {/* Acciones del ciclo activo */}
           {canManage && (
             <div style={{ display: "flex", gap: 8, marginTop: "0.75rem", flexWrap: "wrap" }}>
+              <button onClick={async () => {
+                const res = await fetch(`/api/conteo/ciclos/${activo.id}/recalcular`, { method: "POST" });
+                const json = await res.json();
+                if (json.success) { await loadCiclos(); showToast(`✓ Recalculado: ${json.pasaronAAutoFill} auto-fill · ${json.pasaronAFisica} físicas`); }
+                else showToast(json.error, true);
+              }} style={{ display: "flex", alignItems: "center", gap: 6, padding: "0.5rem 0.9rem", background: "#f59e0b15", color: "#d97706", border: "1px solid #f59e0b40", borderRadius: 9, fontSize: 12, fontWeight: 700, cursor: "pointer" }}><RefreshCw size={14} />Recalcular auto-fill</button>
               <button onClick={() => { setCicloActivo(activo); setShowImportar(true); }} style={{ display: "flex", alignItems: "center", gap: 6, padding: "0.5rem 0.9rem", background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 9, fontSize: 12, fontWeight: 700, cursor: "pointer", color: "var(--muted2)" }}><Upload size={14} />Reimportar</button>
               <button onClick={() => { setCicloActivo(activo); setShowAsignar(true); }} style={{ display: "flex", alignItems: "center", gap: 6, padding: "0.5rem 0.9rem", background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 9, fontSize: 12, fontWeight: 700, cursor: "pointer", color: "var(--muted2)" }}><Users size={14} />Asignar</button>
               <button onClick={calcularDiferencias} style={{ display: "flex", alignItems: "center", gap: 6, padding: "0.5rem 0.9rem", background: "#7c3aed15", color: "#7c3aed", border: "1px solid #7c3aed40", borderRadius: 9, fontSize: 12, fontWeight: 700, cursor: "pointer" }}><Calculator size={14} />Calcular diferencias</button>
