@@ -6,6 +6,7 @@ import { z } from "zod";
 const updateSchema = z.object({
   ubicacion: z.string().min(1).optional(),
   estado: z.enum(["PENDIENTE DESPACHO", "DESPACHADO"]).optional(),
+  tipo: z.enum(["COMUN", "ECOMMERCE"]).optional(),
   fechaDespacho: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable().optional(),
   nota: z.string().nullable().optional(),
 });
@@ -32,6 +33,7 @@ export async function PUT(
     data: {
       ...(d.ubicacion !== undefined && { ubicacion: d.ubicacion }),
       ...(d.estado !== undefined && { estado: d.estado }),
+      ...(d.tipo !== undefined && { tipo: d.tipo }),
       fecha_despacho: esDesp
         ? new Date((d.fechaDespacho || new Date().toISOString().slice(0, 10)) + "T00:00:00")
         : d.estado === "PENDIENTE DESPACHO"

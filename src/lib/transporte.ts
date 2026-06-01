@@ -4,6 +4,8 @@
 
 export type EstadoTransporte = "PENDIENTE DESPACHO" | "DESPACHADO";
 
+export type TipoGuardado = "COMUN" | "ECOMMERCE";
+
 export interface Guardado {
   id: number;
   clientId: string;
@@ -11,6 +13,7 @@ export interface Guardado {
   documento: string;
   ubicacion: string;
   estado: EstadoTransporte;
+  tipo: TipoGuardado;
   fechaDespacho: string | null; // YYYY-MM-DD
   nota: string | null;
 }

@@ -11,7 +11,7 @@ import { Doughnut, Bar } from "react-chartjs-2";
 import {
   Truck, Plus, LayoutDashboard, List, AlertTriangle, Pencil, Trash2, X, CheckCircle2, Clock, Calendar, MapPin, FileText,
 } from "lucide-react";
-import { Guardado, fmtCOP, fmtFecha, todayISO, urgencia, tieneAlerta, parseEntrega } from "@/lib/transporte";
+import { Guardado, TipoGuardado, fmtCOP, fmtFecha, todayISO, urgencia, tieneAlerta, parseEntrega } from "@/lib/transporte";
 import { calcAlmacenaje, TARIFA_ALM } from "@/lib/almacenaje";
 
 ChartJS.register(ArcElement, BarElement, CategoryScale, LinearScale, Tooltip, Legend);
@@ -29,6 +29,7 @@ export default function TransportePage() {
   const [toast, setToast] = useState<{ msg: string; err?: boolean } | null>(null);
   const [fq, setFq] = useState("");
   const [fEstado, setFEstado] = useState("");
+  const [fTipo, setFTipo] = useState("");
   const [fAlerta, setFAlerta] = useState(false);
   const [detail, setDetail] = useState<Guardado | null>(null);
   const [editing, setEditing] = useState<Guardado | null>(null);
@@ -61,8 +62,8 @@ export default function TransportePage() {
     } catch { showToast("Error de conexión", true); }
   }
 
-  function goFilter(opts: { estado?: string; alerta?: boolean }) {
-    setFEstado(opts.estado || ""); setFAlerta(!!opts.alerta); setFq(""); setView("lista");
+  function goFilter(opts: { estado?: string; alerta?: boolean; tipo?: string }) {
+    setFEstado(opts.estado || ""); setFTipo(opts.tipo || ""); setFAlerta(!!opts.alerta); setFq(""); setView("lista");
   }
 
   const kpis = useMemo(() => {
@@ -97,10 +98,11 @@ export default function TransportePage() {
     return guardados.filter(g => {
       if (q && !g.documento.toLowerCase().includes(q) && !g.ubicacion.toLowerCase().includes(q)) return false;
       if (fEstado && g.estado !== fEstado) return false;
+      if (fTipo && g.tipo !== fTipo) return false;
       if (fAlerta && !tieneAlerta(g)) return false;
       return true;
     });
-  }, [guardados, fq, fEstado, fAlerta]);
+  }, [guardados, fq, fEstado, fTipo, fAlerta]);
 
   return (
     <div className="animate-fade-in">
@@ -122,7 +124,7 @@ export default function TransportePage() {
       {loading ? <Loading /> : (
         <>
           {view === "dashboard" && <Dashboard kpis={kpis} donutData={donutData} barData={barData} guardados={guardados} onFilter={goFilter} onDetail={setDetail} />}
-          {view === "lista" && <Lista data={filtered} total={guardados.length} fq={fq} setFq={setFq} fEstado={fEstado} setFEstado={setFEstado} fAlerta={fAlerta} setFAlerta={setFAlerta} onDetail={setDetail} onEdit={setEditing} onDelete={setDeleting} canEdit={canEdit} canDelete={canDelete} onDespachar={handleDespachar} onEditarFecha={setEditandoFecha} />}
+          {view === "lista" && <Lista data={filtered} total={guardados.length} fq={fq} setFq={setFq} fEstado={fEstado} setFEstado={setFEstado} fTipo={fTipo} setFTipo={setFTipo} fAlerta={fAlerta} setFAlerta={setFAlerta} onDetail={setDetail} onEdit={setEditing} onDelete={setDeleting} canEdit={canEdit} canDelete={canDelete} onDespachar={handleDespachar} onEditarFecha={setEditandoFecha} />}
           {view === "nuevo" && <FormNuevo onSaved={() => { load(); setView("lista"); showToast("Guardado registrado ✓"); }} onError={m => showToast(m, true)} />}
         </>
       )}
@@ -250,8 +252,14 @@ function ChartCard({ title, children }: { title: string; children: React.ReactNo
   return <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 14, padding: "1.25rem 1.4rem", marginBottom: "1rem" }}><div style={{ fontSize: 12, fontWeight: 700, letterSpacing: ".06em", textTransform: "uppercase", color: "var(--muted2)", marginBottom: "1rem" }}>{title}</div>{children}</div>;
 }
 
-function Lista({ data, total, fq, setFq, fEstado, setFEstado, fAlerta, setFAlerta, onDetail, onEdit, onDelete, canEdit, canDelete, onDespachar, onEditarFecha }: {
+function TipoBadge({ tipo }: { tipo: TipoGuardado }) {
+  const isEC = tipo === "ECOMMERCE";
+  return <span style={{ fontSize: 10, fontWeight: 700, padding: "2px 7px", borderRadius: 20, background: isEC ? "#7c3aed18" : "var(--surface2)", color: isEC ? "#7c3aed" : "var(--muted2)", border: `1px solid ${isEC ? "#7c3aed30" : "var(--border)"}` }}>{isEC ? "Ecommerce" : "Común"}</span>;
+}
+
+function Lista({ data, total, fq, setFq, fEstado, setFEstado, fTipo, setFTipo, fAlerta, setFAlerta, onDetail, onEdit, onDelete, canEdit, canDelete, onDespachar, onEditarFecha }: {
   data: Guardado[]; total: number; fq: string; setFq: (v: string) => void; fEstado: string; setFEstado: (v: string) => void;
+  fTipo: string; setFTipo: (v: string) => void;
   fAlerta: boolean; setFAlerta: (v: boolean) => void; onDetail: (g: Guardado) => void; onEdit: (g: Guardado) => void; onDelete: (g: Guardado) => void; canEdit: boolean; canDelete: boolean;
   onDespachar: (g: Guardado) => void; onEditarFecha: (g: Guardado) => void;
 }) {
@@ -269,6 +277,7 @@ function Lista({ data, total, fq, setFq, fEstado, setFEstado, fAlerta, setFAlert
         case "documento":  return dir * a.documento.localeCompare(b.documento);
         case "ubicacion":  return dir * a.ubicacion.localeCompare(b.ubicacion);
         case "estado":     return dir * a.estado.localeCompare(b.estado);
+        case "tipo":       return dir * a.tipo.localeCompare(b.tipo);
         case "almacenaje": {
           const ca = calcAlmacenaje(a.fecha, a.estado === "DESPACHADO" ? a.fechaDespacho : null);
           const cb = calcAlmacenaje(b.fecha, b.estado === "DESPACHADO" ? b.fechaDespacho : null);
@@ -297,6 +306,9 @@ function Lista({ data, total, fq, setFq, fEstado, setFEstado, fAlerta, setFAlert
         <select value={fEstado} onChange={e => setFEstado(e.target.value)} style={{ border: "1px solid var(--border)", borderRadius: 8, padding: "0.45rem 0.85rem", fontSize: 12, fontFamily: "var(--mono)", outline: "none" }}>
           <option value="">Todos los estados</option><option value="PENDIENTE DESPACHO">Pendiente despacho</option><option value="DESPACHADO">Despachado</option>
         </select>
+        <select value={fTipo} onChange={e => setFTipo(e.target.value)} style={{ border: "1px solid var(--border)", borderRadius: 8, padding: "0.45rem 0.85rem", fontSize: 12, fontFamily: "var(--mono)", outline: "none" }}>
+          <option value="">Todos los tipos</option><option value="COMUN">Común</option><option value="ECOMMERCE">Ecommerce</option>
+        </select>
         <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, color: "var(--muted2)", cursor: "pointer" }}>
           <input type="checkbox" checked={fAlerta} onChange={e => setFAlerta(e.target.checked)} /> Solo con alerta
         </label>
@@ -306,7 +318,7 @@ function Lista({ data, total, fq, setFq, fEstado, setFEstado, fAlerta, setFAlert
         <div style={{ overflowX: "auto" }}>
           <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
             <thead><tr style={{ borderBottom: "1px solid var(--border)", background: "var(--surface2)" }}>
-              <Th col="fecha" label="Fecha" /><Th col="documento" label="Documento" /><Th col="ubicacion" label="Ubicación" /><Th col="estado" label="Estado" /><Th col="almacenaje" label="Almacenaje" /><Th col="alerta" label="Alerta" />
+              <Th col="fecha" label="Fecha" /><Th col="documento" label="Documento" /><Th col="ubicacion" label="Ubicación" /><Th col="estado" label="Estado" /><Th col="tipo" label="Tipo" /><Th col="almacenaje" label="Almacenaje" /><Th col="alerta" label="Alerta" />
               <th style={{ padding: "0.6rem 0.75rem" }} />
             </tr></thead>
             <tbody>
@@ -330,6 +342,7 @@ function Fila({ g, onDetail, onEdit, onDelete, canEdit, canDelete, onDespachar, 
       <td style={{ padding: "0.6rem 0.75rem", fontFamily: "var(--mono)", fontWeight: 600 }}>{g.documento}</td>
       <td style={{ padding: "0.6rem 0.75rem" }}>{g.ubicacion}</td>
       <td style={{ padding: "0.6rem 0.75rem" }}><span style={{ fontSize: 11, fontWeight: 700, padding: "2px 8px", borderRadius: 20, background: esDesp ? "#ecfdf5" : "#fffbeb", color: esDesp ? "#10b981" : "#f59e0b" }}>{esDesp ? "Despachado" : "Pendiente"}</span></td>
+      <td style={{ padding: "0.6rem 0.75rem" }}><TipoBadge tipo={g.tipo} /></td>
       <td style={{ padding: "0.6rem 0.75rem", whiteSpace: "nowrap" }}>
         {alm.fase === "gracia" ? <span style={{ fontSize: 11, color: "#10b981", fontWeight: 700 }}>EN GRACIA</span>
           : alm.meses === 0 ? <span style={{ fontSize: 11, color: "#f59e0b", fontWeight: 700 }}>Día {alm.diasEnPeriodo}/30</span>
@@ -372,6 +385,7 @@ function ModalDetalle({ g, onClose, onEdit, canEdit }: { g: Guardado; onClose: (
         <MiniInfo icon={<Calendar size={12} />} label="Ingreso">{fmtFecha(g.fecha)}</MiniInfo>
         <MiniInfo icon={<Clock size={12} />} label="En custodia">{diasGuardado} días</MiniInfo>
         <MiniInfo icon={<MapPin size={12} />} label="Estado"><span style={{ fontSize: 11, fontWeight: 700, padding: "1px 7px", borderRadius: 20, background: esDesp ? "#ecfdf5" : "#fffbeb", color: esDesp ? "#10b981" : "#f59e0b" }}>{esDesp ? "Despachado" : "Pendiente"}</span></MiniInfo>
+        <MiniInfo icon={<Truck size={12} />} label="Tipo"><TipoBadge tipo={g.tipo} /></MiniInfo>
         <MiniInfo icon={<Calendar size={12} />} label={esDesp ? "Despacho" : "Entrega (nota)"}>{esDesp ? fmtFecha(g.fechaDespacho) : entrega ? fmtFecha(entrega) : "—"}</MiniInfo>
       </div>
 
@@ -401,13 +415,15 @@ function MiniInfo({ icon, label, children }: { icon?: React.ReactNode; label: st
 
 function FormNuevo({ onSaved, onError }: { onSaved: () => void; onError: (m: string) => void }) {
   const [fecha, setFecha] = useState(todayISO()); const [documento, setDoc] = useState(""); const [ubicacion, setUbic] = useState("");
-  const [estado, setEstado] = useState<"PENDIENTE DESPACHO" | "DESPACHADO">("PENDIENTE DESPACHO"); const [fechaDespacho, setFDesp] = useState(""); const [nota, setNota] = useState(""); const [saving, setSaving] = useState(false);
+  const [estado, setEstado] = useState<"PENDIENTE DESPACHO" | "DESPACHADO">("PENDIENTE DESPACHO");
+  const [tipo, setTipo] = useState<"COMUN" | "ECOMMERCE">("COMUN");
+  const [fechaDespacho, setFDesp] = useState(""); const [nota, setNota] = useState(""); const [saving, setSaving] = useState(false);
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     if (!fecha || !documento.trim() || !ubicacion.trim()) { onError("Completa los campos obligatorios (*)"); return; }
     setSaving(true);
     try {
-      const res = await fetch("/api/transporte", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ fecha, documento: documento.trim(), ubicacion: ubicacion.trim(), estado, fechaDespacho: estado === "DESPACHADO" ? (fechaDespacho || todayISO()) : null, nota: nota.trim() || null }) });
+      const res = await fetch("/api/transporte", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ fecha, documento: documento.trim(), ubicacion: ubicacion.trim(), estado, tipo, fechaDespacho: estado === "DESPACHADO" ? (fechaDespacho || todayISO()) : null, nota: nota.trim() || null }) });
       const json = await res.json();
       if (json.success) onSaved(); else onError(json.error || "Error al guardar");
     } catch { onError("Error de conexión"); } finally { setSaving(false); }
@@ -419,6 +435,7 @@ function FormNuevo({ onSaved, onError }: { onSaved: () => void; onError: (m: str
         <Field label="Fecha *"><input type="date" value={fecha} onChange={e => setFecha(e.target.value)} style={inp} /></Field>
         <Field label="N° Documento *"><input value={documento} onChange={e => setDoc(e.target.value)} placeholder="Factura / remisión" style={inp} /></Field>
         <Field label="Ubicación *" full><input value={ubicacion} onChange={e => setUbic(e.target.value)} placeholder="Bodega, estante…" style={inp} /></Field>
+        <Field label="Tipo"><select value={tipo} onChange={e => setTipo(e.target.value as "COMUN" | "ECOMMERCE")} style={inp}><option value="COMUN">Común</option><option value="ECOMMERCE">Ecommerce</option></select></Field>
         <Field label="Estado"><select value={estado} onChange={e => setEstado(e.target.value as any)} style={inp}><option value="PENDIENTE DESPACHO">Pendiente despacho</option><option value="DESPACHADO">Despachado</option></select></Field>
         {estado === "DESPACHADO" && <Field label="Fecha despacho"><input type="date" value={fechaDespacho} onChange={e => setFDesp(e.target.value)} style={inp} /></Field>}
         <Field label="Nota (incluye fecha de entrega ej. 15/06/2026)" full><textarea value={nota} onChange={e => setNota(e.target.value)} rows={3} style={{ ...inp, resize: "vertical" }} /></Field>
@@ -434,11 +451,12 @@ const inp: React.CSSProperties = { border: "1px solid var(--border)", borderRadi
 
 function ModalEditar({ g, onClose, onSaved, onError }: { g: Guardado; onClose: () => void; onSaved: () => void; onError: (m: string) => void }) {
   const [ubicacion, setUbic] = useState(g.ubicacion); const [estado, setEstado] = useState(g.estado);
+  const [tipo, setTipo] = useState<"COMUN" | "ECOMMERCE">(g.tipo);
   const [fechaDespacho, setFDesp] = useState(g.fechaDespacho || ""); const [nota, setNota] = useState(g.nota || ""); const [saving, setSaving] = useState(false);
   async function save(forceDespacho?: boolean) {
     setSaving(true); const est = forceDespacho ? "DESPACHADO" : estado;
     try {
-      const res = await fetch(`/api/transporte/${encodeURIComponent(g.clientId)}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ubicacion: ubicacion.trim(), estado: est, fechaDespacho: est === "DESPACHADO" ? (fechaDespacho || todayISO()) : null, nota: nota.trim() || null }) });
+      const res = await fetch(`/api/transporte/${encodeURIComponent(g.clientId)}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ubicacion: ubicacion.trim(), estado: est, tipo, fechaDespacho: est === "DESPACHADO" ? (fechaDespacho || todayISO()) : null, nota: nota.trim() || null }) });
       const json = await res.json();
       if (json.success) onSaved(); else onError(json.error || "Error al actualizar");
     } catch { onError("Error de conexión"); } finally { setSaving(false); }
@@ -447,6 +465,7 @@ function ModalEditar({ g, onClose, onSaved, onError }: { g: Guardado; onClose: (
     <Modal onClose={onClose} title="Editar guardado" sub={`${g.documento} · ${g.ubicacion}`}>
       <div style={{ display: "flex", flexDirection: "column", gap: "0.9rem" }}>
         <Field label="Ubicación"><input value={ubicacion} onChange={e => setUbic(e.target.value)} style={inp} /></Field>
+        <Field label="Tipo"><select value={tipo} onChange={e => setTipo(e.target.value as "COMUN" | "ECOMMERCE")} style={inp}><option value="COMUN">Común</option><option value="ECOMMERCE">Ecommerce</option></select></Field>
         <Field label="Estado"><select value={estado} onChange={e => setEstado(e.target.value as any)} style={inp}><option value="PENDIENTE DESPACHO">Pendiente despacho</option><option value="DESPACHADO">Despachado</option></select></Field>
         {estado === "DESPACHADO" && <Field label="Fecha despacho"><input type="date" value={fechaDespacho} onChange={e => setFDesp(e.target.value)} style={inp} /></Field>}
         <Field label="Nota"><textarea value={nota} onChange={e => setNota(e.target.value)} rows={2} style={{ ...inp, resize: "vertical" }} /></Field>

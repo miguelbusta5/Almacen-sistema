@@ -3,24 +3,16 @@ import { requireAuth, requireCan } from "@/lib/authz";
 import { prisma } from "@/lib/prisma";
 import { z } from "zod";
 
-// Mapea fila de Prisma → JSON limpio para el cliente
 function mapRow(r: {
-  id: number;
-  client_id: string;
-  fecha: Date;
-  documento: string;
-  ubicacion: string;
-  estado: string;
-  fecha_despacho: Date | null;
-  nota: string | null;
+  id: number; client_id: string; fecha: Date; documento: string;
+  ubicacion: string; estado: string; tipo?: string;
+  fecha_despacho: Date | null; nota: string | null;
 }) {
   return {
-    id: r.id,
-    clientId: r.client_id,
+    id: r.id, clientId: r.client_id,
     fecha: r.fecha.toISOString().slice(0, 10),
-    documento: r.documento,
-    ubicacion: r.ubicacion,
-    estado: r.estado,
+    documento: r.documento, ubicacion: r.ubicacion,
+    estado: r.estado, tipo: (r.tipo ?? "COMUN"),
     fechaDespacho: r.fecha_despacho ? r.fecha_despacho.toISOString().slice(0, 10) : null,
     nota: r.nota,
   };
@@ -31,58 +23,38 @@ const createSchema = z.object({
   documento: z.string().min(1, "Documento requerido"),
   ubicacion: z.string().min(1, "Ubicación requerida"),
   estado: z.enum(["PENDIENTE DESPACHO", "DESPACHADO"]).default("PENDIENTE DESPACHO"),
+  tipo: z.enum(["COMUN", "ECOMMERCE"]).default("COMUN"),
   fechaDespacho: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable().optional(),
   nota: z.string().nullable().optional(),
 });
 
-// GET /api/transporte — lista todos los guardados
 export async function GET() {
   const actor = await requireAuth();
   if (actor instanceof NextResponse) return actor;
-
-  const rows = await prisma.transporteGuardado.findMany({
-    orderBy: [{ fecha: "desc" }, { created_at: "desc" }],
-  });
-
+  const rows = await prisma.transporteGuardado.findMany({ orderBy: [{ fecha: "desc" }, { created_at: "desc" }] });
   return NextResponse.json({ success: true, data: rows.map(mapRow) });
 }
 
-// POST /api/transporte — crea un nuevo guardado
 export async function POST(req: NextRequest) {
   const actor = await requireCan("create");
   if (actor instanceof NextResponse) return actor;
-
   const body = await req.json();
   const parsed = createSchema.safeParse(body);
-  if (!parsed.success) {
-    return NextResponse.json({ error: parsed.error.issues[0].message }, { status: 400 });
-  }
+  if (!parsed.success) return NextResponse.json({ error: parsed.error.issues[0].message }, { status: 400 });
   const d = parsed.data;
-
   const clientId = "t" + Date.now() + Math.random().toString(36).slice(2, 6);
   const esDesp = d.estado === "DESPACHADO";
-
   const row = await prisma.transporteGuardado.create({
     data: {
-      client_id: clientId,
-      fecha: new Date(d.fecha + "T00:00:00"),
-      documento: d.documento,
-      ubicacion: d.ubicacion,
-      estado: d.estado,
+      client_id: clientId, fecha: new Date(d.fecha + "T00:00:00"),
+      documento: d.documento, ubicacion: d.ubicacion,
+      estado: d.estado, tipo: d.tipo,
       fecha_despacho: esDesp && d.fechaDespacho ? new Date(d.fechaDespacho + "T00:00:00") : null,
       nota: d.nota || null,
     },
   });
-
   await prisma.activityLog.create({
-    data: {
-      userId: actor.id,
-      action: "CREATE",
-      module: "transporte",
-      recordId: clientId,
-      details: `${d.documento} · ${d.ubicacion}`,
-    },
+    data: { userId: actor.id, action: "CREATE", module: "transporte", recordId: clientId, details: `${d.documento} · ${d.ubicacion} · ${d.tipo}` },
   }).catch(() => {});
-
   return NextResponse.json({ success: true, data: mapRow(row) }, { status: 201 });
 }
