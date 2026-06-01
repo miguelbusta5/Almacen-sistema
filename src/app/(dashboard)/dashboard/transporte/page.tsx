@@ -33,6 +33,7 @@ export default function TransportePage() {
   const [detail, setDetail] = useState<Guardado | null>(null);
   const [editing, setEditing] = useState<Guardado | null>(null);
   const [deleting, setDeleting] = useState<Guardado | null>(null);
+  const [editandoFecha, setEditandoFecha] = useState<Guardado | null>(null);
 
   async function load() {
     setLoading(true);
@@ -45,6 +46,21 @@ export default function TransportePage() {
   }
   useEffect(() => { load(); }, []);
   function showToast(msg: string, err = false) { setToast({ msg, err }); setTimeout(() => setToast(null), 3000); }
+
+  async function handleDespachar(g: Guardado) {
+    try {
+      const res = await fetch(`/api/transporte/${encodeURIComponent(g.clientId)}/acciones`, {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ tipo: "despachar" }),
+      });
+      const json = await res.json();
+      if (json.success) {
+        setGuardados((prev) => prev.map((x) => x.clientId === g.clientId ? { ...x, estado: "DESPACHADO" as const, fechaDespacho: new Date().toISOString().slice(0, 10) } : x));
+        showToast("Marcado como enviado ✓");
+      } else showToast(json.error || "Error", true);
+    } catch { showToast("Error de conexión", true); }
+  }
+
   function goFilter(opts: { estado?: string; alerta?: boolean }) {
     setFEstado(opts.estado || ""); setFAlerta(!!opts.alerta); setFq(""); setView("lista");
   }
@@ -106,7 +122,7 @@ export default function TransportePage() {
       {loading ? <Loading /> : (
         <>
           {view === "dashboard" && <Dashboard kpis={kpis} donutData={donutData} barData={barData} guardados={guardados} onFilter={goFilter} onDetail={setDetail} />}
-          {view === "lista" && <Lista data={filtered} total={guardados.length} fq={fq} setFq={setFq} fEstado={fEstado} setFEstado={setFEstado} fAlerta={fAlerta} setFAlerta={setFAlerta} onDetail={setDetail} onEdit={setEditing} onDelete={setDeleting} canEdit={canEdit} canDelete={canDelete} />}
+          {view === "lista" && <Lista data={filtered} total={guardados.length} fq={fq} setFq={setFq} fEstado={fEstado} setFEstado={setFEstado} fAlerta={fAlerta} setFAlerta={setFAlerta} onDetail={setDetail} onEdit={setEditing} onDelete={setDeleting} canEdit={canEdit} canDelete={canDelete} onDespachar={handleDespachar} onEditarFecha={setEditandoFecha} />}
           {view === "nuevo" && <FormNuevo onSaved={() => { load(); setView("lista"); showToast("Guardado registrado ✓"); }} onError={m => showToast(m, true)} />}
         </>
       )}
@@ -115,6 +131,18 @@ export default function TransportePage() {
       {editing && <ModalEditar g={editing} onClose={() => setEditing(null)} onSaved={() => { setEditing(null); load(); showToast("Guardado actualizado ✓"); }} onError={m => showToast(m, true)} />}
       {deleting && <ModalBorrar g={deleting} onClose={() => setDeleting(null)} onDeleted={() => { setDeleting(null); load(); showToast("Registro eliminado"); }} onError={m => showToast(m, true)} />}
 
+      {editandoFecha && (
+        <ModalFechaEntrega
+          g={editandoFecha}
+          onClose={() => setEditandoFecha(null)}
+          onSaved={(clientId, nota) => {
+            setGuardados((prev) => prev.map((x) => x.clientId === clientId ? { ...x, nota } : x));
+            setEditandoFecha(null);
+            showToast("Fecha de entrega actualizada ✓");
+          }}
+          onError={(m) => showToast(m, true)}
+        />
+      )}
       {toast && <div style={{ position: "fixed", bottom: 24, right: 24, zIndex: 1000, background: toast.err ? "#ef4444" : "#0f172a", color: "#fff", padding: "0.8rem 1.2rem", borderRadius: 10, fontSize: 13, fontWeight: 600, boxShadow: "0 8px 28px #0f172a40" }}>{toast.msg}</div>}
     </div>
   );
@@ -222,9 +250,10 @@ function ChartCard({ title, children }: { title: string; children: React.ReactNo
   return <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 14, padding: "1.25rem 1.4rem", marginBottom: "1rem" }}><div style={{ fontSize: 12, fontWeight: 700, letterSpacing: ".06em", textTransform: "uppercase", color: "var(--muted2)", marginBottom: "1rem" }}>{title}</div>{children}</div>;
 }
 
-function Lista({ data, total, fq, setFq, fEstado, setFEstado, fAlerta, setFAlerta, onDetail, onEdit, onDelete, canEdit, canDelete }: {
+function Lista({ data, total, fq, setFq, fEstado, setFEstado, fAlerta, setFAlerta, onDetail, onEdit, onDelete, canEdit, canDelete, onDespachar, onEditarFecha }: {
   data: Guardado[]; total: number; fq: string; setFq: (v: string) => void; fEstado: string; setFEstado: (v: string) => void;
   fAlerta: boolean; setFAlerta: (v: boolean) => void; onDetail: (g: Guardado) => void; onEdit: (g: Guardado) => void; onDelete: (g: Guardado) => void; canEdit: boolean; canDelete: boolean;
+  onDespachar: (g: Guardado) => void; onEditarFecha: (g: Guardado) => void;
 }) {
   const [sortCol, setSortCol] = useState("fecha");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
@@ -282,7 +311,7 @@ function Lista({ data, total, fq, setFq, fEstado, setFEstado, fAlerta, setFAlert
             </tr></thead>
             <tbody>
               {sorted.length === 0 && <tr><td colSpan={7} style={{ padding: "2rem", textAlign: "center", color: "var(--muted)" }}>Sin resultados</td></tr>}
-              {sorted.map(g => <Fila key={g.clientId} g={g} onDetail={onDetail} onEdit={onEdit} onDelete={onDelete} canEdit={canEdit} canDelete={canDelete} />)}
+              {sorted.map(g => <Fila key={g.clientId} g={g} onDetail={onDetail} onEdit={onEdit} onDelete={onDelete} canEdit={canEdit} canDelete={canDelete} onDespachar={onDespachar} onEditarFecha={onEditarFecha} />)}
             </tbody>
           </table>
         </div>
@@ -291,7 +320,7 @@ function Lista({ data, total, fq, setFq, fEstado, setFEstado, fAlerta, setFAlert
   );
 }
 
-function Fila({ g, onDetail, onEdit, onDelete, canEdit, canDelete }: { g: Guardado; onDetail: (g: Guardado) => void; onEdit: (g: Guardado) => void; onDelete: (g: Guardado) => void; canEdit: boolean; canDelete: boolean }) {
+function Fila({ g, onDetail, onEdit, onDelete, canEdit, canDelete, onDespachar, onEditarFecha }: { g: Guardado; onDetail: (g: Guardado) => void; onEdit: (g: Guardado) => void; onDelete: (g: Guardado) => void; canEdit: boolean; canDelete: boolean; onDespachar: (g: Guardado) => void; onEditarFecha: (g: Guardado) => void; }) {
   const esDesp = g.estado === "DESPACHADO";
   const alm = calcAlmacenaje(g.fecha, esDesp ? g.fechaDespacho : null);
   const u = urgencia(g);
@@ -310,9 +339,10 @@ function Fila({ g, onDetail, onEdit, onDelete, canEdit, canDelete }: { g: Guarda
         {u && u.tipo !== "ok" ? <span style={{ fontSize: 11, fontWeight: 700, color: u.tipo === "vencida" ? "#ef4444" : "#f59e0b" }}>{u.tipo === "vencida" ? `⚠ -${u.dias}d` : `🔔 ${u.dias}d`}</span> : <span style={{ color: "var(--border)" }}>—</span>}
       </td>
       <td style={{ padding: "0.6rem 0.75rem", whiteSpace: "nowrap" }} onClick={e => e.stopPropagation()}>
-        {canEdit && <button onClick={() => onEdit(g)} title="Editar" style={iconBtn}><Pencil size={14} /></button>}
+        {!esDesp && <button onClick={() => onDespachar(g)} title="Marcar como enviado" style={{ ...iconBtn, color: "#10b981", fontSize: 11, padding: "4px 7px", display: "inline-flex", alignItems: "center", gap: 3 }}><CheckCircle2 size={13} />Enviado</button>}
+        <button onClick={() => onEditarFecha(g)} title="Editar fecha de entrega" style={{ ...iconBtn, color: "#0e7490", display: "inline-flex", alignItems: "center" }}><Calendar size={13} /></button>
+        {canEdit && <button onClick={() => onEdit(g)} title="Editar todo" style={iconBtn}><Pencil size={14} /></button>}
         {canDelete && <button onClick={() => onDelete(g)} title="Borrar" style={{ ...iconBtn, color: "#ef4444" }}><Trash2 size={14} /></button>}
-        {!canEdit && !canDelete && <span style={{ color: "var(--muted)", fontSize: 11 }}>—</span>}
       </td>
     </tr>
   );
@@ -448,6 +478,49 @@ function ModalBorrar({ g, onClose, onDeleted, onError }: { g: Guardado; onClose:
         <button onClick={onClose} style={{ flex: 1, padding: "0.65rem", background: "var(--surface2)", color: "var(--muted2)", border: "1px solid var(--border)", borderRadius: 9, fontSize: 13, fontWeight: 700, cursor: "pointer" }}>Cancelar</button>
         <button onClick={confirm} disabled={deleting} style={{ flex: 1, padding: "0.65rem", background: "#ef4444", color: "#fff", border: "none", borderRadius: 9, fontSize: 13, fontWeight: 700, cursor: "pointer" }}>{deleting ? "Borrando…" : "Eliminar"}</button>
       </div>
+    </Modal>
+  );
+}
+
+// ── Modal editar fecha de entrega (accesible a todos los roles) ──
+function ModalFechaEntrega({ g, onClose, onSaved, onError }: {
+  g: Guardado; onClose: () => void;
+  onSaved: (clientId: string, nota: string) => void;
+  onError: (m: string) => void;
+}) {
+  const fechaActual = parseEntrega(g.nota);
+  const [fecha, setFecha] = useState(fechaActual ?? todayISO());
+  const [saving, setSaving] = useState(false);
+
+  async function save(e: React.FormEvent) {
+    e.preventDefault();
+    if (!fecha) { onError("Selecciona una fecha"); return; }
+    setSaving(true);
+    try {
+      const res = await fetch(`/api/transporte/${encodeURIComponent(g.clientId)}/acciones`, {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ tipo: "fecha_entrega", fecha }),
+      });
+      const json = await res.json();
+      if (json.success) onSaved(g.clientId, json.nota);
+      else onError(json.error || "Error");
+    } catch { onError("Error de conexión"); } finally { setSaving(false); }
+  }
+
+  return (
+    <Modal onClose={onClose} title="Fecha de entrega" sub={`${g.documento} · ${g.ubicacion}`}>
+      <form onSubmit={save} style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
+        <div>
+          <label style={{ fontSize: 10, fontWeight: 700, letterSpacing: ".08em", textTransform: "uppercase", color: "var(--muted)", display: "block", marginBottom: 6 }}>
+            Fecha comprometida con el cliente
+          </label>
+          <input type="date" value={fecha} onChange={e => setFecha(e.target.value)} style={{ border: "1px solid var(--border)", borderRadius: 8, padding: "0.6rem 0.85rem", fontSize: 13, fontFamily: "var(--mono)", outline: "none", background: "var(--bg)", width: "100%", boxSizing: "border-box" }} />
+          {g.nota && <p style={{ fontSize: 11, color: "var(--muted)", marginTop: 6 }}>Nota actual: {g.nota}</p>}
+        </div>
+        <button type="submit" disabled={saving} style={{ padding: "0.65rem", background: saving ? "#94a3b8" : "#0e7490", color: "#fff", border: "none", borderRadius: 9, fontSize: 13, fontWeight: 700, cursor: saving ? "not-allowed" : "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
+          <Calendar size={15} />{saving ? "Guardando…" : "Guardar fecha"}
+        </button>
+      </form>
     </Modal>
   );
 }
