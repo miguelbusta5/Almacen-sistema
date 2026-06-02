@@ -123,23 +123,47 @@ prisma/
 
 ---
 
-## 4. Modelo de permisos por rol
+## 4. Modelo de permisos y visibilidad de módulos
 
-| Acción | TRANSPORTISTA | OPERADOR | GERENTE | ADMIN |
-|--------|:---:|:--:|:--:|:--:|
-| Ver dashboards / listas (GET) | ⚠️ solo Mi ruta | ✅ | ✅ | ✅ |
-| Registrar (crear) | ❌ | ✅ | ✅ | ✅ |
-| Editar | ❌ | ❌ | ✅ | ✅ |
+### Roles disponibles (8 total — sesión 5)
+
+| Rol | Descripción |
+|-----|-------------|
+| `ADMIN` | Acceso total |
+| `GERENTE` | Ve todo operativo. Sin configuración de sistema |
+| `SUPERVISOR_INVENTARIO` | Inventario + análisis operacional |
+| `SUPERVISOR_TRANSPORTE` | Guardados + logística + KPIs conductores |
+| `INVENTARIO` | Solo módulos de inventario y conteo |
+| `TRANSPORTE` | Solo guardados, logística y rutas |
+| `OPERADOR` | Rol legado — acceso general a inventario + transporte |
+| `TRANSPORTISTA` | Solo "Mi ruta" (conductor) |
+
+### Visibilidad de módulos por rol (`src/lib/modulePermissions.ts`)
+
+| Módulo | INVENTARIO | TRANSPORTE | SUP_INV | SUP_TRN | GERENTE | ADMIN |
+|--------|:---:|:---:|:---:|:---:|:---:|:---:|
+| Novedades Inventario | ✅ | ❌ | ✅ | ❌ | ✅ | ✅ |
+| Guardados Transporte | ❌ | ✅ | ❌ | ✅ | ✅ | ✅ |
+| Logística | ❌ | ✅ | ❌ | ✅ | ✅ | ✅ |
+| Mi Ruta | ❌ | ✅ | ❌ | ✅ | ✅ | ✅ |
+| Conteo (gestión) | ✅ | ❌ | ✅ | ❌ | ✅ | ✅ |
+| Conteo (contar) | ✅ | ❌ | ✅ | ❌ | ✅ | ✅ |
+| Centro de Control | ❌ | ❌ | ✅ | ✅ | ✅ | ✅ |
+| Usuarios | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ |
+| Auditoría | ❌ | ❌ | ❌ | ❌ | ✅ | ✅ |
+
+El sidebar y el Command Palette filtran automáticamente según el rol. Acceso por URL directa también respeta el sidebar (sin middleware de ruta — se confía en el sidebar).
+
+### Permisos CRUD (`src/lib/permissions.ts`)
+
+| Acción | INV/TRN | SUP_* | GERENTE | ADMIN |
+|--------|:---:|:---:|:---:|:---:|
+| Crear | ✅ | ✅ | ✅ | ✅ |
+| Editar | ❌ | ✅ | ✅ | ✅ |
 | Eliminar | ❌ | ❌ | ❌ | ✅ |
 | Gestionar usuarios | ❌ | ❌ | ❌ | ✅ |
-| Ver auditoría | ❌ | ❌ | ❌ | ✅ |
-| Logística (rutas/flota) | ❌ | ❌ | ✅ | ✅ |
-| Conteo cíclico (admin) | ❌ | ❌ | ❌ | ✅ |
-| GPS / Mi ruta | ✅ | ✅ | ✅ | ✅ |
-
-**TRANSPORTISTA** — rol nuevo (sesión 5). Solo ve `/dashboard/logistica/mi-ruta`. Su sidebar muestra únicamente "Mi ruta". Se vincula a un registro de `transportistas` mediante `userId`. Para crear: Usuarios → Nuevo → rol Transportista + vincular al transportista en Logística → Flota.
-
-Se aplica en **servidor** (`requireCan` en cada API) y en **UI** (botones y secciones ocultos según rol). Para cambiar el modelo, edita la matriz en `src/lib/permissions.ts`.
+| Ver auditoría | ❌ | ❌ | ✅ | ✅ |
+| Logística (crear rutas) | ❌ | ✅ (TRN) | ✅ | ✅ |
 
 ---
 
@@ -247,6 +271,45 @@ Se aplica en **servidor** (`requireCan` en cada API) y en **UI** (botones y secc
 - [⏸] **Módulo Conteo Cíclico** — en PAUSA, en producción pero pendiente de completar. Ver detalle en §5 y pendientes internos abajo.
 - [x] **Pooling de DB optimizado** — `pg.Pool` configurado con `max: 3`, `idleTimeoutMillis: 30s`, `connectionTimeoutMillis: 5s`, `allowExitOnIdle: true`. Soporte de `DATABASE_POOL_URL` para activar PgBouncer sin cambiar código. Ver §3 para activar Railway PgBouncer cuando se necesite.
 - [ ] **Dominio propio** (.com) si se desea.
+- [x] **Sesión 5 — Reestructuración CEDI**: 8 roles, módulo Inventario, inteligencia avanzada, Centro de Control, Ranking operacional.
+
+---
+
+## 6b. Sesión 5 — Detalle de iniciativas (02/06/2026)
+
+### I1 — Roles y visibilidad de módulos
+- 4 nuevos roles en DB: `INVENTARIO`, `TRANSPORTE`, `SUPERVISOR_INVENTARIO`, `SUPERVISOR_TRANSPORTE`
+- `src/lib/modulePermissions.ts` — matriz MODULE_ACCESS + `canSeeModule()` + `getVisibleModules()`
+- Sidebar filtrado dinámicamente por rol (ningún módulo no autorizado aparece)
+- CommandPalette filtrada: Ctrl+K solo muestra acciones/rutas permitidas al rol activo
+- Usuarios: selector de rol con optgroups (Área Inventario / Área Transporte / Gerencia)
+
+### I2 — Novedades Inventario (renombrado de Muebles)
+- Nuevo nombre oficial: **NOVEDADES INVENTARIO** — cubre cualquier SKU del CEDI
+- Nueva ruta: `/dashboard/inventario` (re-exporta la implementación existente)
+- `src/lib/inventario.ts` — alias de `muebles.ts` para imports semánticos
+- Todos los textos UI actualizados: "Muebles" → "Inventario"
+- La ruta `/dashboard/muebles` sigue funcionando (sin romper bookmarks)
+
+### I3 — Inteligencia operacional avanzada
+- **PLU reincidente**: 3+ novedades del mismo PLU en 30 días → `critical`
+- **Zona crítica**: zona con >35% de novedades activas → `warning`
+- **Responsable saturado**: >10 novedades asignadas → `warning`
+- Reglas anteriores: sin clasificar, sin asignar, sin contacto (guardados), entregas fallidas
+
+### I4 — Centro de Control Operacional (`/dashboard/centro-control`)
+- Vista exclusiva GERENTE, ADMIN, SUPERVISOR_* 
+- Consolida: Inventario (novedades, impacto, accuracy), Guardados (costo, proyección, críticos), Conductores (tasa, incidencias, en alerta)
+- Top 5 alertas críticas + top 5 warnings de inteligencia
+- Ranking inventario (responsables) + Ranking conductores en la misma vista
+
+### I5 — Ranking Operacional
+- **Inventario**: tabla de responsables con novedades resueltas / abiertas / tasa %
+- **Conductores**: tabla con tasa de entrega, tiempo prom/parada, incidencias (ya existente desde sesión anterior)
+- Ambos visibles en el Centro de Control
+
+### APIs nuevas (sesión 5)
+- Ninguna nueva — todo consume APIs ya existentes
 
 ---
 
