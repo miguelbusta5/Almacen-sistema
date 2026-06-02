@@ -12,6 +12,7 @@ import {
   BarChart3, FileText,
 } from "lucide-react";
 import { useCommandPalette } from "@/contexts/CommandPaletteContext";
+import { canSeeModule } from "@/lib/modulePermissions";
 
 // ── Tipos ─────────────────────────────────────────────────
 type ResultGroup = "actions" | "navigate" | "muebles" | "transporte";
@@ -82,30 +83,25 @@ export default function CommandPalette() {
 
   // Items estáticos (sin query)
   const staticResults = useMemo((): PaletteResult[] => {
-    const isAdmin  = role === "ADMIN";
-    const isGerente = role === "GERENTE" || isAdmin;
-    const canCreate = role !== "TRANSPORTISTA";
+    const see = (key: Parameters<typeof canSeeModule>[1]) => canSeeModule(role, key);
 
-    const actions: PaletteResult[] = !canCreate ? [] : [
-      { id: "a-novedad",  group: "actions", icon: <Plus size={14} />,        label: "Nueva novedad de inventario",    description: "Registrar diferencia de PLU", color: "#2563EB", action: () => go("/dashboard/muebles?action=new") },
-      { id: "a-guardado", group: "actions", icon: <Plus size={14} />,        label: "Nuevo guardado en transporte",   description: "Registrar pedido en custodia", color: "#0E7490", action: () => go("/dashboard/transporte?action=new") },
-      ...(isGerente ? [{ id: "a-ruta", group: "actions" as ResultGroup, icon: <Plus size={14} />, label: "Nueva ruta de logística", description: "Crear y asignar paradas a un conductor", color: "#7C3AED", action: () => go("/dashboard/logistica?action=new") }] : []),
+    const actions: PaletteResult[] = [
+      ...(see("inventario") ? [{ id: "a-novedad",  group: "actions" as ResultGroup, icon: <Plus size={14} />, label: "Nueva novedad de inventario", description: "Registrar diferencia de PLU en el CEDI", color: "#2563EB", action: () => go("/dashboard/inventario") }] : []),
+      ...(see("transporte") ? [{ id: "a-guardado", group: "actions" as ResultGroup, icon: <Plus size={14} />, label: "Nuevo guardado en transporte",  description: "Registrar pedido en custodia",          color: "#0E7490", action: () => go("/dashboard/transporte") }] : []),
+      ...(see("logistica")  ? [{ id: "a-ruta",     group: "actions" as ResultGroup, icon: <Plus size={14} />, label: "Nueva ruta de logística",        description: "Crear y asignar paradas a conductor",   color: "#7C3AED", action: () => go("/dashboard/logistica") }] : []),
     ];
 
     const navigate: PaletteResult[] = [
-      { id: "n-inicio",      group: "navigate", icon: <Home size={14} />,         label: "Inicio",                 action: () => go("/dashboard") },
-      { id: "n-muebles",     group: "navigate", icon: <Package size={14} />,      label: "Novedades Muebles",      action: () => go("/dashboard/muebles") },
-      { id: "n-transporte",  group: "navigate", icon: <Truck size={14} />,        label: "Guardados Transporte",   action: () => go("/dashboard/transporte") },
-      { id: "n-miruta",      group: "navigate", icon: <Navigation size={14} />,   label: "Mi ruta",                action: () => go("/dashboard/logistica/mi-ruta") },
-      { id: "n-contar",      group: "navigate", icon: <ClipboardList size={14} />,label: "Conteo cíclico",         action: () => go("/dashboard/conteo/contar") },
-      ...(isGerente ? [
-        { id: "n-logistica", group: "navigate" as ResultGroup, icon: <Route size={14} />,      label: "Logística",   action: () => go("/dashboard/logistica") },
-        { id: "n-conteo",    group: "navigate" as ResultGroup, icon: <BarChart3 size={14} />,  label: "Conteo (Admin)", action: () => go("/dashboard/conteo") },
-      ] : []),
-      ...(isAdmin ? [
-        { id: "n-usuarios",  group: "navigate" as ResultGroup, icon: <Users size={14} />,      label: "Usuarios",    action: () => go("/dashboard/usuarios") },
-        { id: "n-auditoria", group: "navigate" as ResultGroup, icon: <ScrollText size={14} />, label: "Auditoría",   action: () => go("/dashboard/auditoria") },
-      ] : []),
+      { id: "n-inicio", group: "navigate", icon: <Home size={14} />, label: "Inicio", action: () => go("/dashboard") },
+      ...(see("inventario")    ? [{ id: "n-inventario",  group: "navigate" as ResultGroup, icon: <Package size={14} />,       label: "Novedades Inventario",    action: () => go("/dashboard/inventario") }] : []),
+      ...(see("transporte")    ? [{ id: "n-transporte",  group: "navigate" as ResultGroup, icon: <Truck size={14} />,          label: "Guardados Transporte",    action: () => go("/dashboard/transporte") }] : []),
+      ...(see("mi-ruta")       ? [{ id: "n-miruta",      group: "navigate" as ResultGroup, icon: <Navigation size={14} />,     label: "Mi ruta",                 action: () => go("/dashboard/logistica/mi-ruta") }] : []),
+      ...(see("logistica")     ? [{ id: "n-logistica",   group: "navigate" as ResultGroup, icon: <Route size={14} />,          label: "Logística",               action: () => go("/dashboard/logistica") }] : []),
+      ...(see("conteo-contar") ? [{ id: "n-contar",      group: "navigate" as ResultGroup, icon: <ClipboardList size={14} />,  label: "Conteo",                  action: () => go("/dashboard/conteo/contar") }] : []),
+      ...(see("conteo")        ? [{ id: "n-conteo",      group: "navigate" as ResultGroup, icon: <BarChart3 size={14} />,      label: "Gestión de Conteo",       action: () => go("/dashboard/conteo") }] : []),
+      ...(see("centro-control")? [{ id: "n-control",     group: "navigate" as ResultGroup, icon: <BarChart3 size={14} />,      label: "Centro de Control",       action: () => go("/dashboard/centro-control") }] : []),
+      ...(see("usuarios")      ? [{ id: "n-usuarios",    group: "navigate" as ResultGroup, icon: <Users size={14} />,          label: "Usuarios",                action: () => go("/dashboard/usuarios") }] : []),
+      ...(see("auditoria")     ? [{ id: "n-auditoria",   group: "navigate" as ResultGroup, icon: <ScrollText size={14} />,     label: "Auditoría",               action: () => go("/dashboard/auditoria") }] : []),
     ];
 
     return [...actions, ...navigate];

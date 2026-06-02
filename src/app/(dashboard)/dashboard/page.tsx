@@ -565,7 +565,13 @@ export default function DashboardPage() {
     );
   }
 
+  // Conductores → vista de ruta
   if (role === "TRANSPORTISTA") return <TransportistaDashboard nombre={nombre} />;
-  if (role === "OPERADOR") return <OperadorDashboard nombre={nombre} />;
+
+  // Operarios de área → vista de tareas del día
+  if (role === "OPERADOR" || role === "INVENTARIO" || role === "TRANSPORTE")
+    return <OperadorDashboard nombre={nombre} />;
+
+  // Supervisores y gerencia → vista ejecutiva
   return <AdminDashboard nombre={nombre} />;
 }

@@ -277,7 +277,7 @@ export default function MueblesPage() {
             <div style={{ width: 30, height: 30, borderRadius: 8, background: "rgba(37,99,235,0.10)", display: "flex", alignItems: "center", justifyContent: "center" }}>
               <Package size={16} color="#2563EB" />
             </div>
-            <h1 style={{ fontSize: 22, fontWeight: 700, color: "var(--text)", letterSpacing: "-0.03em", margin: 0 }}>Novedades Muebles</h1>
+            <h1 style={{ fontSize: 22, fontWeight: 700, color: "var(--text)", letterSpacing: "-0.03em", margin: 0 }}>Novedades Inventario</h1>
           </div>
           <p style={{ fontSize: 13, color: "var(--muted)", margin: 0 }}>
             {loading ? "Cargando…" : `${items.length} registros · ${kpis.pend + kpis.proc} sin resolver`}
@@ -293,7 +293,7 @@ export default function MueblesPage() {
             {view === "graficos" ? <><List size={14} />Lista</> : <>Gráficos</>}
           </button>
           <button className="ds-btn ds-btn-primary" onClick={() => setCreando(true)}>
-            <Plus size={14} />Nueva novedad
+            <Plus size={14} />Nueva novedad de inventario
           </button>
         </div>
       </div>
@@ -491,7 +491,7 @@ export default function MueblesPage() {
                 icon={<Package size={22} />}
                 title="Sin novedades"
                 description={fq || fEstado || fFab ? "No hay resultados para estos filtros." : "Las novedades de inventario aparecerán aquí."}
-                action={(fq || fEstado || fFab) ? { label: "Limpiar filtros", onClick: () => { setFq(""); setFEstado(""); setFFab(""); } } : { label: "Registrar novedad", onClick: () => setCreando(true) }}
+                action={(fq || fEstado || fFab) ? { label: "Limpiar filtros", onClick: () => { setFq(""); setFEstado(""); setFFab(""); } } : { label: "Registrar novedad de inventario", onClick: () => setCreando(true) }}
               />
             ) : (
               <div style={{ overflowX: "auto" }}>
@@ -820,7 +820,7 @@ function ModalForm({ novedad, onClose, onSaved, onError }: {
       <div onClick={(e) => e.stopPropagation()} className="animate-scale-in"
         style={{ background: "var(--surface)", borderRadius: 16, width: "100%", maxWidth: 480, maxHeight: "90vh", overflowY: "auto", boxShadow: "var(--shadow-xl)", border: "1px solid var(--border)", padding: "24px" }}>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20 }}>
-          <h2 style={{ fontSize: 17, fontWeight: 700, color: "var(--text)", letterSpacing: "-0.02em", margin: 0 }}>{isEdit ? "Editar novedad" : "Nueva novedad"}</h2>
+          <h2 style={{ fontSize: 17, fontWeight: 700, color: "var(--text)", letterSpacing: "-0.02em", margin: 0 }}>{isEdit ? "Editar novedad" : "Nueva novedad de inventario"}</h2>
           <button onClick={onClose} style={{ background: "var(--surface2)", border: "none", borderRadius: 7, padding: 7, cursor: "pointer", color: "var(--muted)", display: "flex" }}><X size={16} /></button>
         </div>
         <form onSubmit={submit} style={{ display: "flex", flexDirection: "column", gap: 14 }}>
@@ -896,7 +896,7 @@ function ModalForm({ novedad, onClose, onSaved, onError }: {
           <div style={{ display: "flex", gap: 8, paddingTop: 4 }}>
             <button type="button" className="ds-btn ds-btn-secondary" onClick={onClose} style={{ flex: 1 }}>Cancelar</button>
             <button type="submit" className="ds-btn ds-btn-primary" disabled={saving} style={{ flex: 2 }}>
-              {saving ? "Guardando…" : isEdit ? "Guardar cambios" : "Registrar novedad"}
+              {saving ? "Guardando…" : isEdit ? "Guardar cambios" : "Registrar novedad de inventario"}
             </button>
           </div>
         </form>

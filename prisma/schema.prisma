@@ -97,6 +97,10 @@ enum Role {
   GERENTE
   OPERADOR
   TRANSPORTISTA
+  INVENTARIO             // Operario de inventario — solo módulos de inventario
+  TRANSPORTE             // Operario de transporte — solo guardados + logística
+  SUPERVISOR_INVENTARIO  // Supervisor inventario — inventario + análisis
+  SUPERVISOR_TRANSPORTE  // Supervisor transporte — guardados + logística + KPIs
 }
 
 // ═══════════════════════════════════════════

@@ -2,31 +2,41 @@
 // poder usarlo tanto en API routes como en componentes cliente.
 import type { UserRole } from "@/types";
 
-export type Action = "create" | "edit" | "delete" | "manageUsers" | "viewAudit" | "manageLogistica" | "manageConteo";
+export type Action =
+  | "create" | "edit" | "delete"
+  | "manageUsers" | "viewAudit"
+  | "manageLogistica" | "manageConteo";
+
+// Roles que pueden crear registros
+const CREADORES: UserRole[] = [
+  "OPERADOR", "GERENTE", "ADMIN",
+  "INVENTARIO", "SUPERVISOR_INVENTARIO",
+  "TRANSPORTE", "SUPERVISOR_TRANSPORTE",
+];
 
 const MATRIX: Record<Action, UserRole[]> = {
-  create: ["OPERADOR", "GERENTE", "ADMIN"],
-  edit: ["GERENTE", "ADMIN"],
-  delete: ["ADMIN"],
-  manageUsers: ["ADMIN"],
-  viewAudit: ["ADMIN"],
-  manageLogistica: ["GERENTE", "ADMIN"],
-  manageConteo: ["ADMIN"],
+  create:           CREADORES,
+  edit:             ["GERENTE", "ADMIN", "SUPERVISOR_INVENTARIO", "SUPERVISOR_TRANSPORTE"],
+  delete:           ["ADMIN"],
+  manageUsers:      ["ADMIN"],
+  viewAudit:        ["ADMIN", "GERENTE"],
+  manageLogistica:  ["GERENTE", "ADMIN", "SUPERVISOR_TRANSPORTE"],
+  manageConteo:     ["ADMIN", "SUPERVISOR_INVENTARIO"],
 };
-
-// TRANSPORTISTA: puede ver su ruta + enviar GPS + confirmar entregas.
-// Usa las mismas acciones que OPERADOR (create) pero no tiene acceso a otros módulos.
-// El control de acceso a módulos se hace en el sidebar y en cada página.
 
 /** ¿El rol puede ejecutar la acción? */
 export function can(role: UserRole | string | undefined | null, action: Action): boolean {
   if (!role) return false;
-  return MATRIX[action].includes(role as UserRole);
+  return (MATRIX[action] as string[]).includes(role);
 }
 
 export const ROLE_LABEL: Record<UserRole, string> = {
-  ADMIN: "Administrador",
-  GERENTE: "Gerente",
-  OPERADOR: "Operador",
-  TRANSPORTISTA: "Transportista",
+  ADMIN:                  "Administrador",
+  GERENTE:                "Gerente",
+  OPERADOR:               "Operador (General)",
+  TRANSPORTISTA:          "Transportista",
+  INVENTARIO:             "Operario Inventario",
+  TRANSPORTE:             "Operario Transporte",
+  SUPERVISOR_INVENTARIO:  "Supervisor Inventario",
+  SUPERVISOR_TRANSPORTE:  "Supervisor Transporte",
 };

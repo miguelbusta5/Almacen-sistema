@@ -306,7 +306,93 @@ export function insightsRutas(rutas: Ruta[]): IntelInsight[] {
 }
 
 // ═══════════════════════════════════════════════════════════
-// NUEVAS REGLAS (Iniciativa estratégica)
+// REGLAS ESTRATÉGICAS — INICIATIVA 3
+// ═══════════════════════════════════════════════════════════
+
+// REGLA: PLU reincidente — mismo PLU con 3+ novedades en 30 días
+export function insightsPluReincidente(items: Novedad[]): IntelInsight[] {
+  const out: IntelInsight[] = [];
+  const cutoff = new Date();
+  cutoff.setDate(cutoff.getDate() - 30);
+  const recientes = items.filter((n) => new Date(n.fecha + "T00:00:00") >= cutoff);
+
+  const byPlu: Record<string, number> = {};
+  for (const n of recientes) byPlu[n.plu] = (byPlu[n.plu] ?? 0) + 1;
+
+  for (const [plu, count] of Object.entries(byPlu)) {
+    if (count >= 3) {
+      out.push({
+        id: `plu-reincidente-${plu}`,
+        level: "critical",
+        module: "muebles",
+        message: `PLU ${plu} presenta reincidencia operativa`,
+        context: `${count} novedades en los últimos 30 días — revisar proceso de almacenamiento o ubicación`,
+        action: "Investigar PLU",
+      });
+    }
+  }
+  return out.sort((a, b) => {
+    const ca = parseInt(b.context?.split(" ")[0] ?? "0");
+    const cb = parseInt(a.context?.split(" ")[0] ?? "0");
+    return ca - cb;
+  }).slice(0, 3); // Top 3 más graves
+}
+
+// REGLA: Zona crítica — zona con >35% de novedades activas
+export function insightsZonaCritica(items: Novedad[]): IntelInsight[] {
+  const out: IntelInsight[] = [];
+  const activas = items.filter((n) => n.estado !== "SOLUCIONADO" && (n as any).zonaBodega);
+  if (activas.length < 5) return out; // Umbral mínimo de datos
+
+  const byZona: Record<string, number> = {};
+  for (const n of activas) {
+    const zona = (n as any).zonaBodega as string;
+    byZona[zona] = (byZona[zona] ?? 0) + 1;
+  }
+
+  for (const [zona, count] of Object.entries(byZona)) {
+    const pct = Math.round(count / activas.length * 100);
+    if (pct >= 35) {
+      out.push({
+        id: `zona-critica-${zona}`,
+        level: "warning",
+        module: "muebles",
+        message: `Zona ${zona} concentra el ${pct}% de las novedades activas`,
+        context: `${count} de ${activas.length} novedades activas`,
+        action: "Ver zona",
+      });
+    }
+  }
+  return out;
+}
+
+// REGLA: Responsable saturado — >10 novedades asignadas
+export function insightsResponsableSaturado(items: Novedad[]): IntelInsight[] {
+  const out: IntelInsight[] = [];
+  const abiertas = items.filter((n) => n.estado !== "SOLUCIONADO" && (n as any).asignadoA);
+
+  const byResp: Record<string, number> = {};
+  for (const n of abiertas) {
+    const r = (n as any).asignadoA as string;
+    byResp[r] = (byResp[r] ?? 0) + 1;
+  }
+
+  for (const [resp, count] of Object.entries(byResp)) {
+    if (count > 10) {
+      out.push({
+        id: `saturado-${resp}`,
+        level: "warning",
+        module: "muebles",
+        message: `${resp} tiene ${count} novedades activas asignadas`,
+        context: "Considerar redistribuir carga de trabajo",
+      });
+    }
+  }
+  return out;
+}
+
+// ═══════════════════════════════════════════════════════════
+// NUEVAS REGLAS (Iniciativa estratégica anterior)
 // ═══════════════════════════════════════════════════════════
 
 // Novedades sin clasificar (sin tipo ni causa)
@@ -378,6 +464,9 @@ export function consolidarInsights(
   return [
     ...insightsNovedades(novedades),
     ...insightsSinClasificar(novedades),
+    ...insightsPluReincidente(novedades),
+    ...insightsZonaCritica(novedades),
+    ...insightsResponsableSaturado(novedades),
     ...insightsGuardados(guardados),
     ...insightsSinContacto(guardados),
     ...insightsRutas(rutas),

@@ -1,5 +1,13 @@
 // ─── Auth ───────────────────────────────────────────────────
-export type UserRole = "ADMIN" | "GERENTE" | "OPERADOR" | "TRANSPORTISTA";
+export type UserRole =
+  | "ADMIN"
+  | "GERENTE"
+  | "OPERADOR"
+  | "TRANSPORTISTA"
+  | "INVENTARIO"
+  | "TRANSPORTE"
+  | "SUPERVISOR_INVENTARIO"
+  | "SUPERVISOR_TRANSPORTE";
 
 export interface AppUser {
   id: string;
