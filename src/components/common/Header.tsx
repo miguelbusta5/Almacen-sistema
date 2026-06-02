@@ -1,11 +1,12 @@
 "use client";
 
 import { signOut } from "next-auth/react";
-import { LogOut, ChevronDown } from "lucide-react";
+import { LogOut, ChevronDown, Search } from "lucide-react";
 import ThemeToggle from "./ThemeToggle";
 import Logo from "./Logo";
 import { useIsMobile } from "@/lib/useIsMobile";
 import { useState } from "react";
+import { useCommandPalette } from "@/contexts/CommandPaletteContext";
 
 interface HeaderProps {
   user?: { name?: string | null; email?: string | null };
@@ -33,6 +34,7 @@ export default function Header({ user }: HeaderProps) {
   const isMobile = useIsMobile();
   const [menuOpen, setMenuOpen] = useState(false);
   const userName = user?.name ?? "Usuario";
+  const { open: openPalette } = useCommandPalette();
 
   return (
     <header
@@ -56,6 +58,38 @@ export default function Header({ user }: HeaderProps) {
 
       {/* Derecha: acciones */}
       <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+        {/* Botón Ctrl+K */}
+        {!isMobile && (
+          <button
+            onClick={openPalette}
+            style={{
+              display: "flex", alignItems: "center", gap: 8,
+              padding: "5px 12px",
+              background: "var(--surface2)",
+              border: "1px solid var(--border)",
+              borderRadius: 8,
+              cursor: "pointer",
+              color: "var(--muted)",
+              fontSize: 12,
+              fontFamily: "var(--sans)",
+              transition: "background .12s, border-color .12s",
+            }}
+            onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = "var(--surface3)"; (e.currentTarget as HTMLElement).style.borderColor = "var(--border-strong)"; }}
+            onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = "var(--surface2)"; (e.currentTarget as HTMLElement).style.borderColor = "var(--border)"; }}
+          >
+            <Search size={12} />
+            <span>Buscar…</span>
+            <kbd style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 4, padding: "1px 5px", fontSize: 10, fontFamily: "var(--mono)", color: "var(--faint)" }}>⌘K</kbd>
+          </button>
+        )}
+        {isMobile && (
+          <button
+            onClick={openPalette}
+            style={{ background: "var(--surface2)", border: "1px solid var(--border)", borderRadius: 8, padding: 7, cursor: "pointer", color: "var(--muted)", display: "flex" }}
+          >
+            <Search size={15} />
+          </button>
+        )}
         <ThemeToggle />
 
         {/* User menu */}
