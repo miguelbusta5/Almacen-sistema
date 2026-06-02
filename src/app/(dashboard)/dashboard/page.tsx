@@ -1,10 +1,14 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useSession } from "next-auth/react";
 import { Package, Truck, Route, ClipboardList, ArrowRight, AlertTriangle, Clock } from "lucide-react";
 import { Stat, SkeletonStat, TimelineItem, SectionHeader } from "@/components/ui";
+import { IntelBanner } from "@/components/ui/SlidePanel";
+import { consolidarInsights } from "@/lib/inteligencia";
+import type { Novedad } from "@/lib/muebles";
+import type { Guardado } from "@/lib/transporte";
 
 interface Stats {
   novedades: { total: number; pendientes: number; solucionados: number };
@@ -94,23 +98,32 @@ export default function DashboardPage() {
   const nombre = (session?.user?.name || "").split(" ")[0] || "";
   const [stats, setStats] = useState<Stats | null>(null);
   const [activity, setActivity] = useState<ActivityItem[]>([]);
+  const [novedades, setNovedades] = useState<Novedad[]>([]);
+  const [guardados, setGuardados] = useState<Guardado[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     (async () => {
       try {
-        const [sRes, aRes] = await Promise.all([
+        const [sRes, aRes, nRes, gRes] = await Promise.all([
           fetch("/api/stats"),
           fetch("/api/activity?pageSize=12&page=1"),
+          fetch("/api/novedades?pageSize=200"),
+          fetch("/api/transporte?pageSize=200"),
         ]);
         if (sRes.ok) setStats(await sRes.json());
         const aJson = await aRes.json();
         if (aJson.success) setActivity(aJson.data ?? []);
+        const nJson = await nRes.json();
+        if (nJson.success) setNovedades(nJson.data ?? []);
+        const gJson = await gRes.json();
+        if (gJson.success) setGuardados(gJson.data ?? []);
       } catch { /* noop */ }
       finally { setLoading(false); }
     })();
   }, []);
 
+  const intelInsights = useMemo(() => consolidarInsights(novedades, guardados, []), [novedades, guardados]);
   const hora = new Date().getHours();
   const saludo = hora < 12 ? "Buenos días" : hora < 18 ? "Buenas tardes" : "Buenas noches";
 
@@ -127,6 +140,17 @@ export default function DashboardPage() {
           {new Date().toLocaleDateString("es-CO", { weekday: "long", day: "numeric", month: "long", year: "numeric" })}
         </p>
       </div>
+
+      {/* ── Centro de Inteligencia Operacional ────────────── */}
+      {!loading && intelInsights.length > 0 && (
+        <div className="animate-fade-up" style={{ marginBottom: 28 }}>
+          <IntelBanner
+            insights={intelInsights}
+            maxVisible={4}
+            title="Centro de inteligencia operacional"
+          />
+        </div>
+      )}
 
       {/* ── Banner de alerta si hay pendientes ─────────── */}
       {!loading && tienePendientes && (

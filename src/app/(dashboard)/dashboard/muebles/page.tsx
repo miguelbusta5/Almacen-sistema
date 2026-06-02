@@ -9,23 +9,23 @@ import {
   PointElement, LineElement, Tooltip, Legend,
 } from "chart.js";
 import { Doughnut, Bar, Line } from "react-chartjs-2";
-import { Plus, Filter, X, Pencil, Trash2, Package, CheckCircle2, Search } from "lucide-react";
+import {
+  Plus, X, Pencil, Trash2, Package, CheckCircle2, Search,
+  AlertTriangle, BarChart3, List, Clock,
+} from "lucide-react";
 import { Novedad, EstadoNovedad, ESTADOS, ESTADO_COLOR, estadoLabel, fmtFecha, fmtCOP, todayISO } from "@/lib/muebles";
+import { insightsNovedades, insightsPorNovedad } from "@/lib/inteligencia";
 import { Stat, SkeletonStat, Badge, EmptyState, SkeletonTable } from "@/components/ui";
+import { SlidePanel, IntelBanner, IntelAlert, DetailSection, DetailGrid, MiniHistory } from "@/components/ui/SlidePanel";
 
 ChartJS.register(ArcElement, BarElement, CategoryScale, LinearScale, PointElement, LineElement, Tooltip, Legend);
 
-const CHART_OPTIONS_BASE = {
-  maintainAspectRatio: false,
-  plugins: { legend: { display: false } },
-};
+const CHART_BASE = { maintainAspectRatio: false, plugins: { legend: { display: false } } };
 
-// ── Helpers de badge ──────────────────────────────────────
 function estadoBadgeVariant(e: EstadoNovedad): "error" | "warning" | "success" {
   return e === "PENDIENTE" ? "error" : e === "EN PROCESO" ? "warning" : "success";
 }
 
-// ── Input base style ──────────────────────────────────────
 const inp: React.CSSProperties = {
   width: "100%", height: 36,
   padding: "0 12px",
@@ -34,12 +34,25 @@ const inp: React.CSSProperties = {
   color: "var(--text)", outline: "none",
   transition: "border-color .15s, box-shadow .15s, background .15s",
 };
+const focusProps = {
+  onFocus: (e: React.FocusEvent<HTMLInputElement | HTMLSelectElement>) => {
+    e.target.style.borderColor = "var(--brand)";
+    e.target.style.boxShadow = "var(--ring)";
+    e.target.style.background = "var(--surface)";
+  },
+  onBlur: (e: React.FocusEvent<HTMLInputElement | HTMLSelectElement>) => {
+    e.target.style.borderColor = "transparent";
+    e.target.style.boxShadow = "none";
+    e.target.style.background = "var(--surface2)";
+  },
+};
 
-// ── Modal base ────────────────────────────────────────────
-function Modal({ title, sub, children, onClose, wide }: {
-  title: string; sub?: string; children: React.ReactNode;
-  onClose: () => void; wide?: boolean;
+// Modal para confirmación de borrado (sí usamos modal para destructivo)
+function DeleteModal({ novedad, onClose, onDeleted, onError }: {
+  novedad: Novedad; onClose: () => void;
+  onDeleted: () => void; onError: (m: string) => void;
 }) {
+  const [deleting, setDeleting] = useState(false);
   const [mounted, setMounted] = useState(false);
   useEffect(() => { setMounted(true); }, []);
   useEffect(() => {
@@ -48,54 +61,47 @@ function Modal({ title, sub, children, onClose, wide }: {
     document.body.style.overflow = "hidden";
     return () => { window.removeEventListener("keydown", h); document.body.style.overflow = ""; };
   }, [onClose]);
+
+  async function confirm() {
+    setDeleting(true);
+    const res = await fetch(`/api/novedades/${novedad.id}`, { method: "DELETE" });
+    const json = await res.json().catch(() => ({}));
+    if (res.ok && json.success) onDeleted(); else onError(json.error || "Error");
+    setDeleting(false);
+  }
+
   if (!mounted) return null;
   return createPortal(
     <div
       onClick={onClose}
-      style={{
-        position: "fixed", inset: 0, zIndex: 9999,
-        background: "var(--overlay)",
-        display: "flex", alignItems: "center", justifyContent: "center",
-        padding: "1rem",
-        backdropFilter: "blur(4px)",
-      }}
+      style={{ position: "fixed", inset: 0, zIndex: 9999, background: "var(--overlay)", display: "flex", alignItems: "center", justifyContent: "center", padding: 16, backdropFilter: "blur(4px)" }}
     >
       <div
         onClick={(e) => e.stopPropagation()}
         className="animate-scale-in"
-        style={{
-          background: "var(--surface)",
-          borderRadius: 16, width: "100%", maxWidth: wide ? 520 : 440,
-          maxHeight: "90vh", overflowY: "auto",
-          boxShadow: "var(--shadow-xl)",
-          border: "1px solid var(--border)",
-        }}
+        style={{ background: "var(--surface)", borderRadius: 16, width: "100%", maxWidth: 380, padding: "24px", boxShadow: "var(--shadow-xl)", border: "1px solid var(--border)" }}
       >
-        <div style={{ padding: "24px 24px 0", display: "flex", alignItems: "flex-start", justifyContent: "space-between" }}>
-          <div>
-            <h2 style={{ fontSize: 17, fontWeight: 700, color: "var(--text)", letterSpacing: "-0.02em" }}>{title}</h2>
-            {sub && <p style={{ fontSize: 13, color: "var(--muted)", marginTop: 3 }}>{sub}</p>}
+        <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 16 }}>
+          <div style={{ width: 36, height: 36, borderRadius: 10, background: "var(--error-tint)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+            <Trash2 size={16} color="var(--error)" />
           </div>
-          <button
-            onClick={onClose}
-            style={{ background: "var(--surface2)", border: "none", borderRadius: 7, padding: 7, cursor: "pointer", color: "var(--muted)", display: "flex", marginLeft: 12 }}
-          >
-            <X size={16} />
+          <div>
+            <h3 style={{ fontSize: 15, fontWeight: 700, color: "var(--text)", margin: 0 }}>Eliminar novedad</h3>
+            <p style={{ fontSize: 12, color: "var(--muted)", margin: 0, marginTop: 2 }}>PLU {novedad.plu} · {novedad.posicion}</p>
+          </div>
+        </div>
+        <p style={{ fontSize: 13, color: "var(--muted)", lineHeight: 1.6, marginBottom: 20 }}>
+          Esta acción es permanente y no se puede deshacer.
+        </p>
+        <div style={{ display: "flex", gap: 8 }}>
+          <button className="ds-btn ds-btn-secondary" style={{ flex: 1 }} onClick={onClose}>Cancelar</button>
+          <button className="ds-btn ds-btn-danger" style={{ flex: 1 }} disabled={deleting} onClick={confirm}>
+            {deleting ? "Eliminando…" : "Eliminar"}
           </button>
         </div>
-        <div style={{ padding: "20px 24px 24px" }}>{children}</div>
       </div>
     </div>,
     document.body
-  );
-}
-
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
-  return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-      <label style={{ fontSize: 12, fontWeight: 500, color: "var(--muted2)", letterSpacing: "-0.01em" }}>{label}</label>
-      {children}
-    </div>
   );
 }
 
@@ -113,16 +119,14 @@ export default function MueblesPage() {
   const [view, setView] = useState<"lista" | "graficos">("lista");
   const [toast, setToast] = useState<{ msg: string; err?: boolean } | null>(null);
 
-  // Filtros
   const [fq, setFq] = useState("");
   const [fEstado, setFEstado] = useState("");
   const [fFab, setFFab] = useState("");
   const [sortCol, setSortCol] = useState("fecha");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
 
-  // Modales
+  const [panelItem, setPanelItem] = useState<Novedad | null>(null);
   const [editing, setEditing] = useState<Novedad | null>(null);
-  const [detail, setDetail] = useState<Novedad | null>(null);
   const [deleting, setDeleting] = useState<Novedad | null>(null);
   const [creando, setCreando] = useState(false);
 
@@ -147,6 +151,23 @@ export default function MueblesPage() {
     else { setSortCol(col); setSortDir("asc"); }
   }
 
+  // Insights operacionales
+  const globalInsights = useMemo(() => insightsNovedades(items), [items]);
+  const panelInsights = useMemo(
+    () => panelItem ? insightsPorNovedad(panelItem, items) : [],
+    [panelItem, items]
+  );
+
+  // PLUs con insight (para indicador en tabla)
+  const pluConInsight = useMemo(() => {
+    const set = new Set<string>();
+    for (const ins of globalInsights) {
+      const m = ins.message.match(/PLU (\S+)/);
+      if (m) set.add(m[1]);
+    }
+    return set;
+  }, [globalInsights]);
+
   const kpis = useMemo(() => {
     const pend = items.filter((n) => n.estado === "PENDIENTE").length;
     const proc = items.filter((n) => n.estado === "EN PROCESO").length;
@@ -166,7 +187,9 @@ export default function MueblesPage() {
       .filter((n) => {
         if (fEstado && n.estado !== fEstado) return false;
         if (fFab && n.fabricante !== fFab) return false;
-        if (q && !n.plu.toLowerCase().includes(q) && !n.posicion.toLowerCase().includes(q) && !(n.descripcion || "").toLowerCase().includes(q) && !(n.fabricante || "").toLowerCase().includes(q)) return false;
+        if (q && !n.plu.toLowerCase().includes(q) && !n.posicion.toLowerCase().includes(q)
+          && !(n.descripcion || "").toLowerCase().includes(q)
+          && !(n.fabricante || "").toLowerCase().includes(q)) return false;
         return true;
       })
       .sort((a, b) => {
@@ -188,20 +211,14 @@ export default function MueblesPage() {
   const Th = ({ col, label, right }: { col: string; label: string; right?: boolean }) => {
     const active = sortCol === col;
     return (
-      <th
-        className="sortable"
-        onClick={() => toggleSort(col)}
-        style={{
-          textAlign: right ? "right" : "left",
-          color: active ? "var(--brand)" : undefined,
-        }}
-      >
+      <th className="sortable" onClick={() => toggleSort(col)}
+        style={{ textAlign: right ? "right" : "left", color: active ? "var(--brand)" : undefined }}>
         {label}{active ? (sortDir === "asc" ? " ↑" : " ↓") : " ↕"}
       </th>
     );
   };
 
-  // Datos para gráficos
+  // Datos gráficos
   const donutData = useMemo(() => ({
     labels: ESTADOS.map(estadoLabel),
     datasets: [{ data: ESTADOS.map((e) => items.filter((n) => n.estado === e).length), backgroundColor: ESTADOS.map((e) => ESTADO_COLOR[e]), borderWidth: 0 }],
@@ -214,10 +231,7 @@ export default function MueblesPage() {
       byFab[n.fabricante] = (byFab[n.fabricante] || 0) + Math.abs(n.costoIncidencia || 0);
     }
     const top = Object.entries(byFab).sort((a, b) => b[1] - a[1]).slice(0, 8);
-    return {
-      labels: top.map(([f]) => f),
-      datasets: [{ label: "Impacto", data: top.map(([, v]) => v), backgroundColor: "#2563eb", borderRadius: 4 }],
-    };
+    return { labels: top.map(([f]) => f), datasets: [{ label: "Impacto", data: top.map(([, v]) => v), backgroundColor: "#2563eb", borderRadius: 4 }] };
   }, [items]);
 
   const lineData = useMemo(() => {
@@ -230,27 +244,33 @@ export default function MueblesPage() {
     };
   }, [items]);
 
+  // Historial del PLU en el panel
+  const panelHistorial = useMemo(() => {
+    if (!panelItem) return [];
+    return items
+      .filter((n) => n.plu === panelItem.plu && n.id !== panelItem.id)
+      .sort((a, b) => b.fecha.localeCompare(a.fecha))
+      .slice(0, 5);
+  }, [panelItem, items]);
+
   return (
     <div className="animate-fade-in">
-      {/* ── Page header ────────────────────────────────── */}
-      <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 28, flexWrap: "wrap", gap: 12 }}>
+      {/* ── Page header ── */}
+      <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 24, flexWrap: "wrap", gap: 12 }}>
         <div>
-          <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 6 }}>
-            <div style={{ width: 32, height: 32, borderRadius: 8, background: "rgba(37,99,235,0.10)", display: "flex", alignItems: "center", justifyContent: "center" }}>
-              <Package size={17} color="#2563EB" />
+          <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 4 }}>
+            <div style={{ width: 30, height: 30, borderRadius: 8, background: "rgba(37,99,235,0.10)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+              <Package size={16} color="#2563EB" />
             </div>
-            <h1 style={{ fontSize: 22, fontWeight: 700, color: "var(--text)", letterSpacing: "-0.03em" }}>Novedades Muebles</h1>
+            <h1 style={{ fontSize: 22, fontWeight: 700, color: "var(--text)", letterSpacing: "-0.03em", margin: 0 }}>Novedades Muebles</h1>
           </div>
-          <p style={{ fontSize: 13, color: "var(--muted)", letterSpacing: "-0.01em" }}>
-            {items.length} registros · {kpis.pend + kpis.proc} sin resolver
+          <p style={{ fontSize: 13, color: "var(--muted)", margin: 0 }}>
+            {loading ? "Cargando…" : `${items.length} registros · ${kpis.pend + kpis.proc} sin resolver`}
           </p>
         </div>
         <div style={{ display: "flex", gap: 8 }}>
-          <button
-            className={`ds-btn ${view === "graficos" ? "ds-btn-secondary" : "ds-btn-ghost"}`}
-            onClick={() => setView(view === "graficos" ? "lista" : "graficos")}
-          >
-            {view === "graficos" ? "← Lista" : "Gráficos"}
+          <button className={`ds-btn ${view === "graficos" ? "ds-btn-secondary" : "ds-btn-ghost"}`} onClick={() => setView(view === "graficos" ? "lista" : "graficos")}>
+            {view === "graficos" ? <><List size={14} />Lista</> : <><BarChart3 size={14} />Gráficos</>}
           </button>
           <button className="ds-btn ds-btn-primary" onClick={() => setCreando(true)}>
             <Plus size={14} />Nueva novedad
@@ -258,13 +278,11 @@ export default function MueblesPage() {
         </div>
       </div>
 
-      {/* ── KPIs flotantes ──────────────────────────────── */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(130px,1fr))", gap: 32, marginBottom: 36, padding: "0 2px" }}>
-        {loading ? (
-          <><SkeletonStat /><SkeletonStat /><SkeletonStat /><SkeletonStat /></>
-        ) : (
+      {/* ── KPIs ── */}
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(5,1fr)", gap: 28, marginBottom: 28, padding: "0 2px" }}>
+        {loading ? <><SkeletonStat /><SkeletonStat /><SkeletonStat /><SkeletonStat /><SkeletonStat /></> : (
           <>
-            <Stat value={kpis.total} label="Total novedades" onClick={() => { setFEstado(""); setFq(""); }} />
+            <Stat value={kpis.total} label="Total novedades" />
             <Stat value={kpis.pend} label="Pendientes" color={kpis.pend > 0 ? "var(--error)" : "var(--success)"} onClick={() => setFEstado("PENDIENTE")} />
             <Stat value={kpis.proc} label="En proceso" color="var(--warning)" onClick={() => setFEstado("EN PROCESO")} />
             <Stat value={kpis.sol} label="Solucionadas" color="var(--success)" onClick={() => setFEstado("SOLUCIONADO")} />
@@ -273,52 +291,44 @@ export default function MueblesPage() {
         )}
       </div>
 
-      {/* ── Vista: Gráficos ─────────────────────────────── */}
+      {/* ── Inteligencia operacional ── */}
+      {!loading && globalInsights.length > 0 && (
+        <IntelBanner insights={globalInsights} title="Inteligencia operacional" />
+      )}
+
+      {/* ── Vista: Gráficos ── */}
       {view === "graficos" && (
         <div className="animate-fade-in">
           <div className="grid-2" style={{ marginBottom: 16 }}>
-            <div className="ds-card" style={{ padding: "20px" }}>
-              <div style={{ fontSize: 12, fontWeight: 600, color: "var(--muted)", textTransform: "uppercase", letterSpacing: ".06em", marginBottom: 16 }}>Tasa de resolución</div>
-              <div style={{ height: 220 }}>
-                <Doughnut data={donutData} options={{ ...CHART_OPTIONS_BASE, plugins: { legend: { position: "bottom", labels: { boxWidth: 10, font: { size: 11 } } }, tooltip: { callbacks: { label: (ctx) => { const total = (ctx.dataset.data as number[]).reduce((a, b) => a + b, 0); return ` ${ctx.parsed} (${Math.round(ctx.parsed / total * 100)}%)`; } } } } }} />
-              </div>
+            <div className="ds-card" style={{ padding: 20 }}>
+              <div style={{ fontSize: 11, fontWeight: 600, color: "var(--muted)", textTransform: "uppercase", letterSpacing: ".06em", marginBottom: 16 }}>Tasa de resolución</div>
+              <div style={{ height: 220 }}><Doughnut data={donutData} options={{ ...CHART_BASE, plugins: { legend: { position: "bottom", labels: { boxWidth: 10, font: { size: 11 } } }, tooltip: { callbacks: { label: (ctx) => { const t = (ctx.dataset.data as number[]).reduce((a, b) => a + b, 0); return ` ${ctx.parsed} (${Math.round(ctx.parsed / t * 100)}%)`; } } } } }} /></div>
             </div>
-            <div className="ds-card" style={{ padding: "20px" }}>
-              <div style={{ fontSize: 12, fontWeight: 600, color: "var(--muted)", textTransform: "uppercase", letterSpacing: ".06em", marginBottom: 16 }}>Evolución diaria</div>
-              <div style={{ height: 220 }}>
-                <Line data={lineData} options={{ ...CHART_OPTIONS_BASE, plugins: { legend: { display: false }, tooltip: { callbacks: { label: (ctx) => ` ${ctx.parsed.y} novedad${ctx.parsed.y !== 1 ? "es" : ""}` } } }, scales: { y: { beginAtZero: true, ticks: { precision: 0 }, grid: { color: "var(--border)" } }, x: { grid: { display: false } } } }} />
-              </div>
+            <div className="ds-card" style={{ padding: 20 }}>
+              <div style={{ fontSize: 11, fontWeight: 600, color: "var(--muted)", textTransform: "uppercase", letterSpacing: ".06em", marginBottom: 16 }}>Evolución 14 días</div>
+              <div style={{ height: 220 }}><Line data={lineData} options={{ ...CHART_BASE, scales: { y: { beginAtZero: true, ticks: { precision: 0 }, grid: { color: "var(--border)" } }, x: { grid: { display: false } } }, plugins: { legend: { display: false }, tooltip: { callbacks: { label: (ctx) => ` ${ctx.parsed.y} novedad${ctx.parsed.y !== 1 ? "es" : ""}` } } } }} /></div>
             </div>
           </div>
-          <div className="ds-card" style={{ padding: "20px" }}>
-            <div style={{ fontSize: 12, fontWeight: 600, color: "var(--muted)", textTransform: "uppercase", letterSpacing: ".06em", marginBottom: 16 }}>Impacto por fabricante</div>
-            <div style={{ height: 260 }}>
-              <Bar data={fabData} options={{ ...CHART_OPTIONS_BASE, indexAxis: "y", plugins: { legend: { display: false }, tooltip: { callbacks: { label: (ctx) => " " + fmtCOP(ctx.parsed.x ?? 0) } } }, scales: { x: { beginAtZero: true, ticks: { callback: (v: unknown) => "$" + (Number(v) / 1e6).toFixed(0) + "M" }, grid: { color: "var(--border)" } }, y: { grid: { display: false } } } }} />
-            </div>
+          <div className="ds-card" style={{ padding: 20 }}>
+            <div style={{ fontSize: 11, fontWeight: 600, color: "var(--muted)", textTransform: "uppercase", letterSpacing: ".06em", marginBottom: 16 }}>Impacto por fabricante</div>
+            <div style={{ height: 260 }}><Bar data={fabData} options={{ ...CHART_BASE, indexAxis: "y", plugins: { legend: { display: false }, tooltip: { callbacks: { label: (ctx) => " " + fmtCOP(ctx.parsed.x ?? 0) } } }, scales: { x: { beginAtZero: true, ticks: { callback: (v: unknown) => "$" + (Number(v) / 1e6).toFixed(0) + "M" }, grid: { color: "var(--border)" } }, y: { grid: { display: false } } } }} /></div>
           </div>
         </div>
       )}
 
-      {/* ── Vista: Lista ────────────────────────────────── */}
+      {/* ── Vista: Lista ── */}
       {view === "lista" && (
         <div className="animate-fade-in">
-          {/* Barra de filtros */}
-          <div style={{ display: "flex", gap: 8, marginBottom: 16, flexWrap: "wrap" }}>
+          <div style={{ display: "flex", gap: 8, marginBottom: 14, flexWrap: "wrap" }}>
             <div style={{ position: "relative", flex: 1, minWidth: 200 }}>
               <Search size={13} style={{ position: "absolute", left: 10, top: "50%", transform: "translateY(-50%)", color: "var(--faint)" }} />
-              <input
-                value={fq} onChange={(e) => setFq(e.target.value)}
-                placeholder="Buscar PLU, posición, descripción…"
-                style={{ ...inp, paddingLeft: 32 }}
-                onFocus={(e) => { e.target.style.borderColor = "var(--brand)"; e.target.style.boxShadow = "var(--ring)"; e.target.style.background = "var(--surface)"; }}
-                onBlur={(e) => { e.target.style.borderColor = "transparent"; e.target.style.boxShadow = "none"; e.target.style.background = "var(--surface2)"; }}
-              />
+              <input value={fq} onChange={(e) => setFq(e.target.value)} placeholder="Buscar PLU, posición, descripción…" style={{ ...inp, paddingLeft: 32 }} {...focusProps} />
             </div>
-            <select value={fEstado} onChange={(e) => setFEstado(e.target.value)} style={{ ...inp, width: "auto", minWidth: 140, paddingRight: 28 }}>
+            <select value={fEstado} onChange={(e) => setFEstado(e.target.value)} style={{ ...inp, width: "auto", minWidth: 150 }} {...focusProps}>
               <option value="">Todos los estados</option>
               {ESTADOS.map((e) => <option key={e} value={e}>{estadoLabel(e)}</option>)}
             </select>
-            <select value={fFab} onChange={(e) => setFFab(e.target.value)} style={{ ...inp, width: "auto", minWidth: 160, paddingRight: 28 }}>
+            <select value={fFab} onChange={(e) => setFFab(e.target.value)} style={{ ...inp, width: "auto", minWidth: 160 }} {...focusProps}>
               <option value="">Todos los fabricantes</option>
               {fabricantes.map((f) => <option key={f} value={f}>{f}</option>)}
             </select>
@@ -327,27 +337,25 @@ export default function MueblesPage() {
                 <X size={12} />Limpiar
               </button>
             )}
-            <span style={{ alignSelf: "center", fontSize: 12, color: "var(--muted)", fontFamily: "var(--mono)", marginLeft: 4 }}>
+            <span style={{ alignSelf: "center", fontSize: 12, color: "var(--muted)", fontFamily: "var(--mono)" }}>
               {filtered.length} de {items.length}
             </span>
           </div>
 
-          {/* Tabla */}
           <div className="ds-panel" style={{ border: "1px solid var(--border)" }}>
-            {loading ? (
-              <SkeletonTable rows={8} cols={8} />
-            ) : filtered.length === 0 ? (
+            {loading ? <SkeletonTable rows={8} cols={8} /> : filtered.length === 0 ? (
               <EmptyState
                 icon={<Package size={22} />}
                 title="Sin novedades"
-                description={fq || fEstado || fFab ? "No hay resultados para estos filtros." : "Cuando se registren novedades de inventario, aparecerán aquí."}
-                action={fq || fEstado || fFab ? { label: "Limpiar filtros", onClick: () => { setFq(""); setFEstado(""); setFFab(""); } } : { label: "Registrar novedad", onClick: () => setCreando(true) }}
+                description={fq || fEstado || fFab ? "No hay resultados para estos filtros." : "Las novedades de inventario aparecerán aquí."}
+                action={(fq || fEstado || fFab) ? { label: "Limpiar filtros", onClick: () => { setFq(""); setFEstado(""); setFFab(""); } } : { label: "Registrar novedad", onClick: () => setCreando(true) }}
               />
             ) : (
               <div style={{ overflowX: "auto" }}>
                 <table className="ds-table">
                   <thead>
                     <tr>
+                      <th style={{ width: 20 }} />
                       <Th col="fecha" label="Fecha" />
                       <Th col="plu" label="PLU" />
                       <Th col="descripcion" label="Descripción" />
@@ -360,10 +368,23 @@ export default function MueblesPage() {
                   </thead>
                   <tbody>
                     {filtered.map((n) => (
-                      <tr key={n.id} className="ds-row" onClick={() => setDetail(n)}>
+                      <tr
+                        key={n.id}
+                        className="ds-row"
+                        onClick={() => setPanelItem(n)}
+                        style={{ background: panelItem?.id === n.id ? "var(--surface2)" : undefined }}
+                      >
+                        {/* Indicador de inteligencia */}
+                        <td style={{ padding: "0 4px 0 12px" }}>
+                          {pluConInsight.has(n.plu) && (
+                            <span title="Hay alertas para este PLU" style={{ fontSize: 12, color: "var(--warning)" }}>⚠</span>
+                          )}
+                        </td>
                         <td style={{ fontFamily: "var(--mono)", fontSize: 12, color: "var(--muted)", whiteSpace: "nowrap" }}>{fmtFecha(n.fecha)}</td>
                         <td style={{ fontFamily: "var(--mono)", fontWeight: 600, fontSize: 13 }}>{n.plu}</td>
-                        <td style={{ maxWidth: 220, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", fontSize: 13 }}>{n.descripcion || <span style={{ color: "var(--faint)" }}>—</span>}</td>
+                        <td style={{ maxWidth: 200, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", fontSize: 13 }}>
+                          {n.descripcion || <span style={{ color: "var(--faint)" }}>—</span>}
+                        </td>
                         <td style={{ fontSize: 12, color: "var(--muted)" }}>{n.fabricante || <span style={{ color: "var(--faint)" }}>—</span>}</td>
                         <td style={{ fontFamily: "var(--mono)", fontSize: 12, color: "var(--muted)" }}>{n.posicion}</td>
                         <td style={{ textAlign: "right", fontFamily: "var(--mono)", fontWeight: 600, fontSize: 13, color: n.cantidad > 0 ? "var(--success)" : n.cantidad < 0 ? "var(--error)" : "var(--muted)" }}>
@@ -373,10 +394,7 @@ export default function MueblesPage() {
                           {n.costoIncidencia ? fmtCOP(n.costoIncidencia) : <span style={{ color: "var(--faint)" }}>—</span>}
                         </td>
                         <td>
-                          <Badge
-                            label={estadoLabel(n.estado)}
-                            variant={estadoBadgeVariant(n.estado)}
-                          />
+                          <Badge label={estadoLabel(n.estado)} variant={estadoBadgeVariant(n.estado)} />
                         </td>
                       </tr>
                     ))}
@@ -388,93 +406,127 @@ export default function MueblesPage() {
         </div>
       )}
 
-      {/* ── Modales ─────────────────────────────────────── */}
-      {detail && (
-        <Modal onClose={() => setDetail(null)} title={`PLU ${detail.plu}`} sub={detail.descripcion || undefined}>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: 20 }}>
-            {[
-              ["Estado", <Badge key="s" label={estadoLabel(detail.estado)} variant={estadoBadgeVariant(detail.estado)} />],
-              ["Fecha", fmtFecha(detail.fecha)],
-              ["Posición", <span key="p" style={{ fontFamily: "var(--mono)", fontSize: 13 }}>{detail.posicion}</span>],
-              ["Cantidad", <span key="c" style={{ fontFamily: "var(--mono)", fontWeight: 700, fontSize: 16, color: detail.cantidad > 0 ? "var(--success)" : detail.cantidad < 0 ? "var(--error)" : "var(--muted)" }}>{detail.cantidad > 0 ? `+${detail.cantidad}` : detail.cantidad}</span>],
-              ["Fabricante", detail.fabricante || "—"],
-              ["Costo unitario", detail.costoUnitario ? fmtCOP(detail.costoUnitario) : "—"],
-            ].map(([label, val]) => (
-              <div key={String(label)}>
-                <div style={{ fontSize: 11, fontWeight: 600, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 4 }}>{label}</div>
-                <div style={{ fontSize: 14, color: "var(--text)" }}>{val}</div>
-              </div>
-            ))}
-          </div>
-          {detail.costoIncidencia != null && (
-            <div style={{ background: "var(--surface2)", borderRadius: 10, padding: "14px 16px", marginBottom: 20 }}>
-              <div style={{ fontSize: 11, fontWeight: 600, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 4 }}>Impacto en inventario</div>
-              <div style={{ fontSize: 28, fontWeight: 700, letterSpacing: "-0.04em", color: detail.costoIncidencia < 0 ? "var(--error)" : "var(--success)" }}>
-                {fmtCOP(detail.costoIncidencia)}
-              </div>
-            </div>
-          )}
-          {canEdit && (
-            <div style={{ display: "flex", gap: 8 }}>
-              <button className="ds-btn ds-btn-secondary" style={{ flex: 1 }} onClick={() => { setDetail(null); }}>Cerrar</button>
-              <button className="ds-btn ds-btn-primary" style={{ flex: 1 }} onClick={() => { setEditing(detail); setDetail(null); }}>
-                <Pencil size={13} />Editar
-              </button>
-            </div>
-          )}
-        </Modal>
-      )}
-
-      {creando && (
-        <ModalForm
-          onClose={() => setCreando(false)}
-          onSaved={() => { setCreando(false); load(); showToast("Novedad registrada ✓"); }}
-          onError={(m) => showToast(m, true)}
-        />
-      )}
-
-      {editing && (
-        <ModalForm
-          novedad={editing}
-          onClose={() => setEditing(null)}
-          onSaved={() => { setEditing(null); load(); showToast("Novedad actualizada ✓"); }}
-          onError={(m) => showToast(m, true)}
-        />
-      )}
-
-      {deleting && (
-        <Modal onClose={() => setDeleting(null)} title="Eliminar novedad" sub={`PLU ${deleting.plu} · ${deleting.posicion}`}>
-          <p style={{ fontSize: 13, color: "var(--muted)", marginBottom: 20, lineHeight: 1.6 }}>Esta acción es permanente y no se puede deshacer.</p>
+      {/* ── Panel lateral de detalle ── */}
+      <SlidePanel
+        open={!!panelItem}
+        onClose={() => setPanelItem(null)}
+        title={panelItem ? `PLU ${panelItem.plu}` : ""}
+        subtitle={panelItem?.descripcion ?? undefined}
+        insights={panelInsights}
+        badge={panelItem && <Badge label={estadoLabel(panelItem.estado)} variant={estadoBadgeVariant(panelItem.estado)} />}
+        primaryAction={canEdit && panelItem ? (
+          <button
+            className="ds-btn ds-btn-primary"
+            style={{ width: "100%" }}
+            onClick={() => { setEditing(panelItem); setPanelItem(null); }}
+          >
+            <Pencil size={13} />Editar novedad
+          </button>
+        ) : undefined}
+        secondaryActions={
           <div style={{ display: "flex", gap: 8 }}>
-            <button className="ds-btn ds-btn-secondary" style={{ flex: 1 }} onClick={() => setDeleting(null)}>Cancelar</button>
-            <button
-              className="ds-btn ds-btn-danger" style={{ flex: 1 }}
-              onClick={async () => {
-                const res = await fetch(`/api/novedades/${deleting.id}`, { method: "DELETE" });
-                const json = await res.json().catch(() => ({}));
-                if (res.ok && json.success) { setDeleting(null); load(); showToast("Novedad eliminada"); }
-                else showToast(json.error || "Error", true);
-              }}
-            >
-              <Trash2 size={13} />Eliminar
-            </button>
+            {canDelete && panelItem && (
+              <button
+                className="ds-btn ds-btn-ghost ds-btn-sm"
+                style={{ color: "var(--error)" }}
+                onClick={() => { setDeleting(panelItem); setPanelItem(null); }}
+              >
+                <Trash2 size={13} />
+              </button>
+            )}
           </div>
-        </Modal>
+        }
+      >
+        {panelItem && (
+          <>
+            {/* Impacto destacado */}
+            {panelItem.costoIncidencia != null && (
+              <div style={{ background: "var(--surface2)", borderRadius: 10, padding: "14px 16px", marginBottom: 20 }}>
+                <div style={{ fontSize: 11, color: "var(--muted)", marginBottom: 4, textTransform: "uppercase", letterSpacing: ".05em", fontWeight: 600 }}>Impacto económico</div>
+                <div style={{ fontSize: 32, fontWeight: 700, letterSpacing: "-0.04em", color: panelItem.costoIncidencia < 0 ? "var(--error)" : "var(--success)", lineHeight: 1 }}>
+                  {fmtCOP(panelItem.costoIncidencia)}
+                </div>
+                <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 4 }}>
+                  {panelItem.cantidad > 0 ? `+${panelItem.cantidad}` : panelItem.cantidad} unidades {panelItem.cantidad > 0 ? "sobrantes" : "faltantes"}
+                </div>
+              </div>
+            )}
+
+            {/* Datos del registro */}
+            <DetailSection title="Detalle">
+              <DetailGrid items={[
+                { label: "PLU", value: <span style={{ fontFamily: "var(--mono)", fontWeight: 600 }}>{panelItem.plu}</span> },
+                { label: "Fecha", value: fmtFecha(panelItem.fecha) },
+                { label: "Posición", value: <span style={{ fontFamily: "var(--mono)" }}>{panelItem.posicion}</span> },
+                { label: "Estado", value: <Badge label={estadoLabel(panelItem.estado)} variant={estadoBadgeVariant(panelItem.estado)} /> },
+                { label: "Fabricante", value: panelItem.fabricante },
+                { label: "Costo unitario", value: panelItem.costoUnitario ? fmtCOP(panelItem.costoUnitario) : undefined },
+              ]} />
+            </DetailSection>
+
+            {/* Historial del mismo PLU */}
+            {panelHistorial.length > 0 && (
+              <DetailSection title={`Historial PLU ${panelItem.plu} (${panelHistorial.length} más)`}>
+                <MiniHistory items={panelHistorial.map((n) => ({
+                  label: `${n.cantidad > 0 ? "+" : ""}${n.cantidad} · ${estadoLabel(n.estado)}`,
+                  meta: fmtFecha(n.fecha),
+                  color: ESTADO_COLOR[n.estado],
+                }))} />
+              </DetailSection>
+            )}
+
+            {/* Acción rápida: marcar solucionado */}
+            {panelItem.estado !== "SOLUCIONADO" && canEdit && (
+              <button
+                className="ds-btn ds-btn-secondary"
+                style={{ width: "100%", color: "var(--success)", borderColor: "var(--success)", marginTop: 4 }}
+                onClick={async () => {
+                  const res = await fetch(`/api/novedades/${panelItem.id}`, {
+                    method: "PUT", headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ estado: "SOLUCIONADO" }),
+                  });
+                  const json = await res.json();
+                  if (json.success) {
+                    setItems((prev) => prev.map((n) => n.id === panelItem.id ? { ...n, estado: "SOLUCIONADO" as EstadoNovedad } : n));
+                    setPanelItem((p) => p ? { ...p, estado: "SOLUCIONADO" as EstadoNovedad } : null);
+                    showToast("Marcada como solucionada ✓");
+                  } else showToast(json.error || "Error", true);
+                }}
+              >
+                <CheckCircle2 size={14} />Marcar como solucionada
+              </button>
+            )}
+          </>
+        )}
+      </SlidePanel>
+
+      {/* ── Modal crear/editar ── */}
+      {(creando || editing) && (
+        <ModalForm
+          novedad={editing ?? undefined}
+          onClose={() => { setCreando(false); setEditing(null); }}
+          onSaved={() => { setCreando(false); setEditing(null); load(); showToast(editing ? "Novedad actualizada ✓" : "Novedad registrada ✓"); }}
+          onError={(m) => showToast(m, true)}
+        />
       )}
 
+      {/* ── Modal eliminar ── */}
+      {deleting && (
+        <DeleteModal
+          novedad={deleting}
+          onClose={() => setDeleting(null)}
+          onDeleted={() => { setDeleting(null); load(); showToast("Novedad eliminada"); }}
+          onError={(m) => showToast(m, true)}
+        />
+      )}
+
+      {/* ── Toast ── */}
       {toast && (
         <div
           className="animate-fade-up"
-          style={{
-            position: "fixed", bottom: 24, right: 24, zIndex: 10000,
-            background: toast.err ? "var(--error)" : "#0F0F10",
-            color: "#fff", padding: "10px 16px", borderRadius: 10,
-            fontSize: 13, fontWeight: 500, boxShadow: "var(--shadow-xl)",
-            display: "flex", alignItems: "center", gap: 8,
-          }}
+          style={{ position: "fixed", bottom: 24, right: 24, zIndex: 10000, background: toast.err ? "var(--error)" : "#0F0F10", color: "#fff", padding: "10px 16px", borderRadius: 10, fontSize: 13, fontWeight: 500, boxShadow: "var(--shadow-xl)", display: "flex", alignItems: "center", gap: 8 }}
         >
-          {!toast.err && <CheckCircle2 size={14} />}
-          {toast.msg}
+          {!toast.err && <CheckCircle2 size={14} />}{toast.msg}
         </div>
       )}
     </div>
@@ -482,11 +534,10 @@ export default function MueblesPage() {
 }
 
 // ═══════════════════════════════════════════════════════════
-// FORM MODAL — Crear / Editar novedad
+// FORM MODAL (modal para crear/editar — acción compleja)
 // ═══════════════════════════════════════════════════════════
 function ModalForm({ novedad, onClose, onSaved, onError }: {
-  novedad?: Novedad; onClose: () => void;
-  onSaved: () => void; onError: (m: string) => void;
+  novedad?: Novedad; onClose: () => void; onSaved: () => void; onError: (m: string) => void;
 }) {
   const isEdit = !!novedad;
   const [plu, setPlu] = useState(novedad?.plu ?? "");
@@ -498,6 +549,14 @@ function ModalForm({ novedad, onClose, onSaved, onError }: {
   const [costoUnitario, setCu] = useState(novedad?.costoUnitario != null ? String(novedad.costoUnitario) : "");
   const [estado, setEstado] = useState<EstadoNovedad>(novedad?.estado ?? "PENDIENTE");
   const [saving, setSaving] = useState(false);
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => { setMounted(true); }, []);
+  useEffect(() => {
+    const h = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
+    window.addEventListener("keydown", h);
+    document.body.style.overflow = "hidden";
+    return () => { window.removeEventListener("keydown", h); document.body.style.overflow = ""; };
+  }, [onClose]);
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -515,49 +574,63 @@ function ModalForm({ novedad, onClose, onSaved, onError }: {
     } catch { onError("Error de conexión"); } finally { setSaving(false); }
   }
 
-  const inputStyle = { ...inp };
-  const focusStyle = { borderColor: "var(--brand)", boxShadow: "var(--ring)", background: "var(--surface)" };
-
-  return (
-    <Modal onClose={onClose} title={isEdit ? "Editar novedad" : "Nueva novedad"} sub={isEdit ? `PLU ${novedad!.plu}` : undefined} wide>
-      <form onSubmit={submit} style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-          <Field label="PLU *">
-            <input value={plu} onChange={(e) => setPlu(e.target.value)} disabled={isEdit} style={inputStyle} onFocus={(e) => Object.assign(e.target.style, focusStyle)} onBlur={(e) => { e.target.style.borderColor = "transparent"; e.target.style.boxShadow = "none"; e.target.style.background = "var(--surface2)"; }} />
-          </Field>
-          <Field label="Fecha *">
-            <input type="date" value={fecha} onChange={(e) => setFecha(e.target.value)} style={inputStyle} onFocus={(e) => Object.assign(e.target.style, focusStyle)} onBlur={(e) => { e.target.style.borderColor = "transparent"; e.target.style.boxShadow = "none"; e.target.style.background = "var(--surface2)"; }} />
-          </Field>
+  if (!mounted) return null;
+  return createPortal(
+    <div onClick={onClose} style={{ position: "fixed", inset: 0, zIndex: 9999, background: "var(--overlay)", display: "flex", alignItems: "center", justifyContent: "center", padding: 16, backdropFilter: "blur(4px)" }}>
+      <div onClick={(e) => e.stopPropagation()} className="animate-scale-in"
+        style={{ background: "var(--surface)", borderRadius: 16, width: "100%", maxWidth: 480, maxHeight: "90vh", overflowY: "auto", boxShadow: "var(--shadow-xl)", border: "1px solid var(--border)", padding: "24px" }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20 }}>
+          <h2 style={{ fontSize: 17, fontWeight: 700, color: "var(--text)", letterSpacing: "-0.02em", margin: 0 }}>{isEdit ? "Editar novedad" : "Nueva novedad"}</h2>
+          <button onClick={onClose} style={{ background: "var(--surface2)", border: "none", borderRadius: 7, padding: 7, cursor: "pointer", color: "var(--muted)", display: "flex" }}><X size={16} /></button>
         </div>
-        <Field label="Posición *">
-          <input value={posicion} onChange={(e) => setPos(e.target.value)} placeholder="05-H-14-04-02" style={inputStyle} onFocus={(e) => Object.assign(e.target.style, focusStyle)} onBlur={(e) => { e.target.style.borderColor = "transparent"; e.target.style.boxShadow = "none"; e.target.style.background = "var(--surface2)"; }} />
-        </Field>
-        <Field label="Descripción">
-          <input value={descripcion} onChange={(e) => setDesc(e.target.value)} style={inputStyle} onFocus={(e) => Object.assign(e.target.style, focusStyle)} onBlur={(e) => { e.target.style.borderColor = "transparent"; e.target.style.boxShadow = "none"; e.target.style.background = "var(--surface2)"; }} />
-        </Field>
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12 }}>
-          <Field label="Fabricante">
-            <input value={fabricante} onChange={(e) => setFab(e.target.value)} style={inputStyle} onFocus={(e) => Object.assign(e.target.style, focusStyle)} onBlur={(e) => { e.target.style.borderColor = "transparent"; e.target.style.boxShadow = "none"; e.target.style.background = "var(--surface2)"; }} />
-          </Field>
-          <Field label="Cantidad (+/-)">
-            <input type="number" value={cantidad} onChange={(e) => setCant(e.target.value)} style={inputStyle} onFocus={(e) => Object.assign(e.target.style, focusStyle)} onBlur={(e) => { e.target.style.borderColor = "transparent"; e.target.style.boxShadow = "none"; e.target.style.background = "var(--surface2)"; }} />
-          </Field>
-          <Field label="Costo unitario">
-            <input type="number" value={costoUnitario} onChange={(e) => setCu(e.target.value)} style={inputStyle} onFocus={(e) => Object.assign(e.target.style, focusStyle)} onBlur={(e) => { e.target.style.borderColor = "transparent"; e.target.style.boxShadow = "none"; e.target.style.background = "var(--surface2)"; }} />
-          </Field>
-        </div>
-        <Field label="Estado">
-          <select value={estado} onChange={(e) => setEstado(e.target.value as EstadoNovedad)} style={{ ...inputStyle, paddingRight: 28 }}>
-            {ESTADOS.map((e) => <option key={e} value={e}>{estadoLabel(e)}</option>)}
-          </select>
-        </Field>
-        <div style={{ display: "flex", gap: 8, paddingTop: 4 }}>
-          <button type="button" className="ds-btn ds-btn-secondary" onClick={onClose} style={{ flex: 1 }}>Cancelar</button>
-          <button type="submit" className="ds-btn ds-btn-primary" disabled={saving} style={{ flex: 2 }}>
-            {saving ? "Guardando…" : isEdit ? "Guardar cambios" : "Registrar novedad"}
-          </button>
-        </div>
-      </form>
-    </Modal>
+        <form onSubmit={submit} style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+            <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
+              <label style={{ fontSize: 12, fontWeight: 500, color: "var(--muted2)" }}>PLU *</label>
+              <input value={plu} onChange={(e) => setPlu(e.target.value)} disabled={isEdit} style={inp} {...focusProps} />
+            </div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
+              <label style={{ fontSize: 12, fontWeight: 500, color: "var(--muted2)" }}>Fecha *</label>
+              <input type="date" value={fecha} onChange={(e) => setFecha(e.target.value)} style={inp} {...focusProps} />
+            </div>
+          </div>
+          <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
+            <label style={{ fontSize: 12, fontWeight: 500, color: "var(--muted2)" }}>Posición *</label>
+            <input value={posicion} onChange={(e) => setPos(e.target.value)} placeholder="05-H-14-04-02" style={inp} {...focusProps} />
+          </div>
+          <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
+            <label style={{ fontSize: 12, fontWeight: 500, color: "var(--muted2)" }}>Descripción</label>
+            <input value={descripcion} onChange={(e) => setDesc(e.target.value)} style={inp} {...focusProps} />
+          </div>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12 }}>
+            <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
+              <label style={{ fontSize: 12, fontWeight: 500, color: "var(--muted2)" }}>Fabricante</label>
+              <input value={fabricante} onChange={(e) => setFab(e.target.value)} style={inp} {...focusProps} />
+            </div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
+              <label style={{ fontSize: 12, fontWeight: 500, color: "var(--muted2)" }}>Cantidad (+/-)</label>
+              <input type="number" value={cantidad} onChange={(e) => setCant(e.target.value)} style={inp} {...focusProps} />
+            </div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
+              <label style={{ fontSize: 12, fontWeight: 500, color: "var(--muted2)" }}>Costo unitario</label>
+              <input type="number" value={costoUnitario} onChange={(e) => setCu(e.target.value)} style={inp} {...focusProps} />
+            </div>
+          </div>
+          <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
+            <label style={{ fontSize: 12, fontWeight: 500, color: "var(--muted2)" }}>Estado</label>
+            <select value={estado} onChange={(e) => setEstado(e.target.value as EstadoNovedad)} style={{ ...inp, paddingRight: 28 }} {...focusProps}>
+              {ESTADOS.map((e) => <option key={e} value={e}>{estadoLabel(e)}</option>)}
+            </select>
+          </div>
+          <div style={{ display: "flex", gap: 8, paddingTop: 4 }}>
+            <button type="button" className="ds-btn ds-btn-secondary" onClick={onClose} style={{ flex: 1 }}>Cancelar</button>
+            <button type="submit" className="ds-btn ds-btn-primary" disabled={saving} style={{ flex: 2 }}>
+              {saving ? "Guardando…" : isEdit ? "Guardar cambios" : "Registrar novedad"}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>,
+    document.body
   );
 }
