@@ -4,28 +4,28 @@ import { prisma } from "@/lib/prisma";
 import { z } from "zod";
 
 function mapRow(r: {
-  id: number;
-  plu: string;
-  posicion: string;
-  fecha: Date;
-  estado: string;
-  descripcion: string | null;
-  cantidad: number | null;
-  fabricante: string | null;
-  costoUnitario: number | null;
-  costoIncidencia: number | null;
+  id: number; plu: string; posicion: string; fecha: Date; estado: string;
+  descripcion: string | null; cantidad: number | null; fabricante: string | null;
+  costoUnitario: number | null; costoIncidencia: number | null;
+  tipoNovedad?: string | null; causaRaiz?: string | null; turno?: string | null;
+  zonaBodega?: string | null; asignadoA?: string | null; resueltoAt?: Date | null;
+  netsuiteAjust?: boolean; imagenUrl?: string | null;
 }) {
   return {
-    id: r.id,
-    plu: r.plu,
-    posicion: r.posicion,
-    fecha: r.fecha.toISOString().slice(0, 10),
-    estado: r.estado,
-    descripcion: r.descripcion,
-    cantidad: r.cantidad ?? 0,
-    fabricante: r.fabricante,
-    costoUnitario: r.costoUnitario,
+    id: r.id, plu: r.plu, posicion: r.posicion,
+    fecha: r.fecha.toISOString().slice(0, 10), estado: r.estado,
+    descripcion: r.descripcion, cantidad: r.cantidad ?? 0,
+    fabricante: r.fabricante, costoUnitario: r.costoUnitario,
     costoIncidencia: r.costoIncidencia,
+    // Campos operativos
+    tipoNovedad: r.tipoNovedad ?? null,
+    causaRaiz: r.causaRaiz ?? null,
+    turno: r.turno ?? null,
+    zonaBodega: r.zonaBodega ?? null,
+    asignadoA: r.asignadoA ?? null,
+    resueltoAt: r.resueltoAt ? r.resueltoAt.toISOString() : null,
+    netsuiteAjust: r.netsuiteAjust ?? false,
+    imagenUrl: r.imagenUrl ?? null,
   };
 }
 

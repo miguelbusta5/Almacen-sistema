@@ -11,9 +11,12 @@ import {
 import { Doughnut, Bar, Line } from "react-chartjs-2";
 import {
   Plus, X, Pencil, Trash2, Package, CheckCircle2, Search,
-  AlertTriangle, BarChart3, List, Clock,
+  AlertTriangle, BarChart3, List, Clock, UserCheck, ExternalLink, Camera,
 } from "lucide-react";
-import { Novedad, EstadoNovedad, ESTADOS, ESTADO_COLOR, estadoLabel, fmtFecha, fmtCOP, todayISO } from "@/lib/muebles";
+import {
+  Novedad, EstadoNovedad, ESTADOS, ESTADO_COLOR, estadoLabel, fmtFecha, fmtCOP, todayISO,
+  TIPOS_NOVEDAD, TIPO_NOVEDAD_LABEL, TIPO_NOVEDAD_COLOR, CAUSAS_RAIZ, CAUSA_RAIZ_LABEL, TURNOS,
+} from "@/lib/muebles";
 import { insightsNovedades, insightsPorNovedad } from "@/lib/inteligencia";
 import { Stat, SkeletonStat, Badge, EmptyState, SkeletonTable } from "@/components/ui";
 import { SlidePanel, IntelBanner, IntelAlert, DetailSection, DetailGrid, MiniHistory } from "@/components/ui/SlidePanel";
@@ -116,7 +119,9 @@ export default function MueblesPage() {
 
   const [items, setItems] = useState<Novedad[]>([]);
   const [loading, setLoading] = useState(true);
-  const [view, setView] = useState<"lista" | "graficos">("lista");
+  const [view, setView] = useState<"lista" | "graficos" | "analisis">("lista");
+  const [stats, setStats] = useState<Record<string, unknown> | null>(null);
+  const [loadingStats, setLoadingStats] = useState(false);
   const [toast, setToast] = useState<{ msg: string; err?: boolean } | null>(null);
 
   const [fq, setFq] = useState("");
@@ -129,6 +134,16 @@ export default function MueblesPage() {
   const [editing, setEditing] = useState<Novedad | null>(null);
   const [deleting, setDeleting] = useState<Novedad | null>(null);
   const [creando, setCreando] = useState(false);
+
+  async function loadStats() {
+    setLoadingStats(true);
+    try {
+      const res = await fetch("/api/novedades/stats?dias=30");
+      const json = await res.json();
+      if (json.success) setStats(json);
+    } catch { /* noop */ }
+    finally { setLoadingStats(false); }
+  }
 
   async function load() {
     setLoading(true);
@@ -269,8 +284,13 @@ export default function MueblesPage() {
           </p>
         </div>
         <div style={{ display: "flex", gap: 8 }}>
-          <button className={`ds-btn ${view === "graficos" ? "ds-btn-secondary" : "ds-btn-ghost"}`} onClick={() => setView(view === "graficos" ? "lista" : "graficos")}>
-            {view === "graficos" ? <><List size={14} />Lista</> : <><BarChart3 size={14} />Gráficos</>}
+          <button className={`ds-btn ${view === "analisis" ? "ds-btn-secondary" : "ds-btn-ghost"}`}
+            onClick={() => { if (view !== "analisis") { setView("analisis"); loadStats(); } else setView("lista"); }}>
+            <BarChart3 size={14} />{view === "analisis" ? "← Lista" : "Análisis"}
+          </button>
+          <button className={`ds-btn ${view === "graficos" ? "ds-btn-secondary" : "ds-btn-ghost"}`}
+            onClick={() => setView(view === "graficos" ? "lista" : "graficos")}>
+            {view === "graficos" ? <><List size={14} />Lista</> : <>Gráficos</>}
           </button>
           <button className="ds-btn ds-btn-primary" onClick={() => setCreando(true)}>
             <Plus size={14} />Nueva novedad
@@ -317,6 +337,129 @@ export default function MueblesPage() {
       )}
 
       {/* ── Vista: Lista ── */}
+      {/* ── Vista: Análisis operativo ── */}
+      {view === "analisis" && (
+        <div className="animate-fade-in">
+          {loadingStats ? (
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 28, marginBottom: 28 }}>
+              {Array.from({ length: 4 }).map((_, i) => <div key={i} className="skeleton" style={{ height: 76, borderRadius: 10 }} />)}
+            </div>
+          ) : stats ? (
+            <>
+              {/* KPIs operativos */}
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(130px,1fr))", gap: 24, marginBottom: 32, padding: "0 2px" }}>
+                {[
+                  { label: "Sin asignar", value: (stats.resumen as any)?.sinAsignar ?? 0, color: (stats.resumen as any)?.sinAsignar > 0 ? "var(--error)" : "var(--success)" },
+                  { label: "Sin ajustar en NetSuite", value: (stats.resumen as any)?.sinNetSuite ?? 0, color: (stats.resumen as any)?.sinNetSuite > 0 ? "var(--warning)" : "var(--success)" },
+                  { label: "Clasificadas", value: `${stats.tasaClasificacion as number}%`, color: (stats.tasaClasificacion as number) < 80 ? "var(--warning)" : "var(--success)" },
+                  { label: "T. prom. resolución", value: stats.tiempoPromResolucion ? `${stats.tiempoPromResolucion}d` : "—", color: "var(--brand)" },
+                ].map(({ label, value, color }) => (
+                  <div key={label} className="ds-stat">
+                    <div className="ds-stat-value sm" style={{ color }}>{value}</div>
+                    <div className="ds-stat-label">{label}</div>
+                  </div>
+                ))}
+              </div>
+
+              <div className="grid-2" style={{ marginBottom: 16 }}>
+                {/* Pareto de PLUs */}
+                <div className="ds-card" style={{ padding: 20 }}>
+                  <div style={{ fontSize: 11, fontWeight: 600, color: "var(--muted)", textTransform: "uppercase", letterSpacing: ".06em", marginBottom: 14 }}>
+                    Top PLUs por frecuencia (últimos 30 días)
+                  </div>
+                  {((stats.paretoPlu as any[]) ?? []).slice(0, 7).map((item: any) => (
+                    <div key={item.plu} style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}>
+                      <span style={{ fontFamily: "var(--mono)", fontSize: 12, fontWeight: 700, width: 60, flexShrink: 0 }}>{item.plu}</span>
+                      <div style={{ flex: 1, height: 6, background: "var(--surface2)", borderRadius: 3 }}>
+                        <div style={{ width: `${item.pct}%`, height: "100%", background: "var(--brand)", borderRadius: 3 }} />
+                      </div>
+                      <span style={{ fontSize: 11, color: "var(--muted)", fontFamily: "var(--mono)", width: 40, textAlign: "right" }}>{item.count} ({item.pct}%)</span>
+                    </div>
+                  ))}
+                  {((stats.paretoPlu as any[]) ?? []).length === 0 && <div style={{ fontSize: 12, color: "var(--muted)" }}>Sin datos clasificados</div>}
+                </div>
+
+                {/* Distribución por tipo */}
+                <div className="ds-card" style={{ padding: 20 }}>
+                  <div style={{ fontSize: 11, fontWeight: 600, color: "var(--muted)", textTransform: "uppercase", letterSpacing: ".06em", marginBottom: 14 }}>
+                    Por tipo de novedad
+                  </div>
+                  {Object.entries((stats.byTipo as Record<string, number>) ?? {})
+                    .filter(([k]) => k !== "SIN_CLASIFICAR")
+                    .sort((a, b) => b[1] - a[1])
+                    .map(([tipo, count]) => {
+                      const total = Object.values((stats.byTipo as Record<string, number>) ?? {}).reduce((a, b) => a + b, 0);
+                      const pct = total > 0 ? Math.round((count as number) / total * 100) : 0;
+                      const color = TIPO_NOVEDAD_COLOR[tipo as keyof typeof TIPO_NOVEDAD_COLOR] ?? "#6b7280";
+                      return (
+                        <div key={tipo} style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}>
+                          <span style={{ width: 8, height: 8, borderRadius: "50%", background: color, flexShrink: 0 }} />
+                          <span style={{ fontSize: 12, flex: 1, color: "var(--text)" }}>{TIPO_NOVEDAD_LABEL[tipo as keyof typeof TIPO_NOVEDAD_LABEL] ?? tipo}</span>
+                          <span style={{ fontSize: 11, color: "var(--muted)", fontFamily: "var(--mono)" }}>{count as number} ({pct}%)</span>
+                        </div>
+                      );
+                    })}
+                  {Object.keys((stats.byTipo as object) ?? {}).filter(k => k !== "SIN_CLASIFICAR").length === 0 && (
+                    <p style={{ fontSize: 12, color: "var(--muted)" }}>Clasifica novedades para ver distribución</p>
+                  )}
+                </div>
+              </div>
+
+              <div className="grid-2">
+                {/* Distribución por turno */}
+                <div className="ds-card" style={{ padding: 20 }}>
+                  <div style={{ fontSize: 11, fontWeight: 600, color: "var(--muted)", textTransform: "uppercase", letterSpacing: ".06em", marginBottom: 14 }}>
+                    Por turno
+                  </div>
+                  {Object.entries((stats.byTurno as Record<string, number>) ?? {})
+                    .filter(([k]) => k !== "SIN_TURNO")
+                    .sort((a, b) => b[1] - a[1])
+                    .map(([turno, count]) => {
+                      const total = Object.values((stats.byTurno as Record<string, number>) ?? {}).filter((_, i, arr) => Object.keys((stats.byTurno as object) ?? {})[i] !== "SIN_TURNO").reduce((a, b) => a + (b as number), 0);
+                      const pct = total > 0 ? Math.round((count as number) / total * 100) : 0;
+                      const col = turno === "MAÑANA" ? "#f59e0b" : turno === "TARDE" ? "#2563eb" : "#7c3aed";
+                      return (
+                        <div key={turno} style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10 }}>
+                          <div style={{ flex: 1 }}>
+                            <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4, fontSize: 12, color: "var(--text)", fontWeight: 600 }}>
+                              <span>{turno}</span><span style={{ fontFamily: "var(--mono)", color: "var(--muted)" }}>{count as number} ({pct}%)</span>
+                            </div>
+                            <div style={{ height: 6, background: "var(--surface2)", borderRadius: 3 }}>
+                              <div style={{ width: `${pct}%`, height: "100%", background: col, borderRadius: 3 }} />
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  {Object.keys((stats.byTurno as object) ?? {}).filter(k => k !== "SIN_TURNO").length === 0 && (
+                    <p style={{ fontSize: 12, color: "var(--muted)" }}>Registra turno en nuevas novedades</p>
+                  )}
+                </div>
+
+                {/* Top zonas de bodega */}
+                <div className="ds-card" style={{ padding: 20 }}>
+                  <div style={{ fontSize: 11, fontWeight: 600, color: "var(--muted)", textTransform: "uppercase", letterSpacing: ".06em", marginBottom: 14 }}>
+                    Zonas con más novedades
+                  </div>
+                  {((stats.topZonas as any[]) ?? []).map((z: any, i: number) => (
+                    <div key={z.zona} style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}>
+                      <span style={{ fontSize: 11, color: "var(--muted)", width: 16, textAlign: "right" }}>{i + 1}</span>
+                      <span style={{ fontSize: 13, fontWeight: 600, flex: 1 }}>{z.zona}</span>
+                      <span style={{ fontSize: 12, fontFamily: "var(--mono)", color: "var(--muted)" }}>{z.count}</span>
+                    </div>
+                  ))}
+                  {((stats.topZonas as any[]) ?? []).length === 0 && (
+                    <p style={{ fontSize: 12, color: "var(--muted)" }}>Registra zona de bodega en nuevas novedades</p>
+                  )}
+                </div>
+              </div>
+            </>
+          ) : (
+            <div style={{ textAlign: "center", padding: "3rem", color: "var(--muted)" }}>Error al cargar estadísticas</div>
+          )}
+        </div>
+      )}
+
       {view === "lista" && (
         <div className="animate-fade-in">
           <div style={{ display: "flex", gap: 8, marginBottom: 14, flexWrap: "wrap" }}>
@@ -439,6 +582,99 @@ export default function MueblesPage() {
       >
         {panelItem && (
           <>
+            {/* Clasificación operativa */}
+            {(panelItem.tipoNovedad || panelItem.causaRaiz || panelItem.turno || panelItem.zonaBodega) && (
+              <DetailSection title="Clasificación operativa">
+                <DetailGrid items={[
+                  { label: "Tipo de novedad", value: panelItem.tipoNovedad ? TIPO_NOVEDAD_LABEL[panelItem.tipoNovedad as keyof typeof TIPO_NOVEDAD_LABEL] : undefined },
+                  { label: "Causa raíz", value: panelItem.causaRaiz ? CAUSA_RAIZ_LABEL[panelItem.causaRaiz as keyof typeof CAUSA_RAIZ_LABEL] : undefined },
+                  { label: "Turno", value: panelItem.turno ?? undefined },
+                  { label: "Zona de bodega", value: panelItem.zonaBodega ?? undefined },
+                ]} />
+              </DetailSection>
+            )}
+
+            {/* Estado operativo */}
+            {panelItem.estado !== "SOLUCIONADO" && canEdit && (
+              <DetailSection title="Gestión operativa">
+                <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 10 }}>
+                  {/* Asignar responsable */}
+                  {!panelItem.asignadoA ? (
+                    <button
+                      className="ds-btn ds-btn-secondary ds-btn-sm"
+                      style={{ color: "var(--brand)" }}
+                      onClick={async () => {
+                        const nombre = prompt("Email o nombre del responsable:");
+                        if (!nombre) return;
+                        // Buscar usuario
+                        const res = await fetch(`/api/novedades/${panelItem.id}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ asignadoA: nombre }) });
+                        const json = await res.json();
+                        if (json.success) { setItems(prev => prev.map(n => n.id === panelItem.id ? { ...n, asignadoA: nombre } : n)); setPanelItem(p => p ? { ...p, asignadoA: nombre } : p); showToast("Asignada ✓"); }
+                      }}
+                    >
+                      <UserCheck size={13} />Asignar responsable
+                    </button>
+                  ) : (
+                    <div style={{ fontSize: 12, color: "var(--muted)", display: "flex", alignItems: "center", gap: 6 }}>
+                      <UserCheck size={12} color="var(--success)" />Asignada a: <strong>{panelItem.asignadoA}</strong>
+                    </div>
+                  )}
+                </div>
+                {/* NetSuite flag */}
+                <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, cursor: "pointer" }}>
+                  <input
+                    type="checkbox"
+                    checked={panelItem.netsuiteAjust}
+                    onChange={async (e) => {
+                      const val = e.target.checked;
+                      await fetch(`/api/novedades/${panelItem.id}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ netsuiteAjust: val }) });
+                      setItems(prev => prev.map(n => n.id === panelItem.id ? { ...n, netsuiteAjust: val } : n));
+                      setPanelItem(p => p ? { ...p, netsuiteAjust: val } : p);
+                      showToast(val ? "Marcado como ajustado en NetSuite ✓" : "Desmarcado");
+                    }}
+                    style={{ width: 16, height: 16 }}
+                  />
+                  <ExternalLink size={13} color={panelItem.netsuiteAjust ? "var(--success)" : "var(--muted)"} />
+                  Ajustado en NetSuite
+                  {!panelItem.netsuiteAjust && (panelItem.estado as string) === "SOLUCIONADO" && (
+                    <span style={{ fontSize: 10, fontWeight: 700, color: "var(--warning)", marginLeft: 4 }}>⚠ Pendiente</span>
+                  )}
+                </label>
+              </DetailSection>
+            )}
+
+            {/* Foto de evidencia */}
+            {panelItem.imagenUrl ? (
+              <DetailSection title="Evidencia fotográfica">
+                <a href={panelItem.imagenUrl} target="_blank" rel="noreferrer">
+                  <img src={panelItem.imagenUrl} alt="Evidencia" style={{ width: "100%", borderRadius: 8, border: "1px solid var(--border)", maxHeight: 180, objectFit: "cover" }} />
+                </a>
+              </DetailSection>
+            ) : canEdit && (
+              <div style={{ marginBottom: 16 }}>
+                <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, cursor: "pointer", color: "var(--muted)" }}>
+                  <Camera size={14} />
+                  <input type="file" accept="image/*" capture="environment" style={{ display: "none" }}
+                    onChange={async (e) => {
+                      const file = e.target.files?.[0];
+                      if (!file) return;
+                      const form = new FormData();
+                      form.append("foto", file);
+                      const r = await fetch("/api/logistica/foto", { method: "POST", body: form });
+                      const j = await r.json();
+                      if (j.success) {
+                        await fetch(`/api/novedades/${panelItem.id}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ imagenUrl: j.url }) });
+                        setItems(prev => prev.map(n => n.id === panelItem.id ? { ...n, imagenUrl: j.url } : n));
+                        setPanelItem(p => p ? { ...p, imagenUrl: j.url } : p);
+                        showToast("Foto guardada ✓");
+                      }
+                    }}
+                  />
+                  Agregar foto de evidencia
+                </label>
+              </div>
+            )}
+
             {/* Impacto destacado */}
             {panelItem.costoIncidencia != null && (
               <div style={{ background: "var(--surface2)", borderRadius: 10, padding: "14px 16px", marginBottom: 20 }}>
@@ -548,6 +784,10 @@ function ModalForm({ novedad, onClose, onSaved, onError }: {
   const [fabricante, setFab] = useState(novedad?.fabricante ?? "");
   const [costoUnitario, setCu] = useState(novedad?.costoUnitario != null ? String(novedad.costoUnitario) : "");
   const [estado, setEstado] = useState<EstadoNovedad>(novedad?.estado ?? "PENDIENTE");
+  const [tipoNovedad, setTipo] = useState(novedad?.tipoNovedad ?? "");
+  const [causaRaiz, setCausa] = useState(novedad?.causaRaiz ?? "");
+  const [turno, setTurno] = useState(novedad?.turno ?? "");
+  const [zonaBodega, setZona] = useState(novedad?.zonaBodega ?? "");
   const [saving, setSaving] = useState(false);
   const [mounted, setMounted] = useState(false);
   useEffect(() => { setMounted(true); }, []);
@@ -567,7 +807,7 @@ function ModalForm({ novedad, onClose, onSaved, onError }: {
       const method = isEdit ? "PUT" : "POST";
       const res = await fetch(url, {
         method, headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ plu: plu.trim(), posicion: posicion.trim(), fecha, descripcion: descripcion.trim() || null, cantidad: parseInt(cantidad) || 0, fabricante: fabricante.trim() || null, costoUnitario: costoUnitario ? parseInt(costoUnitario) : null, estado }),
+        body: JSON.stringify({ plu: plu.trim(), posicion: posicion.trim(), fecha, descripcion: descripcion.trim() || null, cantidad: parseInt(cantidad) || 0, fabricante: fabricante.trim() || null, costoUnitario: costoUnitario ? parseInt(costoUnitario) : null, estado, tipoNovedad: tipoNovedad || null, causaRaiz: causaRaiz || null, turno: turno || null, zonaBodega: zonaBodega.trim() || null }),
       });
       const json = await res.json();
       if (json.success) onSaved(); else onError(json.error || "Error");
@@ -621,6 +861,37 @@ function ModalForm({ novedad, onClose, onSaved, onError }: {
             <select value={estado} onChange={(e) => setEstado(e.target.value as EstadoNovedad)} style={{ ...inp, paddingRight: 28 }} {...focusProps}>
               {ESTADOS.map((e) => <option key={e} value={e}>{estadoLabel(e)}</option>)}
             </select>
+          </div>
+          {/* Campos operativos */}
+          <div style={{ gridColumn: "1/-1", borderTop: "1px solid var(--border)", paddingTop: 14 }}>
+            <div style={{ fontSize: 10, fontWeight: 600, color: "var(--muted)", textTransform: "uppercase", letterSpacing: ".06em", marginBottom: 12 }}>Clasificación operativa (opcional pero recomendada)</div>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+              <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
+                <label style={{ fontSize: 12, fontWeight: 500, color: "var(--muted2)" }}>Tipo de novedad</label>
+                <select value={tipoNovedad} onChange={(e) => setTipo(e.target.value)} style={{ ...inp, paddingRight: 28 }} {...focusProps}>
+                  <option value="">Sin clasificar</option>
+                  {TIPOS_NOVEDAD.map((t) => <option key={t} value={t}>{TIPO_NOVEDAD_LABEL[t]}</option>)}
+                </select>
+              </div>
+              <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
+                <label style={{ fontSize: 12, fontWeight: 500, color: "var(--muted2)" }}>Causa raíz</label>
+                <select value={causaRaiz} onChange={(e) => setCausa(e.target.value)} style={{ ...inp, paddingRight: 28 }} {...focusProps}>
+                  <option value="">Sin clasificar</option>
+                  {CAUSAS_RAIZ.map((c) => <option key={c} value={c}>{CAUSA_RAIZ_LABEL[c]}</option>)}
+                </select>
+              </div>
+              <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
+                <label style={{ fontSize: 12, fontWeight: 500, color: "var(--muted2)" }}>Turno</label>
+                <select value={turno} onChange={(e) => setTurno(e.target.value)} style={{ ...inp, paddingRight: 28 }} {...focusProps}>
+                  <option value="">Sin turno</option>
+                  {TURNOS.map((t) => <option key={t} value={t}>{t.charAt(0) + t.slice(1).toLowerCase()}</option>)}
+                </select>
+              </div>
+              <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
+                <label style={{ fontSize: 12, fontWeight: 500, color: "var(--muted2)" }}>Zona de bodega</label>
+                <input value={zonaBodega} onChange={(e) => setZona(e.target.value)} placeholder="Zona A, Mezzanine, Pasillo H…" style={inp} {...focusProps} />
+              </div>
+            </div>
           </div>
           <div style={{ display: "flex", gap: 8, paddingTop: 4 }}>
             <button type="button" className="ds-btn ds-btn-secondary" onClick={onClose} style={{ flex: 1 }}>Cancelar</button>

@@ -2,7 +2,11 @@
 
 import { useEffect, useRef, useState, useCallback } from "react";
 import { useSession } from "next-auth/react";
-import { Navigation, MapPin, CheckCircle2, XCircle, RefreshCw, Camera, Route, ImageIcon } from "lucide-react";
+import { Navigation, MapPin, CheckCircle2, XCircle, RefreshCw, Camera, Route, AlertTriangle, Clock } from "lucide-react";
+import {
+  INCIDENCIA_LABEL, INCIDENCIA_COLOR, INCIDENCIA_REQUIERE_FOTO,
+  type IncidenciaCodigo,
+} from "@/lib/logistica";
 import {
   Ruta, Parada, PARADA_ESTADO_COLOR, PARADA_ESTADO_LABEL, RUTA_ESTADO_LABEL, RUTA_ESTADO_COLOR, fmtFecha, navUrl,
 } from "@/lib/logistica";
@@ -25,6 +29,8 @@ export default function MiRutaPage() {
   const [toast, setToast] = useState<{ msg: string; err?: boolean } | null>(null);
   const [confirmando, setConfirmando] = useState<Parada | null>(null);
   const [gpsStatus, setGpsStatus] = useState<GpsStatus>("idle");
+  const [incidenciaParada, setIncidenciaParada] = useState<string | null>(null); // paradaId
+  const [enviandoRetrasado, setEnviandoRetrasado] = useState(false);
   const [ultimaPos, setUltimaPos] = useState<{ lat: number; lng: number } | null>(null);
   const watchRef = useRef<number | null>(null);
   const rutaIdRef = useRef<string | undefined>(undefined);
@@ -139,6 +145,20 @@ export default function MiRutaPage() {
           </div>
           <div style={{ display: "flex", gap: 8 }}>
             <button onClick={solicitarGpsManual} style={{ display: "flex", alignItems: "center", gap: 5, padding: "0.5rem 0.85rem", background: COLOR + "15", color: COLOR, border: `1px solid ${COLOR}40`, borderRadius: 9, fontSize: 12, fontWeight: 700, cursor: "pointer" }}><MapPin size={13} />{gpsStatus === "sin-permiso" ? "Activar GPS" : "Mi ubicación"}</button>
+          {ruta?.estado === "EN_CURSO" && (
+            <button
+              disabled={enviandoRetrasado}
+              onClick={async () => {
+                setEnviandoRetrasado(true);
+                await fetch(`/api/logistica/rutas/${ruta.id}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ notas: "⚠ Conductor reporta retraso significativo — " + new Date().toLocaleTimeString("es-CO") }) });
+                setEnviandoRetrasado(false);
+                showToast("Supervisor notificado del retraso ✓");
+              }}
+              style={{ display: "flex", alignItems: "center", gap: 5, padding: "0.5rem 0.85rem", background: "#f59e0b15", color: "#d97706", border: "1px solid #f59e0b40", borderRadius: 9, fontSize: 12, fontWeight: 700, cursor: "pointer" }}
+            >
+              <Clock size={13} />{enviandoRetrasado ? "…" : "Voy retrasado"}
+            </button>
+          )}
             <button onClick={loadRuta} style={{ padding: "0.5rem 0.75rem", background: "var(--surface2)", border: "1px solid var(--border)", borderRadius: 9, cursor: "pointer", color: "var(--muted2)", display: "flex" }}><RefreshCw size={15} /></button>
           </div>
         </div>
@@ -161,10 +181,20 @@ export default function MiRutaPage() {
             parada={p}
             numero={i + 1}
             onConfirmar={() => setConfirmando(p)}
+            onIncidencia={() => setIncidenciaParada(p.id)}
             enCurso={ruta.estado === "EN_CURSO"}
           />
         ))}
       </div>
+
+      {/* Modal incidencia */}
+      {incidenciaParada && (
+        <ModalIncidencia
+          paradaId={incidenciaParada}
+          onClose={() => setIncidenciaParada(null)}
+          onReportada={() => { setIncidenciaParada(null); showToast("Incidencia reportada al supervisor ✓"); }}
+        />
+      )}
 
       {/* Modal confirmación */}
       {confirmando && (
@@ -182,8 +212,8 @@ export default function MiRutaPage() {
 }
 
 // ── Tarjeta de parada ─────────────────────────────────────────
-function ParadaCard({ parada: p, numero, onConfirmar, enCurso }: {
-  parada: Parada; numero: number; onConfirmar: () => void; enCurso: boolean;
+function ParadaCard({ parada: p, numero, onConfirmar, onIncidencia, enCurso }: {
+  parada: Parada; numero: number; onConfirmar: () => void; onIncidencia: () => void; enCurso: boolean;
 }) {
   const color = PARADA_ESTADO_COLOR[p.estado as keyof typeof PARADA_ESTADO_COLOR];
   const entregado = p.estado === "ENTREGADO";
@@ -225,9 +255,98 @@ function ParadaCard({ parada: p, numero, onConfirmar, enCurso }: {
               <CheckCircle2 size={14} />Confirmar entrega
             </button>
           )}
+          {enCurso && (
+            <button onClick={onIncidencia} style={{ display: "flex", alignItems: "center", gap: 5, padding: "0.55rem 0.75rem", background: "#f59e0b15", color: "#d97706", border: "1px solid #f59e0b40", borderRadius: 9, fontSize: 12, fontWeight: 700, cursor: "pointer" }} title="Reportar incidencia">
+              <AlertTriangle size={13} />
+            </button>
+          )}
         </div>
       )}
     </div>
+  );
+}
+
+// ── Modal incidencia ──────────────────────────────────────────
+function ModalIncidencia({ paradaId, onClose, onReportada }: {
+  paradaId: string; onClose: () => void; onReportada: () => void;
+}) {
+  const [tipo, setTipo] = useState<IncidenciaCodigo>("INC-01");
+  const [nota, setNota] = useState("");
+  const [fotoFile, setFotoFile] = useState<File | null>(null);
+  const [fotoPreview, setFotoPreview] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [mounted, setMounted] = useState(false);
+  const fileRef = useRef<HTMLInputElement>(null);
+  useEffect(() => { setMounted(true); }, []);
+  useEffect(() => {
+    const h = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
+    window.addEventListener("keydown", h);
+    document.body.style.overflow = "hidden";
+    return () => { window.removeEventListener("keydown", h); document.body.style.overflow = ""; };
+  }, [onClose]);
+  const requiereFoto = INCIDENCIA_REQUIERE_FOTO.includes(tipo);
+  const TODOS: IncidenciaCodigo[] = ["INC-01","INC-02","INC-03","INC-04","INC-05","INC-06","INC-07","INC-08"];
+
+  async function reportar(e: React.FormEvent) {
+    e.preventDefault();
+    if (requiereFoto && !fotoFile) return;
+    setSaving(true);
+    const form = new FormData();
+    form.append("tipo", tipo);
+    if (nota) form.append("descripcion", nota);
+    if (fotoFile) form.append("foto", fotoFile);
+    try {
+      const res = await fetch(`/api/logistica/paradas/${paradaId}/incidencia`, { method: "POST", body: form });
+      const json = await res.json();
+      if (json.success) onReportada();
+    } catch { /* noop */ } finally { setSaving(false); }
+  }
+
+  if (!mounted) return null;
+  const color = INCIDENCIA_COLOR[tipo];
+
+  return createPortal(
+    <div onClick={onClose} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "flex-end", justifyContent: "center", zIndex: 9999 }}>
+      <div onClick={(e) => e.stopPropagation()} style={{ background: "var(--surface)", borderRadius: "16px 16px 0 0", width: "100%", maxWidth: 520, padding: "1.5rem", boxShadow: "0 -12px 40px rgba(0,0,0,.3)", maxHeight: "85vh", overflowY: "auto" }}>
+        <div style={{ width: 36, height: 4, background: "var(--border)", borderRadius: 2, margin: "0 auto 1.25rem" }} />
+        <h3 style={{ fontSize: 16, fontWeight: 800, color: "var(--text)", marginBottom: 4 }}>Reportar incidencia</h3>
+        <p style={{ fontSize: 13, color: "var(--muted)", marginBottom: 16 }}>El supervisor verá esto en tiempo real.</p>
+        <form onSubmit={reportar} style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+            {TODOS.map((inc) => (
+              <button key={inc} type="button" onClick={() => setTipo(inc)}
+                style={{ padding: "10px 8px", borderRadius: 10, border: `2px solid ${tipo === inc ? INCIDENCIA_COLOR[inc] : "var(--border)"}`, background: tipo === inc ? INCIDENCIA_COLOR[inc] + "12" : "var(--surface2)", cursor: "pointer", textAlign: "left", transition: "all .12s" }}>
+                <div style={{ fontSize: 10, fontWeight: 700, color: INCIDENCIA_COLOR[inc], marginBottom: 2 }}>{inc}</div>
+                <div style={{ fontSize: 12, color: "var(--text)", fontWeight: tipo === inc ? 600 : 400 }}>{INCIDENCIA_LABEL[inc]}</div>
+              </button>
+            ))}
+          </div>
+          <textarea value={nota} onChange={(e) => setNota(e.target.value)} placeholder="Descripción adicional (opcional)…" rows={2}
+            style={{ border: "1px solid var(--border)", borderRadius: 8, padding: "8px 12px", fontSize: 13, resize: "none", fontFamily: "var(--sans)", background: "var(--surface2)", color: "var(--text)", outline: "none" }} />
+          {requiereFoto && (
+            <>
+              <input ref={fileRef} type="file" accept="image/*" capture="environment" style={{ display: "none" }}
+                onChange={(e) => { const f = e.target.files?.[0]; if (f) { setFotoFile(f); setFotoPreview(URL.createObjectURL(f)); } }} />
+              {fotoPreview ? (
+                <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
+                  <img src={fotoPreview} alt="Evidencia" style={{ width: 56, height: 56, objectFit: "cover", borderRadius: 8, border: "1px solid var(--border)" }} />
+                  <span style={{ fontSize: 12, color: "var(--success)" }}>Foto lista</span>
+                </div>
+              ) : (
+                <button type="button" onClick={() => fileRef.current?.click()} style={{ width: "100%", padding: "10px", background: `${color}12`, border: `1px dashed ${color}`, borderRadius: 8, fontSize: 13, color, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
+                  <Camera size={14} />Foto requerida para este tipo
+                </button>
+              )}
+            </>
+          )}
+          <button type="submit" disabled={saving || (requiereFoto && !fotoFile)}
+            style={{ padding: "0.85rem", background: saving ? "var(--muted)" : color, color: "#fff", border: "none", borderRadius: 12, fontSize: 14, fontWeight: 800, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
+            <AlertTriangle size={16} />{saving ? "Reportando…" : "Reportar incidencia"}
+          </button>
+        </form>
+      </div>
+    </div>,
+    document.body
   );
 }
 

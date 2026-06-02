@@ -24,8 +24,23 @@ model Novedad {
   created_at      DateTime? @default(now()) @db.Timestamp(6)
   updated_at      DateTime? @default(now()) @db.Timestamp(6)
 
+  // ── Campos operativos (Iniciativa 1) ──
+  tipoNovedad   String?   @map("tipo_novedad") @db.VarChar(30)
+  // SOBRANTE | FALTANTE | DAÑADO | MAL_UBICADO | ERROR_SISTEMA | ERROR_PROVEEDOR | ERROR_DESPACHO
+  causaRaiz     String?   @map("causa_raiz") @db.VarChar(30)
+  // HUMANO | SISTEMA | PROVEEDOR | DANIO | HURTO | UBICACION | DESPACHO
+  turno         String?   @db.VarChar(10)    // MAÑANA | TARDE | NOCHE
+  zonaBodega    String?   @map("zona_bodega") @db.VarChar(100)
+  asignadoA     String?   @map("asignado_a")
+  asignadoUser  User?     @relation("NovedadesAsignadas", fields: [asignadoA], references: [id], onDelete: SetNull)
+  resueltoAt    DateTime? @map("resuelto_at")
+  netsuiteAjust Boolean   @default(false) @map("netsuite_ajust")
+  imagenUrl     String?   @map("imagen_url")
+
   @@unique([plu, posicion, fecha])
   @@index([plu, posicion, fecha], map: "idx_plu_posicion_fecha")
+  @@index([estado, asignadoA])
+  @@index([tipoNovedad, causaRaiz])
   @@map("novedades")
 }
 
@@ -67,9 +82,11 @@ model User {
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
-  activityLogs  ActivityLog[]
-  transportista Transportista?
-  ciclosConteo  CicloConteo[]
+  activityLogs    ActivityLog[]
+  transportista   Transportista?
+  ciclosConteo    CicloConteo[]
+  novedadesAsign  Novedad[]       @relation("NovedadesAsignadas")
+  contactosGuard  ContactoGuardado[]
 
   @@index([email])
   @@map("users")
@@ -80,6 +97,27 @@ enum Role {
   GERENTE
   OPERADOR
   TRANSPORTISTA
+}
+
+// ═══════════════════════════════════════════
+// MÓDULO GUARDADOS — Log de gestión de cliente
+// ═══════════════════════════════════════════
+
+model ContactoGuardado {
+  id              String   @id @default(cuid())
+  guardadoClientId String  @map("guardado_client_id") @db.VarChar(100)
+  // Tipos: LLAMADA | MENSAJE | EMAIL | VISITA | ESCALACION
+  tipo            String   @db.VarChar(20)
+  // Resultados: NO_CONTESTA | CONFIRMO_FECHA | CANCELO | ESCALADO | OTRO
+  resultado       String   @db.VarChar(30)
+  fechaCompromiso DateTime? @map("fecha_compromiso")
+  nota            String?
+  registradoPor   String   @map("registrado_por")
+  registradoPorUser User   @relation(fields: [registradoPor], references: [id])
+  createdAt       DateTime @default(now()) @map("created_at")
+
+  @@index([guardadoClientId])
+  @@map("contactos_guardado")
 }
 
 // ═══════════════════════════════════════════
@@ -156,6 +194,8 @@ model Parada {
   createdAt     DateTime  @default(now()) @map("created_at")
   updatedAt     DateTime  @updatedAt @map("updated_at")
 
+  incidencias   IncidenciaRuta[]
+
   @@index([rutaId, orden])
   @@map("paradas")
 }
@@ -172,6 +212,25 @@ model UbicacionGps {
 
   @@index([transportistaId, registradoAt])
   @@map("ubicaciones_gps")
+}
+
+model IncidenciaRuta {
+  id              String        @id @default(cuid())
+  paradaId        String        @map("parada_id")
+  parada          Parada        @relation(fields: [paradaId], references: [id], onDelete: Cascade)
+  rutaId          String        @map("ruta_id")
+  transportistaId String        @map("transportista_id")
+  // INC-01 CLIENTE_AUSENTE | INC-02 NEGOCIO_CERRADO | INC-03 DIRECCION_INCORRECTA
+  // INC-04 CLIENTE_RECHAZO | INC-05 MERCANCIA_DAÑADA | INC-06 TRAFICO
+  // INC-07 VEHICULO_AVERIA | INC-08 ACCESO_NEGADO
+  tipo            String        @db.VarChar(30)
+  descripcion     String?
+  fotoUrl         String?       @map("foto_url")
+  createdAt       DateTime      @default(now()) @map("created_at")
+
+  @@index([rutaId])
+  @@index([transportistaId, createdAt])
+  @@map("incidencias_ruta")
 }
 
 // ═══════════════════════════════════════════

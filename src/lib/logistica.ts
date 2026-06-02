@@ -169,3 +169,42 @@ export function nearestNeighbor<T extends { lat: number | null; lng: number | nu
 export function canOptimize(paradas: Pick<Parada, "lat" | "lng">[]): boolean {
   return paradas.length >= 2 && paradas.every((p) => p.lat != null && p.lng != null);
 }
+
+// ── Incidencias de ruta ───────────────────────────────────
+export type IncidenciaCodigo =
+  | "INC-01" | "INC-02" | "INC-03" | "INC-04"
+  | "INC-05" | "INC-06" | "INC-07" | "INC-08";
+
+export interface IncidenciaRuta {
+  id: string;
+  paradaId: string;
+  rutaId: string;
+  transportistaId: string;
+  tipo: IncidenciaCodigo;
+  descripcion: string | null;
+  fotoUrl: string | null;
+  createdAt: string;
+}
+
+export const INCIDENCIA_LABEL: Record<IncidenciaCodigo, string> = {
+  "INC-01": "Cliente ausente",
+  "INC-02": "Negocio cerrado",
+  "INC-03": "Dirección incorrecta",
+  "INC-04": "Cliente rechazó mercancía",
+  "INC-05": "Mercancía dañada en tránsito",
+  "INC-06": "Retraso por tráfico",
+  "INC-07": "Avería del vehículo",
+  "INC-08": "Acceso negado / sin ingreso",
+};
+
+export const INCIDENCIA_COLOR: Record<IncidenciaCodigo, string> = {
+  "INC-01": "#f59e0b", "INC-02": "#f59e0b",
+  "INC-03": "#ef4444", "INC-04": "#dc2626",
+  "INC-05": "#dc2626", "INC-06": "#3b82f6",
+  "INC-07": "#7c3aed", "INC-08": "#6366f1",
+};
+
+// Incidencias que requieren foto obligatoria
+export const INCIDENCIA_REQUIERE_FOTO: IncidenciaCodigo[] = [
+  "INC-04", "INC-05", "INC-07",
+];

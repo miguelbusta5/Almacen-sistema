@@ -65,3 +65,85 @@ export function tieneAlerta(g: Guardado): boolean {
   const u = urgencia(g);
   return u !== null && (u.tipo === "vencida" || u.tipo === "proxima");
 }
+
+// ── Scoring de urgencia (0-100) ──────────────────────────
+// Determina prioridad: qué guardado atender primero.
+import { calcAlmacenaje } from "@/lib/almacenaje";
+
+export function scoreGuardado(g: Guardado): number {
+  if (g.estado === "DESPACHADO") return 0;
+  const dias = Math.floor((Date.now() - new Date(g.fecha + "T00:00:00").getTime()) / 86_400_000);
+  const alm = calcAlmacenaje(g.fecha, null);
+  const u = urgencia(g);
+  let score = 0;
+  // Tiempo en bodega (0-35 pts)
+  score += Math.min(35, dias * 0.45);
+  // Costo acumulado (0-35 pts)
+  score += Math.min(35, (alm.costo / 150_000) * 10);
+  // Urgencia de entrega comprometida (0-30 pts)
+  if (u?.tipo === "vencida")  score += 30;
+  else if (u?.tipo === "proxima" && (u.dias ?? 10) <= 2) score += 22;
+  else if (u?.tipo === "proxima") score += 12;
+  return Math.min(100, Math.round(score));
+}
+
+// ── Nivel de alerta escalonada por días en bodega ────────
+export type AlertaTier = "ok" | "aviso" | "alerta" | "critico" | "emergencia";
+
+export function alertaTier(g: Guardado): AlertaTier {
+  if (g.estado === "DESPACHADO") return "ok";
+  const dias = Math.floor((Date.now() - new Date(g.fecha + "T00:00:00").getTime()) / 86_400_000);
+  if (dias >= 90) return "emergencia";
+  if (dias >= 60) return "critico";
+  if (dias >= 45) return "alerta";
+  if (dias >= 25) return "aviso";
+  return "ok";
+}
+
+export const ALERTA_TIER_LABEL: Record<AlertaTier, string> = {
+  ok:        "En gracia",
+  aviso:     "Gracia venciendo",
+  alerta:    "Alto costo",
+  critico:   "Mercancía en riesgo",
+  emergencia:"Posible abandono",
+};
+
+export const ALERTA_TIER_COLOR: Record<AlertaTier, string> = {
+  ok:        "#10b981",
+  aviso:     "#f59e0b",
+  alerta:    "#ef4444",
+  critico:   "#dc2626",
+  emergencia:"#7f1d1d",
+};
+
+// ── Tipos para log de contacto ───────────────────────────
+export type TipoContacto = "LLAMADA" | "MENSAJE" | "EMAIL" | "VISITA" | "ESCALACION";
+export type ResultadoContacto = "NO_CONTESTA" | "CONFIRMO_FECHA" | "CANCELO" | "ESCALADO" | "OTRO";
+
+export const TIPO_CONTACTO_LABEL: Record<TipoContacto, string> = {
+  LLAMADA:    "Llamada telefónica",
+  MENSAJE:    "Mensaje (WhatsApp/SMS)",
+  EMAIL:      "Correo electrónico",
+  VISITA:     "Visita presencial",
+  ESCALACION: "Escalación interna",
+};
+
+export const RESULTADO_CONTACTO_LABEL: Record<ResultadoContacto, string> = {
+  NO_CONTESTA:    "No contestó",
+  CONFIRMO_FECHA: "Confirmó fecha de recogida",
+  CANCELO:        "Canceló / Rechazó",
+  ESCALADO:       "Se escaló a otro área",
+  OTRO:           "Otro resultado",
+};
+
+export interface ContactoGuardado {
+  id: string;
+  guardadoClientId: string;
+  tipo: TipoContacto;
+  resultado: ResultadoContacto;
+  fechaCompromiso: string | null;
+  nota: string | null;
+  registradoPor: string;
+  registradoPorNombre?: string;
+  createdAt: string;
+}

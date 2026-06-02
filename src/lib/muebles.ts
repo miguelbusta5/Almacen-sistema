@@ -5,8 +5,72 @@
 // ════════════════════════════════════════════════
 
 export type EstadoNovedad = "PENDIENTE" | "EN PROCESO" | "SOLUCIONADO";
-
 export const ESTADOS: EstadoNovedad[] = ["PENDIENTE", "EN PROCESO", "SOLUCIONADO"];
+
+// ── Tipo de novedad ───────────────────────────────────────
+export type TipoNovedad =
+  | "SOBRANTE" | "FALTANTE" | "DAÑADO" | "MAL_UBICADO"
+  | "ERROR_SISTEMA" | "ERROR_PROVEEDOR" | "ERROR_DESPACHO";
+
+export const TIPOS_NOVEDAD: TipoNovedad[] = [
+  "SOBRANTE", "FALTANTE", "DAÑADO", "MAL_UBICADO",
+  "ERROR_SISTEMA", "ERROR_PROVEEDOR", "ERROR_DESPACHO",
+];
+
+export const TIPO_NOVEDAD_LABEL: Record<TipoNovedad, string> = {
+  SOBRANTE:         "Sobrante (existe, no en sistema)",
+  FALTANTE:         "Faltante (en sistema, no existe)",
+  DAÑADO:           "Producto dañado",
+  MAL_UBICADO:      "Mal ubicado",
+  ERROR_SISTEMA:    "Error de sistema / NetSuite",
+  ERROR_PROVEEDOR:  "Error de proveedor",
+  ERROR_DESPACHO:   "Error de despacho",
+};
+
+export const TIPO_NOVEDAD_COLOR: Record<TipoNovedad, string> = {
+  SOBRANTE:        "#10b981",
+  FALTANTE:        "#ef4444",
+  DAÑADO:          "#f59e0b",
+  MAL_UBICADO:     "#7c3aed",
+  ERROR_SISTEMA:   "#0e7490",
+  ERROR_PROVEEDOR: "#6366f1",
+  ERROR_DESPACHO:  "#dc2626",
+};
+
+// ── Causa raíz ───────────────────────────────────────────
+export type CausaRaiz =
+  | "HUMANO" | "SISTEMA" | "PROVEEDOR" | "DANIO" | "HURTO"
+  | "UBICACION" | "DESPACHO";
+
+export const CAUSAS_RAIZ: CausaRaiz[] = [
+  "HUMANO", "SISTEMA", "PROVEEDOR", "DANIO", "HURTO", "UBICACION", "DESPACHO",
+];
+
+export const CAUSA_RAIZ_LABEL: Record<CausaRaiz, string> = {
+  HUMANO:    "Error humano (conteo, digitación, picking)",
+  SISTEMA:   "Error de sistema (NetSuite desactualizado)",
+  PROVEEDOR: "Error de proveedor (recepción incorrecta)",
+  DANIO:     "Producto dañado en bodega",
+  HURTO:     "Posible hurto",
+  UBICACION: "Error de ubicación física",
+  DESPACHO:  "Error en despacho a cliente",
+};
+
+// ── Turno ────────────────────────────────────────────────
+export type Turno = "MAÑANA" | "TARDE" | "NOCHE";
+export const TURNOS: Turno[] = ["MAÑANA", "TARDE", "NOCHE"];
+
+// ── Tipo extendido de Novedad ─────────────────────────────
+export interface NovedadOperativa {
+  tipoNovedad:  TipoNovedad | null;
+  causaRaiz:    CausaRaiz | null;
+  turno:        Turno | null;
+  zonaBodega:   string | null;
+  asignadoA:    string | null;
+  resueltoAt:   string | null;
+  netsuiteAjust:boolean;
+  imagenUrl:    string | null;
+}
 
 export interface Novedad {
   id: number;
@@ -19,6 +83,15 @@ export interface Novedad {
   fabricante: string | null;
   costoUnitario: number | null;
   costoIncidencia: number | null;
+  // Campos operativos (Iniciativa 1)
+  tipoNovedad:   TipoNovedad | null;
+  causaRaiz:     CausaRaiz | null;
+  turno:         Turno | null;
+  zonaBodega:    string | null;
+  asignadoA:     string | null;
+  resueltoAt:    string | null;
+  netsuiteAjust: boolean;
+  imagenUrl:     string | null;
 }
 
 export function fmtCOP(n: number): string {

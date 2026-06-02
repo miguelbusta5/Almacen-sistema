@@ -306,6 +306,68 @@ export function insightsRutas(rutas: Ruta[]): IntelInsight[] {
 }
 
 // ═══════════════════════════════════════════════════════════
+// NUEVAS REGLAS (Iniciativa estratégica)
+// ═══════════════════════════════════════════════════════════
+
+// Novedades sin clasificar (sin tipo ni causa)
+export function insightsSinClasificar(items: Novedad[]): IntelInsight[] {
+  const out: IntelInsight[] = [];
+  const pendientes = items.filter((n) => n.estado !== "SOLUCIONADO");
+  const sinClasif = pendientes.filter((n) => !(n as any).tipoNovedad || !(n as any).causaRaiz);
+  if (sinClasif.length > 0) {
+    const pct = Math.round(sinClasif.length / Math.max(pendientes.length, 1) * 100);
+    if (pct >= 40) {
+      out.push({
+        id: "sin-clasificar",
+        level: "info",
+        module: "muebles",
+        message: `${sinClasif.length} novedades sin tipo ni causa raíz (${pct}%)`,
+        context: "Clasifícalas para habilitar el análisis operativo",
+        action: "Clasificar",
+      });
+    }
+  }
+  // Novedades sin asignar hace más de 2 días
+  const sinAsignarOld = pendientes.filter((n) => {
+    if ((n as any).asignadoA) return false;
+    const dias = Math.floor((Date.now() - new Date(n.fecha + "T00:00:00").getTime()) / 86_400_000);
+    return dias >= 2;
+  });
+  if (sinAsignarOld.length > 0) {
+    out.push({
+      id: "sin-asignar-antiguas",
+      level: "warning",
+      module: "muebles",
+      message: `${sinAsignarOld.length} novedad${sinAsignarOld.length !== 1 ? "es" : ""} sin responsable asignado (≥2 días)`,
+      context: "Sin asignación, no hay accountability",
+      action: "Asignar",
+    });
+  }
+  return out;
+}
+
+// Guardados sin ningún contacto registrado con más de 30 días
+export function insightsSinContacto(guardados: Guardado[]): IntelInsight[] {
+  const out: IntelInsight[] = [];
+  const criticos = guardados.filter((g) => {
+    if (g.estado === "DESPACHADO") return false;
+    const dias = Math.floor((Date.now() - new Date(g.fecha + "T00:00:00").getTime()) / 86_400_000);
+    return dias >= 30;
+  });
+  if (criticos.length > 0) {
+    out.push({
+      id: "guardados-sin-contacto-30d",
+      level: "warning",
+      module: "transporte",
+      message: `${criticos.length} guardado${criticos.length !== 1 ? "s" : ""} con ≥30 días sin gestionar`,
+      context: "Registra el contacto con el cliente para evidencia",
+      action: "Ver guardados",
+    });
+  }
+  return out;
+}
+
+// ═══════════════════════════════════════════════════════════
 // CONSOLIDADO — todos los módulos
 // ═══════════════════════════════════════════════════════════
 export function consolidarInsights(
@@ -315,7 +377,9 @@ export function consolidarInsights(
 ): IntelInsight[] {
   return [
     ...insightsNovedades(novedades),
+    ...insightsSinClasificar(novedades),
     ...insightsGuardados(guardados),
+    ...insightsSinContacto(guardados),
     ...insightsRutas(rutas),
   ].sort((a, b) => {
     const order = { critical: 0, warning: 1, info: 2 };

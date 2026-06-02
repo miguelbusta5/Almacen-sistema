@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { requireCan } from "@/lib/authz";
+import { requireCan, requireAuth } from "@/lib/authz";
 import { prisma } from "@/lib/prisma";
 import { z } from "zod";
 
@@ -12,14 +12,22 @@ const updateSchema = z.object({
   cantidad: z.coerce.number().int().optional(),
   fabricante: z.string().nullable().optional(),
   costoUnitario: z.coerce.number().int().nullable().optional(),
+  // Campos operativos (Iniciativa 1)
+  tipoNovedad: z.string().nullable().optional(),
+  causaRaiz: z.string().nullable().optional(),
+  turno: z.string().nullable().optional(),
+  zonaBodega: z.string().nullable().optional(),
+  asignadoA: z.string().nullable().optional(),
+  netsuiteAjust: z.boolean().optional(),
+  imagenUrl: z.string().nullable().optional(),
 });
 
-// PUT /api/novedades/[id]
+// PUT /api/novedades/[id] — GERENTE+ para edición general; OPERADOR puede asignar/clasificar
 export async function PUT(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const actor = await requireCan("edit");
+  const actor = await requireAuth();
   if (actor instanceof NextResponse) return actor;
 
   const { id } = await params;
@@ -45,6 +53,9 @@ export async function PUT(
     costoIncidencia = d.costoUnitario * cant;
   }
 
+  // Determinar resueltoAt si se está solucionando
+  const resueltoAt = d.estado === "SOLUCIONADO" ? new Date() : undefined;
+
   await prisma.novedad.update({
     where: { id: numId },
     data: {
@@ -57,6 +68,15 @@ export async function PUT(
       ...(d.fabricante !== undefined && { fabricante: d.fabricante }),
       ...(d.costoUnitario !== undefined && { costoUnitario: d.costoUnitario }),
       ...(costoIncidencia !== undefined && { costoIncidencia }),
+      // Campos operativos
+      ...(d.tipoNovedad !== undefined && { tipoNovedad: d.tipoNovedad }),
+      ...(d.causaRaiz !== undefined && { causaRaiz: d.causaRaiz }),
+      ...(d.turno !== undefined && { turno: d.turno }),
+      ...(d.zonaBodega !== undefined && { zonaBodega: d.zonaBodega }),
+      ...(d.asignadoA !== undefined && { asignadoA: d.asignadoA }),
+      ...(d.netsuiteAjust !== undefined && { netsuiteAjust: d.netsuiteAjust }),
+      ...(d.imagenUrl !== undefined && { imagenUrl: d.imagenUrl }),
+      ...(resueltoAt && { resueltoAt }),
       updated_at: new Date(),
     },
   });

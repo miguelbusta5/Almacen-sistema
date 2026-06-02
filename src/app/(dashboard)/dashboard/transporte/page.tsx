@@ -8,8 +8,12 @@ import {
   Chart as ChartJS, ArcElement, BarElement, CategoryScale, LinearScale, Tooltip, Legend,
 } from "chart.js";
 import { Doughnut, Bar } from "react-chartjs-2";
-import { Truck, Plus, X, CheckCircle2, Calendar, Search, BarChart3, List, Clock, Pencil, Trash2 } from "lucide-react";
-import { Guardado, TipoGuardado, fmtCOP, fmtFecha, todayISO, urgencia, tieneAlerta, parseEntrega } from "@/lib/transporte";
+import { Truck, Plus, X, CheckCircle2, Calendar, Search, BarChart3, List, Clock, Pencil, Trash2, Phone, MessageCircle } from "lucide-react";
+import {
+  Guardado, TipoGuardado, fmtCOP, fmtFecha, todayISO, urgencia, tieneAlerta, parseEntrega,
+  scoreGuardado, alertaTier, ALERTA_TIER_COLOR, ALERTA_TIER_LABEL,
+  TipoContacto, ResultadoContacto, TIPO_CONTACTO_LABEL, RESULTADO_CONTACTO_LABEL, ContactoGuardado,
+} from "@/lib/transporte";
 import { calcAlmacenaje, TARIFA_ALM } from "@/lib/almacenaje";
 import { insightsGuardados, insightsPorGuardado } from "@/lib/inteligencia";
 import { Stat, SkeletonStat, Badge, EmptyState, SkeletonTable } from "@/components/ui";
@@ -54,6 +58,9 @@ export default function TransportePage() {
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
 
   const [panelItem, setPanelItem] = useState<Guardado | null>(null);
+  const [contactos, setContactos] = useState<ContactoGuardado[]>([]);
+  const [loadingContactos, setLoadingContactos] = useState(false);
+  const [mostrarFormContacto, setMostrarFormContacto] = useState(false);
   const [editing, setEditing] = useState<Guardado | null>(null);
   const [deleting, setDeleting] = useState<Guardado | null>(null);
   const [creando, setCreando] = useState(false);
@@ -70,6 +77,19 @@ export default function TransportePage() {
   }
   useEffect(() => { load(); }, []);
   function showToast(msg: string, err = false) { setToast({ msg, err }); setTimeout(() => setToast(null), 3000); }
+
+  async function abrirPanel(g: Guardado) {
+    setPanelItem(g);
+    setContactos([]);
+    setMostrarFormContacto(false);
+    setLoadingContactos(true);
+    try {
+      const res = await fetch(`/api/transporte/${encodeURIComponent(g.clientId)}/contactos`);
+      const json = await res.json();
+      if (json.success) setContactos(json.data);
+    } catch { /* noop */ }
+    finally { setLoadingContactos(false); }
+  }
 
   async function despachar(g: Guardado) {
     const res = await fetch(`/api/transporte/${encodeURIComponent(g.clientId)}/acciones`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ tipo: "despachar" }) });
@@ -267,9 +287,20 @@ export default function TransportePage() {
                       const u = urgencia(g);
                       const hasAlert = clientsConAlerta.has(g.clientId);
                       return (
-                        <tr key={g.clientId} className="ds-row" onClick={() => setPanelItem(g)} style={{ background: panelItem?.clientId === g.clientId ? "var(--surface2)" : undefined }}>
+                        <tr key={g.clientId} className="ds-row" onClick={() => abrirPanel(g)} style={{ background: panelItem?.clientId === g.clientId ? "var(--surface2)" : undefined }}>
                           <td style={{ padding: "0 4px 0 12px" }}>
-                            {hasAlert && <span title="Alerta de entrega" style={{ fontSize: 12, color: u?.tipo === "vencida" ? "var(--error)" : "var(--warning)" }}>⚠</span>}
+                            {(() => {
+                              const score = scoreGuardado(g);
+                              const tier = alertaTier(g);
+                              if (tier === "ok") return null;
+                              const color = ALERTA_TIER_COLOR[tier];
+                              return (
+                                <span title={`Urgencia: ${score}/100 · ${ALERTA_TIER_LABEL[tier]}`}
+                                  style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: 22, height: 22, borderRadius: "50%", background: color + "20", fontSize: 10, fontWeight: 800, color, fontFamily: "var(--mono)", cursor: "help" }}>
+                                  {score}
+                                </span>
+                              );
+                            })()}
                           </td>
                           <td style={{ fontFamily: "var(--mono)", fontSize: 12, color: "var(--muted)", whiteSpace: "nowrap" }}>{fmtFecha(g.fecha)}</td>
                           <td style={{ fontFamily: "var(--mono)", fontWeight: 600, fontSize: 13 }}>{g.documento}</td>
@@ -397,6 +428,46 @@ export default function TransportePage() {
               </DetailSection>
             )}
 
+            {/* Log de contacto con cliente */}
+            <DetailSection title={`Gestión de cliente (${contactos.length})`}>
+              {loadingContactos ? (
+                <div className="skeleton" style={{ height: 40, borderRadius: 8 }} />
+              ) : (
+                <>
+                  {contactos.length > 0 && (
+                    <div style={{ marginBottom: 10 }}>
+                      {contactos.slice(0, 4).map((c) => (
+                        <div key={c.id} style={{ display: "flex", gap: 8, padding: "6px 0", borderBottom: "1px solid var(--border)" }}>
+                          <div style={{ flex: 1 }}>
+                            <div style={{ fontSize: 12, fontWeight: 600, color: "var(--text)" }}>
+                              {TIPO_CONTACTO_LABEL[c.tipo as TipoContacto]} · {RESULTADO_CONTACTO_LABEL[c.resultado as ResultadoContacto]}
+                            </div>
+                            {c.fechaCompromiso && <div style={{ fontSize: 11, color: "var(--success)" }}>Comprometido: {fmtFecha(c.fechaCompromiso)}</div>}
+                            {c.nota && <div style={{ fontSize: 11, color: "var(--muted)" }}>{c.nota}</div>}
+                          </div>
+                          <div style={{ fontSize: 10, color: "var(--faint)", fontFamily: "var(--mono)", whiteSpace: "nowrap", marginTop: 2 }}>
+                            {new Date(c.createdAt).toLocaleDateString("es-CO", { day: "2-digit", month: "short" })}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {mostrarFormContacto ? (
+                    <FormContacto
+                      clientId={panelItem.clientId}
+                      onGuardado={(c) => { setContactos(prev => [c, ...prev]); setMostrarFormContacto(false); showToast("Contacto registrado ✓"); }}
+                      onCancel={() => setMostrarFormContacto(false)}
+                    />
+                  ) : (
+                    <button className="ds-btn ds-btn-secondary ds-btn-sm" onClick={() => setMostrarFormContacto(true)} style={{ width: "100%" }}>
+                      <Phone size={12} />Registrar contacto
+                    </button>
+                  )}
+                </>
+              )}
+            </DetailSection>
+
             {/* Acción: editar fecha */}
             {panelItem.estado !== "DESPACHADO" && (
               <button className="ds-btn ds-btn-secondary" style={{ width: "100%", marginTop: 4 }} onClick={() => setFechaModal(panelItem)}>
@@ -458,6 +529,61 @@ export default function TransportePage() {
 // Componentes de Modal (centrados, para acciones destructivas
 // y formularios que interrumpen intencionalmente el flujo)
 // ─────────────────────────────────────────────────────────
+function FormContacto({ clientId, onGuardado, onCancel }: {
+  clientId: string; onGuardado: (c: ContactoGuardado) => void; onCancel: () => void;
+}) {
+  const [tipo, setTipo] = useState<TipoContacto>("LLAMADA");
+  const [resultado, setResultado] = useState<ResultadoContacto>("NO_CONTESTA");
+  const [fechaComp, setFechaComp] = useState("");
+  const [nota, setNota] = useState("");
+  const [saving, setSaving] = useState(false);
+
+  async function guardar(e: React.FormEvent) {
+    e.preventDefault();
+    setSaving(true);
+    try {
+      const res = await fetch(`/api/transporte/${encodeURIComponent(clientId)}/contactos`, {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ tipo, resultado, fechaCompromiso: fechaComp || null, nota: nota.trim() || null }),
+      });
+      const json = await res.json();
+      if (json.success) onGuardado(json.data);
+    } catch { /* noop */ } finally { setSaving(false); }
+  }
+
+  return (
+    <form onSubmit={guardar} style={{ background: "var(--surface2)", borderRadius: 10, padding: "12px", display: "flex", flexDirection: "column", gap: 10 }}>
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+        <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+          <label style={{ fontSize: 11, color: "var(--muted)", fontWeight: 600 }}>Tipo</label>
+          <select value={tipo} onChange={(e) => setTipo(e.target.value as TipoContacto)} style={{ ...inp, height: 32, fontSize: 12 }}>
+            {(Object.keys(TIPO_CONTACTO_LABEL) as TipoContacto[]).map((t) => <option key={t} value={t}>{TIPO_CONTACTO_LABEL[t]}</option>)}
+          </select>
+        </div>
+        <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+          <label style={{ fontSize: 11, color: "var(--muted)", fontWeight: 600 }}>Resultado</label>
+          <select value={resultado} onChange={(e) => setResultado(e.target.value as ResultadoContacto)} style={{ ...inp, height: 32, fontSize: 12 }}>
+            {(Object.keys(RESULTADO_CONTACTO_LABEL) as ResultadoContacto[]).map((r) => <option key={r} value={r}>{RESULTADO_CONTACTO_LABEL[r]}</option>)}
+          </select>
+        </div>
+      </div>
+      {resultado === "CONFIRMO_FECHA" && (
+        <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+          <label style={{ fontSize: 11, color: "var(--muted)", fontWeight: 600 }}>Fecha comprometida</label>
+          <input type="date" value={fechaComp} onChange={(e) => setFechaComp(e.target.value)} style={{ ...inp, height: 32, fontSize: 12 }} />
+        </div>
+      )}
+      <input value={nota} onChange={(e) => setNota(e.target.value)} placeholder="Observaciones (opcional)…" style={{ ...inp, height: 32, fontSize: 12 }} />
+      <div style={{ display: "flex", gap: 8 }}>
+        <button type="button" className="ds-btn ds-btn-ghost ds-btn-sm" onClick={onCancel} style={{ flex: 1 }}>Cancelar</button>
+        <button type="submit" className="ds-btn ds-btn-primary ds-btn-sm" disabled={saving} style={{ flex: 2, background: "#0e7490" }}>
+          {saving ? "…" : "Registrar"}
+        </button>
+      </div>
+    </form>
+  );
+}
+
 function ModalBase({ title, sub, children, onClose }: { title: string; sub?: string; children: React.ReactNode; onClose: () => void }) {
   const [mounted, setMounted] = useState(false);
   useEffect(() => { setMounted(true); }, []);

@@ -6,7 +6,7 @@ import { useSession } from "next-auth/react";
 import { can } from "@/lib/permissions";
 import {
   Route, LayoutDashboard, List, Truck, Plus, X, Pencil, Trash2,
-  RefreshCw, ChevronDown, ChevronUp, Navigation, MapPin, Package,
+  RefreshCw, Navigation, MapPin, Package, BarChart3, TrendingUp, TrendingDown,
 } from "lucide-react";
 import {
   Ruta, Transportista, Vehiculo, Parada, UbicacionActiva,
@@ -102,6 +102,8 @@ export default function LogisticaPage() {
   const canDel = can(role, "delete");
 
   const [view, setView] = useState<View>("panel");
+  const [kpisConductores, setKpisConductores] = useState<any[]>([]);
+  const [loadingKpis, setLoadingKpis] = useState(false);
   const [flotaTab, setFlotaTab] = useState<FlotaTab>("transportistas");
   const [rutas, setRutas] = useState<Ruta[]>([]);
   const [transportistas, setTransportistas] = useState<Transportista[]>([]);
@@ -201,6 +203,13 @@ export default function LogisticaPage() {
           <TabBtn icon={<LayoutDashboard size={15} />} label="Panel" active={view === "panel"} onClick={() => setView("panel")} />
           <TabBtn icon={<List size={15} />} label="Rutas" active={view === "rutas"} onClick={() => setView("rutas")} />
           <TabBtn icon={<Truck size={15} />} label="Flota" active={view === "flota"} onClick={() => setView("flota")} />
+          <TabBtn icon={<BarChart3 size={15} />} label="Conductores" active={(view as string) === "conductores"} onClick={() => {
+            setView("conductores" as View);
+            if (!kpisConductores.length) {
+              setLoadingKpis(true);
+              fetch("/api/logistica/conductores/kpis?dias=30").then(r => r.json()).then(j => { if (j.success) setKpisConductores(j.data); setLoadingKpis(false); });
+            }
+          }} />
           {canManage && <TabBtn icon={<Plus size={15} />} label="Nueva ruta" active={false} onClick={() => setCreandoRuta(true)} accent />}
           <button onClick={loadAll} style={{ display: "flex", alignItems: "center", gap: 6, padding: "0.5rem 0.9rem", background: "var(--surface2)", color: "var(--muted2)", border: "1px solid var(--border)", borderRadius: 9, fontSize: 12, fontWeight: 700, cursor: "pointer" }}><RefreshCw size={14} /></button>
         </div>
@@ -265,6 +274,77 @@ export default function LogisticaPage() {
               onDeleted={(id) => { setVehiculos((p) => p.filter((v) => v.id !== id)); showToast("Eliminado"); }}
               onError={(m) => showToast(m, true)}
             />
+          )}
+        </div>
+      )}
+
+      {/* ── Vista: KPIs Conductores ── */}
+      {(view as string) === "conductores" && (
+        <div className="animate-fade-in">
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
+            <p style={{ fontSize: 13, color: "var(--muted)" }}>Productividad de los últimos 30 días</p>
+            <button className="ds-btn ds-btn-ghost ds-btn-sm" onClick={() => { setLoadingKpis(true); fetch("/api/logistica/conductores/kpis?dias=30").then(r=>r.json()).then(j=>{ if(j.success) setKpisConductores(j.data); setLoadingKpis(false); }); }}>
+              <RefreshCw size={13} />Actualizar
+            </button>
+          </div>
+          {loadingKpis ? (
+            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+              {Array.from({length:3}).map((_,i) => <div key={i} className="skeleton" style={{ height: 72, borderRadius: 10 }} />)}
+            </div>
+          ) : kpisConductores.length === 0 ? (
+            <div style={{ textAlign: "center", padding: "3rem", color: "var(--muted)", fontSize: 13 }}>
+              Sin datos de rutas en los últimos 30 días
+            </div>
+          ) : (
+            <div className="ds-panel" style={{ border: "1px solid var(--border)" }}>
+              <table className="ds-table">
+                <thead>
+                  <tr>
+                    <th>Conductor</th>
+                    <th style={{ textAlign: "center" }}>Rutas</th>
+                    <th style={{ textAlign: "center" }}>Tasa entrega</th>
+                    <th style={{ textAlign: "center" }}>T. prom/parada</th>
+                    <th style={{ textAlign: "center" }}>Incidencias</th>
+                    <th>Vehículo</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {kpisConductores.map((k: any) => {
+                    const tasa = k.tasaEntrega ?? 0;
+                    const color = tasa >= 90 ? "var(--success)" : tasa >= 70 ? "var(--warning)" : "var(--error)";
+                    return (
+                      <tr key={k.transportistaId} className="ds-row">
+                        <td>
+                          <div style={{ fontWeight: 600, fontSize: 13 }}>{k.nombre}</div>
+                          {k.telefono && <div style={{ fontSize: 11, color: "var(--muted)", fontFamily: "var(--mono)" }}>{k.telefono}</div>}
+                        </td>
+                        <td style={{ textAlign: "center", fontFamily: "var(--mono)" }}>{k.rutas}</td>
+                        <td style={{ textAlign: "center" }}>
+                          <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
+                            <span style={{ fontWeight: 800, fontFamily: "var(--mono)", color, fontSize: 14 }}>{tasa}%</span>
+                            {tasa >= 90 ? <TrendingUp size={13} color="var(--success)" /> : <TrendingDown size={13} color="var(--error)" />}
+                          </div>
+                          <div style={{ fontSize: 10, color: "var(--muted)", fontFamily: "var(--mono)" }}>{k.entregadas}/{k.totalParadas}</div>
+                        </td>
+                        <td style={{ textAlign: "center", fontFamily: "var(--mono)", fontSize: 13 }}>
+                          {k.tiempoPromedio != null ? `${k.tiempoPromedio}min` : "—"}
+                        </td>
+                        <td style={{ textAlign: "center" }}>
+                          {k.incidencias > 0 ? (
+                            <span style={{ fontWeight: 700, color: k.incidencias >= 3 ? "var(--error)" : "var(--warning)", fontFamily: "var(--mono)" }}>
+                              {k.incidencias}
+                            </span>
+                          ) : <span style={{ color: "var(--success)" }}>✓</span>}
+                        </td>
+                        <td style={{ fontSize: 12, color: "var(--muted)" }}>
+                          {k.vehiculo ? `${k.vehiculo.placa}` : "—"}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
           )}
         </div>
       )}
