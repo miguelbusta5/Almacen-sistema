@@ -202,9 +202,7 @@ export default function CommandPalette() {
     return () => window.removeEventListener("keydown", handler);
   }, [isOpen, close, allResults, selectedIdx]);
 
-  if (!mounted) return null;
-
-  // Agrupar resultados
+  // ⚠ Todos los hooks ANTES de cualquier return condicional (Rules of Hooks)
   const grouped = useMemo(() => {
     const map = new Map<ResultGroup, { result: PaletteResult; globalIdx: number }[]>();
     let idx = 0;
@@ -215,7 +213,7 @@ export default function CommandPalette() {
     return map;
   }, [allResults]);
 
-  if (!isOpen) return null;
+  if (!mounted || !isOpen) return null;
 
   return createPortal(
     <div
