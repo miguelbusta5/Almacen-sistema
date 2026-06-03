@@ -24,8 +24,8 @@ function createPrismaClient() {
     // Libera conexiones ociosas para no desperdiciar slots en Railway.
     idleTimeoutMillis: 30_000,
 
-    // Falla rápido si la DB no responde (mejor un 500 claro que un timeout de 30s).
-    connectionTimeoutMillis: 5_000,
+    // Railway puede tardar hasta 10 s en cold start; 15 s da margen sin colgar la función.
+    connectionTimeoutMillis: 15_000,
 
     // Permite que el proceso serverless termine limpiamente sin esperar al pool.
     allowExitOnIdle: true,

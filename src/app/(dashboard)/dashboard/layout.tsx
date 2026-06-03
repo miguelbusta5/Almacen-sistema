@@ -3,6 +3,9 @@ import { redirect } from "next/navigation";
 import Sidebar from "@/components/common/Sidebar";
 import Header from "@/components/common/Header";
 
+// Vercel: hasta 30 s para que el layout complete en cold starts
+export const maxDuration = 30;
+
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
   const session = await auth();
   if (!session) redirect("/login");
