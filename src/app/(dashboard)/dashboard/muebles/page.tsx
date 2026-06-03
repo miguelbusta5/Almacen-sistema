@@ -786,6 +786,7 @@ function ModalForm({ novedad, onClose, onSaved, onError }: {
   const [estado, setEstado] = useState<EstadoNovedad>(novedad?.estado ?? "PENDIENTE");
   const [tipoNovedad, setTipo] = useState(novedad?.tipoNovedad ?? "");
   const [causaRaiz, setCausa] = useState(novedad?.causaRaiz ?? "");
+  const [fechaCompromiso, setFC] = useState((novedad as any)?.fechaCompromiso ?? "");
   const [turno, setTurno] = useState(novedad?.turno ?? "");
   const [zonaBodega, setZona] = useState(novedad?.zonaBodega ?? "");
   const [saving, setSaving] = useState(false);
@@ -807,7 +808,7 @@ function ModalForm({ novedad, onClose, onSaved, onError }: {
       const method = isEdit ? "PUT" : "POST";
       const res = await fetch(url, {
         method, headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ plu: plu.trim(), posicion: posicion.trim(), fecha, descripcion: descripcion.trim() || null, cantidad: parseInt(cantidad) || 0, fabricante: fabricante.trim() || null, costoUnitario: costoUnitario ? parseInt(costoUnitario) : null, estado, tipoNovedad: tipoNovedad || null, causaRaiz: causaRaiz || null, turno: turno || null, zonaBodega: zonaBodega.trim() || null }),
+        body: JSON.stringify({ plu: plu.trim(), posicion: posicion.trim(), fecha, descripcion: descripcion.trim() || null, cantidad: parseInt(cantidad) || 0, fabricante: fabricante.trim() || null, costoUnitario: costoUnitario ? parseInt(costoUnitario) : null, estado, tipoNovedad: tipoNovedad || null, causaRaiz: causaRaiz || null, turno: turno || null, zonaBodega: zonaBodega.trim() || null, fechaCompromiso: fechaCompromiso || null }),
       });
       const json = await res.json();
       if (json.success) onSaved(); else onError(json.error || "Error");
@@ -890,6 +891,10 @@ function ModalForm({ novedad, onClose, onSaved, onError }: {
               <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
                 <label style={{ fontSize: 12, fontWeight: 500, color: "var(--muted2)" }}>Zona de bodega</label>
                 <input value={zonaBodega} onChange={(e) => setZona(e.target.value)} placeholder="Zona A, Mezzanine, Pasillo H…" style={inp} {...focusProps} />
+              </div>
+              <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
+                <label style={{ fontSize: 12, fontWeight: 500, color: "var(--muted2)" }}>Fecha compromiso SLA</label>
+                <input type="date" value={fechaCompromiso} onChange={(e) => setFC(e.target.value)} style={inp} {...focusProps} />
               </div>
             </div>
           </div>

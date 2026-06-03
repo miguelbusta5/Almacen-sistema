@@ -1,12 +1,13 @@
 "use client";
 
 import { signOut } from "next-auth/react";
-import { LogOut, ChevronDown, Search } from "lucide-react";
+import { LogOut, ChevronDown, Search, Bell } from "lucide-react";
 import ThemeToggle from "./ThemeToggle";
 import Logo from "./Logo";
 import { useIsMobile } from "@/lib/useIsMobile";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useCommandPalette } from "@/contexts/CommandPaletteContext";
+import Link from "next/link";
 
 interface HeaderProps {
   user?: { name?: string | null; email?: string | null };
@@ -35,6 +36,20 @@ export default function Header({ user }: HeaderProps) {
   const [menuOpen, setMenuOpen] = useState(false);
   const userName = user?.name ?? "Usuario";
   const { open: openPalette } = useCommandPalette();
+  const [notifCount, setNotifCount] = useState(0);
+
+  useEffect(() => {
+    async function fetchNotif() {
+      try {
+        const res = await fetch("/api/notificaciones?unread=true");
+        const json = await res.json();
+        if (json.success) setNotifCount(json.totalNoLeidas ?? 0);
+      } catch { /* noop */ }
+    }
+    fetchNotif();
+    const id = setInterval(fetchNotif, 60_000); // polling 1min
+    return () => clearInterval(id);
+  }, []);
 
   return (
     <header
@@ -90,6 +105,22 @@ export default function Header({ user }: HeaderProps) {
             <Search size={15} />
           </button>
         )}
+        {/* Campana de notificaciones */}
+        <Link href="/dashboard/mis-tareas" style={{ position: "relative", textDecoration: "none", display: "flex", alignItems: "center" }}>
+          <button
+            style={{ background: "var(--surface2)", border: "1px solid var(--border)", borderRadius: 8, padding: 7, cursor: "pointer", color: "var(--muted)", display: "flex", transition: "background .12s" }}
+            title="Mis tareas"
+            onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = "var(--surface3)"; }}
+            onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = "var(--surface2)"; }}
+          >
+            <Bell size={15} />
+          </button>
+          {notifCount > 0 && (
+            <span style={{ position: "absolute", top: -4, right: -4, background: "var(--error)", color: "#fff", fontSize: 9, fontWeight: 800, width: 16, height: 16, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "var(--mono)" }}>
+              {notifCount > 9 ? "9+" : notifCount}
+            </span>
+          )}
+        </Link>
         <ThemeToggle />
 
         {/* User menu */}

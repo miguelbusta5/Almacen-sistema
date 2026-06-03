@@ -24,6 +24,9 @@ model Novedad {
   created_at      DateTime? @default(now()) @db.Timestamp(6)
   updated_at      DateTime? @default(now()) @db.Timestamp(6)
 
+  // ── SLA ──
+  fechaCompromiso DateTime? @map("fecha_compromiso") @db.Date
+
   // ── Campos operativos (Iniciativa 1) ──
   tipoNovedad   String?   @map("tipo_novedad") @db.VarChar(30)
   // SOBRANTE | FALTANTE | DAÑADO | MAL_UBICADO | ERROR_SISTEMA | ERROR_PROVEEDOR | ERROR_DESPACHO
@@ -88,6 +91,7 @@ model User {
   novedadesAsign  Novedad[]         @relation("NovedadesAsignadas")
   contactosGuard  ContactoGuardado[]
   despachosTienda DespachoTienda[]
+  notificaciones  Notificacion[]
 
   @@index([email])
   @@map("users")
@@ -111,6 +115,26 @@ enum EstadoDespacho {
   RECIBIDO
   DESPACHADO
   CON_NOVEDAD
+}
+
+// ═══════════════════════════════════════════
+// NOTIFICACIONES INTERNAS
+// ═══════════════════════════════════════════
+
+model Notificacion {
+  id          String   @id @default(cuid())
+  userId      String   @map("user_id")
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  titulo      String   @db.VarChar(255)
+  descripcion String?
+  tipo        String   @db.VarChar(50)
+  // ASIGNACION | SLA_VENCIDO | GUARDADO_CRITICO | INCIDENCIA | NOVEDAD | TIENDA
+  leida       Boolean  @default(false)
+  enlace      String?  @db.VarChar(500)
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  @@index([userId, leida, createdAt])
+  @@map("notificaciones")
 }
 
 // ═══════════════════════════════════════════

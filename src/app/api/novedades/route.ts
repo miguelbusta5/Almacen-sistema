@@ -26,6 +26,7 @@ function mapRow(r: {
     resueltoAt: r.resueltoAt ? r.resueltoAt.toISOString() : null,
     netsuiteAjust: r.netsuiteAjust ?? false,
     imagenUrl: r.imagenUrl ?? null,
+    fechaCompromiso: (r as any).fechaCompromiso instanceof Date ? (r as any).fechaCompromiso.toISOString().slice(0, 10) : ((r as any).fechaCompromiso ?? null),
   };
 }
 

@@ -5,7 +5,7 @@ import { usePathname } from "next/navigation";
 import { useState, useEffect } from "react";
 import {
   Menu, X, Home, Package, Truck, Users, ScrollText,
-  Route, ClipboardList, BarChart3, Store,
+  Route, ClipboardList, BarChart3, Store, CheckSquare,
 } from "lucide-react";
 import { useIsMobile } from "@/lib/useIsMobile";
 import Logo from "./Logo";
@@ -24,6 +24,7 @@ interface NavItem {
 const ALL_ITEMS: NavItem[] = [
   // ── Siempre visible ──────────────────────────────
   { href: "/dashboard",                        label: "Inicio",             icon: <Home size={16} />,         moduleKey: null },
+  { href: "/dashboard/mis-tareas",             label: "Mis Tareas",         icon: <CheckSquare size={16} />,  moduleKey: "mis-tareas" },
 
   // ── Área de Inventario ───────────────────────────
   { href: "/dashboard/inventario",             label: "Novedades Inventario", icon: <Package size={16} />,    moduleKey: "inventario" },
@@ -54,6 +55,7 @@ const SECTIONS = [
     label: null, // sin etiqueta para items principales
     items: [
       "/dashboard",
+      "/dashboard/mis-tareas",
       "/dashboard/inventario",
       "/dashboard/tienda",
       "/dashboard/transporte",

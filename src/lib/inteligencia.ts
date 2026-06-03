@@ -11,6 +11,7 @@ import type { DespachoTienda } from "@/lib/tienda";
 import { urgencia, parseEntrega } from "@/lib/transporte";
 import { calcAlmacenaje } from "@/lib/almacenaje";
 import { horasDesde } from "@/lib/tienda";
+import { calcSla } from "@/lib/sla";
 
 export type InsightLevel = "critical" | "warning" | "info";
 
@@ -456,6 +457,66 @@ export function insightsSinContacto(guardados: Guardado[]): IntelInsight[] {
 }
 
 // ═══════════════════════════════════════════════════════════
+// REGLAS SLA — SPRINT 6
+// ═══════════════════════════════════════════════════════════
+
+export function insightsSla(items: Novedad[]): IntelInsight[] {
+  const out: IntelInsight[] = [];
+  const abiertas = items.filter((n) => n.estado !== "SOLUCIONADO");
+
+  // SLA vencidas (tiene fechaCompromiso y ya pasó)
+  const vencidas = abiertas.filter((n) => {
+    const fc = (n as any).fechaCompromiso as string | null;
+    return fc && calcSla(fc) === "VENCIDO";
+  });
+  if (vencidas.length > 0) {
+    out.push({
+      id: "sla-vencido",
+      level: "critical",
+      module: "muebles",
+      message: `${vencidas.length} novedad${vencidas.length !== 1 ? "es" : ""} con SLA vencido`,
+      context: vencidas.slice(0, 2).map((n) => `PLU ${n.plu}`).join(" · "),
+      action: "Ver vencidas",
+    });
+  }
+
+  // Próximas a vencer (≤2 días)
+  const proximas = abiertas.filter((n) => {
+    const fc = (n as any).fechaCompromiso as string | null;
+    return fc && calcSla(fc) === "PROXIMO";
+  });
+  if (proximas.length > 0) {
+    out.push({
+      id: "sla-proximo",
+      level: "warning",
+      module: "muebles",
+      message: `${proximas.length} novedad${proximas.length !== 1 ? "es" : ""} vencen en ≤2 días`,
+      context: proximas.slice(0, 2).map((n) => `PLU ${n.plu}`).join(" · "),
+    });
+  }
+
+  // Backlog por responsable (>8 abiertas)
+  const byResp: Record<string, number> = {};
+  for (const n of abiertas) {
+    const r = (n as any).asignadoA as string | null;
+    if (r) byResp[r] = (byResp[r] ?? 0) + 1;
+  }
+  for (const [resp, count] of Object.entries(byResp)) {
+    if (count > 8) {
+      out.push({
+        id: `backlog-${resp}`,
+        level: "warning",
+        module: "muebles",
+        message: `${resp} tiene ${count} novedades abiertas`,
+        context: "Backlog elevado — redistribuir carga",
+      });
+    }
+  }
+
+  return out;
+}
+
+// ═══════════════════════════════════════════════════════════
 // REGLAS TIENDA
 // ═══════════════════════════════════════════════════════════
 
@@ -537,6 +598,7 @@ export function consolidarInsights(
   return [
     ...insightsNovedades(novedades),
     ...insightsSinClasificar(novedades),
+    ...insightsSla(novedades),
     ...insightsPluReincidente(novedades),
     ...insightsZonaCritica(novedades),
     ...insightsResponsableSaturado(novedades),

@@ -21,7 +21,7 @@ const SESSION_COOKIES = [
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  // Solo proteger rutas del dashboard
+  // Solo proteger rutas del dashboard (mis-tareas es accesible a todos los roles autenticados)
   if (!pathname.startsWith("/dashboard")) return NextResponse.next();
 
   // Verificar presencia de cookie de sesión

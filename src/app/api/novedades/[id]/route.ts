@@ -20,6 +20,7 @@ const updateSchema = z.object({
   asignadoA: z.string().nullable().optional(),
   netsuiteAjust: z.boolean().optional(),
   imagenUrl: z.string().nullable().optional(),
+  fechaCompromiso: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable().optional(),
 });
 
 // PUT /api/novedades/[id] — GERENTE+ para edición general; OPERADOR puede asignar/clasificar
@@ -76,6 +77,7 @@ export async function PUT(
       ...(d.asignadoA !== undefined && { asignadoA: d.asignadoA }),
       ...(d.netsuiteAjust !== undefined && { netsuiteAjust: d.netsuiteAjust }),
       ...(d.imagenUrl !== undefined && { imagenUrl: d.imagenUrl }),
+      ...(d.fechaCompromiso !== undefined && { fechaCompromiso: d.fechaCompromiso ? new Date(d.fechaCompromiso + "T00:00:00") : null }),
       ...(resueltoAt && { resueltoAt }),
       updated_at: new Date(),
     },
