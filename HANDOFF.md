@@ -271,6 +271,7 @@ El sidebar y el Command Palette filtran automáticamente según el rol. Acceso p
 - [⏸] **Módulo Conteo Cíclico** — en PAUSA, en producción pero pendiente de completar. Ver detalle en §5 y pendientes internos abajo.
 - [x] **Pooling de DB optimizado** — `pg.Pool` configurado con `max: 3`, `idleTimeoutMillis: 30s`, `connectionTimeoutMillis: 5s`, `allowExitOnIdle: true`. Soporte de `DATABASE_POOL_URL` para activar PgBouncer sin cambiar código. Ver §3 para activar Railway PgBouncer cuando se necesite.
 - [ ] **Dominio propio** (.com) si se desea.
+- [x] **Sprint 6 (Sesión 7) — Gestión operacional y accountability**: Mis Tareas, SLA, Notificaciones, Intelligence v3.
 - [x] **Sesión 6 — Almacenaje correcto + Tienda enriquecida**: lógica de 30 días exactos, PLUs por despacho, 65 tests.
 - [x] **Sesión 5 — Reestructuración CEDI**: 8 roles, módulo Inventario, inteligencia avanzada, Centro de Control, Ranking operacional.
 
