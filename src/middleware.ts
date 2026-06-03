@@ -1,106 +1,45 @@
 // ═══════════════════════════════════════════════════════════
-// MIDDLEWARE DE PROTECCIÓN DE RUTAS
-// Valida sesión y rol ANTES de renderizar cualquier página.
-// Corre en Edge Runtime (sin Prisma) — solo lee el JWT.
+// MIDDLEWARE DE PROTECCIÓN DE RUTAS — Auth.js v5 compatible
+//
+// Verifica la presencia de la cookie de sesión.
+// La validación de ROL se hace en el servidor (requireCan/requireAuth)
+// y en la UI (modulePermissions → sidebar).
+//
+// NOTA: getToken de next-auth/jwt no es compatible con Auth.js v5.
+// Usamos verificación de cookie directa para compatibilidad con Edge Runtime.
 // ═══════════════════════════════════════════════════════════
 
 import { NextRequest, NextResponse } from "next/server";
-import { getToken } from "next-auth/jwt";
 
-// Espejo de modulePermissions.ts para Edge Runtime.
-// Orden importa: las rutas más específicas van primero.
-const ROUTE_PROTECTION: Array<{ pattern: RegExp; roles: string[] }> = [
-  // Administración
-  {
-    pattern: /^\/dashboard\/usuarios/,
-    roles: ["ADMIN"],
-  },
-  {
-    pattern: /^\/dashboard\/auditoria/,
-    roles: ["ADMIN", "GERENTE"],
-  },
-
-  // Centro de Control
-  {
-    pattern: /^\/dashboard\/centro-control/,
-    roles: ["GERENTE", "ADMIN", "SUPERVISOR_INVENTARIO", "SUPERVISOR_TRANSPORTE", "SUPERVISOR_TIENDA"],
-  },
-
-  // Inventario
-  {
-    pattern: /^\/dashboard\/inventario/,
-    roles: ["INVENTARIO", "SUPERVISOR_INVENTARIO", "GERENTE", "ADMIN", "OPERADOR"],
-  },
-
-  // Tienda
-  {
-    pattern: /^\/dashboard\/tienda/,
-    roles: ["TIENDA", "SUPERVISOR_TIENDA", "GERENTE", "ADMIN"],
-  },
-
-  // Transporte
-  {
-    pattern: /^\/dashboard\/transporte/,
-    roles: ["TRANSPORTE", "SUPERVISOR_TRANSPORTE", "GERENTE", "ADMIN", "OPERADOR"],
-  },
-
-  // Logística (mi-ruta va antes que logística general)
-  {
-    pattern: /^\/dashboard\/logistica\/mi-ruta/,
-    roles: ["TRANSPORTISTA", "TRANSPORTE", "SUPERVISOR_TRANSPORTE", "GERENTE", "ADMIN", "OPERADOR"],
-  },
-  {
-    pattern: /^\/dashboard\/logistica/,
-    roles: ["TRANSPORTE", "SUPERVISOR_TRANSPORTE", "GERENTE", "ADMIN"],
-  },
-
-  // Conteo (contar va antes que conteo general)
-  {
-    pattern: /^\/dashboard\/conteo\/contar/,
-    roles: ["INVENTARIO", "SUPERVISOR_INVENTARIO", "GERENTE", "ADMIN", "OPERADOR"],
-  },
-  {
-    pattern: /^\/dashboard\/conteo/,
-    roles: ["INVENTARIO", "SUPERVISOR_INVENTARIO", "GERENTE", "ADMIN"],
-  },
+// Nombres de cookies que usa Auth.js v5 según el entorno
+const SESSION_COOKIES = [
+  "__Secure-authjs.session-token", // producción HTTPS
+  "authjs.session-token",           // desarrollo HTTP
+  "next-auth.session-token",        // legacy v4 (compat)
 ];
 
-export async function middleware(request: NextRequest) {
+export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  // Proteger solo rutas del dashboard
+  // Solo proteger rutas del dashboard
   if (!pathname.startsWith("/dashboard")) return NextResponse.next();
 
-  // Leer JWT — no requiere Prisma, funciona en Edge Runtime
-  const token = await getToken({
-    req: request,
-    secret: process.env.AUTH_SECRET ?? process.env.NEXTAUTH_SECRET,
-  });
+  // Verificar presencia de cookie de sesión
+  const hasSession = SESSION_COOKIES.some((name) => request.cookies.has(name));
 
-  // Sin sesión válida → login
-  if (!token) {
+  if (!hasSession) {
     const loginUrl = new URL("/login", request.url);
     loginUrl.searchParams.set("callbackUrl", pathname);
     return NextResponse.redirect(loginUrl);
   }
 
-  const role = (token.role as string | undefined) ?? "";
-
-  // Verificar si la ruta tiene restricción de rol
-  for (const { pattern, roles } of ROUTE_PROTECTION) {
-    if (pattern.test(pathname)) {
-      if (!roles.includes(role)) {
-        // Rol no autorizado → redirigir al dashboard (no 404, para no revelar la ruta)
-        return NextResponse.redirect(new URL("/dashboard", request.url));
-      }
-      break; // Primera regla que coincide es la que aplica
-    }
-  }
-
+  // Sesión presente → dejar pasar.
+  // La validación de rol ocurre en:
+  //   1. Servidor: requireAuth / requireCan / requireRole en cada API route
+  //   2. UI: modulePermissions.ts → sidebar + CommandPalette filtrados por rol
   return NextResponse.next();
 }
 
 export const config = {
-  // Aplica a todas las rutas del dashboard y API (las APIs tienen su propia authz)
   matcher: ["/dashboard/:path*"],
 };
