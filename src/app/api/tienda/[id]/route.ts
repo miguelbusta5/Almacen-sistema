@@ -4,34 +4,39 @@ import { prisma } from "@/lib/prisma";
 import { z } from "zod";
 
 const updateSchema = z.object({
-  estado:          z.enum(["PENDIENTE", "RECIBIDO", "DESPACHADO", "CON_NOVEDAD"]).optional(),
-  novedad:         z.string().nullable().optional(),
-  centroCostos:    z.string().max(100).optional(),
-  numeroDocumento: z.string().max(100).optional(),
-  consecutivo:     z.string().max(50).optional(),
-  clienteNombre:   z.string().max(255).optional(),
-  clienteDocumento:z.string().max(50).nullable().optional(),
-  clienteTelefono: z.string().max(30).nullable().optional(),
+  estado:                   z.enum(["PENDIENTE", "RECIBIDO", "DESPACHADO", "CON_NOVEDAD"]).optional(),
+  novedad:                  z.string().nullable().optional(),
+  centroCostos:             z.string().max(100).optional(),
+  numeroDocumento:          z.string().max(100).optional(),
+  consecutivo:              z.string().max(50).optional(),
+  clienteNombre:            z.string().max(255).optional(),
+  clienteDocumento:         z.string().max(50).nullable().optional(),
+  clienteTelefono:          z.string().max(30).nullable().optional(),
+  fechaEntregaComprometida: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable().optional(),
+  numeroCajas:              z.number().int().min(1).nullable().optional(),
 });
 
-function mapRow(r: any) {
+function mapRow(r: any): object {
   return {
     id: r.id,
-    centroCostos:    r.centroCostos,
-    numeroDocumento: r.numeroDocumento,
-    consecutivo:     r.consecutivo,
-    clienteNombre:   r.clienteNombre,
-    clienteDocumento:r.clienteDocumento,
-    clienteTelefono: r.clienteTelefono,
-    estado:          r.estado,
-    fechaCreacion:   r.fechaCreacion instanceof Date ? r.fechaCreacion.toISOString().slice(0, 10) : r.fechaCreacion,
-    recibidoAt:      r.recibidoAt ? r.recibidoAt.toISOString() : null,
-    despachadoAt:    r.despachadoAt ? r.despachadoAt.toISOString() : null,
-    novedad:         r.novedad,
-    creadoPorId:     r.creadoPorId,
-    creadoPorNombre: r.creadoPor?.name ?? null,
-    createdAt:       r.createdAt.toISOString(),
-    updatedAt:       r.updatedAt.toISOString(),
+    centroCostos:             r.centroCostos,
+    numeroDocumento:          r.numeroDocumento,
+    consecutivo:              r.consecutivo,
+    clienteNombre:            r.clienteNombre,
+    clienteDocumento:         r.clienteDocumento,
+    clienteTelefono:          r.clienteTelefono,
+    estado:                   r.estado,
+    fechaCreacion:            r.fechaCreacion instanceof Date ? r.fechaCreacion.toISOString().slice(0, 10) : r.fechaCreacion,
+    fechaEntregaComprometida: r.fechaEntregaComprometida instanceof Date ? r.fechaEntregaComprometida.toISOString().slice(0, 10) : (r.fechaEntregaComprometida ?? null),
+    numeroCajas:              r.numeroCajas ?? null,
+    recibidoAt:               r.recibidoAt ? r.recibidoAt.toISOString() : null,
+    despachadoAt:             r.despachadoAt ? r.despachadoAt.toISOString() : null,
+    novedad:                  r.novedad,
+    creadoPorId:              r.creadoPorId,
+    creadoPorNombre:          r.creadoPor?.name ?? null,
+    createdAt:                r.createdAt.toISOString(),
+    updatedAt:                r.updatedAt.toISOString(),
+    plines:                   r.plines ?? [],
   };
 }
 
@@ -43,7 +48,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
 
   const row = await prisma.despachoTienda.findUnique({
     where: { id },
-    include: { creadoPor: { select: { id: true, name: true } } },
+    include: { creadoPor: { select: { id: true, name: true } }, plines: true },
   });
   if (!row) return NextResponse.json({ error: "No encontrado" }, { status: 404 });
 
@@ -102,9 +107,11 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
       ...(d.clienteNombre   && { clienteNombre: d.clienteNombre }),
       ...(d.clienteDocumento !== undefined && { clienteDocumento: d.clienteDocumento }),
       ...(d.clienteTelefono  !== undefined && { clienteTelefono: d.clienteTelefono }),
+      ...(d.fechaEntregaComprometida !== undefined && { fechaEntregaComprometida: d.fechaEntregaComprometida ? new Date(d.fechaEntregaComprometida + "T00:00:00") : null }),
+      ...(d.numeroCajas !== undefined && { numeroCajas: d.numeroCajas }),
       ...timestamps,
     },
-    include: { creadoPor: { select: { id: true, name: true } } },
+    include: { creadoPor: { select: { id: true, name: true } }, plines: true },
   });
 
   const detail = d.estado ? `Estado → ${d.estado}` : "Actualización";

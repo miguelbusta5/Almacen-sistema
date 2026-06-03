@@ -129,16 +129,33 @@ model DespachoTienda {
   fechaCreacion    DateTime       @db.Date @map("fecha_creacion")
   recibidoAt       DateTime?      @map("recibido_at")
   despachadoAt     DateTime?      @map("despachado_at")
-  novedad          String?
-  creadoPorId      String         @map("creado_por_id")
-  creadoPor        User           @relation(fields: [creadoPorId], references: [id])
-  createdAt        DateTime       @default(now()) @map("created_at")
-  updatedAt        DateTime       @updatedAt @map("updated_at")
+  novedad                   String?
+  fechaEntregaComprometida  DateTime? @db.Date @map("fecha_entrega_comprometida")
+  numeroCajas               Int?      @map("numero_cajas")
+  creadoPorId               String    @map("creado_por_id")
+  creadoPor                 User      @relation(fields: [creadoPorId], references: [id])
+  createdAt                 DateTime  @default(now()) @map("created_at")
+  updatedAt                 DateTime  @updatedAt @map("updated_at")
+
+  plines   PlinDespacho[]
 
   @@index([estado])
   @@index([centroCostos, fechaCreacion])
   @@index([fechaCreacion])
   @@map("despachos_tienda")
+}
+
+model PlinDespacho {
+  id          String         @id @default(cuid())
+  despachoId  String         @map("despacho_id")
+  despacho    DespachoTienda @relation(fields: [despachoId], references: [id], onDelete: Cascade)
+  plu         String         @db.VarChar(100)
+  descripcion String?        @db.VarChar(255)
+  unidades    Int
+  createdAt   DateTime       @default(now()) @map("created_at")
+
+  @@index([despachoId])
+  @@map("plines_despacho")
 }
 
 // ═══════════════════════════════════════════

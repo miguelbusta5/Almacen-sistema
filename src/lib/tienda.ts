@@ -10,6 +10,14 @@ export const ESTADOS_DESPACHO: EstadoDespacho[] = [
   "PENDIENTE", "RECIBIDO", "DESPACHADO", "CON_NOVEDAD",
 ];
 
+export interface PlinDespacho {
+  id: string;
+  despachoId: string;
+  plu: string;
+  descripcion: string | null;
+  unidades: number;
+}
+
 export interface DespachoTienda {
   id: string;
   centroCostos: string;
@@ -19,7 +27,9 @@ export interface DespachoTienda {
   clienteDocumento: string | null;
   clienteTelefono: string | null;
   estado: EstadoDespacho;
-  fechaCreacion: string;    // YYYY-MM-DD
+  fechaCreacion: string;              // YYYY-MM-DD
+  fechaEntregaComprometida: string | null; // YYYY-MM-DD
+  numeroCajas: number | null;
   recibidoAt: string | null;
   despachadoAt: string | null;
   novedad: string | null;
@@ -27,6 +37,7 @@ export interface DespachoTienda {
   creadoPorNombre?: string;
   createdAt: string;
   updatedAt: string;
+  plines?: PlinDespacho[];
 }
 
 // ── Labels y colores ──────────────────────────────────────

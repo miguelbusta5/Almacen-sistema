@@ -4,38 +4,50 @@ import { prisma } from "@/lib/prisma";
 import { z } from "zod";
 import { todayISO } from "@/lib/tienda";
 
-const createSchema = z.object({
-  centroCostos:     z.string().min(1, "Centro de costos requerido").max(100),
-  numeroDocumento:  z.string().min(1, "Número de documento requerido").max(100),
-  consecutivo:      z.string().min(1, "Consecutivo requerido").max(50),
-  clienteNombre:    z.string().min(1, "Nombre del cliente requerido").max(255),
-  clienteDocumento: z.string().max(50).nullable().optional(),
-  clienteTelefono:  z.string().max(30).nullable().optional(),
-  fechaCreacion:    z.string().regex(/^\d{4}-\d{2}-\d{2}$/).default(todayISO()),
+const plinSchema = z.object({
+  plu:        z.string().min(1).max(100),
+  descripcion:z.string().max(255).nullable().optional(),
+  unidades:   z.number().int().min(1),
 });
 
-function mapRow(r: any) {
+const createSchema = z.object({
+  centroCostos:              z.string().min(1).max(100),
+  numeroDocumento:           z.string().min(1).max(100),
+  consecutivo:               z.string().min(1).max(50),
+  clienteNombre:             z.string().min(1).max(255),
+  clienteDocumento:          z.string().max(50).nullable().optional(),
+  clienteTelefono:           z.string().max(30).nullable().optional(),
+  fechaCreacion:             z.string().regex(/^\d{4}-\d{2}-\d{2}$/).default(todayISO()),
+  fechaEntregaComprometida:  z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable().optional(),
+  numeroCajas:               z.number().int().min(1).nullable().optional(),
+  plines:                    z.array(plinSchema).optional(),
+});
+
+function mapRow(r: any): object {
   return {
     id: r.id,
-    centroCostos:    r.centroCostos,
-    numeroDocumento: r.numeroDocumento,
-    consecutivo:     r.consecutivo,
-    clienteNombre:   r.clienteNombre,
-    clienteDocumento:r.clienteDocumento,
-    clienteTelefono: r.clienteTelefono,
-    estado:          r.estado,
-    fechaCreacion:   r.fechaCreacion instanceof Date ? r.fechaCreacion.toISOString().slice(0, 10) : r.fechaCreacion,
-    recibidoAt:      r.recibidoAt ? r.recibidoAt.toISOString() : null,
-    despachadoAt:    r.despachadoAt ? r.despachadoAt.toISOString() : null,
-    novedad:         r.novedad,
-    creadoPorId:     r.creadoPorId,
-    creadoPorNombre: r.creadoPor?.name ?? null,
-    createdAt:       r.createdAt.toISOString(),
-    updatedAt:       r.updatedAt.toISOString(),
+    centroCostos:             r.centroCostos,
+    numeroDocumento:          r.numeroDocumento,
+    consecutivo:              r.consecutivo,
+    clienteNombre:            r.clienteNombre,
+    clienteDocumento:         r.clienteDocumento,
+    clienteTelefono:          r.clienteTelefono,
+    estado:                   r.estado,
+    fechaCreacion:            r.fechaCreacion instanceof Date ? r.fechaCreacion.toISOString().slice(0, 10) : r.fechaCreacion,
+    fechaEntregaComprometida: r.fechaEntregaComprometida instanceof Date ? r.fechaEntregaComprometida.toISOString().slice(0, 10) : (r.fechaEntregaComprometida ?? null),
+    numeroCajas:              r.numeroCajas ?? null,
+    recibidoAt:               r.recibidoAt ? r.recibidoAt.toISOString() : null,
+    despachadoAt:             r.despachadoAt ? r.despachadoAt.toISOString() : null,
+    novedad:                  r.novedad,
+    creadoPorId:              r.creadoPorId,
+    creadoPorNombre:          r.creadoPor?.name ?? null,
+    createdAt:                r.createdAt.toISOString(),
+    updatedAt:                r.updatedAt.toISOString(),
+    plines:                   r.plines ?? [],
   };
 }
 
-// GET /api/tienda?estado=&centroCostos=&q=&page=1&pageSize=200
+// GET /api/tienda
 export async function GET(req: NextRequest) {
   const actor = await requireAuth();
   if (actor instanceof NextResponse) return actor;
@@ -59,7 +71,7 @@ export async function GET(req: NextRequest) {
   const [rows, total] = await prisma.$transaction([
     prisma.despachoTienda.findMany({
       where,
-      include: { creadoPor: { select: { id: true, name: true } } },
+      include: { creadoPor: { select: { id: true, name: true } }, plines: true },
       orderBy: [{ fechaCreacion: "desc" }, { createdAt: "desc" }],
       skip: (page - 1) * pageSize,
       take: pageSize,
@@ -80,22 +92,43 @@ export async function POST(req: NextRequest) {
   if (!parsed.success) return NextResponse.json({ error: parsed.error.issues[0].message }, { status: 400 });
 
   const d = parsed.data;
-  const row = await prisma.despachoTienda.create({
-    data: {
-      centroCostos:    d.centroCostos,
-      numeroDocumento: d.numeroDocumento,
-      consecutivo:     d.consecutivo,
-      clienteNombre:   d.clienteNombre,
-      clienteDocumento:d.clienteDocumento ?? null,
-      clienteTelefono: d.clienteTelefono ?? null,
-      fechaCreacion:   new Date(d.fechaCreacion + "T00:00:00"),
-      creadoPorId:     actor.id,
-    },
-    include: { creadoPor: { select: { id: true, name: true } } },
+
+  const row = await prisma.$transaction(async (tx) => {
+    const despacho = await tx.despachoTienda.create({
+      data: {
+        centroCostos:            d.centroCostos,
+        numeroDocumento:         d.numeroDocumento,
+        consecutivo:             d.consecutivo,
+        clienteNombre:           d.clienteNombre,
+        clienteDocumento:        d.clienteDocumento ?? null,
+        clienteTelefono:         d.clienteTelefono ?? null,
+        fechaCreacion:           new Date(d.fechaCreacion + "T00:00:00"),
+        fechaEntregaComprometida:d.fechaEntregaComprometida ? new Date(d.fechaEntregaComprometida + "T00:00:00") : null,
+        numeroCajas:             d.numeroCajas ?? null,
+        creadoPorId:             actor.id,
+      },
+      include: { creadoPor: { select: { id: true, name: true } }, plines: true },
+    });
+
+    if (d.plines && d.plines.length > 0) {
+      await tx.plinDespacho.createMany({
+        data: d.plines.map((p) => ({
+          despachoId:  despacho.id,
+          plu:         p.plu,
+          descripcion: p.descripcion ?? null,
+          unidades:    p.unidades,
+        })),
+      });
+    }
+
+    return tx.despachoTienda.findUnique({
+      where: { id: despacho.id },
+      include: { creadoPor: { select: { id: true, name: true } }, plines: true },
+    });
   });
 
   await prisma.activityLog.create({
-    data: { userId: actor.id, action: "CREATE", module: "tienda", recordId: row.id, details: `${d.numeroDocumento} · ${d.clienteNombre} · ${d.centroCostos}` },
+    data: { userId: actor.id, action: "CREATE", module: "tienda", recordId: row!.id, details: `${d.numeroDocumento} · ${d.clienteNombre} · ${d.centroCostos}` },
   }).catch(() => {});
 
   return NextResponse.json({ success: true, data: mapRow(row) }, { status: 201 });

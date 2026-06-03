@@ -6,10 +6,10 @@ import { useSession } from "next-auth/react";
 import { can } from "@/lib/permissions";
 import {
   Store, Plus, Search, X, CheckCircle2, Truck, AlertTriangle,
-  Phone, FileText, Pencil, Trash2, Clock,
+  Pencil, Trash2, Package, Minus,
 } from "lucide-react";
 import {
-  DespachoTienda, EstadoDespacho, ESTADOS_DESPACHO, ESTADO_DESPACHO_LABEL,
+  DespachoTienda, PlinDespacho, EstadoDespacho, ESTADOS_DESPACHO, ESTADO_DESPACHO_LABEL,
   ESTADO_DESPACHO_COLOR, COLOR_TIENDA, estadoDespachoVariant,
   fmtFechaTienda, todayISO, horasDesde,
 } from "@/lib/tienda";
@@ -321,14 +321,32 @@ export default function TiendaPage() {
           <>
             <DetailSection title="Datos del despacho">
               <DetailGrid items={[
-                { label: "Centro de costos",  value: <span style={{ fontWeight: 700 }}>{panelItem.centroCostos}</span> },
-                { label: "Fecha creación",    value: fmtFechaTienda(panelItem.fechaCreacion) },
-                { label: "N° Documento",      value: <span style={{ fontFamily: "var(--mono)", fontWeight: 600 }}>{panelItem.numeroDocumento}</span> },
-                { label: "Consecutivo",       value: <span style={{ fontFamily: "var(--mono)" }}>#{panelItem.consecutivo}</span> },
-                { label: "Recibido",          value: panelItem.recibidoAt ? new Date(panelItem.recibidoAt).toLocaleString("es-CO", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" }) : undefined },
-                { label: "Despachado",        value: panelItem.despachadoAt ? new Date(panelItem.despachadoAt).toLocaleString("es-CO", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" }) : undefined },
+                { label: "Centro de costos",         value: <span style={{ fontWeight: 700 }}>{panelItem.centroCostos}</span> },
+                { label: "Fecha creación",           value: fmtFechaTienda(panelItem.fechaCreacion) },
+                { label: "N° Documento",             value: <span style={{ fontFamily: "var(--mono)", fontWeight: 600 }}>{panelItem.numeroDocumento}</span> },
+                { label: "Consecutivo",              value: <span style={{ fontFamily: "var(--mono)" }}>#{panelItem.consecutivo}</span> },
+                { label: "Entrega comprometida",     value: panelItem.fechaEntregaComprometida ? fmtFechaTienda(panelItem.fechaEntregaComprometida) : undefined },
+                { label: "Número de cajas",          value: panelItem.numeroCajas != null ? String(panelItem.numeroCajas) : undefined },
+                { label: "Recibido",                 value: panelItem.recibidoAt ? new Date(panelItem.recibidoAt).toLocaleString("es-CO", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" }) : undefined },
+                { label: "Despachado",               value: panelItem.despachadoAt ? new Date(panelItem.despachadoAt).toLocaleString("es-CO", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" }) : undefined },
               ]} />
             </DetailSection>
+
+            {/* PLUs del despacho */}
+            {panelItem.plines && panelItem.plines.length > 0 && (
+              <DetailSection title={`PLUs del despacho (${panelItem.plines.length})`}>
+                <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                  {panelItem.plines.map((p: PlinDespacho) => (
+                    <div key={p.id} style={{ display: "flex", alignItems: "center", gap: 10, padding: "6px 10px", background: "var(--surface2)", borderRadius: 8 }}>
+                      <Package size={13} color="var(--muted)" style={{ flexShrink: 0 }} />
+                      <span style={{ fontFamily: "var(--mono)", fontWeight: 700, fontSize: 12 }}>{p.plu}</span>
+                      {p.descripcion && <span style={{ fontSize: 12, color: "var(--muted)", flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{p.descripcion}</span>}
+                      <span style={{ fontFamily: "var(--mono)", fontSize: 12, fontWeight: 700, color: COLOR_TIENDA, flexShrink: 0 }}>{p.unidades} u.</span>
+                    </div>
+                  ))}
+                </div>
+              </DetailSection>
+            )}
 
             <DetailSection title="Cliente">
               <DetailGrid items={[
@@ -394,25 +412,47 @@ function ModalDespacho({ despacho, onClose, onSaved, onError }: {
   despacho?: DespachoTienda; onClose: () => void; onSaved: () => void; onError: (m: string) => void;
 }) {
   const isEdit = !!despacho;
-  const [centroCostos,     setCC]   = useState(despacho?.centroCostos ?? "");
-  const [numeroDocumento,  setDoc]  = useState(despacho?.numeroDocumento ?? "");
-  const [consecutivo,      setCons] = useState(despacho?.consecutivo ?? "");
-  const [clienteNombre,    setCN]   = useState(despacho?.clienteNombre ?? "");
-  const [clienteDocumento, setCD]   = useState(despacho?.clienteDocumento ?? "");
-  const [clienteTelefono,  setCT]   = useState(despacho?.clienteTelefono ?? "");
-  const [fechaCreacion,    setFecha]= useState(despacho?.fechaCreacion ?? todayISO());
+  const [centroCostos,            setCC]     = useState(despacho?.centroCostos ?? "");
+  const [numeroDocumento,         setDoc]    = useState(despacho?.numeroDocumento ?? "");
+  const [consecutivo,             setCons]   = useState(despacho?.consecutivo ?? "");
+  const [clienteNombre,           setCN]     = useState(despacho?.clienteNombre ?? "");
+  const [clienteDocumento,        setCD]     = useState(despacho?.clienteDocumento ?? "");
+  const [clienteTelefono,         setCT]     = useState(despacho?.clienteTelefono ?? "");
+  const [fechaCreacion,           setFecha]  = useState(despacho?.fechaCreacion ?? todayISO());
+  const [fechaEntrega,            setFEntrega]=useState(despacho?.fechaEntregaComprometida ?? "");
+  const [numeroCajas,             setNCajas] = useState(despacho?.numeroCajas != null ? String(despacho.numeroCajas) : "");
+  const [plines, setPlines] = useState<Array<{ plu: string; descripcion: string; unidades: string }>>(
+    despacho?.plines?.map((p) => ({ plu: p.plu, descripcion: p.descripcion ?? "", unidades: String(p.unidades) })) ?? []
+  );
   const [saving, setSaving] = useState(false);
+
+  function addPlin() { setPlines((prev) => [...prev, { plu: "", descripcion: "", unidades: "1" }]); }
+  function removePlin(i: number) { setPlines((prev) => prev.filter((_, j) => j !== i)); }
+  function updatePlin(i: number, key: string, val: string) { setPlines((prev) => prev.map((p, j) => j === i ? { ...p, [key]: val } : p)); }
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     if (!centroCostos.trim() || !numeroDocumento.trim() || !consecutivo.trim() || !clienteNombre.trim()) {
       onError("Completa los campos obligatorios"); return;
     }
+    const plinesValidos = plines.filter((p) => p.plu.trim() && parseInt(p.unidades) > 0);
     setSaving(true);
     try {
       const url = isEdit ? `/api/tienda/${despacho!.id}` : "/api/tienda";
       const method = isEdit ? "PUT" : "POST";
-      const res = await fetch(url, { method, headers: { "Content-Type": "application/json" }, body: JSON.stringify({ centroCostos: centroCostos.trim(), numeroDocumento: numeroDocumento.trim(), consecutivo: consecutivo.trim(), clienteNombre: clienteNombre.trim(), clienteDocumento: clienteDocumento.trim() || null, clienteTelefono: clienteTelefono.trim() || null, fechaCreacion }) });
+      const body: any = {
+        centroCostos: centroCostos.trim(), numeroDocumento: numeroDocumento.trim(),
+        consecutivo: consecutivo.trim(), clienteNombre: clienteNombre.trim(),
+        clienteDocumento: clienteDocumento.trim() || null,
+        clienteTelefono: clienteTelefono.trim() || null,
+        fechaCreacion,
+        fechaEntregaComprometida: fechaEntrega || null,
+        numeroCajas: numeroCajas ? parseInt(numeroCajas) : null,
+      };
+      if (!isEdit && plinesValidos.length > 0) {
+        body.plines = plinesValidos.map((p) => ({ plu: p.plu.trim(), descripcion: p.descripcion.trim() || null, unidades: parseInt(p.unidades) }));
+      }
+      const res = await fetch(url, { method, headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
       const json = await res.json();
       if (json.success) onSaved(); else onError(json.error || "Error");
     } catch { onError("Error de conexión"); } finally { setSaving(false); }
@@ -420,10 +460,10 @@ function ModalDespacho({ despacho, onClose, onSaved, onError }: {
 
   return (
     <ModalBase title={isEdit ? "Editar despacho" : "Nuevo despacho"} sub={isEdit ? `${despacho!.numeroDocumento}` : undefined} onClose={onClose}>
-      <form onSubmit={submit} style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+      <form onSubmit={submit} style={{ display: "flex", flexDirection: "column", gap: 14, maxHeight: "70vh", overflowY: "auto" }}>
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
           <Field label="Centro de costos *"><input value={centroCostos} onChange={(e) => setCC(e.target.value)} placeholder="CC-001" style={inp} {...focusProps} /></Field>
-          <Field label="Fecha *"><input type="date" value={fechaCreacion} onChange={(e) => setFecha(e.target.value)} style={inp} {...focusProps} /></Field>
+          <Field label="Fecha creación *"><input type="date" value={fechaCreacion} onChange={(e) => setFecha(e.target.value)} style={inp} {...focusProps} /></Field>
         </div>
         <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr", gap: 12 }}>
           <Field label="N° Documento *"><input value={numeroDocumento} onChange={(e) => setDoc(e.target.value)} placeholder="FAC-0001" style={inp} {...focusProps} /></Field>
@@ -434,6 +474,32 @@ function ModalDespacho({ despacho, onClose, onSaved, onError }: {
           <Field label="Documento cliente"><input value={clienteDocumento} onChange={(e) => setCD(e.target.value)} style={inp} {...focusProps} /></Field>
           <Field label="Teléfono cliente"><input value={clienteTelefono} onChange={(e) => setCT(e.target.value)} placeholder="300..." style={inp} {...focusProps} /></Field>
         </div>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+          <Field label="Entrega comprometida"><input type="date" value={fechaEntrega} onChange={(e) => setFEntrega(e.target.value)} style={inp} {...focusProps} /></Field>
+          <Field label="Número de cajas"><input type="number" value={numeroCajas} onChange={(e) => setNCajas(e.target.value)} min="1" placeholder="0" style={inp} {...focusProps} /></Field>
+        </div>
+
+        {/* PLUs del despacho */}
+        <div style={{ borderTop: "1px solid var(--border)", paddingTop: 12 }}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
+            <span style={{ fontSize: 12, fontWeight: 600, color: "var(--muted2)" }}>PLUs del despacho ({plines.length})</span>
+            <button type="button" className="ds-btn ds-btn-sm" style={{ background: COLOR_TIENDA + "14", color: COLOR_TIENDA, height: 28, fontSize: 11 }} onClick={addPlin}>
+              <Plus size={12} />Agregar PLU
+            </button>
+          </div>
+          {plines.map((p, i) => (
+            <div key={i} style={{ display: "grid", gridTemplateColumns: "100px 1fr 70px 28px", gap: 6, marginBottom: 6, alignItems: "center" }}>
+              <input value={p.plu} onChange={(e) => updatePlin(i, "plu", e.target.value)} placeholder="PLU" style={{ ...inp, height: 32, fontSize: 12 }} {...focusProps} />
+              <input value={p.descripcion} onChange={(e) => updatePlin(i, "descripcion", e.target.value)} placeholder="Descripción (opc.)" style={{ ...inp, height: 32, fontSize: 12 }} {...focusProps} />
+              <input type="number" value={p.unidades} onChange={(e) => updatePlin(i, "unidades", e.target.value)} min="1" placeholder="Uds." style={{ ...inp, height: 32, fontSize: 12 }} {...focusProps} />
+              <button type="button" onClick={() => removePlin(i)} style={{ width: 28, height: 32, background: "var(--error-tint)", border: "none", borderRadius: 6, cursor: "pointer", color: "var(--error)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                <Minus size={12} />
+              </button>
+            </div>
+          ))}
+          {plines.length === 0 && <p style={{ fontSize: 11, color: "var(--faint)", textAlign: "center" }}>Sin PLUs — opcional</p>}
+        </div>
+
         <div style={{ display: "flex", gap: 8, paddingTop: 4 }}>
           <button type="button" className="ds-btn ds-btn-secondary" onClick={onClose} style={{ flex: 1 }}>Cancelar</button>
           <button type="submit" className="ds-btn ds-btn-primary" disabled={saving} style={{ flex: 2, background: COLOR_TIENDA }}>
