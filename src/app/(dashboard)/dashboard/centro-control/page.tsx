@@ -1,21 +1,130 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import Link from "next/link";
 import { useSession } from "next-auth/react";
 import {
-  Package, Truck, Route, AlertTriangle, TrendingUp, TrendingDown,
-  CheckCircle2, Clock, BarChart3, Users, Store,
+  Package, Truck, Route, AlertTriangle, BarChart3, Store,
+  CheckCircle2, ArrowRight, TrendingUp, Info, ShieldAlert,
 } from "lucide-react";
-import { Stat, SkeletonStat, SectionHeader } from "@/components/ui";
-import { IntelBanner } from "@/components/ui/SlidePanel";
-import { consolidarInsights, insightsTienda } from "@/lib/inteligencia";
-import type { DespachoTienda } from "@/lib/tienda";
-import { horasDesde } from "@/lib/tienda";
+import { SectionHeader } from "@/components/ui";
 import { calcAlmacenaje } from "@/lib/almacenaje";
 import { scoreGuardado, urgencia } from "@/lib/transporte";
+import { horasDesde } from "@/lib/tienda";
+import type { DespachoTienda } from "@/lib/tienda";
 import type { Novedad } from "@/lib/muebles";
 import type { Guardado } from "@/lib/transporte";
 
+// ── Tipos ─────────────────────────────────────────────────
+interface AlertaItem {
+  id: string;
+  count: number;
+  title: string;
+  context?: string;
+  href: string;
+}
+interface InfoItem {
+  id: string;
+  title: string;
+  context?: string;
+  href: string;
+}
+interface SinContactoData {
+  count: number;
+  items: Array<{ clientId: string; documento: string; fecha: string }>;
+}
+
+// ── Componente: fila de alerta ────────────────────────────
+function AlertaRow({ level, count, title, context, href }: {
+  level: "critical" | "warning" | "info";
+  count?: number;
+  title: string;
+  context?: string;
+  href: string;
+}) {
+  const COLOR = level === "critical" ? "#ef4444" : level === "warning" ? "#f59e0b" : "#3b82f6";
+  const BG    = COLOR + "0d";
+  const BORDER = COLOR + "25";
+
+  return (
+    <Link href={href} style={{ textDecoration: "none" }}>
+      <div
+        style={{
+          display: "flex", alignItems: "center", gap: 12,
+          padding: "10px 14px", borderRadius: 10,
+          background: BG, border: `1px solid ${BORDER}`,
+          cursor: "pointer", transition: "opacity .12s",
+        }}
+        onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.opacity = ".82"; }}
+        onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.opacity = "1"; }}
+      >
+        <span style={{
+          width: 8, height: 8, borderRadius: "50%",
+          background: COLOR, flexShrink: 0,
+        }} />
+
+        {count !== undefined && (
+          <span style={{
+            fontSize: 14, fontWeight: 800, color: COLOR,
+            fontFamily: "var(--mono)", flexShrink: 0, minWidth: 22, textAlign: "right",
+          }}>
+            {count}
+          </span>
+        )}
+
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ fontSize: 13, fontWeight: 600, color: "var(--text)", letterSpacing: "-0.01em" }}>
+            {title}
+          </div>
+          {context && (
+            <div style={{
+              fontSize: 11, color: "var(--muted)", marginTop: 2,
+              overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+            }}>
+              {context}
+            </div>
+          )}
+        </div>
+
+        <ArrowRight size={13} color={COLOR} style={{ flexShrink: 0 }} />
+      </div>
+    </Link>
+  );
+}
+
+// ── Componente: grupo de nivel ────────────────────────────
+function AlertaGroup({ level, items }: {
+  level: "critical" | "warning" | "info";
+  items: AlertaItem[] | InfoItem[];
+}) {
+  if (items.length === 0) return null;
+  const LABELS = { critical: "CRÍTICO", warning: "ADVERTENCIA", info: "INFORMACIÓN" };
+  const COLORS = { critical: "#ef4444", warning: "#f59e0b", info: "#3b82f6" };
+  return (
+    <div>
+      <div style={{
+        fontSize: 10, fontWeight: 700, letterSpacing: ".08em",
+        textTransform: "uppercase", color: COLORS[level], marginBottom: 8,
+      }}>
+        {LABELS[level]}
+      </div>
+      <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+        {items.map((item) => (
+          <AlertaRow
+            key={item.id}
+            level={level}
+            count={"count" in item ? item.count : undefined}
+            title={item.title}
+            context={item.context}
+            href={item.href}
+          />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ── Componente: KPI bloque ────────────────────────────────
 function KpiBlock({ icon, title, children }: { icon: React.ReactNode; title: string; children: React.ReactNode }) {
   return (
     <div className="ds-card" style={{ padding: "20px 22px" }}>
@@ -54,58 +163,55 @@ function RankRow({ rank, nombre, main, sub, color, badge }: {
   );
 }
 
+// ════════════════════════════════════════════════════════════
+// PÁGINA PRINCIPAL
+// ════════════════════════════════════════════════════════════
 export default function CentroControlPage() {
   const { data: session } = useSession();
   const userName = (session?.user as { name?: string } | undefined)?.name ?? "";
 
-  const [novedades, setNovedades] = useState<Novedad[]>([]);
-  const [guardados, setGuardados] = useState<Guardado[]>([]);
-  const [despachos, setDespachos] = useState<DespachoTienda[]>([]);
-  const [kpis, setKpis] = useState<{ conductores: any[]; stats: any } | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [novedades,   setNovedades]   = useState<Novedad[]>([]);
+  const [guardados,   setGuardados]   = useState<Guardado[]>([]);
+  const [despachos,   setDespachos]   = useState<DespachoTienda[]>([]);
+  const [kpis,        setKpis]        = useState<{ conductores: any[]; stats: any } | null>(null);
+  const [sinContacto, setSinContacto] = useState<SinContactoData>({ count: 0, items: [] });
+  const [loading,     setLoading]     = useState(true);
 
   useEffect(() => {
     (async () => {
       try {
-        const [nR, gR, cR, sR, dR] = await Promise.all([
+        const [nR, gR, cR, sR, dR, scR] = await Promise.all([
           fetch("/api/novedades?pageSize=500"),
           fetch("/api/transporte?pageSize=500"),
           fetch("/api/logistica/conductores/kpis?dias=30"),
           fetch("/api/novedades/stats?dias=30"),
           fetch("/api/tienda?pageSize=500"),
+          fetch("/api/transporte/sin-contacto"),
         ]);
-        const [nJ, gJ, cJ, sJ, dJ] = await Promise.all([nR.json(), gR.json(), cR.json(), sR.json(), dR.json()]);
-        if (nJ.success) setNovedades(nJ.data ?? []);
-        if (gJ.success) setGuardados(gJ.data ?? []);
-        if (dJ.success) setDespachos(dJ.data ?? []);
+        const [nJ, gJ, cJ, sJ, dJ, scJ] = await Promise.all([
+          nR.json(), gR.json(), cR.json(), sR.json(), dR.json(), scR.json(),
+        ]);
+        if (nJ.success)  setNovedades(nJ.data ?? []);
+        if (gJ.success)  setGuardados(gJ.data ?? []);
+        if (dJ.success)  setDespachos(dJ.data ?? []);
+        if (scJ.success) setSinContacto({ count: scJ.count ?? 0, items: scJ.items ?? [] });
         setKpis({
           conductores: cJ.success ? cJ.data ?? [] : [],
-          stats: sJ.success ? sJ : null,
+          stats:       sJ.success ? sJ : null,
         });
       } catch { /* noop */ }
       finally { setLoading(false); }
     })();
   }, []);
 
-  const insights = useMemo(() => consolidarInsights(novedades, guardados, [], despachos), [novedades, guardados, despachos]);
-
-  // ── KPIs Tienda ──────────────────────────────────────────
-  const tiendaKpis = useMemo(() => ({
-    pendientes:  despachos.filter((d) => d.estado === "CREADO_TIENDA" || d.estado === "RECOGIDA_PENDIENTE").length,
-    recibidos:   despachos.filter((d) => d.estado === "RECOGIDO" || d.estado === "EN_RUTA").length,
-    despachados: despachos.filter((d) => d.estado === "ENTREGADO").length,
-    novedades:   despachos.filter((d) => d.estado === "CON_NOVEDAD").length,
-    criticos:    despachos.filter((d) => (d.estado === "CREADO_TIENDA" || d.estado === "RECOGIDA_PENDIENTE") && horasDesde(d.createdAt) >= 24).length,
-  }), [despachos]);
-
-  // ── Ranking centros de costo ─────────────────────────────
+  // ── Rankings (para INFO y KPI blocks) ────────────────────
   const rankingCC = useMemo(() => {
     const byCC: Record<string, { total: number; pend: number; desp: number; nov: number }> = {};
     for (const d of despachos) {
       if (!byCC[d.centroCostos]) byCC[d.centroCostos] = { total: 0, pend: 0, desp: 0, nov: 0 };
       byCC[d.centroCostos].total++;
       if (d.estado === "CREADO_TIENDA" || d.estado === "RECOGIDA_PENDIENTE") byCC[d.centroCostos].pend++;
-      if (d.estado === "ENTREGADO") byCC[d.centroCostos].desp++;
+      if (d.estado === "ENTREGADO")   byCC[d.centroCostos].desp++;
       if (d.estado === "CON_NOVEDAD") byCC[d.centroCostos].nov++;
     }
     return Object.entries(byCC)
@@ -114,37 +220,6 @@ export default function CentroControlPage() {
       .slice(0, 7);
   }, [despachos]);
 
-  // ── KPIs Inventario ──────────────────────────────────────
-  const invKpis = useMemo(() => {
-    const pend = novedades.filter((n) => n.estado === "PENDIENTE").length;
-    const criticas = novedades.filter((n) => n.estado === "PENDIENTE" && (Date.now() - new Date(n.fecha + "T00:00:00").getTime()) > 30 * 86_400_000).length;
-    const impacto = novedades.reduce((s, n) => s + Math.abs(n.costoIncidencia ?? 0), 0);
-    return { total: novedades.length, pend, criticas, impacto };
-  }, [novedades]);
-
-  // ── KPIs Guardados ───────────────────────────────────────
-  const grdKpis = useMemo(() => {
-    const activos = guardados.filter((g) => g.estado === "PENDIENTE DESPACHO");
-    const costoTotal = activos.reduce((s, g) => s + calcAlmacenaje(g.fecha, null).costo, 0);
-    const proyeccion = activos.reduce((s, g) => { const alm = calcAlmacenaje(g.fecha, null); return s + (alm.fase === "cobro" ? (alm as any).costoProximo ?? alm.costo : 0); }, 0);
-    const criticos = activos.filter((g) => scoreGuardado(g) >= 70).length;
-    const vencidos = activos.filter((g) => urgencia(g)?.tipo === "vencida").length;
-    return { activos: activos.length, costoTotal, proyeccion, criticos, vencidos };
-  }, [guardados]);
-
-  // ── KPIs Conductores ─────────────────────────────────────
-  const condKpis = useMemo(() => {
-    const conds = kpis?.conductores ?? [];
-    const activos = conds.length;
-    const incidencias = conds.reduce((s: number, c: any) => s + (c.incidencias ?? 0), 0);
-    const tasaProm = conds.length > 0
-      ? Math.round(conds.reduce((s: number, c: any) => s + (c.tasaEntrega ?? 0), 0) / conds.length)
-      : null;
-    const enAlerta = conds.filter((c: any) => (c.tasaEntrega ?? 100) < 70).length;
-    return { activos, incidencias, tasaProm, enAlerta };
-  }, [kpis]);
-
-  // ── Ranking Inventario por responsable ───────────────────
   const rankingInventario = useMemo(() => {
     const byResp: Record<string, { total: number; resueltas: number; abiertas: number }> = {};
     for (const n of novedades) {
@@ -161,8 +236,142 @@ export default function CentroControlPage() {
       .slice(0, 7);
   }, [novedades]);
 
-  const fmtCOP = (n: number) => "$" + Math.round(n / 1000) + "k";
+  // ── KPIs ─────────────────────────────────────────────────
+  const invKpis = useMemo(() => {
+    const pend     = novedades.filter((n) => n.estado === "PENDIENTE").length;
+    const criticas = novedades.filter((n) => n.estado === "PENDIENTE" && (Date.now() - new Date(n.fecha + "T00:00:00").getTime()) > 30 * 86_400_000).length;
+    const impacto  = novedades.reduce((s, n) => s + Math.abs(n.costoIncidencia ?? 0), 0);
+    return { total: novedades.length, pend, criticas, impacto };
+  }, [novedades]);
 
+  const grdKpis = useMemo(() => {
+    const activos  = guardados.filter((g) => g.estado === "PENDIENTE DESPACHO");
+    const costoTotal  = activos.reduce((s, g) => s + calcAlmacenaje(g.fecha, null).costo, 0);
+    const proyeccion  = activos.reduce((s, g) => { const a = calcAlmacenaje(g.fecha, null); return s + (a.fase === "cobro" ? (a as any).costoProximo ?? a.costo : 0); }, 0);
+    const criticos = activos.filter((g) => scoreGuardado(g) >= 70).length;
+    const vencidos = activos.filter((g) => urgencia(g)?.tipo === "vencida").length;
+    return { activos: activos.length, costoTotal, proyeccion, criticos, vencidos };
+  }, [guardados]);
+
+  const tiendaKpis = useMemo(() => ({
+    pendientes:  despachos.filter((d) => d.estado === "CREADO_TIENDA" || d.estado === "RECOGIDA_PENDIENTE").length,
+    recibidos:   despachos.filter((d) => d.estado === "RECOGIDO" || d.estado === "EN_RUTA").length,
+    despachados: despachos.filter((d) => d.estado === "ENTREGADO").length,
+    novedades:   despachos.filter((d) => d.estado === "CON_NOVEDAD").length,
+    criticos:    despachos.filter((d) => (d.estado === "CREADO_TIENDA" || d.estado === "RECOGIDA_PENDIENTE") && horasDesde(d.createdAt) >= 24).length,
+  }), [despachos]);
+
+  const condKpis = useMemo(() => {
+    const conds   = kpis?.conductores ?? [];
+    const tasaProm = conds.length > 0
+      ? Math.round(conds.reduce((s: number, c: any) => s + (c.tasaEntrega ?? 0), 0) / conds.length) : null;
+    const enAlerta = conds.filter((c: any) => (c.tasaEntrega ?? 100) < 70).length;
+    return {
+      activos:    conds.length,
+      incidencias:conds.reduce((s: number, c: any) => s + (c.incidencias ?? 0), 0),
+      tasaProm, enAlerta,
+    };
+  }, [kpis]);
+
+  // ── ALERTAS OPERACIONALES ─────────────────────────────────
+  const alertas = useMemo(() => {
+    const now = Date.now();
+    const dias = (iso: string) => Math.floor((now - new Date(iso + "T00:00:00").getTime()) / 86_400_000);
+
+    // ── CRITICAL ─────────────────────────────────────────
+    const g60d = guardados.filter((g) => g.estado === "PENDIENTE DESPACHO" && dias(g.fecha) > 60);
+    const n7d  = novedades.filter((n) => n.estado !== "SOLUCIONADO" && dias(n.fecha) > 7);
+    const t48h = despachos.filter((d) =>
+      (d.estado === "CREADO_TIENDA" || d.estado === "RECOGIDA_PENDIENTE") && horasDesde(d.createdAt) > 48
+    );
+
+    const critical: AlertaItem[] = [
+      {
+        id:      "g60d",
+        count:   g60d.length,
+        title:   "Guardados con más de 60 días en bodega",
+        context: g60d.length > 0 ? g60d.slice(0, 3).map((g) => g.documento).join(" · ") + (g60d.length > 3 ? ` · +${g60d.length - 3} más` : "") : undefined,
+        href:    "/dashboard/transporte",
+      },
+      {
+        id:      "n7d",
+        count:   n7d.length,
+        title:   "Novedades abiertas sin resolver por más de 7 días",
+        context: n7d.length > 0 ? n7d.slice(0, 3).map((n) => n.plu).join(" · ") + (n7d.length > 3 ? ` · +${n7d.length - 3} más` : "") : undefined,
+        href:    "/dashboard/muebles",
+      },
+      {
+        id:      "t48h",
+        count:   t48h.length,
+        title:   "Despachos de tienda sin recoger por más de 48 horas",
+        context: t48h.length > 0 ? t48h.slice(0, 3).map((d) => d.numeroDocumento).join(" · ") + (t48h.length > 3 ? ` · +${t48h.length - 3} más` : "") : undefined,
+        href:    "/dashboard/tienda",
+      },
+    ].filter((a) => a.count > 0);
+
+    // ── WARNING ───────────────────────────────────────────
+    const novSinAsig = novedades.filter((n) => n.estado !== "SOLUCIONADO" && !(n as any).asignadoA);
+    const condAlerta  = (kpis?.conductores ?? []).filter((c: any) => (c.incidencias ?? 0) > 3);
+
+    const warning: AlertaItem[] = [
+      {
+        id:      "nsa",
+        count:   novSinAsig.length,
+        title:   "Novedades sin responsable asignado",
+        context: novSinAsig.length > 0 ? `${novSinAsig.length} novedade${novSinAsig.length !== 1 ? "s" : ""} sin seguimiento` : undefined,
+        href:    "/dashboard/muebles",
+      },
+      {
+        id:      "gsc",
+        count:   sinContacto.count,
+        title:   "Guardados sin ningún contacto registrado",
+        context: sinContacto.items.length > 0
+          ? sinContacto.items.slice(0, 3).map((i) => i.documento).join(" · ") + (sinContacto.count > 3 ? ` · +${sinContacto.count - 3} más` : "")
+          : undefined,
+        href:    "/dashboard/transporte",
+      },
+      {
+        id:      "ci",
+        count:   condAlerta.length,
+        title:   "Conductores con más de 3 incidencias en 30 días",
+        context: condAlerta.length > 0
+          ? condAlerta.slice(0, 2).map((c: any) => c.nombre).join(" · ") + (condAlerta.length > 2 ? ` · +${condAlerta.length - 2} más` : "")
+          : undefined,
+        href:    "/dashboard/logistica",
+      },
+    ].filter((a) => a.count > 0);
+
+    // ── INFO (top 1 de cada ranking) ──────────────────────
+    const topCC   = rankingCC[0];
+    const topResp = rankingInventario[0];
+    const topCond = [...(kpis?.conductores ?? [])]
+      .sort((a: any, b: any) => (b.tasaEntrega ?? 0) - (a.tasaEntrega ?? 0))[0] as any | undefined;
+
+    const info: InfoItem[] = [
+      topCC && {
+        id:      "topCC",
+        title:   `Top CC: ${topCC.cc}`,
+        context: `${topCC.total} despacho${topCC.total !== 1 ? "s" : ""} · ${topCC.pend} pendiente${topCC.pend !== 1 ? "s" : ""} · ${topCC.desp} entregado${topCC.desp !== 1 ? "s" : ""}`,
+        href:    "/dashboard/tienda",
+      },
+      topResp && {
+        id:      "topResp",
+        title:   `Top responsable: ${topResp.nombre}`,
+        context: `${topResp.resueltas}/${topResp.total} novedades resueltas · ${topResp.tasa}% de tasa`,
+        href:    "/dashboard/muebles",
+      },
+      topCond && {
+        id:      "topCond",
+        title:   `Top conductor: ${topCond.nombre}`,
+        context: `${topCond.tasaEntrega ?? 0}% de tasa de entrega · ${topCond.entregadas ?? 0}/${topCond.totalParadas ?? 0} paradas`,
+        href:    "/dashboard/logistica",
+      },
+    ].filter(Boolean) as InfoItem[];
+
+    return { critical, warning, info, totalCritical: critical.length, totalWarning: warning.length };
+  }, [guardados, novedades, despachos, kpis, sinContacto, rankingCC, rankingInventario]);
+
+  // ── Loading skeleton ──────────────────────────────────────
   if (loading) {
     return (
       <div className="animate-fade-in">
@@ -170,17 +379,26 @@ export default function CentroControlPage() {
           <div className="skeleton" style={{ height: 28, width: 320, borderRadius: 6, marginBottom: 8 }} />
           <div className="skeleton" style={{ height: 14, width: 200, borderRadius: 4 }} />
         </div>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 16, marginBottom: 24 }}>
-          {Array.from({ length: 3 }).map((_, i) => <div key={i} className="skeleton" style={{ height: 160, borderRadius: 12 }} />)}
+        <div className="ds-card" style={{ padding: 24, marginBottom: 24 }}>
+          {[100, 80, 90].map((w, i) => (
+            <div key={i} className="skeleton" style={{ height: 44, borderRadius: 10, marginBottom: 8, width: `${w}%` }} />
+          ))}
+        </div>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 16 }}>
+          {Array.from({ length: 4 }).map((_, i) => (
+            <div key={i} className="skeleton" style={{ height: 160, borderRadius: 12 }} />
+          ))}
         </div>
       </div>
     );
   }
 
+  const hasExcepctions = alertas.totalCritical > 0 || alertas.totalWarning > 0;
+
   return (
     <div className="animate-fade-in">
-      {/* Header */}
-      <div style={{ marginBottom: 28 }}>
+      {/* ── Header ── */}
+      <div style={{ marginBottom: 24 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 6 }}>
           <div style={{ width: 32, height: 32, borderRadius: 8, background: "var(--brand-tint)", display: "flex", alignItems: "center", justifyContent: "center" }}>
             <BarChart3 size={17} color="var(--brand)" />
@@ -195,24 +413,126 @@ export default function CentroControlPage() {
         </p>
       </div>
 
-      {/* Inteligencia crítica */}
-      {insights.filter((i) => i.level === "critical").length > 0 && (
-        <div style={{ marginBottom: 24 }}>
-          <IntelBanner
-            insights={insights.filter((i) => i.level === "critical")}
-            maxVisible={5}
-            title="Alertas críticas"
-          />
-        </div>
-      )}
+      {/* ══════════════════════════════════════════════════════
+          ALERTAS OPERACIONALES — panel de excepciones
+          ══════════════════════════════════════════════════════ */}
+      <div className="ds-card" style={{ padding: "20px 22px", marginBottom: 24 }}>
+        {/* Header de sección */}
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 18 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+            <div style={{
+              width: 30, height: 30, borderRadius: 8,
+              background: hasExcepctions ? "#ef444414" : "#10b98114",
+              display: "flex", alignItems: "center", justifyContent: "center",
+            }}>
+              {hasExcepctions
+                ? <ShieldAlert size={16} color="#ef4444" />
+                : <CheckCircle2 size={16} color="#10b981" />}
+            </div>
+            <span style={{ fontSize: 13, fontWeight: 700, color: "var(--text)", letterSpacing: "-0.01em" }}>
+              Alertas Operacionales
+            </span>
+          </div>
 
-      {/* Grid de módulos */}
+          <div style={{ display: "flex", gap: 6 }}>
+            {alertas.totalCritical > 0 && (
+              <span style={{
+                fontSize: 11, fontWeight: 700, padding: "3px 9px", borderRadius: 20,
+                background: "#ef444414", color: "#ef4444", border: "1px solid #ef444425",
+              }}>
+                {alertas.totalCritical} crítica{alertas.totalCritical !== 1 ? "s" : ""}
+              </span>
+            )}
+            {alertas.totalWarning > 0 && (
+              <span style={{
+                fontSize: 11, fontWeight: 700, padding: "3px 9px", borderRadius: 20,
+                background: "#f59e0b14", color: "#f59e0b", border: "1px solid #f59e0b25",
+              }}>
+                {alertas.totalWarning} advertencia{alertas.totalWarning !== 1 ? "s" : ""}
+              </span>
+            )}
+            {!hasExcepctions && (
+              <span style={{
+                fontSize: 11, fontWeight: 700, padding: "3px 9px", borderRadius: 20,
+                background: "#10b98114", color: "#10b981", border: "1px solid #10b98125",
+              }}>
+                Sin excepciones
+              </span>
+            )}
+          </div>
+        </div>
+
+        {/* Sin excepciones */}
+        {!hasExcepctions && alertas.info.length === 0 && (
+          <div style={{
+            display: "flex", alignItems: "center", gap: 10, padding: "14px 16px",
+            background: "#10b98108", borderRadius: 10, border: "1px solid #10b98120",
+          }}>
+            <CheckCircle2 size={16} color="#10b981" />
+            <span style={{ fontSize: 13, color: "var(--muted)" }}>
+              Sistema operando sin excepciones. Todos los indicadores dentro del rango normal.
+            </span>
+          </div>
+        )}
+
+        {/* Grupos de alertas */}
+        <div style={{ display: "flex", flexDirection: "column", gap: hasExcepctions ? 20 : 12 }}>
+          <AlertaGroup level="critical" items={alertas.critical} />
+          <AlertaGroup level="warning"  items={alertas.warning} />
+
+          {/* Separador antes de INFO */}
+          {(hasExcepctions && alertas.info.length > 0) && (
+            <div style={{ borderTop: "1px solid var(--border)", paddingTop: 16 }} />
+          )}
+
+          {/* INFO: top rankings */}
+          {alertas.info.length > 0 && (
+            <div>
+              <div style={{
+                fontSize: 10, fontWeight: 700, letterSpacing: ".08em",
+                textTransform: "uppercase", color: "#3b82f6", marginBottom: 8,
+              }}>
+                INFORMACIÓN
+              </div>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 8 }}>
+                {alertas.info.map((item) => (
+                  <Link key={item.id} href={item.href} style={{ textDecoration: "none" }}>
+                    <div
+                      style={{
+                        padding: "10px 12px", borderRadius: 10,
+                        background: "#3b82f60d", border: "1px solid #3b82f625",
+                        cursor: "pointer", transition: "opacity .12s",
+                      }}
+                      onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.opacity = ".8"; }}
+                      onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.opacity = "1"; }}
+                    >
+                      <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 4 }}>
+                        <TrendingUp size={12} color="#3b82f6" />
+                        <span style={{ fontSize: 12, fontWeight: 700, color: "#3b82f6" }}>{item.title}</span>
+                      </div>
+                      {item.context && (
+                        <div style={{
+                          fontSize: 11, color: "var(--muted)", lineHeight: 1.4,
+                          overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+                        }}>
+                          {item.context}
+                        </div>
+                      )}
+                    </div>
+                  </Link>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* ── Grid de KPIs por módulo ── */}
       <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 16, marginBottom: 24 }}>
-        {/* Inventario */}
         <KpiBlock title="Inventario" icon={<Package size={15} color="#2563EB" />}>
           <div style={{ display: "flex", gap: 16, flexWrap: "wrap" }}>
             <MiniKpi label="Novedades abiertas" value={invKpis.pend} color={invKpis.pend > 0 ? "var(--error)" : "var(--success)"} />
-            <MiniKpi label="Críticas >30d" value={invKpis.criticas} color={invKpis.criticas > 0 ? "var(--error)" : "var(--muted)"} />
+            <MiniKpi label="Críticas >30d"      value={invKpis.criticas} color={invKpis.criticas > 0 ? "var(--error)" : "var(--muted)"} />
           </div>
           <div style={{ marginTop: 12, paddingTop: 12, borderTop: "1px solid var(--border)" }}>
             <MiniKpi label="Impacto económico total" value={"$" + Math.round(invKpis.impacto / 1_000_000 * 10) / 10 + "M"} color="var(--brand)" />
@@ -225,79 +545,66 @@ export default function CentroControlPage() {
           )}
         </KpiBlock>
 
-        {/* Guardados */}
         <KpiBlock title="Guardados" icon={<Truck size={15} color="#0E7490" />}>
           <div style={{ display: "flex", gap: 16, flexWrap: "wrap" }}>
-            <MiniKpi label="Costo acumulado" value={"$" + Math.round(grdKpis.costoTotal / 1_000_000 * 10) / 10 + "M"} color="#0E7490" />
-            <MiniKpi label="Proyectado próx. mes" value={"$" + Math.round(grdKpis.proyeccion / 1_000_000 * 10) / 10 + "M"} color="var(--muted)" />
+            <MiniKpi label="Costo acumulado"    value={"$" + Math.round(grdKpis.costoTotal / 1_000_000 * 10) / 10 + "M"} color="#0E7490" />
+            <MiniKpi label="Próx. mes"          value={"$" + Math.round(grdKpis.proyeccion / 1_000_000 * 10) / 10 + "M"} color="var(--muted)" />
           </div>
           <div style={{ marginTop: 12, paddingTop: 12, borderTop: "1px solid var(--border)", display: "flex", gap: 16 }}>
-            <MiniKpi label="Score crítico ≥70" value={grdKpis.criticos} color={grdKpis.criticos > 0 ? "var(--error)" : "var(--success)"} />
-            <MiniKpi label="Entregas vencidas" value={grdKpis.vencidos} color={grdKpis.vencidos > 0 ? "var(--error)" : "var(--success)"} />
+            <MiniKpi label="Score crítico ≥70"  value={grdKpis.criticos} color={grdKpis.criticos > 0 ? "var(--error)" : "var(--success)"} />
+            <MiniKpi label="Entregas vencidas"  value={grdKpis.vencidos} color={grdKpis.vencidos > 0 ? "var(--error)" : "var(--success)"} />
           </div>
         </KpiBlock>
 
-        {/* Tienda */}
         <KpiBlock title="Tienda" icon={<Store size={15} color="#7C3AED" />}>
           <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
-            <MiniKpi label="Pendientes" value={tiendaKpis.pendientes} color={tiendaKpis.pendientes > 0 ? "var(--warning)" : "var(--muted)"} />
-            <MiniKpi label=">24h sin recibir" value={tiendaKpis.criticos} color={tiendaKpis.criticos > 0 ? "var(--error)" : "var(--muted)"} />
+            <MiniKpi label="Pend. recogida"     value={tiendaKpis.pendientes} color={tiendaKpis.pendientes > 0 ? "var(--warning)" : "var(--muted)"} />
+            <MiniKpi label=">24h sin recoger"   value={tiendaKpis.criticos}   color={tiendaKpis.criticos > 0 ? "var(--error)" : "var(--muted)"} />
           </div>
           <div style={{ marginTop: 12, paddingTop: 12, borderTop: "1px solid var(--border)", display: "flex", gap: 12 }}>
-            <MiniKpi label="Recibidos" value={tiendaKpis.recibidos} color="var(--info)" />
-            <MiniKpi label="Despachados" value={tiendaKpis.despachados} color="var(--success)" />
-            <MiniKpi label="Con novedad" value={tiendaKpis.novedades} color={tiendaKpis.novedades > 0 ? "var(--error)" : "var(--muted)"} />
+            <MiniKpi label="En tránsito"        value={tiendaKpis.recibidos}   color="var(--info)" />
+            <MiniKpi label="Entregados"         value={tiendaKpis.despachados} color="var(--success)" />
+            <MiniKpi label="Con novedad"        value={tiendaKpis.novedades}   color={tiendaKpis.novedades > 0 ? "var(--error)" : "var(--muted)"} />
           </div>
         </KpiBlock>
 
-        {/* Conductores */}
         <KpiBlock title="Conductores" icon={<Route size={15} color="#7C3AED" />}>
           <div style={{ display: "flex", gap: 16, flexWrap: "wrap" }}>
-            <MiniKpi label="Activos (30d)" value={condKpis.activos} color="var(--text)" />
-            <MiniKpi label="Tasa promedio" value={condKpis.tasaProm != null ? `${condKpis.tasaProm}%` : "—"} color={condKpis.tasaProm != null && condKpis.tasaProm >= 85 ? "var(--success)" : "var(--warning)"} />
+            <MiniKpi label="Activos (30d)"      value={condKpis.activos} color="var(--text)" />
+            <MiniKpi label="Tasa promedio"      value={condKpis.tasaProm != null ? `${condKpis.tasaProm}%` : "—"} color={condKpis.tasaProm != null && condKpis.tasaProm >= 85 ? "var(--success)" : "var(--warning)"} />
           </div>
           <div style={{ marginTop: 12, paddingTop: 12, borderTop: "1px solid var(--border)", display: "flex", gap: 16 }}>
-            <MiniKpi label="Incidencias abiertas" value={condKpis.incidencias} color={condKpis.incidencias > 5 ? "var(--warning)" : "var(--muted)"} />
-            <MiniKpi label="En alerta (<70%)" value={condKpis.enAlerta} color={condKpis.enAlerta > 0 ? "var(--error)" : "var(--success)"} />
+            <MiniKpi label="Incidencias (30d)"  value={condKpis.incidencias} color={condKpis.incidencias > 5 ? "var(--warning)" : "var(--muted)"} />
+            <MiniKpi label="En alerta (<70%)"   value={condKpis.enAlerta}    color={condKpis.enAlerta > 0 ? "var(--error)" : "var(--success)"} />
           </div>
         </KpiBlock>
       </div>
 
-      {/* Rankings */}
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 16, marginBottom: 24 }}>
-        {/* Ranking Inventario */}
+      {/* ── Rankings ── */}
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 16 }}>
         <div className="ds-card" style={{ padding: "20px 22px" }}>
-          <SectionHeader title="Rendimiento Inventario — Top responsables" />
+          <SectionHeader title="Inventario — Top responsables" />
           {rankingInventario.length === 0 ? (
             <div style={{ textAlign: "center", padding: "20px 0", fontSize: 13, color: "var(--muted)" }}>
               Asigna novedades a responsables para ver el ranking
             </div>
-          ) : (
-            rankingInventario.map((r, i) => (
-              <RankRow
-                key={r.nombre}
-                rank={i + 1}
-                nombre={r.nombre}
-                main={`${r.resueltas}/${r.total}`}
-                sub={`${r.abiertas} abiertas`}
-                badge={`${r.tasa}%`}
-                color={r.tasa >= 80 ? "var(--success)" : r.tasa >= 50 ? "var(--warning)" : "var(--error)"}
-              />
-            ))
-          )}
+          ) : rankingInventario.map((r, i) => (
+            <RankRow
+              key={r.nombre} rank={i + 1} nombre={r.nombre}
+              main={`${r.resueltas}/${r.total}`} sub={`${r.abiertas} abiertas`}
+              badge={`${r.tasa}%`}
+              color={r.tasa >= 80 ? "var(--success)" : r.tasa >= 50 ? "var(--warning)" : "var(--error)"}
+            />
+          ))}
         </div>
 
-        {/* Ranking Centros de Costo */}
         <div className="ds-card" style={{ padding: "20px 22px" }}>
           <SectionHeader title="Tienda — Top centros de costo" />
           {rankingCC.length === 0 ? (
             <div style={{ textAlign: "center", padding: "20px 0", fontSize: 13, color: "var(--muted)" }}>Sin despachos registrados</div>
           ) : rankingCC.map((r, i) => (
             <RankRow
-              key={r.cc}
-              rank={i + 1}
-              nombre={r.cc}
-              main={String(r.total)}
+              key={r.cc} rank={i + 1} nombre={r.cc} main={String(r.total)}
               sub={`${r.pend} pend · ${r.desp} desp${r.nov > 0 ? ` · ${r.nov} nov` : ""}`}
               badge={r.pend > 0 ? `${r.pend} pend` : undefined}
               color={r.nov > 0 ? "var(--error)" : r.pend > 3 ? "var(--warning)" : "var(--success)"}
@@ -305,41 +612,26 @@ export default function CentroControlPage() {
           ))}
         </div>
 
-        {/* Ranking Conductores */}
         <div className="ds-card" style={{ padding: "20px 22px" }}>
-          <SectionHeader title="Rendimiento Transporte — Conductores" />
+          <SectionHeader title="Transporte — Conductores" />
           {(kpis?.conductores ?? []).length === 0 ? (
             <div style={{ textAlign: "center", padding: "20px 0", fontSize: 13, color: "var(--muted)" }}>
               Sin rutas registradas en los últimos 30 días
             </div>
-          ) : (
-            (kpis?.conductores ?? []).slice(0, 7).map((c: any, i: number) => {
-              const tasa = c.tasaEntrega ?? 0;
-              const color = tasa >= 90 ? "var(--success)" : tasa >= 70 ? "var(--warning)" : "var(--error)";
-              return (
-                <RankRow
-                  key={c.transportistaId}
-                  rank={i + 1}
-                  nombre={c.nombre}
-                  main={`${tasa}%`}
-                  sub={`${c.entregadas}/${c.totalParadas} entregas${c.incidencias > 0 ? ` · ${c.incidencias} incid.` : ""}`}
-                  badge={c.tiempoPromedio ? `${c.tiempoPromedio}min` : undefined}
-                  color={color}
-                />
-              );
-            })
-          )}
+          ) : (kpis?.conductores ?? []).slice(0, 7).map((c: any, i: number) => {
+            const tasa = c.tasaEntrega ?? 0;
+            return (
+              <RankRow
+                key={c.transportistaId} rank={i + 1} nombre={c.nombre}
+                main={`${tasa}%`}
+                sub={`${c.entregadas}/${c.totalParadas} entregas${c.incidencias > 0 ? ` · ${c.incidencias} incid.` : ""}`}
+                badge={c.tiempoPromedio ? `${c.tiempoPromedio}min` : undefined}
+                color={tasa >= 90 ? "var(--success)" : tasa >= 70 ? "var(--warning)" : "var(--error)"}
+              />
+            );
+          })}
         </div>
       </div>
-
-      {/* Top insights warnings */}
-      {insights.filter((i) => i.level === "warning").length > 0 && (
-        <IntelBanner
-          insights={insights.filter((i) => i.level === "warning")}
-          maxVisible={5}
-          title="Alertas operativas"
-        />
-      )}
     </div>
   );
 }
