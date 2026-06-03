@@ -15,7 +15,9 @@ export type AppRole =
   | "INVENTARIO"          // Operario inventario
   | "TRANSPORTE"          // Operario transporte/guardados
   | "SUPERVISOR_INVENTARIO"
-  | "SUPERVISOR_TRANSPORTE";
+  | "SUPERVISOR_TRANSPORTE"
+  | "TIENDA"              // Operario de tienda
+  | "SUPERVISOR_TIENDA";  // Supervisor de tienda
 
 // ── Claves de módulos ────────────────────────────────────
 export type ModuleKey =
@@ -25,6 +27,7 @@ export type ModuleKey =
   | "mi-ruta"
   | "conteo"
   | "conteo-contar"
+  | "tienda"
   | "usuarios"
   | "auditoria"
   | "centro-control";
@@ -55,11 +58,16 @@ export const MODULE_ACCESS: Record<ModuleKey, AppRole[]> = {
     "INVENTARIO", "SUPERVISOR_INVENTARIO",
     "GERENTE", "ADMIN", "OPERADOR",
   ],
+  "tienda": [
+    "TIENDA", "SUPERVISOR_TIENDA",
+    "TRANSPORTE", "SUPERVISOR_TRANSPORTE", // Transporte ve despachos para gestionar recogidas
+    "GERENTE", "ADMIN",
+  ],
   "usuarios": ["ADMIN"],
   "auditoria": ["ADMIN", "GERENTE"],
   "centro-control": [
     "GERENTE", "ADMIN",
-    "SUPERVISOR_INVENTARIO", "SUPERVISOR_TRANSPORTE",
+    "SUPERVISOR_INVENTARIO", "SUPERVISOR_TRANSPORTE", "SUPERVISOR_TIENDA",
   ],
 };
 
@@ -92,6 +100,8 @@ export const ROLE_LABEL_EXT: Record<AppRole, string> = {
   TRANSPORTE:             "Operario de Transporte",
   SUPERVISOR_INVENTARIO:  "Supervisor de Inventario",
   SUPERVISOR_TRANSPORTE:  "Supervisor de Transporte",
+  TIENDA:                 "Operario de Tienda",
+  SUPERVISOR_TIENDA:      "Supervisor de Tienda",
 };
 
 // ── Descripción de cada rol para la UI de usuarios ──────
@@ -104,4 +114,6 @@ export const ROLE_DESCRIPTION: Record<AppRole, string> = {
   TRANSPORTE:             "Solo ve guardados, logística y rutas.",
   SUPERVISOR_INVENTARIO:  "Inventario + análisis operacional.",
   SUPERVISOR_TRANSPORTE:  "Guardados + logística + KPIs conductores.",
+  TIENDA:                 "Solo ve y gestiona despachos de tienda.",
+  SUPERVISOR_TIENDA:      "Tienda + análisis + Centro de Control.",
 };

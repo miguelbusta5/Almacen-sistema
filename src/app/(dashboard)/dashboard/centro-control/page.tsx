@@ -4,11 +4,13 @@ import { useEffect, useMemo, useState } from "react";
 import { useSession } from "next-auth/react";
 import {
   Package, Truck, Route, AlertTriangle, TrendingUp, TrendingDown,
-  CheckCircle2, Clock, BarChart3, Users,
+  CheckCircle2, Clock, BarChart3, Users, Store,
 } from "lucide-react";
 import { Stat, SkeletonStat, SectionHeader } from "@/components/ui";
 import { IntelBanner } from "@/components/ui/SlidePanel";
-import { consolidarInsights } from "@/lib/inteligencia";
+import { consolidarInsights, insightsTienda } from "@/lib/inteligencia";
+import type { DespachoTienda } from "@/lib/tienda";
+import { horasDesde } from "@/lib/tienda";
 import { calcAlmacenaje } from "@/lib/almacenaje";
 import { scoreGuardado, urgencia } from "@/lib/transporte";
 import type { Novedad } from "@/lib/muebles";
@@ -58,21 +60,24 @@ export default function CentroControlPage() {
 
   const [novedades, setNovedades] = useState<Novedad[]>([]);
   const [guardados, setGuardados] = useState<Guardado[]>([]);
+  const [despachos, setDespachos] = useState<DespachoTienda[]>([]);
   const [kpis, setKpis] = useState<{ conductores: any[]; stats: any } | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     (async () => {
       try {
-        const [nR, gR, cR, sR] = await Promise.all([
+        const [nR, gR, cR, sR, dR] = await Promise.all([
           fetch("/api/novedades?pageSize=500"),
           fetch("/api/transporte?pageSize=500"),
           fetch("/api/logistica/conductores/kpis?dias=30"),
           fetch("/api/novedades/stats?dias=30"),
+          fetch("/api/tienda?pageSize=500"),
         ]);
-        const [nJ, gJ, cJ, sJ] = await Promise.all([nR.json(), gR.json(), cR.json(), sR.json()]);
+        const [nJ, gJ, cJ, sJ, dJ] = await Promise.all([nR.json(), gR.json(), cR.json(), sR.json(), dR.json()]);
         if (nJ.success) setNovedades(nJ.data ?? []);
         if (gJ.success) setGuardados(gJ.data ?? []);
+        if (dJ.success) setDespachos(dJ.data ?? []);
         setKpis({
           conductores: cJ.success ? cJ.data ?? [] : [],
           stats: sJ.success ? sJ : null,
@@ -82,7 +87,32 @@ export default function CentroControlPage() {
     })();
   }, []);
 
-  const insights = useMemo(() => consolidarInsights(novedades, guardados, []), [novedades, guardados]);
+  const insights = useMemo(() => consolidarInsights(novedades, guardados, [], despachos), [novedades, guardados, despachos]);
+
+  // ── KPIs Tienda ──────────────────────────────────────────
+  const tiendaKpis = useMemo(() => ({
+    pendientes:  despachos.filter((d) => d.estado === "PENDIENTE").length,
+    recibidos:   despachos.filter((d) => d.estado === "RECIBIDO").length,
+    despachados: despachos.filter((d) => d.estado === "DESPACHADO").length,
+    novedades:   despachos.filter((d) => d.estado === "CON_NOVEDAD").length,
+    criticos:    despachos.filter((d) => d.estado === "PENDIENTE" && horasDesde(d.createdAt) >= 24).length,
+  }), [despachos]);
+
+  // ── Ranking centros de costo ─────────────────────────────
+  const rankingCC = useMemo(() => {
+    const byCC: Record<string, { total: number; pend: number; desp: number; nov: number }> = {};
+    for (const d of despachos) {
+      if (!byCC[d.centroCostos]) byCC[d.centroCostos] = { total: 0, pend: 0, desp: 0, nov: 0 };
+      byCC[d.centroCostos].total++;
+      if (d.estado === "PENDIENTE") byCC[d.centroCostos].pend++;
+      if (d.estado === "DESPACHADO") byCC[d.centroCostos].desp++;
+      if (d.estado === "CON_NOVEDAD") byCC[d.centroCostos].nov++;
+    }
+    return Object.entries(byCC)
+      .map(([cc, d]) => ({ cc, ...d }))
+      .sort((a, b) => b.total - a.total)
+      .slice(0, 7);
+  }, [despachos]);
 
   // ── KPIs Inventario ──────────────────────────────────────
   const invKpis = useMemo(() => {
@@ -177,7 +207,7 @@ export default function CentroControlPage() {
       )}
 
       {/* Grid de módulos */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 16, marginBottom: 24 }}>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 16, marginBottom: 24 }}>
         {/* Inventario */}
         <KpiBlock title="Inventario" icon={<Package size={15} color="#2563EB" />}>
           <div style={{ display: "flex", gap: 16, flexWrap: "wrap" }}>
@@ -207,6 +237,19 @@ export default function CentroControlPage() {
           </div>
         </KpiBlock>
 
+        {/* Tienda */}
+        <KpiBlock title="Tienda" icon={<Store size={15} color="#7C3AED" />}>
+          <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
+            <MiniKpi label="Pendientes" value={tiendaKpis.pendientes} color={tiendaKpis.pendientes > 0 ? "var(--warning)" : "var(--muted)"} />
+            <MiniKpi label=">24h sin recibir" value={tiendaKpis.criticos} color={tiendaKpis.criticos > 0 ? "var(--error)" : "var(--muted)"} />
+          </div>
+          <div style={{ marginTop: 12, paddingTop: 12, borderTop: "1px solid var(--border)", display: "flex", gap: 12 }}>
+            <MiniKpi label="Recibidos" value={tiendaKpis.recibidos} color="var(--info)" />
+            <MiniKpi label="Despachados" value={tiendaKpis.despachados} color="var(--success)" />
+            <MiniKpi label="Con novedad" value={tiendaKpis.novedades} color={tiendaKpis.novedades > 0 ? "var(--error)" : "var(--muted)"} />
+          </div>
+        </KpiBlock>
+
         {/* Conductores */}
         <KpiBlock title="Conductores" icon={<Route size={15} color="#7C3AED" />}>
           <div style={{ display: "flex", gap: 16, flexWrap: "wrap" }}>
@@ -220,8 +263,8 @@ export default function CentroControlPage() {
         </KpiBlock>
       </div>
 
-      {/* Rankings + Top warnings */}
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: 24 }}>
+      {/* Rankings */}
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 16, marginBottom: 24 }}>
         {/* Ranking Inventario */}
         <div className="ds-card" style={{ padding: "20px 22px" }}>
           <SectionHeader title="Rendimiento Inventario — Top responsables" />
@@ -242,6 +285,24 @@ export default function CentroControlPage() {
               />
             ))
           )}
+        </div>
+
+        {/* Ranking Centros de Costo */}
+        <div className="ds-card" style={{ padding: "20px 22px" }}>
+          <SectionHeader title="Tienda — Top centros de costo" />
+          {rankingCC.length === 0 ? (
+            <div style={{ textAlign: "center", padding: "20px 0", fontSize: 13, color: "var(--muted)" }}>Sin despachos registrados</div>
+          ) : rankingCC.map((r, i) => (
+            <RankRow
+              key={r.cc}
+              rank={i + 1}
+              nombre={r.cc}
+              main={String(r.total)}
+              sub={`${r.pend} pend · ${r.desp} desp${r.nov > 0 ? ` · ${r.nov} nov` : ""}`}
+              badge={r.pend > 0 ? `${r.pend} pend` : undefined}
+              color={r.nov > 0 ? "var(--error)" : r.pend > 3 ? "var(--warning)" : "var(--success)"}
+            />
+          ))}
         </div>
 
         {/* Ranking Conductores */}

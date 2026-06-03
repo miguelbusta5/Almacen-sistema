@@ -7,8 +7,10 @@
 import type { Novedad } from "@/lib/muebles";
 import type { Guardado } from "@/lib/transporte";
 import type { Ruta } from "@/lib/logistica";
+import type { DespachoTienda } from "@/lib/tienda";
 import { urgencia, parseEntrega } from "@/lib/transporte";
 import { calcAlmacenaje } from "@/lib/almacenaje";
+import { horasDesde } from "@/lib/tienda";
 
 export type InsightLevel = "critical" | "warning" | "info";
 
@@ -454,12 +456,83 @@ export function insightsSinContacto(guardados: Guardado[]): IntelInsight[] {
 }
 
 // ═══════════════════════════════════════════════════════════
+// REGLAS TIENDA
+// ═══════════════════════════════════════════════════════════
+
+export function insightsTienda(despachos: DespachoTienda[]): IntelInsight[] {
+  const out: IntelInsight[] = [];
+  const pendientes = despachos.filter((d) => d.estado === "PENDIENTE");
+  const novedades  = despachos.filter((d) => d.estado === "CON_NOVEDAD");
+
+  // 1. Despachos pendientes >24h
+  const viejos = pendientes.filter((d) => horasDesde(d.createdAt) >= 24);
+  if (viejos.length > 0) {
+    out.push({
+      id: "tienda-pendientes-24h",
+      level: "critical",
+      module: "tienda" as any,
+      message: `${viejos.length} despacho${viejos.length !== 1 ? "s" : ""} llevan más de 24h pendientes`,
+      context: viejos.slice(0, 2).map((d) => d.numeroDocumento).join(" · "),
+      action: "Ver pendientes",
+    });
+  }
+
+  // 2. Despachos con novedad
+  if (novedades.length > 0) {
+    out.push({
+      id: "tienda-con-novedad",
+      level: "warning",
+      module: "tienda" as any,
+      message: `${novedades.length} despacho${novedades.length !== 1 ? "s" : ""} registrado${novedades.length !== 1 ? "s" : ""} con novedad`,
+      context: novedades.slice(0, 2).map((d) => d.numeroDocumento).join(" · "),
+      action: "Ver novedades",
+    });
+  }
+
+  // 3. Centro de costos concentra >40% del volumen diario
+  const hoy = new Date().toISOString().slice(0, 10);
+  const hoyDespachos = despachos.filter((d) => d.fechaCreacion.startsWith(hoy));
+  if (hoyDespachos.length >= 5) {
+    const byCC: Record<string, number> = {};
+    for (const d of hoyDespachos) byCC[d.centroCostos] = (byCC[d.centroCostos] ?? 0) + 1;
+    for (const [cc, count] of Object.entries(byCC)) {
+      const pct = Math.round(count / hoyDespachos.length * 100);
+      if (pct >= 40) {
+        out.push({
+          id: `tienda-cc-concentrado-${cc}`,
+          level: "info",
+          module: "tienda" as any,
+          message: `${cc} concentra el ${pct}% del volumen de hoy`,
+          context: `${count} de ${hoyDespachos.length} despachos hoy`,
+        });
+      }
+    }
+  }
+
+  return out;
+}
+
+export function insightsPorDespacho(d: DespachoTienda, todos: DespachoTienda[]): IntelInsight[] {
+  const out: IntelInsight[] = [];
+  const horas = d.estado === "PENDIENTE" ? horasDesde(d.createdAt) : 0;
+  if (horas >= 24) {
+    out.push({ id: `pend-24h-${d.id}`, level: "critical", module: "tienda" as any, message: `Pendiente hace ${horas}h sin ser recibido`, context: "Verificar con transporte" });
+  }
+  const mismoCC = todos.filter((x) => x.centroCostos === d.centroCostos && x.id !== d.id && x.estado === "PENDIENTE").length;
+  if (mismoCC >= 3) {
+    out.push({ id: `cc-acum-${d.id}`, level: "info", module: "tienda" as any, message: `${d.centroCostos} tiene ${mismoCC} despachos pendientes adicionales` });
+  }
+  return out;
+}
+
+// ═══════════════════════════════════════════════════════════
 // CONSOLIDADO — todos los módulos
 // ═══════════════════════════════════════════════════════════
 export function consolidarInsights(
   novedades: Novedad[],
   guardados: Guardado[],
-  rutas: Ruta[]
+  rutas: Ruta[],
+  despachos: DespachoTienda[] = []
 ): IntelInsight[] {
   return [
     ...insightsNovedades(novedades),
@@ -470,6 +543,7 @@ export function consolidarInsights(
     ...insightsGuardados(guardados),
     ...insightsSinContacto(guardados),
     ...insightsRutas(rutas),
+    ...insightsTienda(despachos),
   ].sort((a, b) => {
     const order = { critical: 0, warning: 1, info: 2 };
     return order[a.level] - order[b.level];

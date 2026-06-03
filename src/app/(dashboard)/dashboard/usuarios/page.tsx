@@ -5,7 +5,7 @@ import { createPortal } from "react-dom";
 import { useSession } from "next-auth/react";
 import { Users, Plus, Pencil, X, Shield, ShieldCheck, ShieldAlert } from "lucide-react";
 
-type Role = "ADMIN" | "GERENTE" | "OPERADOR" | "TRANSPORTISTA" | "INVENTARIO" | "TRANSPORTE" | "SUPERVISOR_INVENTARIO" | "SUPERVISOR_TRANSPORTE";
+type Role = "ADMIN" | "GERENTE" | "OPERADOR" | "TRANSPORTISTA" | "INVENTARIO" | "TRANSPORTE" | "SUPERVISOR_INVENTARIO" | "SUPERVISOR_TRANSPORTE" | "TIENDA" | "SUPERVISOR_TIENDA";
 
 interface User {
   id: string;
@@ -23,6 +23,8 @@ const ROLE_META: Record<Role, { label: string; color: string; icon: React.ReactN
   SUPERVISOR_TRANSPORTE:  { label: "Sup. Transporte",    color: "#0e7490", icon: <Shield size={13} /> },
   INVENTARIO:             { label: "Op. Inventario",     color: "#64748b", icon: <ShieldAlert size={13} /> },
   TRANSPORTE:             { label: "Op. Transporte",     color: "#64748b", icon: <ShieldAlert size={13} /> },
+  TIENDA:                 { label: "Op. Tienda",         color: "#7c3aed", icon: <ShieldAlert size={13} /> },
+  SUPERVISOR_TIENDA:      { label: "Sup. Tienda",        color: "#7c3aed", icon: <Shield size={13} /> },
   OPERADOR:               { label: "Operador (General)", color: "#94a3b8", icon: <ShieldAlert size={13} /> },
   TRANSPORTISTA:          { label: "Transportista",      color: "#0e7490", icon: <ShieldAlert size={13} /> },
 };
@@ -163,19 +165,23 @@ function FormNuevo({ onClose, onSaved, onError }: { onClose: () => void; onSaved
         <Field label="Email"><input type="email" value={email} onChange={e => setEmail(e.target.value)} style={inp} placeholder="usuario@almacen.com" /></Field>
         <Field label="Contraseña (mín. 8)"><input type="password" value={password} onChange={e => setPassword(e.target.value)} style={inp} placeholder="••••••••" /></Field>
         <Field label="Rol"><select value={role} onChange={e => setRole(e.target.value as Role)} style={inp}><optgroup label="Área Inventario">
-              <option value="INVENTARIO">Operario Inventario</option>
-              <option value="SUPERVISOR_INVENTARIO">Supervisor Inventario</option>
-            </optgroup>
-            <optgroup label="Área Transporte">
-              <option value="TRANSPORTE">Operario Transporte</option>
-              <option value="TRANSPORTISTA">Transportista (Conductor)</option>
-              <option value="SUPERVISOR_TRANSPORTE">Supervisor Transporte</option>
-            </optgroup>
-            <optgroup label="Gerencia / Admin">
-              <option value="OPERADOR">Operador (General - Legado)</option>
-              <option value="GERENTE">Gerente</option>
-              <option value="ADMIN">Administrador</option>
-            </optgroup></select></Field>
+                <option value="INVENTARIO">Operario Inventario</option>
+                <option value="SUPERVISOR_INVENTARIO">Supervisor Inventario</option>
+              </optgroup>
+              <optgroup label="Área Tienda">
+                <option value="TIENDA">Operario Tienda</option>
+                <option value="SUPERVISOR_TIENDA">Supervisor Tienda</option>
+              </optgroup>
+              <optgroup label="Área Transporte">
+                <option value="TRANSPORTE">Operario Transporte</option>
+                <option value="TRANSPORTISTA">Transportista (Conductor)</option>
+                <option value="SUPERVISOR_TRANSPORTE">Supervisor Transporte</option>
+              </optgroup>
+              <optgroup label="Gerencia / Admin">
+                <option value="OPERADOR">Operador (General - Legado)</option>
+                <option value="GERENTE">Gerente</option>
+                <option value="ADMIN">Administrador</option>
+              </optgroup></select></Field>
       </div>
       <div style={{ display: "flex", gap: 8, marginTop: "1.25rem" }}>
         <button onClick={onClose} style={btnSec}>Cancelar</button>
@@ -211,19 +217,23 @@ function ModalEditar({ u, selfId, onClose, onSaved, onError }: { u: User; selfId
       <div style={{ display: "flex", flexDirection: "column", gap: "0.9rem" }}>
         <Field label="Nombre"><input value={name} onChange={e => setName(e.target.value)} style={inp} /></Field>
         <Field label="Rol"><select value={role} onChange={e => setRole(e.target.value as Role)} disabled={isSelf} style={{ ...inp, opacity: isSelf ? 0.5 : 1 }}><optgroup label="Área Inventario">
-              <option value="INVENTARIO">Operario Inventario</option>
-              <option value="SUPERVISOR_INVENTARIO">Supervisor Inventario</option>
-            </optgroup>
-            <optgroup label="Área Transporte">
-              <option value="TRANSPORTE">Operario Transporte</option>
-              <option value="TRANSPORTISTA">Transportista (Conductor)</option>
-              <option value="SUPERVISOR_TRANSPORTE">Supervisor Transporte</option>
-            </optgroup>
-            <optgroup label="Gerencia / Admin">
-              <option value="OPERADOR">Operador (General - Legado)</option>
-              <option value="GERENTE">Gerente</option>
-              <option value="ADMIN">Administrador</option>
-            </optgroup></select></Field>
+                <option value="INVENTARIO">Operario Inventario</option>
+                <option value="SUPERVISOR_INVENTARIO">Supervisor Inventario</option>
+              </optgroup>
+              <optgroup label="Área Tienda">
+                <option value="TIENDA">Operario Tienda</option>
+                <option value="SUPERVISOR_TIENDA">Supervisor Tienda</option>
+              </optgroup>
+              <optgroup label="Área Transporte">
+                <option value="TRANSPORTE">Operario Transporte</option>
+                <option value="TRANSPORTISTA">Transportista (Conductor)</option>
+                <option value="SUPERVISOR_TRANSPORTE">Supervisor Transporte</option>
+              </optgroup>
+              <optgroup label="Gerencia / Admin">
+                <option value="OPERADOR">Operador (General - Legado)</option>
+                <option value="GERENTE">Gerente</option>
+                <option value="ADMIN">Administrador</option>
+              </optgroup></select></Field>
         <Field label="Nueva contraseña (opcional)"><input type="password" value={password} onChange={e => setPassword(e.target.value)} style={inp} placeholder="Dejar vacío para no cambiar" /></Field>
         <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, cursor: isSelf ? "not-allowed" : "pointer", opacity: isSelf ? 0.5 : 1 }}>
           <input type="checkbox" checked={active} disabled={isSelf} onChange={e => setActive(e.target.checked)} />

@@ -8,7 +8,7 @@ const createUserSchema = z.object({
   email: z.string().email("Email invalido"),
   name: z.string().min(2, "Nombre muy corto"),
   password: z.string().min(8, "Contrasena minimo 8 caracteres"),
-  role: z.enum(["ADMIN","GERENTE","OPERADOR","TRANSPORTISTA","INVENTARIO","TRANSPORTE","SUPERVISOR_INVENTARIO","SUPERVISOR_TRANSPORTE"]).default("INVENTARIO"),
+  role: z.enum(["ADMIN","GERENTE","OPERADOR","TRANSPORTISTA","INVENTARIO","TRANSPORTE","SUPERVISOR_INVENTARIO","SUPERVISOR_TRANSPORTE","TIENDA","SUPERVISOR_TIENDA"]).default("INVENTARIO"),
   transportistaId: z.string().nullable().optional(), // vincular a transportista existente
 });
 

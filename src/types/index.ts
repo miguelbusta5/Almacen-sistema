@@ -7,7 +7,9 @@ export type UserRole =
   | "INVENTARIO"
   | "TRANSPORTE"
   | "SUPERVISOR_INVENTARIO"
-  | "SUPERVISOR_TRANSPORTE";
+  | "SUPERVISOR_TRANSPORTE"
+  | "TIENDA"
+  | "SUPERVISOR_TIENDA";
 
 export interface AppUser {
   id: string;

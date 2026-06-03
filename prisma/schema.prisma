@@ -85,8 +85,9 @@ model User {
   activityLogs    ActivityLog[]
   transportista   Transportista?
   ciclosConteo    CicloConteo[]
-  novedadesAsign  Novedad[]       @relation("NovedadesAsignadas")
+  novedadesAsign  Novedad[]         @relation("NovedadesAsignadas")
   contactosGuard  ContactoGuardado[]
+  despachosTienda DespachoTienda[]
 
   @@index([email])
   @@map("users")
@@ -101,6 +102,43 @@ enum Role {
   TRANSPORTE             // Operario de transporte — solo guardados + logística
   SUPERVISOR_INVENTARIO  // Supervisor inventario — inventario + análisis
   SUPERVISOR_TRANSPORTE  // Supervisor transporte — guardados + logística + KPIs
+  TIENDA                 // Operario de tienda — solo módulo tienda
+  SUPERVISOR_TIENDA      // Supervisor tienda — tienda + análisis + Centro de Control
+}
+
+enum EstadoDespacho {
+  PENDIENTE
+  RECIBIDO
+  DESPACHADO
+  CON_NOVEDAD
+}
+
+// ═══════════════════════════════════════════
+// MÓDULO TIENDA
+// ═══════════════════════════════════════════
+
+model DespachoTienda {
+  id               String         @id @default(cuid())
+  centroCostos     String         @map("centro_costos") @db.VarChar(100)
+  numeroDocumento  String         @map("numero_documento") @db.VarChar(100)
+  consecutivo      String         @db.VarChar(50)
+  clienteNombre    String         @map("cliente_nombre") @db.VarChar(255)
+  clienteDocumento String?        @map("cliente_documento") @db.VarChar(50)
+  clienteTelefono  String?        @map("cliente_telefono") @db.VarChar(30)
+  estado           EstadoDespacho @default(PENDIENTE)
+  fechaCreacion    DateTime       @db.Date @map("fecha_creacion")
+  recibidoAt       DateTime?      @map("recibido_at")
+  despachadoAt     DateTime?      @map("despachado_at")
+  novedad          String?
+  creadoPorId      String         @map("creado_por_id")
+  creadoPor        User           @relation(fields: [creadoPorId], references: [id])
+  createdAt        DateTime       @default(now()) @map("created_at")
+  updatedAt        DateTime       @updatedAt @map("updated_at")
+
+  @@index([estado])
+  @@index([centroCostos, fechaCreacion])
+  @@index([fechaCreacion])
+  @@map("despachos_tienda")
 }
 
 // ═══════════════════════════════════════════

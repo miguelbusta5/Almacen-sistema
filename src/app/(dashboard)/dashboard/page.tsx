@@ -569,7 +569,7 @@ export default function DashboardPage() {
   if (role === "TRANSPORTISTA") return <TransportistaDashboard nombre={nombre} />;
 
   // Operarios de área → vista de tareas del día
-  if (role === "OPERADOR" || role === "INVENTARIO" || role === "TRANSPORTE")
+  if (role === "OPERADOR" || role === "INVENTARIO" || role === "TRANSPORTE" || role === "TIENDA")
     return <OperadorDashboard nombre={nombre} />;
 
   // Supervisores y gerencia → vista ejecutiva
