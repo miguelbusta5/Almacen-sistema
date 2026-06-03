@@ -522,17 +522,18 @@ export function insightsSla(items: Novedad[]): IntelInsight[] {
 
 export function insightsTienda(despachos: DespachoTienda[]): IntelInsight[] {
   const out: IntelInsight[] = [];
-  const pendientes = despachos.filter((d) => d.estado === "PENDIENTE");
+  // Pendientes de recogida = creados en tienda sin recoger aún
+  const pendientes = despachos.filter((d) => d.estado === "CREADO_TIENDA" || d.estado === "RECOGIDA_PENDIENTE");
   const novedades  = despachos.filter((d) => d.estado === "CON_NOVEDAD");
 
-  // 1. Despachos pendientes >24h
+  // 1. Despachos pendientes de recogida >24h
   const viejos = pendientes.filter((d) => horasDesde(d.createdAt) >= 24);
   if (viejos.length > 0) {
     out.push({
       id: "tienda-pendientes-24h",
       level: "critical",
       module: "tienda" as any,
-      message: `${viejos.length} despacho${viejos.length !== 1 ? "s" : ""} llevan más de 24h pendientes`,
+      message: `${viejos.length} despacho${viejos.length !== 1 ? "s" : ""} llevan más de 24h sin ser recogidos`,
       context: viejos.slice(0, 2).map((d) => d.numeroDocumento).join(" · "),
       action: "Ver pendientes",
     });
@@ -575,13 +576,14 @@ export function insightsTienda(despachos: DespachoTienda[]): IntelInsight[] {
 
 export function insightsPorDespacho(d: DespachoTienda, todos: DespachoTienda[]): IntelInsight[] {
   const out: IntelInsight[] = [];
-  const horas = d.estado === "PENDIENTE" ? horasDesde(d.createdAt) : 0;
+  const sinRecoger = d.estado === "CREADO_TIENDA" || d.estado === "RECOGIDA_PENDIENTE";
+  const horas = sinRecoger ? horasDesde(d.createdAt) : 0;
   if (horas >= 24) {
-    out.push({ id: `pend-24h-${d.id}`, level: "critical", module: "tienda" as any, message: `Pendiente hace ${horas}h sin ser recibido`, context: "Verificar con transporte" });
+    out.push({ id: `pend-24h-${d.id}`, level: "critical", module: "tienda" as any, message: `Sin recoger hace ${horas}h`, context: "Verificar con transporte" });
   }
-  const mismoCC = todos.filter((x) => x.centroCostos === d.centroCostos && x.id !== d.id && x.estado === "PENDIENTE").length;
+  const mismoCC = todos.filter((x) => x.centroCostos === d.centroCostos && x.id !== d.id && (x.estado === "CREADO_TIENDA" || x.estado === "RECOGIDA_PENDIENTE")).length;
   if (mismoCC >= 3) {
-    out.push({ id: `cc-acum-${d.id}`, level: "info", module: "tienda" as any, message: `${d.centroCostos} tiene ${mismoCC} despachos pendientes adicionales` });
+    out.push({ id: `cc-acum-${d.id}`, level: "info", module: "tienda" as any, message: `${d.centroCostos} tiene ${mismoCC} despachos adicionales sin recoger` });
   }
   return out;
 }

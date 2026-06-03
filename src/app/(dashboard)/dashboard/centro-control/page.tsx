@@ -91,11 +91,11 @@ export default function CentroControlPage() {
 
   // ── KPIs Tienda ──────────────────────────────────────────
   const tiendaKpis = useMemo(() => ({
-    pendientes:  despachos.filter((d) => d.estado === "PENDIENTE").length,
-    recibidos:   despachos.filter((d) => d.estado === "RECIBIDO").length,
-    despachados: despachos.filter((d) => d.estado === "DESPACHADO").length,
+    pendientes:  despachos.filter((d) => d.estado === "CREADO_TIENDA" || d.estado === "RECOGIDA_PENDIENTE").length,
+    recibidos:   despachos.filter((d) => d.estado === "RECOGIDO" || d.estado === "EN_RUTA").length,
+    despachados: despachos.filter((d) => d.estado === "ENTREGADO").length,
     novedades:   despachos.filter((d) => d.estado === "CON_NOVEDAD").length,
-    criticos:    despachos.filter((d) => d.estado === "PENDIENTE" && horasDesde(d.createdAt) >= 24).length,
+    criticos:    despachos.filter((d) => (d.estado === "CREADO_TIENDA" || d.estado === "RECOGIDA_PENDIENTE") && horasDesde(d.createdAt) >= 24).length,
   }), [despachos]);
 
   // ── Ranking centros de costo ─────────────────────────────
@@ -104,8 +104,8 @@ export default function CentroControlPage() {
     for (const d of despachos) {
       if (!byCC[d.centroCostos]) byCC[d.centroCostos] = { total: 0, pend: 0, desp: 0, nov: 0 };
       byCC[d.centroCostos].total++;
-      if (d.estado === "PENDIENTE") byCC[d.centroCostos].pend++;
-      if (d.estado === "DESPACHADO") byCC[d.centroCostos].desp++;
+      if (d.estado === "CREADO_TIENDA" || d.estado === "RECOGIDA_PENDIENTE") byCC[d.centroCostos].pend++;
+      if (d.estado === "ENTREGADO") byCC[d.centroCostos].desp++;
       if (d.estado === "CON_NOVEDAD") byCC[d.centroCostos].nov++;
     }
     return Object.entries(byCC)

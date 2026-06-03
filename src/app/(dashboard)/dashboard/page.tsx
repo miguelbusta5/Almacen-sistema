@@ -292,9 +292,9 @@ function OperadorDashboard({ nombre, role }: { nombre: string; role: string }) {
   const solucionadas  = useMemo(() => novedades.filter((n) => n.estado === "SOLUCIONADO"), [novedades]);
   const guardadosPend = useMemo(() => guardados.filter((g) => g.estado === "PENDIENTE DESPACHO"), [guardados]);
   const guardadosDesp = useMemo(() => guardados.filter((g) => g.estado === "DESPACHADO"), [guardados]);
-  const tiendaPend    = useMemo(() => tiendaDespachos.filter((d) => d.estado === "PENDIENTE"), [tiendaDespachos]);
+  const tiendaPend    = useMemo(() => tiendaDespachos.filter((d) => d.estado === "CREADO_TIENDA" || d.estado === "RECOGIDA_PENDIENTE"), [tiendaDespachos]);
   const tiendaNovedad = useMemo(() => tiendaDespachos.filter((d) => d.estado === "CON_NOVEDAD"), [tiendaDespachos]);
-  const tiendaDesp    = useMemo(() => tiendaDespachos.filter((d) => d.estado === "DESPACHADO"), [tiendaDespachos]);
+  const tiendaDesp    = useMemo(() => tiendaDespachos.filter((d) => d.estado === "ENTREGADO"), [tiendaDespachos]);
 
   // ── Alerta total para el header de greeting ──────────────
   const totalAlertas = (() => {
@@ -366,8 +366,8 @@ function OperadorDashboard({ nombre, role }: { nombre: string; role: string }) {
             {tiendaNovedad.length > 0 && (
               <AlertItem
                 level="warning"
-                text={`${tiendaNovedad.length} despacho${tiendaNovedad.length !== 1 ? "s" : ""} con novedad en tienda`}
-                sub="Requieren revisión"
+                text={`${tiendaNovedad.length} despacho${tiendaNovedad.length !== 1 ? "s" : ""} de tienda con novedad`}
+                sub="Requieren revisión y reasignación"
                 href="/dashboard/tienda"
               />
             )}

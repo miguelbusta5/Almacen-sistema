@@ -111,10 +111,12 @@ enum Role {
 }
 
 enum EstadoDespacho {
-  PENDIENTE
-  RECIBIDO
-  DESPACHADO
-  CON_NOVEDAD
+  CREADO_TIENDA      // Tienda registra el despacho
+  RECOGIDA_PENDIENTE // Tienda confirma que está listo para recogida
+  RECOGIDO           // Transporte recoge la mercancía
+  EN_RUTA            // Asignado a una ruta de entrega
+  ENTREGADO          // Entregado al cliente final
+  CON_NOVEDAD        // Incidencia en cualquier etapa
 }
 
 // ═══════════════════════════════════════════
@@ -149,10 +151,11 @@ model DespachoTienda {
   clienteNombre    String         @map("cliente_nombre") @db.VarChar(255)
   clienteDocumento String?        @map("cliente_documento") @db.VarChar(50)
   clienteTelefono  String?        @map("cliente_telefono") @db.VarChar(30)
-  estado           EstadoDespacho @default(PENDIENTE)
+  estado           EstadoDespacho @default(CREADO_TIENDA)
   fechaCreacion    DateTime       @db.Date @map("fecha_creacion")
-  recibidoAt       DateTime?      @map("recibido_at")
-  despachadoAt     DateTime?      @map("despachado_at")
+  recibidoAt       DateTime?      @map("recibido_at")   // RECOGIDO timestamp
+  enRutaAt         DateTime?      @map("en_ruta_at")    // EN_RUTA timestamp
+  despachadoAt     DateTime?      @map("despachado_at") // ENTREGADO timestamp
   novedad                   String?
   fechaEntregaComprometida  DateTime? @db.Date @map("fecha_entrega_comprometida")
   numeroCajas               Int?      @map("numero_cajas")

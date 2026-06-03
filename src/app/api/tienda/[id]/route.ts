@@ -4,7 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { z } from "zod";
 
 const updateSchema = z.object({
-  estado:                   z.enum(["PENDIENTE", "RECIBIDO", "DESPACHADO", "CON_NOVEDAD"]).optional(),
+  estado:                   z.enum(["CREADO_TIENDA", "RECOGIDA_PENDIENTE", "RECOGIDO", "EN_RUTA", "ENTREGADO", "CON_NOVEDAD"]).optional(),
   novedad:                  z.string().nullable().optional(),
   centroCostos:             z.string().max(100).optional(),
   numeroDocumento:          z.string().max(100).optional(),
@@ -29,7 +29,8 @@ function mapRow(r: any): object {
     fechaCreacion:            r.fechaCreacion instanceof Date ? r.fechaCreacion.toISOString().slice(0, 10) : r.fechaCreacion,
     fechaEntregaComprometida: r.fechaEntregaComprometida instanceof Date ? r.fechaEntregaComprometida.toISOString().slice(0, 10) : (r.fechaEntregaComprometida ?? null),
     numeroCajas:              r.numeroCajas ?? null,
-    recibidoAt:               r.recibidoAt ? r.recibidoAt.toISOString() : null,
+    recibidoAt:               r.recibidoAt  ? r.recibidoAt.toISOString()  : null,
+    enRutaAt:                 r.enRutaAt    ? r.enRutaAt.toISOString()    : null,
     despachadoAt:             r.despachadoAt ? r.despachadoAt.toISOString() : null,
     novedad:                  r.novedad,
     creadoPorId:              r.creadoPorId,
@@ -86,8 +87,9 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
 
   // Timestamps automáticos según el estado
   const timestamps: Record<string, unknown> = {};
-  if (d.estado === "RECIBIDO")   timestamps.recibidoAt  = new Date();
-  if (d.estado === "DESPACHADO") timestamps.despachadoAt = new Date();
+  if (d.estado === "RECOGIDO")   timestamps.recibidoAt  = new Date();
+  if (d.estado === "EN_RUTA")    timestamps.enRutaAt    = new Date();
+  if (d.estado === "ENTREGADO")  timestamps.despachadoAt = new Date();
 
   // Edición de datos → solo GERENTE/ADMIN vía requireCan
   const isDataEdit = d.centroCostos || d.numeroDocumento || d.clienteNombre;
@@ -114,7 +116,11 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
     include: { creadoPor: { select: { id: true, name: true } }, plines: true },
   });
 
-  const detail = d.estado ? `Estado → ${d.estado}` : "Actualización";
+  const ESTADO_LABEL: Record<string, string> = {
+    CREADO_TIENDA: "Creado en tienda", RECOGIDA_PENDIENTE: "Recogida pendiente",
+    RECOGIDO: "Recogido", EN_RUTA: "En ruta", ENTREGADO: "Entregado", CON_NOVEDAD: "Con novedad",
+  };
+  const detail = d.estado ? `Estado → ${ESTADO_LABEL[d.estado] ?? d.estado}` : "Actualización";
   await prisma.activityLog.create({
     data: { userId: actor.id, action: "UPDATE", module: "tienda", recordId: id, details: detail },
   }).catch(() => {});

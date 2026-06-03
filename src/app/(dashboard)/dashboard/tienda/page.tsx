@@ -6,12 +6,12 @@ import { useSession } from "next-auth/react";
 import { can } from "@/lib/permissions";
 import {
   Store, Plus, Search, X, CheckCircle2, Truck, AlertTriangle,
-  Pencil, Trash2, Package, Minus,
+  Pencil, Trash2, Package, Minus, PackageCheck, MapPin, Navigation,
 } from "lucide-react";
 import {
   DespachoTienda, PlinDespacho, EstadoDespacho, ESTADOS_DESPACHO, ESTADO_DESPACHO_LABEL,
   ESTADO_DESPACHO_COLOR, COLOR_TIENDA, estadoDespachoVariant,
-  fmtFechaTienda, todayISO, horasDesde,
+  fmtFechaTienda, todayISO, horasDesde, FLUJO_ESTADOS, ESTADOS_ACTIVOS,
 } from "@/lib/tienda";
 import { Stat, SkeletonStat, Badge, EmptyState, SkeletonTable, TimelineItem } from "@/components/ui";
 import { SlidePanel, IntelBanner, DetailSection, DetailGrid, MiniHistory } from "@/components/ui/SlidePanel";
@@ -128,11 +128,14 @@ export default function TiendaPage() {
   const panelInsights  = useMemo(() => panelItem ? insightsPorDespacho(panelItem, items) : [], [panelItem, items]);
 
   const kpis = useMemo(() => ({
-    total:      items.length,
-    pendientes: items.filter((d) => d.estado === "PENDIENTE").length,
-    recibidos:  items.filter((d) => d.estado === "RECIBIDO").length,
-    despachados:items.filter((d) => d.estado === "DESPACHADO").length,
-    novedades:  items.filter((d) => d.estado === "CON_NOVEDAD").length,
+    total:       items.length,
+    creadosTienda: items.filter((d) => d.estado === "CREADO_TIENDA").length,
+    recogidaPend:  items.filter((d) => d.estado === "RECOGIDA_PENDIENTE").length,
+    recogidos:     items.filter((d) => d.estado === "RECOGIDO").length,
+    enRuta:        items.filter((d) => d.estado === "EN_RUTA").length,
+    entregados:    items.filter((d) => d.estado === "ENTREGADO").length,
+    novedades:     items.filter((d) => d.estado === "CON_NOVEDAD").length,
+    pendientesRecogida: items.filter((d) => d.estado === "CREADO_TIENDA" || d.estado === "RECOGIDA_PENDIENTE").length,
   }), [items]);
 
   const centrosCostos = useMemo(() => [...new Set(items.map((d) => d.centroCostos))].sort(), [items]);
@@ -181,7 +184,7 @@ export default function TiendaPage() {
             <h1 style={{ fontSize: 22, fontWeight: 700, color: "var(--text)", letterSpacing: "-0.03em", margin: 0 }}>Despachos Tienda</h1>
           </div>
           <p style={{ fontSize: 13, color: "var(--muted)", margin: 0 }}>
-            {loading ? "Cargando…" : `${items.length} registros · ${kpis.pendientes} pendientes`}
+            {loading ? "Cargando…" : `${items.length} registros · ${kpis.pendientesRecogida} pendientes de recogida`}
           </p>
         </div>
         <button className="ds-btn ds-btn-primary" style={{ background: COLOR_TIENDA, boxShadow: `0 2px 12px ${COLOR_TIENDA}28` }} onClick={() => setCreando(true)}>
@@ -190,17 +193,53 @@ export default function TiendaPage() {
       </div>
 
       {/* ── KPIs flotantes ── */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(5,1fr)", gap: 24, marginBottom: 28, padding: "0 2px" }}>
-        {loading ? <><SkeletonStat /><SkeletonStat /><SkeletonStat /><SkeletonStat /><SkeletonStat /></> : (
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 20, marginBottom: 28, padding: "0 2px" }}>
+        {loading ? <><SkeletonStat /><SkeletonStat /><SkeletonStat /><SkeletonStat /></> : (
           <>
-            <Stat value={kpis.total}       label="Total despachos" />
-            <Stat value={kpis.pendientes}  label="Pendientes" color={kpis.pendientes > 0 ? "var(--warning)" : "var(--success)"} onClick={() => setFEstado("PENDIENTE")} />
-            <Stat value={kpis.recibidos}   label="Recibidos por transporte" color="var(--info)" onClick={() => setFEstado("RECIBIDO")} />
-            <Stat value={kpis.despachados} label="Despachados al cliente" color="var(--success)" onClick={() => setFEstado("DESPACHADO")} />
-            <Stat value={kpis.novedades}   label="Con novedad" color={kpis.novedades > 0 ? "var(--error)" : "var(--muted)"} onClick={() => setFEstado("CON_NOVEDAD")} />
+            <Stat value={kpis.pendientesRecogida} label="Pendientes de recogida"
+              color={kpis.pendientesRecogida > 0 ? "var(--warning)" : "var(--success)"}
+              onClick={() => setFEstado("CREADO_TIENDA")} />
+            <Stat value={kpis.recogidos + kpis.enRuta} label="En tránsito"
+              color="var(--info)"
+              onClick={() => setFEstado("RECOGIDO")} />
+            <Stat value={kpis.entregados} label="Entregados al cliente"
+              color="var(--success)"
+              onClick={() => setFEstado("ENTREGADO")} />
+            <Stat value={kpis.novedades} label="Con novedad"
+              color={kpis.novedades > 0 ? "var(--error)" : "var(--muted)"}
+              onClick={() => setFEstado("CON_NOVEDAD")} />
           </>
         )}
       </div>
+
+      {/* ── Pipeline visual de estados ── */}
+      {!loading && (
+        <div style={{ display: "flex", gap: 4, marginBottom: 20, overflowX: "auto", padding: "4px 2px" }}>
+          {FLUJO_ESTADOS.map((estado, i) => {
+            const count = items.filter((d) => d.estado === estado).length;
+            const color = ESTADO_DESPACHO_COLOR[estado];
+            const active = fEstado === estado;
+            return (
+              <button
+                key={estado}
+                onClick={() => setFEstado(active ? "" : estado)}
+                style={{
+                  flex: 1, minWidth: 100, display: "flex", flexDirection: "column", alignItems: "center",
+                  gap: 4, padding: "8px 6px", background: active ? color + "18" : "var(--surface2)",
+                  border: `1px solid ${active ? color + "55" : "var(--border)"}`, borderRadius: 10,
+                  cursor: "pointer", transition: "all .15s", position: "relative",
+                }}
+              >
+                <span style={{ fontSize: 18, fontWeight: 700, color: count > 0 ? color : "var(--faint)", fontFamily: "var(--mono)" }}>{count}</span>
+                <span style={{ fontSize: 10, fontWeight: 600, color: count > 0 ? color : "var(--faint)", textAlign: "center", lineHeight: 1.2 }}>{ESTADO_DESPACHO_LABEL[estado]}</span>
+                {i < FLUJO_ESTADOS.length - 1 && (
+                  <span style={{ position: "absolute", right: -10, top: "50%", transform: "translateY(-50%)", color: "var(--faint)", fontSize: 12, zIndex: 1 }}>›</span>
+                )}
+              </button>
+            );
+          })}
+        </div>
+      )}
 
       {/* ── Inteligencia ── */}
       {!loading && globalInsights.length > 0 && (
@@ -250,12 +289,12 @@ export default function TiendaPage() {
               </thead>
               <tbody>
                 {filtered.map((d) => {
-                  const horas = d.estado === "PENDIENTE" ? horasDesde(d.createdAt) : 0;
+                  const horas = (d.estado === "CREADO_TIENDA" || d.estado === "RECOGIDA_PENDIENTE") ? horasDesde(d.createdAt) : 0;
                   const critico = horas >= 24;
                   return (
                     <tr key={d.id} className="ds-row" onClick={() => abrirPanel(d)} style={{ background: panelItem?.id === d.id ? "var(--surface2)" : undefined }}>
                       <td style={{ padding: "0 4px 0 12px" }}>
-                        {critico && <span title="Pendiente >24h" style={{ fontSize: 12, color: "var(--error)" }}>⚠</span>}
+                        {critico && <span title="Creado hace >24h sin recogida" style={{ fontSize: 12, color: "var(--error)" }}>⚠</span>}
                       </td>
                       <td style={{ fontFamily: "var(--mono)", fontSize: 12, color: "var(--muted)", whiteSpace: "nowrap" }}>{fmtFechaTienda(d.fechaCreacion)}</td>
                       <td style={{ fontWeight: 600, fontSize: 13 }}>{d.centroCostos}</td>
@@ -270,8 +309,21 @@ export default function TiendaPage() {
                       <td><Badge label={ESTADO_DESPACHO_LABEL[d.estado]} variant={estadoDespachoVariant(d.estado)} /></td>
                       <td>
                         <div className="ds-row-actions">
-                          {d.estado === "PENDIENTE"  && <button className="ds-btn ds-btn-sm" style={{ background: "var(--info-tint)", color: "var(--info)", height: 26, fontSize: 11 }} onClick={(e) => { e.stopPropagation(); cambiarEstado(d, "RECIBIDO"); }} title="Marcar recibido"><Truck size={12} />Recibido</button>}
-                          {d.estado === "RECIBIDO"   && <button className="ds-btn ds-btn-sm" style={{ background: "var(--success-tint)", color: "var(--success)", height: 26, fontSize: 11 }} onClick={(e) => { e.stopPropagation(); cambiarEstado(d, "DESPACHADO"); }} title="Marcar despachado"><CheckCircle2 size={12} />Despachado</button>}
+                          {(d.estado === "CREADO_TIENDA" || d.estado === "RECOGIDA_PENDIENTE") &&
+                            <button className="ds-btn ds-btn-sm" style={{ background: "var(--info-tint)", color: "var(--info)", height: 26, fontSize: 11 }}
+                              onClick={(e) => { e.stopPropagation(); cambiarEstado(d, "RECOGIDO"); }} title="Marcar recogido">
+                              <Truck size={12} />Recogido
+                            </button>}
+                          {d.estado === "RECOGIDO" &&
+                            <button className="ds-btn ds-btn-sm" style={{ background: "#8b5cf614", color: "#8b5cf6", height: 26, fontSize: 11 }}
+                              onClick={(e) => { e.stopPropagation(); cambiarEstado(d, "EN_RUTA"); }} title="Poner en ruta">
+                              <Navigation size={12} />En ruta
+                            </button>}
+                          {d.estado === "EN_RUTA" &&
+                            <button className="ds-btn ds-btn-sm" style={{ background: "var(--success-tint)", color: "var(--success)", height: 26, fontSize: 11 }}
+                              onClick={(e) => { e.stopPropagation(); cambiarEstado(d, "ENTREGADO"); }} title="Confirmar entrega">
+                              <CheckCircle2 size={12} />Entregado
+                            </button>}
                           {canEdit && <button className="ds-btn ds-btn-sm ds-btn-ghost" style={{ height: 26 }} onClick={(e) => { e.stopPropagation(); setEditing(d); }} title="Editar"><Pencil size={12} /></button>}
                           {canDelete && <button className="ds-btn ds-btn-sm ds-btn-ghost" style={{ height: 26, color: "var(--error)" }} onClick={(e) => { e.stopPropagation(); setDeleting(d); }} title="Eliminar"><Trash2 size={12} /></button>}
                         </div>
@@ -293,18 +345,31 @@ export default function TiendaPage() {
         subtitle={`${panelItem?.centroCostos} · #${panelItem?.consecutivo}`}
         insights={panelInsights}
         badge={panelItem && <Badge label={ESTADO_DESPACHO_LABEL[panelItem.estado]} variant={estadoDespachoVariant(panelItem.estado)} />}
-        primaryAction={panelItem && panelItem.estado === "PENDIENTE" ? (
-          <button className="ds-btn ds-btn-primary" style={{ width: "100%", background: "var(--info)" }} onClick={() => cambiarEstado(panelItem, "RECIBIDO")}>
-            <Truck size={13} />Marcar como Recibido
-          </button>
-        ) : panelItem && panelItem.estado === "RECIBIDO" ? (
-          <button className="ds-btn ds-btn-primary" style={{ width: "100%", background: "var(--success)" }} onClick={() => cambiarEstado(panelItem, "DESPACHADO")}>
-            <CheckCircle2 size={13} />Marcar como Despachado
-          </button>
-        ) : undefined}
+        primaryAction={
+          panelItem && (panelItem.estado === "CREADO_TIENDA" || panelItem.estado === "RECOGIDA_PENDIENTE") ? (
+            <button className="ds-btn ds-btn-primary" style={{ width: "100%", background: "var(--info)" }} onClick={() => cambiarEstado(panelItem, "RECOGIDO")}>
+              <Truck size={13} />Marcar como Recogido
+            </button>
+          ) : panelItem && panelItem.estado === "RECOGIDO" ? (
+            <button className="ds-btn ds-btn-primary" style={{ width: "100%", background: "#8b5cf6" }} onClick={() => cambiarEstado(panelItem, "EN_RUTA")}>
+              <Navigation size={13} />Poner en ruta
+            </button>
+          ) : panelItem && panelItem.estado === "EN_RUTA" ? (
+            <button className="ds-btn ds-btn-primary" style={{ width: "100%", background: "var(--success)" }} onClick={() => cambiarEstado(panelItem, "ENTREGADO")}>
+              <CheckCircle2 size={13} />Confirmar entrega
+            </button>
+          ) : undefined
+        }
         secondaryActions={
           <div style={{ display: "flex", gap: 8 }}>
-            {panelItem && panelItem.estado !== "DESPACHADO" && (
+            {panelItem && panelItem.estado === "CREADO_TIENDA" && (
+              <button className="ds-btn ds-btn-sm ds-btn-secondary"
+                style={{ color: "#f97316", borderColor: "#f9731633" }}
+                onClick={() => cambiarEstado(panelItem, "RECOGIDA_PENDIENTE")}>
+                <PackageCheck size={13} />Lista para recogida
+              </button>
+            )}
+            {panelItem && ESTADOS_ACTIVOS.includes(panelItem.estado) && (
               <button className="ds-btn ds-btn-sm ds-btn-secondary" style={{ color: "var(--error)" }}
                 onClick={() => {
                   const novedad = prompt("Describe la novedad:");
@@ -319,6 +384,46 @@ export default function TiendaPage() {
       >
         {panelItem && (
           <>
+            {/* ── Timeline de flujo logístico ── */}
+            <DetailSection title="Flujo logístico">
+              <div style={{ display: "flex", gap: 0, overflowX: "auto", paddingBottom: 4 }}>
+                {FLUJO_ESTADOS.map((estado, i) => {
+                  const color = ESTADO_DESPACHO_COLOR[estado];
+                  const isPast = FLUJO_ESTADOS.indexOf(panelItem.estado) > i;
+                  const isCurrent = panelItem.estado === estado;
+                  const isNovedad = panelItem.estado === "CON_NOVEDAD";
+                  const active = isPast || isCurrent;
+                  return (
+                    <div key={estado} style={{ display: "flex", alignItems: "center", flex: 1, minWidth: 0 }}>
+                      <div style={{ display: "flex", flexDirection: "column", alignItems: "center", flex: 1, minWidth: 0 }}>
+                        <div style={{
+                          width: 28, height: 28, borderRadius: "50%", flexShrink: 0,
+                          background: isNovedad && isCurrent ? "#ef4444" : active ? color : "var(--surface2)",
+                          border: `2px solid ${active ? color : "var(--border)"}`,
+                          display: "flex", alignItems: "center", justifyContent: "center",
+                          transition: "all .2s",
+                        }}>
+                          {isPast && <CheckCircle2 size={13} color="#fff" />}
+                          {isCurrent && !isNovedad && <span style={{ width: 8, height: 8, borderRadius: "50%", background: "#fff" }} />}
+                        </div>
+                        <span style={{ fontSize: 9, color: active ? color : "var(--faint)", fontWeight: 600, textAlign: "center", marginTop: 4, lineHeight: 1.2, maxWidth: 56, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                          {ESTADO_DESPACHO_LABEL[estado].split(" ")[0]}
+                        </span>
+                      </div>
+                      {i < FLUJO_ESTADOS.length - 1 && (
+                        <div style={{ flex: "0 0 16px", height: 2, background: isPast ? color : "var(--border)", transition: "background .2s" }} />
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+              {panelItem.estado === "CON_NOVEDAD" && (
+                <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 8, padding: "6px 10px", background: "var(--error-tint)", borderRadius: 8, fontSize: 12, color: "var(--error)", fontWeight: 600 }}>
+                  <AlertTriangle size={13} />Flujo interrumpido por novedad
+                </div>
+              )}
+            </DetailSection>
+
             <DetailSection title="Datos del despacho">
               <DetailGrid items={[
                 { label: "Centro de costos",         value: <span style={{ fontWeight: 700 }}>{panelItem.centroCostos}</span> },
@@ -327,8 +432,9 @@ export default function TiendaPage() {
                 { label: "Consecutivo",              value: <span style={{ fontFamily: "var(--mono)" }}>#{panelItem.consecutivo}</span> },
                 { label: "Entrega comprometida",     value: panelItem.fechaEntregaComprometida ? fmtFechaTienda(panelItem.fechaEntregaComprometida) : undefined },
                 { label: "Número de cajas",          value: panelItem.numeroCajas != null ? String(panelItem.numeroCajas) : undefined },
-                { label: "Recibido",                 value: panelItem.recibidoAt ? new Date(panelItem.recibidoAt).toLocaleString("es-CO", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" }) : undefined },
-                { label: "Despachado",               value: panelItem.despachadoAt ? new Date(panelItem.despachadoAt).toLocaleString("es-CO", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" }) : undefined },
+                { label: "Recogido",                 value: panelItem.recibidoAt  ? new Date(panelItem.recibidoAt).toLocaleString("es-CO",  { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" }) : undefined },
+                { label: "En ruta desde",            value: panelItem.enRutaAt    ? new Date(panelItem.enRutaAt).toLocaleString("es-CO",     { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" }) : undefined },
+                { label: "Entregado",                value: panelItem.despachadoAt ? new Date(panelItem.despachadoAt).toLocaleString("es-CO", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" }) : undefined },
               ]} />
             </DetailSection>
 
