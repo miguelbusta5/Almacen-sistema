@@ -4,11 +4,13 @@ import { prisma } from "@/lib/prisma";
 import { z } from "zod";
 
 const updateSchema = z.object({
-  ubicacion: z.string().min(1).optional(),
-  estado: z.enum(["PENDIENTE DESPACHO", "DESPACHADO"]).optional(),
-  tipo: z.enum(["COMUN", "ECOMMERCE"]).optional(),
-  fechaDespacho: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable().optional(),
-  nota: z.string().nullable().optional(),
+  ubicacion:    z.string().min(1).optional(),
+  estado:       z.enum(["PENDIENTE DESPACHO", "DESPACHADO"]).optional(),
+  tipo:         z.enum(["COMUN", "ECOMMERCE"]).optional(),
+  fechaDespacho:z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable().optional(),
+  nota:         z.string().nullable().optional(),
+  // Solo ADMIN puede modificar la fecha de ingreso (afecta almacenaje)
+  fecha:        z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
 });
 
 // PUT /api/transporte/[clientId] — actualiza un guardado
@@ -28,9 +30,15 @@ export async function PUT(
   const d = parsed.data;
   const esDesp = d.estado === "DESPACHADO";
 
+  // Cambiar fecha de ingreso requiere ADMIN (afecta cálculo de almacenaje)
+  if (d.fecha !== undefined && actor.role !== "ADMIN") {
+    return NextResponse.json({ error: "Solo el administrador puede modificar la fecha de ingreso" }, { status: 403 });
+  }
+
   const row = await prisma.transporteGuardado.update({
     where: { client_id: clientId },
     data: {
+      ...(d.fecha !== undefined && { fecha: new Date(d.fecha + "T00:00:00") }),
       ...(d.ubicacion !== undefined && { ubicacion: d.ubicacion }),
       ...(d.estado !== undefined && { estado: d.estado }),
       ...(d.tipo !== undefined && { tipo: d.tipo }),

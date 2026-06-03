@@ -482,6 +482,7 @@ export default function TransportePage() {
       {(creando || editing) && (
         <ModalGuardado
           guardado={editing ?? undefined}
+          isAdmin={canDelete} // canDelete = solo ADMIN
           onClose={() => { setCreando(false); setEditing(null); }}
           onSaved={() => { setCreando(false); setEditing(null); load(); showToast(editing ? "Guardado actualizado ✓" : "Guardado registrado ✓"); }}
           onError={(m) => showToast(m, true)}
@@ -659,7 +660,7 @@ function ModalFechaEntrega({ g, onClose, onSaved, onError }: { g: Guardado; onCl
   );
 }
 
-function ModalGuardado({ guardado, onClose, onSaved, onError }: { guardado?: Guardado; onClose: () => void; onSaved: () => void; onError: (m: string) => void }) {
+function ModalGuardado({ guardado, onClose, onSaved, onError, isAdmin }: { guardado?: Guardado; onClose: () => void; onSaved: () => void; onError: (m: string) => void; isAdmin?: boolean }) {
   const isEdit = !!guardado;
   const [fecha, setFecha] = useState(guardado?.fecha ?? todayISO());
   const [documento, setDoc] = useState(guardado?.documento ?? "");
@@ -686,8 +687,18 @@ function ModalGuardado({ guardado, onClose, onSaved, onError }: { guardado?: Gua
       <form onSubmit={submit} style={{ display: "flex", flexDirection: "column", gap: 14 }}>
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
           <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
-            <label style={{ fontSize: 12, fontWeight: 500, color: "var(--muted2)" }}>Fecha *</label>
-            <input type="date" value={fecha} onChange={(e) => setFecha(e.target.value)} style={inp} {...focusProps} />
+            <label style={{ fontSize: 12, fontWeight: 500, color: "var(--muted2)" }}>
+              Fecha de ingreso *
+              {isEdit && !isAdmin && <span style={{ fontSize: 10, color: "var(--faint)", marginLeft: 6 }}>— solo ADMIN</span>}
+            </label>
+            <input
+              type="date"
+              value={fecha}
+              onChange={(e) => setFecha(e.target.value)}
+              disabled={isEdit && !isAdmin}
+              style={{ ...inp, opacity: isEdit && !isAdmin ? 0.5 : 1, cursor: isEdit && !isAdmin ? "not-allowed" : "auto" }}
+              {...(isEdit && !isAdmin ? {} : focusProps)}
+            />
           </div>
           <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
             <label style={{ fontSize: 12, fontWeight: 500, color: "var(--muted2)" }}>Tipo</label>
