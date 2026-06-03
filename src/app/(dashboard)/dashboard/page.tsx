@@ -5,16 +5,18 @@ import Link from "next/link";
 import { useSession } from "next-auth/react";
 import {
   Package, Truck, Route, ClipboardList, ArrowRight, AlertTriangle,
-  Clock, Plus, CheckCircle2, Navigation, MapPin, RefreshCw,
+  Clock, Plus, Navigation, MapPin, RefreshCw,
+  CheckSquare, Store, BarChart2, Users, History,
 } from "lucide-react";
 import { Stat, SkeletonStat, TimelineItem, SectionHeader, SkeletonStat as SK } from "@/components/ui";
 import { IntelBanner } from "@/components/ui/SlidePanel";
-import { consolidarInsights, insightsGuardados } from "@/lib/inteligencia";
-import { urgencia, tieneAlerta } from "@/lib/transporte";
+import { consolidarInsights } from "@/lib/inteligencia";
+import { urgencia } from "@/lib/transporte";
 import type { Novedad } from "@/lib/muebles";
 import type { Guardado } from "@/lib/transporte";
 import type { Ruta } from "@/lib/logistica";
 import { RUTA_ESTADO_LABEL, RUTA_ESTADO_COLOR, PARADA_ESTADO_COLOR, PARADA_ESTADO_LABEL } from "@/lib/logistica";
+import { getHomeActionsByRole, type HomeAction } from "@/config/homeActions";
 
 // ── Helpers ──────────────────────────────────────────────
 function timeAgo(iso: string) {
@@ -101,6 +103,18 @@ function AlertItem({ level, text, sub, href }: { level: "critical" | "warning"; 
     </Link>
   );
 }
+
+// ── Mapa de íconos para acciones del config ───────────────
+const ICON_MAP: Record<string, React.ReactNode> = {
+  Plus:         <Plus size={18} />,
+  ClipboardList:<ClipboardList size={18} />,
+  Route:        <Route size={18} />,
+  CheckSquare:  <CheckSquare size={18} />,
+  Store:        <Store size={18} />,
+  BarChart2:    <BarChart2 size={18} />,
+  Users:        <Users size={18} />,
+  History:      <History size={18} />,
+};
 
 // ── Botón de acción rápida ────────────────────────────────
 function QuickAction({ href, icon, label, color, description }: { href: string; icon: React.ReactNode; label: string; color: string; description?: string }) {
@@ -238,33 +252,68 @@ function AdminDashboard({ nombre }: { nombre: string }) {
 }
 
 // ════════════════════════════════════════════════════════════
-// VISTA: OPERADOR
-// "¿Qué debo hacer hoy?"
+// VISTA: OPERADOR / SUPERVISOR DE ÁREA
+// "¿Qué debo hacer hoy?" — contextual por rol
 // ════════════════════════════════════════════════════════════
-function OperadorDashboard({ nombre }: { nombre: string }) {
+function OperadorDashboard({ nombre, role }: { nombre: string; role: string }) {
+  // ── Determinar qué datos necesita este rol ──────────────
+  const needsNovedades = ["INVENTARIO", "SUPERVISOR_INVENTARIO", "OPERADOR"].includes(role);
+  const needsGuardados = ["TRANSPORTE", "SUPERVISOR_TRANSPORTE", "OPERADOR"].includes(role);
+  const needsTienda    = ["TIENDA", "SUPERVISOR_TIENDA"].includes(role);
+
   const [guardados, setGuardados] = useState<Guardado[]>([]);
   const [novedades, setNovedades] = useState<Novedad[]>([]);
+  const [tiendaDespachos, setTiendaDespachos] = useState<{ estado: string }[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    (async () => {
-      try {
-        const [gR, nR] = await Promise.all([
-          fetch("/api/transporte?pageSize=500"),
-          fetch("/api/novedades?pageSize=200"),
-        ]);
-        const gJ = await gR.json(); if (gJ.success) setGuardados(gJ.data ?? []);
-        const nJ = await nR.json(); if (nJ.success) setNovedades(nJ.data ?? []);
-      } catch { /* noop */ } finally { setLoading(false); }
-    })();
-  }, []);
+    const fetches: Promise<void>[] = [];
+    if (needsGuardados) fetches.push(
+      fetch("/api/transporte?pageSize=500").then((r) => r.json())
+        .then((j) => { if (j.success) setGuardados(j.data ?? []); }).catch(() => {})
+    );
+    if (needsNovedades) fetches.push(
+      fetch("/api/novedades?pageSize=200").then((r) => r.json())
+        .then((j) => { if (j.success) setNovedades(j.data ?? []); }).catch(() => {})
+    );
+    if (needsTienda) fetches.push(
+      fetch("/api/tienda?pageSize=200").then((r) => r.json())
+        .then((j) => { if (j.success) setTiendaDespachos(j.data ?? []); }).catch(() => {})
+    );
+    Promise.all(fetches).finally(() => setLoading(false));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [role]);
 
-  const vencidas = useMemo(() => guardados.filter((g) => { const u = urgencia(g); return u?.tipo === "vencida"; }), [guardados]);
-  const proximas = useMemo(() => guardados.filter((g) => { const u = urgencia(g); return u?.tipo === "proxima" && (u.dias ?? 10) <= 2; }), [guardados]);
+  // ── Cómputos por área ────────────────────────────────────
+  const vencidas     = useMemo(() => guardados.filter((g) => urgencia(g)?.tipo === "vencida"), [guardados]);
+  const proximas     = useMemo(() => guardados.filter((g) => { const u = urgencia(g); return u?.tipo === "proxima" && (u.dias ?? 10) <= 2; }), [guardados]);
   const pendientesNov = useMemo(() => novedades.filter((n) => n.estado === "PENDIENTE"), [novedades]);
+  const enProcesoNov  = useMemo(() => novedades.filter((n) => n.estado === "EN PROCESO"), [novedades]);
+  const solucionadas  = useMemo(() => novedades.filter((n) => n.estado === "SOLUCIONADO"), [novedades]);
+  const guardadosPend = useMemo(() => guardados.filter((g) => g.estado === "PENDIENTE DESPACHO"), [guardados]);
+  const guardadosDesp = useMemo(() => guardados.filter((g) => g.estado === "DESPACHADO"), [guardados]);
+  const tiendaPend    = useMemo(() => tiendaDespachos.filter((d) => d.estado === "PENDIENTE"), [tiendaDespachos]);
+  const tiendaNovedad = useMemo(() => tiendaDespachos.filter((d) => d.estado === "CON_NOVEDAD"), [tiendaDespachos]);
+  const tiendaDesp    = useMemo(() => tiendaDespachos.filter((d) => d.estado === "DESPACHADO"), [tiendaDespachos]);
+
+  // ── Alerta total para el header de greeting ──────────────
+  const totalAlertas = (() => {
+    if (needsNovedades && needsGuardados) return vencidas.length + proximas.length + pendientesNov.length; // OPERADOR
+    if (needsNovedades) return pendientesNov.length;
+    if (needsGuardados) return vencidas.length + proximas.length;
+    if (needsTienda)    return tiendaNovedad.length;
+    return 0;
+  })();
 
   const hora = new Date().getHours();
   const saludo = hora < 12 ? "Buenos días" : hora < 18 ? "Buenas tardes" : "Buenas noches";
+  const quickActions = getHomeActionsByRole(role, 4);
+
+  // ── Alertas visibles según área ──────────────────────────
+  const showGuardadosAlerts = needsGuardados && (vencidas.length > 0 || proximas.length > 0);
+  const showNovedadesAlerts = needsNovedades && pendientesNov.length > 0;
+  const showTiendaAlerts    = needsTienda && tiendaNovedad.length > 0;
+  const hasAlerts = showGuardadosAlerts || showNovedadesAlerts || showTiendaAlerts;
 
   return (
     <div className="animate-fade-in" style={{ maxWidth: 680 }}>
@@ -275,16 +324,16 @@ function OperadorDashboard({ nombre }: { nombre: string }) {
         </h1>
         <p style={{ fontSize: 14, color: "var(--muted)", marginTop: 5 }}>
           {new Date().toLocaleDateString("es-CO", { weekday: "long", day: "numeric", month: "long" })}
-          {!loading && (vencidas.length > 0 || proximas.length > 0 || pendientesNov.length > 0) && (
+          {!loading && totalAlertas > 0 && (
             <span style={{ marginLeft: 8, color: "var(--warning)", fontWeight: 600 }}>
-              · {vencidas.length + proximas.length + pendientesNov.length} item{vencidas.length + proximas.length + pendientesNov.length !== 1 ? "s" : ""} requieren atención
+              · {totalAlertas} item{totalAlertas !== 1 ? "s" : ""} requieren atención
             </span>
           )}
         </p>
       </div>
 
       {/* Alertas que requieren atención */}
-      {!loading && (vencidas.length > 0 || proximas.length > 0 || pendientesNov.length > 0) && (
+      {!loading && hasAlerts && (
         <div style={{ marginBottom: 28 }}>
           <div style={{ fontSize: 11, fontWeight: 600, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 10 }}>
             Requieren atención ahora
@@ -306,7 +355,7 @@ function OperadorDashboard({ nombre }: { nombre: string }) {
                 href="/dashboard/transporte"
               />
             )}
-            {pendientesNov.length > 0 && (
+            {showNovedadesAlerts && (
               <AlertItem
                 level="warning"
                 text={`${pendientesNov.length} novedad${pendientesNov.length !== 1 ? "es" : ""} de inventario sin resolver`}
@@ -314,68 +363,96 @@ function OperadorDashboard({ nombre }: { nombre: string }) {
                 href="/dashboard/muebles"
               />
             )}
+            {tiendaNovedad.length > 0 && (
+              <AlertItem
+                level="warning"
+                text={`${tiendaNovedad.length} despacho${tiendaNovedad.length !== 1 ? "s" : ""} con novedad en tienda`}
+                sub="Requieren revisión"
+                href="/dashboard/tienda"
+              />
+            )}
           </div>
         </div>
       )}
 
-      {/* Acciones rápidas */}
+      {/* Acciones rápidas — filtradas por rol */}
       <div style={{ marginBottom: 28 }}>
         <SectionHeader title="Acciones rápidas" />
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-          <QuickAction
-            href="/dashboard/muebles"
-            icon={<Plus size={18} />}
-            label="Nueva novedad de inventario"
-            color="#2563EB"
-            description="Registrar diferencia de PLU, posición o cantidad"
-          />
-          <QuickAction
-            href="/dashboard/transporte"
-            icon={<Plus size={18} />}
-            label="Nuevo guardado en transporte"
-            color="#0E7490"
-            description="Registrar pedido en custodia de almacén"
-          />
-          <QuickAction
-            href="/dashboard/conteo/contar"
-            icon={<ClipboardList size={18} />}
-            label="Ir a conteo cíclico"
-            color="#16A34A"
-            description="Continuar con los PLUs asignados para hoy"
-          />
-          <QuickAction
-            href="/dashboard/logistica/mi-ruta"
-            icon={<Route size={18} />}
-            label="Ver mi ruta asignada"
-            color="#7C3AED"
-            description="Acceder a paradas y entregas del día"
-          />
+          {quickActions.map((action: HomeAction) => (
+            <QuickAction
+              key={action.id}
+              href={action.href}
+              icon={ICON_MAP[action.icon] ?? <Plus size={18} />}
+              label={action.title}
+              color={action.color}
+              description={action.description}
+            />
+          ))}
         </div>
       </div>
 
-      {/* Resumen rápido */}
+      {/* KPIs contextuales por área */}
       {!loading && (
         <div>
           <SectionHeader title="Estado actual" />
           <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 20, padding: "0 2px" }}>
-            <Stat
-              value={pendientesNov.length}
-              label="Novedades pendientes"
-              color={pendientesNov.length > 0 ? "var(--error)" : "var(--success)"}
-              onClick={() => window.location.href = "/dashboard/muebles"}
-            />
-            <Stat
-              value={guardados.filter((g) => g.estado === "PENDIENTE DESPACHO").length}
-              label="En espera de despacho"
-              color="var(--warning)"
-              onClick={() => window.location.href = "/dashboard/transporte"}
-            />
-            <Stat
-              value={vencidas.length + proximas.length}
-              label="Con alerta de entrega"
-              color={(vencidas.length + proximas.length) > 0 ? "var(--error)" : "var(--success)"}
-              onClick={() => window.location.href = "/dashboard/transporte"}
-            />
+
+            {/* Inventario */}
+            {needsNovedades && !needsGuardados && (
+              <>
+                <Stat value={pendientesNov.length} label="Novedades pendientes"
+                  color={pendientesNov.length > 0 ? "var(--error)" : "var(--success)"}
+                  onClick={() => { window.location.href = "/dashboard/muebles"; }} />
+                <Stat value={enProcesoNov.length} label="En proceso"
+                  color="var(--warning)" />
+                <Stat value={solucionadas.length} label="Solucionadas"
+                  color="var(--success)" />
+              </>
+            )}
+
+            {/* Transporte */}
+            {needsGuardados && !needsNovedades && (
+              <>
+                <Stat value={guardadosPend.length} label="Pendientes despacho"
+                  color={guardadosPend.length > 0 ? "var(--warning)" : "var(--success)"}
+                  onClick={() => { window.location.href = "/dashboard/transporte"; }} />
+                <Stat value={vencidas.length + proximas.length} label="Con alerta de entrega"
+                  color={(vencidas.length + proximas.length) > 0 ? "var(--error)" : "var(--success)"}
+                  onClick={() => { window.location.href = "/dashboard/transporte"; }} />
+                <Stat value={guardadosDesp.length} label="Despachados"
+                  color="var(--success)" />
+              </>
+            )}
+
+            {/* Tienda */}
+            {needsTienda && (
+              <>
+                <Stat value={tiendaPend.length} label="Pendientes recogida"
+                  color={tiendaPend.length > 0 ? "var(--warning)" : "var(--success)"}
+                  onClick={() => { window.location.href = "/dashboard/tienda"; }} />
+                <Stat value={tiendaNovedad.length} label="Con novedad"
+                  color={tiendaNovedad.length > 0 ? "var(--error)" : "var(--success)"} />
+                <Stat value={tiendaDesp.length} label="Completados"
+                  color="var(--success)" />
+              </>
+            )}
+
+            {/* OPERADOR legacy: mezcla de ambas áreas */}
+            {needsNovedades && needsGuardados && (
+              <>
+                <Stat value={pendientesNov.length} label="Novedades pendientes"
+                  color={pendientesNov.length > 0 ? "var(--error)" : "var(--success)"}
+                  onClick={() => { window.location.href = "/dashboard/muebles"; }} />
+                <Stat value={guardadosPend.length} label="En espera de despacho"
+                  color="var(--warning)"
+                  onClick={() => { window.location.href = "/dashboard/transporte"; }} />
+                <Stat value={vencidas.length + proximas.length} label="Con alerta de entrega"
+                  color={(vencidas.length + proximas.length) > 0 ? "var(--error)" : "var(--success)"}
+                  onClick={() => { window.location.href = "/dashboard/transporte"; }} />
+              </>
+            )}
+
           </div>
         </div>
       )}
@@ -568,10 +645,16 @@ export default function DashboardPage() {
   // Conductores → vista de ruta
   if (role === "TRANSPORTISTA") return <TransportistaDashboard nombre={nombre} />;
 
-  // Operarios de área → vista de tareas del día
-  if (role === "OPERADOR" || role === "INVENTARIO" || role === "TRANSPORTE" || role === "TIENDA")
-    return <OperadorDashboard nombre={nombre} />;
+  // Operarios y supervisores de área → vista contextual por rol
+  const AREA_ROLES = [
+    "OPERADOR",
+    "INVENTARIO", "SUPERVISOR_INVENTARIO",
+    "TRANSPORTE", "SUPERVISOR_TRANSPORTE",
+    "TIENDA",     "SUPERVISOR_TIENDA",
+  ];
+  if (AREA_ROLES.includes(role ?? ""))
+    return <OperadorDashboard nombre={nombre} role={role!} />;
 
-  // Supervisores y gerencia → vista ejecutiva
+  // Dirección → vista ejecutiva global
   return <AdminDashboard nombre={nombre} />;
 }
