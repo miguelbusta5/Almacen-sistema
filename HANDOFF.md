@@ -1,6 +1,6 @@
 # 📦 HANDOFF — Sistema de Gestión de Almacén (Grupo Ambiente)
 
-> Documento de traspaso técnico. Última actualización: 2026-06-01 (sesión 5).
+> Documento de traspaso técnico. Última actualización: 2026-06-02 (sesión 6).
 >
 > ⚠️ **Nunca pongas contraseñas, tokens ni cadenas de conexión en este archivo** (está versionado en git). Usa solo nombres de variables de entorno.
 
@@ -271,6 +271,7 @@ El sidebar y el Command Palette filtran automáticamente según el rol. Acceso p
 - [⏸] **Módulo Conteo Cíclico** — en PAUSA, en producción pero pendiente de completar. Ver detalle en §5 y pendientes internos abajo.
 - [x] **Pooling de DB optimizado** — `pg.Pool` configurado con `max: 3`, `idleTimeoutMillis: 30s`, `connectionTimeoutMillis: 5s`, `allowExitOnIdle: true`. Soporte de `DATABASE_POOL_URL` para activar PgBouncer sin cambiar código. Ver §3 para activar Railway PgBouncer cuando se necesite.
 - [ ] **Dominio propio** (.com) si se desea.
+- [x] **Sesión 6 — Almacenaje correcto + Tienda enriquecida**: lógica de 30 días exactos, PLUs por despacho, 65 tests.
 - [x] **Sesión 5 — Reestructuración CEDI**: 8 roles, módulo Inventario, inteligencia avanzada, Centro de Control, Ranking operacional.
 
 ---
