@@ -45,7 +45,7 @@ export async function GET() {
   // ── Despachos Tienda: pendientes ────────────────────────────
   const despachosTienda = (role === "TIENDA" || role === "SUPERVISOR_TIENDA" || role === "TRANSPORTE" || role === "SUPERVISOR_TRANSPORTE" || role === "GERENTE" || role === "ADMIN")
     ? await prisma.despachoTienda.findMany({
-        where: { estado: { in: ["CREADO_TIENDA", "RECOGIDA_PENDIENTE", "CON_NOVEDAD"] } },
+        where: { estado: { in: ["CREADO_TIENDA", "ASIGNADO_RECOGIDA", "CON_NOVEDAD"] } },
         select: {
           id: true, centroCostos: true, numeroDocumento: true,
           clienteNombre: true, estado: true, fechaCreacion: true,

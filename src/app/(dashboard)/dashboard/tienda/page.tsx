@@ -128,14 +128,15 @@ export default function TiendaPage() {
   const panelInsights  = useMemo(() => panelItem ? insightsPorDespacho(panelItem, items) : [], [panelItem, items]);
 
   const kpis = useMemo(() => ({
-    total:       items.length,
-    creadosTienda: items.filter((d) => d.estado === "CREADO_TIENDA").length,
-    recogidaPend:  items.filter((d) => d.estado === "RECOGIDA_PENDIENTE").length,
-    recogidos:     items.filter((d) => d.estado === "RECOGIDO").length,
-    enRuta:        items.filter((d) => d.estado === "EN_RUTA").length,
-    entregados:    items.filter((d) => d.estado === "ENTREGADO").length,
-    novedades:     items.filter((d) => d.estado === "CON_NOVEDAD").length,
-    pendientesRecogida: items.filter((d) => d.estado === "CREADO_TIENDA" || d.estado === "RECOGIDA_PENDIENTE").length,
+    total:             items.length,
+    creadosTienda:     items.filter((d) => d.estado === "CREADO_TIENDA").length,
+    asignadoRecogida:  items.filter((d) => d.estado === "ASIGNADO_RECOGIDA").length,
+    recogidoTienda:    items.filter((d) => d.estado === "RECOGIDO_TIENDA").length,
+    entregadoCedi:     items.filter((d) => d.estado === "ENTREGADO_CEDI").length,
+    enRuta:            items.filter((d) => d.estado === "EN_RUTA").length,
+    entregadoCliente:  items.filter((d) => d.estado === "ENTREGADO_CLIENTE").length,
+    novedades:         items.filter((d) => d.estado === "CON_NOVEDAD").length,
+    pendientesRecogida: items.filter((d) => d.estado === "CREADO_TIENDA" || d.estado === "ASIGNADO_RECOGIDA").length,
   }), [items]);
 
   const centrosCostos = useMemo(() => [...new Set(items.map((d) => d.centroCostos))].sort(), [items]);
@@ -199,12 +200,12 @@ export default function TiendaPage() {
             <Stat value={kpis.pendientesRecogida} label="Pendientes de recogida"
               color={kpis.pendientesRecogida > 0 ? "var(--warning)" : "var(--success)"}
               onClick={() => setFEstado("CREADO_TIENDA")} />
-            <Stat value={kpis.recogidos + kpis.enRuta} label="En tránsito"
+            <Stat value={kpis.recogidoTienda + kpis.entregadoCedi + kpis.enRuta} label="En tránsito"
               color="var(--info)"
-              onClick={() => setFEstado("RECOGIDO")} />
-            <Stat value={kpis.entregados} label="Entregados al cliente"
+              onClick={() => setFEstado("RECOGIDO_TIENDA")} />
+            <Stat value={kpis.entregadoCliente} label="Entregados al cliente"
               color="var(--success)"
-              onClick={() => setFEstado("ENTREGADO")} />
+              onClick={() => setFEstado("ENTREGADO_CLIENTE")} />
             <Stat value={kpis.novedades} label="Con novedad"
               color={kpis.novedades > 0 ? "var(--error)" : "var(--muted)"}
               onClick={() => setFEstado("CON_NOVEDAD")} />
@@ -289,7 +290,7 @@ export default function TiendaPage() {
               </thead>
               <tbody>
                 {filtered.map((d) => {
-                  const horas = (d.estado === "CREADO_TIENDA" || d.estado === "RECOGIDA_PENDIENTE") ? horasDesde(d.createdAt) : 0;
+                  const horas = (d.estado === "CREADO_TIENDA" || d.estado === "ASIGNADO_RECOGIDA") ? horasDesde(d.createdAt) : 0;
                   const critico = horas >= 24;
                   return (
                     <tr key={d.id} className="ds-row" onClick={() => abrirPanel(d)} style={{ background: panelItem?.id === d.id ? "var(--surface2)" : undefined }}>
@@ -309,19 +310,24 @@ export default function TiendaPage() {
                       <td><Badge label={ESTADO_DESPACHO_LABEL[d.estado]} variant={estadoDespachoVariant(d.estado)} /></td>
                       <td>
                         <div className="ds-row-actions">
-                          {(d.estado === "CREADO_TIENDA" || d.estado === "RECOGIDA_PENDIENTE") &&
+                          {(d.estado === "CREADO_TIENDA" || d.estado === "ASIGNADO_RECOGIDA") &&
                             <button className="ds-btn ds-btn-sm" style={{ background: "var(--info-tint)", color: "var(--info)", height: 26, fontSize: 11 }}
-                              onClick={(e) => { e.stopPropagation(); cambiarEstado(d, "RECOGIDO"); }} title="Marcar recogido">
+                              onClick={(e) => { e.stopPropagation(); cambiarEstado(d, "RECOGIDO_TIENDA"); }} title="Marcar recogido en tienda">
                               <Truck size={12} />Recogido
                             </button>}
-                          {d.estado === "RECOGIDO" &&
+                          {d.estado === "RECOGIDO_TIENDA" &&
                             <button className="ds-btn ds-btn-sm" style={{ background: "#8b5cf614", color: "#8b5cf6", height: 26, fontSize: 11 }}
+                              onClick={(e) => { e.stopPropagation(); cambiarEstado(d, "ENTREGADO_CEDI"); }} title="Entregado en CEDI">
+                              <Navigation size={12} />CEDI
+                            </button>}
+                          {d.estado === "ENTREGADO_CEDI" &&
+                            <button className="ds-btn ds-btn-sm" style={{ background: "#06b6d414", color: "#06b6d4", height: 26, fontSize: 11 }}
                               onClick={(e) => { e.stopPropagation(); cambiarEstado(d, "EN_RUTA"); }} title="Poner en ruta">
                               <Navigation size={12} />En ruta
                             </button>}
                           {d.estado === "EN_RUTA" &&
                             <button className="ds-btn ds-btn-sm" style={{ background: "var(--success-tint)", color: "var(--success)", height: 26, fontSize: 11 }}
-                              onClick={(e) => { e.stopPropagation(); cambiarEstado(d, "ENTREGADO"); }} title="Confirmar entrega">
+                              onClick={(e) => { e.stopPropagation(); cambiarEstado(d, "ENTREGADO_CLIENTE"); }} title="Confirmar entrega al cliente">
                               <CheckCircle2 size={12} />Entregado
                             </button>}
                           {canEdit && <button className="ds-btn ds-btn-sm ds-btn-ghost" style={{ height: 26 }} onClick={(e) => { e.stopPropagation(); setEditing(d); }} title="Editar"><Pencil size={12} /></button>}
@@ -346,16 +352,20 @@ export default function TiendaPage() {
         insights={panelInsights}
         badge={panelItem && <Badge label={ESTADO_DESPACHO_LABEL[panelItem.estado]} variant={estadoDespachoVariant(panelItem.estado)} />}
         primaryAction={
-          panelItem && (panelItem.estado === "CREADO_TIENDA" || panelItem.estado === "RECOGIDA_PENDIENTE") ? (
-            <button className="ds-btn ds-btn-primary" style={{ width: "100%", background: "var(--info)" }} onClick={() => cambiarEstado(panelItem, "RECOGIDO")}>
+          panelItem && (panelItem.estado === "CREADO_TIENDA" || panelItem.estado === "ASIGNADO_RECOGIDA") ? (
+            <button className="ds-btn ds-btn-primary" style={{ width: "100%", background: "var(--info)" }} onClick={() => cambiarEstado(panelItem, "RECOGIDO_TIENDA")}>
               <Truck size={13} />Marcar como Recogido
             </button>
-          ) : panelItem && panelItem.estado === "RECOGIDO" ? (
-            <button className="ds-btn ds-btn-primary" style={{ width: "100%", background: "#8b5cf6" }} onClick={() => cambiarEstado(panelItem, "EN_RUTA")}>
+          ) : panelItem && panelItem.estado === "RECOGIDO_TIENDA" ? (
+            <button className="ds-btn ds-btn-primary" style={{ width: "100%", background: "#8b5cf6" }} onClick={() => cambiarEstado(panelItem, "ENTREGADO_CEDI")}>
+              <Navigation size={13} />Entregado en CEDI
+            </button>
+          ) : panelItem && panelItem.estado === "ENTREGADO_CEDI" ? (
+            <button className="ds-btn ds-btn-primary" style={{ width: "100%", background: "#06b6d4" }} onClick={() => cambiarEstado(panelItem, "EN_RUTA")}>
               <Navigation size={13} />Poner en ruta
             </button>
           ) : panelItem && panelItem.estado === "EN_RUTA" ? (
-            <button className="ds-btn ds-btn-primary" style={{ width: "100%", background: "var(--success)" }} onClick={() => cambiarEstado(panelItem, "ENTREGADO")}>
+            <button className="ds-btn ds-btn-primary" style={{ width: "100%", background: "var(--success)" }} onClick={() => cambiarEstado(panelItem, "ENTREGADO_CLIENTE")}>
               <CheckCircle2 size={13} />Confirmar entrega
             </button>
           ) : undefined
@@ -365,7 +375,7 @@ export default function TiendaPage() {
             {panelItem && panelItem.estado === "CREADO_TIENDA" && (
               <button className="ds-btn ds-btn-sm ds-btn-secondary"
                 style={{ color: "#f97316", borderColor: "#f9731633" }}
-                onClick={() => cambiarEstado(panelItem, "RECOGIDA_PENDIENTE")}>
+                onClick={() => cambiarEstado(panelItem, "ASIGNADO_RECOGIDA")}>
                 <PackageCheck size={13} />Lista para recogida
               </button>
             )}

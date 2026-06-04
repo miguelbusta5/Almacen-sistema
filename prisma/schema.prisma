@@ -87,13 +87,16 @@ model User {
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
-  activityLogs    ActivityLog[]
-  transportista   Transportista?
-  ciclosConteo    CicloConteo[]
-  novedadesAsign  Novedad[]         @relation("NovedadesAsignadas")
-  contactosGuard  ContactoGuardado[]
-  despachosTienda DespachoTienda[]
-  notificaciones  Notificacion[]
+  activityLogs       ActivityLog[]
+  transportista      Transportista?
+  ciclosConteo       CicloConteo[]
+  novedadesAsign     Novedad[]               @relation("NovedadesAsignadas")
+  contactosGuard     ContactoGuardado[]
+  despachosTienda    DespachoTienda[]        @relation("DespachosCreadosPor")
+  despachosAsignados DespachoTienda[]        @relation("DespachosAsignadosPor")
+  historialDespachos HistorialDespacho[]     @relation("HistorialDespachoUsuario")
+  inspecciones       InspeccionPreoperacional[] @relation("InspeccionesRealizadas")
+  notificaciones     Notificacion[]
 
   @@index([email])
   @@map("users")
@@ -114,11 +117,24 @@ enum Role {
 
 enum EstadoDespacho {
   CREADO_TIENDA      // Tienda registra el despacho
-  RECOGIDA_PENDIENTE // Tienda confirma que está listo para recogida
-  RECOGIDO           // Transporte recoge la mercancía
-  EN_RUTA            // Asignado a una ruta de entrega
-  ENTREGADO          // Entregado al cliente final
+  ASIGNADO_RECOGIDA  // Supervisor asigna conductor + vehículo
+  RECOGIDO_TIENDA    // Conductor recoge en tienda física
+  ENTREGADO_CEDI     // Mercancía llega al CEDI
+  EN_RUTA            // Sale del CEDI hacia cliente final
+  ENTREGADO_CLIENTE  // Entregado (requiere evidencia)
   CON_NOVEDAD        // Incidencia en cualquier etapa
+}
+
+enum EstadoInspeccion {
+  APROBADA
+  APROBADA_CON_OBSERVACIONES
+  BLOQUEADA
+}
+
+enum ResultadoInspeccion {
+  CONFORME
+  NO_CONFORME
+  NO_APLICA
 }
 
 // ═══════════════════════════════════════════
@@ -155,24 +171,90 @@ model DespachoTienda {
   clienteTelefono  String?        @map("cliente_telefono") @db.VarChar(30)
   estado           EstadoDespacho @default(CREADO_TIENDA)
   fechaCreacion    DateTime       @db.Date @map("fecha_creacion")
-  recibidoAt       DateTime?      @map("recibido_at")   // RECOGIDO timestamp
-  enRutaAt         DateTime?      @map("en_ruta_at")    // EN_RUTA timestamp
-  despachadoAt     DateTime?      @map("despachado_at") // ENTREGADO timestamp
-  novedad                   String?
-  fechaEntregaComprometida  DateTime? @db.Date @map("fecha_entrega_comprometida")
-  numeroCajas               Int?      @map("numero_cajas")
-  netsuiteId                String?   @map("netsuite_id")  // ID interno de NetSuite (futuro)
-  creadoPorId               String    @map("creado_por_id")
-  creadoPor                 User      @relation(fields: [creadoPorId], references: [id])
-  createdAt                 DateTime  @default(now()) @map("created_at")
-  updatedAt                 DateTime  @updatedAt @map("updated_at")
 
-  plines   PlinDespacho[]
+  // Timestamps por estado
+  asignadoRecogidaAt DateTime? @map("asignado_recogida_at")
+  recibidoAt         DateTime? @map("recibido_at")        // RECOGIDO_TIENDA
+  entregadoCediAt    DateTime? @map("entregado_cedi_at")  // ENTREGADO_CEDI
+  enRutaAt           DateTime? @map("en_ruta_at")         // EN_RUTA
+  despachadoAt       DateTime? @map("despachado_at")      // ENTREGADO_CLIENTE
+  novedadAt          DateTime? @map("novedad_at")         // CON_NOVEDAD
+
+  novedad                  String?
+  fechaEntregaComprometida DateTime? @db.Date @map("fecha_entrega_comprometida")
+  numeroCajas              Int?      @map("numero_cajas")
+  netsuiteId               String?   @map("netsuite_id")
+
+  // Asignación de recogida
+  conductorAsignadoId String?        @map("conductor_asignado_id")
+  conductorAsignado   Transportista? @relation("DespachosConductorAsignado", fields: [conductorAsignadoId], references: [id], onDelete: SetNull)
+  vehiculoAsignadoId  String?        @map("vehiculo_asignado_id")
+  vehiculoAsignado    Vehiculo?      @relation("DespachosVehiculoAsignado", fields: [vehiculoAsignadoId], references: [id], onDelete: SetNull)
+  asignadoPorId       String?        @map("asignado_por_id")
+  asignadoPor         User?          @relation("DespachosAsignadosPor", fields: [asignadoPorId], references: [id], onDelete: SetNull)
+
+  // Ruta logística
+  rutaId String? @map("ruta_id")
+  ruta   Ruta?   @relation("RutaDespachos", fields: [rutaId], references: [id], onDelete: SetNull)
+
+  // Dirección de entrega
+  direccionEntrega String? @map("direccion_entrega")
+  barrio           String?
+  ciudad           String?
+  departamento     String?
+  latitud          Float?
+  longitud         Float?
+
+  // Contacto de entrega
+  contactoEntrega String? @map("contacto_entrega")
+  telefonoEntrega String? @map("telefono_entrega")
+
+  // Evidencias por etapa
+  fotoRecogidaUrl String? @map("foto_recogida_url")
+  fotoCediUrl     String? @map("foto_cedi_url")
+  recibidoPorCedi String? @map("recibido_por_cedi")
+
+  // Evidencia de entrega al cliente
+  firmaUrl           String?   @map("firma_url")
+  evidenciaUrl       String?   @map("evidencia_url")
+  observacionEntrega String?   @map("observacion_entrega")
+  fechaEntregaReal   DateTime? @map("fecha_entrega_real")
+  fechaGpsEntrega    DateTime? @map("fecha_gps_entrega")
+  latitudEntrega     Float?    @map("latitud_entrega")
+  longitudEntrega    Float?    @map("longitud_entrega")
+
+  creadoPorId String   @map("creado_por_id")
+  creadoPor   User     @relation("DespachosCreadosPor", fields: [creadoPorId], references: [id])
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  plines    PlinDespacho[]
+  historial HistorialDespacho[]
 
   @@index([estado])
+  @@index([estado, createdAt])
+  @@index([createdAt, estado])
   @@index([centroCostos, fechaCreacion])
   @@index([fechaCreacion])
+  @@index([conductorAsignadoId])
+  @@index([rutaId])
   @@map("despachos_tienda")
+}
+
+model HistorialDespacho {
+  id             String         @id @default(cuid())
+  despachoId     String         @map("despacho_id")
+  despacho       DespachoTienda @relation(fields: [despachoId], references: [id], onDelete: Cascade)
+  estadoAnterior EstadoDespacho @map("estado_anterior")
+  estadoNuevo    EstadoDespacho @map("estado_nuevo")
+  observacion    String?
+  usuarioId      String         @map("usuario_id")
+  usuario        User           @relation("HistorialDespachoUsuario", fields: [usuarioId], references: [id])
+  createdAt      DateTime       @default(now()) @map("created_at")
+
+  @@index([despachoId, createdAt])
+  @@index([usuarioId])
+  @@map("historial_despachos")
 }
 
 model PlinDespacho {
@@ -222,7 +304,9 @@ model Vehiculo {
   createdAt   DateTime @default(now()) @map("created_at")
   updatedAt   DateTime @updatedAt @map("updated_at")
 
-  transportistas Transportista[]
+  transportistas     Transportista[]
+  despachosAsignados DespachoTienda[]         @relation("DespachosVehiculoAsignado")
+  inspecciones       InspeccionPreoperacional[]
 
   @@map("vehiculos")
 }
@@ -239,8 +323,10 @@ model Transportista {
   createdAt  DateTime  @default(now()) @map("created_at")
   updatedAt  DateTime  @updatedAt @map("updated_at")
 
-  rutas       Ruta[]
-  ubicaciones UbicacionGps[]
+  rutas              Ruta[]
+  ubicaciones        UbicacionGps[]
+  despachosAsignados DespachoTienda[]         @relation("DespachosConductorAsignado")
+  inspecciones       InspeccionPreoperacional[] @relation("InspeccionesConductor")
 
   @@map("transportistas")
 }
@@ -253,12 +339,17 @@ model Ruta {
   transportista   Transportista @relation(fields: [transportistaId], references: [id])
   estado          String        @default("PENDIENTE") @db.VarChar(20) // PENDIENTE | EN_CURSO | FINALIZADA | CANCELADA
   notas           String?
-  netsuiteId      String?       @map("netsuite_id")  // ID interno de NetSuite (futuro)
+  netsuiteId      String?       @map("netsuite_id")
+  kilometrajeSalida  Int?       @map("kilometraje_salida")
+  kilometrajeLlegada Int?       @map("kilometraje_llegada")
+  inspeccionId       String?    @map("inspeccion_id")
+  inspeccion         InspeccionPreoperacional? @relation("RutaInspeccion", fields: [inspeccionId], references: [id], onDelete: SetNull)
   createdAt       DateTime      @default(now()) @map("created_at")
   updatedAt       DateTime      @updatedAt @map("updated_at")
 
   paradas     Parada[]
   ubicaciones UbicacionGps[]
+  despachos   DespachoTienda[] @relation("RutaDespachos")
 
   @@index([fecha])
   @@index([transportistaId, estado])
@@ -427,4 +518,49 @@ model ActivityLog {
   @@index([userId, createdAt])
   @@index([module, createdAt])
   @@map("activity_logs")
+}
+
+// ═══════════════════════════════════════════
+// MÓDULO PREOPERACIONAL
+// ═══════════════════════════════════════════
+
+model InspeccionPreoperacional {
+  id             String           @id @default(cuid())
+  vehiculoId     String           @map("vehiculo_id")
+  vehiculo       Vehiculo         @relation(fields: [vehiculoId], references: [id])
+  conductorId    String           @map("conductor_id")
+  conductor      Transportista    @relation("InspeccionesConductor", fields: [conductorId], references: [id])
+  realizadoPorId String           @map("realizado_por_id")
+  realizadoPor   User             @relation("InspeccionesRealizadas", fields: [realizadoPorId], references: [id])
+  fecha          DateTime         @db.Date
+  kilometraje    Int?
+  observaciones  String?
+  estado         EstadoInspeccion @default(APROBADA)
+  vigente        Boolean          @default(true)
+
+  rutas     Ruta[]              @relation("RutaInspeccion")
+  items     ItemInspeccion[]
+  createdAt DateTime            @default(now()) @map("created_at")
+  updatedAt DateTime            @updatedAt @map("updated_at")
+
+  @@index([vehiculoId, fecha])
+  @@index([conductorId, fecha])
+  @@index([estado, fecha])
+  @@index([vehiculoId, fecha, vigente])
+  @@map("inspecciones_preoperacionales")
+}
+
+model ItemInspeccion {
+  id           String                   @id @default(cuid())
+  inspeccionId String                   @map("inspeccion_id")
+  inspeccion   InspeccionPreoperacional @relation(fields: [inspeccionId], references: [id], onDelete: Cascade)
+  categoria    String                   @db.VarChar(30)
+  item         String                   @db.VarChar(100)
+  resultado    ResultadoInspeccion
+  esCritico    Boolean                  @default(false) @map("es_critico")
+  fotoUrl      String?                  @map("foto_url")
+  observacion  String?
+
+  @@index([inspeccionId])
+  @@map("items_inspeccion")
 }
