@@ -9,6 +9,7 @@ const updateSchema = z.object({
   tipo:         z.enum(["COMUN", "ECOMMERCE"]).optional(),
   fechaDespacho:z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable().optional(),
   nota:         z.string().nullable().optional(),
+  netsuiteId:   z.string().max(100).nullable().optional(),
   // Solo ADMIN puede modificar la fecha de ingreso (afecta almacenaje)
   fecha:        z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
 });
@@ -47,7 +48,8 @@ export async function PUT(
         : d.estado === "PENDIENTE DESPACHO"
         ? null
         : undefined,
-      ...(d.nota !== undefined && { nota: d.nota }),
+      ...(d.nota       !== undefined && { nota: d.nota }),
+      ...(d.netsuiteId !== undefined && { netsuiteId: d.netsuiteId }),
       updated_at: new Date(),
     },
   });

@@ -50,6 +50,7 @@ export interface Ruta {
   transportista: Transportista;
   estado: RutaEstado;
   notas: string | null;
+  netsuiteId: string | null;
   paradas: Parada[];
   createdAt: string;
 }

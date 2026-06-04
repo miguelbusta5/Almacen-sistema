@@ -15,6 +15,7 @@ function mapRow(r: {
     estado: r.estado, tipo: (r.tipo ?? "COMUN"),
     fechaDespacho: r.fecha_despacho ? r.fecha_despacho.toISOString().slice(0, 10) : null,
     nota: r.nota,
+    netsuiteId: (r as any).netsuiteId ?? null,
   };
 }
 

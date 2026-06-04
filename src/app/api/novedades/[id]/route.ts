@@ -19,6 +19,7 @@ const updateSchema = z.object({
   zonaBodega: z.string().nullable().optional(),
   asignadoA: z.string().nullable().optional(),
   netsuiteAjust: z.boolean().optional(),
+  netsuiteId:   z.string().max(100).nullable().optional(),
   imagenUrl: z.string().nullable().optional(),
   fechaCompromiso: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable().optional(),
 });
@@ -76,6 +77,7 @@ export async function PUT(
       ...(d.zonaBodega !== undefined && { zonaBodega: d.zonaBodega }),
       ...(d.asignadoA !== undefined && { asignadoA: d.asignadoA }),
       ...(d.netsuiteAjust !== undefined && { netsuiteAjust: d.netsuiteAjust }),
+      ...(d.netsuiteId   !== undefined && { netsuiteId:   d.netsuiteId }),
       ...(d.imagenUrl !== undefined && { imagenUrl: d.imagenUrl }),
       ...(d.fechaCompromiso !== undefined && { fechaCompromiso: d.fechaCompromiso ? new Date(d.fechaCompromiso + "T00:00:00") : null }),
       ...(resueltoAt && { resueltoAt }),

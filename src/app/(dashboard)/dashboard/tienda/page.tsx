@@ -435,6 +435,29 @@ export default function TiendaPage() {
                 { label: "Recogido",                 value: panelItem.recibidoAt  ? new Date(panelItem.recibidoAt).toLocaleString("es-CO",  { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" }) : undefined },
                 { label: "En ruta desde",            value: panelItem.enRutaAt    ? new Date(panelItem.enRutaAt).toLocaleString("es-CO",     { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" }) : undefined },
                 { label: "Entregado",                value: panelItem.despachadoAt ? new Date(panelItem.despachadoAt).toLocaleString("es-CO", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" }) : undefined },
+                { label: "ID NetSuite",
+                  value: (
+                    <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                      {panelItem.netsuiteId
+                        ? <span style={{ fontFamily: "var(--mono)", fontSize: 12, fontWeight: 700, color: "#2563EB", background: "#2563EB0d", padding: "2px 8px", borderRadius: 6, border: "1px solid #2563EB25" }}>NS:{panelItem.netsuiteId}</span>
+                        : <span style={{ fontSize: 12, color: "var(--faint)" }}>Sin vincular</span>
+                      }
+                      {canEdit && (
+                        <button className="ds-btn ds-btn-ghost ds-btn-sm" style={{ fontSize: 11, height: 22, color: "var(--muted)" }}
+                          onClick={async () => {
+                            const id = prompt("ID interno de NetSuite:", panelItem.netsuiteId ?? "");
+                            if (id === null) return;
+                            const val = id.trim() || null;
+                            const r = await fetch(`/api/tienda/${panelItem.id}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ netsuiteId: val }) });
+                            const j = await r.json();
+                            if (j.success) { setPanelItem(p => p ? { ...p, netsuiteId: val } : p); setItems(prev => prev.map(d => d.id === panelItem.id ? { ...d, netsuiteId: val } : d)); showToast(val ? "ID NetSuite vinculado ✓" : "ID eliminado"); }
+                          }}>
+                          {panelItem.netsuiteId ? "Cambiar" : "Vincular"}
+                        </button>
+                      )}
+                    </div>
+                  )
+                },
               ]} />
             </DetailSection>
 

@@ -91,6 +91,7 @@ export interface Novedad {
   asignadoA:     string | null;
   resueltoAt:    string | null;
   netsuiteAjust: boolean;
+  netsuiteId:    string | null;
   imagenUrl:     string | null;
 }
 

@@ -8,6 +8,7 @@ const updateSchema = z.object({
   nombre: z.string().min(1).max(255).optional(),
   estado: z.enum(["PENDIENTE", "EN_CURSO", "FINALIZADA", "CANCELADA"]).optional(),
   notas: z.string().nullable().optional(),
+  netsuiteId: z.string().max(100).nullable().optional(),
   transportistaId: z.string().optional(),
   optimizar: z.boolean().optional(),
 });
@@ -23,6 +24,7 @@ function mapRuta(r: any) {
       : null,
     estado: r.estado,
     notas: r.notas,
+    netsuiteId: r.netsuiteId ?? null,
     createdAt: r.createdAt.toISOString(),
     paradas: (r.paradas ?? []).map((p: any) => ({
       id: p.id, rutaId: p.rutaId, orden: p.orden, direccion: p.direccion,

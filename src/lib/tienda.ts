@@ -61,6 +61,7 @@ export interface DespachoTienda {
   enRutaAt: string | null;            // timestamp de EN_RUTA
   despachadoAt: string | null;        // timestamp de ENTREGADO
   novedad: string | null;
+  netsuiteId: string | null;
   creadoPorId: string;
   creadoPorNombre?: string;
   createdAt: string;

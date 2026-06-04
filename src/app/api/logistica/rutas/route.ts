@@ -30,6 +30,7 @@ function mapRuta(r: any) {
       : null,
     estado: r.estado,
     notas: r.notas,
+    netsuiteId: r.netsuiteId ?? null,
     createdAt: r.createdAt.toISOString(),
     paradas: (r.paradas ?? []).map((p: any) => ({
       id: p.id, rutaId: p.rutaId, orden: p.orden, direccion: p.direccion,

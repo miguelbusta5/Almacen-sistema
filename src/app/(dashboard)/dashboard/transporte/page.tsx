@@ -418,6 +418,29 @@ export default function TransportePage() {
                 { label: "Ubicación", value: panelItem.ubicacion },
                 { label: "Entrega comprometida", value: panelEntrega ? fmtFecha(panelEntrega) : undefined },
                 { label: "Fecha despacho", value: panelItem.fechaDespacho ? fmtFecha(panelItem.fechaDespacho) : undefined },
+                { label: "ID NetSuite",
+                  value: (
+                    <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                      {panelItem.netsuiteId
+                        ? <span style={{ fontFamily: "var(--mono)", fontSize: 12, fontWeight: 700, color: "#2563EB", background: "#2563EB0d", padding: "2px 8px", borderRadius: 6, border: "1px solid #2563EB25" }}>NS:{panelItem.netsuiteId}</span>
+                        : <span style={{ fontSize: 12, color: "var(--faint)" }}>Sin vincular</span>
+                      }
+                      {canEdit && (
+                        <button className="ds-btn ds-btn-ghost ds-btn-sm" style={{ fontSize: 11, height: 22, color: "var(--muted)" }}
+                          onClick={async () => {
+                            const id = prompt("ID interno de NetSuite:", panelItem.netsuiteId ?? "");
+                            if (id === null) return;
+                            const val = id.trim() || null;
+                            const r = await fetch(`/api/transporte/${panelItem.clientId}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ netsuiteId: val }) });
+                            const j = await r.json();
+                            if (j.success) { setPanelItem(p => p ? { ...p, netsuiteId: val } : p); setGuardados(prev => prev.map(g => g.clientId === panelItem.clientId ? { ...g, netsuiteId: val } : g)); showToast(val ? "ID NetSuite vinculado ✓" : "ID eliminado"); }
+                          }}>
+                          {panelItem.netsuiteId ? "Cambiar" : "Vincular"}
+                        </button>
+                      )}
+                    </div>
+                  )
+                },
               ]} />
             </DetailSection>
 

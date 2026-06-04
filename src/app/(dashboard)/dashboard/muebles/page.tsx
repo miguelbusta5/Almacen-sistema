@@ -640,6 +640,29 @@ export default function MueblesPage() {
                     <span style={{ fontSize: 10, fontWeight: 700, color: "var(--warning)", marginLeft: 4 }}>⚠ Pendiente</span>
                   )}
                 </label>
+
+                {/* ID de trazabilidad NetSuite */}
+                <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 4 }}>
+                  {panelItem.netsuiteId ? (
+                    <span style={{ fontFamily: "var(--mono)", fontSize: 12, fontWeight: 700, color: "#2563EB", background: "#2563EB0d", padding: "2px 8px", borderRadius: 6, border: "1px solid #2563EB25" }}>
+                      NS:{panelItem.netsuiteId}
+                    </span>
+                  ) : (
+                    <span style={{ fontSize: 12, color: "var(--faint)" }}>Sin ID NetSuite</span>
+                  )}
+                  <button className="ds-btn ds-btn-ghost ds-btn-sm" style={{ fontSize: 11, height: 24, color: "var(--muted)" }}
+                    onClick={async () => {
+                      const id = prompt("ID interno de NetSuite (número):", panelItem.netsuiteId ?? "");
+                      if (id === null) return;
+                      const val = id.trim() || null;
+                      await fetch(`/api/novedades/${panelItem.id}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ netsuiteId: val }) });
+                      setItems(prev => prev.map(n => n.id === panelItem.id ? { ...n, netsuiteId: val } : n));
+                      setPanelItem(p => p ? { ...p, netsuiteId: val } : p);
+                      showToast(val ? `ID NetSuite vinculado ✓` : "ID NetSuite eliminado");
+                    }}>
+                    {panelItem.netsuiteId ? "Cambiar" : "Vincular"}
+                  </button>
+                </div>
               </DetailSection>
             )}
 

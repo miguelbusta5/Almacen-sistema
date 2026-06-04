@@ -6,6 +6,7 @@ import { z } from "zod";
 const updateSchema = z.object({
   estado:                   z.enum(["CREADO_TIENDA", "RECOGIDA_PENDIENTE", "RECOGIDO", "EN_RUTA", "ENTREGADO", "CON_NOVEDAD"]).optional(),
   novedad:                  z.string().nullable().optional(),
+  netsuiteId:               z.string().max(100).nullable().optional(),
   centroCostos:             z.string().max(100).optional(),
   numeroDocumento:          z.string().max(100).optional(),
   consecutivo:              z.string().max(50).optional(),
@@ -33,6 +34,7 @@ function mapRow(r: any): object {
     enRutaAt:                 r.enRutaAt    ? r.enRutaAt.toISOString()    : null,
     despachadoAt:             r.despachadoAt ? r.despachadoAt.toISOString() : null,
     novedad:                  r.novedad,
+    netsuiteId:               r.netsuiteId ?? null,
     creadoPorId:              r.creadoPorId,
     creadoPorNombre:          r.creadoPor?.name ?? null,
     createdAt:                r.createdAt.toISOString(),
@@ -101,8 +103,9 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
   const row = await prisma.despachoTienda.update({
     where: { id },
     data: {
-      ...(d.estado !== undefined && { estado: d.estado }),
-      ...(d.novedad !== undefined && { novedad: d.novedad }),
+      ...(d.estado     !== undefined && { estado:     d.estado }),
+      ...(d.novedad    !== undefined && { novedad:    d.novedad }),
+      ...(d.netsuiteId !== undefined && { netsuiteId: d.netsuiteId }),
       ...(d.centroCostos    && { centroCostos: d.centroCostos }),
       ...(d.numeroDocumento && { numeroDocumento: d.numeroDocumento }),
       ...(d.consecutivo     && { consecutivo: d.consecutivo }),

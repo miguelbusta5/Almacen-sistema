@@ -40,6 +40,7 @@ function mapRow(r: any): object {
     enRutaAt:                 r.enRutaAt     ? r.enRutaAt.toISOString()     : null,
     despachadoAt:             r.despachadoAt ? r.despachadoAt.toISOString() : null,
     novedad:                  r.novedad,
+    netsuiteId:               r.netsuiteId ?? null,
     creadoPorId:              r.creadoPorId,
     creadoPorNombre:          r.creadoPor?.name ?? null,
     createdAt:                r.createdAt.toISOString(),

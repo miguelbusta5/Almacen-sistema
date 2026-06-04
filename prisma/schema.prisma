@@ -38,6 +38,7 @@ model Novedad {
   asignadoUser  User?     @relation("NovedadesAsignadas", fields: [asignadoA], references: [id], onDelete: SetNull)
   resueltoAt    DateTime? @map("resuelto_at")
   netsuiteAjust Boolean   @default(false) @map("netsuite_ajust")
+  netsuiteId    String?   @map("netsuite_id")  // ID interno de NetSuite (futuro)
   imagenUrl     String?   @map("imagen_url")
 
   @@unique([plu, posicion, fecha])
@@ -57,6 +58,7 @@ model TransporteGuardado {
   tipo           String    @default("COMUN") @db.VarChar(20) // COMUN | ECOMMERCE
   fecha_despacho DateTime? @db.Date
   nota           String?
+  netsuiteId     String?   @map("netsuite_id")  // ID interno de NetSuite (futuro)
   created_at     DateTime? @default(now()) @db.Timestamp(6)
   updated_at     DateTime? @default(now()) @db.Timestamp(6)
 
@@ -159,6 +161,7 @@ model DespachoTienda {
   novedad                   String?
   fechaEntregaComprometida  DateTime? @db.Date @map("fecha_entrega_comprometida")
   numeroCajas               Int?      @map("numero_cajas")
+  netsuiteId                String?   @map("netsuite_id")  // ID interno de NetSuite (futuro)
   creadoPorId               String    @map("creado_por_id")
   creadoPor                 User      @relation(fields: [creadoPorId], references: [id])
   createdAt                 DateTime  @default(now()) @map("created_at")
@@ -250,6 +253,7 @@ model Ruta {
   transportista   Transportista @relation(fields: [transportistaId], references: [id])
   estado          String        @default("PENDIENTE") @db.VarChar(20) // PENDIENTE | EN_CURSO | FINALIZADA | CANCELADA
   notas           String?
+  netsuiteId      String?       @map("netsuite_id")  // ID interno de NetSuite (futuro)
   createdAt       DateTime      @default(now()) @map("created_at")
   updatedAt       DateTime      @updatedAt @map("updated_at")
 
