@@ -8,7 +8,7 @@ import {
   Chart as ChartJS, ArcElement, BarElement, CategoryScale, LinearScale, Tooltip, Legend,
 } from "chart.js";
 import { Doughnut, Bar } from "react-chartjs-2";
-import { Truck, Plus, X, CheckCircle2, Calendar, Search, BarChart3, List, Clock, Pencil, Trash2, Phone, MessageCircle } from "lucide-react";
+import { Truck, Plus, X, CheckCircle2, Calendar, Search, BarChart3, List, Clock, Pencil, Trash2, Phone, MessageCircle, RotateCcw, Download } from "lucide-react";
 import {
   Guardado, TipoGuardado, fmtCOP, fmtFecha, todayISO, urgencia, tieneAlerta, parseEntrega,
   scoreGuardado, alertaTier, ALERTA_TIER_COLOR, ALERTA_TIER_LABEL,
@@ -102,6 +102,60 @@ export default function TransportePage() {
     } else showToast(json.error || "Error", true);
   }
 
+  // Solo ADMIN: revertir de DESPACHADO a PENDIENTE DESPACHO
+  async function revertirDespacho(g: Guardado) {
+    if (!confirm(`¿Revertir "${g.documento}" a Pendiente Despacho? Esto anulará la fecha de despacho registrada.`)) return;
+    const res = await fetch(`/api/transporte/${encodeURIComponent(g.clientId)}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ estado: "PENDIENTE DESPACHO" }),
+    });
+    const json = await res.json();
+    if (json.success) {
+      const updated = { ...g, estado: "PENDIENTE DESPACHO" as const, fechaDespacho: null };
+      setGuardados((prev) => prev.map((x) => x.clientId === g.clientId ? updated : x));
+      if (panelItem?.clientId === g.clientId) setPanelItem(updated);
+      showToast("Revertido a Pendiente Despacho ✓");
+    } else showToast(json.error || "Error", true);
+  }
+
+  // Exportar lista filtrada a CSV (abre directo en Excel)
+  function exportarCSV() {
+    const cols = [
+      "Documento", "Fecha Ingreso", "Días en Bodega", "Ubicación", "Tipo",
+      "Estado", "Almacenaje Acumulado ($)", "Fecha Despacho", "Nota", "ID NetSuite",
+    ];
+    const hoy = new Date().toISOString().slice(0, 10);
+    const filas = filtered.map((g) => {
+      const diasEnBodega = Math.floor(
+        (Date.now() - new Date(g.fecha + "T00:00:00").getTime()) / 86_400_000
+      );
+      const alm = calcAlmacenaje(g.fecha, g.estado === "DESPACHADO" ? g.fechaDespacho : null);
+      const clean = (v: string | null | undefined) => `"${(v ?? "").replace(/"/g, '""')}"`;
+      return [
+        clean(g.documento),
+        clean(fmtFecha(g.fecha)),
+        diasEnBodega,
+        clean(g.ubicacion),
+        clean(g.tipo),
+        clean(g.estado === "DESPACHADO" ? "Despachado" : "Pendiente Despacho"),
+        alm.costo,
+        clean(fmtFecha(g.fechaDespacho)),
+        clean(g.nota),
+        clean(g.netsuiteId),
+      ].join(",");
+    });
+    const csv = "﻿" + [cols.join(","), ...filas].join("\r\n"); // BOM para Excel en Windows
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `guardados-${hoy}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+    showToast(`${filtered.length} registros exportados ✓`);
+  }
+
   // Insights operacionales
   const globalInsights = useMemo(() => insightsGuardados(guardados), [guardados]);
   const panelInsights = useMemo(() => panelItem ? insightsPorGuardado(panelItem, guardados) : [], [panelItem, guardados]);
@@ -191,6 +245,9 @@ export default function TransportePage() {
         <div style={{ display: "flex", gap: 8 }}>
           <button className={`ds-btn ${view === "graficos" ? "ds-btn-secondary" : "ds-btn-ghost"}`} onClick={() => setView(view === "graficos" ? "lista" : "graficos")}>
             {view === "graficos" ? <><List size={14} />Lista</> : <><BarChart3 size={14} />Gráficos</>}
+          </button>
+          <button className="ds-btn ds-btn-ghost" onClick={exportarCSV} title="Descargar Excel (CSV)">
+            <Download size={14} />Excel
           </button>
           <button className="ds-btn ds-btn-primary" style={{ background: "#0e7490", boxShadow: "0 2px 12px rgba(14,116,144,0.28)" }} onClick={() => setCreando(true)}>
             <Plus size={14} />Nuevo guardado
@@ -327,6 +384,16 @@ export default function TransportePage() {
                                   <CheckCircle2 size={12} />Enviado
                                 </button>
                               )}
+                              {g.estado === "DESPACHADO" && canDelete && (
+                                <button
+                                  className="ds-btn ds-btn-sm ds-btn-ghost"
+                                  style={{ height: 26, color: "var(--warning)" }}
+                                  onClick={(e) => { e.stopPropagation(); revertirDespacho(g); }}
+                                  title="Revertir a Pendiente Despacho (solo ADMIN)"
+                                >
+                                  <RotateCcw size={12} />
+                                </button>
+                              )}
                               <button
                                 className="ds-btn ds-btn-sm ds-btn-ghost"
                                 onClick={(e) => { e.stopPropagation(); setFechaModal(g); }}
@@ -369,6 +436,14 @@ export default function TransportePage() {
         primaryAction={panelItem && panelItem.estado !== "DESPACHADO" ? (
           <button className="ds-btn ds-btn-primary" style={{ width: "100%", background: "var(--success)", boxShadow: "none" }} onClick={() => despachar(panelItem)}>
             <CheckCircle2 size={13} />Marcar como enviado
+          </button>
+        ) : panelItem && panelItem.estado === "DESPACHADO" && canDelete ? (
+          <button
+            className="ds-btn ds-btn-secondary"
+            style={{ width: "100%", color: "var(--warning)", borderColor: "var(--warning)" }}
+            onClick={() => revertirDespacho(panelItem)}
+          >
+            <RotateCcw size={13} />Revertir a Pendiente Despacho
           </button>
         ) : undefined}
         secondaryActions={
