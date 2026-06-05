@@ -88,6 +88,10 @@ export default function TiendaPage() {
   const [deleting, setDeleting] = useState<DespachoTienda | null>(null);
   // Modal asignación a ruta
   const [asignandoRuta, setAsignandoRuta] = useState<DespachoTienda | null>(null);
+  // Modal asignación de conductor (CREADO_TIENDA → ASIGNADO_RECOGIDA)
+  const [asignandoRecogida, setAsignandoRecogida] = useState<DespachoTienda | null>(null);
+  // Rol del usuario actual (para mostrar botones de supervisor)
+  const canAsignarRecogida = role === "SUPERVISOR_TRANSPORTE" || role === "GERENTE" || role === "ADMIN";
 
   async function load() {
     setLoading(true);
@@ -311,7 +315,13 @@ export default function TiendaPage() {
                       <td><Badge label={ESTADO_DESPACHO_LABEL[d.estado]} variant={estadoDespachoVariant(d.estado)} /></td>
                       <td>
                         <div className="ds-row-actions">
-                          {(d.estado === "CREADO_TIENDA" || d.estado === "ASIGNADO_RECOGIDA") &&
+                          {d.estado === "CREADO_TIENDA" && canAsignarRecogida && (
+                            <button className="ds-btn ds-btn-sm" style={{ background: "#f9731614", color: "#f97316", height: 26, fontSize: 11 }}
+                              onClick={(e) => { e.stopPropagation(); setAsignandoRecogida(d); }} title="Asignar conductor para recogida">
+                              <PackageCheck size={12} />Asignar
+                            </button>
+                          )}
+                          {(d.estado === "ASIGNADO_RECOGIDA") &&
                             <button className="ds-btn ds-btn-sm" style={{ background: "var(--info-tint)", color: "var(--info)", height: 26, fontSize: 11 }}
                               onClick={(e) => { e.stopPropagation(); cambiarEstado(d, "RECOGIDO_TIENDA"); }} title="Marcar recogido en tienda">
                               <Truck size={12} />Recogido
@@ -373,11 +383,11 @@ export default function TiendaPage() {
         }
         secondaryActions={
           <div style={{ display: "flex", gap: 8 }}>
-            {panelItem && panelItem.estado === "CREADO_TIENDA" && (
+            {panelItem && panelItem.estado === "CREADO_TIENDA" && canAsignarRecogida && (
               <button className="ds-btn ds-btn-sm ds-btn-secondary"
                 style={{ color: "#f97316", borderColor: "#f9731633" }}
-                onClick={() => cambiarEstado(panelItem, "ASIGNADO_RECOGIDA")}>
-                <PackageCheck size={13} />Lista para recogida
+                onClick={() => setAsignandoRecogida(panelItem)}>
+                <PackageCheck size={13} />Asignar conductor
               </button>
             )}
             {panelItem && ESTADOS_ACTIVOS.includes(panelItem.estado) && (
@@ -538,6 +548,19 @@ export default function TiendaPage() {
         </ModalBase>
       )}
 
+      {/* ── Modal asignar conductor (CREADO_TIENDA → ASIGNADO_RECOGIDA) ── */}
+      {asignandoRecogida && (
+        <ModalAsignarRecogida
+          despacho={asignandoRecogida}
+          onClose={() => setAsignandoRecogida(null)}
+          onAsignado={(conductorAsignadoId, vehiculoAsignadoId) => {
+            cambiarEstado(asignandoRecogida, "ASIGNADO_RECOGIDA", { conductorAsignadoId, vehiculoAsignadoId });
+            setAsignandoRecogida(null);
+          }}
+          onError={(m) => showToast(m, true)}
+        />
+      )}
+
       {/* ── Modal asignar a ruta (ENTREGADO_CEDI → EN_RUTA) ── */}
       {asignandoRuta && (
         <ModalAsignarRuta
@@ -557,6 +580,110 @@ export default function TiendaPage() {
         </div>
       )}
     </div>
+  );
+}
+
+// ── Modal asignar conductor para recogida (CREADO_TIENDA → ASIGNADO_RECOGIDA) ──
+function ModalAsignarRecogida({ despacho, onClose, onAsignado, onError }: {
+  despacho: DespachoTienda;
+  onClose: () => void;
+  onAsignado: (conductorId: string, vehiculoId: string) => void;
+  onError: (m: string) => void;
+}) {
+  const [conductores, setConductores] = useState<Array<{ id: string; nombre: string; telefono: string | null; vehiculoId: string | null; vehiculo?: { placa: string } | null }>>([]);
+  const [vehiculos,   setVehiculos]   = useState<Array<{ id: string; placa: string; tipo: string }>>([]);
+  const [conductorId, setConductorId] = useState("");
+  const [vehiculoId,  setVehiculoId]  = useState("");
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    Promise.all([
+      fetch("/api/logistica/transportistas").then((r) => r.json()),
+      fetch("/api/logistica/vehiculos").then((r) => r.json()),
+    ]).then(([cJ, vJ]) => {
+      if (cJ.success) setConductores(cJ.data.filter((c: any) => c.activo));
+      if (vJ.success) setVehiculos(vJ.data.filter((v: any) => v.estado === "ACTIVO"));
+    }).catch(() => {}).finally(() => setLoading(false));
+  }, []);
+
+  // Al seleccionar conductor, auto-seleccionar su vehículo si tiene uno asignado
+  function onConductorChange(id: string) {
+    setConductorId(id);
+    const cond = conductores.find((c) => c.id === id);
+    if (cond?.vehiculoId) setVehiculoId(cond.vehiculoId);
+    else setVehiculoId("");
+  }
+
+  return (
+    <ModalBase
+      title="Asignar conductor para recogida"
+      sub={`${despacho.numeroDocumento} · ${despacho.clienteNombre}`}
+      onClose={onClose}
+    >
+      <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+        {loading ? (
+          <div style={{ textAlign: "center", padding: "20px 0", fontSize: 13, color: "var(--muted)" }}>Cargando conductores…</div>
+        ) : (
+          <>
+            <div>
+              <label style={{ fontSize: 12, fontWeight: 600, color: "var(--muted2)", display: "block", marginBottom: 6 }}>
+                Conductor *
+              </label>
+              <select value={conductorId} onChange={(e) => onConductorChange(e.target.value)} style={{ ...inp, height: 40 }}>
+                <option value="">— Selecciona un conductor —</option>
+                {conductores.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.nombre}{c.vehiculo ? ` · ${c.vehiculo.placa}` : ""}
+                    {c.telefono ? ` · ${c.telefono}` : ""}
+                  </option>
+                ))}
+              </select>
+              {conductores.length === 0 && (
+                <div style={{ fontSize: 11, color: "var(--faint)", marginTop: 4 }}>
+                  Crea conductores en Logística → Conductores primero.
+                </div>
+              )}
+            </div>
+
+            <div>
+              <label style={{ fontSize: 12, fontWeight: 600, color: "var(--muted2)", display: "block", marginBottom: 6 }}>
+                Vehículo *
+              </label>
+              <select value={vehiculoId} onChange={(e) => setVehiculoId(e.target.value)} style={{ ...inp, height: 40 }}>
+                <option value="">— Selecciona un vehículo —</option>
+                {vehiculos.map((v) => (
+                  <option key={v.id} value={v.id}>{v.placa} — {v.tipo}</option>
+                ))}
+              </select>
+            </div>
+
+            {/* Info del despacho */}
+            {despacho.direccionEntrega && (
+              <div style={{ padding: "10px 12px", background: "var(--surface2)", borderRadius: 8, fontSize: 12, color: "var(--muted)" }}>
+                <strong style={{ color: "var(--text)" }}>Dirección de entrega:</strong><br />
+                {despacho.direccionEntrega}{despacho.ciudad ? `, ${despacho.ciudad}` : ""}
+              </div>
+            )}
+
+            <div style={{ display: "flex", gap: 8 }}>
+              <button className="ds-btn ds-btn-secondary" style={{ flex: 1 }} onClick={onClose}>Cancelar</button>
+              <button
+                className="ds-btn ds-btn-primary"
+                style={{ flex: 2, background: "#f97316" }}
+                disabled={!conductorId || !vehiculoId}
+                onClick={() => {
+                  if (!conductorId) { onError("Selecciona un conductor"); return; }
+                  if (!vehiculoId)  { onError("Selecciona un vehículo"); return; }
+                  onAsignado(conductorId, vehiculoId);
+                }}
+              >
+                <PackageCheck size={14} />Asignar y enviar a recogida
+              </button>
+            </div>
+          </>
+        )}
+      </div>
+    </ModalBase>
   );
 }
 
