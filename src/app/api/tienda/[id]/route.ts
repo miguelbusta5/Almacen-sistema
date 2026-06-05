@@ -6,28 +6,18 @@ import { esTransicionValida, rolPuedeTransicionar } from "@/lib/tiendaFlow";
 import type { EstadoDespacho } from "@/lib/tiendaFlow";
 
 const updateSchema = z.object({
-  // Estado — 7 valores del nuevo flujo logístico
+  // Estado — flujo simplificado tienda -> CEDI -> cliente
   estado: z.enum([
-    "CREADO_TIENDA", "ASIGNADO_RECOGIDA", "RECOGIDO_TIENDA",
-    "ENTREGADO_CEDI", "EN_RUTA", "ENTREGADO_CLIENTE", "CON_NOVEDAD",
+    "CREADO_TIENDA", "RECOGIDO_TIENDA", "ENTREGADO_CEDI",
+    "ENVIADO_CLIENTE", "CON_NOVEDAD",
   ]).optional(),
   // Optimistic lock
   updatedAt: z.string().datetime().optional(),
-  // Asignación de recogida
-  conductorAsignadoId: z.string().cuid().nullable().optional(),
-  vehiculoAsignadoId:  z.string().cuid().nullable().optional(),
-  rutaId:              z.string().cuid().nullable().optional(),
   // Evidencias por etapa
   fotoRecogidaUrl:  z.string().url().nullable().optional(),
   fotoCediUrl:      z.string().url().nullable().optional(),
   recibidoPorCedi:  z.string().max(255).nullable().optional(),
-  // Evidencia de entrega al cliente
-  firmaUrl:          z.string().url().nullable().optional(),
-  evidenciaUrl:      z.string().url().nullable().optional(),
   observacionEntrega:z.string().nullable().optional(),
-  fechaGpsEntrega:   z.string().datetime().nullable().optional(),
-  latitudEntrega:    z.number().nullable().optional(),
-  longitudEntrega:   z.number().nullable().optional(),
   // Datos opcionales
   novedad:           z.string().nullable().optional(),
   netsuiteId:        z.string().max(100).nullable().optional(),
@@ -40,6 +30,7 @@ const updateSchema = z.object({
   clienteTelefono:   z.string().max(30).nullable().optional(),
   fechaEntregaComprometida: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable().optional(),
   numeroCajas:       z.number().int().min(1).nullable().optional(),
+  notaEntrega:       z.string().nullable().optional(),
   direccionEntrega:  z.string().nullable().optional(),
   barrio:            z.string().nullable().optional(),
   ciudad:            z.string().nullable().optional(),
@@ -52,11 +43,9 @@ const updateSchema = z.object({
 
 const ESTADO_LABEL: Record<string, string> = {
   CREADO_TIENDA:      "Creado en tienda",
-  ASIGNADO_RECOGIDA:  "Asignado para recogida",
   RECOGIDO_TIENDA:    "Recogido en tienda",
   ENTREGADO_CEDI:     "Entregado en CEDI",
-  EN_RUTA:            "En ruta",
-  ENTREGADO_CLIENTE:  "Entregado al cliente",
+  ENVIADO_CLIENTE:    "Enviado al cliente",
   CON_NOVEDAD:        "Con novedad",
 };
 
@@ -77,20 +66,11 @@ function mapRow(r: any): object {
     numeroCajas:      r.numeroCajas ?? null,
     netsuiteId:       r.netsuiteId ?? null,
     // Timestamps
-    asignadoRecogidaAt: r.asignadoRecogidaAt ? r.asignadoRecogidaAt.toISOString() : null,
     recibidoAt:         r.recibidoAt    ? r.recibidoAt.toISOString()    : null,
     entregadoCediAt:    r.entregadoCediAt ? r.entregadoCediAt.toISOString() : null,
-    enRutaAt:           r.enRutaAt      ? r.enRutaAt.toISOString()      : null,
     despachadoAt:       r.despachadoAt  ? r.despachadoAt.toISOString()  : null,
     novedadAt:          r.novedadAt     ? r.novedadAt.toISOString()     : null,
-    // Asignación
-    conductorAsignadoId:  r.conductorAsignadoId ?? null,
-    conductorAsignadoNombre: r.conductorAsignado?.nombre ?? null,
-    vehiculoAsignadoId:   r.vehiculoAsignadoId ?? null,
-    vehiculoAsignadoPlaca: r.vehiculoAsignado?.placa ?? null,
-    asignadoPorId:        r.asignadoPorId ?? null,
-    // Ruta
-    rutaId:               r.rutaId ?? null,
+    notaEntrega:       r.notaEntrega ?? null,
     // Dirección
     direccionEntrega: r.direccionEntrega ?? null,
     barrio:           r.barrio ?? null,
@@ -105,13 +85,8 @@ function mapRow(r: any): object {
     fotoRecogidaUrl:  r.fotoRecogidaUrl ?? null,
     fotoCediUrl:      r.fotoCediUrl ?? null,
     recibidoPorCedi:  r.recibidoPorCedi ?? null,
-    firmaUrl:         r.firmaUrl ?? null,
-    evidenciaUrl:     r.evidenciaUrl ?? null,
     observacionEntrega: r.observacionEntrega ?? null,
     fechaEntregaReal:   r.fechaEntregaReal  ? r.fechaEntregaReal.toISOString()  : null,
-    fechaGpsEntrega:    r.fechaGpsEntrega   ? r.fechaGpsEntrega.toISOString()   : null,
-    latitudEntrega:     r.latitudEntrega  ?? null,
-    longitudEntrega:    r.longitudEntrega ?? null,
     novedad:          r.novedad ?? null,
     creadoPorId:      r.creadoPorId,
     creadoPorNombre:  r.creadoPor?.name ?? null,
@@ -131,8 +106,6 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
     where: { id },
     include: {
       creadoPor:       { select: { id: true, name: true } },
-      conductorAsignado: { select: { nombre: true } },
-      vehiculoAsignado:  { select: { placa: true } },
       plines: true,
     },
   });
@@ -169,7 +142,7 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
   // Fetch estado actual para validar máquina de estados
   const current = await prisma.despachoTienda.findUnique({
     where: { id },
-    select: { estado: true, updatedAt: true, conductorAsignadoId: true, vehiculoAsignadoId: true, rutaId: true },
+    select: { estado: true, updatedAt: true },
   });
   if (!current) return NextResponse.json({ error: "No encontrado" }, { status: 404 });
 
@@ -188,20 +161,6 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
       return NextResponse.json({ error: "Sin permiso para esta transición de estado" }, { status: 403 });
     }
 
-    // Validaciones obligatorias por transición
-    if (destino === "ASIGNADO_RECOGIDA") {
-      if (!d.conductorAsignadoId) return NextResponse.json({ error: "conductorAsignadoId es obligatorio" }, { status: 400 });
-      if (!d.vehiculoAsignadoId)  return NextResponse.json({ error: "vehiculoAsignadoId es obligatorio" }, { status: 400 });
-    }
-    if (destino === "EN_RUTA") {
-      const rutaId = d.rutaId ?? current.rutaId;
-      if (!rutaId) return NextResponse.json({ error: "rutaId es obligatorio para poner en ruta" }, { status: 400 });
-    }
-    if (destino === "ENTREGADO_CLIENTE") {
-      if (!d.firmaUrl && !d.evidenciaUrl) {
-        return NextResponse.json({ error: "Se requiere firma o foto de evidencia para confirmar entrega" }, { status: 400 });
-      }
-    }
     if (destino === "CON_NOVEDAD") {
       if (!d.novedad || d.novedad.trim().length < 5) {
         return NextResponse.json({ error: "Descripción de novedad obligatoria (mínimo 5 caracteres)" }, { status: 400 });
@@ -209,48 +168,48 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
     }
   }
 
-  // Edición de datos estructurales → solo GERENTE/ADMIN
-  const isDataEdit = d.centroCostos || d.numeroDocumento || d.clienteNombre;
+  // Edición de datos básicos: tienda solo mientras está en CREADO_TIENDA.
+  const basicEditKeys = [
+    "centroCostos", "numeroDocumento", "consecutivo", "clienteNombre",
+    "clienteDocumento", "clienteTelefono", "fechaEntregaComprometida",
+    "numeroCajas", "notaEntrega", "direccionEntrega", "barrio", "ciudad",
+    "departamento", "latitud", "longitud", "contactoEntrega", "telefonoEntrega",
+  ] as const;
+  const isDataEdit = basicEditKeys.some((key) => d[key] !== undefined);
   if (isDataEdit) {
-    const check = await requireCan("edit");
-    if (check instanceof NextResponse) return check;
+    const puedeEditarBasico = ["TIENDA", "SUPERVISOR_TIENDA", "SUPERVISOR_TRANSPORTE", "GERENTE", "ADMIN"].includes(actor.role);
+    if (!puedeEditarBasico) return NextResponse.json({ error: "Sin permiso para editar datos de tienda" }, { status: 403 });
+    if (current.estado !== "CREADO_TIENDA" && !["GERENTE", "ADMIN"].includes(actor.role)) {
+      return NextResponse.json({ error: "Solo se puede editar información básica mientras el despacho está en CREADO_TIENDA" }, { status: 409 });
+    }
   }
 
   // Timestamps automáticos
   const timestamps: Record<string, unknown> = {};
-  if (d.estado === "ASIGNADO_RECOGIDA")  timestamps.asignadoRecogidaAt = new Date();
   if (d.estado === "RECOGIDO_TIENDA")    timestamps.recibidoAt         = new Date();
   if (d.estado === "ENTREGADO_CEDI")     timestamps.entregadoCediAt    = new Date();
-  if (d.estado === "EN_RUTA")            timestamps.enRutaAt           = new Date();
-  if (d.estado === "ENTREGADO_CLIENTE")  timestamps.despachadoAt       = new Date();
+  if (d.estado === "ENVIADO_CLIENTE")    timestamps.despachadoAt       = new Date();
   if (d.estado === "CON_NOVEDAD")        timestamps.novedadAt          = new Date();
 
   // Update con optimistic lock (comparar updatedAt numéricamente — nota A)
   try {
     const estadoCambia = d.estado && d.estado !== current.estado;
+    const lockUpdatedAt = d.updatedAt ? new Date(d.updatedAt) : undefined;
 
     const [updatedRow] = await prisma.$transaction([
       prisma.despachoTienda.update({
         where: {
           id,
-          ...(d.updatedAt ? { updatedAt: current.updatedAt } : {}),
+          ...(lockUpdatedAt ? { updatedAt: lockUpdatedAt } : {}),
         },
         data: {
           ...(d.estado !== undefined && { estado: d.estado }),
           ...(d.novedad           !== undefined && { novedad: d.novedad }),
           ...(d.netsuiteId        !== undefined && { netsuiteId: d.netsuiteId }),
-          ...(d.conductorAsignadoId !== undefined && { conductorAsignadoId: d.conductorAsignadoId }),
-          ...(d.vehiculoAsignadoId  !== undefined && { vehiculoAsignadoId: d.vehiculoAsignadoId }),
-          ...(d.rutaId              !== undefined && { rutaId: d.rutaId }),
           ...(d.fotoRecogidaUrl     !== undefined && { fotoRecogidaUrl: d.fotoRecogidaUrl }),
           ...(d.fotoCediUrl         !== undefined && { fotoCediUrl: d.fotoCediUrl }),
           ...(d.recibidoPorCedi     !== undefined && { recibidoPorCedi: d.recibidoPorCedi }),
-          ...(d.firmaUrl            !== undefined && { firmaUrl: d.firmaUrl }),
-          ...(d.evidenciaUrl        !== undefined && { evidenciaUrl: d.evidenciaUrl }),
           ...(d.observacionEntrega  !== undefined && { observacionEntrega: d.observacionEntrega }),
-          ...(d.fechaGpsEntrega     !== undefined && { fechaGpsEntrega: d.fechaGpsEntrega ? new Date(d.fechaGpsEntrega) : null }),
-          ...(d.latitudEntrega      !== undefined && { latitudEntrega: d.latitudEntrega }),
-          ...(d.longitudEntrega     !== undefined && { longitudEntrega: d.longitudEntrega }),
           ...(d.centroCostos        && { centroCostos: d.centroCostos }),
           ...(d.numeroDocumento     && { numeroDocumento: d.numeroDocumento }),
           ...(d.consecutivo         && { consecutivo: d.consecutivo }),
@@ -262,6 +221,7 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
               ? new Date(d.fechaEntregaComprometida + "T00:00:00") : null,
           }),
           ...(d.numeroCajas !== undefined && { numeroCajas: d.numeroCajas }),
+          ...(d.notaEntrega !== undefined && { notaEntrega: d.notaEntrega }),
           ...(d.direccionEntrega !== undefined && { direccionEntrega: d.direccionEntrega }),
           ...(d.barrio      !== undefined && { barrio: d.barrio }),
           ...(d.ciudad      !== undefined && { ciudad: d.ciudad }),
@@ -274,8 +234,6 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
         },
         include: {
           creadoPor:         { select: { id: true, name: true } },
-          conductorAsignado: { select: { nombre: true } },
-          vehiculoAsignado:  { select: { placa: true } },
           plines: true,
         },
       }),

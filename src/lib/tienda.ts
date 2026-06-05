@@ -5,40 +5,32 @@
 
 export type EstadoDespacho =
   | "CREADO_TIENDA"
-  | "ASIGNADO_RECOGIDA"
   | "RECOGIDO_TIENDA"
   | "ENTREGADO_CEDI"
-  | "EN_RUTA"
-  | "ENTREGADO_CLIENTE"
+  | "ENVIADO_CLIENTE"
   | "CON_NOVEDAD";
 
 export const ESTADOS_DESPACHO: EstadoDespacho[] = [
   "CREADO_TIENDA",
-  "ASIGNADO_RECOGIDA",
   "RECOGIDO_TIENDA",
   "ENTREGADO_CEDI",
-  "EN_RUTA",
-  "ENTREGADO_CLIENTE",
+  "ENVIADO_CLIENTE",
   "CON_NOVEDAD",
 ];
 
-// Estados que aún no han sido entregados al cliente (activos)
+// Estados activos antes del envío al cliente.
 export const ESTADOS_ACTIVOS: EstadoDespacho[] = [
   "CREADO_TIENDA",
-  "ASIGNADO_RECOGIDA",
   "RECOGIDO_TIENDA",
   "ENTREGADO_CEDI",
-  "EN_RUTA",
 ];
 
 // Flujo lineal para el pipeline visual (excluye CON_NOVEDAD)
 export const FLUJO_ESTADOS: EstadoDespacho[] = [
   "CREADO_TIENDA",
-  "ASIGNADO_RECOGIDA",
   "RECOGIDO_TIENDA",
   "ENTREGADO_CEDI",
-  "EN_RUTA",
-  "ENTREGADO_CLIENTE",
+  "ENVIADO_CLIENTE",
 ];
 
 export interface PlinDespacho {
@@ -64,22 +56,11 @@ export interface DespachoTienda {
   netsuiteId: string | null;
 
   // Timestamps por estado
-  asignadoRecogidaAt: string | null;
   recibidoAt: string | null;          // RECOGIDO_TIENDA
   entregadoCediAt: string | null;     // ENTREGADO_CEDI
-  enRutaAt: string | null;
-  despachadoAt: string | null;        // ENTREGADO_CLIENTE
+  despachadoAt: string | null;        // ENVIADO_CLIENTE
   novedadAt: string | null;
-
-  // Asignación
-  conductorAsignadoId: string | null;
-  conductorAsignadoNombre: string | null;
-  vehiculoAsignadoId: string | null;
-  vehiculoAsignadoPlaca: string | null;
-  asignadoPorId: string | null;
-
-  // Ruta
-  rutaId: string | null;
+  notaEntrega: string | null;
 
   // Dirección de entrega
   direccionEntrega: string | null;
@@ -99,13 +80,8 @@ export interface DespachoTienda {
   recibidoPorCedi: string | null;
 
   // Evidencia de entrega al cliente
-  firmaUrl: string | null;
-  evidenciaUrl: string | null;
   observacionEntrega: string | null;
   fechaEntregaReal: string | null;
-  fechaGpsEntrega: string | null;
-  latitudEntrega: number | null;
-  longitudEntrega: number | null;
 
   novedad: string | null;
   creadoPorId: string;
@@ -118,21 +94,17 @@ export interface DespachoTienda {
 // ── Labels y colores ──────────────────────────────────────
 export const ESTADO_DESPACHO_LABEL: Record<EstadoDespacho, string> = {
   CREADO_TIENDA:      "Creado en tienda",
-  ASIGNADO_RECOGIDA:  "Asignado para recogida",
   RECOGIDO_TIENDA:    "Recogido en tienda",
   ENTREGADO_CEDI:     "Entregado en CEDI",
-  EN_RUTA:            "En ruta",
-  ENTREGADO_CLIENTE:  "Entregado al cliente",
+  ENVIADO_CLIENTE:    "Enviado al cliente",
   CON_NOVEDAD:        "Con novedad",
 };
 
 export const ESTADO_DESPACHO_COLOR: Record<EstadoDespacho, string> = {
   CREADO_TIENDA:      "#f59e0b",
-  ASIGNADO_RECOGIDA:  "#f97316",
   RECOGIDO_TIENDA:    "#3b82f6",
   ENTREGADO_CEDI:     "#8b5cf6",
-  EN_RUTA:            "#06b6d4",
-  ENTREGADO_CLIENTE:  "#10b981",
+  ENVIADO_CLIENTE:    "#10b981",
   CON_NOVEDAD:        "#ef4444",
 };
 
@@ -145,11 +117,9 @@ export function estadoDespachoVariant(
 ): "warning" | "info" | "success" | "error" | "default" {
   switch (e) {
     case "CREADO_TIENDA":      return "warning";
-    case "ASIGNADO_RECOGIDA":  return "warning";
     case "RECOGIDO_TIENDA":    return "info";
     case "ENTREGADO_CEDI":     return "info";
-    case "EN_RUTA":            return "info";
-    case "ENTREGADO_CLIENTE":  return "success";
+    case "ENVIADO_CLIENTE":    return "success";
     case "CON_NOVEDAD":        return "error";
   }
 }

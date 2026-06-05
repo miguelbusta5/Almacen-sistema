@@ -32,13 +32,13 @@ model Novedad {
   // SOBRANTE | FALTANTE | DAÑADO | MAL_UBICADO | ERROR_SISTEMA | ERROR_PROVEEDOR | ERROR_DESPACHO
   causaRaiz     String?   @map("causa_raiz") @db.VarChar(30)
   // HUMANO | SISTEMA | PROVEEDOR | DANIO | HURTO | UBICACION | DESPACHO
-  turno         String?   @db.VarChar(10)    // MAÑANA | TARDE | NOCHE
+  turno         String?   @db.VarChar(10) // MAÑANA | TARDE | NOCHE
   zonaBodega    String?   @map("zona_bodega") @db.VarChar(100)
   asignadoA     String?   @map("asignado_a")
   asignadoUser  User?     @relation("NovedadesAsignadas", fields: [asignadoA], references: [id], onDelete: SetNull)
   resueltoAt    DateTime? @map("resuelto_at")
   netsuiteAjust Boolean   @default(false) @map("netsuite_ajust")
-  netsuiteId    String?   @map("netsuite_id")  // ID interno de NetSuite (futuro)
+  netsuiteId    String?   @map("netsuite_id") // ID interno de NetSuite (futuro)
   imagenUrl     String?   @map("imagen_url")
 
   @@unique([plu, posicion, fecha])
@@ -58,7 +58,7 @@ model TransporteGuardado {
   tipo           String    @default("COMUN") @db.VarChar(20) // COMUN | ECOMMERCE
   fecha_despacho DateTime? @db.Date
   nota           String?
-  netsuiteId     String?   @map("netsuite_id")  // ID interno de NetSuite (futuro)
+  netsuiteId     String?   @map("netsuite_id") // ID interno de NetSuite (futuro)
   created_at     DateTime? @default(now()) @db.Timestamp(6)
   updated_at     DateTime? @default(now()) @db.Timestamp(6)
 
@@ -90,11 +90,10 @@ model User {
   activityLogs       ActivityLog[]
   transportista      Transportista?
   ciclosConteo       CicloConteo[]
-  novedadesAsign     Novedad[]               @relation("NovedadesAsignadas")
+  novedadesAsign     Novedad[]                  @relation("NovedadesAsignadas")
   contactosGuard     ContactoGuardado[]
-  despachosTienda    DespachoTienda[]        @relation("DespachosCreadosPor")
-  despachosAsignados DespachoTienda[]        @relation("DespachosAsignadosPor")
-  historialDespachos HistorialDespacho[]     @relation("HistorialDespachoUsuario")
+  despachosTienda    DespachoTienda[]           @relation("DespachosCreadosPor")
+  historialDespachos HistorialDespacho[]        @relation("HistorialDespachoUsuario")
   inspecciones       InspeccionPreoperacional[] @relation("InspeccionesRealizadas")
   notificaciones     Notificacion[]
 
@@ -107,22 +106,20 @@ enum Role {
   GERENTE
   OPERADOR
   TRANSPORTISTA
-  INVENTARIO             // Operario de inventario — solo módulos de inventario
-  TRANSPORTE             // Operario de transporte — solo guardados + logística
-  SUPERVISOR_INVENTARIO  // Supervisor inventario — inventario + análisis
-  SUPERVISOR_TRANSPORTE  // Supervisor transporte — guardados + logística + KPIs
-  TIENDA                 // Operario de tienda — solo módulo tienda
-  SUPERVISOR_TIENDA      // Supervisor tienda — tienda + análisis + Centro de Control
+  INVENTARIO // Operario de inventario — solo módulos de inventario
+  TRANSPORTE // Operario de transporte — guardados + pendientes asignados
+  SUPERVISOR_INVENTARIO // Supervisor inventario — inventario + análisis
+  SUPERVISOR_TRANSPORTE // Supervisor transporte — tienda + guardados + KPIs
+  TIENDA // Operario de tienda — solo módulo tienda
+  SUPERVISOR_TIENDA // Supervisor tienda — tienda + análisis + Centro de Control
 }
 
 enum EstadoDespacho {
-  CREADO_TIENDA      // Tienda registra el despacho
-  ASIGNADO_RECOGIDA  // Supervisor asigna conductor + vehículo
-  RECOGIDO_TIENDA    // Conductor recoge en tienda física
-  ENTREGADO_CEDI     // Mercancía llega al CEDI
-  EN_RUTA            // Sale del CEDI hacia cliente final
-  ENTREGADO_CLIENTE  // Entregado (requiere evidencia)
-  CON_NOVEDAD        // Incidencia en cualquier etapa
+  CREADO_TIENDA // Tienda registra el despacho
+  RECOGIDO_TIENDA // Supervisor transporte confirma recogida en tienda
+  ENTREGADO_CEDI // Mercancía llega al CEDI
+  ENVIADO_CLIENTE // CEDI despacha/envía al cliente
+  CON_NOVEDAD // Incidencia en cualquier etapa
 }
 
 enum EstadoInspeccion {
@@ -170,32 +167,19 @@ model DespachoTienda {
   clienteDocumento String?        @map("cliente_documento") @db.VarChar(50)
   clienteTelefono  String?        @map("cliente_telefono") @db.VarChar(30)
   estado           EstadoDespacho @default(CREADO_TIENDA)
-  fechaCreacion    DateTime       @db.Date @map("fecha_creacion")
+  fechaCreacion    DateTime       @map("fecha_creacion") @db.Date
 
   // Timestamps por estado
-  asignadoRecogidaAt DateTime? @map("asignado_recogida_at")
-  recibidoAt         DateTime? @map("recibido_at")        // RECOGIDO_TIENDA
-  entregadoCediAt    DateTime? @map("entregado_cedi_at")  // ENTREGADO_CEDI
-  enRutaAt           DateTime? @map("en_ruta_at")         // EN_RUTA
-  despachadoAt       DateTime? @map("despachado_at")      // ENTREGADO_CLIENTE
-  novedadAt          DateTime? @map("novedad_at")         // CON_NOVEDAD
+  recibidoAt      DateTime? @map("recibido_at") // RECOGIDO_TIENDA
+  entregadoCediAt DateTime? @map("entregado_cedi_at") // ENTREGADO_CEDI
+  despachadoAt    DateTime? @map("despachado_at") // ENVIADO_CLIENTE
+  novedadAt       DateTime? @map("novedad_at") // CON_NOVEDAD
 
   novedad                  String?
-  fechaEntregaComprometida DateTime? @db.Date @map("fecha_entrega_comprometida")
+  notaEntrega              String?   @map("nota_entrega")
+  fechaEntregaComprometida DateTime? @map("fecha_entrega_comprometida") @db.Date
   numeroCajas              Int?      @map("numero_cajas")
   netsuiteId               String?   @map("netsuite_id")
-
-  // Asignación de recogida
-  conductorAsignadoId String?        @map("conductor_asignado_id")
-  conductorAsignado   Transportista? @relation("DespachosConductorAsignado", fields: [conductorAsignadoId], references: [id], onDelete: SetNull)
-  vehiculoAsignadoId  String?        @map("vehiculo_asignado_id")
-  vehiculoAsignado    Vehiculo?      @relation("DespachosVehiculoAsignado", fields: [vehiculoAsignadoId], references: [id], onDelete: SetNull)
-  asignadoPorId       String?        @map("asignado_por_id")
-  asignadoPor         User?          @relation("DespachosAsignadosPor", fields: [asignadoPorId], references: [id], onDelete: SetNull)
-
-  // Ruta logística
-  rutaId String? @map("ruta_id")
-  ruta   Ruta?   @relation("RutaDespachos", fields: [rutaId], references: [id], onDelete: SetNull)
 
   // Dirección de entrega
   direccionEntrega String? @map("direccion_entrega")
@@ -214,14 +198,8 @@ model DespachoTienda {
   fotoCediUrl     String? @map("foto_cedi_url")
   recibidoPorCedi String? @map("recibido_por_cedi")
 
-  // Evidencia de entrega al cliente
-  firmaUrl           String?   @map("firma_url")
-  evidenciaUrl       String?   @map("evidencia_url")
   observacionEntrega String?   @map("observacion_entrega")
   fechaEntregaReal   DateTime? @map("fecha_entrega_real")
-  fechaGpsEntrega    DateTime? @map("fecha_gps_entrega")
-  latitudEntrega     Float?    @map("latitud_entrega")
-  longitudEntrega    Float?    @map("longitud_entrega")
 
   creadoPorId String   @map("creado_por_id")
   creadoPor   User     @relation("DespachosCreadosPor", fields: [creadoPorId], references: [id])
@@ -236,8 +214,6 @@ model DespachoTienda {
   @@index([createdAt, estado])
   @@index([centroCostos, fechaCreacion])
   @@index([fechaCreacion])
-  @@index([conductorAsignadoId])
-  @@index([rutaId])
   @@map("despachos_tienda")
 }
 
@@ -275,17 +251,17 @@ model PlinDespacho {
 // ═══════════════════════════════════════════
 
 model ContactoGuardado {
-  id              String   @id @default(cuid())
-  guardadoClientId String  @map("guardado_client_id") @db.VarChar(100)
+  id                String    @id @default(cuid())
+  guardadoClientId  String    @map("guardado_client_id") @db.VarChar(100)
   // Tipos: LLAMADA | MENSAJE | EMAIL | VISITA | ESCALACION
-  tipo            String   @db.VarChar(20)
+  tipo              String    @db.VarChar(20)
   // Resultados: NO_CONTESTA | CONFIRMO_FECHA | CANCELO | ESCALADO | OTRO
-  resultado       String   @db.VarChar(30)
-  fechaCompromiso DateTime? @map("fecha_compromiso")
-  nota            String?
-  registradoPor   String   @map("registrado_por")
-  registradoPorUser User   @relation(fields: [registradoPor], references: [id])
-  createdAt       DateTime @default(now()) @map("created_at")
+  resultado         String    @db.VarChar(30)
+  fechaCompromiso   DateTime? @map("fecha_compromiso")
+  nota              String?
+  registradoPor     String    @map("registrado_por")
+  registradoPorUser User      @relation(fields: [registradoPor], references: [id])
+  createdAt         DateTime  @default(now()) @map("created_at")
 
   @@index([guardadoClientId])
   @@map("contactos_guardado")
@@ -298,15 +274,14 @@ model ContactoGuardado {
 model Vehiculo {
   id          String   @id @default(cuid())
   placa       String   @unique @db.VarChar(20)
-  tipo        String   @db.VarChar(20)   // CAMION | FURGON | VAN | MOTO
+  tipo        String   @db.VarChar(20) // CAMION | FURGON | VAN | MOTO
   capacidadKg Int?     @map("capacidad_kg")
   estado      String   @default("ACTIVO") @db.VarChar(20) // ACTIVO | MANTENIMIENTO | INACTIVO
   createdAt   DateTime @default(now()) @map("created_at")
   updatedAt   DateTime @updatedAt @map("updated_at")
 
-  transportistas     Transportista[]
-  despachosAsignados DespachoTienda[]         @relation("DespachosVehiculoAsignado")
-  inspecciones       InspeccionPreoperacional[]
+  transportistas Transportista[]
+  inspecciones   InspeccionPreoperacional[]
 
   @@map("vehiculos")
 }
@@ -323,33 +298,31 @@ model Transportista {
   createdAt  DateTime  @default(now()) @map("created_at")
   updatedAt  DateTime  @updatedAt @map("updated_at")
 
-  rutas              Ruta[]
-  ubicaciones        UbicacionGps[]
-  despachosAsignados DespachoTienda[]         @relation("DespachosConductorAsignado")
-  inspecciones       InspeccionPreoperacional[] @relation("InspeccionesConductor")
+  rutas        Ruta[]
+  ubicaciones  UbicacionGps[]
+  inspecciones InspeccionPreoperacional[] @relation("InspeccionesConductor")
 
   @@map("transportistas")
 }
 
 model Ruta {
-  id              String        @id @default(cuid())
-  nombre          String        @db.VarChar(255)
-  fecha           DateTime      @db.Date
-  transportistaId String        @map("transportista_id")
-  transportista   Transportista @relation(fields: [transportistaId], references: [id])
-  estado          String        @default("PENDIENTE") @db.VarChar(20) // PENDIENTE | EN_CURSO | FINALIZADA | CANCELADA
-  notas           String?
-  netsuiteId      String?       @map("netsuite_id")
-  kilometrajeSalida  Int?       @map("kilometraje_salida")
-  kilometrajeLlegada Int?       @map("kilometraje_llegada")
-  inspeccionId       String?    @map("inspeccion_id")
+  id                 String                    @id @default(cuid())
+  nombre             String                    @db.VarChar(255)
+  fecha              DateTime                  @db.Date
+  transportistaId    String                    @map("transportista_id")
+  transportista      Transportista             @relation(fields: [transportistaId], references: [id])
+  estado             String                    @default("PENDIENTE") @db.VarChar(20) // PENDIENTE | EN_CURSO | FINALIZADA | CANCELADA
+  notas              String?
+  netsuiteId         String?                   @map("netsuite_id")
+  kilometrajeSalida  Int?                      @map("kilometraje_salida")
+  kilometrajeLlegada Int?                      @map("kilometraje_llegada")
+  inspeccionId       String?                   @map("inspeccion_id")
   inspeccion         InspeccionPreoperacional? @relation("RutaInspeccion", fields: [inspeccionId], references: [id], onDelete: SetNull)
-  createdAt       DateTime      @default(now()) @map("created_at")
-  updatedAt       DateTime      @updatedAt @map("updated_at")
+  createdAt          DateTime                  @default(now()) @map("created_at")
+  updatedAt          DateTime                  @updatedAt @map("updated_at")
 
   paradas     Parada[]
   ubicaciones UbicacionGps[]
-  despachos   DespachoTienda[] @relation("RutaDespachos")
 
   @@index([fecha])
   @@index([transportistaId, estado])
@@ -375,7 +348,7 @@ model Parada {
   createdAt     DateTime  @default(now()) @map("created_at")
   updatedAt     DateTime  @updatedAt @map("updated_at")
 
-  incidencias   IncidenciaRuta[]
+  incidencias IncidenciaRuta[]
 
   @@index([rutaId, orden])
   @@map("paradas")
@@ -396,18 +369,18 @@ model UbicacionGps {
 }
 
 model IncidenciaRuta {
-  id              String        @id @default(cuid())
-  paradaId        String        @map("parada_id")
-  parada          Parada        @relation(fields: [paradaId], references: [id], onDelete: Cascade)
-  rutaId          String        @map("ruta_id")
-  transportistaId String        @map("transportista_id")
+  id              String   @id @default(cuid())
+  paradaId        String   @map("parada_id")
+  parada          Parada   @relation(fields: [paradaId], references: [id], onDelete: Cascade)
+  rutaId          String   @map("ruta_id")
+  transportistaId String   @map("transportista_id")
   // INC-01 CLIENTE_AUSENTE | INC-02 NEGOCIO_CERRADO | INC-03 DIRECCION_INCORRECTA
   // INC-04 CLIENTE_RECHAZO | INC-05 MERCANCIA_DAÑADA | INC-06 TRAFICO
   // INC-07 VEHICULO_AVERIA | INC-08 ACCESO_NEGADO
-  tipo            String        @db.VarChar(30)
+  tipo            String   @db.VarChar(30)
   descripcion     String?
-  fotoUrl         String?       @map("foto_url")
-  createdAt       DateTime      @default(now()) @map("created_at")
+  fotoUrl         String?  @map("foto_url")
+  createdAt       DateTime @default(now()) @map("created_at")
 
   @@index([rutaId])
   @@index([transportistaId, createdAt])
@@ -419,19 +392,19 @@ model IncidenciaRuta {
 // ═══════════════════════════════════════════
 
 model CicloConteo {
-  id           String   @id @default(cuid())
-  nombre       String   @db.VarChar(255)
-  fechaInicio  DateTime @db.Date @map("fecha_inicio")
-  estado       String   @default("PLANIFICADO") @db.VarChar(20)
+  id            String   @id @default(cuid())
+  nombre        String   @db.VarChar(255)
+  fechaInicio   DateTime @map("fecha_inicio") @db.Date
+  estado        String   @default("PLANIFICADO") @db.VarChar(20)
   // PLANIFICADO | EN_PROGRESO | EN_RECONTEO | CERRADO
-  totalLineas  Int      @default(0) @map("total_lineas")
-  creadoPor    String   @map("creado_por")
-  creadoPorUser User    @relation(fields: [creadoPor], references: [id])
-  notas        String?
-  createdAt    DateTime @default(now()) @map("created_at")
-  updatedAt    DateTime @updatedAt @map("updated_at")
+  totalLineas   Int      @default(0) @map("total_lineas")
+  creadoPor     String   @map("creado_por")
+  creadoPorUser User     @relation(fields: [creadoPor], references: [id])
+  notas         String?
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
 
-  lineas       LineaConteo[]
+  lineas        LineaConteo[]
   importaciones ImportacionTeorico[]
 
   @@index([estado])
@@ -439,44 +412,44 @@ model CicloConteo {
 }
 
 model LineaConteo {
-  id            String   @id @default(cuid())
-  cicloId       String   @map("ciclo_id")
-  ciclo         CicloConteo @relation(fields: [cicloId], references: [id], onDelete: Cascade)
+  id      String      @id @default(cuid())
+  cicloId String      @map("ciclo_id")
+  ciclo   CicloConteo @relation(fields: [cicloId], references: [id], onDelete: Cascade)
 
   // Datos importados del WMS
-  plu           String   @db.VarChar(100)
-  descripcion   String
-  marca         String?  @db.VarChar(255)
-  codigoBarras  String?  @map("codigo_barras") @db.VarChar(100)
-  ubicacion     String   @db.VarChar(100)  // Número de depósito
-  tipoPasillo   String   @default("Almacenamiento") @map("tipo_pasillo") @db.VarChar(50)
-  autoFill      Boolean  @default(false) @map("auto_fill")
-  teorico       Decimal  @db.Decimal(12, 2)
-  precioBase    Decimal? @map("precio_base") @db.Decimal(12, 2)
-  ultimoPrecio  Decimal? @map("ultimo_precio") @db.Decimal(12, 2)
+  plu          String   @db.VarChar(100)
+  descripcion  String
+  marca        String?  @db.VarChar(255)
+  codigoBarras String?  @map("codigo_barras") @db.VarChar(100)
+  ubicacion    String   @db.VarChar(100) // Número de depósito
+  tipoPasillo  String   @default("Almacenamiento") @map("tipo_pasillo") @db.VarChar(50)
+  autoFill     Boolean  @default(false) @map("auto_fill")
+  teorico      Decimal  @db.Decimal(12, 2)
+  precioBase   Decimal? @map("precio_base") @db.Decimal(12, 2)
+  ultimoPrecio Decimal? @map("ultimo_precio") @db.Decimal(12, 2)
 
   // Asignación
   operarioNombre String? @map("operario_nombre") @db.VarChar(255)
-  diaAsignado    Int?    @map("dia_asignado")  // 1 | 2 | 3 | 4
+  diaAsignado    Int?    @map("dia_asignado") // 1 | 2 | 3 | 4
 
   // Primer conteo
-  estado         String  @default("PENDIENTE") @db.VarChar(20)
+  estado          String    @default("PENDIENTE") @db.VarChar(20)
   // PENDIENTE | CONTADO | EN_RECONTEO | OK | NOVEDAD
-  cajas          Int?
-  undEmp         Int?    @map("und_emp")
-  reguero        Int?
-  cantidadContada Decimal? @map("cantidad_contada") @db.Decimal(12, 2)
-  contadoPor     String?  @map("contado_por") @db.VarChar(255)
-  contadoAt      DateTime? @map("contado_at")
+  cajas           Int?
+  undEmp          Int?      @map("und_emp")
+  reguero         Int?
+  cantidadContada Decimal?  @map("cantidad_contada") @db.Decimal(12, 2)
+  contadoPor      String?   @map("contado_por") @db.VarChar(255)
+  contadoAt       DateTime? @map("contado_at")
 
   // Reconteo
-  cantidadRecontada Decimal? @map("cantidad_recontada") @db.Decimal(12, 2)
-  recontadoPor   String?  @map("recontado_por") @db.VarChar(255)
-  recontadoAt    DateTime? @map("recontado_at")
-  diferenciaFinal Decimal? @map("diferencia_final") @db.Decimal(12, 2)
+  cantidadRecontada Decimal?  @map("cantidad_recontada") @db.Decimal(12, 2)
+  recontadoPor      String?   @map("recontado_por") @db.VarChar(255)
+  recontadoAt       DateTime? @map("recontado_at")
+  diferenciaFinal   Decimal?  @map("diferencia_final") @db.Decimal(12, 2)
 
-  createdAt      DateTime @default(now()) @map("created_at")
-  updatedAt      DateTime @updatedAt @map("updated_at")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
 
   @@index([cicloId, estado])
   @@index([cicloId, ubicacion])
@@ -494,13 +467,13 @@ model OperarioCiclo {
 }
 
 model ImportacionTeorico {
-  id          String   @id @default(cuid())
-  cicloId     String   @map("ciclo_id")
-  ciclo       CicloConteo @relation(fields: [cicloId], references: [id], onDelete: Cascade)
-  archivo     String   @db.VarChar(255)
-  totalFilas  Int      @map("total_filas")
-  importadoPor String  @map("importado_por")
-  createdAt   DateTime @default(now()) @map("created_at")
+  id           String      @id @default(cuid())
+  cicloId      String      @map("ciclo_id")
+  ciclo        CicloConteo @relation(fields: [cicloId], references: [id], onDelete: Cascade)
+  archivo      String      @db.VarChar(255)
+  totalFilas   Int         @map("total_filas")
+  importadoPor String      @map("importado_por")
+  createdAt    DateTime    @default(now()) @map("created_at")
 
   @@map("importaciones_teorico")
 }
@@ -538,10 +511,10 @@ model InspeccionPreoperacional {
   estado         EstadoInspeccion @default(APROBADA)
   vigente        Boolean          @default(true)
 
-  rutas     Ruta[]              @relation("RutaInspeccion")
+  rutas     Ruta[]           @relation("RutaInspeccion")
   items     ItemInspeccion[]
-  createdAt DateTime            @default(now()) @map("created_at")
-  updatedAt DateTime            @updatedAt @map("updated_at")
+  createdAt DateTime         @default(now()) @map("created_at")
+  updatedAt DateTime         @updatedAt @map("updated_at")
 
   @@index([vehiculoId, fecha])
   @@index([conductorId, fecha])

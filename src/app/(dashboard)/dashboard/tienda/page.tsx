@@ -6,7 +6,7 @@ import { useSession } from "next-auth/react";
 import { can } from "@/lib/permissions";
 import {
   Store, Plus, Search, X, CheckCircle2, Truck, AlertTriangle,
-  Pencil, Trash2, Package, Minus, PackageCheck, MapPin, Navigation,
+  Pencil, Trash2, Package, Minus, PackageCheck,
 } from "lucide-react";
 import {
   DespachoTienda, PlinDespacho, EstadoDespacho, ESTADOS_DESPACHO, ESTADO_DESPACHO_LABEL,
@@ -70,6 +70,8 @@ export default function TiendaPage() {
   const role = (session?.user as { role?: string } | undefined)?.role;
   const canEdit   = can(role, "edit");
   const canDelete = can(role, "delete");
+  const canEditBasic = ["TIENDA", "SUPERVISOR_TIENDA", "SUPERVISOR_TRANSPORTE", "GERENTE", "ADMIN"].includes(role ?? "");
+  const canChangeOperationalState = ["SUPERVISOR_TRANSPORTE", "GERENTE", "ADMIN"].includes(role ?? "");
 
   const [items, setItems] = useState<DespachoTienda[]>([]);
   const [loading, setLoading] = useState(true);
@@ -86,12 +88,6 @@ export default function TiendaPage() {
   const [creando, setCreando] = useState(false);
   const [editing, setEditing] = useState<DespachoTienda | null>(null);
   const [deleting, setDeleting] = useState<DespachoTienda | null>(null);
-  // Modal asignación a ruta
-  const [asignandoRuta, setAsignandoRuta] = useState<DespachoTienda | null>(null);
-  // Modal asignación de conductor (CREADO_TIENDA → ASIGNADO_RECOGIDA)
-  const [asignandoRecogida, setAsignandoRecogida] = useState<DespachoTienda | null>(null);
-  // Rol del usuario actual (para mostrar botones de supervisor)
-  const canAsignarRecogida = role === "SUPERVISOR_TRANSPORTE" || role === "GERENTE" || role === "ADMIN";
 
   async function load() {
     setLoading(true);
@@ -135,13 +131,11 @@ export default function TiendaPage() {
   const kpis = useMemo(() => ({
     total:             items.length,
     creadosTienda:     items.filter((d) => d.estado === "CREADO_TIENDA").length,
-    asignadoRecogida:  items.filter((d) => d.estado === "ASIGNADO_RECOGIDA").length,
     recogidoTienda:    items.filter((d) => d.estado === "RECOGIDO_TIENDA").length,
     entregadoCedi:     items.filter((d) => d.estado === "ENTREGADO_CEDI").length,
-    enRuta:            items.filter((d) => d.estado === "EN_RUTA").length,
-    entregadoCliente:  items.filter((d) => d.estado === "ENTREGADO_CLIENTE").length,
+    enviadoCliente:    items.filter((d) => d.estado === "ENVIADO_CLIENTE").length,
     novedades:         items.filter((d) => d.estado === "CON_NOVEDAD").length,
-    pendientesRecogida: items.filter((d) => d.estado === "CREADO_TIENDA" || d.estado === "ASIGNADO_RECOGIDA").length,
+    pendientesRecogida: items.filter((d) => d.estado === "CREADO_TIENDA").length,
   }), [items]);
 
   const centrosCostos = useMemo(() => [...new Set(items.map((d) => d.centroCostos))].sort(), [items]);
@@ -205,12 +199,12 @@ export default function TiendaPage() {
             <Stat value={kpis.pendientesRecogida} label="Pendientes de recogida"
               color={kpis.pendientesRecogida > 0 ? "var(--warning)" : "var(--success)"}
               onClick={() => setFEstado("CREADO_TIENDA")} />
-            <Stat value={kpis.recogidoTienda + kpis.entregadoCedi + kpis.enRuta} label="En tránsito"
+            <Stat value={kpis.recogidoTienda + kpis.entregadoCedi} label="En proceso CEDI"
               color="var(--info)"
               onClick={() => setFEstado("RECOGIDO_TIENDA")} />
-            <Stat value={kpis.entregadoCliente} label="Entregados al cliente"
+            <Stat value={kpis.enviadoCliente} label="Enviados al cliente"
               color="var(--success)"
-              onClick={() => setFEstado("ENTREGADO_CLIENTE")} />
+              onClick={() => setFEstado("ENVIADO_CLIENTE")} />
             <Stat value={kpis.novedades} label="Con novedad"
               color={kpis.novedades > 0 ? "var(--error)" : "var(--muted)"}
               onClick={() => setFEstado("CON_NOVEDAD")} />
@@ -295,7 +289,7 @@ export default function TiendaPage() {
               </thead>
               <tbody>
                 {filtered.map((d) => {
-                  const horas = (d.estado === "CREADO_TIENDA" || d.estado === "ASIGNADO_RECOGIDA") ? horasDesde(d.createdAt) : 0;
+                  const horas = d.estado === "CREADO_TIENDA" ? horasDesde(d.createdAt) : 0;
                   const critico = horas >= 24;
                   return (
                     <tr key={d.id} className="ds-row" onClick={() => abrirPanel(d)} style={{ background: panelItem?.id === d.id ? "var(--surface2)" : undefined }}>
@@ -315,33 +309,22 @@ export default function TiendaPage() {
                       <td><Badge label={ESTADO_DESPACHO_LABEL[d.estado]} variant={estadoDespachoVariant(d.estado)} /></td>
                       <td>
                         <div className="ds-row-actions">
-                          {d.estado === "CREADO_TIENDA" && canAsignarRecogida && (
-                            <button className="ds-btn ds-btn-sm" style={{ background: "#f9731614", color: "#f97316", height: 26, fontSize: 11 }}
-                              onClick={(e) => { e.stopPropagation(); setAsignandoRecogida(d); }} title="Asignar conductor para recogida">
-                              <PackageCheck size={12} />Asignar
-                            </button>
-                          )}
-                          {(d.estado === "ASIGNADO_RECOGIDA") &&
+                          {d.estado === "CREADO_TIENDA" && canChangeOperationalState &&
                             <button className="ds-btn ds-btn-sm" style={{ background: "var(--info-tint)", color: "var(--info)", height: 26, fontSize: 11 }}
                               onClick={(e) => { e.stopPropagation(); cambiarEstado(d, "RECOGIDO_TIENDA"); }} title="Marcar recogido en tienda">
                               <Truck size={12} />Recogido
                             </button>}
-                          {d.estado === "RECOGIDO_TIENDA" &&
+                          {d.estado === "RECOGIDO_TIENDA" && canChangeOperationalState &&
                             <button className="ds-btn ds-btn-sm" style={{ background: "#8b5cf614", color: "#8b5cf6", height: 26, fontSize: 11 }}
                               onClick={(e) => { e.stopPropagation(); cambiarEstado(d, "ENTREGADO_CEDI"); }} title="Entregado en CEDI">
-                              <Navigation size={12} />CEDI
+                              <PackageCheck size={12} />CEDI
                             </button>}
-                          {d.estado === "ENTREGADO_CEDI" &&
-                            <button className="ds-btn ds-btn-sm" style={{ background: "#06b6d414", color: "#06b6d4", height: 26, fontSize: 11 }}
-                              onClick={(e) => { e.stopPropagation(); setAsignandoRuta(d); }} title="Asignar a ruta">
-                              <Navigation size={12} />Asignar ruta
-                            </button>}
-                          {d.estado === "EN_RUTA" &&
+                          {d.estado === "ENTREGADO_CEDI" && canChangeOperationalState &&
                             <button className="ds-btn ds-btn-sm" style={{ background: "var(--success-tint)", color: "var(--success)", height: 26, fontSize: 11 }}
-                              onClick={(e) => { e.stopPropagation(); cambiarEstado(d, "ENTREGADO_CLIENTE"); }} title="Confirmar entrega al cliente">
-                              <CheckCircle2 size={12} />Entregado
+                              onClick={(e) => { e.stopPropagation(); cambiarEstado(d, "ENVIADO_CLIENTE"); }} title="Marcar enviado al cliente">
+                              <CheckCircle2 size={12} />Enviado
                             </button>}
-                          {canEdit && <button className="ds-btn ds-btn-sm ds-btn-ghost" style={{ height: 26 }} onClick={(e) => { e.stopPropagation(); setEditing(d); }} title="Editar"><Pencil size={12} /></button>}
+                          {canEditBasic && (d.estado === "CREADO_TIENDA" || canEdit) && <button className="ds-btn ds-btn-sm ds-btn-ghost" style={{ height: 26 }} onClick={(e) => { e.stopPropagation(); setEditing(d); }} title="Editar"><Pencil size={12} /></button>}
                           {canDelete && <button className="ds-btn ds-btn-sm ds-btn-ghost" style={{ height: 26, color: "var(--error)" }} onClick={(e) => { e.stopPropagation(); setDeleting(d); }} title="Eliminar"><Trash2 size={12} /></button>}
                         </div>
                       </td>
@@ -363,34 +346,23 @@ export default function TiendaPage() {
         insights={panelInsights}
         badge={panelItem && <Badge label={ESTADO_DESPACHO_LABEL[panelItem.estado]} variant={estadoDespachoVariant(panelItem.estado)} />}
         primaryAction={
-          panelItem && (panelItem.estado === "CREADO_TIENDA" || panelItem.estado === "ASIGNADO_RECOGIDA") ? (
+          panelItem && canChangeOperationalState && panelItem.estado === "CREADO_TIENDA" ? (
             <button className="ds-btn ds-btn-primary" style={{ width: "100%", background: "var(--info)" }} onClick={() => cambiarEstado(panelItem, "RECOGIDO_TIENDA")}>
               <Truck size={13} />Marcar como Recogido
             </button>
-          ) : panelItem && panelItem.estado === "RECOGIDO_TIENDA" ? (
+          ) : panelItem && canChangeOperationalState && panelItem.estado === "RECOGIDO_TIENDA" ? (
             <button className="ds-btn ds-btn-primary" style={{ width: "100%", background: "#8b5cf6" }} onClick={() => cambiarEstado(panelItem, "ENTREGADO_CEDI")}>
-              <Navigation size={13} />Entregado en CEDI
+              <PackageCheck size={13} />Entregado en CEDI
             </button>
-          ) : panelItem && panelItem.estado === "ENTREGADO_CEDI" ? (
-            <button className="ds-btn ds-btn-primary" style={{ width: "100%", background: "#06b6d4" }} onClick={() => setAsignandoRuta(panelItem)}>
-              <Navigation size={13} />Asignar a ruta
-            </button>
-          ) : panelItem && panelItem.estado === "EN_RUTA" ? (
-            <button className="ds-btn ds-btn-primary" style={{ width: "100%", background: "var(--success)" }} onClick={() => cambiarEstado(panelItem, "ENTREGADO_CLIENTE")}>
-              <CheckCircle2 size={13} />Confirmar entrega
+          ) : panelItem && canChangeOperationalState && panelItem.estado === "ENTREGADO_CEDI" ? (
+            <button className="ds-btn ds-btn-primary" style={{ width: "100%", background: "var(--success)" }} onClick={() => cambiarEstado(panelItem, "ENVIADO_CLIENTE")}>
+              <CheckCircle2 size={13} />Marcar enviado al cliente
             </button>
           ) : undefined
         }
         secondaryActions={
           <div style={{ display: "flex", gap: 8 }}>
-            {panelItem && panelItem.estado === "CREADO_TIENDA" && canAsignarRecogida && (
-              <button className="ds-btn ds-btn-sm ds-btn-secondary"
-                style={{ color: "#f97316", borderColor: "#f9731633" }}
-                onClick={() => setAsignandoRecogida(panelItem)}>
-                <PackageCheck size={13} />Asignar conductor
-              </button>
-            )}
-            {panelItem && ESTADOS_ACTIVOS.includes(panelItem.estado) && (
+            {panelItem && canChangeOperationalState && ESTADOS_ACTIVOS.includes(panelItem.estado) && (
               <button className="ds-btn ds-btn-sm ds-btn-secondary" style={{ color: "var(--error)" }}
                 onClick={() => {
                   const novedad = prompt("Describe la novedad:");
@@ -399,7 +371,7 @@ export default function TiendaPage() {
                 <AlertTriangle size={13} />Novedad
               </button>
             )}
-            {canEdit && panelItem && <button className="ds-btn ds-btn-sm ds-btn-secondary" onClick={() => setEditing(panelItem)}><Pencil size={13} /></button>}
+            {canEditBasic && panelItem && (panelItem.estado === "CREADO_TIENDA" || canEdit) && <button className="ds-btn ds-btn-sm ds-btn-secondary" onClick={() => setEditing(panelItem)}><Pencil size={13} /></button>}
           </div>
         }
       >
@@ -454,8 +426,8 @@ export default function TiendaPage() {
                 { label: "Entrega comprometida",     value: panelItem.fechaEntregaComprometida ? fmtFechaTienda(panelItem.fechaEntregaComprometida) : undefined },
                 { label: "Número de cajas",          value: panelItem.numeroCajas != null ? String(panelItem.numeroCajas) : undefined },
                 { label: "Recogido",                 value: panelItem.recibidoAt  ? new Date(panelItem.recibidoAt).toLocaleString("es-CO",  { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" }) : undefined },
-                { label: "En ruta desde",            value: panelItem.enRutaAt    ? new Date(panelItem.enRutaAt).toLocaleString("es-CO",     { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" }) : undefined },
-                { label: "Entregado",                value: panelItem.despachadoAt ? new Date(panelItem.despachadoAt).toLocaleString("es-CO", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" }) : undefined },
+                { label: "Llegada CEDI",             value: panelItem.entregadoCediAt ? new Date(panelItem.entregadoCediAt).toLocaleString("es-CO", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" }) : undefined },
+                { label: "Enviado cliente",          value: panelItem.despachadoAt ? new Date(panelItem.despachadoAt).toLocaleString("es-CO", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" }) : undefined },
                 { label: "ID NetSuite",
                   value: (
                     <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
@@ -482,7 +454,6 @@ export default function TiendaPage() {
               ]} />
             </DetailSection>
 
-            {/* PLUs del despacho */}
             {panelItem.plines && panelItem.plines.length > 0 && (
               <DetailSection title={`PLUs del despacho (${panelItem.plines.length})`}>
                 <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
@@ -505,6 +476,14 @@ export default function TiendaPage() {
                 { label: "Teléfono",  value: panelItem.clienteTelefono ?? undefined },
               ]} />
             </DetailSection>
+
+            {panelItem.notaEntrega && (
+              <DetailSection title="Nota de entrega">
+                <div style={{ background: "var(--surface2)", borderRadius: 8, padding: "10px 12px", fontSize: 13, color: "var(--muted)", whiteSpace: "pre-wrap", lineHeight: 1.5 }}>
+                  {panelItem.notaEntrega}
+                </div>
+              </DetailSection>
+            )}
 
             {panelItem.novedad && (
               <DetailSection title="Novedad registrada">
@@ -548,225 +527,12 @@ export default function TiendaPage() {
         </ModalBase>
       )}
 
-      {/* ── Modal asignar conductor (CREADO_TIENDA → ASIGNADO_RECOGIDA) ── */}
-      {asignandoRecogida && (
-        <ModalAsignarRecogida
-          despacho={asignandoRecogida}
-          onClose={() => setAsignandoRecogida(null)}
-          onAsignado={(conductorAsignadoId, vehiculoAsignadoId) => {
-            cambiarEstado(asignandoRecogida, "ASIGNADO_RECOGIDA", { conductorAsignadoId, vehiculoAsignadoId });
-            setAsignandoRecogida(null);
-          }}
-          onError={(m) => showToast(m, true)}
-        />
-      )}
-
-      {/* ── Modal asignar a ruta (ENTREGADO_CEDI → EN_RUTA) ── */}
-      {asignandoRuta && (
-        <ModalAsignarRuta
-          despacho={asignandoRuta}
-          onClose={() => setAsignandoRuta(null)}
-          onAsignado={(rutaId) => {
-            cambiarEstado(asignandoRuta, "EN_RUTA", { rutaId });
-            setAsignandoRuta(null);
-          }}
-          onError={(m) => showToast(m, true)}
-        />
-      )}
-
       {toast && (
         <div className="animate-fade-up" style={{ position: "fixed", bottom: 24, right: 24, zIndex: 10000, background: toast.err ? "var(--error)" : "#0F0F10", color: "#fff", padding: "10px 16px", borderRadius: 10, fontSize: 13, fontWeight: 500, boxShadow: "var(--shadow-xl)", display: "flex", alignItems: "center", gap: 8 }}>
           {!toast.err && <CheckCircle2 size={14} />}{toast.msg}
         </div>
       )}
     </div>
-  );
-}
-
-// ── Modal asignar conductor para recogida (CREADO_TIENDA → ASIGNADO_RECOGIDA) ──
-function ModalAsignarRecogida({ despacho, onClose, onAsignado, onError }: {
-  despacho: DespachoTienda;
-  onClose: () => void;
-  onAsignado: (conductorId: string, vehiculoId: string) => void;
-  onError: (m: string) => void;
-}) {
-  const [conductores, setConductores] = useState<Array<{ id: string; nombre: string; telefono: string | null; vehiculoId: string | null; vehiculo?: { placa: string } | null }>>([]);
-  const [vehiculos,   setVehiculos]   = useState<Array<{ id: string; placa: string; tipo: string }>>([]);
-  const [conductorId, setConductorId] = useState("");
-  const [vehiculoId,  setVehiculoId]  = useState("");
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    Promise.all([
-      fetch("/api/logistica/transportistas").then((r) => r.json()),
-      fetch("/api/logistica/vehiculos").then((r) => r.json()),
-    ]).then(([cJ, vJ]) => {
-      if (cJ.success) setConductores(cJ.data.filter((c: any) => c.activo));
-      if (vJ.success) setVehiculos(vJ.data.filter((v: any) => v.estado === "ACTIVO"));
-    }).catch(() => {}).finally(() => setLoading(false));
-  }, []);
-
-  // Al seleccionar conductor, auto-seleccionar su vehículo si tiene uno asignado
-  function onConductorChange(id: string) {
-    setConductorId(id);
-    const cond = conductores.find((c) => c.id === id);
-    if (cond?.vehiculoId) setVehiculoId(cond.vehiculoId);
-    else setVehiculoId("");
-  }
-
-  return (
-    <ModalBase
-      title="Asignar conductor para recogida"
-      sub={`${despacho.numeroDocumento} · ${despacho.clienteNombre}`}
-      onClose={onClose}
-    >
-      <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-        {loading ? (
-          <div style={{ textAlign: "center", padding: "20px 0", fontSize: 13, color: "var(--muted)" }}>Cargando conductores…</div>
-        ) : (
-          <>
-            <div>
-              <label style={{ fontSize: 12, fontWeight: 600, color: "var(--muted2)", display: "block", marginBottom: 6 }}>
-                Conductor *
-              </label>
-              <select value={conductorId} onChange={(e) => onConductorChange(e.target.value)} style={{ ...inp, height: 40 }}>
-                <option value="">— Selecciona un conductor —</option>
-                {conductores.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.nombre}{c.vehiculo ? ` · ${c.vehiculo.placa}` : ""}
-                    {c.telefono ? ` · ${c.telefono}` : ""}
-                  </option>
-                ))}
-              </select>
-              {conductores.length === 0 && (
-                <div style={{ fontSize: 11, color: "var(--faint)", marginTop: 4 }}>
-                  Crea conductores en Logística → Conductores primero.
-                </div>
-              )}
-            </div>
-
-            <div>
-              <label style={{ fontSize: 12, fontWeight: 600, color: "var(--muted2)", display: "block", marginBottom: 6 }}>
-                Vehículo *
-              </label>
-              <select value={vehiculoId} onChange={(e) => setVehiculoId(e.target.value)} style={{ ...inp, height: 40 }}>
-                <option value="">— Selecciona un vehículo —</option>
-                {vehiculos.map((v) => (
-                  <option key={v.id} value={v.id}>{v.placa} — {v.tipo}</option>
-                ))}
-              </select>
-            </div>
-
-            {/* Info del despacho */}
-            {despacho.direccionEntrega && (
-              <div style={{ padding: "10px 12px", background: "var(--surface2)", borderRadius: 8, fontSize: 12, color: "var(--muted)" }}>
-                <strong style={{ color: "var(--text)" }}>Dirección de entrega:</strong><br />
-                {despacho.direccionEntrega}{despacho.ciudad ? `, ${despacho.ciudad}` : ""}
-              </div>
-            )}
-
-            <div style={{ display: "flex", gap: 8 }}>
-              <button className="ds-btn ds-btn-secondary" style={{ flex: 1 }} onClick={onClose}>Cancelar</button>
-              <button
-                className="ds-btn ds-btn-primary"
-                style={{ flex: 2, background: "#f97316" }}
-                disabled={!conductorId || !vehiculoId}
-                onClick={() => {
-                  if (!conductorId) { onError("Selecciona un conductor"); return; }
-                  if (!vehiculoId)  { onError("Selecciona un vehículo"); return; }
-                  onAsignado(conductorId, vehiculoId);
-                }}
-              >
-                <PackageCheck size={14} />Asignar y enviar a recogida
-              </button>
-            </div>
-          </>
-        )}
-      </div>
-    </ModalBase>
-  );
-}
-
-// ── Modal asignar despacho a ruta ────────────────────────
-function ModalAsignarRuta({ despacho, onClose, onAsignado, onError }: {
-  despacho: DespachoTienda;
-  onClose: () => void;
-  onAsignado: (rutaId: string) => void;
-  onError: (m: string) => void;
-}) {
-  const [rutas, setRutas] = useState<Array<{ id: string; nombre: string; estado: string; fecha: string; transportistaNombre?: string }>>([]);
-  const [rutaId, setRutaId] = useState("");
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    fetch("/api/logistica/rutas")
-      .then((r) => r.json())
-      .then((j) => {
-        if (j.success) {
-          // Solo rutas PENDIENTE o EN_CURSO
-          setRutas((j.data ?? []).filter((r: any) => r.estado === "PENDIENTE" || r.estado === "EN_CURSO"));
-        }
-      })
-      .catch(() => {})
-      .finally(() => setLoading(false));
-  }, []);
-
-  return (
-    <ModalBase
-      title="Asignar a ruta logística"
-      sub={`Despacho: ${despacho.numeroDocumento} · ${despacho.clienteNombre}`}
-      onClose={onClose}
-    >
-      <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-        {loading ? (
-          <div style={{ textAlign: "center", padding: "20px 0", fontSize: 13, color: "var(--muted)" }}>Cargando rutas…</div>
-        ) : rutas.length === 0 ? (
-          <div style={{ textAlign: "center", padding: "20px 0" }}>
-            <div style={{ fontSize: 13, color: "var(--muted)", marginBottom: 8 }}>
-              No hay rutas activas disponibles.
-            </div>
-            <p style={{ fontSize: 12, color: "var(--faint)" }}>
-              Crea una ruta en el módulo de Logística y luego regresa aquí.
-            </p>
-          </div>
-        ) : (
-          <>
-            <div>
-              <label style={{ fontSize: 12, fontWeight: 600, color: "var(--muted2)", display: "block", marginBottom: 6 }}>
-                Seleccionar ruta
-              </label>
-              <select
-                value={rutaId}
-                onChange={(e) => setRutaId(e.target.value)}
-                style={{ ...inp, height: 40 }}
-              >
-                <option value="">— Selecciona una ruta —</option>
-                {rutas.map((r) => (
-                  <option key={r.id} value={r.id}>
-                    {r.nombre} · {r.fecha} {r.transportistaNombre ? `· ${r.transportistaNombre}` : ""}
-                    {r.estado === "EN_CURSO" ? " (En curso)" : ""}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div style={{ display: "flex", gap: 8 }}>
-              <button className="ds-btn ds-btn-secondary" style={{ flex: 1 }} onClick={onClose}>Cancelar</button>
-              <button
-                className="ds-btn ds-btn-primary"
-                style={{ flex: 2, background: "#06b6d4" }}
-                disabled={!rutaId}
-                onClick={() => {
-                  if (!rutaId) { onError("Selecciona una ruta"); return; }
-                  onAsignado(rutaId);
-                }}
-              >
-                <Navigation size={14} />Asignar y poner En Ruta
-              </button>
-            </div>
-          </>
-        )}
-      </div>
-    </ModalBase>
   );
 }
 
@@ -784,6 +550,7 @@ function ModalDespacho({ despacho, onClose, onSaved, onError }: {
   const [fechaCreacion,           setFecha]  = useState(despacho?.fechaCreacion ?? todayISO());
   const [fechaEntrega,            setFEntrega]=useState(despacho?.fechaEntregaComprometida ?? "");
   const [numeroCajas,             setNCajas] = useState(despacho?.numeroCajas != null ? String(despacho.numeroCajas) : "");
+  const [notaEntrega,             setNotaEntrega] = useState(despacho?.notaEntrega ?? "");
   const [plines, setPlines] = useState<Array<{ plu: string; descripcion: string; unidades: string }>>(
     despacho?.plines?.map((p) => ({ plu: p.plu, descripcion: p.descripcion ?? "", unidades: String(p.unidades) })) ?? []
   );
@@ -811,6 +578,7 @@ function ModalDespacho({ despacho, onClose, onSaved, onError }: {
         fechaCreacion,
         fechaEntregaComprometida: fechaEntrega || null,
         numeroCajas: numeroCajas ? parseInt(numeroCajas) : null,
+        notaEntrega: notaEntrega.trim() || null,
       };
       if (!isEdit && plinesValidos.length > 0) {
         body.plines = plinesValidos.map((p) => ({ plu: p.plu.trim(), descripcion: p.descripcion.trim() || null, unidades: parseInt(p.unidades) }));
@@ -841,6 +609,16 @@ function ModalDespacho({ despacho, onClose, onSaved, onError }: {
           <Field label="Entrega comprometida"><input type="date" value={fechaEntrega} onChange={(e) => setFEntrega(e.target.value)} style={inp} {...focusProps} /></Field>
           <Field label="Número de cajas"><input type="number" value={numeroCajas} onChange={(e) => setNCajas(e.target.value)} min="1" placeholder="0" style={inp} {...focusProps} /></Field>
         </div>
+
+        <Field label="Nota de entrega">
+          <textarea
+            value={notaEntrega}
+            onChange={(e) => setNotaEntrega(e.target.value)}
+            placeholder="Direcci?n, contacto, observaciones o instrucciones de entrega"
+            style={{ ...inp, minHeight: 88, height: "auto", paddingTop: 10, resize: "vertical" }}
+            {...focusProps}
+          />
+        </Field>
 
         {/* PLUs del despacho */}
         <div style={{ borderTop: "1px solid var(--border)", paddingTop: 12 }}>

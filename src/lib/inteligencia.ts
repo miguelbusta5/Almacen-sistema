@@ -523,7 +523,7 @@ export function insightsSla(items: Novedad[]): IntelInsight[] {
 export function insightsTienda(despachos: DespachoTienda[]): IntelInsight[] {
   const out: IntelInsight[] = [];
   // Pendientes de recogida = creados en tienda sin recoger aún
-  const pendientes = despachos.filter((d) => d.estado === "CREADO_TIENDA" || d.estado === "ASIGNADO_RECOGIDA");
+  const pendientes = despachos.filter((d) => d.estado === "CREADO_TIENDA");
   const novedades  = despachos.filter((d) => d.estado === "CON_NOVEDAD");
 
   // 1. Despachos pendientes de recogida >24h
@@ -576,12 +576,12 @@ export function insightsTienda(despachos: DespachoTienda[]): IntelInsight[] {
 
 export function insightsPorDespacho(d: DespachoTienda, todos: DespachoTienda[]): IntelInsight[] {
   const out: IntelInsight[] = [];
-  const sinRecoger = d.estado === "CREADO_TIENDA" || d.estado === "ASIGNADO_RECOGIDA";
+  const sinRecoger = d.estado === "CREADO_TIENDA";
   const horas = sinRecoger ? horasDesde(d.createdAt) : 0;
   if (horas >= 24) {
     out.push({ id: `pend-24h-${d.id}`, level: "critical", module: "tienda" as any, message: `Sin recoger hace ${horas}h`, context: "Verificar con transporte" });
   }
-  const mismoCC = todos.filter((x) => x.centroCostos === d.centroCostos && x.id !== d.id && (x.estado === "CREADO_TIENDA" || x.estado === "ASIGNADO_RECOGIDA")).length;
+  const mismoCC = todos.filter((x) => x.centroCostos === d.centroCostos && x.id !== d.id && x.estado === "CREADO_TIENDA").length;
   if (mismoCC >= 3) {
     out.push({ id: `cc-acum-${d.id}`, level: "info", module: "tienda" as any, message: `${d.centroCostos} tiene ${mismoCC} despachos adicionales sin recoger` });
   }
