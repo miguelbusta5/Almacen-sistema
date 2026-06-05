@@ -86,6 +86,8 @@ export default function TiendaPage() {
   const [creando, setCreando] = useState(false);
   const [editing, setEditing] = useState<DespachoTienda | null>(null);
   const [deleting, setDeleting] = useState<DespachoTienda | null>(null);
+  // Modal asignación a ruta
+  const [asignandoRuta, setAsignandoRuta] = useState<DespachoTienda | null>(null);
 
   async function load() {
     setLoading(true);
@@ -107,9 +109,8 @@ export default function TiendaPage() {
     if (json.success) { setPanelItem(json.data); setPanelHistorial(json.historial ?? []); }
   }
 
-  async function cambiarEstado(d: DespachoTienda, estado: EstadoDespacho, novedad?: string) {
-    const body: any = { estado };
-    if (novedad !== undefined) body.novedad = novedad;
+  async function cambiarEstado(d: DespachoTienda, estado: EstadoDespacho, extra?: Record<string, unknown>) {
+    const body: any = { estado, ...extra };
     const res = await fetch(`/api/tienda/${d.id}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
     const json = await res.json();
     if (json.success) {
@@ -322,8 +323,8 @@ export default function TiendaPage() {
                             </button>}
                           {d.estado === "ENTREGADO_CEDI" &&
                             <button className="ds-btn ds-btn-sm" style={{ background: "#06b6d414", color: "#06b6d4", height: 26, fontSize: 11 }}
-                              onClick={(e) => { e.stopPropagation(); cambiarEstado(d, "EN_RUTA"); }} title="Poner en ruta">
-                              <Navigation size={12} />En ruta
+                              onClick={(e) => { e.stopPropagation(); setAsignandoRuta(d); }} title="Asignar a ruta">
+                              <Navigation size={12} />Asignar ruta
                             </button>}
                           {d.estado === "EN_RUTA" &&
                             <button className="ds-btn ds-btn-sm" style={{ background: "var(--success-tint)", color: "var(--success)", height: 26, fontSize: 11 }}
@@ -361,8 +362,8 @@ export default function TiendaPage() {
               <Navigation size={13} />Entregado en CEDI
             </button>
           ) : panelItem && panelItem.estado === "ENTREGADO_CEDI" ? (
-            <button className="ds-btn ds-btn-primary" style={{ width: "100%", background: "#06b6d4" }} onClick={() => cambiarEstado(panelItem, "EN_RUTA")}>
-              <Navigation size={13} />Poner en ruta
+            <button className="ds-btn ds-btn-primary" style={{ width: "100%", background: "#06b6d4" }} onClick={() => setAsignandoRuta(panelItem)}>
+              <Navigation size={13} />Asignar a ruta
             </button>
           ) : panelItem && panelItem.estado === "EN_RUTA" ? (
             <button className="ds-btn ds-btn-primary" style={{ width: "100%", background: "var(--success)" }} onClick={() => cambiarEstado(panelItem, "ENTREGADO_CLIENTE")}>
@@ -383,7 +384,7 @@ export default function TiendaPage() {
               <button className="ds-btn ds-btn-sm ds-btn-secondary" style={{ color: "var(--error)" }}
                 onClick={() => {
                   const novedad = prompt("Describe la novedad:");
-                  if (novedad !== null) cambiarEstado(panelItem, "CON_NOVEDAD", novedad);
+                  if (novedad !== null) cambiarEstado(panelItem, "CON_NOVEDAD", { novedad });
                 }}>
                 <AlertTriangle size={13} />Novedad
               </button>
@@ -537,12 +538,108 @@ export default function TiendaPage() {
         </ModalBase>
       )}
 
+      {/* ── Modal asignar a ruta (ENTREGADO_CEDI → EN_RUTA) ── */}
+      {asignandoRuta && (
+        <ModalAsignarRuta
+          despacho={asignandoRuta}
+          onClose={() => setAsignandoRuta(null)}
+          onAsignado={(rutaId) => {
+            cambiarEstado(asignandoRuta, "EN_RUTA", { rutaId });
+            setAsignandoRuta(null);
+          }}
+          onError={(m) => showToast(m, true)}
+        />
+      )}
+
       {toast && (
         <div className="animate-fade-up" style={{ position: "fixed", bottom: 24, right: 24, zIndex: 10000, background: toast.err ? "var(--error)" : "#0F0F10", color: "#fff", padding: "10px 16px", borderRadius: 10, fontSize: 13, fontWeight: 500, boxShadow: "var(--shadow-xl)", display: "flex", alignItems: "center", gap: 8 }}>
           {!toast.err && <CheckCircle2 size={14} />}{toast.msg}
         </div>
       )}
     </div>
+  );
+}
+
+// ── Modal asignar despacho a ruta ────────────────────────
+function ModalAsignarRuta({ despacho, onClose, onAsignado, onError }: {
+  despacho: DespachoTienda;
+  onClose: () => void;
+  onAsignado: (rutaId: string) => void;
+  onError: (m: string) => void;
+}) {
+  const [rutas, setRutas] = useState<Array<{ id: string; nombre: string; estado: string; fecha: string; transportistaNombre?: string }>>([]);
+  const [rutaId, setRutaId] = useState("");
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetch("/api/logistica/rutas")
+      .then((r) => r.json())
+      .then((j) => {
+        if (j.success) {
+          // Solo rutas PENDIENTE o EN_CURSO
+          setRutas((j.data ?? []).filter((r: any) => r.estado === "PENDIENTE" || r.estado === "EN_CURSO"));
+        }
+      })
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  }, []);
+
+  return (
+    <ModalBase
+      title="Asignar a ruta logística"
+      sub={`Despacho: ${despacho.numeroDocumento} · ${despacho.clienteNombre}`}
+      onClose={onClose}
+    >
+      <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+        {loading ? (
+          <div style={{ textAlign: "center", padding: "20px 0", fontSize: 13, color: "var(--muted)" }}>Cargando rutas…</div>
+        ) : rutas.length === 0 ? (
+          <div style={{ textAlign: "center", padding: "20px 0" }}>
+            <div style={{ fontSize: 13, color: "var(--muted)", marginBottom: 8 }}>
+              No hay rutas activas disponibles.
+            </div>
+            <p style={{ fontSize: 12, color: "var(--faint)" }}>
+              Crea una ruta en el módulo de Logística y luego regresa aquí.
+            </p>
+          </div>
+        ) : (
+          <>
+            <div>
+              <label style={{ fontSize: 12, fontWeight: 600, color: "var(--muted2)", display: "block", marginBottom: 6 }}>
+                Seleccionar ruta
+              </label>
+              <select
+                value={rutaId}
+                onChange={(e) => setRutaId(e.target.value)}
+                style={{ ...inp, height: 40 }}
+              >
+                <option value="">— Selecciona una ruta —</option>
+                {rutas.map((r) => (
+                  <option key={r.id} value={r.id}>
+                    {r.nombre} · {r.fecha} {r.transportistaNombre ? `· ${r.transportistaNombre}` : ""}
+                    {r.estado === "EN_CURSO" ? " (En curso)" : ""}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div style={{ display: "flex", gap: 8 }}>
+              <button className="ds-btn ds-btn-secondary" style={{ flex: 1 }} onClick={onClose}>Cancelar</button>
+              <button
+                className="ds-btn ds-btn-primary"
+                style={{ flex: 2, background: "#06b6d4" }}
+                disabled={!rutaId}
+                onClick={() => {
+                  if (!rutaId) { onError("Selecciona una ruta"); return; }
+                  onAsignado(rutaId);
+                }}
+              >
+                <Navigation size={14} />Asignar y poner En Ruta
+              </button>
+            </div>
+          </>
+        )}
+      </div>
+    </ModalBase>
   );
 }
 

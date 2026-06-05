@@ -764,13 +764,29 @@ function ModalTransportista({ transportista, vehiculos, onClose, onSaved, onErro
   const [tel, setTel] = useState(transportista.telefono ?? "");
   const [vehiculoId, setVehiculoId] = useState(transportista.vehiculoId ?? "");
   const [activo, setActivo] = useState(transportista.activo);
+  const [userId, setUserId] = useState(transportista.userId ?? "");
+  const [usuariosTransportista, setUsuariosTransportista] = useState<{ id: string; name: string; email: string }[]>([]);
   const [saving, setSaving] = useState(false);
+
+  // Cargar usuarios con rol TRANSPORTISTA para el selector
+  useEffect(() => {
+    fetch("/api/users?role=TRANSPORTISTA")
+      .then((r) => r.json())
+      .then((j) => { if (j.success) setUsuariosTransportista(j.data ?? []); })
+      .catch(() => {});
+  }, []);
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     if (!nombre.trim()) { onError("Nombre requerido"); return; }
     setSaving(true);
-    const body = { nombre: nombre.trim(), telefono: tel.trim() || null, vehiculoId: vehiculoId || null, activo };
+    const body = {
+      nombre: nombre.trim(),
+      telefono: tel.trim() || null,
+      vehiculoId: vehiculoId || null,
+      userId: userId || null,
+      activo,
+    };
     const url = isNew ? "/api/logistica/transportistas" : `/api/logistica/transportistas/${transportista.id}`;
     const method = isNew ? "POST" : "PUT";
     const res = await fetch(url, { method, headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
@@ -782,18 +798,51 @@ function ModalTransportista({ transportista, vehiculos, onClose, onSaved, onErro
   return (
     <Modal onClose={onClose} title={isNew ? "Agregar conductor" : "Editar conductor"}>
       <form onSubmit={submit} style={{ display: "flex", flexDirection: "column", gap: "0.9rem" }}>
-        <Field label="Nombre *"><input value={nombre} onChange={(e) => setNombre(e.target.value)} style={inp} /></Field>
+
+        {/* Selector de usuario con rol TRANSPORTISTA */}
+        <Field label="Usuario del sistema (rol Transportista)">
+          <select
+            value={userId}
+            onChange={(e) => {
+              setUserId(e.target.value);
+              // Auto-completar nombre si está vacío
+              if (isNew && !nombre.trim()) {
+                const u = usuariosTransportista.find((u) => u.id === e.target.value);
+                if (u) setNombre(u.name);
+              }
+            }}
+            style={inp}
+          >
+            <option value="">— Sin vincular a usuario —</option>
+            {usuariosTransportista.map((u) => (
+              <option key={u.id} value={u.id}>{u.name} ({u.email})</option>
+            ))}
+          </select>
+          {usuariosTransportista.length === 0 && (
+            <div style={{ fontSize: 11, color: "var(--muted)", marginTop: 4 }}>
+              Crea primero el usuario con rol "Transportista" en Gestión de Usuarios.
+            </div>
+          )}
+        </Field>
+
+        <Field label="Nombre del conductor *">
+          <input value={nombre} onChange={(e) => setNombre(e.target.value)} style={inp} placeholder="Nombre completo" />
+        </Field>
         <Field label="Teléfono"><input value={tel} onChange={(e) => setTel(e.target.value)} style={inp} /></Field>
         <Field label="Vehículo asignado">
           <select value={vehiculoId} onChange={(e) => setVehiculoId(e.target.value)} style={inp}>
             <option value="">Sin vehículo</option>
-            {vehiculos.filter((v) => v.estado === "ACTIVO").map((v) => <option key={v.id} value={v.id}>{v.placa} — {VEHICULO_TIPO_LABEL[v.tipo as keyof typeof VEHICULO_TIPO_LABEL]}</option>)}
+            {vehiculos.filter((v) => v.estado === "ACTIVO").map((v) => (
+              <option key={v.id} value={v.id}>{v.placa} — {VEHICULO_TIPO_LABEL[v.tipo as keyof typeof VEHICULO_TIPO_LABEL]}</option>
+            ))}
           </select>
         </Field>
         <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, cursor: "pointer" }}>
           <input type="checkbox" checked={activo} onChange={(e) => setActivo(e.target.checked)} />Activo
         </label>
-        <button type="submit" disabled={saving} style={{ padding: "0.65rem", background: saving ? "#94a3b8" : COLOR, color: "#fff", border: "none", borderRadius: 9, fontSize: 13, fontWeight: 700, cursor: "pointer" }}>{saving ? "Guardando…" : "Guardar"}</button>
+        <button type="submit" disabled={saving} style={{ padding: "0.65rem", background: saving ? "#94a3b8" : COLOR, color: "#fff", border: "none", borderRadius: 9, fontSize: 13, fontWeight: 700, cursor: "pointer" }}>
+          {saving ? "Guardando…" : "Guardar"}
+        </button>
       </form>
     </Modal>
   );

@@ -12,9 +12,28 @@ const createUserSchema = z.object({
   transportistaId: z.string().nullable().optional(), // vincular a transportista existente
 });
 
-export async function GET() {
+export async function GET(req: NextRequest) {
   const session = await auth();
-  if (!session || (session.user as any)?.role !== "ADMIN") {
+  if (!session) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
+  const userRole = (session.user as any)?.role as string;
+
+  // Filtro por rol — accesible para supervisores de transporte y gerencia (usados en dropdowns)
+  const roleFilter = req.nextUrl.searchParams.get("role");
+  if (roleFilter) {
+    const allowed = ["ADMIN", "GERENTE", "SUPERVISOR_TRANSPORTE", "SUPERVISOR_TIENDA", "SUPERVISOR_INVENTARIO"];
+    if (!allowed.includes(userRole)) {
+      return NextResponse.json({ error: "No autorizado" }, { status: 403 });
+    }
+    const users = await prisma.user.findMany({
+      where: { role: roleFilter as any, active: true },
+      select: { id: true, name: true, email: true, role: true },
+      orderBy: { name: "asc" },
+    });
+    return NextResponse.json({ success: true, data: users });
+  }
+
+  // Lista completa — solo ADMIN
+  if (userRole !== "ADMIN") {
     return NextResponse.json({ error: "No autorizado" }, { status: 403 });
   }
   const users = await prisma.user.findMany({
