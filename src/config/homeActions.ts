@@ -57,17 +57,6 @@ export const HOME_ACTIONS: HomeAction[] = [
     roles: ["TRANSPORTE", "SUPERVISOR_TRANSPORTE", "OPERADOR", "GERENTE", "ADMIN"],
     priority: 1,
   },
-  {
-    id: "ver-ruta",
-    title: "Ver ruta de logística",
-    description: "Paradas, vehículos y estado de conductores",
-    href: "/dashboard/logistica",
-    icon: "Route",
-    color: "#7C3AED",
-    moduleKey: "logistica",
-    roles: ["TRANSPORTE", "SUPERVISOR_TRANSPORTE", "OPERADOR", "GERENTE", "ADMIN"],
-    priority: 3,
-  },
   // ── Tienda ──────────────────────────────────────────────
   {
     id: "nuevo-despacho-tienda",
@@ -79,8 +68,8 @@ export const HOME_ACTIONS: HomeAction[] = [
     moduleKey: "tienda",
     roles: [
       "TIENDA", "SUPERVISOR_TIENDA",
-      "TRANSPORTE", "SUPERVISOR_TRANSPORTE",
-      "OPERADOR", "GERENTE", "ADMIN",
+      "SUPERVISOR_TRANSPORTE",
+      "GERENTE", "ADMIN",
     ],
     priority: 1,
   },
@@ -94,7 +83,7 @@ export const HOME_ACTIONS: HomeAction[] = [
     color: "#7C3AED",
     moduleKey: "mis-tareas",
     roles: [
-      "INVENTARIO", "TRANSPORTE", "TIENDA", "TRANSPORTISTA",
+      "INVENTARIO", "TRANSPORTE", "TIENDA",
       "SUPERVISOR_INVENTARIO", "SUPERVISOR_TRANSPORTE", "SUPERVISOR_TIENDA",
       "OPERADOR",
     ],

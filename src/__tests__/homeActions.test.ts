@@ -60,7 +60,7 @@ describe("getHomeActionsByRole", () => {
   describe("TRANSPORTE", () => {
     it("ve nuevo-guardado", () => expect(hasAction("TRANSPORTE", "nuevo-guardado")).toBe(true));
     it("ve ver-mis-tareas", () => expect(hasAction("TRANSPORTE", "ver-mis-tareas")).toBe(true));
-    it("ve nuevo-despacho-tienda", () => expect(hasAction("TRANSPORTE", "nuevo-despacho-tienda")).toBe(true));
+    it("NO ve nuevo-despacho-tienda", () => expect(hasAction("TRANSPORTE", "nuevo-despacho-tienda")).toBe(false));
     it("NO ve nueva-novedad", () => expect(hasAction("TRANSPORTE", "nueva-novedad")).toBe(false));
     it("NO ve ir-conteo", () => expect(hasAction("TRANSPORTE", "ir-conteo")).toBe(false));
     it("NO ve gestionar-usuarios", () => expect(hasAction("TRANSPORTE", "gestionar-usuarios")).toBe(false));
@@ -74,6 +74,7 @@ describe("getHomeActionsByRole", () => {
   // ── SUPERVISOR_TRANSPORTE ────────────────────────────
   describe("SUPERVISOR_TRANSPORTE", () => {
     it("ve nuevo-guardado", () => expect(hasAction("SUPERVISOR_TRANSPORTE", "nuevo-guardado")).toBe(true));
+    it("ve nuevo-despacho-tienda", () => expect(hasAction("SUPERVISOR_TRANSPORTE", "nuevo-despacho-tienda")).toBe(true));
     it("ve centro-control", () => expect(hasAction("SUPERVISOR_TRANSPORTE", "centro-control")).toBe(true));
     it("NO ve nueva-novedad", () => expect(hasAction("SUPERVISOR_TRANSPORTE", "nueva-novedad")).toBe(false));
     it("NO ve gestionar-usuarios", () => expect(hasAction("SUPERVISOR_TRANSPORTE", "gestionar-usuarios")).toBe(false));
@@ -105,7 +106,7 @@ describe("getHomeActionsByRole", () => {
 
   // ── TRANSPORTISTA ────────────────────────────────────
   describe("TRANSPORTISTA", () => {
-    it("ve ver-mis-tareas", () => expect(hasAction("TRANSPORTISTA", "ver-mis-tareas")).toBe(true));
+    it("NO ve ver-mis-tareas", () => expect(hasAction("TRANSPORTISTA", "ver-mis-tareas")).toBe(false));
     it("NO ve nueva-novedad", () => expect(hasAction("TRANSPORTISTA", "nueva-novedad")).toBe(false));
     it("NO ve nuevo-guardado", () => expect(hasAction("TRANSPORTISTA", "nuevo-guardado")).toBe(false));
     it("NO ve nuevo-despacho-tienda", () => expect(hasAction("TRANSPORTISTA", "nuevo-despacho-tienda")).toBe(false));
@@ -174,6 +175,8 @@ describe("getHomeActionsByRole", () => {
       const actions = getHomeActionsByRole("TRANSPORTE", 99);
       expect(actions.every((a) => a.moduleKey !== "inventario")).toBe(true);
       expect(actions.every((a) => a.moduleKey !== "conteo-contar")).toBe(true);
+      expect(actions.every((a) => a.moduleKey !== "tienda")).toBe(true);
+      expect(actions.every((a) => a.moduleKey !== "logistica")).toBe(true);
     });
   });
 

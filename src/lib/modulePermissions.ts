@@ -11,7 +11,7 @@ export type AppRole =
   | "ADMIN"
   | "GERENTE"
   | "OPERADOR"            // Rol legado — acceso general
-  | "TRANSPORTISTA"       // Conductor — solo Mi Ruta
+  | "TRANSPORTISTA"       // Conductor — solo Preoperacional
   | "INVENTARIO"          // Operario inventario
   | "TRANSPORTE"          // Operario transporte/guardados
   | "SUPERVISOR_INVENTARIO"
@@ -43,14 +43,8 @@ export const MODULE_ACCESS: Record<ModuleKey, AppRole[]> = {
     "TRANSPORTE", "SUPERVISOR_TRANSPORTE",
     "GERENTE", "ADMIN", "OPERADOR",
   ],
-  "logistica": [
-    "TRANSPORTE", "SUPERVISOR_TRANSPORTE",
-    "GERENTE", "ADMIN",
-  ],
-  "mi-ruta": [
-    "TRANSPORTISTA", "TRANSPORTE", "SUPERVISOR_TRANSPORTE",
-    "GERENTE", "ADMIN", "OPERADOR",
-  ],
+  "logistica": [],
+  "mi-ruta": [],
   "conteo": [
     "INVENTARIO", "SUPERVISOR_INVENTARIO",
     "GERENTE", "ADMIN",
@@ -60,13 +54,13 @@ export const MODULE_ACCESS: Record<ModuleKey, AppRole[]> = {
     "GERENTE", "ADMIN", "OPERADOR",
   ],
   "mis-tareas": [
-    "ADMIN","GERENTE","OPERADOR","TRANSPORTISTA",
+    "ADMIN","GERENTE","OPERADOR",
     "INVENTARIO","TRANSPORTE","SUPERVISOR_INVENTARIO","SUPERVISOR_TRANSPORTE",
     "TIENDA","SUPERVISOR_TIENDA",
   ],
   "tienda": [
     "TIENDA", "SUPERVISOR_TIENDA",
-    "TRANSPORTE", "SUPERVISOR_TRANSPORTE", // Transporte ve despachos para gestionar recogidas
+    "SUPERVISOR_TRANSPORTE",
     "GERENTE", "ADMIN",
   ],
   "usuarios": ["ADMIN"],
@@ -115,11 +109,11 @@ export const ROLE_DESCRIPTION: Record<AppRole, string> = {
   ADMIN:                  "Acceso total al sistema.",
   GERENTE:                "Ve todo. Sin acceso a configuración de sistema.",
   OPERADOR:               "Acceso general a inventario y transporte.",
-  TRANSPORTISTA:          "Solo ve 'Mi Ruta' y sus entregas.",
+  TRANSPORTISTA:          "Solo ve el módulo Preoperacional.",
   INVENTARIO:             "Solo ve módulos de inventario y conteo.",
-  TRANSPORTE:             "Solo ve guardados, logística y rutas.",
+  TRANSPORTE:             "Solo ve guardados y pendientes asignados.",
   SUPERVISOR_INVENTARIO:  "Inventario + análisis operacional.",
-  SUPERVISOR_TRANSPORTE:  "Guardados + logística + KPIs conductores.",
+  SUPERVISOR_TRANSPORTE:  "Despachos de tienda + guardados + centro de control.",
   TIENDA:                 "Solo ve y gestiona despachos de tienda.",
   SUPERVISOR_TIENDA:      "Tienda + análisis + Centro de Control.",
 };

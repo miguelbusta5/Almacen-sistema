@@ -43,7 +43,7 @@ export async function GET() {
     : [];
 
   // ── Despachos Tienda: pendientes ────────────────────────────
-  const despachosTienda = (role === "TIENDA" || role === "SUPERVISOR_TIENDA" || role === "TRANSPORTE" || role === "SUPERVISOR_TRANSPORTE" || role === "GERENTE" || role === "ADMIN")
+  const despachosTienda = (role === "TIENDA" || role === "SUPERVISOR_TIENDA" || role === "SUPERVISOR_TRANSPORTE" || role === "GERENTE" || role === "ADMIN")
     ? await prisma.despachoTienda.findMany({
         where: { estado: { in: ["CREADO_TIENDA", "ASIGNADO_RECOGIDA", "CON_NOVEDAD"] } },
         select: {
@@ -53,28 +53,6 @@ export async function GET() {
         },
         orderBy: { createdAt: "asc" },
         take: 50,
-      })
-    : [];
-
-  // ── Ruta activa del conductor ───────────────────────────────
-  let rutaActiva = null;
-  if (role === "TRANSPORTISTA" || role === "TRANSPORTE") {
-    const t = await prisma.transportista.findUnique({ where: { userId } });
-    if (t) {
-      rutaActiva = await prisma.ruta.findFirst({
-        where: { transportistaId: t.id, estado: { in: ["PENDIENTE", "EN_CURSO"] } },
-        include: { paradas: { orderBy: { orden: "asc" }, select: { id: true, direccion: true, estado: true, orden: true } } },
-        orderBy: { createdAt: "desc" },
-      });
-    }
-  }
-
-  // ── Incidencias abiertas (conductor) ────────────────────────
-  const incidencias = (role === "TRANSPORTISTA" || role === "TRANSPORTE")
-    ? await prisma.incidenciaRuta.findMany({
-        where: { transportistaId: (await prisma.transportista.findUnique({ where: { userId }, select: { id: true } }))?.id ?? "__none__" },
-        orderBy: { createdAt: "desc" },
-        take: 10,
       })
     : [];
 
@@ -103,11 +81,8 @@ export async function GET() {
         fechaEntregaComprometida: d.fechaEntregaComprometida ? new Date(d.fechaEntregaComprometida).toISOString().slice(0, 10) : null,
         createdAt: d.createdAt.toISOString(),
       })),
-      rutaActiva: rutaActiva ? {
-        id: rutaActiva.id, nombre: rutaActiva.nombre, estado: rutaActiva.estado,
-        paradas: rutaActiva.paradas,
-      } : null,
-      incidencias: incidencias.map((i: any) => ({ id: i.id, tipo: i.tipo, createdAt: i.createdAt.toISOString() })),
+      rutaActiva: null,
+      incidencias: [],
       notifNoLeidas,
     },
   });

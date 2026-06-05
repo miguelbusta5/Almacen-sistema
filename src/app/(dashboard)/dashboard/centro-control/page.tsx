@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useSession } from "next-auth/react";
 import {
-  Package, Truck, Route, AlertTriangle, BarChart3, Store,
+  Package, Truck, AlertTriangle, BarChart3, Store,
   CheckCircle2, ArrowRight, TrendingUp, Info, ShieldAlert,
 } from "lucide-react";
 import { SectionHeader } from "@/components/ui";
@@ -173,30 +173,28 @@ export default function CentroControlPage() {
   const [novedades,   setNovedades]   = useState<Novedad[]>([]);
   const [guardados,   setGuardados]   = useState<Guardado[]>([]);
   const [despachos,   setDespachos]   = useState<DespachoTienda[]>([]);
-  const [kpis,        setKpis]        = useState<{ conductores: any[]; stats: any } | null>(null);
+  const [kpis,        setKpis]        = useState<{ stats: any } | null>(null);
   const [sinContacto, setSinContacto] = useState<SinContactoData>({ count: 0, items: [] });
   const [loading,     setLoading]     = useState(true);
 
   useEffect(() => {
     (async () => {
       try {
-        const [nR, gR, cR, sR, dR, scR] = await Promise.all([
+        const [nR, gR, sR, dR, scR] = await Promise.all([
           fetch("/api/novedades?pageSize=500"),
           fetch("/api/transporte?pageSize=500"),
-          fetch("/api/logistica/conductores/kpis?dias=30"),
           fetch("/api/novedades/stats?dias=30"),
           fetch("/api/tienda?pageSize=500"),
           fetch("/api/transporte/sin-contacto"),
         ]);
-        const [nJ, gJ, cJ, sJ, dJ, scJ] = await Promise.all([
-          nR.json(), gR.json(), cR.json(), sR.json(), dR.json(), scR.json(),
+        const [nJ, gJ, sJ, dJ, scJ] = await Promise.all([
+          nR.json(), gR.json(), sR.json(), dR.json(), scR.json(),
         ]);
         if (nJ.success)  setNovedades(nJ.data ?? []);
         if (gJ.success)  setGuardados(gJ.data ?? []);
         if (dJ.success)  setDespachos(dJ.data ?? []);
         if (scJ.success) setSinContacto({ count: scJ.count ?? 0, items: scJ.items ?? [] });
         setKpis({
-          conductores: cJ.success ? cJ.data ?? [] : [],
           stats:       sJ.success ? sJ : null,
         });
       } catch { /* noop */ }
@@ -210,8 +208,8 @@ export default function CentroControlPage() {
     for (const d of despachos) {
       if (!byCC[d.centroCostos]) byCC[d.centroCostos] = { total: 0, pend: 0, desp: 0, nov: 0 };
       byCC[d.centroCostos].total++;
-      if (d.estado === "CREADO_TIENDA" || d.estado === "ASIGNADO_RECOGIDA") byCC[d.centroCostos].pend++;
-      if (d.estado === "ENTREGADO_CLIENTE") byCC[d.centroCostos].desp++;
+      if (d.estado === "CREADO_TIENDA") byCC[d.centroCostos].pend++;
+      if (String(d.estado) === "ENVIADO_CLIENTE") byCC[d.centroCostos].desp++;
       if (d.estado === "CON_NOVEDAD")       byCC[d.centroCostos].nov++;
     }
     return Object.entries(byCC)
@@ -254,24 +252,12 @@ export default function CentroControlPage() {
   }, [guardados]);
 
   const tiendaKpis = useMemo(() => ({
-    pendientes:  despachos.filter((d) => d.estado === "CREADO_TIENDA" || d.estado === "ASIGNADO_RECOGIDA").length,
-    recibidos:   despachos.filter((d) => d.estado === "RECOGIDO_TIENDA" || d.estado === "ENTREGADO_CEDI" || d.estado === "EN_RUTA").length,
-    despachados: despachos.filter((d) => d.estado === "ENTREGADO_CLIENTE").length,
+    pendientes:  despachos.filter((d) => d.estado === "CREADO_TIENDA").length,
+    recibidos:   despachos.filter((d) => d.estado === "RECOGIDO_TIENDA" || d.estado === "ENTREGADO_CEDI").length,
+    despachados: despachos.filter((d) => String(d.estado) === "ENVIADO_CLIENTE").length,
     novedades:   despachos.filter((d) => d.estado === "CON_NOVEDAD").length,
-    criticos:    despachos.filter((d) => (d.estado === "CREADO_TIENDA" || d.estado === "ASIGNADO_RECOGIDA") && horasDesde(d.createdAt) >= 24).length,
+    criticos:    despachos.filter((d) => d.estado === "CREADO_TIENDA" && horasDesde(d.createdAt) >= 24).length,
   }), [despachos]);
-
-  const condKpis = useMemo(() => {
-    const conds   = kpis?.conductores ?? [];
-    const tasaProm = conds.length > 0
-      ? Math.round(conds.reduce((s: number, c: any) => s + (c.tasaEntrega ?? 0), 0) / conds.length) : null;
-    const enAlerta = conds.filter((c: any) => (c.tasaEntrega ?? 100) < 70).length;
-    return {
-      activos:    conds.length,
-      incidencias:conds.reduce((s: number, c: any) => s + (c.incidencias ?? 0), 0),
-      tasaProm, enAlerta,
-    };
-  }, [kpis]);
 
   // ── ALERTAS OPERACIONALES ─────────────────────────────────
   const alertas = useMemo(() => {
@@ -282,7 +268,7 @@ export default function CentroControlPage() {
     const g60d = guardados.filter((g) => g.estado === "PENDIENTE DESPACHO" && dias(g.fecha) > 60);
     const n7d  = novedades.filter((n) => n.estado !== "SOLUCIONADO" && dias(n.fecha) > 7);
     const t48h = despachos.filter((d) =>
-      (d.estado === "CREADO_TIENDA" || d.estado === "ASIGNADO_RECOGIDA") && horasDesde(d.createdAt) > 48
+      d.estado === "CREADO_TIENDA" && horasDesde(d.createdAt) > 48
     );
 
     const critical: AlertaItem[] = [
@@ -311,7 +297,6 @@ export default function CentroControlPage() {
 
     // ── WARNING ───────────────────────────────────────────
     const novSinAsig = novedades.filter((n) => n.estado !== "SOLUCIONADO" && !(n as any).asignadoA);
-    const condAlerta  = (kpis?.conductores ?? []).filter((c: any) => (c.incidencias ?? 0) > 3);
 
     const warning: AlertaItem[] = [
       {
@@ -330,22 +315,11 @@ export default function CentroControlPage() {
           : undefined,
         href:    "/dashboard/transporte",
       },
-      {
-        id:      "ci",
-        count:   condAlerta.length,
-        title:   "Conductores con más de 3 incidencias en 30 días",
-        context: condAlerta.length > 0
-          ? condAlerta.slice(0, 2).map((c: any) => c.nombre).join(" · ") + (condAlerta.length > 2 ? ` · +${condAlerta.length - 2} más` : "")
-          : undefined,
-        href:    "/dashboard/logistica",
-      },
     ].filter((a) => a.count > 0);
 
     // ── INFO (top 1 de cada ranking) ──────────────────────
     const topCC   = rankingCC[0];
     const topResp = rankingInventario[0];
-    const topCond = [...(kpis?.conductores ?? [])]
-      .sort((a: any, b: any) => (b.tasaEntrega ?? 0) - (a.tasaEntrega ?? 0))[0] as any | undefined;
 
     const info: InfoItem[] = [
       topCC && {
@@ -360,16 +334,10 @@ export default function CentroControlPage() {
         context: `${topResp.resueltas}/${topResp.total} novedades resueltas · ${topResp.tasa}% de tasa`,
         href:    "/dashboard/muebles",
       },
-      topCond && {
-        id:      "topCond",
-        title:   `Top conductor: ${topCond.nombre}`,
-        context: `${topCond.tasaEntrega ?? 0}% de tasa de entrega · ${topCond.entregadas ?? 0}/${topCond.totalParadas ?? 0} paradas`,
-        href:    "/dashboard/logistica",
-      },
     ].filter(Boolean) as InfoItem[];
 
     return { critical, warning, info, totalCritical: critical.length, totalWarning: warning.length };
-  }, [guardados, novedades, despachos, kpis, sinContacto, rankingCC, rankingInventario]);
+  }, [guardados, novedades, despachos, sinContacto, rankingCC, rankingInventario]);
 
   // ── Loading skeleton ──────────────────────────────────────
   if (loading) {
@@ -528,7 +496,7 @@ export default function CentroControlPage() {
       </div>
 
       {/* ── Grid de KPIs por módulo ── */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 16, marginBottom: 24 }}>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 16, marginBottom: 24 }}>
         <KpiBlock title="Inventario" icon={<Package size={15} color="#2563EB" />}>
           <div style={{ display: "flex", gap: 16, flexWrap: "wrap" }}>
             <MiniKpi label="Novedades abiertas" value={invKpis.pend} color={invKpis.pend > 0 ? "var(--error)" : "var(--success)"} />
@@ -562,26 +530,15 @@ export default function CentroControlPage() {
             <MiniKpi label=">24h sin recoger"   value={tiendaKpis.criticos}   color={tiendaKpis.criticos > 0 ? "var(--error)" : "var(--muted)"} />
           </div>
           <div style={{ marginTop: 12, paddingTop: 12, borderTop: "1px solid var(--border)", display: "flex", gap: 12 }}>
-            <MiniKpi label="En tránsito"        value={tiendaKpis.recibidos}   color="var(--info)" />
-            <MiniKpi label="Entregados"         value={tiendaKpis.despachados} color="var(--success)" />
+            <MiniKpi label="Recogidos/CEDI"     value={tiendaKpis.recibidos}   color="var(--info)" />
+            <MiniKpi label="Enviados cliente"   value={tiendaKpis.despachados} color="var(--success)" />
             <MiniKpi label="Con novedad"        value={tiendaKpis.novedades}   color={tiendaKpis.novedades > 0 ? "var(--error)" : "var(--muted)"} />
-          </div>
-        </KpiBlock>
-
-        <KpiBlock title="Conductores" icon={<Route size={15} color="#7C3AED" />}>
-          <div style={{ display: "flex", gap: 16, flexWrap: "wrap" }}>
-            <MiniKpi label="Activos (30d)"      value={condKpis.activos} color="var(--text)" />
-            <MiniKpi label="Tasa promedio"      value={condKpis.tasaProm != null ? `${condKpis.tasaProm}%` : "—"} color={condKpis.tasaProm != null && condKpis.tasaProm >= 85 ? "var(--success)" : "var(--warning)"} />
-          </div>
-          <div style={{ marginTop: 12, paddingTop: 12, borderTop: "1px solid var(--border)", display: "flex", gap: 16 }}>
-            <MiniKpi label="Incidencias (30d)"  value={condKpis.incidencias} color={condKpis.incidencias > 5 ? "var(--warning)" : "var(--muted)"} />
-            <MiniKpi label="En alerta (<70%)"   value={condKpis.enAlerta}    color={condKpis.enAlerta > 0 ? "var(--error)" : "var(--success)"} />
           </div>
         </KpiBlock>
       </div>
 
       {/* ── Rankings ── */}
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 16 }}>
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
         <div className="ds-card" style={{ padding: "20px 22px" }}>
           <SectionHeader title="Inventario — Top responsables" />
           {rankingInventario.length === 0 ? (
@@ -612,25 +569,6 @@ export default function CentroControlPage() {
           ))}
         </div>
 
-        <div className="ds-card" style={{ padding: "20px 22px" }}>
-          <SectionHeader title="Transporte — Conductores" />
-          {(kpis?.conductores ?? []).length === 0 ? (
-            <div style={{ textAlign: "center", padding: "20px 0", fontSize: 13, color: "var(--muted)" }}>
-              Sin rutas registradas en los últimos 30 días
-            </div>
-          ) : (kpis?.conductores ?? []).slice(0, 7).map((c: any, i: number) => {
-            const tasa = c.tasaEntrega ?? 0;
-            return (
-              <RankRow
-                key={c.transportistaId} rank={i + 1} nombre={c.nombre}
-                main={`${tasa}%`}
-                sub={`${c.entregadas}/${c.totalParadas} entregas${c.incidencias > 0 ? ` · ${c.incidencias} incid.` : ""}`}
-                badge={c.tiempoPromedio ? `${c.tiempoPromedio}min` : undefined}
-                color={tasa >= 90 ? "var(--success)" : tasa >= 70 ? "var(--warning)" : "var(--error)"}
-              />
-            );
-          })}
-        </div>
       </div>
     </div>
   );

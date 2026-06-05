@@ -4,8 +4,8 @@ import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useSession } from "next-auth/react";
 import {
-  Package, Truck, Route, ClipboardList, ArrowRight, AlertTriangle,
-  Clock, Plus, Navigation, MapPin, RefreshCw,
+  Package, Truck, ClipboardList, ArrowRight, AlertTriangle,
+  Clock, Plus,
   CheckSquare, Store, BarChart2, Users, History,
 } from "lucide-react";
 import { Stat, SkeletonStat, TimelineItem, SectionHeader, SkeletonStat as SK } from "@/components/ui";
@@ -14,8 +14,6 @@ import { consolidarInsights } from "@/lib/inteligencia";
 import { urgencia } from "@/lib/transporte";
 import type { Novedad } from "@/lib/muebles";
 import type { Guardado } from "@/lib/transporte";
-import type { Ruta } from "@/lib/logistica";
-import { RUTA_ESTADO_LABEL, RUTA_ESTADO_COLOR, PARADA_ESTADO_COLOR, PARADA_ESTADO_LABEL } from "@/lib/logistica";
 import { getHomeActionsByRole, type HomeAction } from "@/config/homeActions";
 
 // ── Helpers ──────────────────────────────────────────────
@@ -108,7 +106,6 @@ function AlertItem({ level, text, sub, href }: { level: "critical" | "warning"; 
 const ICON_MAP: Record<string, React.ReactNode> = {
   Plus:         <Plus size={18} />,
   ClipboardList:<ClipboardList size={18} />,
-  Route:        <Route size={18} />,
   CheckSquare:  <CheckSquare size={18} />,
   Store:        <Store size={18} />,
   BarChart2:    <BarChart2 size={18} />,
@@ -205,7 +202,6 @@ function AdminDashboard({ nombre }: { nombre: string }) {
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
             <ModuleCard href="/dashboard/muebles" icon={<Package size={17} />} label="Novedades Muebles" color="#2563EB" value={stats?.novedades.total} sub={`${stats?.novedades.pendientes ?? 0} sin resolver`} alert={(stats?.novedades.pendientes ?? 0) > 0} />
             <ModuleCard href="/dashboard/transporte" icon={<Truck size={17} />} label="Guardados Transporte" color="#0E7490" value={stats?.transporte.total} sub={`${stats?.transporte.pendientes ?? 0} pendientes`} alert={(stats?.transporte.alertas ?? 0) > 0} />
-            <ModuleCard href="/dashboard/logistica" icon={<Route size={17} />} label="Logística" color="#7C3AED" sub="Rutas y conductores" />
             <ModuleCard href="/dashboard/conteo" icon={<ClipboardList size={17} />} label="Conteo Cíclico" color="#16A34A" sub="Conteos de inventario" />
           </div>
         </div>
@@ -292,9 +288,9 @@ function OperadorDashboard({ nombre, role }: { nombre: string; role: string }) {
   const solucionadas  = useMemo(() => novedades.filter((n) => n.estado === "SOLUCIONADO"), [novedades]);
   const guardadosPend = useMemo(() => guardados.filter((g) => g.estado === "PENDIENTE DESPACHO"), [guardados]);
   const guardadosDesp = useMemo(() => guardados.filter((g) => g.estado === "DESPACHADO"), [guardados]);
-  const tiendaPend    = useMemo(() => tiendaDespachos.filter((d) => d.estado === "CREADO_TIENDA" || d.estado === "RECOGIDA_PENDIENTE"), [tiendaDespachos]);
+  const tiendaPend    = useMemo(() => tiendaDespachos.filter((d) => d.estado === "CREADO_TIENDA" || d.estado === "ASIGNADO_RECOGIDA" || d.estado === "RECOGIDO_TIENDA" || d.estado === "ENTREGADO_CEDI"), [tiendaDespachos]);
   const tiendaNovedad = useMemo(() => tiendaDespachos.filter((d) => d.estado === "CON_NOVEDAD"), [tiendaDespachos]);
-  const tiendaDesp    = useMemo(() => tiendaDespachos.filter((d) => d.estado === "ENTREGADO"), [tiendaDespachos]);
+  const tiendaDesp    = useMemo(() => tiendaDespachos.filter((d) => d.estado === "ENTREGADO_CLIENTE"), [tiendaDespachos]);
 
   // ── Alerta total para el header de greeting ──────────────
   const totalAlertas = (() => {
@@ -462,33 +458,14 @@ function OperadorDashboard({ nombre, role }: { nombre: string; role: string }) {
 
 // ════════════════════════════════════════════════════════════
 // VISTA: TRANSPORTISTA
-// "Mi ruta de hoy"
+// Preoperacional
 // ════════════════════════════════════════════════════════════
 function TransportistaDashboard({ nombre }: { nombre: string }) {
-  const [ruta, setRuta] = useState<Ruta | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
-
-  async function loadRuta() {
-    setRefreshing(true);
-    try {
-      const res = await fetch("/api/logistica/rutas?mia=1");
-      const json = await res.json();
-      setRuta(json.success && json.data?.length > 0 ? json.data[0] : null);
-    } catch { /* noop */ } finally { setLoading(false); setRefreshing(false); }
-  }
-  useEffect(() => { loadRuta(); }, []);
-
   const hora = new Date().getHours();
   const saludo = hora < 12 ? "Buenos días" : hora < 18 ? "Buenas tardes" : "Buenas noches";
 
-  const entregadas = ruta?.paradas.filter((p) => p.estado === "ENTREGADO").length ?? 0;
-  const total = ruta?.paradas.length ?? 0;
-  const prog = total > 0 ? Math.round(entregadas / total * 100) : 0;
-
   return (
     <div className="animate-fade-in" style={{ maxWidth: 560 }}>
-      {/* Greeting */}
       <div style={{ marginBottom: 28 }}>
         <h1 style={{ fontSize: 26, fontWeight: 700, color: "var(--text)", letterSpacing: "-0.03em", lineHeight: 1.2 }}>
           {saludo}{nombre ? `, ${nombre}` : ""}.
@@ -498,129 +475,17 @@ function TransportistaDashboard({ nombre }: { nombre: string }) {
         </p>
       </div>
 
-      {/* Ruta activa */}
-      {loading ? (
-        <div className="ds-card" style={{ padding: 24 }}>
-          <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-            <div className="skeleton" style={{ height: 20, width: "60%", borderRadius: 4 }} />
-            <div className="skeleton" style={{ height: 8, borderRadius: 4 }} />
-            <div className="skeleton" style={{ height: 14, width: "40%", borderRadius: 4 }} />
-          </div>
+      <div className="ds-card" style={{ padding: 28 }}>
+        <div style={{ width: 46, height: 46, borderRadius: 12, background: "var(--surface2)", display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 16 }}>
+          <CheckSquare size={21} color="var(--muted)" />
         </div>
-      ) : !ruta ? (
-        <div className="ds-card" style={{ padding: 32, textAlign: "center" }}>
-          <div style={{ width: 48, height: 48, borderRadius: 12, background: "var(--surface2)", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 16px" }}>
-            <Route size={22} color="var(--muted)" />
-          </div>
-          <div style={{ fontSize: 16, fontWeight: 600, color: "var(--text)", marginBottom: 8 }}>Sin ruta asignada</div>
-          <p style={{ fontSize: 13, color: "var(--muted)", marginBottom: 20, lineHeight: 1.55 }}>
-            No tienes ninguna ruta activa para hoy. Cuando el supervisor te asigne una, aparecerá aquí.
-          </p>
-          <button
-            onClick={loadRuta}
-            disabled={refreshing}
-            style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "8px 16px", background: "var(--surface2)", border: "1px solid var(--border)", borderRadius: 8, fontSize: 13, color: "var(--muted2)", cursor: "pointer" }}
-          >
-            <RefreshCw size={13} style={{ animation: refreshing ? "spin .8s linear infinite" : "none" }} />
-            {refreshing ? "Verificando…" : "Actualizar"}
-          </button>
+        <div style={{ fontSize: 17, fontWeight: 700, color: "var(--text)", marginBottom: 8 }}>
+          Preoperacional
         </div>
-      ) : (
-        <>
-          {/* Card de la ruta */}
-          <div className="ds-card" style={{ padding: 24, marginBottom: 16 }}>
-            <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 16 }}>
-              <div>
-                <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
-                  <div style={{ width: 30, height: 30, borderRadius: 8, background: "#7C3AED14", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                    <Route size={15} color="#7C3AED" />
-                  </div>
-                  <span style={{ fontSize: 16, fontWeight: 700, color: "var(--text)", letterSpacing: "-0.02em" }}>{ruta.nombre}</span>
-                </div>
-                <span style={{ fontSize: 11, fontWeight: 700, padding: "2px 9px", borderRadius: 20, background: RUTA_ESTADO_COLOR[ruta.estado as keyof typeof RUTA_ESTADO_COLOR] + "18", color: RUTA_ESTADO_COLOR[ruta.estado as keyof typeof RUTA_ESTADO_COLOR] }}>
-                  {RUTA_ESTADO_LABEL[ruta.estado as keyof typeof RUTA_ESTADO_LABEL]}
-                </span>
-              </div>
-              <button onClick={loadRuta} style={{ background: "none", border: "none", cursor: "pointer", color: "var(--muted)", padding: 4, display: "flex" }}>
-                <RefreshCw size={14} style={{ animation: refreshing ? "spin .8s linear infinite" : "none" }} />
-              </button>
-            </div>
-
-            {/* Barra de progreso */}
-            <div style={{ marginBottom: 8 }}>
-              <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6, fontSize: 12 }}>
-                <span style={{ color: "var(--muted)" }}>Progreso del día</span>
-                <span style={{ fontWeight: 700, color: prog === 100 ? "var(--success)" : "var(--text)", fontFamily: "var(--mono)" }}>{entregadas}/{total} entregas · {prog}%</span>
-              </div>
-              <div style={{ height: 8, background: "var(--surface2)", borderRadius: 4 }}>
-                <div style={{ height: "100%", width: `${prog}%`, background: prog === 100 ? "var(--success)" : "#7C3AED", borderRadius: 4, transition: "width .4s cubic-bezier(.16,1,.3,1)" }} />
-              </div>
-            </div>
-
-            {/* Estadísticas de paradas */}
-            <div style={{ display: "flex", gap: 16, marginTop: 14 }}>
-              {(["PENDIENTE", "ENTREGADO", "NO_ENTREGADO"] as const).map((estado) => {
-                const count = ruta.paradas.filter((p) => p.estado === estado).length;
-                return count > 0 ? (
-                  <div key={estado} style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 12, color: "var(--muted)" }}>
-                    <span style={{ width: 8, height: 8, borderRadius: "50%", background: PARADA_ESTADO_COLOR[estado], flexShrink: 0 }} />
-                    {count} {PARADA_ESTADO_LABEL[estado].toLowerCase()}
-                  </div>
-                ) : null;
-              })}
-            </div>
-          </div>
-
-          {/* Próxima parada */}
-          {ruta.estado === "EN_CURSO" && (() => {
-            const siguiente = ruta.paradas.find((p) => p.estado === "PENDIENTE");
-            return siguiente ? (
-              <div style={{ background: "var(--brand-tint)", border: "1px solid var(--brand-tint)", borderRadius: 12, padding: "16px 18px", marginBottom: 16 }}>
-                <div style={{ fontSize: 11, fontWeight: 600, color: "var(--brand)", textTransform: "uppercase", letterSpacing: ".06em", marginBottom: 8 }}>
-                  Siguiente parada
-                </div>
-                <div style={{ fontSize: 15, fontWeight: 600, color: "var(--text)", marginBottom: 6, letterSpacing: "-0.01em" }}>
-                  {siguiente.direccion}
-                </div>
-                {siguiente.pedidoId && (
-                  <div style={{ fontSize: 12, color: "var(--muted)", fontFamily: "var(--mono)", marginBottom: 12 }}>
-                    Pedido: {siguiente.pedidoId}
-                  </div>
-                )}
-                <a
-                  href={siguiente.lat && siguiente.lng
-                    ? `https://www.google.com/maps/dir/?api=1&destination=${siguiente.lat},${siguiente.lng}`
-                    : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(siguiente.direccion)}`}
-                  target="_blank" rel="noreferrer"
-                  style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "8px 14px", background: "var(--brand)", color: "#fff", borderRadius: 9, fontSize: 13, fontWeight: 600, textDecoration: "none" }}
-                >
-                  <Navigation size={13} />Iniciar navegación
-                </a>
-              </div>
-            ) : null;
-          })()}
-
-          {/* CTA a Mi Ruta */}
-          <Link href="/dashboard/logistica/mi-ruta" style={{ textDecoration: "none", display: "block" }}>
-            <div
-              style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "16px 18px", background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 12, cursor: "pointer", transition: "border-color .15s" }}
-              onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.borderColor = "#7C3AED55"; }}
-              onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.borderColor = "var(--border)"; }}
-            >
-              <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                <div style={{ width: 36, height: 36, borderRadius: 9, background: "#7C3AED14", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                  <MapPin size={17} color="#7C3AED" />
-                </div>
-                <div>
-                  <div style={{ fontSize: 14, fontWeight: 600, color: "var(--text)" }}>Abrir vista de conductor</div>
-                  <div style={{ fontSize: 12, color: "var(--muted)" }}>GPS, paradas y confirmación de entregas</div>
-                </div>
-              </div>
-              <ArrowRight size={16} color="var(--muted)" />
-            </div>
-          </Link>
-        </>
-      )}
+        <p style={{ fontSize: 13, color: "var(--muted)", lineHeight: 1.55, margin: 0 }}>
+          Tu acceso operativo se concentrará en la inspección preoperacional del vehículo.
+        </p>
+      </div>
     </div>
   );
 }
@@ -642,7 +507,7 @@ export default function DashboardPage() {
     );
   }
 
-  // Conductores → vista de ruta
+  // Conductores → vista preoperacional
   if (role === "TRANSPORTISTA") return <TransportistaDashboard nombre={nombre} />;
 
   // Operarios y supervisores de área → vista contextual por rol

@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
 import {
-  CheckSquare, Package, Truck, Store, Route, RefreshCw,
+  CheckSquare, Package, Truck, Store, RefreshCw,
   AlertTriangle, Clock, CheckCircle2, Calendar,
 } from "lucide-react";
 import { SlaEstado, SLA_COLOR, SLA_LABEL, calcSla, diasRestantesSla } from "@/lib/sla";
@@ -79,7 +79,6 @@ function fmtFecha(iso: string) {
 // ════════════════════════════════════════════════════════════
 export default function MisTareasPage() {
   const { data: session } = useSession();
-  const role     = (session?.user as { role?: string } | undefined)?.role ?? "";
   const userName = (session?.user as { name?: string } | undefined)?.name ?? "";
 
   const [data, setData] = useState<MisTareas | null>(null);
@@ -158,24 +157,6 @@ export default function MisTareasPage() {
         <EmptyState icon={<CheckSquare size={22} />} title="Error al cargar" description="Intenta actualizar." />
       ) : (
         <>
-          {/* ── CONDUCTOR: Ruta activa ─────────────────────── */}
-          {(role === "TRANSPORTISTA" || role === "TRANSPORTE") && data.rutaActiva && (
-            <Seccion icon={<Route size={15} />} title="Mi ruta activa" count={1} color="#7C3AED">
-              <Link href="/dashboard/logistica/mi-ruta" style={{ textDecoration: "none" }}>
-                <div style={{ padding: "14px 16px", background: "var(--surface)", border: "1px solid rgba(124,58,237,0.3)", borderRadius: 10 }}>
-                  <div style={{ fontSize: 14, fontWeight: 700, color: "var(--text)", marginBottom: 6 }}>{data.rutaActiva.nombre}</div>
-                  <div style={{ display: "flex", gap: 16, fontSize: 12, color: "var(--muted)" }}>
-                    <span>Estado: <strong style={{ color: "var(--text)" }}>{data.rutaActiva.estado}</strong></span>
-                    <span>{data.rutaActiva.paradas?.filter((p: any) => p.estado === "ENTREGADO").length}/{data.rutaActiva.paradas?.length} entregadas</span>
-                  </div>
-                  <div style={{ marginTop: 10, padding: "6px 10px", background: "#7C3AED14", borderRadius: 7, fontSize: 12, color: "#7C3AED", fontWeight: 600, display: "inline-flex", alignItems: "center", gap: 6 }}>
-                    <Route size={12} />Abrir vista de conductor →
-                  </div>
-                </div>
-              </Link>
-            </Seccion>
-          )}
-
           {/* ── INVENTARIO: Novedades ──────────────────────── */}
           {data.novedades.length > 0 && (
             <Seccion icon={<Package size={15} />} title="Novedades asignadas" count={data.novedades.length} color="#2563EB">
@@ -247,7 +228,7 @@ export default function MisTareasPage() {
           )}
 
           {/* Estado vacío total */}
-          {kpis.total === 0 && !data.rutaActiva && (
+          {kpis.total === 0 && (
             <EmptyState
               icon={<CheckSquare size={22} />}
               title="¡Todo al día!"

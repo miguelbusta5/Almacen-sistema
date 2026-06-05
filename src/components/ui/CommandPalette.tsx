@@ -7,8 +7,8 @@ import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import {
-  Search, Home, Package, Truck, Route, ClipboardList,
-  Users, ScrollText, Plus, ArrowRight, X, Navigation,
+  Search, Home, Package, Truck, ClipboardList,
+  Users, ScrollText, Plus, ArrowRight, X,
   BarChart3, FileText, Store,
 } from "lucide-react";
 import { useCommandPalette } from "@/contexts/CommandPaletteContext";
@@ -89,7 +89,6 @@ export default function CommandPalette() {
       ...(see("inventario") ? [{ id: "a-novedad",  group: "actions" as ResultGroup, icon: <Plus size={14} />, label: "Nueva novedad de inventario", description: "Registrar diferencia de PLU en el CEDI", color: "#2563EB", action: () => go("/dashboard/inventario") }] : []),
       ...(see("transporte") ? [{ id: "a-guardado", group: "actions" as ResultGroup, icon: <Plus size={14} />, label: "Nuevo guardado en transporte",  description: "Registrar pedido en custodia",          color: "#0E7490", action: () => go("/dashboard/transporte") }] : []),
       ...(see("tienda")     ? [{ id: "a-despacho", group: "actions" as ResultGroup, icon: <Store size={14} />, label: "Nuevo despacho de tienda", description: "Registrar despacho para recogida por transporte", color: "#7C3AED", action: () => go("/dashboard/tienda") }] : []),
-      ...(see("logistica")  ? [{ id: "a-ruta",     group: "actions" as ResultGroup, icon: <Plus size={14} />, label: "Nueva ruta de logística",        description: "Crear y asignar paradas a conductor",   color: "#7C3AED", action: () => go("/dashboard/logistica") }] : []),
     ];
 
     const navigate: PaletteResult[] = [
@@ -97,8 +96,6 @@ export default function CommandPalette() {
       ...(see("inventario")    ? [{ id: "n-inventario",  group: "navigate" as ResultGroup, icon: <Package size={14} />,       label: "Novedades Inventario",    action: () => go("/dashboard/inventario") }] : []),
       ...(see("tienda")        ? [{ id: "n-tienda",      group: "navigate" as ResultGroup, icon: <Store size={14} />,          label: "Despachos Tienda",        action: () => go("/dashboard/tienda") }] : []),
       ...(see("transporte")    ? [{ id: "n-transporte",  group: "navigate" as ResultGroup, icon: <Truck size={14} />,          label: "Guardados Transporte",    action: () => go("/dashboard/transporte") }] : []),
-      ...(see("mi-ruta")       ? [{ id: "n-miruta",      group: "navigate" as ResultGroup, icon: <Navigation size={14} />,     label: "Mi ruta",                 action: () => go("/dashboard/logistica/mi-ruta") }] : []),
-      ...(see("logistica")     ? [{ id: "n-logistica",   group: "navigate" as ResultGroup, icon: <Route size={14} />,          label: "Logística",               action: () => go("/dashboard/logistica") }] : []),
       ...(see("conteo-contar") ? [{ id: "n-contar",      group: "navigate" as ResultGroup, icon: <ClipboardList size={14} />,  label: "Conteo",                  action: () => go("/dashboard/conteo/contar") }] : []),
       ...(see("conteo")        ? [{ id: "n-conteo",      group: "navigate" as ResultGroup, icon: <BarChart3 size={14} />,      label: "Gestión de Conteo",       action: () => go("/dashboard/conteo") }] : []),
       ...(see("centro-control")? [{ id: "n-control",     group: "navigate" as ResultGroup, icon: <BarChart3 size={14} />,      label: "Centro de Control",       action: () => go("/dashboard/centro-control") }] : []),

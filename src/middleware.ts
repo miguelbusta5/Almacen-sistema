@@ -33,6 +33,10 @@ export function middleware(request: NextRequest) {
     return NextResponse.redirect(loginUrl);
   }
 
+  if (pathname.startsWith("/dashboard/logistica")) {
+    return NextResponse.redirect(new URL("/dashboard", request.url));
+  }
+
   // Sesión presente → dejar pasar.
   // La validación de rol ocurre en:
   //   1. Servidor: requireAuth / requireCan / requireRole en cada API route
