@@ -61,6 +61,13 @@ export interface DespachoTienda {
   despachadoAt: string | null;        // ENVIADO_CLIENTE
   novedadAt: string | null;
   notaEntrega: string | null;
+  guardadoPendiente: {
+    id: string;
+    estado: string;
+    asignadoAId: string;
+    asignadoANombre: string | null;
+    guardadoClientId: string | null;
+  } | null;
 
   // Dirección de entrega
   direccionEntrega: string | null;

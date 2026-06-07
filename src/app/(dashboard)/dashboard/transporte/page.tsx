@@ -8,7 +8,7 @@ import {
   Chart as ChartJS, ArcElement, BarElement, CategoryScale, LinearScale, Tooltip, Legend,
 } from "chart.js";
 import { Doughnut, Bar } from "react-chartjs-2";
-import { Truck, Plus, X, CheckCircle2, Calendar, Search, BarChart3, List, Clock, Pencil, Trash2, Phone, MessageCircle, RotateCcw, Download } from "lucide-react";
+import { Truck, Plus, X, CheckCircle2, Calendar, Search, BarChart3, List, Clock, Pencil, Trash2, Phone, MessageCircle, RotateCcw, Download, PackageCheck } from "lucide-react";
 import {
   Guardado, TipoGuardado, fmtCOP, fmtFecha, todayISO, urgencia, tieneAlerta, parseEntrega,
   scoreGuardado, alertaTier, ALERTA_TIER_COLOR, ALERTA_TIER_LABEL,
@@ -22,6 +22,21 @@ import { SlidePanel, IntelBanner, DetailSection, DetailGrid, MiniHistory } from 
 ChartJS.register(ArcElement, BarElement, CategoryScale, LinearScale, Tooltip, Legend);
 
 const CHART_BASE = { maintainAspectRatio: false };
+
+interface PendienteTiendaGuardado {
+  id: string;
+  despachoId: string;
+  nota: string | null;
+  createdAt: string;
+  asignadoANombre: string | null;
+  despacho: {
+    numeroDocumento: string;
+    clienteNombre: string;
+    centroCostos: string;
+    numeroCajas: number | null;
+    notaEntrega: string | null;
+  };
+}
 
 function TipoBadge({ tipo }: { tipo: TipoGuardado }) {
   return <Badge label={tipo === "ECOMMERCE" ? "Ecommerce" : "Común"} variant={tipo === "ECOMMERCE" ? "info" : "default"} dot={false} />;
@@ -46,6 +61,7 @@ export default function TransportePage() {
   const canDelete = can(role, "delete");
 
   const [guardados, setGuardados] = useState<Guardado[]>([]);
+  const [pendientesTienda, setPendientesTienda] = useState<PendienteTiendaGuardado[]>([]);
   const [loading, setLoading] = useState(true);
   const [view, setView] = useState<"lista" | "graficos">("lista");
   const [toast, setToast] = useState<{ msg: string; err?: boolean } | null>(null);
@@ -69,9 +85,14 @@ export default function TransportePage() {
   async function load() {
     setLoading(true);
     try {
-      const res = await fetch("/api/transporte?pageSize=500");
+      const [res, pendientesRes] = await Promise.all([
+        fetch("/api/transporte?pageSize=500"),
+        fetch("/api/transporte/pendientes-tienda"),
+      ]);
       const json = await res.json();
+      const pendientesJson = await pendientesRes.json();
       if (json.success) setGuardados(json.data);
+      if (pendientesJson.success) setPendientesTienda(pendientesJson.data);
     } catch { showToast("Error al cargar datos", true); }
     finally { setLoading(false); }
   }
@@ -99,6 +120,24 @@ export default function TransportePage() {
       setGuardados((prev) => prev.map((x) => x.clientId === g.clientId ? updated : x));
       if (panelItem?.clientId === g.clientId) setPanelItem(updated);
       showToast("Marcado como enviado ✓");
+    } else showToast(json.error || "Error", true);
+  }
+
+  async function convertirPendienteTienda(p: PendienteTiendaGuardado) {
+    const ubicacion = prompt(`Ubicación para guardar ${p.despacho.numeroDocumento}:`);
+    if (ubicacion === null) return;
+    const clean = ubicacion.trim();
+    if (!clean) { showToast("Ubicación requerida", true); return; }
+    const nota = prompt("Nota adicional para el guardado:", p.nota ?? "") ?? null;
+    const res = await fetch("/api/transporte/pendientes-tienda", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ pendienteId: p.id, ubicacion: clean, nota }),
+    });
+    const json = await res.json();
+    if (json.success) {
+      showToast("Guardado creado desde despacho tienda");
+      load();
     } else showToast(json.error || "Error", true);
   }
 
@@ -256,6 +295,35 @@ export default function TransportePage() {
       </div>
 
       {/* ── KPIs ── */}
+      {!loading && pendientesTienda.length > 0 && (
+        <div className="ds-card" style={{ padding: 18, marginBottom: 22, borderColor: "#0e749040" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 9, marginBottom: 12 }}>
+            <div style={{ width: 28, height: 28, borderRadius: 8, background: "#0e749014", display: "flex", alignItems: "center", justifyContent: "center" }}>
+              <Truck size={15} color="#0e7490" />
+            </div>
+            <div>
+              <div style={{ fontSize: 13, fontWeight: 700, color: "var(--text)" }}>Despachos de tienda pendientes por guardar</div>
+              <div style={{ fontSize: 12, color: "var(--muted)" }}>{pendientesTienda.length} pendiente{pendientesTienda.length !== 1 ? "s" : ""} asignado{pendientesTienda.length !== 1 ? "s" : ""}</div>
+            </div>
+          </div>
+          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+            {pendientesTienda.map((p) => (
+              <div key={p.id} style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 12px", background: "var(--surface2)", borderRadius: 8 }}>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: 13, fontWeight: 700, color: "var(--text)" }}>{p.despacho.numeroDocumento} - {p.despacho.clienteNombre}</div>
+                  <div style={{ fontSize: 12, color: "var(--muted)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                    {p.despacho.centroCostos}{p.despacho.numeroCajas ? ` - ${p.despacho.numeroCajas} cajas` : ""}{p.nota ? ` - ${p.nota}` : ""}
+                  </div>
+                </div>
+                <button className="ds-btn ds-btn-sm ds-btn-primary" style={{ background: "#0e7490", flexShrink: 0 }} onClick={() => convertirPendienteTienda(p)}>
+                  <PackageCheck size={13} />Registrar guardado
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       <div style={{ display: "grid", gridTemplateColumns: "repeat(5,1fr)", gap: 28, marginBottom: 28, padding: "0 2px" }}>
         {loading ? <><SkeletonStat /><SkeletonStat /><SkeletonStat /><SkeletonStat /><SkeletonStat /></> : (
           <>

@@ -6,7 +6,7 @@ import { useSession } from "next-auth/react";
 import { can } from "@/lib/permissions";
 import {
   Store, Plus, Search, X, CheckCircle2, Truck, AlertTriangle,
-  Pencil, Trash2, Package, Minus, PackageCheck,
+  Pencil, Trash2, Package, Minus, PackageCheck, UserPlus,
 } from "lucide-react";
 import {
   DespachoTienda, PlinDespacho, EstadoDespacho, ESTADOS_DESPACHO, ESTADO_DESPACHO_LABEL,
@@ -88,6 +88,7 @@ export default function TiendaPage() {
   const [creando, setCreando] = useState(false);
   const [editing, setEditing] = useState<DespachoTienda | null>(null);
   const [deleting, setDeleting] = useState<DespachoTienda | null>(null);
+  const [asignandoGuardado, setAsignandoGuardado] = useState<DespachoTienda | null>(null);
 
   async function load() {
     setLoading(true);
@@ -117,6 +118,21 @@ export default function TiendaPage() {
       setItems((prev) => prev.map((x) => x.id === d.id ? json.data : x));
       if (panelItem?.id === d.id) { setPanelItem(json.data); abrirPanel(json.data); }
       showToast(`Estado actualizado: ${ESTADO_DESPACHO_LABEL[estado]} ✓`);
+    } else showToast(json.error || "Error", true);
+  }
+
+  async function asignarAGuardado(d: DespachoTienda, asignadoAId: string, nota: string | null) {
+    const res = await fetch(`/api/tienda/${d.id}/guardado`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ asignadoAId, nota }),
+    });
+    const json = await res.json();
+    if (json.success) {
+      setAsignandoGuardado(null);
+      await load();
+      if (panelItem?.id === d.id) abrirPanel(d);
+      showToast("Despacho enviado a guardado");
     } else showToast(json.error || "Error", true);
   }
 
@@ -184,7 +200,7 @@ export default function TiendaPage() {
             <h1 style={{ fontSize: 22, fontWeight: 700, color: "var(--text)", letterSpacing: "-0.03em", margin: 0 }}>Despachos Tienda</h1>
           </div>
           <p style={{ fontSize: 13, color: "var(--muted)", margin: 0 }}>
-            {loading ? "Cargando…" : `${items.length} registros · ${kpis.pendientesRecogida} pendientes de recogida`}
+            {loading ? "Cargando…" : `${items.length} registros · ${kpis.pendientesRecogida} creados en tienda`}
           </p>
         </div>
         <button className="ds-btn ds-btn-primary" style={{ background: COLOR_TIENDA, boxShadow: `0 2px 12px ${COLOR_TIENDA}28` }} onClick={() => setCreando(true)}>
@@ -196,7 +212,7 @@ export default function TiendaPage() {
       <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 20, marginBottom: 28, padding: "0 2px" }}>
         {loading ? <><SkeletonStat /><SkeletonStat /><SkeletonStat /><SkeletonStat /></> : (
           <>
-            <Stat value={kpis.pendientesRecogida} label="Pendientes de recogida"
+            <Stat value={kpis.pendientesRecogida} label="Creados en tienda"
               color={kpis.pendientesRecogida > 0 ? "var(--warning)" : "var(--success)"}
               onClick={() => setFEstado("CREADO_TIENDA")} />
             <Stat value={kpis.recogidoTienda + kpis.entregadoCedi} label="En proceso CEDI"
@@ -320,10 +336,18 @@ export default function TiendaPage() {
                               <PackageCheck size={12} />CEDI
                             </button>}
                           {d.estado === "ENTREGADO_CEDI" && canChangeOperationalState &&
+                            <>
+                            {!d.guardadoPendiente && (
+                              <button className="ds-btn ds-btn-sm" style={{ background: "#0e749014", color: "#0e7490", height: 26, fontSize: 11 }}
+                                onClick={(e) => { e.stopPropagation(); setAsignandoGuardado(d); }} title="Asignar a operario transporte para guardado">
+                                <UserPlus size={12} />Guardado
+                              </button>
+                            )}
                             <button className="ds-btn ds-btn-sm" style={{ background: "var(--success-tint)", color: "var(--success)", height: 26, fontSize: 11 }}
                               onClick={(e) => { e.stopPropagation(); cambiarEstado(d, "ENVIADO_CLIENTE"); }} title="Marcar enviado al cliente">
                               <CheckCircle2 size={12} />Enviado
-                            </button>}
+                            </button>
+                            </>}
                           {canEditBasic && (d.estado === "CREADO_TIENDA" || canEdit) && <button className="ds-btn ds-btn-sm ds-btn-ghost" style={{ height: 26 }} onClick={(e) => { e.stopPropagation(); setEditing(d); }} title="Editar"><Pencil size={12} /></button>}
                           {canDelete && <button className="ds-btn ds-btn-sm ds-btn-ghost" style={{ height: 26, color: "var(--error)" }} onClick={(e) => { e.stopPropagation(); setDeleting(d); }} title="Eliminar"><Trash2 size={12} /></button>}
                         </div>
@@ -369,6 +393,12 @@ export default function TiendaPage() {
                   if (novedad !== null) cambiarEstado(panelItem, "CON_NOVEDAD", { novedad });
                 }}>
                 <AlertTriangle size={13} />Novedad
+              </button>
+            )}
+            {panelItem && canChangeOperationalState && panelItem.estado === "ENTREGADO_CEDI" && !panelItem.guardadoPendiente && (
+              <button className="ds-btn ds-btn-sm ds-btn-secondary" style={{ color: "#0e7490" }}
+                onClick={() => setAsignandoGuardado(panelItem)}>
+                <UserPlus size={13} />Enviar a guardado
               </button>
             )}
             {canEditBasic && panelItem && (panelItem.estado === "CREADO_TIENDA" || canEdit) && <button className="ds-btn ds-btn-sm ds-btn-secondary" onClick={() => setEditing(panelItem)}><Pencil size={13} /></button>}
@@ -485,6 +515,16 @@ export default function TiendaPage() {
               </DetailSection>
             )}
 
+            {panelItem.guardadoPendiente && (
+              <DetailSection title="Guardado transporte">
+                <DetailGrid items={[
+                  { label: "Estado", value: panelItem.guardadoPendiente.estado },
+                  { label: "Operario", value: panelItem.guardadoPendiente.asignadoANombre ?? panelItem.guardadoPendiente.asignadoAId },
+                  { label: "Guardado", value: panelItem.guardadoPendiente.guardadoClientId ?? undefined },
+                ]} />
+              </DetailSection>
+            )}
+
             {panelItem.novedad && (
               <DetailSection title="Novedad registrada">
                 <div style={{ background: "var(--error-tint)", borderRadius: 8, padding: "10px 12px", fontSize: 13, color: "var(--error)", display: "flex", gap: 8 }}>
@@ -527,6 +567,15 @@ export default function TiendaPage() {
         </ModalBase>
       )}
 
+      {asignandoGuardado && (
+        <ModalAsignarGuardado
+          despacho={asignandoGuardado}
+          onClose={() => setAsignandoGuardado(null)}
+          onAsignado={(userId, nota) => asignarAGuardado(asignandoGuardado, userId, nota)}
+          onError={(m) => showToast(m, true)}
+        />
+      )}
+
       {toast && (
         <div className="animate-fade-up" style={{ position: "fixed", bottom: 24, right: 24, zIndex: 10000, background: toast.err ? "var(--error)" : "#0F0F10", color: "#fff", padding: "10px 16px", borderRadius: 10, fontSize: 13, fontWeight: 500, boxShadow: "var(--shadow-xl)", display: "flex", alignItems: "center", gap: 8 }}>
           {!toast.err && <CheckCircle2 size={14} />}{toast.msg}
@@ -537,6 +586,76 @@ export default function TiendaPage() {
 }
 
 // ── Modal crear/editar ────────────────────────────────────
+function ModalAsignarGuardado({ despacho, onClose, onAsignado, onError }: {
+  despacho: DespachoTienda;
+  onClose: () => void;
+  onAsignado: (userId: string, nota: string | null) => Promise<void>;
+  onError: (m: string) => void;
+}) {
+  const [usuarios, setUsuarios] = useState<Array<{ id: string; name: string; email: string }>>([]);
+  const [userId, setUserId] = useState("");
+  const [nota, setNota] = useState("");
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    fetch("/api/users?role=TRANSPORTE")
+      .then((r) => r.json())
+      .then((j) => { if (j.success) setUsuarios(j.data ?? []); })
+      .catch(() => onError("No se pudieron cargar operarios transporte"))
+      .finally(() => setLoading(false));
+  }, [onError]);
+
+  return (
+    <ModalBase title="Enviar a guardado" sub={`${despacho.numeroDocumento} - ${despacho.clienteNombre}`} onClose={onClose}>
+      <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+        {loading ? (
+          <div style={{ textAlign: "center", padding: "18px 0", fontSize: 13, color: "var(--muted)" }}>Cargando operarios...</div>
+        ) : (
+          <>
+            <Field label="Operario transporte *">
+              <select value={userId} onChange={(e) => setUserId(e.target.value)} style={inp} {...focusProps}>
+                <option value="">Selecciona un operario</option>
+                {usuarios.map((u) => <option key={u.id} value={u.id}>{u.name} - {u.email}</option>)}
+              </select>
+            </Field>
+            <Field label="Nota para guardado">
+              <textarea
+                value={nota}
+                onChange={(e) => setNota(e.target.value)}
+                placeholder="Ubicacion sugerida, instrucciones internas o contexto para el operario"
+                style={{ ...inp, minHeight: 80, height: "auto", paddingTop: 10, resize: "vertical" }}
+                {...focusProps}
+              />
+            </Field>
+            {despacho.notaEntrega && (
+              <div style={{ padding: "10px 12px", background: "var(--surface2)", borderRadius: 8, fontSize: 12, color: "var(--muted)", whiteSpace: "pre-wrap" }}>
+                {despacho.notaEntrega}
+              </div>
+            )}
+            <div style={{ display: "flex", gap: 8 }}>
+              <button className="ds-btn ds-btn-secondary" style={{ flex: 1 }} onClick={onClose}>Cancelar</button>
+              <button
+                className="ds-btn ds-btn-primary"
+                style={{ flex: 2, background: "#0e7490" }}
+                disabled={!userId || saving}
+                onClick={async () => {
+                  if (!userId) { onError("Selecciona un operario transporte"); return; }
+                  setSaving(true);
+                  await onAsignado(userId, nota.trim() || null);
+                  setSaving(false);
+                }}
+              >
+                <UserPlus size={14} />{saving ? "Asignando..." : "Asignar pendiente"}
+              </button>
+            </div>
+          </>
+        )}
+      </div>
+    </ModalBase>
+  );
+}
+
 function ModalDespacho({ despacho, onClose, onSaved, onError }: {
   despacho?: DespachoTienda; onClose: () => void; onSaved: () => void; onError: (m: string) => void;
 }) {
@@ -614,7 +733,7 @@ function ModalDespacho({ despacho, onClose, onSaved, onError }: {
           <textarea
             value={notaEntrega}
             onChange={(e) => setNotaEntrega(e.target.value)}
-            placeholder="Direcci?n, contacto, observaciones o instrucciones de entrega"
+            placeholder="Direccion, contacto, observaciones o instrucciones de entrega"
             style={{ ...inp, minHeight: 88, height: "auto", paddingTop: 10, resize: "vertical" }}
             {...focusProps}
           />

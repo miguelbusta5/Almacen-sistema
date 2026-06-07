@@ -6,7 +6,7 @@ import { useSession } from "next-auth/react";
 import {
   Package, Truck, ClipboardList, ArrowRight, AlertTriangle,
   Clock, Plus,
-  CheckSquare, Store, BarChart2, Users, History,
+  CheckSquare, Store, BarChart2, Users, History, ShieldCheck,
 } from "lucide-react";
 import { Stat, SkeletonStat, TimelineItem, SectionHeader, SkeletonStat as SK } from "@/components/ui";
 import { IntelBanner } from "@/components/ui/SlidePanel";
@@ -27,12 +27,11 @@ function timeAgo(iso: string) {
 function moduleColor(mod: string) {
   if (mod === "muebles") return "#2563EB";
   if (mod === "transporte") return "#0E7490";
-  if (mod === "logistica") return "#7C3AED";
   if (mod === "conteo") return "#16A34A";
   return "#6B7280";
 }
 function moduleLabel(mod: string) {
-  const m: Record<string, string> = { muebles: "Muebles", transporte: "Transporte", logistica: "Logística", conteo: "Conteo", users: "Usuarios" };
+  const m: Record<string, string> = { muebles: "Muebles", transporte: "Transporte", conteo: "Conteo", users: "Usuarios" };
   return m[mod] ?? mod;
 }
 function actionDot(action: string): "active" | "success" | "warning" | "error" | "default" {
@@ -288,9 +287,9 @@ function OperadorDashboard({ nombre, role }: { nombre: string; role: string }) {
   const solucionadas  = useMemo(() => novedades.filter((n) => n.estado === "SOLUCIONADO"), [novedades]);
   const guardadosPend = useMemo(() => guardados.filter((g) => g.estado === "PENDIENTE DESPACHO"), [guardados]);
   const guardadosDesp = useMemo(() => guardados.filter((g) => g.estado === "DESPACHADO"), [guardados]);
-  const tiendaPend    = useMemo(() => tiendaDespachos.filter((d) => d.estado === "CREADO_TIENDA" || d.estado === "ASIGNADO_RECOGIDA" || d.estado === "RECOGIDO_TIENDA" || d.estado === "ENTREGADO_CEDI"), [tiendaDespachos]);
+  const tiendaPend    = useMemo(() => tiendaDespachos.filter((d) => d.estado === "CREADO_TIENDA" || d.estado === "RECOGIDO_TIENDA" || d.estado === "ENTREGADO_CEDI"), [tiendaDespachos]);
   const tiendaNovedad = useMemo(() => tiendaDespachos.filter((d) => d.estado === "CON_NOVEDAD"), [tiendaDespachos]);
-  const tiendaDesp    = useMemo(() => tiendaDespachos.filter((d) => d.estado === "ENTREGADO_CLIENTE"), [tiendaDespachos]);
+  const tiendaDesp    = useMemo(() => tiendaDespachos.filter((d) => d.estado === "ENVIADO_CLIENTE"), [tiendaDespachos]);
 
   // ── Alerta total para el header de greeting ──────────────
   const totalAlertas = (() => {
@@ -424,7 +423,7 @@ function OperadorDashboard({ nombre, role }: { nombre: string; role: string }) {
             {/* Tienda */}
             {needsTienda && (
               <>
-                <Stat value={tiendaPend.length} label="Pendientes recogida"
+                <Stat value={tiendaPend.length} label="Activos tienda"
                   color={tiendaPend.length > 0 ? "var(--warning)" : "var(--success)"}
                   onClick={() => { window.location.href = "/dashboard/tienda"; }} />
                 <Stat value={tiendaNovedad.length} label="Con novedad"
@@ -475,9 +474,10 @@ function TransportistaDashboard({ nombre }: { nombre: string }) {
         </p>
       </div>
 
-      <div className="ds-card" style={{ padding: 28 }}>
+      <Link href="/dashboard/preoperacional" style={{ textDecoration: "none" }}>
+      <div className="ds-card lift" style={{ padding: 28, cursor: "pointer" }}>
         <div style={{ width: 46, height: 46, borderRadius: 12, background: "var(--surface2)", display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 16 }}>
-          <CheckSquare size={21} color="var(--muted)" />
+          <ShieldCheck size={21} color="#0E7490" />
         </div>
         <div style={{ fontSize: 17, fontWeight: 700, color: "var(--text)", marginBottom: 8 }}>
           Preoperacional
@@ -486,6 +486,7 @@ function TransportistaDashboard({ nombre }: { nombre: string }) {
           Tu acceso operativo se concentrará en la inspección preoperacional del vehículo.
         </p>
       </div>
+      </Link>
     </div>
   );
 }

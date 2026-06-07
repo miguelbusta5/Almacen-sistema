@@ -683,7 +683,7 @@ export default function MueblesPage() {
                       if (!file) return;
                       const form = new FormData();
                       form.append("foto", file);
-                      const r = await fetch("/api/logistica/foto", { method: "POST", body: form });
+                      const r = await fetch("/api/uploads/foto", { method: "POST", body: form });
                       const j = await r.json();
                       if (j.success) {
                         await fetch(`/api/novedades/${panelItem.id}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ imagenUrl: j.url }) });

@@ -21,6 +21,13 @@ const SESSION_COOKIES = [
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
+  if (pathname.startsWith("/api/logistica")) {
+    return NextResponse.json(
+      { error: "Modulo logistica deshabilitado" },
+      { status: 410 },
+    );
+  }
+
   // Solo proteger rutas del dashboard (mis-tareas es accesible a todos los roles autenticados)
   if (!pathname.startsWith("/dashboard")) return NextResponse.next();
 
@@ -45,5 +52,5 @@ export function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/dashboard/:path*"],
+  matcher: ["/dashboard/:path*", "/api/logistica/:path*"],
 };

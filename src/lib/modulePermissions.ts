@@ -23,8 +23,7 @@ export type AppRole =
 export type ModuleKey =
   | "inventario"
   | "transporte"
-  | "logistica"
-  | "mi-ruta"
+  | "preoperacional"
   | "conteo"
   | "conteo-contar"
   | "tienda"
@@ -43,8 +42,7 @@ export const MODULE_ACCESS: Record<ModuleKey, AppRole[]> = {
     "TRANSPORTE", "SUPERVISOR_TRANSPORTE",
     "GERENTE", "ADMIN", "OPERADOR",
   ],
-  "logistica": [],
-  "mi-ruta": [],
+  "preoperacional": ["TRANSPORTISTA"],
   "conteo": [
     "INVENTARIO", "SUPERVISOR_INVENTARIO",
     "GERENTE", "ADMIN",

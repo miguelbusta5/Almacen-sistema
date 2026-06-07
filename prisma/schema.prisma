@@ -87,15 +87,16 @@ model User {
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
-  activityLogs       ActivityLog[]
-  transportista      Transportista?
-  ciclosConteo       CicloConteo[]
-  novedadesAsign     Novedad[]                  @relation("NovedadesAsignadas")
-  contactosGuard     ContactoGuardado[]
-  despachosTienda    DespachoTienda[]           @relation("DespachosCreadosPor")
-  historialDespachos HistorialDespacho[]        @relation("HistorialDespachoUsuario")
-  inspecciones       InspeccionPreoperacional[] @relation("InspeccionesRealizadas")
-  notificaciones     Notificacion[]
+  activityLogs        ActivityLog[]
+  transportista       Transportista?
+  ciclosConteo        CicloConteo[]
+  novedadesAsign      Novedad[]                  @relation("NovedadesAsignadas")
+  contactosGuard      ContactoGuardado[]
+  despachosTienda     DespachoTienda[]           @relation("DespachosCreadosPor")
+  historialDespachos  HistorialDespacho[]        @relation("HistorialDespachoUsuario")
+  inspecciones        InspeccionPreoperacional[] @relation("InspeccionesRealizadas")
+  notificaciones      Notificacion[]
+  guardadosPendientes GuardadoPendienteTienda[]  @relation("GuardadosPendientesAsignados")
 
   @@index([email])
   @@map("users")
@@ -206,8 +207,9 @@ model DespachoTienda {
   createdAt   DateTime @default(now()) @map("created_at")
   updatedAt   DateTime @updatedAt @map("updated_at")
 
-  plines    PlinDespacho[]
-  historial HistorialDespacho[]
+  plines            PlinDespacho[]
+  historial         HistorialDespacho[]
+  guardadoPendiente GuardadoPendienteTienda?
 
   @@index([estado])
   @@index([estado, createdAt])
@@ -215,6 +217,24 @@ model DespachoTienda {
   @@index([centroCostos, fechaCreacion])
   @@index([fechaCreacion])
   @@map("despachos_tienda")
+}
+
+model GuardadoPendienteTienda {
+  id               String         @id @default(cuid())
+  despachoId       String         @unique @map("despacho_id")
+  despacho         DespachoTienda @relation(fields: [despachoId], references: [id], onDelete: Cascade)
+  asignadoAId      String         @map("asignado_a_id")
+  asignadoA        User           @relation("GuardadosPendientesAsignados", fields: [asignadoAId], references: [id])
+  asignadoPorId    String         @map("asignado_por_id")
+  estado           String         @default("PENDIENTE") @db.VarChar(20)
+  guardadoClientId String?        @map("guardado_client_id") @db.VarChar(100)
+  nota             String?
+  createdAt        DateTime       @default(now()) @map("created_at")
+  completadoAt     DateTime?      @map("completado_at")
+
+  @@index([asignadoAId, estado])
+  @@index([despachoId])
+  @@map("guardados_pendientes_tienda")
 }
 
 model HistorialDespacho {

@@ -526,7 +526,7 @@ export default function CentroControlPage() {
 
         <KpiBlock title="Tienda" icon={<Store size={15} color="#7C3AED" />}>
           <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
-            <MiniKpi label="Pend. recogida"     value={tiendaKpis.pendientes} color={tiendaKpis.pendientes > 0 ? "var(--warning)" : "var(--muted)"} />
+            <MiniKpi label="Activos tienda"     value={tiendaKpis.pendientes} color={tiendaKpis.pendientes > 0 ? "var(--warning)" : "var(--muted)"} />
             <MiniKpi label=">24h sin recoger"   value={tiendaKpis.criticos}   color={tiendaKpis.criticos > 0 ? "var(--error)" : "var(--muted)"} />
           </div>
           <div style={{ marginTop: 12, paddingTop: 12, borderTop: "1px solid var(--border)", display: "flex", gap: 12 }}>

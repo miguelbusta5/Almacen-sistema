@@ -15,9 +15,8 @@ import Link from "next/link";
 interface MisTareas {
   novedades: any[];
   guardados: any[];
+  guardadosTiendaPendientes: any[];
   despachosTienda: any[];
-  rutaActiva: any | null;
-  incidencias: any[];
   notifNoLeidas: number;
 }
 
@@ -97,7 +96,7 @@ export default function MisTareasPage() {
 
   // ── Calcular KPIs ─────────────────────────────────────────
   const kpis = data ? {
-    total: data.novedades.length + data.guardados.length + data.despachosTienda.length,
+    total: data.novedades.length + data.guardados.length + data.guardadosTiendaPendientes.length + data.despachosTienda.length,
     vencidas: [
       ...data.novedades.filter((n) => calcSla(n.fechaCompromiso) === "VENCIDO"),
     ].length,
@@ -200,6 +199,22 @@ export default function MisTareasPage() {
                 );
               })}
               {data.guardados.length > 8 && <div style={{ fontSize: 12, color: "var(--muted)", textAlign: "center", padding: "8px 0" }}>+{data.guardados.length - 8} más en <Link href="/dashboard/transporte" style={{ color: "#0E7490" }}>Transporte</Link></div>}
+            </Seccion>
+          )}
+
+          {data.guardadosTiendaPendientes.length > 0 && (
+            <Seccion icon={<Truck size={15} />} title="Despachos de tienda por guardar" count={data.guardadosTiendaPendientes.length} color="#0E7490">
+              {data.guardadosTiendaPendientes.slice(0, 8).map((p: any) => (
+                <TareaCard
+                  key={p.id}
+                  href="/dashboard/transporte"
+                  titulo={`${p.documento} · ${p.clienteNombre}`}
+                  sub={`${p.centroCostos}${p.numeroCajas ? ` · ${p.numeroCajas} cajas` : ""}`}
+                  badge="Pendiente por guardar"
+                  badgeColor="#0E7490"
+                  tiempo={new Date(p.createdAt).toLocaleDateString("es-CO")}
+                />
+              ))}
             </Seccion>
           )}
 

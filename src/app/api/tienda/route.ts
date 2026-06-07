@@ -46,6 +46,13 @@ function mapRow(r: any): object {
     despachadoAt:       r.despachadoAt  ? r.despachadoAt.toISOString()  : null,
     novedadAt:          r.novedadAt     ? r.novedadAt.toISOString()     : null,
     notaEntrega:       r.notaEntrega ?? null,
+    guardadoPendiente: r.guardadoPendiente ? {
+      id: r.guardadoPendiente.id,
+      estado: r.guardadoPendiente.estado,
+      asignadoAId: r.guardadoPendiente.asignadoAId,
+      asignadoANombre: r.guardadoPendiente.asignadoA?.name ?? null,
+      guardadoClientId: r.guardadoPendiente.guardadoClientId ?? null,
+    } : null,
     // Dirección
     direccionEntrega: r.direccionEntrega ?? null,
     barrio:           r.barrio ?? null,
@@ -94,7 +101,7 @@ export async function GET(req: NextRequest) {
   const [rows, total] = await prisma.$transaction([
     prisma.despachoTienda.findMany({
       where,
-      include: { creadoPor: { select: { id: true, name: true } }, plines: true },
+      include: { creadoPor: { select: { id: true, name: true } }, plines: true, guardadoPendiente: { include: { asignadoA: { select: { name: true } } } } },
       orderBy: [{ fechaCreacion: "desc" }, { createdAt: "desc" }],
       skip: (page - 1) * pageSize,
       take: pageSize,
@@ -131,7 +138,7 @@ export async function POST(req: NextRequest) {
         notaEntrega:             d.notaEntrega ?? null,
         creadoPorId:             actor.id,
       },
-      include: { creadoPor: { select: { id: true, name: true } }, plines: true },
+      include: { creadoPor: { select: { id: true, name: true } }, plines: true, guardadoPendiente: { include: { asignadoA: { select: { name: true } } } } },
     });
 
     if (d.plines && d.plines.length > 0) {
@@ -147,7 +154,7 @@ export async function POST(req: NextRequest) {
 
     return tx.despachoTienda.findUnique({
       where: { id: despacho.id },
-      include: { creadoPor: { select: { id: true, name: true } }, plines: true },
+      include: { creadoPor: { select: { id: true, name: true } }, plines: true, guardadoPendiente: { include: { asignadoA: { select: { name: true } } } } },
     });
   });
 

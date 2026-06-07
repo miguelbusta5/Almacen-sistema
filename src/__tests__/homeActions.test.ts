@@ -106,12 +106,17 @@ describe("getHomeActionsByRole", () => {
 
   // ── TRANSPORTISTA ────────────────────────────────────
   describe("TRANSPORTISTA", () => {
+    it("ve preoperacional", () => expect(hasAction("TRANSPORTISTA", "preoperacional")).toBe(true));
     it("NO ve ver-mis-tareas", () => expect(hasAction("TRANSPORTISTA", "ver-mis-tareas")).toBe(false));
     it("NO ve nueva-novedad", () => expect(hasAction("TRANSPORTISTA", "nueva-novedad")).toBe(false));
     it("NO ve nuevo-guardado", () => expect(hasAction("TRANSPORTISTA", "nuevo-guardado")).toBe(false));
     it("NO ve nuevo-despacho-tienda", () => expect(hasAction("TRANSPORTISTA", "nuevo-despacho-tienda")).toBe(false));
     it("NO ve gestionar-usuarios", () => expect(hasAction("TRANSPORTISTA", "gestionar-usuarios")).toBe(false));
     it("NO ve centro-control", () => expect(hasAction("TRANSPORTISTA", "centro-control")).toBe(false));
+    it("navega a /dashboard/preoperacional", () => {
+      const action = getHomeActionsByRole("TRANSPORTISTA", 99).find((a) => a.id === "preoperacional");
+      expect(action?.href).toBe("/dashboard/preoperacional");
+    });
   });
 
   // ── OPERADOR (legacy) ────────────────────────────────
@@ -168,7 +173,6 @@ describe("getHomeActionsByRole", () => {
     it("INVENTARIO no ve acciones de transporte", () => {
       const actions = getHomeActionsByRole("INVENTARIO", 99);
       expect(actions.every((a) => a.moduleKey !== "transporte")).toBe(true);
-      expect(actions.every((a) => a.moduleKey !== "logistica")).toBe(true);
     });
 
     it("TRANSPORTE no ve acciones de inventario puras", () => {
@@ -176,14 +180,13 @@ describe("getHomeActionsByRole", () => {
       expect(actions.every((a) => a.moduleKey !== "inventario")).toBe(true);
       expect(actions.every((a) => a.moduleKey !== "conteo-contar")).toBe(true);
       expect(actions.every((a) => a.moduleKey !== "tienda")).toBe(true);
-      expect(actions.every((a) => a.moduleKey !== "logistica")).toBe(true);
     });
   });
 
   // ── Orden por prioridad ──────────────────────────────
   describe("orden por prioridad", () => {
     it("las acciones vienen ordenadas de menor a mayor prioridad", () => {
-      for (const role of ["INVENTARIO", "TRANSPORTE", "TIENDA", "ADMIN", "GERENTE", "OPERADOR"]) {
+      for (const role of ["INVENTARIO", "TRANSPORTE", "TIENDA", "TRANSPORTISTA", "ADMIN", "GERENTE", "OPERADOR"]) {
         const actions = getHomeActionsByRole(role, 99);
         for (let i = 1; i < actions.length; i++) {
           expect(actions[i].priority).toBeGreaterThanOrEqual(actions[i - 1].priority);

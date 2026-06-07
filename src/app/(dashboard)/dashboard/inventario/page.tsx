@@ -311,7 +311,7 @@ function NuevaNovedadSheet({ onClose, onCreada, existingPlus, existingPosiciones
     try {
       const fd = new FormData();
       fd.append("foto", file);
-      const r = await fetch("/api/logistica/foto", { method: "POST", body: fd });
+      const r = await fetch("/api/uploads/foto", { method: "POST", body: fd });
       const j = await r.json();
       if (j.success && j.url) {
         setFoto((prev) =>
@@ -639,7 +639,7 @@ function DetalleSheet({ item, onClose, onUpdated, canEdit }: {
     try {
       const fd = new FormData();
       fd.append("foto", file);
-      const r = await fetch("/api/logistica/foto", { method: "POST", body: fd });
+      const r = await fetch("/api/uploads/foto", { method: "POST", body: fd });
       const j = await r.json();
       if (j.success && j.url) {
         await fetch(`/api/novedades/${item.id}`, {

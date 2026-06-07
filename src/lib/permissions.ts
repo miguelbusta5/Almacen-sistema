@@ -21,7 +21,7 @@ const MATRIX: Record<Action, UserRole[]> = {
   delete:           ["ADMIN"],
   manageUsers:      ["ADMIN"],
   viewAudit:        ["ADMIN"],          // visibilidad del módulo → modulePermissions.ts
-  manageLogistica:  ["GERENTE", "ADMIN", "SUPERVISOR_TRANSPORTE"],
+  manageLogistica:  [],
   manageConteo:     ["ADMIN", "SUPERVISOR_INVENTARIO"],
 };
 

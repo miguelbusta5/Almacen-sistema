@@ -42,6 +42,25 @@ export async function GET() {
       })
     : [];
 
+  const guardadosTiendaPendientes = (role === "TRANSPORTE" || role === "SUPERVISOR_TRANSPORTE" || role === "GERENTE" || role === "ADMIN")
+    ? await prisma.guardadoPendienteTienda.findMany({
+        where: {
+          estado: "PENDIENTE",
+          ...(role === "TRANSPORTE" ? { asignadoAId: userId } : {}),
+        },
+        include: {
+          despacho: {
+            select: {
+              id: true, centroCostos: true, numeroDocumento: true,
+              clienteNombre: true, numeroCajas: true, notaEntrega: true,
+            },
+          },
+        },
+        orderBy: { createdAt: "asc" },
+        take: 50,
+      })
+    : [];
+
   // ── Despachos Tienda: pendientes ────────────────────────────
   const despachosTienda = (role === "TIENDA" || role === "SUPERVISOR_TIENDA" || role === "SUPERVISOR_TRANSPORTE" || role === "GERENTE" || role === "ADMIN")
     ? await prisma.despachoTienda.findMany({
@@ -74,6 +93,16 @@ export async function GET() {
         ubicacion: g.ubicacion, estado: g.estado,
         fecha: new Date(g.fecha).toISOString().slice(0, 10), nota: g.nota, tipo: g.tipo,
       })),
+      guardadosTiendaPendientes: guardadosTiendaPendientes.map((p: any) => ({
+        id: p.id,
+        despachoId: p.despachoId,
+        nota: p.nota,
+        createdAt: p.createdAt.toISOString(),
+        documento: p.despacho.numeroDocumento,
+        clienteNombre: p.despacho.clienteNombre,
+        centroCostos: p.despacho.centroCostos,
+        numeroCajas: p.despacho.numeroCajas,
+      })),
       despachosTienda: despachosTienda.map((d: any) => ({
         id: d.id, centroCostos: d.centroCostos, numeroDocumento: d.numeroDocumento,
         clienteNombre: d.clienteNombre, estado: d.estado,
@@ -81,8 +110,6 @@ export async function GET() {
         fechaEntregaComprometida: d.fechaEntregaComprometida ? new Date(d.fechaEntregaComprometida).toISOString().slice(0, 10) : null,
         createdAt: d.createdAt.toISOString(),
       })),
-      rutaActiva: null,
-      incidencias: [],
       notifNoLeidas,
     },
   });

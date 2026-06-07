@@ -6,7 +6,6 @@
 
 import type { Novedad } from "@/lib/muebles";
 import type { Guardado } from "@/lib/transporte";
-import type { Ruta } from "@/lib/logistica";
 import type { DespachoTienda } from "@/lib/tienda";
 import { urgencia, parseEntrega } from "@/lib/transporte";
 import { calcAlmacenaje } from "@/lib/almacenaje";
@@ -18,7 +17,7 @@ export type InsightLevel = "critical" | "warning" | "info";
 export interface IntelInsight {
   id: string;
   level: InsightLevel;
-  module: "muebles" | "transporte" | "logistica" | "global";
+  module: "muebles" | "transporte" | "tienda" | "global";
   message: string;
   context?: string;         // dato de soporte (número, nombre, etc.)
   recordId?: string | number; // para hacer click-to-detail
@@ -30,9 +29,6 @@ const UMBRAL_PLU_PCT     = 25;  // % de novedades de un solo PLU → alerta
 const UMBRAL_FAB_PCT     = 40;  // % de impacto de un fabricante → alerta
 const UMBRAL_DIAS_PEND   = 30;  // días sin resolver → alerta crítica
 const UMBRAL_ALM_MONTO   = 300_000; // costo almacenaje en $ → alerta
-const UMBRAL_RUTA_HORA   = 14;  // hora del día para evaluar retraso de ruta
-const UMBRAL_RUTA_PROG   = 0.45; // progreso < 45% a las 14h → riesgo
-const UMBRAL_FAIL_COUNT  = 2;   // entregas fallidas mínimas para alertar
 
 // ── Helpers ───────────────────────────────────────────────
 function fmtCOP(n: number) {
@@ -262,51 +258,6 @@ export function insightsPorGuardado(g: Guardado, allItems: Guardado[]): IntelIns
   return out;
 }
 
-// ═══════════════════════════════════════════════════════════
-// INSIGHTS DE LOGÍSTICA (RUTAS)
-// ═══════════════════════════════════════════════════════════
-export function insightsRutas(rutas: Ruta[]): IntelInsight[] {
-  const out: IntelInsight[] = [];
-  const activas = rutas.filter((r) => r.estado === "EN_CURSO");
-
-  for (const r of activas) {
-    const total = r.paradas.length;
-    if (total === 0) continue;
-
-    const entregadas = r.paradas.filter((p) => p.estado === "ENTREGADO").length;
-    const fallidas = r.paradas.filter((p) => p.estado === "NO_ENTREGADO").length;
-
-    // Ruta con múltiples entregas fallidas
-    if (fallidas >= UMBRAL_FAIL_COUNT) {
-      out.push({
-        id: `ruta-fallas-${r.id}`,
-        level: "warning",
-        module: "logistica",
-        message: `Ruta "${r.nombre}" tiene ${fallidas} entrega${fallidas !== 1 ? "s" : ""} fallida${fallidas !== 1 ? "s" : ""}`,
-        context: r.transportista?.nombre ?? undefined,
-        recordId: r.id,
-        action: "Ver ruta",
-      });
-    }
-
-    // Ruta en riesgo de no terminar
-    const hora = new Date().getHours();
-    const progreso = entregadas / total;
-    if (hora >= UMBRAL_RUTA_HORA && progreso < UMBRAL_RUTA_PROG) {
-      out.push({
-        id: `ruta-retraso-${r.id}`,
-        level: "warning",
-        module: "logistica",
-        message: `Ruta "${r.nombre}" puede no finalizar hoy`,
-        context: `${entregadas}/${total} entregas — ${r.transportista?.nombre ?? "sin conductor"}`,
-        recordId: r.id,
-        action: "Ver ruta",
-      });
-    }
-  }
-
-  return out;
-}
 
 // ═══════════════════════════════════════════════════════════
 // REGLAS ESTRATÉGICAS — INICIATIVA 3
@@ -522,11 +473,11 @@ export function insightsSla(items: Novedad[]): IntelInsight[] {
 
 export function insightsTienda(despachos: DespachoTienda[]): IntelInsight[] {
   const out: IntelInsight[] = [];
-  // Pendientes de recogida = creados en tienda sin recoger aún
+  // Creados en tienda sin recogida fisica aun.
   const pendientes = despachos.filter((d) => d.estado === "CREADO_TIENDA");
   const novedades  = despachos.filter((d) => d.estado === "CON_NOVEDAD");
 
-  // 1. Despachos pendientes de recogida >24h
+  // 1. Despachos creados en tienda hace mas de 24h.
   const viejos = pendientes.filter((d) => horasDesde(d.createdAt) >= 24);
   if (viejos.length > 0) {
     out.push({
@@ -594,7 +545,6 @@ export function insightsPorDespacho(d: DespachoTienda, todos: DespachoTienda[]):
 export function consolidarInsights(
   novedades: Novedad[],
   guardados: Guardado[],
-  rutas: Ruta[],
   despachos: DespachoTienda[] = []
 ): IntelInsight[] {
   return [
@@ -606,7 +556,6 @@ export function consolidarInsights(
     ...insightsResponsableSaturado(novedades),
     ...insightsGuardados(guardados),
     ...insightsSinContacto(guardados),
-    ...insightsRutas(rutas),
     ...insightsTienda(despachos),
   ].sort((a, b) => {
     const order = { critical: 0, warning: 1, info: 2 };

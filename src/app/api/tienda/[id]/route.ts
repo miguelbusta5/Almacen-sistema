@@ -71,6 +71,13 @@ function mapRow(r: any): object {
     despachadoAt:       r.despachadoAt  ? r.despachadoAt.toISOString()  : null,
     novedadAt:          r.novedadAt     ? r.novedadAt.toISOString()     : null,
     notaEntrega:       r.notaEntrega ?? null,
+    guardadoPendiente: r.guardadoPendiente ? {
+      id: r.guardadoPendiente.id,
+      estado: r.guardadoPendiente.estado,
+      asignadoAId: r.guardadoPendiente.asignadoAId,
+      asignadoANombre: r.guardadoPendiente.asignadoA?.name ?? null,
+      guardadoClientId: r.guardadoPendiente.guardadoClientId ?? null,
+    } : null,
     // Dirección
     direccionEntrega: r.direccionEntrega ?? null,
     barrio:           r.barrio ?? null,
@@ -107,6 +114,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
     include: {
       creadoPor:       { select: { id: true, name: true } },
       plines: true,
+      guardadoPendiente: { include: { asignadoA: { select: { name: true } } } },
     },
   });
   if (!row) return NextResponse.json({ error: "No encontrado" }, { status: 404 });
@@ -235,6 +243,7 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
         include: {
           creadoPor:         { select: { id: true, name: true } },
           plines: true,
+          guardadoPendiente: { include: { asignadoA: { select: { name: true } } } },
         },
       }),
       // HistorialDespacho — solo si cambia el estado
