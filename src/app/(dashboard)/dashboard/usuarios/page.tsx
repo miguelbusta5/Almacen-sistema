@@ -3,10 +3,10 @@
 import { useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 import { useSession } from "next-auth/react";
-import { Users, Plus, Pencil, X, Shield, ShieldCheck, ShieldAlert, Truck, Car, Upload, Search } from "lucide-react";
+import { Users, Plus, Pencil, X, Shield, ShieldCheck, ShieldAlert, Truck, Car, Upload, Search, GitMerge } from "lucide-react";
 import { SkeletonTable, EmptyState } from "@/components/ui";
 
-type Role = "ADMIN" | "GERENTE" | "OPERADOR" | "TRANSPORTISTA" | "INVENTARIO" | "TRANSPORTE" | "SUPERVISOR_INVENTARIO" | "SUPERVISOR_TRANSPORTE" | "TIENDA" | "SUPERVISOR_TIENDA";
+type Role = "ADMIN" | "GERENTE" | "OPERADOR" | "TRANSPORTISTA" | "INVENTARIO" | "TRANSPORTE" | "SUPERVISOR_INVENTARIO" | "SUPERVISOR_TRANSPORTE" | "TIENDA" | "SUPERVISOR_TIENDA" | "OPERACIONES_MUEBLES" | "OPERACIONES_GOURMET";
 
 interface User {
   id: string;
@@ -53,6 +53,8 @@ const ROLE_META: Record<Role, { label: string; color: string; icon: React.ReactN
   SUPERVISOR_TIENDA:      { label: "Sup. Tienda",        color: "#7c3aed", icon: <Shield size={13} /> },
   OPERADOR:               { label: "Operador (General)", color: "#94a3b8", icon: <ShieldAlert size={13} /> },
   TRANSPORTISTA:          { label: "Transportista",      color: "#0e7490", icon: <ShieldAlert size={13} /> },
+  OPERACIONES_MUEBLES:    { label: "Op. Muebles",        color: "#7C3AED", icon: <GitMerge size={13} /> },
+  OPERACIONES_GOURMET:    { label: "Op. Gourmet",        color: "#7C3AED", icon: <GitMerge size={13} /> },
 };
 
 export default function UsuariosPage() {
@@ -590,6 +592,10 @@ function FormNuevo({ onClose, onSaved, onError }: { onClose: () => void; onSaved
                 <option value="TIENDA">Operario Tienda</option>
                 <option value="SUPERVISOR_TIENDA">Supervisor Tienda</option>
               </optgroup>
+              <optgroup label="Área Operaciones">
+                <option value="OPERACIONES_MUEBLES">Operaciones Muebles</option>
+                <option value="OPERACIONES_GOURMET">Operaciones Gourmet</option>
+              </optgroup>
               <optgroup label="Área Transporte">
                 <option value="TRANSPORTE">Operario Transporte</option>
                 <option value="TRANSPORTISTA">Transportista (Conductor)</option>
@@ -668,6 +674,10 @@ function ModalEditar({ u, selfId, onClose, onSaved, onError }: { u: User; selfId
               <optgroup label="Área Tienda">
                 <option value="TIENDA">Operario Tienda</option>
                 <option value="SUPERVISOR_TIENDA">Supervisor Tienda</option>
+              </optgroup>
+              <optgroup label="Área Operaciones">
+                <option value="OPERACIONES_MUEBLES">Operaciones Muebles</option>
+                <option value="OPERACIONES_GOURMET">Operaciones Gourmet</option>
               </optgroup>
               <optgroup label="Área Transporte">
                 <option value="TRANSPORTE">Operario Transporte</option>
