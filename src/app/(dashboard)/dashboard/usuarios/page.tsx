@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { useSession } from "next-auth/react";
-import { Users, Plus, Pencil, X, Shield, ShieldCheck, ShieldAlert, Truck, Car } from "lucide-react";
+import { Users, Plus, Pencil, X, Shield, ShieldCheck, ShieldAlert, Truck, Car, Upload } from "lucide-react";
 
 type Role = "ADMIN" | "GERENTE" | "OPERADOR" | "TRANSPORTISTA" | "INVENTARIO" | "TRANSPORTE" | "SUPERVISOR_INVENTARIO" | "SUPERVISOR_TRANSPORTE" | "TIENDA" | "SUPERVISOR_TIENDA";
 
@@ -223,6 +223,8 @@ function CatalogosPreoperacional({
   const [vehiculoId, setVehiculoId] = useState("");
   const [savingVehiculo, setSavingVehiculo] = useState(false);
   const [savingTransportista, setSavingTransportista] = useState(false);
+  const [importandoMaestro, setImportandoMaestro] = useState(false);
+  const [resultadoMaestro, setResultadoMaestro] = useState<string | null>(null);
   const [updatingId, setUpdatingId] = useState<string | null>(null);
 
   async function crearVehiculo() {
@@ -305,8 +307,45 @@ function CatalogosPreoperacional({
     }
   }
 
+  async function importarMaestro(file: File | null) {
+    if (!file) return;
+    setImportandoMaestro(true);
+    setResultadoMaestro(null);
+    try {
+      const form = new FormData();
+      form.append("file", file);
+      const res = await fetch("/api/productos-maestro/importar", { method: "POST", body: form });
+      const json = await res.json();
+      if (!json.success) {
+        onToast(json.error || "Error al importar maestro", true);
+        return;
+      }
+      const data = json.data;
+      setResultadoMaestro(`${data.importados} importados, ${data.actualizados} actualizados, ${data.ignorados} ignorados`);
+      onToast("Maestro PLU importado");
+    } catch {
+      onToast("Error de conexion", true);
+    } finally {
+      setImportandoMaestro(false);
+    }
+  }
+
   return (
     <section style={{ marginTop: "1.5rem", display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: 16 }}>
+      <div style={{ gridColumn: "1/-1", background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 14, padding: "1rem", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <Upload size={18} color="#6366f1" />
+          <div>
+            <h2 style={{ fontSize: 15, fontWeight: 800, color: "var(--text)" }}>Maestro PLU</h2>
+            <p style={{ fontSize: 12, color: "var(--muted)", marginTop: 2 }}>Importa MAESTRO.xlsx para autollenar descripcion, fabricante, marca y precio.</p>
+            {resultadoMaestro && <p style={{ fontSize: 12, color: "#10b981", marginTop: 4, fontWeight: 800 }}>{resultadoMaestro}</p>}
+          </div>
+        </div>
+        <label style={{ ...btnPri, flex: "0 0 auto", background: "#6366f1", minWidth: 160, textAlign: "center", opacity: importandoMaestro ? 0.7 : 1 }}>
+          {importandoMaestro ? "Importando..." : "Importar Excel"}
+          <input type="file" accept=".xlsx" disabled={importandoMaestro} onChange={(e) => importarMaestro(e.target.files?.[0] ?? null)} style={{ display: "none" }} />
+        </label>
+      </div>
       <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 14, padding: "1rem" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: "0.9rem" }}>
           <Car size={18} color="#0e7490" />

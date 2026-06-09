@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { requireCan, requireAuth } from "@/lib/authz";
 import { prisma } from "@/lib/prisma";
 import { z } from "zod";
+import { deriveNovedadFromMaestro, normalizePlu, productoToClient } from "@/lib/productosMaestro";
 
 const updateSchema = z.object({
   plu: z.string().min(1).optional(),
@@ -43,16 +44,32 @@ export async function PUT(
   }
   const d = parsed.data;
 
+  const actualNovedad = await prisma.novedad.findUnique({
+    where: { id: numId },
+    select: { plu: true, cantidad: true },
+  });
+  if (!actualNovedad) return NextResponse.json({ error: "No encontrado" }, { status: 404 });
+
+  const effectivePlu = normalizePlu(d.plu ?? actualNovedad.plu);
+  const producto = await prisma.productoMaestro.findUnique({
+    where: { plu: effectivePlu },
+    select: { plu: true, descripcion: true, fabricante: true, precio: true, marca: true },
+  });
+  const derived = deriveNovedadFromMaestro({
+    descripcion: d.descripcion ?? null,
+    fabricante: d.fabricante ?? null,
+    costoUnitario: d.costoUnitario ?? null,
+  }, producto ? productoToClient(producto) : null, actor.role === "ADMIN");
+
   // Recalcular impacto si se envió costo unitario (impacto = costo × cantidad).
   // Si no se envía cantidad en el body, usar la existente.
   let costoIncidencia: number | undefined;
-  if (d.costoUnitario != null) {
+  if (derived.costoUnitario != null) {
     let cant = d.cantidad;
     if (cant === undefined) {
-      const actual = await prisma.novedad.findUnique({ where: { id: numId }, select: { cantidad: true } });
-      cant = actual?.cantidad ?? 0;
+      cant = actualNovedad.cantidad ?? 0;
     }
-    costoIncidencia = d.costoUnitario * cant;
+    costoIncidencia = derived.costoUnitario * cant;
   }
 
   // Determinar resueltoAt si se está solucionando
@@ -61,14 +78,14 @@ export async function PUT(
   await prisma.novedad.update({
     where: { id: numId },
     data: {
-      ...(d.plu !== undefined && { plu: d.plu }),
+      ...(d.plu !== undefined && { plu: effectivePlu }),
       ...(d.posicion !== undefined && { posicion: d.posicion }),
       ...(d.fecha !== undefined && { fecha: new Date(d.fecha + "T00:00:00") }),
       ...(d.estado !== undefined && { estado: d.estado }),
-      ...(d.descripcion !== undefined && { descripcion: d.descripcion }),
+      ...(producto && actor.role !== "ADMIN" ? { descripcion: derived.descripcion } : (d.descripcion !== undefined && { descripcion: d.descripcion })),
       ...(d.cantidad !== undefined && { cantidad: d.cantidad }),
-      ...(d.fabricante !== undefined && { fabricante: d.fabricante }),
-      ...(d.costoUnitario !== undefined && { costoUnitario: d.costoUnitario }),
+      ...(producto && actor.role !== "ADMIN" ? { fabricante: derived.fabricante } : (d.fabricante !== undefined && { fabricante: d.fabricante })),
+      ...(producto && actor.role !== "ADMIN" ? { costoUnitario: derived.costoUnitario } : (d.costoUnitario !== undefined && { costoUnitario: d.costoUnitario })),
       ...(costoIncidencia !== undefined && { costoIncidencia }),
       // Campos operativos
       ...(d.tipoNovedad !== undefined && { tipoNovedad: d.tipoNovedad }),

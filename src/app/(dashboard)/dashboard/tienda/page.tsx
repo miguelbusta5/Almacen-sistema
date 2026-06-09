@@ -17,6 +17,14 @@ import { Stat, SkeletonStat, Badge, EmptyState, SkeletonTable, TimelineItem } fr
 import { SlidePanel, IntelBanner, DetailSection, DetailGrid, MiniHistory } from "@/components/ui/SlidePanel";
 import { insightsTienda, insightsPorDespacho } from "@/lib/inteligencia";
 
+type ProductoMaestro = {
+  plu: string;
+  descripcion: string | null;
+  fabricante: string | null;
+  precio: number | null;
+  marca: string | null;
+};
+
 const inp: React.CSSProperties = {
   width: "100%", height: 36, padding: "0 12px",
   background: "var(--surface2)", border: "1px solid transparent",
@@ -547,6 +555,7 @@ export default function TiendaPage() {
       {(creando || editing) && (
         <ModalDespacho
           despacho={editing ?? undefined}
+          role={role}
           onClose={() => { setCreando(false); setEditing(null); }}
           onSaved={() => { setCreando(false); setEditing(null); load(); showToast(editing ? "Actualizado ✓" : "Despacho registrado ✓"); }}
           onError={(m) => showToast(m, true)}
@@ -656,8 +665,8 @@ function ModalAsignarGuardado({ despacho, onClose, onAsignado, onError }: {
   );
 }
 
-function ModalDespacho({ despacho, onClose, onSaved, onError }: {
-  despacho?: DespachoTienda; onClose: () => void; onSaved: () => void; onError: (m: string) => void;
+function ModalDespacho({ despacho, role, onClose, onSaved, onError }: {
+  despacho?: DespachoTienda; role?: string; onClose: () => void; onSaved: () => void; onError: (m: string) => void;
 }) {
   const isEdit = !!despacho;
   const [centroCostos,            setCC]     = useState(despacho?.centroCostos ?? "");
@@ -670,14 +679,35 @@ function ModalDespacho({ despacho, onClose, onSaved, onError }: {
   const [fechaEntrega,            setFEntrega]=useState(despacho?.fechaEntregaComprometida ?? "");
   const [numeroCajas,             setNCajas] = useState(despacho?.numeroCajas != null ? String(despacho.numeroCajas) : "");
   const [notaEntrega,             setNotaEntrega] = useState(despacho?.notaEntrega ?? "");
-  const [plines, setPlines] = useState<Array<{ plu: string; descripcion: string; unidades: string }>>(
-    despacho?.plines?.map((p) => ({ plu: p.plu, descripcion: p.descripcion ?? "", unidades: String(p.unidades) })) ?? []
+  const [plines, setPlines] = useState<Array<{ plu: string; descripcion: string; unidades: string; maestro?: boolean; status?: "idle" | "loading" | "found" | "missing"; override?: boolean }>>(
+    despacho?.plines?.map((p) => ({ plu: p.plu, descripcion: p.descripcion ?? "", unidades: String(p.unidades), status: "idle" })) ?? []
   );
   const [saving, setSaving] = useState(false);
 
-  function addPlin() { setPlines((prev) => [...prev, { plu: "", descripcion: "", unidades: "1" }]); }
+  function addPlin() { setPlines((prev) => [...prev, { plu: "", descripcion: "", unidades: "1", status: "idle" }]); }
   function removePlin(i: number) { setPlines((prev) => prev.filter((_, j) => j !== i)); }
   function updatePlin(i: number, key: string, val: string) { setPlines((prev) => prev.map((p, j) => j === i ? { ...p, [key]: val } : p)); }
+
+  const isAdmin = role === "ADMIN";
+
+  async function lookupPlinMaestro(i: number) {
+    const current = plines[i];
+    const normalized = current?.plu.trim().toUpperCase();
+    if (!current || !normalized) return;
+    setPlines((prev) => prev.map((p, j) => j === i ? { ...p, plu: normalized, status: "loading" } : p));
+    try {
+      const res = await fetch(`/api/productos-maestro/${encodeURIComponent(normalized)}`);
+      const json = await res.json();
+      if (res.ok && json.success) {
+        const producto = json.data as ProductoMaestro;
+        setPlines((prev) => prev.map((p, j) => j === i ? { ...p, descripcion: producto.descripcion ?? "", maestro: true, status: "found", override: false } : p));
+      } else {
+        setPlines((prev) => prev.map((p, j) => j === i ? { ...p, maestro: false, status: "missing" } : p));
+      }
+    } catch {
+      setPlines((prev) => prev.map((p, j) => j === i ? { ...p, maestro: false, status: "missing" } : p));
+    }
+  }
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -748,13 +778,27 @@ function ModalDespacho({ despacho, onClose, onSaved, onError }: {
             </button>
           </div>
           {plines.map((p, i) => (
-            <div key={i} style={{ display: "grid", gridTemplateColumns: "100px 1fr 70px 28px", gap: 6, marginBottom: 6, alignItems: "center" }}>
-              <input value={p.plu} onChange={(e) => updatePlin(i, "plu", e.target.value)} placeholder="PLU" style={{ ...inp, height: 32, fontSize: 12 }} {...focusProps} />
-              <input value={p.descripcion} onChange={(e) => updatePlin(i, "descripcion", e.target.value)} placeholder="Descripción (opc.)" style={{ ...inp, height: 32, fontSize: 12 }} {...focusProps} />
-              <input type="number" value={p.unidades} onChange={(e) => updatePlin(i, "unidades", e.target.value)} min="1" placeholder="Uds." style={{ ...inp, height: 32, fontSize: 12 }} {...focusProps} />
-              <button type="button" onClick={() => removePlin(i)} style={{ width: 28, height: 32, background: "var(--error-tint)", border: "none", borderRadius: 6, cursor: "pointer", color: "var(--error)", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                <Minus size={12} />
-              </button>
+            <div key={i}>
+              <div style={{ display: "grid", gridTemplateColumns: "100px 1fr 70px 28px", gap: 6, marginBottom: 6, alignItems: "center" }}>
+                <input value={p.plu} onChange={(e) => { updatePlin(i, "plu", e.target.value); updatePlin(i, "status", "idle"); }} onBlur={() => lookupPlinMaestro(i)} placeholder="PLU" style={{ ...inp, height: 32, fontSize: 12 }} />
+                <input value={p.descripcion} onChange={(e) => updatePlin(i, "descripcion", e.target.value)} disabled={!!p.maestro && !p.override} placeholder="Descripcion (opc.)" style={{ ...inp, height: 32, fontSize: 12, opacity: p.maestro && !p.override ? 0.7 : 1 }} {...focusProps} />
+                <input type="number" value={p.unidades} onChange={(e) => updatePlin(i, "unidades", e.target.value)} min="1" placeholder="Uds." style={{ ...inp, height: 32, fontSize: 12 }} {...focusProps} />
+                <button type="button" onClick={() => removePlin(i)} style={{ width: 28, height: 32, background: "var(--error-tint)", border: "none", borderRadius: 6, cursor: "pointer", color: "var(--error)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                  <Minus size={12} />
+                </button>
+              </div>
+              {p.status && p.status !== "idle" && (
+                <div style={{ margin: "-2px 0 8px", fontSize: 11, color: p.status === "found" ? "#10b981" : p.status === "missing" ? "#f59e0b" : "var(--muted)", fontWeight: 700 }}>
+                  {p.status === "loading" && "Buscando PLU en maestro..."}
+                  {p.status === "found" && "Datos cargados desde maestro"}
+                  {p.status === "missing" && "PLU no encontrado en maestro"}
+                  {p.status === "found" && isAdmin && !p.override && (
+                    <button type="button" onClick={() => setPlines((prev) => prev.map((x, j) => j === i ? { ...x, override: true } : x))} style={{ marginLeft: 8, border: "none", background: "transparent", color: "inherit", textDecoration: "underline", cursor: "pointer", fontWeight: 800 }}>
+                      Editar manualmente
+                    </button>
+                  )}
+                </div>
+              )}
             </div>
           ))}
           {plines.length === 0 && <p style={{ fontSize: 11, color: "var(--faint)", textAlign: "center" }}>Sin PLUs — opcional</p>}

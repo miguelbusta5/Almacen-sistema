@@ -3,6 +3,7 @@ import { requireAuth, requireCan } from "@/lib/authz";
 import { prisma } from "@/lib/prisma";
 import { z } from "zod";
 import { todayISO } from "@/lib/tienda";
+import { derivePlinFromMaestro, normalizePlu, productoToClient } from "@/lib/productosMaestro";
 
 const plinSchema = z.object({
   plu:        z.string().min(1).max(100),
@@ -142,13 +143,29 @@ export async function POST(req: NextRequest) {
     });
 
     if (d.plines && d.plines.length > 0) {
+      const normalizedPlus = [...new Set(d.plines.map((p) => normalizePlu(p.plu)).filter(Boolean))];
+      const productos = normalizedPlus.length > 0
+        ? await tx.productoMaestro.findMany({
+            where: { plu: { in: normalizedPlus } },
+            select: { plu: true, descripcion: true, fabricante: true, precio: true, marca: true },
+          })
+        : [];
+      const productosByPlu = new Map(productos.map((p) => [p.plu, productoToClient(p)]));
       await tx.plinDespacho.createMany({
-        data: d.plines.map((p) => ({
-          despachoId:  despacho.id,
-          plu:         p.plu,
-          descripcion: p.descripcion ?? null,
-          unidades:    p.unidades,
-        })),
+        data: d.plines.map((p) => {
+          const plu = normalizePlu(p.plu);
+          const derived = derivePlinFromMaestro(
+            { descripcion: p.descripcion ?? null },
+            productosByPlu.get(plu) ?? null,
+            actor.role === "ADMIN",
+          );
+          return {
+            despachoId:  despacho.id,
+            plu,
+            descripcion: derived.descripcion ?? null,
+            unidades:    p.unidades,
+          };
+        }),
       });
     }
 

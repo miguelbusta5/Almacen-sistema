@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { requireAuth, requireCan } from "@/lib/authz";
 import { prisma } from "@/lib/prisma";
 import { z } from "zod";
+import { deriveNovedadFromMaestro, normalizePlu, productoToClient } from "@/lib/productosMaestro";
 
 function mapRow(r: {
   id: number; plu: string; posicion: string; fecha: Date; estado: string;
@@ -83,19 +84,30 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: parsed.error.issues[0].message }, { status: 400 });
   }
   const d = parsed.data;
+  const normalizedPlu = normalizePlu(d.plu);
+  const producto = await prisma.productoMaestro.findUnique({
+    where: { plu: normalizedPlu },
+    select: { plu: true, descripcion: true, fabricante: true, precio: true, marca: true },
+  });
+  const derived = deriveNovedadFromMaestro({
+    descripcion: d.descripcion || null,
+    fabricante: d.fabricante || null,
+    costoUnitario: d.costoUnitario ?? null,
+  }, producto ? productoToClient(producto) : null, actor.role === "ADMIN");
+  const costoIncidencia = derived.costoUnitario != null ? derived.costoUnitario * d.cantidad : null;
 
   try {
     const row = await prisma.novedad.create({
       data: {
-        plu: d.plu,
+        plu: normalizedPlu,
         posicion: d.posicion,
         fecha: new Date(d.fecha + "T00:00:00"),
         estado: d.estado,
-        descripcion: d.descripcion || null,
+        descripcion: derived.descripcion,
         cantidad: d.cantidad,
-        fabricante: d.fabricante || null,
-        costoUnitario: d.costoUnitario ?? null,
-        costoIncidencia: d.costoUnitario != null ? d.costoUnitario * d.cantidad : null,
+        fabricante: derived.fabricante,
+        costoUnitario: derived.costoUnitario,
+        costoIncidencia,
       },
     });
 
@@ -105,7 +117,7 @@ export async function POST(req: NextRequest) {
         action: "CREATE",
         module: "muebles",
         recordId: String(row.id),
-        details: `PLU ${d.plu} · ${d.posicion}`,
+        details: `PLU ${normalizedPlu} - ${d.posicion}`,
       },
     }).catch(() => {});
 

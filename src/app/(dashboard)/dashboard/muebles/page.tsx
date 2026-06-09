@@ -23,6 +23,14 @@ import { SlidePanel, IntelBanner, IntelAlert, DetailSection, DetailGrid, MiniHis
 
 ChartJS.register(ArcElement, BarElement, CategoryScale, LinearScale, PointElement, LineElement, Tooltip, Legend);
 
+type ProductoMaestro = {
+  plu: string;
+  descripcion: string | null;
+  fabricante: string | null;
+  precio: number | null;
+  marca: string | null;
+};
+
 const CHART_BASE = { maintainAspectRatio: false, plugins: { legend: { display: false } } };
 
 function estadoBadgeVariant(e: EstadoNovedad): "error" | "warning" | "success" {
@@ -763,6 +771,7 @@ export default function MueblesPage() {
       {(creando || editing) && (
         <ModalForm
           novedad={editing ?? undefined}
+          role={role}
           onClose={() => { setCreando(false); setEditing(null); }}
           onSaved={() => { setCreando(false); setEditing(null); load(); showToast(editing ? "Novedad actualizada ✓" : "Novedad registrada ✓"); }}
           onError={(m) => showToast(m, true)}
@@ -795,8 +804,8 @@ export default function MueblesPage() {
 // ═══════════════════════════════════════════════════════════
 // FORM MODAL (modal para crear/editar — acción compleja)
 // ═══════════════════════════════════════════════════════════
-function ModalForm({ novedad, onClose, onSaved, onError }: {
-  novedad?: Novedad; onClose: () => void; onSaved: () => void; onError: (m: string) => void;
+function ModalForm({ novedad, role, onClose, onSaved, onError }: {
+  novedad?: Novedad; role?: string; onClose: () => void; onSaved: () => void; onError: (m: string) => void;
 }) {
   const isEdit = !!novedad;
   const [plu, setPlu] = useState(novedad?.plu ?? "");
@@ -813,6 +822,9 @@ function ModalForm({ novedad, onClose, onSaved, onError }: {
   const [turno, setTurno] = useState(novedad?.turno ?? "");
   const [zonaBodega, setZona] = useState(novedad?.zonaBodega ?? "");
   const [saving, setSaving] = useState(false);
+  const [productoMaestro, setProductoMaestro] = useState<ProductoMaestro | null>(null);
+  const [maestroStatus, setMaestroStatus] = useState<"idle" | "loading" | "found" | "missing">("idle");
+  const [adminOverride, setAdminOverride] = useState(false);
   const [mounted, setMounted] = useState(false);
   useEffect(() => { setMounted(true); }, []);
   useEffect(() => {
@@ -821,6 +833,38 @@ function ModalForm({ novedad, onClose, onSaved, onError }: {
     document.body.style.overflow = "hidden";
     return () => { window.removeEventListener("keydown", h); document.body.style.overflow = ""; };
   }, [onClose]);
+
+  const isAdmin = role === "ADMIN";
+  const lockMaestro = !!productoMaestro && !adminOverride;
+
+  async function lookupMaestro(nextPlu = plu) {
+    const normalized = nextPlu.trim().toUpperCase();
+    if (!normalized) {
+      setProductoMaestro(null);
+      setMaestroStatus("idle");
+      return;
+    }
+    setMaestroStatus("loading");
+    try {
+      const res = await fetch(`/api/productos-maestro/${encodeURIComponent(normalized)}`);
+      const json = await res.json();
+      if (res.ok && json.success) {
+        const producto = json.data as ProductoMaestro;
+        setProductoMaestro(producto);
+        setMaestroStatus("found");
+        setDesc(producto.descripcion ?? "");
+        setFab(producto.fabricante ?? "");
+        setCu(producto.precio != null ? String(Math.round(producto.precio)) : "");
+        setAdminOverride(false);
+      } else {
+        setProductoMaestro(null);
+        setMaestroStatus("missing");
+      }
+    } catch {
+      setProductoMaestro(null);
+      setMaestroStatus("missing");
+    }
+  }
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -851,25 +895,37 @@ function ModalForm({ novedad, onClose, onSaved, onError }: {
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
             <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
               <label style={{ fontSize: 12, fontWeight: 500, color: "var(--muted2)" }}>PLU *</label>
-              <input value={plu} onChange={(e) => setPlu(e.target.value)} disabled={isEdit} style={inp} {...focusProps} />
+              <input value={plu} onChange={(e) => { setPlu(e.target.value); setMaestroStatus("idle"); }} onBlur={() => lookupMaestro()} disabled={isEdit} style={inp} />
             </div>
             <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
               <label style={{ fontSize: 12, fontWeight: 500, color: "var(--muted2)" }}>Fecha *</label>
               <input type="date" value={fecha} onChange={(e) => setFecha(e.target.value)} style={inp} {...focusProps} />
             </div>
           </div>
+          {maestroStatus !== "idle" && (
+            <div style={{ marginTop: -4, padding: "8px 10px", borderRadius: 8, background: maestroStatus === "found" ? "#10b98118" : maestroStatus === "missing" ? "#f59e0b18" : "var(--surface2)", color: maestroStatus === "found" ? "#10b981" : maestroStatus === "missing" ? "#f59e0b" : "var(--muted)", fontSize: 12, fontWeight: 700 }}>
+              {maestroStatus === "loading" && "Buscando PLU en maestro..."}
+              {maestroStatus === "found" && "Datos cargados desde maestro"}
+              {maestroStatus === "missing" && "PLU no encontrado en maestro"}
+              {maestroStatus === "found" && isAdmin && !adminOverride && (
+                <button type="button" onClick={() => setAdminOverride(true)} style={{ marginLeft: 10, border: "none", background: "transparent", color: "inherit", textDecoration: "underline", cursor: "pointer", fontWeight: 800 }}>
+                  Editar manualmente
+                </button>
+              )}
+            </div>
+          )}
           <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
             <label style={{ fontSize: 12, fontWeight: 500, color: "var(--muted2)" }}>Posición *</label>
             <input value={posicion} onChange={(e) => setPos(e.target.value)} placeholder="05-H-14-04-02" style={inp} {...focusProps} />
           </div>
           <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
             <label style={{ fontSize: 12, fontWeight: 500, color: "var(--muted2)" }}>Descripción</label>
-            <input value={descripcion} onChange={(e) => setDesc(e.target.value)} style={inp} {...focusProps} />
+            <input value={descripcion} onChange={(e) => setDesc(e.target.value)} disabled={lockMaestro} style={{ ...inp, opacity: lockMaestro ? 0.7 : 1 }} {...focusProps} />
           </div>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12 }}>
             <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
               <label style={{ fontSize: 12, fontWeight: 500, color: "var(--muted2)" }}>Fabricante</label>
-              <input value={fabricante} onChange={(e) => setFab(e.target.value)} style={inp} {...focusProps} />
+              <input value={fabricante} onChange={(e) => setFab(e.target.value)} disabled={lockMaestro} style={{ ...inp, opacity: lockMaestro ? 0.7 : 1 }} {...focusProps} />
             </div>
             <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
               <label style={{ fontSize: 12, fontWeight: 500, color: "var(--muted2)" }}>Cantidad (+/-)</label>
@@ -877,7 +933,7 @@ function ModalForm({ novedad, onClose, onSaved, onError }: {
             </div>
             <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
               <label style={{ fontSize: 12, fontWeight: 500, color: "var(--muted2)" }}>Costo unitario</label>
-              <input type="number" value={costoUnitario} onChange={(e) => setCu(e.target.value)} style={inp} {...focusProps} />
+              <input type="number" value={costoUnitario} onChange={(e) => setCu(e.target.value)} disabled={lockMaestro} style={{ ...inp, opacity: lockMaestro ? 0.7 : 1 }} {...focusProps} />
             </div>
           </div>
           <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>

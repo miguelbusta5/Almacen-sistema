@@ -48,6 +48,20 @@ model Novedad {
   @@map("novedades")
 }
 
+model ProductoMaestro {
+  id          String   @id @default(cuid())
+  plu         String   @unique @db.VarChar(100)
+  descripcion String?
+  fabricante  String?  @db.VarChar(255)
+  precio      Decimal? @db.Decimal(12, 2)
+  marca       String?  @db.VarChar(255)
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  @@index([plu])
+  @@map("productos_maestro")
+}
+
 model TransporteGuardado {
   id             Int       @id @default(autoincrement())
   client_id      String    @unique @db.VarChar(100)
