@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
 import { ScrollText, ShieldAlert, ChevronLeft, ChevronRight, RefreshCw, Download } from "lucide-react";
+import { useIsMobile } from "@/lib/useIsMobile";
 
 type Role = "ADMIN" | "GERENTE" | "OPERADOR";
 
@@ -41,6 +42,7 @@ function fmtDateTime(iso: string) {
 }
 
 export default function AuditoriaPage() {
+  const isMobile = useIsMobile();
   const { data: session } = useSession();
   const role = (session?.user as { role?: Role } | undefined)?.role;
 
@@ -151,7 +153,7 @@ export default function AuditoriaPage() {
 
       {/* Filtros */}
       <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center", background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 12, padding: "0.75rem 1rem", marginBottom: "1rem" }}>
-        <input value={fq} onChange={e => setFq(e.target.value)} placeholder="Buscar en detalle o registro…" style={{ ...inp, flex: 1, minWidth: 180 }} />
+        <input value={fq} onChange={e => setFq(e.target.value)} placeholder="Buscar en detalle o registro…" style={{ ...inp, flex: 1, minWidth: isMobile ? 120 : 180, width: isMobile ? "100%" : undefined }} />
         <select value={fModule} onChange={e => setFModule(e.target.value)} style={inp}>
           <option value="">Todos los módulos</option>
           <option value="muebles">Muebles</option>

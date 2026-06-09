@@ -16,6 +16,7 @@ import {
 import { Stat, SkeletonStat, Badge, EmptyState, SkeletonTable, TimelineItem } from "@/components/ui";
 import { SlidePanel, IntelBanner, DetailSection, DetailGrid, MiniHistory } from "@/components/ui/SlidePanel";
 import { insightsTienda, insightsPorDespacho } from "@/lib/inteligencia";
+import { useIsMobile } from "@/lib/useIsMobile";
 
 type ProductoMaestro = {
   plu: string;
@@ -77,6 +78,7 @@ export default function TiendaPage() {
   const { data: session } = useSession();
   const role = (session?.user as { role?: string } | undefined)?.role;
   const canEdit   = can(role, "edit");
+  const isMobile  = useIsMobile();
   const canDelete = can(role, "delete");
   const canEditBasic = ["TIENDA", "SUPERVISOR_TIENDA", "SUPERVISOR_TRANSPORTE", "GERENTE", "ADMIN"].includes(role ?? "");
   const canChangeOperationalState = ["SUPERVISOR_TRANSPORTE", "GERENTE", "ADMIN"].includes(role ?? "");
@@ -217,7 +219,7 @@ export default function TiendaPage() {
       </div>
 
       {/* ── KPIs flotantes ── */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 20, marginBottom: 28, padding: "0 2px" }}>
+      <div style={{ display: "grid", gridTemplateColumns: isMobile ? "repeat(2,1fr)" : "repeat(4,1fr)", gap: isMobile ? 14 : 20, marginBottom: 28, padding: "0 2px" }}>
         {loading ? <><SkeletonStat /><SkeletonStat /><SkeletonStat /><SkeletonStat /></> : (
           <>
             <Stat value={kpis.pendientesRecogida} label="Creados en tienda"
@@ -668,6 +670,7 @@ function ModalAsignarGuardado({ despacho, onClose, onAsignado, onError }: {
 function ModalDespacho({ despacho, role, onClose, onSaved, onError }: {
   despacho?: DespachoTienda; role?: string; onClose: () => void; onSaved: () => void; onError: (m: string) => void;
 }) {
+  const isMobile = useIsMobile();
   const isEdit = !!despacho;
   const [centroCostos,            setCC]     = useState(despacho?.centroCostos ?? "");
   const [numeroDocumento,         setDoc]    = useState(despacho?.numeroDocumento ?? "");
@@ -741,7 +744,7 @@ function ModalDespacho({ despacho, role, onClose, onSaved, onError }: {
   return (
     <ModalBase title={isEdit ? "Editar despacho" : "Nuevo despacho"} sub={isEdit ? `${despacho!.numeroDocumento}` : undefined} onClose={onClose}>
       <form onSubmit={submit} style={{ display: "flex", flexDirection: "column", gap: 14, maxHeight: "70vh", overflowY: "auto" }}>
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+        <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr", gap: 12 }}>
           <Field label="Centro de costos *"><input value={centroCostos} onChange={(e) => setCC(e.target.value)} placeholder="CC-001" style={inp} {...focusProps} /></Field>
           <Field label="Fecha creación *"><input type="date" value={fechaCreacion} onChange={(e) => setFecha(e.target.value)} style={inp} {...focusProps} /></Field>
         </div>
@@ -750,11 +753,11 @@ function ModalDespacho({ despacho, role, onClose, onSaved, onError }: {
           <Field label="Consecutivo *"><input value={consecutivo} onChange={(e) => setCons(e.target.value)} placeholder="001" style={inp} {...focusProps} /></Field>
         </div>
         <Field label="Nombre del cliente *"><input value={clienteNombre} onChange={(e) => setCN(e.target.value)} style={inp} {...focusProps} /></Field>
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+        <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr", gap: 12 }}>
           <Field label="Documento cliente"><input value={clienteDocumento} onChange={(e) => setCD(e.target.value)} style={inp} {...focusProps} /></Field>
           <Field label="Teléfono cliente"><input value={clienteTelefono} onChange={(e) => setCT(e.target.value)} placeholder="300..." style={inp} {...focusProps} /></Field>
         </div>
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+        <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr", gap: 12 }}>
           <Field label="Entrega comprometida"><input type="date" value={fechaEntrega} onChange={(e) => setFEntrega(e.target.value)} style={inp} {...focusProps} /></Field>
           <Field label="Número de cajas"><input type="number" value={numeroCajas} onChange={(e) => setNCajas(e.target.value)} min="1" placeholder="0" style={inp} {...focusProps} /></Field>
         </div>
@@ -779,7 +782,7 @@ function ModalDespacho({ despacho, role, onClose, onSaved, onError }: {
           </div>
           {plines.map((p, i) => (
             <div key={i}>
-              <div style={{ display: "grid", gridTemplateColumns: "100px 1fr 70px 28px", gap: 6, marginBottom: 6, alignItems: "center" }}>
+              <div style={{ display: "grid", gridTemplateColumns: isMobile ? "70px 1fr 54px 28px" : "100px 1fr 70px 28px", gap: 6, marginBottom: 6, alignItems: "center" }}>
                 <input value={p.plu} onChange={(e) => { updatePlin(i, "plu", e.target.value); updatePlin(i, "status", "idle"); }} onBlur={() => lookupPlinMaestro(i)} placeholder="PLU" style={{ ...inp, height: 32, fontSize: 12 }} />
                 <input value={p.descripcion} onChange={(e) => updatePlin(i, "descripcion", e.target.value)} disabled={!!p.maestro && !p.override} placeholder="Descripcion (opc.)" style={{ ...inp, height: 32, fontSize: 12, opacity: p.maestro && !p.override ? 0.7 : 1 }} {...focusProps} />
                 <input type="number" value={p.unidades} onChange={(e) => updatePlin(i, "unidades", e.target.value)} min="1" placeholder="Uds." style={{ ...inp, height: 32, fontSize: 12 }} {...focusProps} />

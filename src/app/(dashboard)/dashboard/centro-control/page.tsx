@@ -8,6 +8,7 @@ import {
   CheckCircle2, ArrowRight, TrendingUp, Info, ShieldAlert,
 } from "lucide-react";
 import { SectionHeader } from "@/components/ui";
+import { useIsMobile } from "@/lib/useIsMobile";
 import { calcAlmacenaje } from "@/lib/almacenaje";
 import { scoreGuardado, urgencia } from "@/lib/transporte";
 import { horasDesde } from "@/lib/tienda";
@@ -167,6 +168,7 @@ function RankRow({ rank, nombre, main, sub, color, badge }: {
 // PÁGINA PRINCIPAL
 // ════════════════════════════════════════════════════════════
 export default function CentroControlPage() {
+  const isMobile = useIsMobile();
   const { data: session } = useSession();
   const userName = (session?.user as { name?: string } | undefined)?.name ?? "";
 
@@ -352,7 +354,7 @@ export default function CentroControlPage() {
             <div key={i} className="skeleton" style={{ height: 44, borderRadius: 10, marginBottom: 8, width: `${w}%` }} />
           ))}
         </div>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 16 }}>
+        <div style={{ display: "grid", gridTemplateColumns: isMobile ? "repeat(2,1fr)" : "repeat(4,1fr)", gap: 16 }}>
           {Array.from({ length: 4 }).map((_, i) => (
             <div key={i} className="skeleton" style={{ height: 160, borderRadius: 12 }} />
           ))}
@@ -462,7 +464,7 @@ export default function CentroControlPage() {
               }}>
                 INFORMACIÓN
               </div>
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 8 }}>
+              <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "repeat(3,1fr)", gap: 8 }}>
                 {alertas.info.map((item) => (
                   <Link key={item.id} href={item.href} style={{ textDecoration: "none" }}>
                     <div
@@ -496,7 +498,7 @@ export default function CentroControlPage() {
       </div>
 
       {/* ── Grid de KPIs por módulo ── */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 16, marginBottom: 24 }}>
+      <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "repeat(3,1fr)", gap: 16, marginBottom: 24 }}>
         <KpiBlock title="Inventario" icon={<Package size={15} color="#2563EB" />}>
           <div style={{ display: "flex", gap: 16, flexWrap: "wrap" }}>
             <MiniKpi label="Novedades abiertas" value={invKpis.pend} color={invKpis.pend > 0 ? "var(--error)" : "var(--success)"} />
@@ -538,7 +540,7 @@ export default function CentroControlPage() {
       </div>
 
       {/* ── Rankings ── */}
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
+      <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr", gap: 16 }}>
         <div className="ds-card" style={{ padding: "20px 22px" }}>
           <SectionHeader title="Inventario — Top responsables" />
           {rankingInventario.length === 0 ? (

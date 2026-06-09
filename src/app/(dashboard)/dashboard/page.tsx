@@ -15,6 +15,7 @@ import { urgencia } from "@/lib/transporte";
 import type { Novedad } from "@/lib/muebles";
 import type { Guardado } from "@/lib/transporte";
 import { getHomeActionsByRole, type HomeAction } from "@/config/homeActions";
+import { useIsMobile } from "@/lib/useIsMobile";
 
 // ── Helpers ──────────────────────────────────────────────
 function timeAgo(iso: string) {
@@ -139,6 +140,7 @@ function QuickAction({ href, icon, label, color, description }: { href: string; 
 // "¿Qué está pasando en toda la empresa?"
 // ════════════════════════════════════════════════════════════
 function AdminDashboard({ nombre }: { nombre: string }) {
+  const isMobile = useIsMobile();
   const [stats, setStats] = useState<Stats | null>(null);
   const [activity, setActivity] = useState<ActivityItem[]>([]);
   const [novedades, setNovedades] = useState<Novedad[]>([]);
@@ -183,7 +185,7 @@ function AdminDashboard({ nombre }: { nombre: string }) {
       )}
 
       {/* KPIs */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 28, marginBottom: 36, padding: "0 2px" }}>
+      <div style={{ display: "grid", gridTemplateColumns: isMobile ? "repeat(2,1fr)" : "repeat(4,1fr)", gap: isMobile ? 14 : 28, marginBottom: 36, padding: "0 2px" }}>
         {loading ? <><SK /><SK /><SK /><SK /></> : (
           <>
             <Stat value={stats?.novedades.total ?? 0} label="Novedades totales" color="var(--brand)" />
@@ -194,11 +196,11 @@ function AdminDashboard({ nombre }: { nombre: string }) {
         )}
       </div>
 
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 300px", gap: 28, alignItems: "start" }}>
+      <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1fr 300px", gap: 28, alignItems: "start" }}>
         {/* Módulos */}
         <div>
           <SectionHeader title="Módulos" />
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
+          <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr", gap: 14 }}>
             <ModuleCard href="/dashboard/muebles" icon={<Package size={17} />} label="Novedades Muebles" color="#2563EB" value={stats?.novedades.total} sub={`${stats?.novedades.pendientes ?? 0} sin resolver`} alert={(stats?.novedades.pendientes ?? 0) > 0} />
             <ModuleCard href="/dashboard/transporte" icon={<Truck size={17} />} label="Guardados Transporte" color="#0E7490" value={stats?.transporte.total} sub={`${stats?.transporte.pendientes ?? 0} pendientes`} alert={(stats?.transporte.alertas ?? 0) > 0} />
             <ModuleCard href="/dashboard/conteo" icon={<ClipboardList size={17} />} label="Conteo Cíclico" color="#16A34A" sub="Conteos de inventario" />
@@ -251,6 +253,7 @@ function AdminDashboard({ nombre }: { nombre: string }) {
 // "¿Qué debo hacer hoy?" — contextual por rol
 // ════════════════════════════════════════════════════════════
 function OperadorDashboard({ nombre, role }: { nombre: string; role: string }) {
+  const isMobile = useIsMobile();
   // ── Determinar qué datos necesita este rol ──────────────
   const needsNovedades = ["INVENTARIO", "SUPERVISOR_INVENTARIO", "OPERADOR"].includes(role);
   const needsGuardados = ["TRANSPORTE", "SUPERVISOR_TRANSPORTE", "OPERADOR"].includes(role);
@@ -391,7 +394,7 @@ function OperadorDashboard({ nombre, role }: { nombre: string; role: string }) {
       {!loading && (
         <div>
           <SectionHeader title="Estado actual" />
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 20, padding: "0 2px" }}>
+          <div style={{ display: "grid", gridTemplateColumns: isMobile ? "repeat(2,1fr)" : "repeat(3,1fr)", gap: isMobile ? 14 : 20, padding: "0 2px" }}>
 
             {/* Inventario */}
             {needsNovedades && !needsGuardados && (
@@ -495,6 +498,7 @@ function TransportistaDashboard({ nombre }: { nombre: string }) {
 // ROUTER POR ROL — página raíz del dashboard
 // ════════════════════════════════════════════════════════════
 export default function DashboardPage() {
+  const isMobile = useIsMobile();
   const { data: session } = useSession();
   const role = (session?.user as { role?: string } | undefined)?.role;
   const nombre = (session?.user?.name || "").split(" ")[0] || "";
@@ -502,7 +506,7 @@ export default function DashboardPage() {
   // Mientras carga la sesión
   if (!session) {
     return (
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 28, maxWidth: 900, padding: "0 2px" }}>
+      <div style={{ display: "grid", gridTemplateColumns: isMobile ? "repeat(2,1fr)" : "repeat(4,1fr)", gap: isMobile ? 14 : 28, maxWidth: 900, padding: "0 2px" }}>
         <SK /><SK /><SK /><SK />
       </div>
     );

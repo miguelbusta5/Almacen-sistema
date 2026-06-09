@@ -18,6 +18,7 @@ import { calcAlmacenaje, TARIFA_ALM } from "@/lib/almacenaje";
 import { insightsGuardados, insightsPorGuardado } from "@/lib/inteligencia";
 import { Stat, SkeletonStat, Badge, EmptyState, SkeletonTable } from "@/components/ui";
 import { SlidePanel, IntelBanner, DetailSection, DetailGrid, MiniHistory } from "@/components/ui/SlidePanel";
+import { useIsMobile } from "@/lib/useIsMobile";
 
 ChartJS.register(ArcElement, BarElement, CategoryScale, LinearScale, Tooltip, Legend);
 
@@ -58,6 +59,7 @@ export default function TransportePage() {
   const { data: session } = useSession();
   const role = (session?.user as { role?: string } | undefined)?.role;
   const canEdit = can(role, "edit");
+  const isMobile = useIsMobile();
   const canDelete = can(role, "delete");
 
   const [guardados, setGuardados] = useState<Guardado[]>([]);
@@ -324,7 +326,7 @@ export default function TransportePage() {
         </div>
       )}
 
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(5,1fr)", gap: 28, marginBottom: 28, padding: "0 2px" }}>
+      <div style={{ display: "grid", gridTemplateColumns: isMobile ? "repeat(2,1fr)" : "repeat(5,1fr)", gap: isMobile ? 14 : 28, marginBottom: 28, padding: "0 2px" }}>
         {loading ? <><SkeletonStat /><SkeletonStat /><SkeletonStat /><SkeletonStat /><SkeletonStat /></> : (
           <>
             <Stat value={guardados.length} label="Total registros" />
@@ -699,6 +701,7 @@ export default function TransportePage() {
 function FormContacto({ clientId, onGuardado, onCancel }: {
   clientId: string; onGuardado: (c: ContactoGuardado) => void; onCancel: () => void;
 }) {
+  const isMobile = useIsMobile();
   const [tipo, setTipo] = useState<TipoContacto>("LLAMADA");
   const [resultado, setResultado] = useState<ResultadoContacto>("NO_CONTESTA");
   const [fechaComp, setFechaComp] = useState("");
@@ -720,7 +723,7 @@ function FormContacto({ clientId, onGuardado, onCancel }: {
 
   return (
     <form onSubmit={guardar} style={{ background: "var(--surface2)", borderRadius: 10, padding: "12px", display: "flex", flexDirection: "column", gap: 10 }}>
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+      <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr", gap: 8 }}>
         <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
           <label style={{ fontSize: 11, color: "var(--muted)", fontWeight: 600 }}>Tipo</label>
           <select value={tipo} onChange={(e) => setTipo(e.target.value as TipoContacto)} style={{ ...inp, height: 32, fontSize: 12 }}>
@@ -827,6 +830,7 @@ function ModalFechaEntrega({ g, onClose, onSaved, onError }: { g: Guardado; onCl
 }
 
 function ModalGuardado({ guardado, onClose, onSaved, onError, isAdmin }: { guardado?: Guardado; onClose: () => void; onSaved: () => void; onError: (m: string) => void; isAdmin?: boolean }) {
+  const isMobile = useIsMobile();
   const isEdit = !!guardado;
   const [fecha, setFecha] = useState(guardado?.fecha ?? todayISO());
   const [documento, setDoc] = useState(guardado?.documento ?? "");
@@ -851,7 +855,7 @@ function ModalGuardado({ guardado, onClose, onSaved, onError, isAdmin }: { guard
   return (
     <ModalBase title={isEdit ? "Editar guardado" : "Nuevo guardado"} sub={isEdit ? `${guardado!.documento} · ${guardado!.ubicacion}` : undefined} onClose={onClose}>
       <form onSubmit={submit} style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+        <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr", gap: 12 }}>
           <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
             <label style={{ fontSize: 12, fontWeight: 500, color: "var(--muted2)" }}>
               Fecha de ingreso *
@@ -881,7 +885,7 @@ function ModalGuardado({ guardado, onClose, onSaved, onError, isAdmin }: { guard
           <label style={{ fontSize: 12, fontWeight: 500, color: "var(--muted2)" }}>Ubicación *</label>
           <input value={ubicacion} onChange={(e) => setUbic(e.target.value)} placeholder="Bodega, estante…" style={inp} {...focusProps} />
         </div>
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+        <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr", gap: 12 }}>
           <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
             <label style={{ fontSize: 12, fontWeight: 500, color: "var(--muted2)" }}>Estado</label>
             <select value={estado} onChange={(e) => setEstado(e.target.value as "PENDIENTE DESPACHO" | "DESPACHADO")} style={{ ...inp, paddingRight: 28 }} {...focusProps}>

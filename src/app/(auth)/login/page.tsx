@@ -42,7 +42,7 @@ export default function LoginPage() {
       minHeight: "100vh",
       background: "var(--bg)",
       display: "flex", alignItems: "center", justifyContent: "center",
-      padding: "24px",
+      padding: "clamp(12px, 4vw, 24px)",
     }}>
       <div
         className="animate-scale-in"
@@ -50,7 +50,7 @@ export default function LoginPage() {
           width: "100%", maxWidth: 400,
           background: "var(--surface)",
           borderRadius: 20,
-          padding: "40px",
+          padding: "clamp(24px, 7vw, 40px)",
           boxShadow: "var(--shadow-xl)",
           border: "1px solid var(--border)",
         }}
