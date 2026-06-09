@@ -533,7 +533,7 @@ export default function MueblesPage() {
                         </td>
                         <td style={{ fontFamily: "var(--mono)", fontSize: 12, color: "var(--muted)", whiteSpace: "nowrap" }}>{fmtFecha(n.fecha)}</td>
                         <td style={{ fontFamily: "var(--mono)", fontWeight: 600, fontSize: 13 }}>{n.plu}</td>
-                        <td style={{ maxWidth: 200, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", fontSize: 13 }}>
+                        <td title={n.descripcion ?? undefined} style={{ maxWidth: 200, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", fontSize: 13 }}>
                           {n.descripcion || <span style={{ color: "var(--faint)" }}>—</span>}
                         </td>
                         <td style={{ fontSize: 12, color: "var(--muted)" }}>{n.fabricante || <span style={{ color: "var(--faint)" }}>—</span>}</td>

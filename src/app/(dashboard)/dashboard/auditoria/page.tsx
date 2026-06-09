@@ -1,9 +1,10 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useSession } from "next-auth/react";
 import { ScrollText, ShieldAlert, ChevronLeft, ChevronRight, RefreshCw, Download } from "lucide-react";
 import { useIsMobile } from "@/lib/useIsMobile";
+import { SkeletonTable } from "@/components/ui";
 
 type Role = "ADMIN" | "GERENTE" | "OPERADOR";
 
@@ -61,6 +62,11 @@ export default function AuditoriaPage() {
   const [fTo, setFTo] = useState("");
   const [fq, setFq] = useState("");
 
+  // sort + page-jump
+  const [logSortCol, setLogSortCol] = useState<"createdAt" | "userName">("createdAt");
+  const [logSortDir, setLogSortDir] = useState<"asc" | "desc">("desc");
+  const [jumpInput, setJumpInput] = useState("");
+
   const load = useCallback(async (toPage = page) => {
     setLoading(true);
     try {
@@ -116,6 +122,20 @@ export default function AuditoriaPage() {
   function clearFilters() {
     setFModule(""); setFAction(""); setFUser(""); setFFrom(""); setFTo(""); setFq("");
   }
+
+  function toggleLogSort(col: "createdAt" | "userName") {
+    if (logSortCol === col) setLogSortDir((d) => d === "asc" ? "desc" : "asc");
+    else { setLogSortCol(col); setLogSortDir("asc"); }
+  }
+
+  const sortedLogs = useMemo(() => {
+    return [...logs].sort((a, b) => {
+      const d = logSortDir === "asc" ? 1 : -1;
+      if (logSortCol === "createdAt") return d * a.createdAt.localeCompare(b.createdAt);
+      if (logSortCol === "userName")  return d * ((a.user?.name ?? "").localeCompare(b.user?.name ?? ""));
+      return 0;
+    });
+  }, [logs, logSortCol, logSortDir]);
 
   if (role && role !== "ADMIN") {
     return (
@@ -177,7 +197,9 @@ export default function AuditoriaPage() {
 
       {/* Tabla */}
       {loading ? (
-        <div style={{ padding: "4rem", textAlign: "center", color: "var(--muted)" }}>Cargando…</div>
+        <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 14, overflow: "hidden" }}>
+          <SkeletonTable rows={8} cols={6} />
+        </div>
       ) : logs.length === 0 ? (
         <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 14, padding: "3rem 2rem", textAlign: "center", color: "var(--muted)" }}>
           Sin eventos que coincidan con los filtros.
@@ -188,13 +210,19 @@ export default function AuditoriaPage() {
             <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
               <thead>
                 <tr style={{ borderBottom: "1px solid var(--border)", background: "var(--surface2)" }}>
-                  {["Fecha y hora", "Usuario", "Acción", "Módulo", "Registro", "Detalle"].map(h => (
+                  <th onClick={() => toggleLogSort("createdAt")} style={{ padding: "0.6rem 0.85rem", textAlign: "left", fontSize: 10, fontWeight: 700, letterSpacing: ".06em", textTransform: "uppercase", color: logSortCol === "createdAt" ? "#6366f1" : "var(--muted)", whiteSpace: "nowrap", cursor: "pointer", userSelect: "none" }}>
+                    Fecha y hora{logSortCol === "createdAt" ? (logSortDir === "asc" ? " ↑" : " ↓") : " ↕"}
+                  </th>
+                  <th onClick={() => toggleLogSort("userName")} style={{ padding: "0.6rem 0.85rem", textAlign: "left", fontSize: 10, fontWeight: 700, letterSpacing: ".06em", textTransform: "uppercase", color: logSortCol === "userName" ? "#6366f1" : "var(--muted)", whiteSpace: "nowrap", cursor: "pointer", userSelect: "none" }}>
+                    Usuario{logSortCol === "userName" ? (logSortDir === "asc" ? " ↑" : " ↓") : " ↕"}
+                  </th>
+                  {["Acción", "Módulo", "Registro", "Detalle"].map(h => (
                     <th key={h} style={{ padding: "0.6rem 0.85rem", textAlign: "left", fontSize: 10, fontWeight: 700, letterSpacing: ".06em", textTransform: "uppercase", color: "var(--muted)", whiteSpace: "nowrap" }}>{h}</th>
                   ))}
                 </tr>
               </thead>
               <tbody>
-                {logs.map(l => {
+                {sortedLogs.map(l => {
                   const am = ACTION_META[l.action] || { label: l.action, color: "#64748b" };
                   const mm = MODULE_META[l.module] || { label: l.module, color: "#64748b" };
                   return (
@@ -229,8 +257,23 @@ export default function AuditoriaPage() {
       {!loading && logs.length > 0 && (
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: "1rem", fontSize: 12, color: "var(--muted)" }}>
           <span>Página {page} de {pages}</span>
-          <div style={{ display: "flex", gap: 8 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
             <button disabled={page <= 1} onClick={() => load(page - 1)} style={{ display: "flex", alignItems: "center", gap: 4, padding: "0.4rem 0.8rem", background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: page <= 1 ? "not-allowed" : "pointer", opacity: page <= 1 ? 0.5 : 1, color: "var(--muted2)" }}><ChevronLeft size={14} />Anterior</button>
+            <input
+              type="number" min={1} max={pages}
+              value={jumpInput !== "" ? jumpInput : page}
+              onChange={(e) => setJumpInput(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  const n = parseInt(jumpInput);
+                  if (!isNaN(n) && n >= 1 && n <= pages) load(n);
+                  setJumpInput("");
+                }
+              }}
+              onBlur={() => setJumpInput("")}
+              title={`Ir a página (1–${pages})`}
+              style={{ width: 52, textAlign: "center", border: "1px solid var(--border)", borderRadius: 8, padding: "0.35rem 0.5rem", fontSize: 12, fontFamily: "var(--mono)", background: "var(--surface)", color: "var(--text)", outline: "none" }}
+            />
             <button disabled={page >= pages} onClick={() => load(page + 1)} style={{ display: "flex", alignItems: "center", gap: 4, padding: "0.4rem 0.8rem", background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: page >= pages ? "not-allowed" : "pointer", opacity: page >= pages ? 0.5 : 1, color: "var(--muted2)" }}>Siguiente<ChevronRight size={14} /></button>
           </div>
         </div>

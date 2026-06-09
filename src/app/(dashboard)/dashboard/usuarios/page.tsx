@@ -1,9 +1,10 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 import { useSession } from "next-auth/react";
-import { Users, Plus, Pencil, X, Shield, ShieldCheck, ShieldAlert, Truck, Car, Upload } from "lucide-react";
+import { Users, Plus, Pencil, X, Shield, ShieldCheck, ShieldAlert, Truck, Car, Upload, Search } from "lucide-react";
+import { SkeletonTable, EmptyState } from "@/components/ui";
 
 type Role = "ADMIN" | "GERENTE" | "OPERADOR" | "TRANSPORTISTA" | "INVENTARIO" | "TRANSPORTE" | "SUPERVISOR_INVENTARIO" | "SUPERVISOR_TRANSPORTE" | "TIENDA" | "SUPERVISOR_TIENDA";
 
@@ -66,10 +67,18 @@ export default function UsuariosPage() {
   const [transportistasOperativos, setTransportistasOperativos] = useState<TransportistaOperativo[]>([]);
   const [loadingCatalogos, setLoadingCatalogos] = useState(true);
   const [toast, setToast] = useState<{ msg: string; err?: boolean } | null>(null);
+  const [searchQ, setSearchQ] = useState("");
+  const [sortCol, setSortCol] = useState<"name" | "role" | "active">("name");
+  const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
 
   function showToast(msg: string, err = false) {
     setToast({ msg, err });
     setTimeout(() => setToast(null), 3000);
+  }
+
+  function toggleSort(col: "name" | "role" | "active") {
+    if (sortCol === col) setSortDir((d) => d === "asc" ? "desc" : "asc");
+    else { setSortCol(col); setSortDir("asc"); }
   }
 
   async function load() {
@@ -112,6 +121,24 @@ export default function UsuariosPage() {
     }
   }, [role]);
 
+  const filteredUsers = useMemo(() => {
+    const q = searchQ.toLowerCase().trim();
+    return [...users]
+      .filter((u) =>
+        !q ||
+        u.name.toLowerCase().includes(q) ||
+        u.email.toLowerCase().includes(q) ||
+        ROLE_META[u.role].label.toLowerCase().includes(q)
+      )
+      .sort((a, b) => {
+        const d = sortDir === "asc" ? 1 : -1;
+        if (sortCol === "name")   return d * a.name.localeCompare(b.name);
+        if (sortCol === "role")   return d * ROLE_META[a.role].label.localeCompare(ROLE_META[b.role].label);
+        if (sortCol === "active") return d * (Number(b.active) - Number(a.active));
+        return 0;
+      });
+  }, [users, searchQ, sortCol, sortDir]);
+
   if (role && role !== "ADMIN") {
     return (
       <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 14, padding: "3rem 2rem", textAlign: "center" }}>
@@ -140,45 +167,83 @@ export default function UsuariosPage() {
       </div>
 
       {loading ? (
-        <div style={{ padding: "4rem", textAlign: "center", color: "var(--muted)" }}>Cargando…</div>
-      ) : (
         <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 14, overflow: "hidden" }}>
-          <div style={{ overflowX: "auto" }}>
-            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
-              <thead>
-                <tr style={{ borderBottom: "1px solid var(--border)", background: "var(--surface2)" }}>
-                  {["Nombre", "Email", "Rol", "Estado", ""].map(h => (
-                    <th key={h} style={{ padding: "0.7rem 0.9rem", textAlign: "left", fontSize: 10, fontWeight: 700, letterSpacing: ".06em", textTransform: "uppercase", color: "var(--muted)" }}>{h}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {users.map(u => {
-                  const m = ROLE_META[u.role];
-                  return (
-                    <tr key={u.id} style={{ borderBottom: "1px solid var(--border)" }}>
-                      <td style={{ padding: "0.7rem 0.9rem", fontWeight: 600 }}>{u.name}</td>
-                      <td style={{ padding: "0.7rem 0.9rem", fontFamily: "var(--mono)", fontSize: 12, color: "var(--muted2)" }}>{u.email}</td>
-                      <td style={{ padding: "0.7rem 0.9rem" }}>
-                        <span style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: 11, fontWeight: 700, padding: "3px 9px", borderRadius: 20, background: m.color + "18", color: m.color }}>
-                          {m.icon}{m.label}
-                        </span>
-                      </td>
-                      <td style={{ padding: "0.7rem 0.9rem" }}>
-                        <span style={{ fontSize: 11, fontWeight: 700, padding: "2px 8px", borderRadius: 20, background: u.active ? "#ecfdf5" : "#fef2f2", color: u.active ? "#10b981" : "#ef4444" }}>
-                          {u.active ? "Activo" : "Inactivo"}
-                        </span>
-                      </td>
-                      <td style={{ padding: "0.7rem 0.9rem", textAlign: "right" }}>
-                        <button onClick={() => setEditing(u)} title="Editar" style={{ background: "var(--surface2)", border: "1px solid var(--border)", borderRadius: 7, padding: "5px 7px", cursor: "pointer", color: "var(--muted2)" }}><Pencil size={14} /></button>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
+          <SkeletonTable rows={6} cols={5} />
         </div>
+      ) : (
+        <>
+          {/* Barra de búsqueda */}
+          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}>
+            <div style={{ position: "relative", flex: 1 }}>
+              <Search size={13} style={{ position: "absolute", left: 10, top: "50%", transform: "translateY(-50%)", color: "var(--muted)", pointerEvents: "none" }} />
+              <input
+                value={searchQ}
+                onChange={(e) => setSearchQ(e.target.value)}
+                placeholder="Buscar por nombre, email o rol…"
+                style={{ ...inp, paddingLeft: 32, height: 36, fontSize: 13, fontFamily: "var(--sans)" }}
+              />
+            </div>
+            <span style={{ fontSize: 12, color: "var(--muted)", whiteSpace: "nowrap" }}>
+              {filteredUsers.length} de {users.length}
+            </span>
+          </div>
+
+          {/* Tabla o EmptyState */}
+          {filteredUsers.length === 0 ? (
+            <EmptyState
+              icon={<Users size={22} />}
+              title="Sin resultados"
+              description={searchQ ? `No hay usuarios que coincidan con "${searchQ}".` : "No hay usuarios registrados."}
+              action={searchQ ? { label: "Limpiar búsqueda", onClick: () => setSearchQ("") } : undefined}
+            />
+          ) : (
+            <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 14, overflow: "hidden" }}>
+              <div style={{ overflowX: "auto" }}>
+                <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
+                  <thead>
+                    <tr style={{ borderBottom: "1px solid var(--border)", background: "var(--surface2)" }}>
+                      <th onClick={() => toggleSort("name")} style={{ padding: "0.7rem 0.9rem", textAlign: "left", fontSize: 10, fontWeight: 700, letterSpacing: ".06em", textTransform: "uppercase", color: sortCol === "name" ? "#6366f1" : "var(--muted)", cursor: "pointer", userSelect: "none" }}>
+                        Nombre{sortCol === "name" ? (sortDir === "asc" ? " ↑" : " ↓") : " ↕"}
+                      </th>
+                      <th style={{ padding: "0.7rem 0.9rem", textAlign: "left", fontSize: 10, fontWeight: 700, letterSpacing: ".06em", textTransform: "uppercase", color: "var(--muted)" }}>Email</th>
+                      <th onClick={() => toggleSort("role")} style={{ padding: "0.7rem 0.9rem", textAlign: "left", fontSize: 10, fontWeight: 700, letterSpacing: ".06em", textTransform: "uppercase", color: sortCol === "role" ? "#6366f1" : "var(--muted)", cursor: "pointer", userSelect: "none" }}>
+                        Rol{sortCol === "role" ? (sortDir === "asc" ? " ↑" : " ↓") : " ↕"}
+                      </th>
+                      <th onClick={() => toggleSort("active")} style={{ padding: "0.7rem 0.9rem", textAlign: "left", fontSize: 10, fontWeight: 700, letterSpacing: ".06em", textTransform: "uppercase", color: sortCol === "active" ? "#6366f1" : "var(--muted)", cursor: "pointer", userSelect: "none" }}>
+                        Estado{sortCol === "active" ? (sortDir === "asc" ? " ↑" : " ↓") : " ↕"}
+                      </th>
+                      <th style={{ padding: "0.7rem 0.9rem" }} />
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filteredUsers.map(u => {
+                      const m = ROLE_META[u.role];
+                      return (
+                        <tr key={u.id} style={{ borderBottom: "1px solid var(--border)" }}>
+                          <td style={{ padding: "0.7rem 0.9rem", fontWeight: 600 }}>{u.name}</td>
+                          <td style={{ padding: "0.7rem 0.9rem", fontFamily: "var(--mono)", fontSize: 12, color: "var(--muted2)" }}>{u.email}</td>
+                          <td style={{ padding: "0.7rem 0.9rem" }}>
+                            <span style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: 11, fontWeight: 700, padding: "3px 9px", borderRadius: 20, background: m.color + "18", color: m.color }}>
+                              {m.icon}{m.label}
+                            </span>
+                          </td>
+                          <td style={{ padding: "0.7rem 0.9rem" }}>
+                            <span style={{ fontSize: 11, fontWeight: 700, padding: "2px 8px", borderRadius: 20, background: u.active ? "#ecfdf5" : "#fef2f2", color: u.active ? "#10b981" : "#ef4444" }}>
+                              {u.active ? "Activo" : "Inactivo"}
+                            </span>
+                          </td>
+                          <td style={{ padding: "0.7rem 0.9rem", textAlign: "right" }}>
+                            <button onClick={() => setEditing(u)} title="Editar" style={{ background: "var(--surface2)", border: "1px solid var(--border)", borderRadius: 7, padding: "5px 7px", cursor: "pointer", color: "var(--muted2)" }}><Pencil size={14} /></button>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+        </>
       )}
 
       <CatalogosPreoperacional
