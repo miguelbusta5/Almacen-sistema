@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { useSession } from "next-auth/react";
-import { Users, Plus, Pencil, X, Shield, ShieldCheck, ShieldAlert } from "lucide-react";
+import { Users, Plus, Pencil, X, Shield, ShieldCheck, ShieldAlert, Truck, Car } from "lucide-react";
 
 type Role = "ADMIN" | "GERENTE" | "OPERADOR" | "TRANSPORTISTA" | "INVENTARIO" | "TRANSPORTE" | "SUPERVISOR_INVENTARIO" | "SUPERVISOR_TRANSPORTE" | "TIENDA" | "SUPERVISOR_TIENDA";
 
@@ -14,6 +14,31 @@ interface User {
   role: Role;
   active: boolean;
   createdAt?: string;
+}
+
+interface TransportistaDisponible {
+  id: string;
+  nombre: string;
+  telefono?: string | null;
+  vehiculo?: { placa: string; tipo: string; estado: string } | null;
+}
+
+interface VehiculoOperativo {
+  id: string;
+  placa: string;
+  tipo: string;
+  capacidadKg?: number | null;
+  estado: string;
+  transportistas?: Array<{ id: string; nombre: string; activo: boolean }>;
+}
+
+interface TransportistaOperativo {
+  id: string;
+  nombre: string;
+  telefono?: string | null;
+  activo: boolean;
+  user?: { id: string; name: string; email: string; active: boolean } | null;
+  vehiculo?: { id: string; placa: string; tipo: string; estado: string } | null;
 }
 
 const ROLE_META: Record<Role, { label: string; color: string; icon: React.ReactNode }> = {
@@ -37,6 +62,9 @@ export default function UsuariosPage() {
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState<User | null>(null);
+  const [vehiculos, setVehiculos] = useState<VehiculoOperativo[]>([]);
+  const [transportistasOperativos, setTransportistasOperativos] = useState<TransportistaOperativo[]>([]);
+  const [loadingCatalogos, setLoadingCatalogos] = useState(true);
   const [toast, setToast] = useState<{ msg: string; err?: boolean } | null>(null);
 
   function showToast(msg: string, err = false) {
@@ -53,7 +81,36 @@ export default function UsuariosPage() {
     } catch { showToast("Error al cargar", true); }
     finally { setLoading(false); }
   }
-  useEffect(() => { if (role === "ADMIN") load(); else setLoading(false); }, [role]);
+
+  async function loadCatalogos() {
+    setLoadingCatalogos(true);
+    try {
+      const [vehiculosRes, transportistasRes] = await Promise.all([
+        fetch("/api/users/vehiculos"),
+        fetch("/api/users/transportistas-operativos"),
+      ]);
+      const [vehiculosJson, transportistasJson] = await Promise.all([
+        vehiculosRes.json(),
+        transportistasRes.json(),
+      ]);
+      if (vehiculosJson.success) setVehiculos(vehiculosJson.data);
+      if (transportistasJson.success) setTransportistasOperativos(transportistasJson.data);
+    } catch {
+      showToast("Error al cargar conductores y vehiculos", true);
+    } finally {
+      setLoadingCatalogos(false);
+    }
+  }
+
+  useEffect(() => {
+    if (role === "ADMIN") {
+      load();
+      loadCatalogos();
+    } else {
+      setLoading(false);
+      setLoadingCatalogos(false);
+    }
+  }, [role]);
 
   if (role && role !== "ADMIN") {
     return (
@@ -124,11 +181,19 @@ export default function UsuariosPage() {
         </div>
       )}
 
-      {showForm && <FormNuevo onClose={() => setShowForm(false)} onSaved={() => { setShowForm(false); load(); showToast("Usuario creado ✓"); }} onError={m => showToast(m, true)} />}
+      <CatalogosPreoperacional
+        vehiculos={vehiculos}
+        transportistas={transportistasOperativos}
+        loading={loadingCatalogos}
+        onReload={loadCatalogos}
+        onToast={showToast}
+      />
+
+      {showForm && <FormNuevo onClose={() => setShowForm(false)} onSaved={() => { setShowForm(false); load(); loadCatalogos(); showToast("Usuario creado ✓"); }} onError={m => showToast(m, true)} />}
       {editing && <ModalEditar u={editing} selfId={(session?.user as any)?.id} onClose={() => setEditing(null)} onSaved={() => { setEditing(null); load(); showToast("Usuario actualizado ✓"); }} onError={m => showToast(m, true)} />}
 
       {toast && (
-        <div style={{ position: "fixed", bottom: 24, right: 24, zIndex: 1000, background: toast.err ? "#ef4444" : "#0f172a", color: "#fff", padding: "0.8rem 1.2rem", borderRadius: 10, fontSize: 13, fontWeight: 600, boxShadow: "0 8px 28px #0f172a40" }}>
+        <div style={{ position: "fixed", bottom: 24, right: 24, zIndex: 10001, background: toast.err ? "#ef4444" : "#0f172a", color: "#fff", padding: "0.8rem 1.2rem", borderRadius: 10, fontSize: 13, fontWeight: 600, boxShadow: "0 8px 28px #0f172a40" }}>
           {toast.msg}
         </div>
       )}
@@ -137,24 +202,273 @@ export default function UsuariosPage() {
 }
 
 // ════════ FORM NUEVO ════════
+function CatalogosPreoperacional({
+  vehiculos,
+  transportistas,
+  loading,
+  onReload,
+  onToast,
+}: {
+  vehiculos: VehiculoOperativo[];
+  transportistas: TransportistaOperativo[];
+  loading: boolean;
+  onReload: () => void;
+  onToast: (m: string, err?: boolean) => void;
+}) {
+  const [placa, setPlaca] = useState("");
+  const [tipo, setTipo] = useState("CAMION");
+  const [capacidadKg, setCapacidadKg] = useState("");
+  const [nombre, setNombre] = useState("");
+  const [telefono, setTelefono] = useState("");
+  const [vehiculoId, setVehiculoId] = useState("");
+  const [savingVehiculo, setSavingVehiculo] = useState(false);
+  const [savingTransportista, setSavingTransportista] = useState(false);
+  const [updatingId, setUpdatingId] = useState<string | null>(null);
+
+  async function crearVehiculo() {
+    if (!placa.trim() || !tipo.trim()) {
+      onToast("Completa placa y tipo", true);
+      return;
+    }
+    setSavingVehiculo(true);
+    try {
+      const res = await fetch("/api/users/vehiculos", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ placa, tipo, capacidadKg: capacidadKg ? Number(capacidadKg) : null, estado: "ACTIVO" }),
+      });
+      const json = await res.json();
+      if (!json.success) {
+        onToast(json.error || "Error al crear vehiculo", true);
+        return;
+      }
+      setPlaca("");
+      setTipo("CAMION");
+      setCapacidadKg("");
+      onReload();
+      onToast("Vehiculo creado");
+    } catch {
+      onToast("Error de conexion", true);
+    } finally {
+      setSavingVehiculo(false);
+    }
+  }
+
+  async function crearTransportista() {
+    if (!nombre.trim()) {
+      onToast("Completa el nombre del transportista", true);
+      return;
+    }
+    setSavingTransportista(true);
+    try {
+      const res = await fetch("/api/users/transportistas-operativos", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ nombre, telefono: telefono || null, vehiculoId: vehiculoId || null }),
+      });
+      const json = await res.json();
+      if (!json.success) {
+        onToast(json.error || "Error al crear transportista", true);
+        return;
+      }
+      setNombre("");
+      setTelefono("");
+      setVehiculoId("");
+      onReload();
+      onToast("Transportista operativo creado");
+    } catch {
+      onToast("Error de conexion", true);
+    } finally {
+      setSavingTransportista(false);
+    }
+  }
+
+  async function asignarVehiculo(transportistaId: string, nextVehiculoId: string) {
+    setUpdatingId(transportistaId);
+    try {
+      const res = await fetch("/api/users/transportistas-operativos", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: transportistaId, vehiculoId: nextVehiculoId || null }),
+      });
+      const json = await res.json();
+      if (!json.success) {
+        onToast(json.error || "Error al asignar vehiculo", true);
+        return;
+      }
+      onReload();
+      onToast("Vehiculo asignado");
+    } catch {
+      onToast("Error de conexion", true);
+    } finally {
+      setUpdatingId(null);
+    }
+  }
+
+  return (
+    <section style={{ marginTop: "1.5rem", display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: 16 }}>
+      <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 14, padding: "1rem" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: "0.9rem" }}>
+          <Car size={18} color="#0e7490" />
+          <h2 style={{ fontSize: 15, fontWeight: 800, color: "var(--text)" }}>Vehiculos</h2>
+        </div>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(130px, 1fr))", gap: 8 }}>
+          <Field label="Placa"><input value={placa} onChange={e => setPlaca(e.target.value.toUpperCase())} style={inp} placeholder="ABC123" /></Field>
+          <Field label="Tipo">
+            <select value={tipo} onChange={e => setTipo(e.target.value)} style={inp}>
+              <option value="CAMION">Camion</option>
+              <option value="FURGON">Furgon</option>
+              <option value="VAN">Van</option>
+              <option value="MOTO">Moto</option>
+            </select>
+          </Field>
+          <Field label="Capacidad kg"><input type="number" min={1} value={capacidadKg} onChange={e => setCapacidadKg(e.target.value)} style={inp} placeholder="Opcional" /></Field>
+          <button onClick={crearVehiculo} disabled={savingVehiculo} style={{ ...btnPri, alignSelf: "end", background: "#0e7490" }}>
+            {savingVehiculo ? "Creando..." : "Crear vehiculo"}
+          </button>
+        </div>
+        <div style={{ marginTop: "1rem", display: "flex", flexDirection: "column", gap: 6 }}>
+          {loading ? <div style={{ color: "var(--muted)", fontSize: 12 }}>Cargando...</div> : vehiculos.map(v => (
+            <div key={v.id} style={{ display: "flex", justifyContent: "space-between", gap: 10, borderTop: "1px solid var(--border)", paddingTop: 8, fontSize: 12 }}>
+              <span style={{ fontWeight: 800 }}>{v.placa} <span style={{ color: "var(--muted)", fontWeight: 600 }}>{v.tipo}</span></span>
+              <span style={{ color: v.estado === "ACTIVO" ? "#10b981" : "#f59e0b", fontWeight: 800 }}>{v.estado}</span>
+            </div>
+          ))}
+          {!loading && vehiculos.length === 0 && <div style={{ color: "var(--muted)", fontSize: 12 }}>No hay vehiculos registrados.</div>}
+        </div>
+      </div>
+
+      <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 14, padding: "1rem" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: "0.9rem" }}>
+          <Truck size={18} color="#0e7490" />
+          <h2 style={{ fontSize: 15, fontWeight: 800, color: "var(--text)" }}>Transportistas operativos</h2>
+        </div>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))", gap: 8, alignItems: "end" }}>
+          <Field label="Nombre"><input value={nombre} onChange={e => setNombre(e.target.value)} style={inp} placeholder="Nombre conductor" /></Field>
+          <Field label="Telefono"><input value={telefono} onChange={e => setTelefono(e.target.value)} style={inp} placeholder="Opcional" /></Field>
+          <Field label="Vehiculo">
+            <select value={vehiculoId} onChange={e => setVehiculoId(e.target.value)} style={inp}>
+              <option value="">Sin vehiculo</option>
+              {vehiculos.map(v => <option key={v.id} value={v.id}>{v.placa} - {v.tipo}</option>)}
+            </select>
+          </Field>
+          <button onClick={crearTransportista} disabled={savingTransportista} style={{ ...btnPri, background: "#0e7490", minWidth: 120 }}>
+            {savingTransportista ? "Creando..." : "Crear"}
+          </button>
+        </div>
+
+        <div style={{ marginTop: "1rem", overflowX: "auto" }}>
+          <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
+            <thead>
+              <tr style={{ borderBottom: "1px solid var(--border)", color: "var(--muted)" }}>
+                <th style={{ textAlign: "left", padding: "0.5rem" }}>Nombre</th>
+                <th style={{ textAlign: "left", padding: "0.5rem" }}>Usuario</th>
+                <th style={{ textAlign: "left", padding: "0.5rem" }}>Vehiculo</th>
+                <th style={{ textAlign: "left", padding: "0.5rem" }}>Estado</th>
+              </tr>
+            </thead>
+            <tbody>
+              {transportistas.map(t => (
+                <tr key={t.id} style={{ borderBottom: "1px solid var(--border)" }}>
+                  <td style={{ padding: "0.5rem", fontWeight: 800 }}>{t.nombre}</td>
+                  <td style={{ padding: "0.5rem", color: "var(--muted2)" }}>{t.user ? t.user.email : "Sin usuario"}</td>
+                  <td style={{ padding: "0.5rem", minWidth: 150 }}>
+                    <select
+                      value={t.vehiculo?.id || ""}
+                      onChange={e => asignarVehiculo(t.id, e.target.value)}
+                      disabled={updatingId === t.id}
+                      style={{ ...inp, padding: "0.4rem 0.55rem", fontSize: 12 }}
+                    >
+                      <option value="">Sin vehiculo</option>
+                      {vehiculos.map(v => <option key={v.id} value={v.id}>{v.placa} - {v.tipo}</option>)}
+                    </select>
+                  </td>
+                  <td style={{ padding: "0.5rem", color: t.activo ? "#10b981" : "#ef4444", fontWeight: 800 }}>{t.activo ? "Activo" : "Inactivo"}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          {!loading && transportistas.length === 0 && <div style={{ color: "var(--muted)", fontSize: 12, paddingTop: 10 }}>No hay transportistas operativos.</div>}
+        </div>
+      </div>
+    </section>
+  );
+}
+
 function FormNuevo({ onClose, onSaved, onError }: { onClose: () => void; onSaved: () => void; onError: (m: string) => void }) {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [role, setRole] = useState<Role>("OPERADOR");
+  const [transportistaId, setTransportistaId] = useState("");
+  const [transportistas, setTransportistas] = useState<TransportistaDisponible[]>([]);
+  const [loadingTransportistas, setLoadingTransportistas] = useState(false);
+  const [formError, setFormError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
+  useEffect(() => {
+    if (role !== "TRANSPORTISTA") {
+      setTransportistaId("");
+      setFormError(null);
+      return;
+    }
+
+    let cancelled = false;
+    setLoadingTransportistas(true);
+    fetch("/api/users/transportistas-disponibles")
+      .then((res) => res.json())
+      .then((json) => {
+        if (!cancelled) setTransportistas(json.success ? json.data : []);
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setTransportistas([]);
+          setFormError("No se pudieron cargar transportistas disponibles");
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setLoadingTransportistas(false);
+      });
+
+    return () => { cancelled = true; };
+  }, [role]);
+
   async function submit() {
-    if (!name.trim() || !email.trim() || password.length < 8) { onError("Completa los campos (contraseña ≥ 8)"); return; }
+    setFormError(null);
+    if (!name.trim() || !email.trim() || password.length < 8) {
+      const msg = "Completa los campos (contrasena minimo 8)";
+      setFormError(msg);
+      onError(msg);
+      return;
+    }
+    if (role === "TRANSPORTISTA" && !transportistaId) {
+      const msg = "Selecciona el transportista operativo a vincular";
+      setFormError(msg);
+      onError(msg);
+      return;
+    }
     setSaving(true);
     try {
       const res = await fetch("/api/users", {
         method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name: name.trim(), email: email.trim(), password, role }),
+        body: JSON.stringify({
+          name: name.trim(),
+          email: email.trim(),
+          password,
+          role,
+          transportistaId: role === "TRANSPORTISTA" ? transportistaId : undefined,
+        }),
       });
       const json = await res.json();
-      if (json.success) onSaved(); else onError(json.error || "Error al crear");
-    } catch { onError("Error de conexión"); }
+      if (json.success) onSaved(); else {
+        const msg = json.error || "Error al crear";
+        setFormError(msg);
+        onError(msg);
+      }
+    } catch {
+      setFormError("Error de conexion");
+      onError("Error de conexion");
+    }
     finally { setSaving(false); }
   }
 
@@ -182,6 +496,33 @@ function FormNuevo({ onClose, onSaved, onError }: { onClose: () => void; onSaved
                 <option value="GERENTE">Gerente</option>
                 <option value="ADMIN">Administrador</option>
               </optgroup></select></Field>
+        {role === "TRANSPORTISTA" && (
+          <Field label="Transportista operativo">
+            <select
+              value={transportistaId}
+              onChange={e => setTransportistaId(e.target.value)}
+              disabled={loadingTransportistas || transportistas.length === 0}
+              style={{ ...inp, opacity: loadingTransportistas || transportistas.length === 0 ? 0.65 : 1 }}
+            >
+              <option value="">{loadingTransportistas ? "Cargando transportistas..." : "Seleccionar transportista"}</option>
+              {transportistas.map((t) => (
+                <option key={t.id} value={t.id}>
+                  {t.nombre}{t.vehiculo ? ` - ${t.vehiculo.placa} (${t.vehiculo.tipo})` : " - sin vehiculo"}
+                </option>
+              ))}
+            </select>
+            {!loadingTransportistas && transportistas.length === 0 && (
+              <p style={{ fontSize: 11, color: "#f59e0b", marginTop: 4 }}>
+                No hay transportistas activos con vehiculo y sin usuario asignado.
+              </p>
+            )}
+          </Field>
+        )}
+        {formError && (
+          <div style={{ border: "1px solid #ef444455", background: "#ef444418", color: "#fca5a5", borderRadius: 8, padding: "0.6rem 0.75rem", fontSize: 12, fontWeight: 700 }}>
+            {formError}
+          </div>
+        )}
       </div>
       <div style={{ display: "flex", gap: 8, marginTop: "1.25rem" }}>
         <button onClick={onClose} style={btnSec}>Cancelar</button>

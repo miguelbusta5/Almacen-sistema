@@ -59,20 +59,40 @@ export async function POST(req: NextRequest) {
   if (existing) {
     return NextResponse.json({ error: "Email ya registrado" }, { status: 400 });
   }
-  const hashed = await bcrypt.hash(parsed.data.password, 12);
   const { transportistaId, ...userData } = parsed.data;
-  const user = await prisma.user.create({
-    data: { ...userData, email, password: hashed },
-    select: { id: true, email: true, name: true, role: true, active: true },
-  });
-
-  // Si viene transportistaId, vincular el usuario al transportista
-  if (transportistaId) {
-    await prisma.transportista.update({
-      where: { id: transportistaId },
-      data: { userId: user.id },
-    }).catch(() => {});
+  if (userData.role === "TRANSPORTISTA" && !transportistaId) {
+    return NextResponse.json({ error: "Selecciona el transportista a vincular" }, { status: 400 });
   }
+  if (userData.role !== "TRANSPORTISTA" && transportistaId) {
+    return NextResponse.json({ error: "Solo el rol Transportista puede vincularse a un conductor" }, { status: 400 });
+  }
+
+  if (transportistaId) {
+    const transportista = await prisma.transportista.findFirst({
+      where: { id: transportistaId, activo: true, userId: null, vehiculoId: { not: null } },
+      select: { id: true },
+    });
+    if (!transportista) {
+      return NextResponse.json({ error: "Transportista no disponible o sin vehiculo asignado" }, { status: 400 });
+    }
+  }
+
+  const hashed = await bcrypt.hash(parsed.data.password, 12);
+  const user = await prisma.$transaction(async (tx) => {
+    const created = await tx.user.create({
+      data: { ...userData, email, password: hashed },
+      select: { id: true, email: true, name: true, role: true, active: true },
+    });
+
+    if (transportistaId) {
+      await tx.transportista.update({
+        where: { id: transportistaId },
+        data: { userId: created.id },
+      });
+    }
+
+    return created;
+  });
 
   return NextResponse.json({ success: true, data: user }, { status: 201 });
 }
