@@ -1,6 +1,6 @@
 # 📦 HANDOFF — Sistema de Gestión de Almacén (Grupo Ambiente)
 
-> Documento de traspaso técnico. Última actualización: 2026-06-02 (sesión 6).
+> Documento de traspaso técnico. Última actualización: 2026-06-09 (Sprint 8).
 >
 > ⚠️ **Nunca pongas contraseñas, tokens ni cadenas de conexión en este archivo** (está versionado en git). Usa solo nombres de variables de entorno.
 
@@ -125,34 +125,38 @@ prisma/
 
 ## 4. Modelo de permisos y visibilidad de módulos
 
-### Roles disponibles (8 total — sesión 5)
+### Roles disponibles (10 total — Sprint 8)
 
 | Rol | Descripción |
 |-----|-------------|
 | `ADMIN` | Acceso total |
 | `GERENTE` | Ve todo operativo. Sin configuración de sistema |
 | `SUPERVISOR_INVENTARIO` | Inventario + análisis operacional |
-| `SUPERVISOR_TRANSPORTE` | Guardados + logística + KPIs conductores |
+| `SUPERVISOR_TRANSPORTE` | Tienda + guardados + KPIs + Centro de Control |
+| `SUPERVISOR_TIENDA` | Tienda + análisis + Centro de Control |
 | `INVENTARIO` | Solo módulos de inventario y conteo |
-| `TRANSPORTE` | Solo guardados, logística y rutas |
+| `TRANSPORTE` | Solo guardados |
+| `TIENDA` | Solo despachos de tienda |
 | `OPERADOR` | Rol legado — acceso general a inventario + transporte |
-| `TRANSPORTISTA` | Solo "Mi ruta" (conductor) |
+| `TRANSPORTISTA` | **Solo Preoperacional** (conductor; requiere transportista operativo con vehículo) |
+
+> ⚠️ Logística (rutas GPS) y Mi Ruta están deshabilitados en Sprint 8.
 
 ### Visibilidad de módulos por rol (`src/lib/modulePermissions.ts`)
 
-| Módulo | INVENTARIO | TRANSPORTE | SUP_INV | SUP_TRN | GERENTE | ADMIN |
-|--------|:---:|:---:|:---:|:---:|:---:|:---:|
-| Novedades Inventario | ✅ | ❌ | ✅ | ❌ | ✅ | ✅ |
-| Guardados Transporte | ❌ | ✅ | ❌ | ✅ | ✅ | ✅ |
-| Logística | ❌ | ✅ | ❌ | ✅ | ✅ | ✅ |
-| Mi Ruta | ❌ | ✅ | ❌ | ✅ | ✅ | ✅ |
-| Conteo (gestión) | ✅ | ❌ | ✅ | ❌ | ✅ | ✅ |
-| Conteo (contar) | ✅ | ❌ | ✅ | ❌ | ✅ | ✅ |
-| Centro de Control | ❌ | ❌ | ✅ | ✅ | ✅ | ✅ |
-| Usuarios | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ |
-| Auditoría | ❌ | ❌ | ❌ | ❌ | ✅ | ✅ |
+| Módulo | INV | TRN | TIENDA | SUP_INV | SUP_TRN | SUP_TDA | GERENTE | ADMIN | TRANSPORTISTA |
+|--------|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|
+| Novedades Inventario | ✅ | ❌ | ❌ | ✅ | ❌ | ❌ | ✅ | ✅ | ❌ |
+| Guardados Transporte | ❌ | ✅ | ❌ | ❌ | ✅ | ❌ | ✅ | ✅ | ❌ |
+| Despachos Tienda | ❌ | ❌ | ✅ | ❌ | ✅ | ✅ | ✅ | ✅ | ❌ |
+| Preoperacional | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ |
+| Conteo (gestión) | ✅ | ❌ | ❌ | ✅ | ❌ | ❌ | ✅ | ✅ | ❌ |
+| Conteo (contar) | ✅ | ❌ | ❌ | ✅ | ❌ | ❌ | ✅ | ✅ | ❌ |
+| Centro de Control | ❌ | ❌ | ❌ | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ |
+| Usuarios | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ | ❌ |
+| Auditoría | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ | ✅ | ❌ |
 
-El sidebar y el Command Palette filtran automáticamente según el rol. Acceso por URL directa también respeta el sidebar (sin middleware de ruta — se confía en el sidebar).
+El sidebar filtra automáticamente según el rol. Acceso por URL directa también respeta el sidebar (sin middleware de ruta — se confía en el sidebar).
 
 ### Permisos CRUD (`src/lib/permissions.ts`)
 
@@ -171,9 +175,10 @@ El sidebar y el Command Palette filtran automáticamente según el rol. Acceso p
 
 ### Autenticación y usuarios
 - ✅ Login email + contraseña (Auth.js v5, JWT 8h), emails insensibles a mayúsculas.
-- ✅ Roles `ADMIN` / `GERENTE` / `OPERADOR` / **`TRANSPORTISTA`** con permisos finos (ver §4).
+- ✅ 10 roles con permisos finos (ver §4).
 - ✅ Gestión de usuarios (solo ADMIN): crear, editar nombre/rol/estado, resetear contraseña.
-- ✅ **Rol TRANSPORTISTA**: sidebar reducido (solo Mi ruta), vinculable a un registro de `transportistas`. Al crear el usuario se puede vincular directamente con `transportistaId`.
+- ✅ **Rol TRANSPORTISTA**: sidebar reducido (solo Preoperacional), vinculable a un `transportista` operativo. Al crear el usuario se vincula con `transportistaId`; el transportista debe estar activo, sin usuario y con vehículo asignado.
+- ✅ **Vehículos y transportistas operativos** gestionados desde `/dashboard/usuarios` (solo ADMIN). APIs en `/api/users/vehiculos`, `/api/users/transportistas-operativos`, `/api/users/transportistas-disponibles`.
 - ✅ Protección anti-autobloqueo del admin.
 
 ### Seguridad (endurecida en esta entrega)
@@ -248,9 +253,22 @@ El sidebar y el Command Palette filtran automáticamente según el rol. Acceso p
 - ✅ Módulos recoloreados: **Muebles azul**, **Transporte cian** (familia azul); semánticos (verde/rojo/ámbar) intactos.
 - ✅ Microinteracciones: `lift` (hover elevado), `skeleton` (shimmer), `stagger`/`fade-up`, respeto a `prefers-reduced-motion`.
 
+### Módulo Preoperacional (Sprint 8)
+- ✅ `/dashboard/preoperacional` — solo para `TRANSPORTISTA`.
+- ✅ Carga checklist desde la API, muestra vehículo y nombre del conductor.
+- ✅ El conductor registra resultado por ítem (CONFORME / NO_CONFORME / NO_APLICA) + observación + foto opcional.
+- ✅ Resultado automático: APROBADA / APROBADA_CON_OBSERVACIONES / BLOQUEADA (ítem crítico no conforme).
+- ✅ Muestra si ya registró inspección hoy e historial reciente.
+- ✅ API: `GET /api/preoperacional` (carga vehículo + checklist del conductor) · `POST /api/preoperacional` (guarda inspección).
+
+### Flujo Tienda — Sprint 8 simplificado
+- ✅ El flujo Tienda simplificado usa estados: `CREADO_TIENDA → ASIGNADO_RECOGIDA → EN_RECOGIDA → RECOGIDO → EN_ENTREGA → ENTREGADO`.
+- ✅ El admin puede asignar conductor+vehículo en el modal de transición `CREADO_TIENDA → ASIGNADO_RECOGIDA`.
+- ✅ Conductores se listan desde `/api/users/transportistas-disponibles` (activos, con vehículo, sin usuario activo de ruta).
+
 ### Despliegue
 - ✅ Producción: **https://matec-cedi.vercel.app**.
-- ✅ **Deploy automático**: cada push a `master` que pase los checks (tsc + 56 tests) despliega automáticamente via GitHub Actions. Secretos requeridos en el repo: `VERCEL_TOKEN` (tipo `vcp_`), `VERCEL_ORG_ID`, `VERCEL_PROJECT_ID`.
+- ✅ **Deploy automático via GitHub Actions**: cada `git push origin master` que pase los checks (tsc + tests) despliega a producción. Secretos requeridos en el repo: `VERCEL_TOKEN` (tipo `vcp_`), `VERCEL_ORG_ID`, `VERCEL_PROJECT_ID`.
 
 ---
 
@@ -339,11 +357,11 @@ El sidebar y el Command Palette filtran automáticamente según el rol. Acceso p
 - **Repo local:** `C:\Users\USUARIO\Desktop\almacen-sistema` (git, branch `master`).
 - **Comandos:**
   - Dev local: `npm run dev`
-  - Build: `npm run build`
+  - Build: `npm run build` · Type-check: `npx tsc --noEmit` · Tests: `npm test`
   - Migrar schema a DB: `npx prisma db push`
   - Crear admin (lee ADMIN_* del entorno): `node prisma/seed.js`
-  - Deploy prod: `vercel deploy --prod --yes --token <TOKEN>` (con `.vercel/project.json` ya enlazado)
-  - Deploy preview (URL aparte, no toca prod): `vercel deploy --yes --token <TOKEN>`
+  - **Deploy prod: `git push origin master`** → GitHub Actions (`.github/workflows/ci.yml`) hace tsc + tests + `vercel deploy --prod` automáticamente.
+  - Deploy preview manual: `vercel deploy --yes --token <TOKEN>` (con `.vercel/project.json` enlazado)
 
 > ⚠️ Pasa el token de Vercel solo de forma puntual y **revócalo** después (Account → Tokens). `.env.local` y `.vercel/` están en `.gitignore`.
 
@@ -402,3 +420,14 @@ Comandos de verificación: `node -v`, `claude --version`, `git remote -v` (debe 
   - GPS fix: `watchPosition` nativo reemplaza polling; mejor UX de permisos en móvil.
   - Paginación server-side en `/api/novedades` y `/api/transporte` (hasta 500 registros, filtros en servidor).
   - Polling supervisor de GPS: 30s → 15s.
+
+### Sprint 8 (2026-06-09)
+- `fa0e626` — simplify: flujo Tienda y Preoperacional simplificados.
+- `3be8f16` — simplify: dispatch flow de Tienda.
+- `f3b0d82` — simplify: acceso a Logística (deshabilitado).
+- `b5b27d` — fix: modal asignar conductor+vehículo para recogida.
+- `0438354` — feat: admin puede gestionar vehículos y transportistas operativos desde Usuarios.
+  - APIs nuevas: `/api/users/vehiculos` (GET/POST) · `/api/users/transportistas-operativos` (GET/POST/PATCH) · `/api/users/transportistas-disponibles` (GET).
+  - Al crear usuario `TRANSPORTISTA` se valida que el transportista esté activo, sin usuario y con vehículo.
+  - Sidebar: `TRANSPORTISTA` solo ve **Preoperacional** (antes "Mi Ruta" — ahora deshabilitado).
+  - Roles nuevos añadidos al enum: `TIENDA`, `SUPERVISOR_TIENDA` (10 roles total).
