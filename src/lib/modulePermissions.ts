@@ -42,7 +42,7 @@ export const MODULE_ACCESS: Record<ModuleKey, AppRole[]> = {
     "TRANSPORTE", "SUPERVISOR_TRANSPORTE",
     "GERENTE", "ADMIN", "OPERADOR",
   ],
-  "preoperacional": ["TRANSPORTISTA"],
+  "preoperacional": ["TRANSPORTISTA", "ADMIN", "GERENTE", "SUPERVISOR_TRANSPORTE"],
   "conteo": [
     "INVENTARIO", "SUPERVISOR_INVENTARIO",
     "GERENTE", "ADMIN",

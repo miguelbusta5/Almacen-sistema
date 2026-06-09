@@ -17,7 +17,7 @@ describe("canSeeModule — Sprint 8", () => {
     );
   });
 
-  // ── ADMIN: ve todo ────────────────────────────────────
+  // ── ADMIN: ve todo incluido preoperacional (vista supervisor) ──
   describe("ADMIN", () => {
     it("ve inventario",      () => expect(canSeeModule("ADMIN", "inventario")).toBe(true));
     it("ve transporte",      () => expect(canSeeModule("ADMIN", "transporte")).toBe(true));
@@ -25,7 +25,7 @@ describe("canSeeModule — Sprint 8", () => {
     it("ve usuarios",        () => expect(canSeeModule("ADMIN", "usuarios")).toBe(true));
     it("ve auditoria",       () => expect(canSeeModule("ADMIN", "auditoria")).toBe(true));
     it("ve centro-control",  () => expect(canSeeModule("ADMIN", "centro-control")).toBe(true));
-    it("NO ve preoperacional", () => expect(canSeeModule("ADMIN", "preoperacional")).toBe(false));
+    it("ve preoperacional (vista supervisor)", () => expect(canSeeModule("ADMIN", "preoperacional")).toBe(true));
   });
 
   // ── TIENDA: solo su módulo ───────────────────────────
@@ -42,8 +42,13 @@ describe("canSeeModule — Sprint 8", () => {
     "%s NO ve usuarios", (role) => expect(canSeeModule(role, "usuarios")).toBe(false)
   );
 
+  // ── Supervisores que VEN preoperacional (vista supervisor) ───
+  it.each(["ADMIN", "GERENTE", "SUPERVISOR_TRANSPORTE"] as const)(
+    "%s ve preoperacional (supervisor)", (role) => expect(canSeeModule(role, "preoperacional")).toBe(true)
+  );
+
   // ── Roles sin acceso a preoperacional ────────────────
-  it.each(["ADMIN", "GERENTE", "OPERADOR", "INVENTARIO", "TRANSPORTE", "TIENDA", "SUPERVISOR_INVENTARIO", "SUPERVISOR_TRANSPORTE"] as const)(
+  it.each(["OPERADOR", "INVENTARIO", "TRANSPORTE", "TIENDA", "SUPERVISOR_INVENTARIO", "SUPERVISOR_TIENDA"] as const)(
     "%s NO ve preoperacional", (role) => expect(canSeeModule(role, "preoperacional")).toBe(false)
   );
 
