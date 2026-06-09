@@ -73,6 +73,18 @@ export const HOME_ACTIONS: HomeAction[] = [
     ],
     priority: 1,
   },
+  // ── Integración de Pedidos ──────────────────────────────
+  {
+    id: "nueva-integracion",
+    title: "Nueva integración de pedido",
+    description: "Coordinar picking OVDM/TSDM entre áreas Muebles y Gourmet",
+    href: "/dashboard/integracion",
+    icon: "GitMerge",
+    color: "#7C3AED",
+    moduleKey: "integracion",
+    roles: ["OPERACIONES_MUEBLES", "OPERACIONES_GOURMET", "ADMIN", "GERENTE"],
+    priority: 1,
+  },
   // ── Mis tareas (todos los operarios) ────────────────────
   {
     id: "ver-mis-tareas",

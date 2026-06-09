@@ -52,6 +52,35 @@ describe("canSeeModule — Sprint 8", () => {
     "%s NO ve preoperacional", (role) => expect(canSeeModule(role, "preoperacional")).toBe(false)
   );
 
+  // ── Módulo integración ────────────────────────────────
+  describe("integracion — OPERACIONES_MUEBLES", () => {
+    it("ve integracion",      () => expect(canSeeModule("OPERACIONES_MUEBLES", "integracion")).toBe(true));
+    it("NO ve inventario",    () => expect(canSeeModule("OPERACIONES_MUEBLES", "inventario")).toBe(false));
+    it("NO ve transporte",    () => expect(canSeeModule("OPERACIONES_MUEBLES", "transporte")).toBe(false));
+    it("NO ve tienda",        () => expect(canSeeModule("OPERACIONES_MUEBLES", "tienda")).toBe(false));
+    it("NO ve usuarios",      () => expect(canSeeModule("OPERACIONES_MUEBLES", "usuarios")).toBe(false));
+    it("NO ve preoperacional",() => expect(canSeeModule("OPERACIONES_MUEBLES", "preoperacional")).toBe(false));
+    it("NO ve auditoria",     () => expect(canSeeModule("OPERACIONES_MUEBLES", "auditoria")).toBe(false));
+    it("NO ve centro-control",() => expect(canSeeModule("OPERACIONES_MUEBLES", "centro-control")).toBe(false));
+  });
+
+  describe("integracion — OPERACIONES_GOURMET", () => {
+    it("ve integracion",      () => expect(canSeeModule("OPERACIONES_GOURMET", "integracion")).toBe(true));
+    it("NO ve inventario",    () => expect(canSeeModule("OPERACIONES_GOURMET", "inventario")).toBe(false));
+    it("NO ve transporte",    () => expect(canSeeModule("OPERACIONES_GOURMET", "transporte")).toBe(false));
+    it("NO ve tienda",        () => expect(canSeeModule("OPERACIONES_GOURMET", "tienda")).toBe(false));
+    it("NO ve usuarios",      () => expect(canSeeModule("OPERACIONES_GOURMET", "usuarios")).toBe(false));
+    it("NO ve auditoria",     () => expect(canSeeModule("OPERACIONES_GOURMET", "auditoria")).toBe(false));
+  });
+
+  it.each(["ADMIN", "GERENTE", "SUPERVISOR_TRANSPORTE", "TRANSPORTE"] as const)(
+    "%s ve integracion", (role) => expect(canSeeModule(role, "integracion")).toBe(true)
+  );
+
+  it.each(["TIENDA", "SUPERVISOR_TIENDA", "INVENTARIO", "SUPERVISOR_INVENTARIO", "TRANSPORTISTA", "OPERADOR"] as const)(
+    "%s NO ve integracion", (role) => expect(canSeeModule(role, "integracion")).toBe(false)
+  );
+
   // ── Guardias de edge cases ────────────────────────────
   it("role undefined → false", () => expect(canSeeModule(undefined, "inventario")).toBe(false));
   it("role null → false",      () => expect(canSeeModule(null, "inventario")).toBe(false));

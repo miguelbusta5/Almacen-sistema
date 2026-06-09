@@ -17,7 +17,9 @@ export type AppRole =
   | "SUPERVISOR_INVENTARIO"
   | "SUPERVISOR_TRANSPORTE"
   | "TIENDA"              // Operario de tienda
-  | "SUPERVISOR_TIENDA";  // Supervisor de tienda
+  | "SUPERVISOR_TIENDA"   // Supervisor de tienda
+  | "OPERACIONES_MUEBLES" // Operario Operaciones Muebles
+  | "OPERACIONES_GOURMET"; // Operario Operaciones Gourmet
 
 // ── Claves de módulos ────────────────────────────────────
 export type ModuleKey =
@@ -30,7 +32,8 @@ export type ModuleKey =
   | "mis-tareas"
   | "usuarios"
   | "auditoria"
-  | "centro-control";
+  | "centro-control"
+  | "integracion";
 
 // ── Matriz: qué roles pueden ver cada módulo ─────────────
 export const MODULE_ACCESS: Record<ModuleKey, AppRole[]> = {
@@ -67,6 +70,11 @@ export const MODULE_ACCESS: Record<ModuleKey, AppRole[]> = {
     "GERENTE", "ADMIN",
     "SUPERVISOR_INVENTARIO", "SUPERVISOR_TRANSPORTE", "SUPERVISOR_TIENDA",
   ],
+  "integracion": [
+    "OPERACIONES_MUEBLES", "OPERACIONES_GOURMET",
+    "ADMIN", "GERENTE",
+    "SUPERVISOR_TRANSPORTE", "TRANSPORTE",
+  ],
 };
 
 // ── Helper: ¿puede este rol ver este módulo? ─────────────
@@ -100,6 +108,8 @@ export const ROLE_LABEL_EXT: Record<AppRole, string> = {
   SUPERVISOR_TRANSPORTE:  "Supervisor de Transporte",
   TIENDA:                 "Operario de Tienda",
   SUPERVISOR_TIENDA:      "Supervisor de Tienda",
+  OPERACIONES_MUEBLES:    "Operaciones Muebles",
+  OPERACIONES_GOURMET:    "Operaciones Gourmet",
 };
 
 // ── Descripción de cada rol para la UI de usuarios ──────
@@ -114,4 +124,6 @@ export const ROLE_DESCRIPTION: Record<AppRole, string> = {
   SUPERVISOR_TRANSPORTE:  "Despachos de tienda + guardados + centro de control.",
   TIENDA:                 "Solo ve y gestiona despachos de tienda.",
   SUPERVISOR_TIENDA:      "Tienda + análisis + Centro de Control.",
+  OPERACIONES_MUEBLES:    "Solo ve y gestiona el módulo Integración de Pedidos (área Muebles).",
+  OPERACIONES_GOURMET:    "Solo ve y gestiona el módulo Integración de Pedidos (área Gourmet).",
 };

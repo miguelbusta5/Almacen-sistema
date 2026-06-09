@@ -111,6 +111,8 @@ model User {
   inspecciones        InspeccionPreoperacional[] @relation("InspeccionesRealizadas")
   notificaciones      Notificacion[]
   guardadosPendientes GuardadoPendienteTienda[]  @relation("GuardadosPendientesAsignados")
+  integracionesCreadoras   IntegracionPedido[]   @relation("integracionesCreadoras")
+  integracionesCompletadas IntegracionPedido[]   @relation("integracionesCompletadas")
 
   @@index([email])
   @@map("users")
@@ -127,6 +129,8 @@ enum Role {
   SUPERVISOR_TRANSPORTE // Supervisor transporte — tienda + guardados + KPIs
   TIENDA // Operario de tienda — solo módulo tienda
   SUPERVISOR_TIENDA // Supervisor tienda — tienda + análisis + Centro de Control
+  OPERACIONES_MUEBLES // Operario Operaciones Muebles — solo módulo integración
+  OPERACIONES_GOURMET // Operario Operaciones Gourmet — solo módulo integración
 }
 
 enum EstadoDespacho {
@@ -141,6 +145,12 @@ enum EstadoInspeccion {
   APROBADA
   APROBADA_CON_OBSERVACIONES
   BLOQUEADA
+}
+
+enum EstadoIntegracion {
+  PENDIENTE_AREA2
+  LISTA_TRANSPORTE
+  COMPLETADA
 }
 
 enum ResultadoInspeccion {
@@ -570,4 +580,55 @@ model ItemInspeccion {
 
   @@index([inspeccionId])
   @@map("items_inspeccion")
+}
+
+// ═══════════════════════════════════════════
+// MÓDULO INTEGRACIÓN DE PEDIDOS
+// ═══════════════════════════════════════════
+
+model IntegracionPedido {
+  id               String            @id @default(cuid())
+  numeroDocumento  String            @db.VarChar(100)
+  tipoDocumento    String            @db.VarChar(10)   // "OVDM" | "TSDM"
+  fecha            DateTime          @db.Date
+  estado           EstadoIntegracion @default(PENDIENTE_AREA2)
+
+  areaIniciadora   String            @db.VarChar(20)   // "MUEBLES" | "GOURMET"
+  numeroCajasArea1 Int?
+  creadoPorId      String
+  creadoPor        User              @relation("integracionesCreadoras", fields: [creadoPorId], references: [id])
+  creadoAt         DateTime          @default(now())
+
+  numeroCajasArea2  Int?
+  completadoPorId   String?
+  completadoPor     User?             @relation("integracionesCompletadas", fields: [completadoPorId], references: [id])
+  completadoAt      DateTime?
+
+  entregadoATransporteAt  DateTime?
+  marcadoCompletadoPorId  String?
+  marcadoCompletadoAt     DateTime?
+
+  observaciones    String?
+  createdAt        DateTime          @default(now()) @map("created_at")
+  updatedAt        DateTime          @updatedAt @map("updated_at")
+
+  plines           PlinIntegracion[]
+
+  @@index([numeroDocumento])
+  @@index([estado, createdAt])
+  @@map("integraciones_pedidos")
+}
+
+model PlinIntegracion {
+  id             String            @id @default(cuid())
+  integracionId  String            @map("integracion_id")
+  integracion    IntegracionPedido @relation(fields: [integracionId], references: [id], onDelete: Cascade)
+  area           String            @db.VarChar(20)   // "MUEBLES" | "GOURMET"
+  plu            String            @db.VarChar(100)
+  descripcion    String?           @db.VarChar(255)
+  unidades       Int
+  createdAt      DateTime          @default(now()) @map("created_at")
+
+  @@index([integracionId])
+  @@map("plines_integracion")
 }

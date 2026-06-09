@@ -6,7 +6,7 @@ import { useSession } from "next-auth/react";
 import {
   Package, Truck, ClipboardList, ArrowRight, AlertTriangle,
   Clock, Plus,
-  CheckSquare, Store, BarChart2, Users, History, ShieldCheck,
+  CheckSquare, Store, BarChart2, Users, History, ShieldCheck, GitMerge,
 } from "lucide-react";
 import { Stat, SkeletonStat, TimelineItem, SectionHeader, SkeletonStat as SK } from "@/components/ui";
 import { IntelBanner } from "@/components/ui/SlidePanel";
@@ -111,6 +111,8 @@ const ICON_MAP: Record<string, React.ReactNode> = {
   BarChart2:    <BarChart2 size={18} />,
   Users:        <Users size={18} />,
   History:      <History size={18} />,
+  GitMerge:     <GitMerge size={18} />,
+  ShieldCheck:  <ShieldCheck size={18} />,
 };
 
 // ── Botón de acción rápida ────────────────────────────────
@@ -521,6 +523,7 @@ export default function DashboardPage() {
     "INVENTARIO", "SUPERVISOR_INVENTARIO",
     "TRANSPORTE", "SUPERVISOR_TRANSPORTE",
     "TIENDA",     "SUPERVISOR_TIENDA",
+    "OPERACIONES_MUEBLES", "OPERACIONES_GOURMET",
   ];
   if (AREA_ROLES.includes(role ?? ""))
     return <OperadorDashboard nombre={nombre} role={role!} />;

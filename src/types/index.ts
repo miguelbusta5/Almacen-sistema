@@ -9,7 +9,9 @@ export type UserRole =
   | "SUPERVISOR_INVENTARIO"
   | "SUPERVISOR_TRANSPORTE"
   | "TIENDA"
-  | "SUPERVISOR_TIENDA";
+  | "SUPERVISOR_TIENDA"
+  | "OPERACIONES_MUEBLES"
+  | "OPERACIONES_GOURMET";
 
 export interface AppUser {
   id: string;
