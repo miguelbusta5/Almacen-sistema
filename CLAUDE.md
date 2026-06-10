@@ -1,3 +1,16 @@
+## Cerebro del proyecto
+
+> **Antes de modificar cualquier código**, lee estos archivos en orden:
+>
+> 1. `docs/cerebro/00-master-context.md` — qué es el proyecto, stack, arquitectura
+> 2. `docs/cerebro/reglas-negocio.md` — reglas operativas, flujo principal, validaciones
+> 3. `docs/cerebro/roles-permisos.md` — los 12 roles y qué módulos ve cada uno
+> 4. `docs/cerebro/flujo-despachos.md` — ciclo de vida de un despacho
+> 5. `docs/cerebro/estados-despacho.md` — estados reales en DB y estados deseados
+> 6. `docs/cerebro/decisiones.md` — decisiones arquitectónicas con fecha y contexto
+> 7. `docs/cerebro/pendientes.md` — tareas pendientes y completadas
+> 8. `docs/cerebro/bugs.md` — bugs abiertos y su estado
+
 @AGENTS.md
 
 # Proyecto: Sistema de Gestión de Almacén — Grupo Ambiente
