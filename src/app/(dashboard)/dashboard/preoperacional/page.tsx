@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useSession } from "next-auth/react";
 import {
   AlertTriangle, Camera, CheckCircle2, ChevronLeft, ChevronRight,
-  Download, RefreshCw, Save, ShieldCheck, Truck, XCircle,
+  Download, RefreshCw, Save, ShieldCheck, Trash2, Truck, XCircle,
 } from "lucide-react";
 import { Badge, EmptyState, SkeletonTable, Stat } from "@/components/ui";
 import { useIsMobile } from "@/lib/useIsMobile";
@@ -95,7 +95,7 @@ export default function PreoperacionalPage() {
 
   if (status === "loading") return <SkeletonTable rows={8} cols={4} />;
 
-  if (role && SUPERVISOR_ROLES.includes(role)) return <SupervisorView />;
+  if (role && SUPERVISOR_ROLES.includes(role)) return <SupervisorView role={role} />;
 
   if (role === "TRANSPORTISTA") return <ConductorView />;
 
@@ -375,7 +375,7 @@ function ConductorView() {
 // VISTA SUPERVISOR (ADMIN / GERENTE / SUPERVISOR_TRANSPORTE)
 // ════════════════════════════════════════════════════════════════════════════
 
-function SupervisorView() {
+function SupervisorView({ role }: { role: string }) {
   const [rows, setRows]           = useState<HistorialRow[]>([]);
   const [conductores, setConductores] = useState<{ id: string; nombre: string }[]>([]);
   const [total, setTotal]         = useState(0);
@@ -383,6 +383,7 @@ function SupervisorView() {
   const [page, setPage]           = useState(1);
   const [loading, setLoading]     = useState(true);
   const [exporting, setExporting] = useState(false);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
   const [toast, setToast]         = useState<{ msg: string; err?: boolean } | null>(null);
 
   const [fDesde, setFDesde]           = useState("");
@@ -443,6 +444,19 @@ function SupervisorView() {
       showToast(e.message || "Error al exportar", true);
     } finally {
       setExporting(false);
+    }
+  }
+
+  async function deleteRow(id: string) {
+    try {
+      const res = await fetch(`/api/preoperacional/${id}`, { method: "DELETE" });
+      if (!res.ok) throw new Error("Error al eliminar");
+      showToast("Inspección eliminada");
+      setDeletingId(null);
+      load(page);
+    } catch (e: any) {
+      showToast(e.message || "Error al eliminar", true);
+      setDeletingId(null);
     }
   }
 
@@ -510,11 +524,12 @@ function SupervisorView() {
                   {["Fecha", "Conductor", "Vehículo", "Km", "Estado", "Ítems"].map((h) => (
                     <th key={h} style={{ padding: "0.7rem 0.9rem", textAlign: "left", fontSize: 10, fontWeight: 700, letterSpacing: ".06em", textTransform: "uppercase", color: "var(--muted)", whiteSpace: "nowrap" }}>{h}</th>
                   ))}
+                  {role === "ADMIN" && <th style={{ padding: "0.7rem 0.9rem", textAlign: "left", fontSize: 10, fontWeight: 700, letterSpacing: ".06em", textTransform: "uppercase", color: "var(--muted)" }}></th>}
                 </tr>
               </thead>
               <tbody>
                 {rows.length === 0 && (
-                  <tr><td colSpan={6} style={{ padding: "2rem", textAlign: "center", color: "var(--muted)", fontSize: 13 }}>Sin inspecciones para los filtros seleccionados</td></tr>
+                  <tr><td colSpan={role === "ADMIN" ? 7 : 6} style={{ padding: "2rem", textAlign: "center", color: "var(--muted)", fontSize: 13 }}>Sin inspecciones para los filtros seleccionados</td></tr>
                 )}
                 {rows.map((r) => (
                   <tr key={r.id} style={{ borderBottom: "1px solid var(--border)" }}>
@@ -536,6 +551,28 @@ function SupervisorView() {
                         </span>
                       )}
                     </td>
+                    {role === "ADMIN" && (
+                      <td style={{ padding: "0.7rem 0.9rem" }}>
+                        {deletingId === r.id ? (
+                          <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+                            <button onClick={() => deleteRow(r.id)}
+                              style={{ fontSize: 11, padding: "3px 8px", background: "var(--error)", color: "#fff", border: "none", borderRadius: 6, cursor: "pointer" }}>
+                              Sí, eliminar
+                            </button>
+                            <button onClick={() => setDeletingId(null)}
+                              style={{ fontSize: 11, padding: "3px 8px", background: "none", border: "1px solid var(--border)", borderRadius: 6, cursor: "pointer", color: "var(--muted)" }}>
+                              Cancelar
+                            </button>
+                          </div>
+                        ) : (
+                          <button onClick={() => setDeletingId(r.id)}
+                            style={{ background: "none", border: "none", cursor: "pointer", color: "var(--muted2)", padding: 4, display: "flex", alignItems: "center" }}
+                            title="Eliminar inspección">
+                            <Trash2 size={14} />
+                          </button>
+                        )}
+                      </td>
+                    )}
                   </tr>
                 ))}
               </tbody>

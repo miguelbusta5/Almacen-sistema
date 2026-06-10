@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { requireAuth } from "@/lib/authz";
+import { requireAuth, requireCan } from "@/lib/authz";
 import { prisma } from "@/lib/prisma";
 import { canSeeModule } from "@/lib/modulePermissions";
 import { z } from "zod";
@@ -217,4 +217,22 @@ export async function PUT(
   }
 
   return NextResponse.json({ error: "Acción no reconocida" }, { status: 400 });
+}
+
+export async function DELETE(
+  _req: NextRequest,
+  { params }: { params: Promise<{ id: string }> },
+) {
+  const actor = await requireCan("delete");
+  if (actor instanceof NextResponse) return actor;
+
+  const { id } = await params;
+
+  await prisma.integracionPedido.delete({ where: { id } }).catch(() => {});
+
+  prisma.activityLog.create({
+    data: { userId: actor.id, action: "DELETE", module: "integracion", recordId: id },
+  }).catch(() => {});
+
+  return NextResponse.json({ success: true });
 }

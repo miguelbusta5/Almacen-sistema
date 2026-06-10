@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState, useCallback } from "react";
 import { createPortal } from "react-dom";
 import { useSession } from "next-auth/react";
-import { GitMerge, Plus, Search, X, Minus, CheckCircle2 } from "lucide-react";
+import { GitMerge, Plus, Search, X, Minus, CheckCircle2, Trash2 } from "lucide-react";
 import { Badge, EmptyState, SkeletonTable } from "@/components/ui";
 import { SlidePanel, DetailSection, DetailGrid } from "@/components/ui/SlidePanel";
 import { useIsMobile } from "@/lib/useIsMobile";
@@ -450,9 +450,11 @@ export default function IntegracionPage() {
   const [showNueva, setShowNueva] = useState(false);
   const [completarItem, setCompletarItem] = useState<Integracion | null>(null);
   const [recibidoItem, setRecibidoItem] = useState<Integracion | null>(null);
+  const [deletingIntId, setDeletingIntId] = useState<string | null>(null);
 
   const canCreate = CREATOR_ROLES.includes(role);
   const canTransport = TRANSPORT_ROLES.includes(role);
+  const isAdmin = role === "ADMIN";
 
   const areaFromRole = role === "OPERACIONES_MUEBLES" ? "MUEBLES" : role === "OPERACIONES_GOURMET" ? "GOURMET" : null;
 
@@ -493,6 +495,16 @@ export default function IntegracionPage() {
   }, [integraciones, search]);
 
   function refresh() { load(); setSelected(null); setCompletarItem(null); setRecibidoItem(null); }
+
+  async function deleteIntegracion(id: string) {
+    try {
+      const res = await fetch(`/api/integracion/${id}`, { method: "DELETE" });
+      if (!res.ok) throw new Error("Error al eliminar");
+      setSelected(null);
+      setDeletingIntId(null);
+      refresh();
+    } catch { setDeletingIntId(null); }
+  }
 
   if (!session) return null;
   if (!ALLOWED.includes(role)) {
@@ -593,7 +605,7 @@ export default function IntegracionPage() {
                       {item.numeroCajasArea1 ?? "—"} + {item.numeroCajasArea2 ?? "—"}
                     </td>
                     <td style={{ padding: "11px 14px" }}>
-                      <div style={{ display: "flex", gap: 6 }}>
+                      <div style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap" }}>
                         {canCompleteArea2(item) && (
                           <button onClick={(e) => { e.stopPropagation(); setCompletarItem(item); }}
                             className="ds-btn ds-btn-ghost" style={{ fontSize: 12, padding: "4px 10px", color: COLOR, border: `1px solid ${COLOR}40` }}>
@@ -605,6 +617,26 @@ export default function IntegracionPage() {
                             className="ds-btn ds-btn-ghost" style={{ fontSize: 12, padding: "4px 10px", color: "#16A34A", border: "1px solid #16A34A40" }}>
                             <CheckCircle2 size={12} style={{ marginRight: 4 }} />Recibido
                           </button>
+                        )}
+                        {isAdmin && (
+                          deletingIntId === item.id ? (
+                            <>
+                              <button onClick={(e) => { e.stopPropagation(); deleteIntegracion(item.id); }}
+                                className="ds-btn ds-btn-ghost" style={{ fontSize: 12, padding: "4px 10px", color: "var(--error)", border: "1px solid var(--error)" }}>
+                                Sí, eliminar
+                              </button>
+                              <button onClick={(e) => { e.stopPropagation(); setDeletingIntId(null); }}
+                                className="ds-btn ds-btn-ghost" style={{ fontSize: 12, padding: "4px 10px" }}>
+                                Cancelar
+                              </button>
+                            </>
+                          ) : (
+                            <button onClick={(e) => { e.stopPropagation(); setDeletingIntId(item.id); }}
+                              className="ds-btn ds-btn-ghost" style={{ fontSize: 12, padding: "4px 8px", color: "var(--muted2)" }}
+                              title="Eliminar integración">
+                              <Trash2 size={13} />
+                            </button>
+                          )
                         )}
                       </div>
                     </td>
@@ -689,6 +721,30 @@ export default function IntegracionPage() {
                 </DetailSection>
               );
             })}
+
+            {isAdmin && (
+              <DetailSection title="Zona de administración">
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
+                  <p style={{ fontSize: 12, color: "var(--muted)", margin: 0 }}>Eliminar esta integración permanentemente</p>
+                  {deletingIntId === selected.id ? (
+                    <div style={{ display: "flex", gap: 8 }}>
+                      <button onClick={() => deleteIntegracion(selected.id)}
+                        className="ds-btn" style={{ fontSize: 12, background: "var(--error)", color: "#fff", border: "none" }}>
+                        Confirmar eliminación
+                      </button>
+                      <button onClick={() => setDeletingIntId(null)} className="ds-btn ds-btn-ghost" style={{ fontSize: 12 }}>
+                        Cancelar
+                      </button>
+                    </div>
+                  ) : (
+                    <button onClick={() => setDeletingIntId(selected.id)}
+                      className="ds-btn ds-btn-ghost" style={{ fontSize: 12, color: "var(--error)", border: "1px solid var(--error)" }}>
+                      <Trash2 size={13} /> Eliminar
+                    </button>
+                  )}
+                </div>
+              </DetailSection>
+            )}
           </>
         )}
       </SlidePanel>
