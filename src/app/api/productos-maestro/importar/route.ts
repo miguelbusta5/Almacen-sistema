@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
-import * as XLSX from "xlsx";
 import { requireRole } from "@/lib/authz";
 import { prisma } from "@/lib/prisma";
 import { mapExcelProductoRow } from "@/lib/productosMaestro";
+import { readWorkbook, worksheetObjects } from "@/lib/excel";
+import { validateImportFile, validateRowLimit } from "@/lib/fileSecurity";
 
 const SHEET_NAME = "ResultadosMaestrodeproductosPV";
 
@@ -15,16 +16,17 @@ export async function POST(req: NextRequest) {
   if (!(file instanceof File)) {
     return NextResponse.json({ error: "Archivo .xlsx requerido" }, { status: 400 });
   }
-  if (!file.name.toLowerCase().endsWith(".xlsx")) {
-    return NextResponse.json({ error: "Solo se acepta archivo .xlsx" }, { status: 400 });
-  }
+  const fileError = validateImportFile(file, { allowedExtensions: [".xlsx"] });
+  if (fileError) return NextResponse.json({ error: fileError }, { status: 400 });
 
   const buffer = Buffer.from(await file.arrayBuffer());
-  const workbook = XLSX.read(buffer, { type: "buffer", cellDates: false });
-  const sheet = workbook.Sheets[SHEET_NAME] ?? workbook.Sheets[workbook.SheetNames[0]];
+  const workbook = await readWorkbook(buffer);
+  const sheet = workbook.getWorksheet(SHEET_NAME) ?? workbook.worksheets[0];
   if (!sheet) return NextResponse.json({ error: "No se encontro hoja en el archivo" }, { status: 400 });
 
-  const rows = XLSX.utils.sheet_to_json<Record<string, unknown>>(sheet, { defval: null });
+  const rows = worksheetObjects(sheet);
+  const rowLimitError = validateRowLimit(rows.length);
+  if (rowLimitError) return NextResponse.json({ error: rowLimitError }, { status: 400 });
   let importados = 0;
   let actualizados = 0;
   let ignorados = 0;

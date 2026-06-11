@@ -1,10 +1,10 @@
 import { NextResponse } from "next/server";
-import { auth } from "@/lib/auth";
+import { requireRole } from "@/lib/authz";
 import { prisma } from "@/lib/prisma";
 
 export async function GET() {
-  const session = await auth();
-  if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const actor = await requireRole(["ADMIN", "GERENTE"]);
+  if (actor instanceof NextResponse) return actor;
 
   const [totalNov, pendNov, solNov, totalTrans, pendTrans, despTrans] = await Promise.all([
     prisma.novedad.count(),

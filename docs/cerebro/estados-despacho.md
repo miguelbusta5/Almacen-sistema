@@ -1,6 +1,6 @@
 # Estados de Despacho
 
-> Links: [[flujo-despachos]] · [[reglas-negocio]] · [[base-datos]] · [[pendientes]]
+> Links: [[flujo-despachos]] - [[reglas-negocio]] - [[base-datos]] - [[pendientes]]
 
 ---
 
@@ -8,74 +8,60 @@
 
 Enum `EstadoDespacho` en `prisma/schema.prisma`:
 
-| Valor | Descripción | Quién lo asigna |
+| Valor | Descripcion | Quien lo asigna |
 |---|---|---|
 | `CREADO_TIENDA` | Despacho registrado por tienda | TIENDA, SUPERVISOR_TIENDA |
-| `RECOGIDO_TIENDA` | Supervisor transporte recogió en tienda | SUPERVISOR_TRANSPORTE |
-| `ENTREGADO_CEDI` | Mercancía llegó al CEDI | SUPERVISOR_TRANSPORTE |
+| `RECOGIDO_TIENDA` | Supervisor transporte recogio en tienda | SUPERVISOR_TRANSPORTE |
+| `ENTREGADO_CEDI` | Mercancia llego al CEDI | SUPERVISOR_TRANSPORTE |
 | `ENVIADO_CLIENTE` | Despacho enviado al cliente final | SUPERVISOR_TRANSPORTE |
 | `CON_NOVEDAD` | Incidencia en cualquier etapa | SUPERVISOR_TRANSPORTE |
 
-**Archivo fuente:** `prisma/schema.prisma` línea ~132
-**Labels y colores en código:** `src/lib/tienda.ts` → `ESTADO_DESPACHO_LABEL` / `ESTADO_DESPACHO_COLOR`
+**Archivo fuente:** `prisma/schema.prisma`
+**Labels y colores en codigo:** `src/lib/tienda.ts` -> `ESTADO_DESPACHO_LABEL` / `ESTADO_DESPACHO_COLOR`
 
 ---
 
 ## Transiciones permitidas
 
-```
-CREADO_TIENDA ──────────────────► RECOGIDO_TIENDA
-                                        │
-                                        ▼
-                                 ENTREGADO_CEDI
-                                        │
-                                        ▼
-                                 ENVIADO_CLIENTE
-
-Desde cualquier estado: ──────► CON_NOVEDAD
+```text
+CREADO_TIENDA -> RECOGIDO_TIENDA -> ENTREGADO_CEDI -> ENVIADO_CLIENTE
+       \                 \                 \                 \
+        \-----------------\-----------------\-----------------> CON_NOVEDAD
 ```
 
-Las transiciones válidas están definidas en `src/lib/tiendaFlow.ts`.
+Las transiciones validas estan definidas en `src/lib/tiendaFlow.ts`.
 
 ---
 
-## Estados deseados (pendiente implementar)
+## Estados descartados
 
-> ⚠️ Los siguientes estados fueron solicitados pero **aún no están en la base de datos**. Ver [[pendientes]].
-
-| Estado deseado | Descripción | Prioridad |
-|---|---|---|
-| `ENTREGADO` | Confirmación de entrega al cliente final | Media |
-| `GUARDADO` | Despacho guardado en custodia del CEDI | Alta |
-| `PENDIENTE_GUARDAR` | Marcado para guardar, aún no procesado | Alta |
-
-**Para implementar:** Editar enum en `prisma/schema.prisma` → `npx prisma db push` → actualizar `tiendaFlow.ts` y `tienda.ts`.
+Los estados `ENTREGADO`, `GUARDADO`, `PENDIENTE_GUARDAR`, `EN_RUTA`, `ASIGNADO_RECOGIDA` y `ENTREGADO_CLIENTE` no hacen parte del flujo operativo actual. No agregarlos al enum ni reactivar rutas/logistica para soportarlos.
 
 ---
 
-## Estados de Integración de Pedidos
+## Estados de Integracion de Pedidos
 
 Enum `EstadoIntegracion` en `prisma/schema.prisma`:
 
-| Valor | Descripción |
+| Valor | Descripcion |
 |---|---|
-| `PENDIENTE_AREA2` | Área 1 creó la solicitud, espera a Área 2 |
-| `LISTA_TRANSPORTE` | Área 2 completó, listo para transporte |
-| `COMPLETADA` | Transporte confirmó recepción física |
+| `PENDIENTE_AREA2` | Area 1 creo la solicitud, espera a Area 2 |
+| `LISTA_TRANSPORTE` | Area 2 completo, listo para transporte |
+| `COMPLETADA` | Transporte confirmo recepcion fisica |
 
 ---
 
-## Estados de Inspección Preoperacional
+## Estados de Inspeccion Preoperacional
 
 Enum `EstadoInspeccion`:
 
-| Valor | Descripción |
+| Valor | Descripcion |
 |---|---|
-| `APROBADA` | Todos los ítems conformes |
+| `APROBADA` | Todos los items conformes |
 | `APROBADA_CON_OBSERVACIONES` | Con notas pero puede operar |
-| `BLOQUEADA` | Vehículo no apto para operar |
+| `BLOQUEADA` | Vehiculo no apto para operar |
 
-Enum `ResultadoInspeccion` (por ítem): `CONFORME` / `NO_CONFORME`
+Enum `ResultadoInspeccion` por item: `CONFORME` / `NO_CONFORME`
 
 ---
 
@@ -83,7 +69,7 @@ Enum `ResultadoInspeccion` (por ítem): `CONFORME` / `NO_CONFORME`
 
 Tipo string en modelo `TransporteGuardado`:
 
-| Valor | Descripción |
+| Valor | Descripcion |
 |---|---|
 | `PENDIENTE DESPACHO` | En custodia, por despachar |
 | `DESPACHADO` | Ya fue entregado |

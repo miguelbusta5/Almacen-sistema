@@ -2,7 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { requireCan } from "@/lib/authz";
 import { prisma } from "@/lib/prisma";
 import { detectarColumnas, esAutoFill } from "@/lib/conteo";
-import * as XLSX from "xlsx";
+import { parseCsvRows, readWorkbook, worksheetRows } from "@/lib/excel";
+import { validateImportFile, validateRowLimit } from "@/lib/fileSecurity";
 
 // POST /api/conteo/ciclos/[id]/importar — sube CSV/Excel del WMS y crea líneas de conteo
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -17,11 +18,20 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   const form = await req.formData();
   const file = form.get("archivo") as File | null;
   if (!file) return NextResponse.json({ error: "Sin archivo" }, { status: 400 });
+  const fileError = validateImportFile(file, { allowedExtensions: [".xlsx", ".csv"] });
+  if (fileError) return NextResponse.json({ error: fileError }, { status: 400 });
 
-  const buffer = Buffer.from(await file.arrayBuffer());
-  const wb = XLSX.read(buffer, { type: "buffer" });
-  const ws = wb.Sheets[wb.SheetNames[0]];
-  const rows: unknown[][] = XLSX.utils.sheet_to_json(ws, { header: 1, defval: null });
+  const rows = file.name.toLowerCase().endsWith(".csv")
+    ? parseCsvRows(await file.text())
+    : await (async () => {
+        const buffer = Buffer.from(await file.arrayBuffer());
+        const wb = await readWorkbook(buffer);
+        const ws = wb.worksheets[0];
+        return ws ? worksheetRows(ws) : null;
+      })();
+  if (!rows) return NextResponse.json({ error: "No se encontro hoja en el archivo" }, { status: 400 });
+  const rowLimitError = validateRowLimit(Math.max(0, rows.length - 1));
+  if (rowLimitError) return NextResponse.json({ error: rowLimitError }, { status: 400 });
 
   if (rows.length < 2) return NextResponse.json({ error: "El archivo está vacío o sin datos" }, { status: 400 });
 

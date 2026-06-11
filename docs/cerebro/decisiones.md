@@ -6,6 +6,29 @@ Registro cronológico de decisiones importantes. Una entrada por decisión, con 
 
 ---
 
+## 2026-06-11 - Estabilizacion de seguridad en archivos Excel e imagenes
+
+**Decision:**
+- Se reemplaza `xlsx` por `exceljs` para lectura/escritura de archivos XLSX.
+- Los importadores validan extension, tamano maximo y limite de filas antes de procesar.
+- El upload de fotos solo acepta JPG, PNG y WebP; SVG queda rechazado.
+- `/api/stats` queda restringido a `ADMIN` y `GERENTE`.
+
+**Contexto:**
+- `npm audit` reporto vulnerabilidad alta sin fix disponible en `xlsx`.
+- Los importadores y uploads aceptaban entradas demasiado amplias para una app interna en produccion.
+- `npm audit fix --force` proponia cambios incompatibles; no se usa.
+
+**Consecuencias:**
+- `POST /api/productos-maestro/importar` acepta `.xlsx`.
+- `POST /api/conteo/ciclos/[id]/importar` acepta `.xlsx` y `.csv`.
+- Las exportaciones XLSX usan `exceljs`.
+- Quedan vulnerabilidades moderadas indirectas de `next`/`prisma` para monitoreo hasta upgrades seguros.
+
+**Archivos afectados:** `src/lib/excel.ts`, `src/lib/fileSecurity.ts`, APIs de importacion/exportacion, `src/app/api/uploads/foto/route.ts`, `src/app/api/stats/route.ts`
+
+---
+
 ## 2026-06-10 — Suspensión de logística, rutas y GPS
 
 **Decisión:**
@@ -59,6 +82,24 @@ Registro cronológico de decisiones importantes. Una entrada por decisión, con 
 **Contexto:**
 - La complejidad del flujo con rutas generaba fricción operativa
 - El equipo de tienda necesitaba un flujo más directo y fácil de operar
+
+---
+
+## 2026-06-10 — ADMIN puede eliminar preoperativos e integraciones
+
+**Decisión:**
+- El rol ADMIN puede eliminar inspecciones preoperacionales e integraciones de pedidos
+- Ningún otro rol puede eliminar (matriz de permisos: `delete: ["ADMIN"]`)
+- La confirmación es inline en la UI (botón Trash2 → "Sí, eliminar" / "Cancelar")
+
+**Contexto:**
+- Se necesita poder corregir registros erróneos o de prueba sin acceder a la base de datos directamente
+
+**Consecuencias:**
+- Nuevo: `src/app/api/preoperacional/[id]/route.ts` con DELETE
+- Modificado: `src/app/api/integracion/[id]/route.ts` agrega DELETE
+- UI: columna de acciones en `SupervisorView` (preoperacional) y zona de admin en SlidePanel (integración)
+- Ambos registran `ActivityLog` con `action: "DELETE"`
 
 ---
 

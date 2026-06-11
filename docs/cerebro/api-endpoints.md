@@ -82,12 +82,14 @@ await prisma.notificacion.createMany({
 | POST | `/api/integracion` | Crear integración (con detección de duplicados) |
 | GET | `/api/integracion/[id]` | Detalle con plines agrupados |
 | PUT | `/api/integracion/[id]` | Completar Área 2 o Marcar Completada |
+| DELETE | `/api/integracion/[id]` | Eliminar (solo ADMIN) |
 
 ### Preoperacional
 | Método | Ruta | Descripción |
 |---|---|---|
 | GET | `/api/preoperacional` | Inspecciones del conductor |
 | POST | `/api/preoperacional` | Crear inspección |
+| DELETE | `/api/preoperacional/[id]` | Eliminar inspección (solo ADMIN) |
 | GET | `/api/preoperacional/historial` | Historial del conductor |
 | GET | `/api/preoperacional/export` | Exportar a Excel |
 
@@ -116,6 +118,7 @@ await prisma.notificacion.createMany({
 | `/api/conteo/ciclos` | CRUD ciclos de conteo |
 | `/api/conteo/ciclos/[id]/asignar` | Asignar operarios |
 | `/api/conteo/ciclos/[id]/calcular` | Calcular diferencias |
+| `/api/conteo/ciclos/[id]/importar` | Importar teorico desde `.xlsx` o `.csv` con limite de tamano/filas |
 | `/api/conteo/ciclos/[id]/reporte` | Exportar reporte |
 | `/api/conteo/lineas` | Gestión de líneas |
 | `/api/conteo/operarios` | Operarios del ciclo |
@@ -131,3 +134,12 @@ await prisma.notificacion.createMany({
 | `/api/productos-maestro/importar` | Importar CSV/Excel de productos |
 | `/api/uploads/foto` | Upload de imágenes |
 | `/api/mis-tareas` | Tareas pendientes del usuario |
+
+---
+
+## Notas de seguridad de archivos
+
+- `/api/productos-maestro/importar` acepta solo `.xlsx`, con limite de tamano y filas.
+- `/api/conteo/ciclos/[id]/importar` acepta `.xlsx` y `.csv`, con limite de tamano y filas.
+- `/api/uploads/foto` acepta solo JPG, PNG o WebP, maximo 5 MB. SVG queda rechazado.
+- `/api/stats` esta restringido a `ADMIN` y `GERENTE`.

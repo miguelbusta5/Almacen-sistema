@@ -140,7 +140,7 @@ function ModalImportar({ ciclo, onClose, onImportado }: { ciclo: CicloConteo; on
           <strong>Columnas requeridas en el CSV/Excel:</strong><br />
           PLU o Artículo · Nombre para mostrar · Número de Depósito · Disponible o Teórico · WMS: PASILLO
         </div>
-        <input ref={fileRef} type="file" accept=".xlsx,.xls,.csv" onChange={(e) => setFile(e.target.files?.[0] ?? null)} style={{ display: "none" }} />
+        <input ref={fileRef} type="file" accept=".xlsx,.csv" onChange={(e) => setFile(e.target.files?.[0] ?? null)} style={{ display: "none" }} />
         {file ? (
           <div style={{ display: "flex", alignItems: "center", gap: 10, background: COLOR_CONTEO + "10", border: `1px solid ${COLOR_CONTEO}30`, borderRadius: 9, padding: "0.7rem 1rem" }}>
             <div style={{ flex: 1 }}>

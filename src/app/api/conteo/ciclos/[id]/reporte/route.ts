@@ -3,7 +3,8 @@ import { requireAuth } from "@/lib/authz";
 import { prisma } from "@/lib/prisma";
 import { can } from "@/lib/permissions";
 import type { UserRole } from "@/types";
-import * as XLSX from "xlsx";
+import ExcelJS from "exceljs";
+import { workbookBuffer } from "@/lib/excel";
 
 // GET /api/conteo/ciclos/[id]/reporte — descarga Excel final
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -55,15 +56,12 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
     l.estado,
   ]);
 
-  const ws = XLSX.utils.aoa_to_sheet([headers, ...rows]);
+  const wb = new ExcelJS.Workbook();
+  const ws = wb.addWorksheet("Informe Conteo");
+  ws.addRows([headers, ...rows]);
+  ws.columns = [8, 18, 40, 20, 15, 10, 12, 14, 12, 14, 18, 12].map((width) => ({ width }));
 
-  // Ancho de columnas
-  ws["!cols"] = [8, 18, 40, 20, 15, 10, 12, 14, 12, 14, 18, 12].map((w) => ({ wch: w }));
-
-  const wb = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb, ws, "Informe Conteo");
-
-  const buf = XLSX.write(wb, { type: "buffer", bookType: "xlsx" });
+  const buf = await workbookBuffer(wb);
   const fecha = ciclo.fechaInicio.toISOString().slice(0, 10);
   const filename = `conteo-${ciclo.nombre.replace(/\s+/g, "-")}-${fecha}.xlsx`;
 

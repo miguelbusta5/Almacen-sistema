@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAuth } from "@/lib/authz";
 import { prisma } from "@/lib/prisma";
-import * as XLSX from "xlsx";
+import ExcelJS from "exceljs";
+import { workbookBuffer } from "@/lib/excel";
 
 const ALLOWED = ["ADMIN", "GERENTE", "SUPERVISOR_TRANSPORTE"];
 
@@ -90,13 +91,12 @@ export async function GET(req: NextRequest) {
     }
   }
 
-  const ws = XLSX.utils.aoa_to_sheet([headers, ...rows]);
-  ws["!cols"] = [12, 22, 12, 10, 8, 22, 14, 32, 14, 10, 28, 30, 28].map((w) => ({ wch: w }));
+  const wb = new ExcelJS.Workbook();
+  const ws = wb.addWorksheet("Preoperacionales");
+  ws.addRows([headers, ...rows]);
+  ws.columns = [12, 22, 12, 10, 8, 22, 14, 32, 14, 10, 28, 30, 28].map((width) => ({ width }));
 
-  const wb = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb, ws, "Preoperacionales");
-
-  const buf = XLSX.write(wb, { type: "buffer", bookType: "xlsx" });
+  const buf = await workbookBuffer(wb);
   const today = new Date().toISOString().slice(0, 10);
 
   return new NextResponse(buf, {

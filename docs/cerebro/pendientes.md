@@ -1,51 +1,51 @@
 # Pendientes y Tareas
 
-> Links: [[decisiones]] · [[bugs]] · [[estados-despacho]] · [[flujo-despachos]]
+> Links: [[decisiones]] - [[bugs]] - [[estados-despacho]] - [[flujo-despachos]]
 
 ---
 
 ## Tareas pendientes
 
-### Módulo Tienda / Despachos
+### Modulo Tienda / Despachos
 
-- [ ] Quitar módulo logística del menú de navegación (confirmar que no aparece en Sidebar)
-- [ ] Quitar asignación de rutas del flujo de despacho de tienda
-- [ ] Agregar estados `ENTREGADO`, `GUARDADO`, `PENDIENTE_GUARDAR` al enum `EstadoDespacho` en `prisma/schema.prisma`
-- [ ] Agregar campo de nota para dirección y datos de entrega en el formulario de creación de despacho
-- [ ] Crear flujo completo para supervisor transporte (marcar recogido en tienda, llegó a CEDI, enviado a cliente)
-- [ ] Crear vista de "pendientes por guardar" para el operario de transporte (`TRANSPORTE`)
+- [ ] Verificar en produccion que el sidebar no muestra Logistica, Rutas, GPS ni Mi Ruta
+- [ ] Smoke test de flujo Tienda: CREADO_TIENDA -> RECOGIDO_TIENDA -> ENTREGADO_CEDI -> ENVIADO_CLIENTE
+- [ ] Smoke test de pendientes por guardar para operario `TRANSPORTE`
 
 ### Permisos y roles
 
-- [ ] Confirmar que `TRANSPORTISTA` solo ve Preoperacional (ya implementado — verificar en prod)
-- [ ] Verificar que `OPERACIONES_MUEBLES` y `OPERACIONES_GOURMET` solo ven Integración de Pedidos
+- [ ] Confirmar en produccion que `TRANSPORTISTA` solo ve Preoperacional
+- [ ] Verificar en produccion que `OPERACIONES_MUEBLES` y `OPERACIONES_GOURMET` solo ven Integracion de Pedidos
 
-### Documentación
+### Documentacion
 
-- [ ] Revisar si `HANDOFF.md` en la raíz está actualizado con el estado del Sprint 8
-- [ ] Actualizar `docs/cerebro/` después de cada sprint
+- [ ] Revisar si `HANDOFF.md` en la raiz esta actualizado con el estado del Sprint 8
+- [ ] Actualizar `docs/cerebro/` despues de cada sprint
 
-### Mejoras técnicas
+### Mejoras tecnicas
 
-- [ ] Revisar modelos de logística suspendidos — decidir si eliminarlos del schema o mantenerlos
-- [ ] Verificar que todas las API routes de logística retornan 404 o 403
-
----
-
-## Completadas ✅
-
-- [x] Implementar módulo Integración de Pedidos (OVDM/TSDM) — 2026-06-09
-- [x] Añadir roles OPERACIONES_MUEBLES y OPERACIONES_GOURMET — 2026-06-09
-- [x] Exponer nuevos roles en la UI de gestión de usuarios — 2026-06-10
-- [x] Mejoras de responsividad mobile en todas las páginas — Sprint 8
-- [x] Mejoras de UX en tablas (sort, skeleton, EmptyState) — Sprint 8
-- [x] Módulo Preoperacional completo para conductores — Sprint 8
-- [x] Asignación de conductor + vehículo para despachos de tienda — Sprint 8
+- [ ] Revisar modelos de logistica suspendidos: decidir si eliminarlos del schema o mantenerlos documentados como proyecto futuro
+- [ ] Verificar que `/api/logistica/*` retorna 410
+- [ ] Monitorear vulnerabilidades moderadas indirectas de `next` y `prisma` hasta que haya upgrades seguros
 
 ---
 
-## Cómo usar este archivo
+## Completadas
 
-1. Añadir tareas nuevas con `- [ ]` al inicio de la sección correspondiente
-2. Cuando una tarea se completa: cambiar a `- [x]` y moverla a "Completadas" con la fecha
-3. Para bugs encontrados: añadir en [[bugs]] y referenciar aquí si afecta un flujo
+- [x] Implementar modulo Integracion de Pedidos (OVDM/TSDM) - 2026-06-09
+- [x] Anadir roles OPERACIONES_MUEBLES y OPERACIONES_GOURMET - 2026-06-09
+- [x] Exponer nuevos roles en la UI de gestion de usuarios - 2026-06-10
+- [x] Mejoras de responsividad mobile en todas las paginas - Sprint 8
+- [x] Mejoras de UX en tablas (sort, skeleton, EmptyState) - Sprint 8
+- [x] Modulo Preoperacional completo para conductores - Sprint 8
+- [x] Asignacion de conductor + vehiculo para despachos de tienda - Sprint 8
+- [x] Retirar estados obsoletos de la planificacion de Tienda (`ENTREGADO`, `GUARDADO`, `PENDIENTE_GUARDAR`) - 2026-06-11
+- [x] Reemplazar `xlsx` por `exceljs` y endurecer uploads/importadores - 2026-06-11
+
+---
+
+## Como usar este archivo
+
+1. Anadir tareas nuevas con `- [ ]` al inicio de la seccion correspondiente.
+2. Cuando una tarea se completa: cambiar a `- [x]` y moverla a "Completadas" con la fecha.
+3. Para bugs encontrados: anadir en [[bugs]] y referenciar aqui si afecta un flujo.
