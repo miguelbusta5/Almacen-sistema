@@ -82,6 +82,7 @@ export default function TiendaPage() {
   const canDelete = can(role, "delete");
   const canEditBasic = ["TIENDA", "SUPERVISOR_TIENDA", "SUPERVISOR_TRANSPORTE", "GERENTE", "ADMIN"].includes(role ?? "");
   const canChangeOperationalState = ["SUPERVISOR_TRANSPORTE", "GERENTE", "ADMIN"].includes(role ?? "");
+  const canCreate = ["TIENDA", "SUPERVISOR_TIENDA"].includes(role ?? "");
 
   const [items, setItems] = useState<DespachoTienda[]>([]);
   const [loading, setLoading] = useState(true);
@@ -99,6 +100,7 @@ export default function TiendaPage() {
   const [editing, setEditing] = useState<DespachoTienda | null>(null);
   const [deleting, setDeleting] = useState<DespachoTienda | null>(null);
   const [asignandoGuardado, setAsignandoGuardado] = useState<DespachoTienda | null>(null);
+  const [rechazarItem, setRechazarItem] = useState<DespachoTienda | null>(null);
 
   async function load() {
     setLoading(true);
@@ -144,6 +146,18 @@ export default function TiendaPage() {
       if (panelItem?.id === d.id) abrirPanel(d);
       showToast("Despacho enviado a guardado");
     } else showToast(json.error || "Error", true);
+  }
+
+  const rechazados = useMemo(() => items.filter((d) => d.estado === "RECHAZADO"), [items]);
+
+  async function reenviarDespacho(id: string) {
+    const res = await fetch(`/api/tienda/${id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ estado: "CREADO_TIENDA" }),
+    });
+    if (res.ok) { await load(); showToast("Solicitud re-enviada ✓"); }
+    else { showToast("Error al re-enviar", true); }
   }
 
   function toggleSort(col: string) {
@@ -272,6 +286,59 @@ export default function TiendaPage() {
         <IntelBanner insights={globalInsights} title="Inteligencia operacional" />
       )}
 
+      {/* ── Cajón de rechazados (solo visible para el área que crea los despachos) ── */}
+      {!loading && canCreate && rechazados.length > 0 && (
+        <div style={{ marginBottom: 20 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
+            <AlertTriangle size={16} color="var(--error)" />
+            <span style={{ fontSize: 14, fontWeight: 700, color: "var(--error)" }}>
+              {rechazados.length} solicitud{rechazados.length > 1 ? "es" : ""} rechazada{rechazados.length > 1 ? "s" : ""} — requiere{rechazados.length > 1 ? "n" : ""} corrección
+            </span>
+          </div>
+          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+            {rechazados.map((d) => (
+              <div key={d.id} style={{
+                border: "1.5px solid var(--error)", borderRadius: 12, padding: "14px 16px",
+                background: "rgba(239,68,68,0.04)",
+                display: "flex", alignItems: "flex-start", justifyContent: "space-between",
+                gap: 16, flexWrap: "wrap",
+              }}>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
+                    <span style={{ fontFamily: "var(--mono)", fontSize: 13, fontWeight: 700 }}>{d.numeroDocumento}</span>
+                    <Badge label="Rechazado" variant="error" />
+                  </div>
+                  <div style={{ fontSize: 12, color: "var(--muted)", marginBottom: 6 }}>
+                    {d.clienteNombre} · {d.centroCostos}
+                    {d.numeroCajas != null && ` · ${d.numeroCajas} caja${d.numeroCajas !== 1 ? "s" : ""}`}
+                  </div>
+                  {d.motivoRechazo && (
+                    <div style={{
+                      fontSize: 13, color: "var(--text)", background: "rgba(239,68,68,0.08)",
+                      padding: "8px 10px", borderRadius: 7, borderLeft: "3px solid var(--error)",
+                    }}>
+                      <span style={{ fontSize: 11, fontWeight: 700, color: "var(--error)", display: "block", marginBottom: 3 }}>
+                        Motivo del rechazo:
+                      </span>
+                      {d.motivoRechazo}
+                    </div>
+                  )}
+                </div>
+                <div style={{ display: "flex", flexDirection: "column", gap: 6, flexShrink: 0 }}>
+                  <button onClick={() => abrirPanel(d)} className="ds-btn ds-btn-ghost" style={{ fontSize: 12 }}>
+                    Ver detalle
+                  </button>
+                  <button onClick={() => reenviarDespacho(d.id)}
+                    className="ds-btn ds-btn-primary" style={{ fontSize: 12, background: "#2563EB", border: "none" }}>
+                    Re-enviar
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* ── Filtros ── */}
       <div style={{ display: "flex", gap: 8, marginBottom: 14, flexWrap: "wrap" }}>
         <div style={{ position: "relative", flex: 1, minWidth: 200 }}>
@@ -340,6 +407,11 @@ export default function TiendaPage() {
                               onClick={(e) => { e.stopPropagation(); cambiarEstado(d, "RECOGIDO_TIENDA"); }} title="Marcar recogido en tienda">
                               <Truck size={12} />Recogido
                             </button>}
+                          {d.estado === "CREADO_TIENDA" && canChangeOperationalState &&
+                            <button className="ds-btn ds-btn-sm" style={{ background: "rgba(239,68,68,0.08)", color: "var(--error)", height: 26, fontSize: 11, border: "1px solid rgba(239,68,68,0.25)" }}
+                              onClick={(e) => { e.stopPropagation(); setRechazarItem(d); }} title="Rechazar solicitud">
+                              Rechazar
+                            </button>}
                           {d.estado === "RECOGIDO_TIENDA" && canChangeOperationalState &&
                             <button className="ds-btn ds-btn-sm" style={{ background: "#8b5cf614", color: "#8b5cf6", height: 26, fontSize: 11 }}
                               onClick={(e) => { e.stopPropagation(); cambiarEstado(d, "ENTREGADO_CEDI"); }} title="Entregado en CEDI">
@@ -392,6 +464,10 @@ export default function TiendaPage() {
             <button className="ds-btn ds-btn-primary" style={{ width: "100%", background: "var(--success)" }} onClick={() => cambiarEstado(panelItem, "ENVIADO_CLIENTE")}>
               <CheckCircle2 size={13} />Marcar enviado al cliente
             </button>
+          ) : panelItem && canCreate && panelItem.estado === "RECHAZADO" ? (
+            <button className="ds-btn ds-btn-primary" style={{ width: "100%", background: "#2563EB" }} onClick={() => reenviarDespacho(panelItem.id)}>
+              Re-enviar solicitud
+            </button>
           ) : undefined
         }
         secondaryActions={
@@ -403,6 +479,12 @@ export default function TiendaPage() {
                   if (novedad !== null) cambiarEstado(panelItem, "CON_NOVEDAD", { novedad });
                 }}>
                 <AlertTriangle size={13} />Novedad
+              </button>
+            )}
+            {panelItem && canChangeOperationalState && panelItem.estado === "CREADO_TIENDA" && (
+              <button className="ds-btn ds-btn-sm ds-btn-secondary" style={{ color: "var(--error)" }}
+                onClick={() => setRechazarItem(panelItem)}>
+                Rechazar
               </button>
             )}
             {panelItem && canChangeOperationalState && panelItem.estado === "ENTREGADO_CEDI" && !panelItem.guardadoPendiente && (
@@ -535,6 +617,15 @@ export default function TiendaPage() {
               </DetailSection>
             )}
 
+            {panelItem.motivoRechazo && (
+              <DetailSection title="Motivo de rechazo">
+                <div style={{ background: "rgba(239,68,68,0.06)", borderRadius: 8, padding: "10px 12px", fontSize: 13, color: "var(--error)", display: "flex", gap: 8, borderLeft: "3px solid var(--error)" }}>
+                  <AlertTriangle size={14} style={{ flexShrink: 0, marginTop: 1 }} />
+                  {panelItem.motivoRechazo}
+                </div>
+              </DetailSection>
+            )}
+
             {panelItem.novedad && (
               <DetailSection title="Novedad registrada">
                 <div style={{ background: "var(--error-tint)", borderRadius: 8, padding: "10px 12px", fontSize: 13, color: "var(--error)", display: "flex", gap: 8 }}>
@@ -587,12 +678,81 @@ export default function TiendaPage() {
         />
       )}
 
+      {rechazarItem && (
+        <ModalRechazar
+          despacho={rechazarItem}
+          onClose={() => setRechazarItem(null)}
+          onRechazado={() => { setRechazarItem(null); setPanelItem(null); load(); showToast("Despacho rechazado"); }}
+        />
+      )}
+
       {toast && (
         <div className="animate-fade-up" style={{ position: "fixed", bottom: 24, right: 24, zIndex: 10000, background: toast.err ? "var(--error)" : "#0F0F10", color: "#fff", padding: "10px 16px", borderRadius: 10, fontSize: 13, fontWeight: 500, boxShadow: "var(--shadow-xl)", display: "flex", alignItems: "center", gap: 8 }}>
           {!toast.err && <CheckCircle2 size={14} />}{toast.msg}
         </div>
       )}
     </div>
+  );
+}
+
+// ── Modal rechazar despacho ───────────────────────────────
+function ModalRechazar({ despacho, onClose, onRechazado }: {
+  despacho: DespachoTienda;
+  onClose: () => void;
+  onRechazado: () => void;
+}) {
+  const [motivo, setMotivo] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
+
+  async function submit(e: React.FormEvent) {
+    e.preventDefault();
+    if (motivo.trim().length < 5) { setError("Describe el motivo (mínimo 5 caracteres)"); return; }
+    setSaving(true);
+    const res = await fetch(`/api/tienda/${despacho.id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ estado: "RECHAZADO", motivoRechazo: motivo.trim() }),
+    });
+    if (!res.ok) {
+      const j = await res.json();
+      setError(j.error || "Error al rechazar");
+      setSaving(false);
+      return;
+    }
+    onRechazado();
+  }
+
+  return (
+    <ModalBase title="Rechazar solicitud" sub={`Doc. ${despacho.numeroDocumento} · ${despacho.clienteNombre}`} onClose={onClose}>
+      <form onSubmit={submit} style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+        <p style={{ fontSize: 13, color: "var(--muted)", margin: 0 }}>
+          El despacho será devuelto al área de tienda con el motivo indicado para que pueda ser corregido y re-enviado.
+        </p>
+        <Field label="Motivo del rechazo *">
+          <textarea
+            value={motivo}
+            onChange={(e) => { setMotivo(e.target.value); setError(""); }}
+            rows={4}
+            required
+            placeholder="Ej: Los PLUs no corresponden al documento, favor corregir antes de re-enviar…"
+            style={{
+              ...inp, minHeight: 96, height: "auto", paddingTop: 10, resize: "vertical",
+              borderColor: error ? "var(--error)" : "transparent",
+            }}
+            {...focusProps}
+          />
+        </Field>
+        {error && <p style={{ fontSize: 12, color: "var(--error)", margin: 0 }}>{error}</p>}
+        <div style={{ display: "flex", gap: 8 }}>
+          <button type="button" onClick={onClose} className="ds-btn ds-btn-secondary" style={{ flex: 1 }}>Cancelar</button>
+          <button type="submit" disabled={saving} className="ds-btn"
+            style={{ flex: 2, background: "var(--error)", color: "#fff", border: "none" }}>
+            {saving ? "Rechazando…" : "Confirmar rechazo"}
+          </button>
+        </div>
+      </form>
+    </ModalBase>
   );
 }
 

@@ -7,6 +7,7 @@ import { getModuleColor } from "@/lib/moduleTheme";
 
 export type EstadoDespacho =
   | "CREADO_TIENDA"
+  | "RECHAZADO"
   | "RECOGIDO_TIENDA"
   | "ENTREGADO_CEDI"
   | "ENVIADO_CLIENTE"
@@ -14,6 +15,7 @@ export type EstadoDespacho =
 
 export const ESTADOS_DESPACHO: EstadoDespacho[] = [
   "CREADO_TIENDA",
+  "RECHAZADO",
   "RECOGIDO_TIENDA",
   "ENTREGADO_CEDI",
   "ENVIADO_CLIENTE",
@@ -62,6 +64,8 @@ export interface DespachoTienda {
   entregadoCediAt: string | null;     // ENTREGADO_CEDI
   despachadoAt: string | null;        // ENVIADO_CLIENTE
   novedadAt: string | null;
+  rechazadoAt: string | null;
+  motivoRechazo: string | null;
   notaEntrega: string | null;
   guardadoPendiente: {
     id: string;
@@ -103,6 +107,7 @@ export interface DespachoTienda {
 // ── Labels y colores ──────────────────────────────────────
 export const ESTADO_DESPACHO_LABEL: Record<EstadoDespacho, string> = {
   CREADO_TIENDA:      "Creado en tienda",
+  RECHAZADO:          "Rechazado",
   RECOGIDO_TIENDA:    "Recogido en tienda",
   ENTREGADO_CEDI:     "Entregado en CEDI",
   ENVIADO_CLIENTE:    "Enviado al cliente",
@@ -111,6 +116,7 @@ export const ESTADO_DESPACHO_LABEL: Record<EstadoDespacho, string> = {
 
 export const ESTADO_DESPACHO_COLOR: Record<EstadoDespacho, string> = {
   CREADO_TIENDA:      "#f59e0b",
+  RECHAZADO:          "#ef4444",
   RECOGIDO_TIENDA:    "#3b82f6",
   ENTREGADO_CEDI:     "#8b5cf6",
   ENVIADO_CLIENTE:    "#10b981",
@@ -126,6 +132,7 @@ export function estadoDespachoVariant(
 ): "warning" | "info" | "success" | "error" | "default" {
   switch (e) {
     case "CREADO_TIENDA":      return "warning";
+    case "RECHAZADO":          return "error";
     case "RECOGIDO_TIENDA":    return "info";
     case "ENTREGADO_CEDI":     return "info";
     case "ENVIADO_CLIENTE":    return "success";
@@ -152,6 +159,6 @@ export function horasDesde(iso: string): number {
 export function pasoEnFlujo(estado: EstadoDespacho): number {
   const idx = FLUJO_ESTADOS.indexOf(estado);
   if (idx >= 0) return idx;
-  if (estado === "CON_NOVEDAD") return -1;
+  if (estado === "CON_NOVEDAD" || estado === "RECHAZADO") return -1;
   return 0;
 }

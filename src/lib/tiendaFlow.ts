@@ -5,6 +5,7 @@
 
 export type EstadoDespacho =
   | "CREADO_TIENDA"
+  | "RECHAZADO"
   | "RECOGIDO_TIENDA"
   | "ENTREGADO_CEDI"
   | "ENVIADO_CLIENTE"
@@ -18,7 +19,8 @@ export const ESTADOS_ACTIVOS: EstadoDespacho[] = [
 
 // Transiciones válidas desde cada estado
 export const TRANSICIONES_VALIDAS: Record<EstadoDespacho, EstadoDespacho[]> = {
-  CREADO_TIENDA:      ["RECOGIDO_TIENDA", "CON_NOVEDAD"],
+  CREADO_TIENDA:      ["RECOGIDO_TIENDA", "CON_NOVEDAD", "RECHAZADO"],
+  RECHAZADO:          ["CREADO_TIENDA"],
   RECOGIDO_TIENDA:    ["ENTREGADO_CEDI", "CON_NOVEDAD"],
   ENTREGADO_CEDI:     ["ENVIADO_CLIENTE", "CON_NOVEDAD"],
   ENVIADO_CLIENTE:    [],
@@ -28,6 +30,8 @@ export const TRANSICIONES_VALIDAS: Record<EstadoDespacho, EstadoDespacho[]> = {
 // Roles que pueden ejecutar cada transición (key: "ORIGEN-DESTINO")
 export const ROLES_POR_TRANSICION: Record<string, string[]> = {
   "CREADO_TIENDA-RECOGIDO_TIENDA":     ["SUPERVISOR_TRANSPORTE", "GERENTE", "ADMIN"],
+  "CREADO_TIENDA-RECHAZADO":           ["SUPERVISOR_TRANSPORTE", "GERENTE", "ADMIN"],
+  "RECHAZADO-CREADO_TIENDA":           ["TIENDA", "SUPERVISOR_TIENDA", "SUPERVISOR_TRANSPORTE", "GERENTE", "ADMIN"],
   "RECOGIDO_TIENDA-ENTREGADO_CEDI":    ["SUPERVISOR_TRANSPORTE", "GERENTE", "ADMIN"],
   "ENTREGADO_CEDI-ENVIADO_CLIENTE":    ["SUPERVISOR_TRANSPORTE", "GERENTE", "ADMIN"],
 };

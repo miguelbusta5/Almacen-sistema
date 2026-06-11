@@ -8,9 +8,10 @@ import type { EstadoDespacho } from "@/lib/tiendaFlow";
 const updateSchema = z.object({
   // Estado — flujo simplificado tienda -> CEDI -> cliente
   estado: z.enum([
-    "CREADO_TIENDA", "RECOGIDO_TIENDA", "ENTREGADO_CEDI",
+    "CREADO_TIENDA", "RECHAZADO", "RECOGIDO_TIENDA", "ENTREGADO_CEDI",
     "ENVIADO_CLIENTE", "CON_NOVEDAD",
   ]).optional(),
+  motivoRechazo: z.string().min(5).nullable().optional(),
   // Optimistic lock
   updatedAt: z.string().datetime().optional(),
   // Evidencias por etapa
@@ -43,6 +44,7 @@ const updateSchema = z.object({
 
 const ESTADO_LABEL: Record<string, string> = {
   CREADO_TIENDA:      "Creado en tienda",
+  RECHAZADO:          "Rechazado",
   RECOGIDO_TIENDA:    "Recogido en tienda",
   ENTREGADO_CEDI:     "Entregado en CEDI",
   ENVIADO_CLIENTE:    "Enviado al cliente",
@@ -70,6 +72,8 @@ function mapRow(r: any): object {
     entregadoCediAt:    r.entregadoCediAt ? r.entregadoCediAt.toISOString() : null,
     despachadoAt:       r.despachadoAt  ? r.despachadoAt.toISOString()  : null,
     novedadAt:          r.novedadAt     ? r.novedadAt.toISOString()     : null,
+    rechazadoAt:        r.rechazadoAt   ? r.rechazadoAt.toISOString()   : null,
+    motivoRechazo:      r.motivoRechazo ?? null,
     notaEntrega:       r.notaEntrega ?? null,
     guardadoPendiente: r.guardadoPendiente ? {
       id: r.guardadoPendiente.id,
@@ -150,7 +154,7 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
   // Fetch estado actual para validar máquina de estados
   const current = await prisma.despachoTienda.findUnique({
     where: { id },
-    select: { estado: true, updatedAt: true },
+    select: { estado: true, updatedAt: true, creadoPorId: true, numeroDocumento: true },
   });
   if (!current) return NextResponse.json({ error: "No encontrado" }, { status: 404 });
 
@@ -172,6 +176,11 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
     if (destino === "CON_NOVEDAD") {
       if (!d.novedad || d.novedad.trim().length < 5) {
         return NextResponse.json({ error: "Descripción de novedad obligatoria (mínimo 5 caracteres)" }, { status: 400 });
+      }
+    }
+    if (destino === "RECHAZADO") {
+      if (!d.motivoRechazo?.trim() || d.motivoRechazo.trim().length < 5) {
+        return NextResponse.json({ error: "Debes indicar el motivo del rechazo (mínimo 5 caracteres)" }, { status: 400 });
       }
     }
   }
@@ -198,6 +207,8 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
   if (d.estado === "ENTREGADO_CEDI")     timestamps.entregadoCediAt    = new Date();
   if (d.estado === "ENVIADO_CLIENTE")    timestamps.despachadoAt       = new Date();
   if (d.estado === "CON_NOVEDAD")        timestamps.novedadAt          = new Date();
+  if (d.estado === "RECHAZADO")          { timestamps.rechazadoAt = new Date(); timestamps.motivoRechazo = d.motivoRechazo!.trim(); }
+  if (current.estado === "RECHAZADO" && d.estado === "CREADO_TIENDA") { timestamps.motivoRechazo = null; timestamps.rechazadoAt = null; }
 
   // Update con optimistic lock (comparar updatedAt numéricamente — nota A)
   try {
@@ -262,6 +273,19 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
     await prisma.activityLog.create({
       data: { userId: actor.id, action: "UPDATE", module: "tienda", recordId: id, details: detail },
     }).catch(() => {});
+
+    if (d.estado === "RECHAZADO" && current.creadoPorId) {
+      prisma.notificacion.create({
+        data: {
+          userId: current.creadoPorId,
+          titulo: "Despacho rechazado por transporte",
+          descripcion: `Doc. ${current.numeroDocumento}: ${(d.motivoRechazo ?? "").substring(0, 200)}`,
+          tipo: "TIENDA",
+          enlace: "/dashboard/tienda",
+          leida: false,
+        },
+      }).catch(() => {});
+    }
 
     return NextResponse.json({ success: true, data: mapRow(updatedRow) });
   } catch (e: any) {

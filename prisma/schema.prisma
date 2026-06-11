@@ -135,6 +135,7 @@ enum Role {
 
 enum EstadoDespacho {
   CREADO_TIENDA // Tienda registra el despacho
+  RECHAZADO // Transporte rechaza — espera corrección por tienda
   RECOGIDO_TIENDA // Supervisor transporte confirma recogida en tienda
   ENTREGADO_CEDI // Mercancía llega al CEDI
   ENVIADO_CLIENTE // CEDI despacha/envía al cliente
@@ -199,6 +200,8 @@ model DespachoTienda {
   entregadoCediAt DateTime? @map("entregado_cedi_at") // ENTREGADO_CEDI
   despachadoAt    DateTime? @map("despachado_at") // ENVIADO_CLIENTE
   novedadAt       DateTime? @map("novedad_at") // CON_NOVEDAD
+  rechazadoAt     DateTime? @map("rechazado_at") // RECHAZADO
+  motivoRechazo   String?   @map("motivo_rechazo")
 
   novedad                  String?
   notaEntrega              String?   @map("nota_entrega")
