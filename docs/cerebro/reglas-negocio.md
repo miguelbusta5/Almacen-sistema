@@ -24,6 +24,7 @@ Cada etapa tiene un estado de despacho asociado. Ver [[estados-despacho]].
 - Debe registrar en una nota los datos de dirección y entrega
 - No puede avanzar el estado — solo crea
 - Ve únicamente sus propios despachos en curso
+- **No puede editar** un despacho en estado CREADO_TIENDA
 - Si un despacho es **rechazado** por transporte:
   - Ve el cajón de rechazados con el motivo visible
   - Puede **editar** los datos del despacho mientras está en RECHAZADO (corregir PLUs, cliente, documento, etc.)

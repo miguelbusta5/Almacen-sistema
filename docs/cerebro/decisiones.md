@@ -13,7 +13,8 @@ Registro cronológico de decisiones importantes. Una entrada por decisión, con 
 - Solo SUPERVISOR_TRANSPORTE, GERENTE y ADMIN pueden rechazar; requieren motivo (mín. 5 chars).
 - Al rechazar: notificación automática al creador del despacho.
 - TIENDA/SUPERVISOR_TIENDA ven un "cajón" visual prominente con los rechazados y el motivo; pueden **editar** los datos y luego **re-enviar** con un clic.
-- La edición mientras RECHAZADO está permitida en API y UI — el estado no cambia al editar, solo al re-enviar.
+- La edición mientras RECHAZADO está permitida para TIENDA en API y UI — el estado no cambia al editar, solo al re-enviar.
+- **TIENDA no puede editar en CREADO_TIENDA** — solo en RECHAZADO. SUPERVISOR_TIENDA y superiores sí pueden editar en CREADO_TIENDA.
 - Se eligió nuevo estado `RECHAZADO` (en vez de reutilizar `CON_NOVEDAD`) porque CON_NOVEDAD es terminal y semánticamente diferente.
 
 **Contexto:**
