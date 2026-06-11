@@ -24,6 +24,10 @@ Cada etapa tiene un estado de despacho asociado. Ver [[estados-despacho]].
 - Debe registrar en una nota los datos de dirección y entrega
 - No puede avanzar el estado — solo crea
 - Ve únicamente sus propios despachos en curso
+- Si un despacho es **rechazado** por transporte:
+  - Ve el cajón de rechazados con el motivo visible
+  - Puede **editar** los datos del despacho mientras está en RECHAZADO (corregir PLUs, cliente, documento, etc.)
+  - Puede **re-enviar** una vez corregido → vuelve a CREADO_TIENDA
 
 ### Supervisor de Transporte (`SUPERVISOR_TRANSPORTE`)
 - Puede marcar el despacho como:

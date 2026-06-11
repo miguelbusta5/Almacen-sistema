@@ -10,7 +10,7 @@
 
 - [ ] Verificar en produccion que el sidebar no muestra Logistica, Rutas, GPS ni Mi Ruta
 - [ ] Smoke test de flujo Tienda: CREADO_TIENDA -> RECOGIDO_TIENDA -> ENTREGADO_CEDI -> ENVIADO_CLIENTE
-- [ ] Smoke test de rechazo: SUPERVISOR_TRANSPORTE rechaza → TIENDA ve cajón → re-envía → vuelve a CREADO_TIENDA
+- [ ] Smoke test de rechazo: SUPERVISOR_TRANSPORTE rechaza → TIENDA ve cajón → edita datos → re-envía → vuelve a CREADO_TIENDA
 - [ ] Smoke test de pendientes por guardar para operario `TRANSPORTE`
 
 ### Permisos y roles
@@ -53,6 +53,7 @@
 - [x] Reemplazar `xlsx` por `exceljs` y endurecer uploads/importadores - 2026-06-11
 - [x] Fase 1 UI: identidad Torre CEDI, tema modular y colores consistentes por modulo - 2026-06-11
 - [x] Rechazar solicitud de despacho con motivo, cajón de rechazados para TIENDA, re-envío — 2026-06-11
+- [x] Permitir edición de datos del despacho en estado RECHAZADO antes de re-enviar — 2026-06-11
 
 ---
 
