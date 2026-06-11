@@ -69,7 +69,9 @@ Enum `EstadoInspeccion`:
 | `APROBADA_CON_OBSERVACIONES` | Con notas pero puede operar |
 | `BLOQUEADA` | Vehiculo no apto para operar |
 
-Enum `ResultadoInspeccion` por item: `CONFORME` / `NO_CONFORME`
+Enum `ResultadoInspeccion` por item: `CONFORME` / `NO_CONFORME` / `NO_APLICA`
+
+Checklist fuente: `src/lib/preoperacional.ts` con 58 items reales en 15 categorias y 26 items criticos.
 
 ---
 

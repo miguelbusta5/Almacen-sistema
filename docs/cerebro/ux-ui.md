@@ -64,6 +64,19 @@ Definidos en `src/app/globals.css`:
 
 ---
 
+## Cierre Fase 1 post-Claude
+
+Revisión aplicada antes de pasar a Fase 2:
+
+- El flujo `RECHAZADO` de Tienda se mantiene como alerta semántica roja, pero sus acciones de corrección y re-envío usan el color de módulo Tienda (`moduleTheme.tienda`).
+- Las acciones de guardado asignadas desde Tienda usan el color de módulo Transporte (`moduleTheme.transporte`).
+- `ENTREGADO_CEDI` toma color desde `ESTADO_DESPACHO_COLOR`, no desde valores violeta hardcodeados.
+- Preoperacional usa `moduleTheme.preoperacional` para encabezados, acciones y enlaces del detalle de inspección.
+- Las pantallas nuevas deben evitar `#0e7490`, `#2563EB` o `#8b5cf6` hardcodeados cuando el color represente un módulo. Usar `getModuleColor` o variables CSS.
+- Los mensajes visibles deben quedar en español natural con tildes: "vehículo", "inspección", "crítico", "observación".
+
+---
+
 ## Componentes del design system
 
 Importados desde `@/components/ui`:

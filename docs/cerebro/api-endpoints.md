@@ -89,6 +89,7 @@ await prisma.notificacion.createMany({
 |---|---|---|
 | GET | `/api/preoperacional` | Inspecciones del conductor |
 | POST | `/api/preoperacional` | Crear inspección |
+| GET | `/api/preoperacional/[id]` | Detalle completo con items (ADMIN/GERENTE/SUPERVISOR_TRANSPORTE) |
 | DELETE | `/api/preoperacional/[id]` | Eliminar inspección (solo ADMIN) |
 | GET | `/api/preoperacional/historial` | Historial del conductor |
 | GET | `/api/preoperacional/export` | Exportar a Excel |

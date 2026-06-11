@@ -10,6 +10,7 @@ import { Badge, EmptyState, SkeletonTable, Stat } from "@/components/ui";
 import { SlidePanel, DetailSection, DetailGrid } from "@/components/ui/SlidePanel";
 import { useIsMobile } from "@/lib/useIsMobile";
 import type { ResultadoInspeccion } from "@/lib/preoperacional";
+import { getModuleColor } from "@/lib/moduleTheme";
 
 // ─── tipos ──────────────────────────────────────────────────────────────────
 
@@ -95,6 +96,8 @@ const RESULTADO_LABEL: Record<ResultadoInspeccion, string> = {
 };
 
 const SUPERVISOR_ROLES = ["ADMIN", "GERENTE", "SUPERVISOR_TRANSPORTE"];
+const PREOP_COLOR = getModuleColor("preoperacional");
+const PREOP_TINT = `${PREOP_COLOR}14`;
 
 function estadoEstimado(items: FormItem[]): EstadoInspeccion {
   if (items.some((i) => i.esCritico && i.resultado === "NO_CONFORME")) return "BLOQUEADA";
@@ -242,8 +245,8 @@ function ConductorView() {
       <div className="animate-fade-in" style={{ maxWidth: 720 }}>
         <EmptyState
           icon={<Truck size={24} />}
-          title="Sin vehiculo asignado"
-          description="Tu usuario debe estar vinculado a un transportista activo y a un vehiculo antes de registrar el preoperacional."
+          title="Sin vehículo asignado"
+          description="Tu usuario debe estar vinculado a un transportista activo y a un vehículo antes de registrar el preoperacional."
         />
       </div>
     );
@@ -255,8 +258,8 @@ function ConductorView() {
       <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12, marginBottom: 24, flexWrap: "wrap" }}>
         <div>
           <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 4 }}>
-            <div style={{ width: 30, height: 30, borderRadius: 8, background: "#0E749014", display: "flex", alignItems: "center", justifyContent: "center" }}>
-              <ShieldCheck size={16} color="#0E7490" />
+            <div style={{ width: 30, height: 30, borderRadius: 8, background: PREOP_TINT, display: "flex", alignItems: "center", justifyContent: "center" }}>
+              <ShieldCheck size={16} color={PREOP_COLOR} />
             </div>
             <h1 style={{ fontSize: 22, fontWeight: 700, color: "var(--text)", letterSpacing: "-0.03em", margin: 0 }}>Preoperacional</h1>
           </div>
@@ -272,7 +275,7 @@ function ConductorView() {
         <Stat value={data.inspeccionHoy ? "Sí" : "No"} label="Registrado hoy" color={data.inspeccionHoy ? "var(--success)" : "var(--warning)"} />
         <Stat value={ESTADO_LABEL[resumen.estado]} label="Resultado estimado" color={ESTADO_COLOR[resumen.estado]} />
         <Stat value={resumen.noConformes} label="No conformes" color={resumen.noConformes > 0 ? "var(--warning)" : "var(--success)"} />
-        <Stat value={resumen.criticos} label="Criticos" color={resumen.criticos > 0 ? "var(--error)" : "var(--success)"} />
+        <Stat value={resumen.criticos} label="Críticos" color={resumen.criticos > 0 ? "var(--error)" : "var(--success)"} />
       </div>
 
       {/* Banner inspeccion hoy */}
@@ -280,7 +283,7 @@ function ConductorView() {
         <div style={{ padding: "12px 14px", border: `1px solid ${ESTADO_COLOR[data.inspeccionHoy.estado]}44`, background: ESTADO_COLOR[data.inspeccionHoy.estado] + "12", borderRadius: 8, marginBottom: 18, display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
           {data.inspeccionHoy.estado === "BLOQUEADA" ? <XCircle size={16} color="var(--error)" /> : <CheckCircle2 size={16} color={ESTADO_COLOR[data.inspeccionHoy.estado]} />}
           <div style={{ fontSize: 13, color: "var(--text)", fontWeight: 600 }}>
-            Ya registraste una inspeccion hoy: {ESTADO_LABEL[data.inspeccionHoy.estado]}
+            Ya registraste una inspección hoy: {ESTADO_LABEL[data.inspeccionHoy.estado]}
           </div>
         </div>
       )}
@@ -310,12 +313,12 @@ function ConductorView() {
                   <div style={{ fontSize: 13, fontWeight: 700, color: "var(--text)" }}>{item.item}</div>
                   <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
                     <span style={{ fontSize: 11, color: "var(--muted)", textTransform: "capitalize" }}>{item.categoria}</span>
-                    {item.esCritico && <Badge label="Critico" variant="error" dot={false} />}
+                    {item.esCritico && <Badge label="Crítico" variant="error" dot={false} />}
                   </div>
                   <select value={item.resultado} onChange={(e) => updateItem(index, { resultado: e.target.value as ResultadoInspeccion })} style={inputStyle}>
                     {Object.entries(RESULTADO_LABEL).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
                   </select>
-                  <input value={item.observacion} onChange={(e) => updateItem(index, { observacion: e.target.value })} style={inputStyle} placeholder={bad ? "Describe la novedad" : "Observacion"} />
+                  <input value={item.observacion} onChange={(e) => updateItem(index, { observacion: e.target.value })} style={inputStyle} placeholder={bad ? "Describe la novedad" : "Observación"} />
                   <label className="ds-btn ds-btn-sm ds-btn-ghost" style={{ justifyContent: "center", cursor: "pointer", margin: 0, width: "100%", boxSizing: "border-box" }}>
                     <Camera size={13} />{item.uploading ? "Subiendo" : item.fotoUrl ? "Cargada" : "Foto"}
                     <input type="file" accept="image/*" style={{ display: "none" }} onChange={(e) => uploadFoto(index, e.target.files?.[0] ?? null)} />
@@ -330,13 +333,13 @@ function ConductorView() {
                   <div style={{ fontSize: 13, fontWeight: 700, color: "var(--text)" }}>{item.item}</div>
                   <div style={{ display: "flex", gap: 8, alignItems: "center", marginTop: 3 }}>
                     <span style={{ fontSize: 11, color: "var(--muted)", textTransform: "capitalize" }}>{item.categoria}</span>
-                    {item.esCritico && <Badge label="Critico" variant="error" dot={false} />}
+                    {item.esCritico && <Badge label="Crítico" variant="error" dot={false} />}
                   </div>
                 </div>
                 <select value={item.resultado} onChange={(e) => updateItem(index, { resultado: e.target.value as ResultadoInspeccion })} style={inputStyle}>
                   {Object.entries(RESULTADO_LABEL).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
                 </select>
-                <input value={item.observacion} onChange={(e) => updateItem(index, { observacion: e.target.value })} style={inputStyle} placeholder={bad ? "Describe la novedad" : "Observacion"} />
+                <input value={item.observacion} onChange={(e) => updateItem(index, { observacion: e.target.value })} style={inputStyle} placeholder={bad ? "Describe la novedad" : "Observación"} />
                 <label className="ds-btn ds-btn-sm ds-btn-ghost" style={{ justifyContent: "center", cursor: "pointer", margin: 0 }}>
                   <Camera size={13} />{item.uploading ? "Subiendo" : item.fotoUrl ? "Cargada" : "Foto"}
                   <input type="file" accept="image/*" style={{ display: "none" }} onChange={(e) => uploadFoto(index, e.target.files?.[0] ?? null)} />
@@ -352,8 +355,8 @@ function ConductorView() {
             {resumen.estado === "BLOQUEADA" && <AlertTriangle size={14} />}
             Resultado: {ESTADO_LABEL[resumen.estado]}
           </div>
-          <button className="ds-btn ds-btn-primary" style={{ background: "#0E7490" }} disabled={saving} onClick={submit}>
-            <Save size={14} />{saving ? "Guardando..." : "Guardar inspeccion"}
+          <button className="ds-btn ds-btn-primary" style={{ background: PREOP_COLOR }} disabled={saving} onClick={submit}>
+            <Save size={14} />{saving ? "Guardando..." : "Guardar inspección"}
           </button>
         </div>
       </div>
@@ -362,7 +365,7 @@ function ConductorView() {
       <div className="ds-card" style={{ padding: 18 }}>
         <div style={{ fontSize: 14, fontWeight: 700, color: "var(--text)", marginBottom: 12 }}>Historial reciente</div>
         {data.historial.length === 0 ? (
-          <div style={{ fontSize: 12, color: "var(--muted)" }}>Aun no hay inspecciones registradas.</div>
+          <div style={{ fontSize: 12, color: "var(--muted)" }}>Aún no hay inspecciones registradas.</div>
         ) : (
           <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
             {data.historial.map((h) => (
@@ -505,8 +508,8 @@ function SupervisorView({ role }: { role: string }) {
       {/* Header */}
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 12, marginBottom: "1.5rem" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-          <div style={{ width: 40, height: 40, borderRadius: 10, background: "#0E749014", display: "flex", alignItems: "center", justifyContent: "center" }}>
-            <ShieldCheck size={20} color="#0E7490" />
+          <div style={{ width: 40, height: 40, borderRadius: 10, background: PREOP_TINT, display: "flex", alignItems: "center", justifyContent: "center" }}>
+            <ShieldCheck size={20} color={PREOP_COLOR} />
           </div>
           <div>
             <h1 style={{ fontSize: 22, fontWeight: 800, color: "var(--text)", letterSpacing: "-0.02em", margin: 0 }}>Preoperacional</h1>
@@ -514,7 +517,7 @@ function SupervisorView({ role }: { role: string }) {
           </div>
         </div>
         <div style={{ display: "flex", gap: 8 }}>
-          <button onClick={exportar} disabled={exporting} style={{ display: "flex", alignItems: "center", gap: 6, padding: "0.55rem 1rem", background: "#0e7490", color: "#fff", border: "none", borderRadius: 9, fontSize: 12, fontWeight: 700, cursor: "pointer", opacity: exporting ? 0.7 : 1 }}>
+          <button onClick={exportar} disabled={exporting} style={{ display: "flex", alignItems: "center", gap: 6, padding: "0.55rem 1rem", background: PREOP_COLOR, color: "#fff", border: "none", borderRadius: 9, fontSize: 12, fontWeight: 700, cursor: "pointer", opacity: exporting ? 0.7 : 1 }}>
             <Download size={14} />{exporting ? "Exportando..." : "Exportar Excel"}
           </button>
           <button onClick={() => load(page)} className="ds-btn ds-btn-ghost" style={{ fontSize: 12 }}>
@@ -676,7 +679,7 @@ function SupervisorView({ role }: { role: string }) {
                           )}
                           {itm.fotoUrl && (
                             <a href={itm.fotoUrl} target="_blank" rel="noreferrer"
-                              style={{ fontSize: 11, color: "var(--primary)", marginTop: 3, display: "block" }}>
+                              style={{ fontSize: 11, color: PREOP_COLOR, marginTop: 3, display: "block" }}>
                               Ver foto →
                             </a>
                           )}
@@ -725,7 +728,7 @@ function SupervisorView({ role }: { role: string }) {
 
       {/* Toast */}
       {toast && (
-        <div style={{ position: "fixed", bottom: 24, right: 24, zIndex: 10001, background: toast.err ? "#ef4444" : "#0f172a", color: "#fff", padding: "0.8rem 1.2rem", borderRadius: 10, fontSize: 13, fontWeight: 600, boxShadow: "0 8px 28px #0f172a40" }}>
+        <div style={{ position: "fixed", bottom: 24, right: 24, zIndex: 10001, background: toast.err ? "var(--error)" : "var(--text)", color: "#fff", padding: "0.8rem 1.2rem", borderRadius: 10, fontSize: 13, fontWeight: 600, boxShadow: "var(--shadow-xl)" }}>
           {toast.msg}
         </div>
       )}

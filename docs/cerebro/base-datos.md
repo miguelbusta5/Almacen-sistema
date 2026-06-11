@@ -27,10 +27,10 @@ node prisma/seed.js       # Crear usuario admin inicial
 | Enum | Valores |
 |---|---|
 | `Role` | ADMIN, GERENTE, OPERADOR, TRANSPORTISTA, INVENTARIO, TRANSPORTE, SUPERVISOR_INVENTARIO, SUPERVISOR_TRANSPORTE, TIENDA, SUPERVISOR_TIENDA, OPERACIONES_MUEBLES, OPERACIONES_GOURMET |
-| `EstadoDespacho` | CREADO_TIENDA, RECOGIDO_TIENDA, ENTREGADO_CEDI, ENVIADO_CLIENTE, CON_NOVEDAD |
+| `EstadoDespacho` | CREADO_TIENDA, RECHAZADO, RECOGIDO_TIENDA, ENTREGADO_CEDI, ENVIADO_CLIENTE, CON_NOVEDAD |
 | `EstadoIntegracion` | PENDIENTE_AREA2, LISTA_TRANSPORTE, COMPLETADA |
 | `EstadoInspeccion` | APROBADA, APROBADA_CON_OBSERVACIONES, BLOQUEADA |
-| `ResultadoInspeccion` | CONFORME, NO_CONFORME |
+| `ResultadoInspeccion` | CONFORME, NO_CONFORME, NO_APLICA |
 
 ---
 
@@ -91,6 +91,8 @@ node prisma/seed.js       # Crear usuario admin inicial
 |---|---|---|
 | `InspeccionPreoperacional` | `inspecciones_preoperacionales` | Inspección diaria |
 | `ItemInspeccion` | `items_inspeccion` | Resultado por ítem |
+
+Checklist fuente: `src/lib/preoperacional.ts` con 58 ítems reales en 15 categorías. Hay 26 ítems críticos; cualquier `NO_CONFORME` crítico bloquea el vehículo.
 
 ### Módulo Inventario / Conteo
 

@@ -7,11 +7,13 @@
 
 ## Qué es este proyecto
 
-Aplicación web operativa interna de **Grupo Ambiente** para gestionar inventario, logística y despachos desde tienda hasta cliente. Reemplaza una solución previa en HTML + Google Sheets.
+Aplicación web operativa interna de **Grupo Ambiente** para gestionar inventario, tienda, transporte, preoperacional, conteo e integración operativa. Reemplaza una solución previa en HTML + Google Sheets.
 
 - **Área responsable:** Analista de inventario (quien construye la app)
 - **Usuarios finales:** Personal operativo de tienda, transporte, inventario, conductores y gerencia
 - **Sistema externo relacionado:** NetSuite (ERP de la empresa — fuente de IDs de productos y documentos)
+
+> Logística avanzada, rutas, GPS y "Mi Ruta" están suspendidos indefinidamente. No forman parte del flujo activo.
 
 ---
 
@@ -50,7 +52,7 @@ src/
 │   ├── common/Sidebar.tsx     # Navegación filtrada por rol
 │   └── ui/                    # Design system (Badge, SlidePanel, etc.)
 ├── types/index.ts             # UserRole, AppUser, interfaces compartidas
-└── __tests__/                 # Tests con Vitest (221 tests activos)
+└── __tests__/                 # Tests con Vitest (228 tests activos)
 ```
 
 ---
@@ -61,7 +63,7 @@ src/
 npm run dev          # Desarrollo local (Turbopack)
 npm run build        # Build de producción
 npx tsc --noEmit     # Verificar tipos (obligatorio antes de push)
-npm test             # Vitest (221 tests)
+npm test             # Vitest (228 tests)
 npx prisma db push   # Aplicar cambios del schema a Railway
 npx prisma generate  # Regenerar cliente Prisma (después de editar schema.prisma)
 node prisma/seed.js  # Crear usuario admin inicial

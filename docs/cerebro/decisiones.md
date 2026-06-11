@@ -6,6 +6,26 @@ Registro cronológico de decisiones importantes. Una entrada por decisión, con 
 
 ---
 
+## 2026-06-11 - Cierre Fase 1 UI post-Claude
+
+**Decision:**
+- Los cambios nuevos de Tienda y Preoperacional deben integrarse a la identidad modular antes de iniciar Fase 2.
+- `RECHAZADO` usa rojo solo como señal semántica de bloqueo; las acciones de corrección/re-envío pertenecen al módulo Tienda y usan ámbar.
+- Las acciones de guardado asignadas desde Tienda pertenecen al módulo Transporte y usan cian.
+- El detalle de inspecciones preoperacionales usa `moduleTheme.preoperacional` en enlaces, encabezados y acciones.
+
+**Contexto:**
+- Claude Code agregó rechazo de solicitudes de despacho, edición en `RECHAZADO` y vista detallada de inspecciones preoperacionales.
+- Esos cambios eran correctos funcionalmente, pero mezclaban colores hardcodeados de otros módulos.
+
+**Consecuencias:**
+- Fase 2 puede concentrarse en shell, command palette y navegación sin arrastrar inconsistencias visuales de Fase 1.
+- `docs/cerebro/base-datos.md` y `docs/cerebro/estados-despacho.md` quedan alineados con `schema.prisma`.
+
+**Archivos afectados:** `src/app/(dashboard)/dashboard/tienda/page.tsx`, `src/app/(dashboard)/dashboard/preoperacional/page.tsx`, `src/app/api/tienda/[id]/route.ts`, `docs/cerebro/*`
+
+---
+
 ## 2026-06-11 — Rechazo de solicitudes de despacho por transporte
 
 **Decision:**

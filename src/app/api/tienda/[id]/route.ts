@@ -185,7 +185,7 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
     }
   }
 
-  // Edición de datos básicos: tienda solo mientras está en CREADO_TIENDA.
+  // Edición de datos básicos: TIENDA solo corrige solicitudes rechazadas.
   const basicEditKeys = [
     "centroCostos", "numeroDocumento", "consecutivo", "clienteNombre",
     "clienteDocumento", "clienteTelefono", "fechaEntregaComprometida",

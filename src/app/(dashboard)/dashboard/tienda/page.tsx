@@ -17,6 +17,7 @@ import { Stat, SkeletonStat, Badge, EmptyState, SkeletonTable, TimelineItem } fr
 import { SlidePanel, IntelBanner, DetailSection, DetailGrid, MiniHistory } from "@/components/ui/SlidePanel";
 import { insightsTienda, insightsPorDespacho } from "@/lib/inteligencia";
 import { useIsMobile } from "@/lib/useIsMobile";
+import { getModuleColor } from "@/lib/moduleTheme";
 
 type ProductoMaestro = {
   plu: string;
@@ -37,6 +38,8 @@ const focusProps = {
   onFocus: (e: React.FocusEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => { e.target.style.borderColor = COLOR_TIENDA; e.target.style.boxShadow = `0 0 0 2.5px ${COLOR_TIENDA}30`; e.target.style.background = "var(--surface)"; },
   onBlur:  (e: React.FocusEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => { e.target.style.borderColor = "transparent"; e.target.style.boxShadow = "none"; e.target.style.background = "var(--surface2)"; },
 };
+const COLOR_TRANSPORTE = getModuleColor("transporte");
+const COLOR_CEDI = ESTADO_DESPACHO_COLOR.ENTREGADO_CEDI;
 
 // ── Modal base para crear/editar ──────────────────────────
 function ModalBase({ title, sub, children, onClose }: { title: string; sub?: string; children: React.ReactNode; onClose: () => void }) {
@@ -332,8 +335,8 @@ export default function TiendaPage() {
                     <Pencil size={12} />Editar
                   </button>
                   <button onClick={() => reenviarDespacho(d.id)}
-                    className="ds-btn ds-btn-primary" style={{ fontSize: 12, background: "#2563EB", border: "none" }}>
-                    Re-enviar
+                    className="ds-btn ds-btn-primary" style={{ fontSize: 12, background: COLOR_TIENDA, border: "none" }}>
+                    <CheckCircle2 size={12} />Re-enviar
                   </button>
                 </div>
               </div>
@@ -416,14 +419,14 @@ export default function TiendaPage() {
                               Rechazar
                             </button>}
                           {d.estado === "RECOGIDO_TIENDA" && canChangeOperationalState &&
-                            <button className="ds-btn ds-btn-sm" style={{ background: "#8b5cf614", color: "#8b5cf6", height: 26, fontSize: 11 }}
+                            <button className="ds-btn ds-btn-sm" style={{ background: `${COLOR_CEDI}14`, color: COLOR_CEDI, height: 26, fontSize: 11 }}
                               onClick={(e) => { e.stopPropagation(); cambiarEstado(d, "ENTREGADO_CEDI"); }} title="Entregado en CEDI">
                               <PackageCheck size={12} />CEDI
                             </button>}
                           {d.estado === "ENTREGADO_CEDI" && canChangeOperationalState &&
                             <>
                             {!d.guardadoPendiente && (
-                              <button className="ds-btn ds-btn-sm" style={{ background: "#0e749014", color: "#0e7490", height: 26, fontSize: 11 }}
+                              <button className="ds-btn ds-btn-sm" style={{ background: `${COLOR_TRANSPORTE}14`, color: COLOR_TRANSPORTE, height: 26, fontSize: 11 }}
                                 onClick={(e) => { e.stopPropagation(); setAsignandoGuardado(d); }} title="Asignar a operario transporte para guardado">
                                 <UserPlus size={12} />Guardado
                               </button>
@@ -460,7 +463,7 @@ export default function TiendaPage() {
               <Truck size={13} />Marcar como Recogido
             </button>
           ) : panelItem && canChangeOperationalState && panelItem.estado === "RECOGIDO_TIENDA" ? (
-            <button className="ds-btn ds-btn-primary" style={{ width: "100%", background: "#8b5cf6" }} onClick={() => cambiarEstado(panelItem, "ENTREGADO_CEDI")}>
+            <button className="ds-btn ds-btn-primary" style={{ width: "100%", background: COLOR_CEDI }} onClick={() => cambiarEstado(panelItem, "ENTREGADO_CEDI")}>
               <PackageCheck size={13} />Entregado en CEDI
             </button>
           ) : panelItem && canChangeOperationalState && panelItem.estado === "ENTREGADO_CEDI" ? (
@@ -468,8 +471,8 @@ export default function TiendaPage() {
               <CheckCircle2 size={13} />Marcar enviado al cliente
             </button>
           ) : panelItem && canCreate && panelItem.estado === "RECHAZADO" ? (
-            <button className="ds-btn ds-btn-primary" style={{ width: "100%", background: "#2563EB" }} onClick={() => reenviarDespacho(panelItem.id)}>
-              Re-enviar solicitud
+            <button className="ds-btn ds-btn-primary" style={{ width: "100%", background: COLOR_TIENDA }} onClick={() => reenviarDespacho(panelItem.id)}>
+              <CheckCircle2 size={13} />Re-enviar solicitud
             </button>
           ) : undefined
         }
@@ -491,7 +494,7 @@ export default function TiendaPage() {
               </button>
             )}
             {panelItem && canChangeOperationalState && panelItem.estado === "ENTREGADO_CEDI" && !panelItem.guardadoPendiente && (
-              <button className="ds-btn ds-btn-sm ds-btn-secondary" style={{ color: "#0e7490" }}
+              <button className="ds-btn ds-btn-sm ds-btn-secondary" style={{ color: COLOR_TRANSPORTE }}
                 onClick={() => setAsignandoGuardado(panelItem)}>
                 <UserPlus size={13} />Enviar a guardado
               </button>
@@ -811,7 +814,7 @@ function ModalAsignarGuardado({ despacho, onClose, onAsignado, onError }: {
               <button className="ds-btn ds-btn-secondary" style={{ flex: 1 }} onClick={onClose}>Cancelar</button>
               <button
                 className="ds-btn ds-btn-primary"
-                style={{ flex: 2, background: "#0e7490" }}
+                style={{ flex: 2, background: COLOR_TRANSPORTE }}
                 disabled={!userId || saving}
                 onClick={async () => {
                   if (!userId) { onError("Selecciona un operario transporte"); return; }

@@ -142,3 +142,55 @@ Antes de hacer deploy a producción, revisa:
 
 Si todo está bien: git push origin master
 ```
+
+---
+
+## 7. Handoff para Codex (OpenAI)
+
+Para iniciar una sesión en Codex con el mismo protocolo "cerebro" que Claude Code:
+
+```
+# Proyecto: Sistema de Gestión CEDI — Grupo Ambiente
+# Repositorio: c:\Users\USUARIO\Desktop\almacen-sistema
+
+## Antes de cualquier cambio, lee estos archivos en orden:
+1. docs/cerebro/00-master-context.md   ← stack, arquitectura, URL de producción
+2. docs/cerebro/reglas-negocio.md      ← flujos, validaciones, módulos suspendidos
+3. docs/cerebro/roles-permisos.md      ← los 12 roles y sus permisos
+4. docs/cerebro/pendientes.md          ← tareas activas ordenadas por prioridad
+5. docs/cerebro/decisiones.md          ← decisiones técnicas recientes
+
+## Protocolo de trabajo
+1. Lee el cerebro (archivos arriba) para contextualizarte
+2. Implementa la tarea pedida respetando las reglas del proyecto
+3. Al terminar, actualiza los archivos del cerebro que correspondan:
+   - pendientes.md → marcar completadas, agregar nuevas
+   - decisiones.md → registrar la decisión con fecha
+   - el archivo temático afectado (modulos.md, base-datos.md, api-endpoints.md, etc.)
+4. Valida antes de hacer push:
+   npx tsc --noEmit
+   npm test
+   git push origin master
+
+## Stack
+Next.js 16 · React 19 · TypeScript · Prisma 7 · PostgreSQL (Railway) · Vercel
+Auth: Auth.js v5 JWT con roles server-side
+Rama de trabajo: master → CI/CD automático en Vercel
+
+## Reglas no negociables
+- NUNCA reactivar logística, rutas, GPS ni "Mi Ruta" — suspendidos indefinidamente
+- Siempre doble validación: server (requireCan / requireRole) + UI (canSeeModule)
+- No usar prisma migrate — solo npx prisma db push + npx prisma generate
+- Nunca credenciales en archivos versionados (.env* y .vercel/ están en .gitignore)
+- Commits cortos y descriptivos en español o inglés
+
+## Fuentes de verdad
+- Roles y permisos CRUD → src/lib/permissions.ts
+- Visibilidad de módulos → src/lib/modulePermissions.ts
+- Tipos TypeScript → src/types/index.ts
+- Schema de BD → prisma/schema.prisma
+- Navegación → src/components/common/Sidebar.tsx
+
+## La tarea de hoy es:
+[DESCRIPCIÓN DE LA TAREA]
+```
