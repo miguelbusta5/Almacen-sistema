@@ -7,6 +7,7 @@ import {
   Download, RefreshCw, Save, ShieldCheck, Trash2, Truck, XCircle,
 } from "lucide-react";
 import { Badge, EmptyState, SkeletonTable, Stat } from "@/components/ui";
+import { SlidePanel, DetailSection, DetailGrid } from "@/components/ui/SlidePanel";
 import { useIsMobile } from "@/lib/useIsMobile";
 import type { ResultadoInspeccion } from "@/lib/preoperacional";
 
@@ -55,6 +56,22 @@ interface HistorialRow {
   itemsCount: number;
   noConformes: number;
   criticos: number;
+}
+
+interface InspeccionDetalle {
+  id: string;
+  fecha: string;
+  kilometraje: number | null;
+  observaciones: string | null;
+  estado: EstadoInspeccion;
+  conductor: { id: string; nombre: string; telefono: string | null };
+  vehiculo: { id: string; placa: string; tipo: string };
+  realizadoPor: { id: string; name: string } | null;
+  items: Array<{
+    id: string; categoria: string; item: string;
+    resultado: ResultadoInspeccion; esCritico: boolean;
+    fotoUrl: string | null; observacion: string | null;
+  }>;
 }
 
 // ─── constantes ─────────────────────────────────────────────────────────────
@@ -384,6 +401,9 @@ function SupervisorView({ role }: { role: string }) {
   const [loading, setLoading]     = useState(true);
   const [exporting, setExporting] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [selected,      setSelected]      = useState<HistorialRow | null>(null);
+  const [detail,        setDetail]        = useState<InspeccionDetalle | null>(null);
+  const [loadingDetail, setLoadingDetail] = useState(false);
   const [toast, setToast]         = useState<{ msg: string; err?: boolean } | null>(null);
 
   const [fDesde, setFDesde]           = useState("");
@@ -445,6 +465,18 @@ function SupervisorView({ role }: { role: string }) {
     } finally {
       setExporting(false);
     }
+  }
+
+  async function openDetail(row: HistorialRow) {
+    setSelected(row);
+    setDetail(null);
+    setLoadingDetail(true);
+    try {
+      const res = await fetch(`/api/preoperacional/${row.id}`);
+      const json = await res.json();
+      if (json.success) setDetail(json.data);
+    } catch { /* panel abierto, ítems no cargaron */ }
+    finally { setLoadingDetail(false); }
   }
 
   async function deleteRow(id: string) {
@@ -532,7 +564,7 @@ function SupervisorView({ role }: { role: string }) {
                   <tr><td colSpan={role === "ADMIN" ? 7 : 6} style={{ padding: "2rem", textAlign: "center", color: "var(--muted)", fontSize: 13 }}>Sin inspecciones para los filtros seleccionados</td></tr>
                 )}
                 {rows.map((r) => (
-                  <tr key={r.id} style={{ borderBottom: "1px solid var(--border)" }}>
+                  <tr key={r.id} onClick={() => openDetail(r)} style={{ borderBottom: "1px solid var(--border)", cursor: "pointer" }}>
                     <td style={{ padding: "0.7rem 0.9rem", fontFamily: "var(--mono)", fontSize: 12 }}>{r.fecha}</td>
                     <td style={{ padding: "0.7rem 0.9rem", fontWeight: 600 }}>{r.conductor?.nombre ?? "—"}</td>
                     <td style={{ padding: "0.7rem 0.9rem", fontFamily: "var(--mono)", fontSize: 12 }}>
@@ -555,17 +587,17 @@ function SupervisorView({ role }: { role: string }) {
                       <td style={{ padding: "0.7rem 0.9rem" }}>
                         {deletingId === r.id ? (
                           <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
-                            <button onClick={() => deleteRow(r.id)}
+                            <button onClick={(e) => { e.stopPropagation(); deleteRow(r.id); }}
                               style={{ fontSize: 11, padding: "3px 8px", background: "var(--error)", color: "#fff", border: "none", borderRadius: 6, cursor: "pointer" }}>
                               Sí, eliminar
                             </button>
-                            <button onClick={() => setDeletingId(null)}
+                            <button onClick={(e) => { e.stopPropagation(); setDeletingId(null); }}
                               style={{ fontSize: 11, padding: "3px 8px", background: "none", border: "1px solid var(--border)", borderRadius: 6, cursor: "pointer", color: "var(--muted)" }}>
                               Cancelar
                             </button>
                           </div>
                         ) : (
-                          <button onClick={() => setDeletingId(r.id)}
+                          <button onClick={(e) => { e.stopPropagation(); setDeletingId(r.id); }}
                             style={{ background: "none", border: "none", cursor: "pointer", color: "var(--muted2)", padding: 4, display: "flex", alignItems: "center" }}
                             title="Eliminar inspección">
                             <Trash2 size={14} />
@@ -593,6 +625,103 @@ function SupervisorView({ role }: { role: string }) {
           )}
         </div>
       )}
+
+      {/* Slide panel detalle */}
+      <SlidePanel
+        open={!!selected}
+        onClose={() => { setSelected(null); setDetail(null); setDeletingId(null); }}
+        title={selected ? `${selected.conductor?.nombre ?? "Inspector"} — ${selected.fecha}` : ""}
+        badge={selected ? <Badge label={ESTADO_LABEL[selected.estado]} variant={estadoBadge(selected.estado)} dot={false} /> : undefined}
+      >
+        {selected && (
+          <>
+            <DetailSection title="Información general">
+              <DetailGrid items={[
+                { label: "Fecha",            value: selected.fecha },
+                { label: "Conductor",        value: selected.conductor?.nombre ?? "—" },
+                { label: "Vehículo",         value: `${selected.vehiculo?.placa ?? "—"} · ${selected.vehiculo?.tipo ?? ""}` },
+                { label: "Kilometraje",      value: selected.kilometraje != null ? `${selected.kilometraje.toLocaleString()} km` : "—" },
+                { label: "Estado",           value: ESTADO_LABEL[selected.estado] },
+                { label: "Ítems evaluados",  value: selected.itemsCount },
+                { label: "No conformes",     value: selected.noConformes },
+                { label: "Críticos",         value: selected.criticos },
+                ...(detail?.observaciones ? [{ label: "Observaciones", value: detail.observaciones }] : []),
+              ]} />
+            </DetailSection>
+
+            {loadingDetail && (
+              <DetailSection title="Checklist">
+                <p style={{ fontSize: 13, color: "var(--muted)" }}>Cargando ítems…</p>
+              </DetailSection>
+            )}
+
+            {detail && detail.items.length > 0 && (() => {
+              const cats = Array.from(new Set(detail.items.map((i) => i.categoria)));
+              return cats.map((cat) => (
+                <DetailSection key={cat} title={`Checklist — ${cat}`}>
+                  <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                    {detail.items.filter((i) => i.categoria === cat).map((itm) => (
+                      <div key={itm.id} style={{
+                        display: "flex", alignItems: "flex-start", gap: 10, padding: "8px 10px",
+                        border: "1px solid var(--border)", borderRadius: 8,
+                        background: itm.resultado === "NO_CONFORME" ? "rgba(239,68,68,0.04)" : "var(--surface2)",
+                      }}>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ fontSize: 13, fontWeight: 600, color: "var(--text)", display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
+                            {itm.item}
+                            {itm.esCritico && <Badge label="Crítico" variant="error" dot={false} />}
+                          </div>
+                          {itm.observacion && (
+                            <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 3 }}>{itm.observacion}</div>
+                          )}
+                          {itm.fotoUrl && (
+                            <a href={itm.fotoUrl} target="_blank" rel="noreferrer"
+                              style={{ fontSize: 11, color: "var(--primary)", marginTop: 3, display: "block" }}>
+                              Ver foto →
+                            </a>
+                          )}
+                        </div>
+                        <span style={{
+                          fontSize: 11, fontWeight: 600, whiteSpace: "nowrap",
+                          color: itm.resultado === "CONFORME"    ? "var(--success)"
+                               : itm.resultado === "NO_CONFORME" ? "var(--error)"
+                               : "var(--muted)",
+                        }}>
+                          {RESULTADO_LABEL[itm.resultado]}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </DetailSection>
+              ));
+            })()}
+
+            {role === "ADMIN" && (
+              <DetailSection title="Zona de administración">
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
+                  <p style={{ fontSize: 12, color: "var(--muted)", margin: 0 }}>Eliminar esta inspección permanentemente</p>
+                  {deletingId === selected.id ? (
+                    <div style={{ display: "flex", gap: 8 }}>
+                      <button onClick={() => deleteRow(selected.id)}
+                        className="ds-btn" style={{ fontSize: 12, background: "var(--error)", color: "#fff", border: "none" }}>
+                        Confirmar eliminación
+                      </button>
+                      <button onClick={() => setDeletingId(null)} className="ds-btn ds-btn-ghost" style={{ fontSize: 12 }}>
+                        Cancelar
+                      </button>
+                    </div>
+                  ) : (
+                    <button onClick={() => setDeletingId(selected.id)}
+                      className="ds-btn ds-btn-ghost" style={{ fontSize: 12, color: "var(--error)", border: "1px solid var(--error)" }}>
+                      <Trash2 size={13} /> Eliminar
+                    </button>
+                  )}
+                </div>
+              </DetailSection>
+            )}
+          </>
+        )}
+      </SlidePanel>
 
       {/* Toast */}
       {toast && (
