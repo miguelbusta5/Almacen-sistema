@@ -66,8 +66,16 @@ export default function Header({ user }: HeaderProps) {
       {isMobile ? (
         <Logo variant="auto" height={16} />
       ) : (
-        <div style={{ fontSize: 13, color: "var(--muted)", letterSpacing: "-0.01em" }}>
-          {new Date().toLocaleDateString("es-CO", { weekday: "long", year: "numeric", month: "long", day: "numeric" })}
+        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          <span style={{ width: 6, height: 6, borderRadius: "50%", background: "var(--brand)", boxShadow: "0 0 0 3px var(--brand-tint)" }} />
+          <div>
+            <div style={{ fontSize: 11, color: "var(--muted2)", fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", lineHeight: 1 }}>
+              Torre CEDI
+            </div>
+            <div style={{ fontSize: 12, color: "var(--muted)", letterSpacing: "-0.01em", marginTop: 3 }}>
+              {new Date().toLocaleDateString("es-CO", { weekday: "long", year: "numeric", month: "long", day: "numeric" })}
+            </div>
+          </div>
         </div>
       )}
 
@@ -94,7 +102,7 @@ export default function Header({ user }: HeaderProps) {
           >
             <Search size={12} />
             <span>Buscar…</span>
-            <kbd style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 4, padding: "1px 5px", fontSize: 10, fontFamily: "var(--mono)", color: "var(--faint)" }}>⌘K</kbd>
+            <kbd style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 4, padding: "1px 5px", fontSize: 10, fontFamily: "var(--mono)", color: "var(--faint)" }}>Ctrl K</kbd>
           </button>
         )}
         {isMobile && (

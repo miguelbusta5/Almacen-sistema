@@ -1,8 +1,8 @@
 @import "tailwindcss";
 
 /* ═══════════════════════════════════════════════════════════
-   GRUPO AMBIENTE DESIGN SYSTEM
-   Inspirado en Linear · Vercel · Stripe
+   GRUPO AMBIENTE CEDI DESIGN SYSTEM
+   Interfaz operativa para control, tienda, inventario y transporte
    ═══════════════════════════════════════════════════════════ */
 
 :root {
@@ -30,6 +30,14 @@
   --brand-bright:#3B82F6;
   --brand-grad:  linear-gradient(135deg, #1E40AF 0%, #2563EB 60%, #3B82F6 100%);
   --brand-tint:  rgba(37,99,235,0.08);
+
+  /* Colores por modulo */
+  --module-inventario: #2563EB;
+  --module-transporte: #0E7490;
+  --module-tienda: #D97706;
+  --module-integracion: #7C3AED;
+  --module-conteo: #16A34A;
+  --module-admin: #475569;
 
   /* ── Semánticos ─────────────────────────────────────────── */
   --success:       #10B981;
@@ -98,6 +106,13 @@ html[data-theme="dark"] {
   --brand-bright:#60A5FA;
   --brand-grad:  linear-gradient(135deg, #1E3A8A 0%, #2563EB 60%, #3B82F6 100%);
   --brand-tint:  rgba(59,130,246,0.12);
+
+  --module-inventario: #3B82F6;
+  --module-transporte: #22D3EE;
+  --module-tienda: #F59E0B;
+  --module-integracion: #A78BFA;
+  --module-conteo: #34D399;
+  --module-admin: #94A3B8;
 
   --success:       #34D399;
   --success-tint:  rgba(52,211,153,0.10);

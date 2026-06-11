@@ -1,3 +1,5 @@
+import { getModuleColor } from "@/lib/moduleTheme";
+
 // ═══════════════════════════════════════════════════════════
 // MÓDULO TIENDA — DESPACHOS
 // Flujo: Tienda → CEDI (punto intermedio) → Cliente final
@@ -116,7 +118,7 @@ export const ESTADO_DESPACHO_COLOR: Record<EstadoDespacho, string> = {
 };
 
 // Color del módulo tienda
-export const COLOR_TIENDA = "#7c3aed";
+export const COLOR_TIENDA = getModuleColor("tienda");
 
 // ── Badge variant ─────────────────────────────────────────
 export function estadoDespachoVariant(

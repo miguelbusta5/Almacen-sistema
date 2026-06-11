@@ -22,6 +22,13 @@
 - [ ] Revisar si `HANDOFF.md` en la raiz esta actualizado con el estado del Sprint 8
 - [ ] Actualizar `docs/cerebro/` despues de cada sprint
 
+### UI / UX Torre CEDI
+
+- [ ] Fase 2 UI: mejorar shell completo, command palette y microcopy por rol
+- [ ] Fase 3 UI: convertir Dashboard en Torre CEDI con prioridades por rol y flujo operativo
+- [ ] Fase 4 UI: pulir Usuarios, Tienda, Conteo y Preoperacional con estados vacios/carga/error consistentes
+- [ ] QA visual desktop/mobile de Login, Dashboard, Usuarios, Tienda, Conteo y Preoperacional
+
 ### Mejoras tecnicas
 
 - [ ] Revisar modelos de logistica suspendidos: decidir si eliminarlos del schema o mantenerlos documentados como proyecto futuro
@@ -41,6 +48,7 @@
 - [x] Asignacion de conductor + vehiculo para despachos de tienda - Sprint 8
 - [x] Retirar estados obsoletos de la planificacion de Tienda (`ENTREGADO`, `GUARDADO`, `PENDIENTE_GUARDAR`) - 2026-06-11
 - [x] Reemplazar `xlsx` por `exceljs` y endurecer uploads/importadores - 2026-06-11
+- [x] Fase 1 UI: identidad Torre CEDI, tema modular y colores consistentes por modulo - 2026-06-11
 
 ---
 

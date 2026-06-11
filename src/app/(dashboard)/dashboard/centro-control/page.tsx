@@ -12,6 +12,7 @@ import { useIsMobile } from "@/lib/useIsMobile";
 import { calcAlmacenaje } from "@/lib/almacenaje";
 import { scoreGuardado, urgencia } from "@/lib/transporte";
 import { horasDesde } from "@/lib/tienda";
+import { getModuleColor } from "@/lib/moduleTheme";
 import type { DespachoTienda } from "@/lib/tienda";
 import type { Novedad } from "@/lib/muebles";
 import type { Guardado } from "@/lib/transporte";
@@ -286,7 +287,7 @@ export default function CentroControlPage() {
         count:   n7d.length,
         title:   "Novedades abiertas sin resolver por más de 7 días",
         context: n7d.length > 0 ? n7d.slice(0, 3).map((n) => n.plu).join(" · ") + (n7d.length > 3 ? ` · +${n7d.length - 3} más` : "") : undefined,
-        href:    "/dashboard/muebles",
+        href:    "/dashboard/inventario",
       },
       {
         id:      "t48h",
@@ -306,7 +307,7 @@ export default function CentroControlPage() {
         count:   novSinAsig.length,
         title:   "Novedades sin responsable asignado",
         context: novSinAsig.length > 0 ? `${novSinAsig.length} novedade${novSinAsig.length !== 1 ? "s" : ""} sin seguimiento` : undefined,
-        href:    "/dashboard/muebles",
+        href:    "/dashboard/inventario",
       },
       {
         id:      "gsc",
@@ -334,7 +335,7 @@ export default function CentroControlPage() {
         id:      "topResp",
         title:   `Top responsable: ${topResp.nombre}`,
         context: `${topResp.resueltas}/${topResp.total} novedades resueltas · ${topResp.tasa}% de tasa`,
-        href:    "/dashboard/muebles",
+        href:    "/dashboard/inventario",
       },
     ].filter(Boolean) as InfoItem[];
 
@@ -499,7 +500,7 @@ export default function CentroControlPage() {
 
       {/* ── Grid de KPIs por módulo ── */}
       <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "repeat(3,1fr)", gap: 16, marginBottom: 24 }}>
-        <KpiBlock title="Inventario" icon={<Package size={15} color="#2563EB" />}>
+        <KpiBlock title="Inventario" icon={<Package size={15} color={getModuleColor("inventario")} />}>
           <div style={{ display: "flex", gap: 16, flexWrap: "wrap" }}>
             <MiniKpi label="Novedades abiertas" value={invKpis.pend} color={invKpis.pend > 0 ? "var(--error)" : "var(--success)"} />
             <MiniKpi label="Críticas >30d"      value={invKpis.criticas} color={invKpis.criticas > 0 ? "var(--error)" : "var(--muted)"} />
@@ -515,9 +516,9 @@ export default function CentroControlPage() {
           )}
         </KpiBlock>
 
-        <KpiBlock title="Guardados" icon={<Truck size={15} color="#0E7490" />}>
+        <KpiBlock title="Guardados" icon={<Truck size={15} color={getModuleColor("transporte")} />}>
           <div style={{ display: "flex", gap: 16, flexWrap: "wrap" }}>
-            <MiniKpi label="Costo acumulado"    value={"$" + Math.round(grdKpis.costoTotal / 1_000_000 * 10) / 10 + "M"} color="#0E7490" />
+            <MiniKpi label="Costo acumulado"    value={"$" + Math.round(grdKpis.costoTotal / 1_000_000 * 10) / 10 + "M"} color={getModuleColor("transporte")} />
             <MiniKpi label="Próx. mes"          value={"$" + Math.round(grdKpis.proyeccion / 1_000_000 * 10) / 10 + "M"} color="var(--muted)" />
           </div>
           <div style={{ marginTop: 12, paddingTop: 12, borderTop: "1px solid var(--border)", display: "flex", gap: 16 }}>
@@ -526,7 +527,7 @@ export default function CentroControlPage() {
           </div>
         </KpiBlock>
 
-        <KpiBlock title="Tienda" icon={<Store size={15} color="#7C3AED" />}>
+        <KpiBlock title="Tienda" icon={<Store size={15} color={getModuleColor("tienda")} />}>
           <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
             <MiniKpi label="Activos tienda"     value={tiendaKpis.pendientes} color={tiendaKpis.pendientes > 0 ? "var(--warning)" : "var(--muted)"} />
             <MiniKpi label=">24h sin recoger"   value={tiendaKpis.criticos}   color={tiendaKpis.criticos > 0 ? "var(--error)" : "var(--muted)"} />

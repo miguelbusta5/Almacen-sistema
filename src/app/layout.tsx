@@ -3,8 +3,8 @@ import "./globals.css";
 import { Providers } from "@/components/common/Providers";
 
 export const metadata: Metadata = {
-  title: "Grupo Ambiente · Sistema de gestión",
-  description: "Plataforma de gestión de inventarios, novedades y transporte — Grupo Ambiente",
+  title: "Torre CEDI · Grupo Ambiente",
+  description: "Centro operativo para inventario, tienda, transporte y control CEDI de Grupo Ambiente",
 };
 
 export const viewport: Viewport = {

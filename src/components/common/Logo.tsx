@@ -23,7 +23,7 @@ export default function Logo({ variant = "auto", height = 26, tagline = false }:
       <div style={{ display: "flex", flexDirection: "column", gap: 4, lineHeight: 1 }}>
         {tagline && (
           <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: ".2em", textTransform: "uppercase", color: variant === "dark" ? "#8aa0c6" : "var(--muted)" }}>
-            Sistema de gestión
+            Torre CEDI
           </span>
         )}
         {/* eslint-disable-next-line @next/next/no-img-element */}

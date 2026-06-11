@@ -16,6 +16,7 @@ import type { Novedad } from "@/lib/muebles";
 import type { Guardado } from "@/lib/transporte";
 import { getHomeActionsByRole, type HomeAction } from "@/config/homeActions";
 import { useIsMobile } from "@/lib/useIsMobile";
+import { getModuleColor, getModuleTheme } from "@/lib/moduleTheme";
 
 // ── Helpers ──────────────────────────────────────────────
 function timeAgo(iso: string) {
@@ -26,13 +27,25 @@ function timeAgo(iso: string) {
   return `hace ${Math.floor(d / 86400)}d`;
 }
 function moduleColor(mod: string) {
-  if (mod === "muebles") return "#2563EB";
-  if (mod === "transporte") return "#0E7490";
-  if (mod === "conteo") return "#16A34A";
+  if (mod === "muebles" || mod === "inventario" || mod === "novedades") return getModuleColor("inventario");
+  if (mod === "transporte") return getModuleColor("transporte");
+  if (mod === "conteo") return getModuleColor("conteo");
+  if (mod === "tienda") return getModuleColor("tienda");
+  if (mod === "integracion") return getModuleColor("integracion");
+  if (mod === "users" || mod === "usuarios") return getModuleColor("usuarios");
   return "#6B7280";
 }
 function moduleLabel(mod: string) {
-  const m: Record<string, string> = { muebles: "Muebles", transporte: "Transporte", conteo: "Conteo", users: "Usuarios" };
+  const m: Record<string, string> = {
+    muebles: getModuleTheme("inventario").shortLabel,
+    inventario: getModuleTheme("inventario").shortLabel,
+    transporte: getModuleTheme("transporte").shortLabel,
+    conteo: getModuleTheme("conteo").shortLabel,
+    tienda: getModuleTheme("tienda").shortLabel,
+    integracion: getModuleTheme("integracion").shortLabel,
+    users: getModuleTheme("usuarios").shortLabel,
+    usuarios: getModuleTheme("usuarios").shortLabel,
+  };
   return m[mod] ?? mod;
 }
 function actionDot(action: string): "active" | "success" | "warning" | "error" | "default" {
@@ -192,7 +205,7 @@ function AdminDashboard({ nombre }: { nombre: string }) {
           <>
             <Stat value={stats?.novedades.total ?? 0} label="Novedades totales" color="var(--brand)" />
             <Stat value={stats?.novedades.pendientes ?? 0} label="Sin resolver" color={(stats?.novedades.pendientes ?? 0) > 0 ? "var(--error)" : "var(--success)"} />
-            <Stat value={stats?.transporte.total ?? 0} label="Guardados activos" color="#0E7490" />
+            <Stat value={stats?.transporte.total ?? 0} label="Guardados activos" color={getModuleColor("transporte")} />
             <Stat value={stats?.transporte.alertas ?? 0} label="Alertas de entrega" color={(stats?.transporte.alertas ?? 0) > 0 ? "var(--warning)" : "var(--success)"} />
           </>
         )}
@@ -201,11 +214,11 @@ function AdminDashboard({ nombre }: { nombre: string }) {
       <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1fr 300px", gap: 28, alignItems: "start" }}>
         {/* Módulos */}
         <div>
-          <SectionHeader title="Módulos" />
+          <SectionHeader title="Torre CEDI" />
           <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr", gap: 14 }}>
-            <ModuleCard href="/dashboard/muebles" icon={<Package size={17} />} label="Novedades Muebles" color="#2563EB" value={stats?.novedades.total} sub={`${stats?.novedades.pendientes ?? 0} sin resolver`} alert={(stats?.novedades.pendientes ?? 0) > 0} />
-            <ModuleCard href="/dashboard/transporte" icon={<Truck size={17} />} label="Guardados Transporte" color="#0E7490" value={stats?.transporte.total} sub={`${stats?.transporte.pendientes ?? 0} pendientes`} alert={(stats?.transporte.alertas ?? 0) > 0} />
-            <ModuleCard href="/dashboard/conteo" icon={<ClipboardList size={17} />} label="Conteo Cíclico" color="#16A34A" sub="Conteos de inventario" />
+            <ModuleCard href="/dashboard/inventario" icon={<Package size={17} />} label={getModuleTheme("inventario").label} color={getModuleColor("inventario")} value={stats?.novedades.total} sub={`${stats?.novedades.pendientes ?? 0} sin resolver`} alert={(stats?.novedades.pendientes ?? 0) > 0} />
+            <ModuleCard href="/dashboard/transporte" icon={<Truck size={17} />} label={getModuleTheme("transporte").label} color={getModuleColor("transporte")} value={stats?.transporte.total} sub={`${stats?.transporte.pendientes ?? 0} pendientes`} alert={(stats?.transporte.alertas ?? 0) > 0} />
+            <ModuleCard href="/dashboard/conteo" icon={<ClipboardList size={17} />} label={getModuleTheme("conteo").label} color={getModuleColor("conteo")} sub="Conteos de inventario" />
           </div>
         </div>
 
@@ -360,7 +373,7 @@ function OperadorDashboard({ nombre, role }: { nombre: string; role: string }) {
                 level="warning"
                 text={`${pendientesNov.length} novedad${pendientesNov.length !== 1 ? "es" : ""} de inventario sin resolver`}
                 sub="Pendientes de seguimiento"
-                href="/dashboard/muebles"
+                href="/dashboard/inventario"
               />
             )}
             {tiendaNovedad.length > 0 && (
@@ -403,7 +416,7 @@ function OperadorDashboard({ nombre, role }: { nombre: string; role: string }) {
               <>
                 <Stat value={pendientesNov.length} label="Novedades pendientes"
                   color={pendientesNov.length > 0 ? "var(--error)" : "var(--success)"}
-                  onClick={() => { window.location.href = "/dashboard/muebles"; }} />
+                  onClick={() => { window.location.href = "/dashboard/inventario"; }} />
                 <Stat value={enProcesoNov.length} label="En proceso"
                   color="var(--warning)" />
                 <Stat value={solucionadas.length} label="Solucionadas"
@@ -443,7 +456,7 @@ function OperadorDashboard({ nombre, role }: { nombre: string; role: string }) {
               <>
                 <Stat value={pendientesNov.length} label="Novedades pendientes"
                   color={pendientesNov.length > 0 ? "var(--error)" : "var(--success)"}
-                  onClick={() => { window.location.href = "/dashboard/muebles"; }} />
+                  onClick={() => { window.location.href = "/dashboard/inventario"; }} />
                 <Stat value={guardadosPend.length} label="En espera de despacho"
                   color="var(--warning)"
                   onClick={() => { window.location.href = "/dashboard/transporte"; }} />
@@ -482,7 +495,7 @@ function TransportistaDashboard({ nombre }: { nombre: string }) {
       <Link href="/dashboard/preoperacional" style={{ textDecoration: "none" }}>
       <div className="ds-card lift" style={{ padding: 28, cursor: "pointer" }}>
         <div style={{ width: 46, height: 46, borderRadius: 12, background: "var(--surface2)", display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 16 }}>
-          <ShieldCheck size={21} color="#0E7490" />
+          <ShieldCheck size={21} color={getModuleColor("preoperacional")} />
         </div>
         <div style={{ fontSize: 17, fontWeight: 700, color: "var(--text)", marginBottom: 8 }}>
           Preoperacional

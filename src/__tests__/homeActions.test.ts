@@ -156,9 +156,9 @@ describe("getHomeActionsByRole", () => {
       const action = getHomeActionsByRole("ADMIN", 99).find((a) => a.id === "gestionar-usuarios");
       expect(action?.href).toBe("/dashboard/usuarios");
     });
-    it("navega a /dashboard/muebles para nueva novedad", () => {
+    it("navega a /dashboard/inventario para nueva novedad", () => {
       const action = getHomeActionsByRole("ADMIN", 99).find((a) => a.id === "nueva-novedad");
-      expect(action?.href).toBe("/dashboard/muebles");
+      expect(action?.href).toBe("/dashboard/inventario");
     });
   });
 

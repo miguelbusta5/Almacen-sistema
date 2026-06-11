@@ -1,10 +1,12 @@
-# UX / UI — Design System
+# UX / UI — Torre CEDI Design System
 
 > Links: [[00-master-context]] · [[modulos]]
 
 ---
 
 ## Paleta de colores
+
+La identidad visual se centraliza en `src/lib/moduleTheme.ts`. Cualquier navegación, acción rápida, command palette o badge principal debe tomar color desde ese catálogo para evitar choques entre módulos.
 
 | Área | Color | Hex |
 |---|---|---|
@@ -44,7 +46,21 @@ Definidos en `src/app/globals.css`:
 --success
 --sans        /* Fuente sans-serif */
 --mono        /* Fuente monospace */
+--module-inventario
+--module-transporte
+--module-tienda
+--module-integracion
+--module-conteo
+--module-admin
 ```
+
+## Dirección visual 2026-06-11
+
+- La app debe sentirse como una herramienta interna CEDI, no como una plantilla genérica.
+- Nombre operativo recomendado en shell y metadata: **Torre CEDI**.
+- Mantener densidad operativa: tablas claras, KPIs sobrios, acciones directas y pantallas listas para uso diario.
+- Evitar páginas tipo landing, orbes decorativos, gradientes dominantes y héroes de marketing dentro del dashboard.
+- Tienda usa ámbar; Integración usa violeta. No reutilizar violeta para Tienda.
 
 ---
 
@@ -150,8 +166,8 @@ gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr"
 - Filtrado automático por `canSeeModule(role, moduleKey)`
 - Mobile: drawer con overlay (toggle con botón hamburguesa fijo)
 - Desktop: sidebar fijo 204px de ancho
-- Fondo: `#0D0F14` (casi negro)
-- Ítems activos con indicador azul izquierdo + texto blanco
+- Fondo: azul noche operativo
+- Ítems activos con indicador del color del módulo + texto blanco
 
 ---
 

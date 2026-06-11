@@ -7,6 +7,7 @@
 // ═══════════════════════════════════════════════════════════
 
 import type { AppRole, ModuleKey } from "@/lib/modulePermissions";
+import { getModuleColor } from "@/lib/moduleTheme";
 
 export interface HomeAction {
   id: string;
@@ -27,9 +28,9 @@ export const HOME_ACTIONS: HomeAction[] = [
     id: "nueva-novedad",
     title: "Nueva novedad de inventario",
     description: "Registrar diferencia de PLU, posición o cantidad",
-    href: "/dashboard/muebles",
+    href: "/dashboard/inventario",
     icon: "Plus",
-    color: "#2563EB",
+    color: getModuleColor("inventario"),
     moduleKey: "inventario",
     roles: ["INVENTARIO", "SUPERVISOR_INVENTARIO", "OPERADOR", "GERENTE", "ADMIN"],
     priority: 1,
@@ -40,7 +41,7 @@ export const HOME_ACTIONS: HomeAction[] = [
     description: "Continuar con los PLUs asignados para hoy",
     href: "/dashboard/conteo/contar",
     icon: "ClipboardList",
-    color: "#16A34A",
+    color: getModuleColor("conteo"),
     moduleKey: "conteo-contar",
     roles: ["INVENTARIO", "SUPERVISOR_INVENTARIO", "OPERADOR", "GERENTE", "ADMIN"],
     priority: 2,
@@ -52,7 +53,7 @@ export const HOME_ACTIONS: HomeAction[] = [
     description: "Registrar pedido en custodia de almacén",
     href: "/dashboard/transporte",
     icon: "Plus",
-    color: "#0E7490",
+    color: getModuleColor("transporte"),
     moduleKey: "transporte",
     roles: ["TRANSPORTE", "SUPERVISOR_TRANSPORTE", "OPERADOR", "GERENTE", "ADMIN"],
     priority: 1,
@@ -60,11 +61,11 @@ export const HOME_ACTIONS: HomeAction[] = [
   // ── Tienda ──────────────────────────────────────────────
   {
     id: "nuevo-despacho-tienda",
-    title: "Nuevo despacho a tienda",
-    description: "Registrar despacho de mercancía hacia tienda",
+    title: "Nuevo despacho de tienda",
+    description: "Registrar despacho desde tienda hacia el flujo CEDI",
     href: "/dashboard/tienda",
     icon: "Store",
-    color: "#D97706",
+    color: getModuleColor("tienda"),
     moduleKey: "tienda",
     roles: [
       "TIENDA", "SUPERVISOR_TIENDA",
@@ -80,7 +81,7 @@ export const HOME_ACTIONS: HomeAction[] = [
     description: "Coordinar picking OVDM/TSDM entre áreas Muebles y Gourmet",
     href: "/dashboard/integracion",
     icon: "GitMerge",
-    color: "#7C3AED",
+    color: getModuleColor("integracion"),
     moduleKey: "integracion",
     roles: ["OPERACIONES_MUEBLES", "OPERACIONES_GOURMET", "ADMIN", "GERENTE"],
     priority: 1,
@@ -92,7 +93,7 @@ export const HOME_ACTIONS: HomeAction[] = [
     description: "Revisar pendientes y prioridades del día",
     href: "/dashboard/mis-tareas",
     icon: "CheckSquare",
-    color: "#7C3AED",
+    color: getModuleColor("mis-tareas"),
     moduleKey: "mis-tareas",
     roles: [
       "INVENTARIO", "TRANSPORTE", "TIENDA",
@@ -107,7 +108,7 @@ export const HOME_ACTIONS: HomeAction[] = [
     description: "Registrar inspeccion diaria del vehiculo",
     href: "/dashboard/preoperacional",
     icon: "ShieldCheck",
-    color: "#0E7490",
+    color: getModuleColor("preoperacional"),
     moduleKey: "preoperacional",
     roles: ["TRANSPORTISTA"],
     priority: 1,
@@ -119,7 +120,7 @@ export const HOME_ACTIONS: HomeAction[] = [
     description: "Inteligencia operacional y KPIs de área",
     href: "/dashboard/centro-control",
     icon: "BarChart2",
-    color: "#0F172A",
+    color: getModuleColor("centro-control"),
     moduleKey: "centro-control",
     roles: [
       "ADMIN", "GERENTE",
@@ -134,7 +135,7 @@ export const HOME_ACTIONS: HomeAction[] = [
     description: "Administrar cuentas y roles del sistema",
     href: "/dashboard/usuarios",
     icon: "Users",
-    color: "#475569",
+    color: getModuleColor("usuarios"),
     moduleKey: "usuarios",
     roles: ["ADMIN"],
     priority: 4,
@@ -145,7 +146,7 @@ export const HOME_ACTIONS: HomeAction[] = [
     description: "Historial completo de acciones del sistema",
     href: "/dashboard/auditoria",
     icon: "History",
-    color: "#475569",
+    color: getModuleColor("auditoria"),
     moduleKey: "auditoria",
     roles: ["ADMIN", "GERENTE"],
     priority: 5,

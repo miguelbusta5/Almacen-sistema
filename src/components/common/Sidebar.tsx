@@ -10,6 +10,7 @@ import {
 import { useIsMobile } from "@/lib/useIsMobile";
 import Logo from "./Logo";
 import { canSeeModule, type ModuleKey } from "@/lib/modulePermissions";
+import { getModuleTheme } from "@/lib/moduleTheme";
 
 interface SidebarProps { role?: string; }
 
@@ -83,7 +84,7 @@ const SECTIONS = [
 ];
 
 const W = 204;
-const SIDE_BG = "#0D0F14";
+const SIDE_BG = "#08111F";
 const SIDE_BORDER = "rgba(255,255,255,0.05)";
 
 export default function Sidebar({ role }: SidebarProps) {
@@ -104,6 +105,7 @@ export default function Sidebar({ role }: SidebarProps) {
 
   const Item = ({ item, onNav }: { item: NavItem; onNav?: () => void }) => {
     const active = isActive(item.href);
+    const theme = getModuleTheme(item.moduleKey ?? "home");
     return (
       <Link href={item.href} onClick={onNav} style={{ textDecoration: "none", display: "block", padding: "1px 8px" }}>
         <div
@@ -118,8 +120,8 @@ export default function Sidebar({ role }: SidebarProps) {
           onMouseEnter={(e) => { if (!active) { (e.currentTarget as HTMLElement).style.background = "rgba(255,255,255,0.05)"; (e.currentTarget as HTMLElement).style.color = "rgba(255,255,255,0.75)"; } }}
           onMouseLeave={(e) => { if (!active) { (e.currentTarget as HTMLElement).style.background = "transparent"; (e.currentTarget as HTMLElement).style.color = "rgba(255,255,255,0.45)"; } }}
         >
-          {active && <span style={{ position: "absolute", left: -8, top: "50%", transform: "translateY(-50%)", width: 3, height: 16, borderRadius: 2, background: "#3B82F6" }} />}
-          <span style={{ color: active ? "rgba(255,255,255,0.85)" : "rgba(255,255,255,0.30)", display: "flex", flexShrink: 0 }}>
+          {active && <span style={{ position: "absolute", left: -8, top: "50%", transform: "translateY(-50%)", width: 3, height: 16, borderRadius: 2, background: theme.color }} />}
+          <span style={{ color: active ? theme.color : "rgba(255,255,255,0.30)", display: "flex", flexShrink: 0 }}>
             {item.icon}
           </span>
           {item.label}
@@ -153,8 +155,13 @@ export default function Sidebar({ role }: SidebarProps) {
         })}
       </nav>
 
-      <div style={{ padding: "12px 16px", borderTop: `1px solid ${SIDE_BORDER}`, fontSize: 11, color: "rgba(255,255,255,0.18)", fontFamily: "var(--mono)" }}>
-        v2.2 · Grupo Ambiente CEDI
+      <div style={{ padding: "12px 16px", borderTop: `1px solid ${SIDE_BORDER}` }}>
+        <div style={{ fontSize: 11, color: "rgba(255,255,255,0.34)", fontFamily: "var(--mono)", marginBottom: 2 }}>
+          v2.2 · Torre CEDI
+        </div>
+        <div style={{ fontSize: 10, color: "rgba(255,255,255,0.18)", fontFamily: "var(--mono)" }}>
+          Grupo Ambiente
+        </div>
       </div>
     </>
   );
@@ -169,7 +176,7 @@ export default function Sidebar({ role }: SidebarProps) {
     return (
       <>
         <button onClick={() => setOpen(true)} aria-label="Abrir menú"
-          style={{ position: "fixed", top: 10, left: 12, zIndex: 300, width: 34, height: 34, borderRadius: 8, border: "none", background: "rgba(13,15,20,0.90)", backdropFilter: "blur(8px)", color: "rgba(255,255,255,0.75)", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", boxShadow: "0 2px 12px rgba(0,0,0,0.35)" }}>
+          style={{ position: "fixed", top: 10, left: 12, zIndex: 300, width: 34, height: 34, borderRadius: 8, border: "none", background: "rgba(8,17,31,0.92)", backdropFilter: "blur(8px)", color: "rgba(255,255,255,0.75)", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", boxShadow: "0 2px 12px rgba(0,0,0,0.35)" }}>
           <Menu size={17} />
         </button>
         {open && (

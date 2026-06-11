@@ -73,11 +73,14 @@ git push origin master  # Deploy a producción (CI/CD automático)
 ## Identidad visual
 
 - **Marca:** Grupo Ambiente
+- **Nombre operativo UI:** Torre CEDI
 - **Paleta:** Azules intensos — sin pasteles
   - Muebles/Inventario: `#2563EB`
   - Transporte: `#0E7490`
+  - Tienda: `#D97706`
   - Integración de Pedidos: `#7C3AED`
   - Verde/Rojo/Ámbar: solo para significado semántico (éxito/error/alerta)
+- **Tema modular:** `src/lib/moduleTheme.ts`
 - **Logo:** `public/logo.png` — se invierte a blanco en modo oscuro
 - **Tipografía:** Variable CSS `--sans` (sistema) y `--mono` (código)
 

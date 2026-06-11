@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import { useCommandPalette } from "@/contexts/CommandPaletteContext";
 import { canSeeModule } from "@/lib/modulePermissions";
+import { getModuleColor } from "@/lib/moduleTheme";
 
 // ── Tipos ─────────────────────────────────────────────────
 type ResultGroup = "actions" | "navigate" | "muebles" | "transporte";
@@ -28,9 +29,9 @@ interface PaletteResult {
 }
 
 const GROUP_LABEL: Record<ResultGroup, string> = {
-  actions:    "Acciones rápidas",
-  navigate:   "Navegar a",
-  muebles:    "Novedades Muebles",
+  actions:    "Centro de mando",
+  navigate:   "Navegación CEDI",
+  muebles:    "Novedades Inventario",
   transporte: "Guardados Transporte",
 };
 
@@ -86,10 +87,10 @@ export default function CommandPalette() {
     const see = (key: Parameters<typeof canSeeModule>[1]) => canSeeModule(role, key);
 
     const actions: PaletteResult[] = [
-      ...(see("inventario") ? [{ id: "a-novedad",  group: "actions" as ResultGroup, icon: <Plus size={14} />, label: "Nueva novedad de inventario", description: "Registrar diferencia de PLU en el CEDI", color: "#2563EB", action: () => go("/dashboard/inventario") }] : []),
-      ...(see("transporte") ? [{ id: "a-guardado", group: "actions" as ResultGroup, icon: <Plus size={14} />, label: "Nuevo guardado en transporte",  description: "Registrar pedido en custodia",          color: "#0E7490", action: () => go("/dashboard/transporte") }] : []),
-      ...(see("tienda")     ? [{ id: "a-despacho", group: "actions" as ResultGroup, icon: <Store size={14} />, label: "Nuevo despacho de tienda", description: "Registrar despacho para flujo de transporte", color: "#7C3AED", action: () => go("/dashboard/tienda") }] : []),
-      ...(see("preoperacional") ? [{ id: "a-preop", group: "actions" as ResultGroup, icon: <ShieldCheck size={14} />, label: "Registrar preoperacional", description: "Inspeccion diaria del vehiculo", color: "#0E7490", action: () => go("/dashboard/preoperacional") }] : []),
+      ...(see("inventario") ? [{ id: "a-novedad",  group: "actions" as ResultGroup, icon: <Plus size={14} />, label: "Nueva novedad de inventario", description: "Registrar diferencia de PLU en el CEDI", color: getModuleColor("inventario"), action: () => go("/dashboard/inventario") }] : []),
+      ...(see("transporte") ? [{ id: "a-guardado", group: "actions" as ResultGroup, icon: <Plus size={14} />, label: "Nuevo guardado en transporte",  description: "Registrar pedido en custodia",          color: getModuleColor("transporte"), action: () => go("/dashboard/transporte") }] : []),
+      ...(see("tienda")     ? [{ id: "a-despacho", group: "actions" as ResultGroup, icon: <Store size={14} />, label: "Nuevo despacho de tienda", description: "Registrar despacho para flujo de transporte", color: getModuleColor("tienda"), action: () => go("/dashboard/tienda") }] : []),
+      ...(see("preoperacional") ? [{ id: "a-preop", group: "actions" as ResultGroup, icon: <ShieldCheck size={14} />, label: "Registrar preoperacional", description: "Inspección diaria del vehículo", color: getModuleColor("preoperacional"), action: () => go("/dashboard/preoperacional") }] : []),
     ];
 
     const navigate: PaletteResult[] = [
@@ -131,8 +132,8 @@ export default function CommandPalette() {
               icon: <Package size={13} />,
               label: `PLU ${n.plu}`,
               description: `${n.descripcion ?? ""} · ${n.posicion} · ${n.estado}`,
-              color: "#2563EB",
-              action: () => go("/dashboard/muebles"),
+              color: getModuleColor("inventario"),
+              action: () => go("/dashboard/inventario"),
             });
           }
         }
@@ -144,7 +145,7 @@ export default function CommandPalette() {
               icon: <Truck size={13} />,
               label: g.documento,
               description: `${g.ubicacion} · ${g.estado} · ${g.tipo}`,
-              color: "#0E7490",
+              color: getModuleColor("transporte"),
               action: () => go("/dashboard/transporte"),
             });
           }

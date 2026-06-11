@@ -6,6 +6,28 @@ Registro cronológico de decisiones importantes. Una entrada por decisión, con 
 
 ---
 
+## 2026-06-11 - Identidad visual Torre CEDI y tema modular
+
+**Decision:**
+- La interfaz adopta el nombre operativo **Torre CEDI** para shell, metadata y navegación principal.
+- Se crea una fuente central de identidad visual por módulo en `src/lib/moduleTheme.ts`.
+- Sidebar, command palette, acciones rápidas y dashboard deben consumir colores desde el tema modular.
+- Tienda queda ámbar (`#D97706`) e Integración queda violeta (`#7C3AED`) para evitar colisión visual.
+
+**Contexto:**
+- La UI funcionaba correctamente, pero se percibía genérica y con colores hardcodeados en varios lugares.
+- Tienda aparecía en algunos accesos con color violeta, compitiendo con Integración de Pedidos.
+- La app necesita diferenciarse como herramienta operativa propia de Grupo Ambiente CEDI.
+
+**Consecuencias:**
+- Nuevos cambios visuales deben partir de `moduleTheme`.
+- La primera fase no cambia permisos, APIs, schema ni flujos de negocio.
+- Logística, GPS, rutas y Mi Ruta siguen suspendidos.
+
+**Archivos afectados:** `src/lib/moduleTheme.ts`, `src/components/common/Sidebar.tsx`, `src/components/common/Header.tsx`, `src/components/ui/CommandPalette.tsx`, `src/config/homeActions.ts`, `src/app/(dashboard)/dashboard/page.tsx`, `src/app/(dashboard)/dashboard/centro-control/page.tsx`, `src/app/globals.css`
+
+---
+
 ## 2026-06-11 - Estabilizacion de seguridad en archivos Excel e imagenes
 
 **Decision:**
