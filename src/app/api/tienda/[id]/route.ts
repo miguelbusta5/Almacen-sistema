@@ -196,8 +196,8 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
   if (isDataEdit) {
     const puedeEditarBasico = ["TIENDA", "SUPERVISOR_TIENDA", "SUPERVISOR_TRANSPORTE", "GERENTE", "ADMIN"].includes(actor.role);
     if (!puedeEditarBasico) return NextResponse.json({ error: "Sin permiso para editar datos de tienda" }, { status: 403 });
-    if (current.estado !== "CREADO_TIENDA" && !["GERENTE", "ADMIN"].includes(actor.role)) {
-      return NextResponse.json({ error: "Solo se puede editar información básica mientras el despacho está en CREADO_TIENDA" }, { status: 409 });
+    if (current.estado !== "CREADO_TIENDA" && current.estado !== "RECHAZADO" && !["GERENTE", "ADMIN"].includes(actor.role)) {
+      return NextResponse.json({ error: "Solo se puede editar información básica mientras el despacho está en CREADO_TIENDA o RECHAZADO" }, { status: 409 });
     }
   }
 

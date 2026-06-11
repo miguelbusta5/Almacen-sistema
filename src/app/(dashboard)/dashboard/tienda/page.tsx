@@ -328,6 +328,9 @@ export default function TiendaPage() {
                   <button onClick={() => abrirPanel(d)} className="ds-btn ds-btn-ghost" style={{ fontSize: 12 }}>
                     Ver detalle
                   </button>
+                  <button onClick={() => setEditing(d)} className="ds-btn ds-btn-ghost" style={{ fontSize: 12 }}>
+                    <Pencil size={12} />Editar
+                  </button>
                   <button onClick={() => reenviarDespacho(d.id)}
                     className="ds-btn ds-btn-primary" style={{ fontSize: 12, background: "#2563EB", border: "none" }}>
                     Re-enviar
@@ -430,7 +433,7 @@ export default function TiendaPage() {
                               <CheckCircle2 size={12} />Enviado
                             </button>
                             </>}
-                          {canEditBasic && (d.estado === "CREADO_TIENDA" || canEdit) && <button className="ds-btn ds-btn-sm ds-btn-ghost" style={{ height: 26 }} onClick={(e) => { e.stopPropagation(); setEditing(d); }} title="Editar"><Pencil size={12} /></button>}
+                          {canEditBasic && (d.estado === "CREADO_TIENDA" || d.estado === "RECHAZADO" || canEdit) && <button className="ds-btn ds-btn-sm ds-btn-ghost" style={{ height: 26 }} onClick={(e) => { e.stopPropagation(); setEditing(d); }} title="Editar"><Pencil size={12} /></button>}
                           {canDelete && <button className="ds-btn ds-btn-sm ds-btn-ghost" style={{ height: 26, color: "var(--error)" }} onClick={(e) => { e.stopPropagation(); setDeleting(d); }} title="Eliminar"><Trash2 size={12} /></button>}
                         </div>
                       </td>
@@ -493,7 +496,7 @@ export default function TiendaPage() {
                 <UserPlus size={13} />Enviar a guardado
               </button>
             )}
-            {canEditBasic && panelItem && (panelItem.estado === "CREADO_TIENDA" || canEdit) && <button className="ds-btn ds-btn-sm ds-btn-secondary" onClick={() => setEditing(panelItem)}><Pencil size={13} /></button>}
+            {canEditBasic && panelItem && (panelItem.estado === "CREADO_TIENDA" || panelItem.estado === "RECHAZADO" || canEdit) && <button className="ds-btn ds-btn-sm ds-btn-secondary" onClick={() => setEditing(panelItem)}><Pencil size={13} /></button>}
           </div>
         }
       >
