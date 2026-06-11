@@ -30,9 +30,12 @@ Cada etapa tiene un estado de despacho asociado. Ver [[estados-despacho]].
   1. **Recogido en tienda** (RECOGIDO_TIENDA)
   2. **Llegó al CEDI** (ENTREGADO_CEDI)
   3. **Enviado al cliente** (ENVIADO_CLIENTE)
+- Puede **rechazar** un despacho (RECHAZADO) mientras está en CREADO_TIENDA — debe indicar motivo
+  - El creador recibe notificación y ve el despacho en un "cajón" prominente
+  - El creador puede re-enviarlo (vuelve a CREADO_TIENDA) después de corregirlo
 - Puede guardar un despacho en custodia del almacén
 - Puede asignar un despacho a un operario de transporte
-- Puede marcar despachos CON_NOVEDAD en cualquier etapa
+- Puede marcar despachos CON_NOVEDAD en cualquier etapa activa
 
 ### Operario de Transporte (`TRANSPORTE`)
 - Ve los guardados y pendientes que le asignen
@@ -41,7 +44,10 @@ Cada etapa tiene un estado de despacho asociado. Ver [[estados-despacho]].
 
 ### Conductor (`TRANSPORTISTA`)
 - **Solo ve el módulo Preoperacional**
-- Realiza la inspección diaria del vehículo
+- Realiza la inspección diaria del vehículo con el checklist completo (58 ítems, 15 categorías)
+- Categorías: LLANTAS, FRENOS, LUCES, ESPEJOS, CONDICIONES TECNICAS, APOYA CABEZA, CINTURONES DE SEGURIDAD, PLUMILLAS, PITO, LOGO, CARPA Y CABINA, PORTA ESCALERA, EQUIPO DE CARRETERA, EXTINTOR, DOCUMENTACION, ULTIMA FECHA DE MANTENIMIENTO, ALMACENAMIENTO Y TRANSPORTE
+- 26 ítems marcados como críticos; si alguno es NO_CONFORME → estado BLOQUEADA
+- Fuente del checklist: `src/lib/preoperacional.ts`
 - Requiere tener un vehículo asignado para acceder
 - No ve despachos, inventario ni nada más
 

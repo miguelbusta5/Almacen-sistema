@@ -6,6 +6,25 @@ Registro cronológico de decisiones importantes. Una entrada por decisión, con 
 
 ---
 
+## 2026-06-11 — Rechazo de solicitudes de despacho por transporte
+
+**Decision:**
+- Se agrega el estado `RECHAZADO` al enum `EstadoDespacho` con flujo bidireccional: `CREADO_TIENDA → RECHAZADO → CREADO_TIENDA`.
+- Solo SUPERVISOR_TRANSPORTE, GERENTE y ADMIN pueden rechazar; requieren motivo (mín. 5 chars).
+- Al rechazar: notificación automática al creador del despacho.
+- TIENDA/SUPERVISOR_TIENDA ven un "cajón" visual prominente con los rechazados y el motivo; pueden re-enviar con un clic.
+- Se eligió nuevo estado `RECHAZADO` (en vez de reutilizar `CON_NOVEDAD`) porque CON_NOVEDAD es terminal y semánticamente diferente.
+
+**Contexto:**
+- El área de transporte necesitaba poder devolver despachos con datos incorrectos (PLUs erróneos, documentos incompletos) sin rechazar el flujo completo ni acumular novedades operativas.
+
+**Consecuencias:**
+- Nuevos campos en `DespachoTienda`: `motivoRechazo String?`, `rechazadoAt DateTime?`
+- Se limpian al re-enviar (RECHAZADO → CREADO_TIENDA)
+- `src/lib/tiendaFlow.ts`, `src/lib/tienda.ts`, `src/app/api/tienda/[id]/route.ts`, `src/app/(dashboard)/dashboard/tienda/page.tsx`
+
+---
+
 ## 2026-06-11 - Identidad visual Torre CEDI y tema modular
 
 **Decision:**

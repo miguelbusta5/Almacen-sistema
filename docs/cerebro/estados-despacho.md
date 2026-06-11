@@ -11,10 +11,16 @@ Enum `EstadoDespacho` en `prisma/schema.prisma`:
 | Valor | Descripcion | Quien lo asigna |
 |---|---|---|
 | `CREADO_TIENDA` | Despacho registrado por tienda | TIENDA, SUPERVISOR_TIENDA |
+| `RECHAZADO` | Transporte rechaza — espera correccion por tienda | SUPERVISOR_TRANSPORTE, GERENTE, ADMIN |
 | `RECOGIDO_TIENDA` | Supervisor transporte recogio en tienda | SUPERVISOR_TRANSPORTE |
 | `ENTREGADO_CEDI` | Mercancia llego al CEDI | SUPERVISOR_TRANSPORTE |
 | `ENVIADO_CLIENTE` | Despacho enviado al cliente final | SUPERVISOR_TRANSPORTE |
 | `CON_NOVEDAD` | Incidencia en cualquier etapa | SUPERVISOR_TRANSPORTE |
+
+### Campos adicionales en RECHAZADO
+
+- `motivoRechazo: String?` — texto obligatorio (mín. 5 chars) al rechazar; se limpia al re-enviar
+- `rechazadoAt: DateTime?` — timestamp del rechazo; se limpia al re-enviar
 
 **Archivo fuente:** `prisma/schema.prisma`
 **Labels y colores en codigo:** `src/lib/tienda.ts` -> `ESTADO_DESPACHO_LABEL` / `ESTADO_DESPACHO_COLOR`
@@ -25,8 +31,10 @@ Enum `EstadoDespacho` en `prisma/schema.prisma`:
 
 ```text
 CREADO_TIENDA -> RECOGIDO_TIENDA -> ENTREGADO_CEDI -> ENVIADO_CLIENTE
-       \                 \                 \                 \
-        \-----------------\-----------------\-----------------> CON_NOVEDAD
+       |               \                 \                 \
+       |                \-----------------\-----------------> CON_NOVEDAD
+       |
+       +--> RECHAZADO --> CREADO_TIENDA  (ciclo de correccion)
 ```
 
 Las transiciones validas estan definidas en `src/lib/tiendaFlow.ts`.

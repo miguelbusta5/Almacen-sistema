@@ -10,6 +10,7 @@
 
 - [ ] Verificar en produccion que el sidebar no muestra Logistica, Rutas, GPS ni Mi Ruta
 - [ ] Smoke test de flujo Tienda: CREADO_TIENDA -> RECOGIDO_TIENDA -> ENTREGADO_CEDI -> ENVIADO_CLIENTE
+- [ ] Smoke test de rechazo: SUPERVISOR_TRANSPORTE rechaza → TIENDA ve cajón → re-envía → vuelve a CREADO_TIENDA
 - [ ] Smoke test de pendientes por guardar para operario `TRANSPORTE`
 
 ### Permisos y roles
@@ -28,6 +29,8 @@
 - [ ] Fase 3 UI: convertir Dashboard en Torre CEDI con prioridades por rol y flujo operativo
 - [ ] Fase 4 UI: pulir Usuarios, Tienda, Conteo y Preoperacional con estados vacios/carga/error consistentes
 - [ ] QA visual desktop/mobile de Login, Dashboard, Usuarios, Tienda, Conteo y Preoperacional
+- [x] Vista de detalle de inspecciones preoperacionales en la app (SlidePanel con checklist) — 2026-06-10
+- [x] Checklist preoperacional completo con 58 ítems reales en 15 categorías — 2026-06-10
 
 ### Mejoras tecnicas
 
@@ -49,6 +52,7 @@
 - [x] Retirar estados obsoletos de la planificacion de Tienda (`ENTREGADO`, `GUARDADO`, `PENDIENTE_GUARDAR`) - 2026-06-11
 - [x] Reemplazar `xlsx` por `exceljs` y endurecer uploads/importadores - 2026-06-11
 - [x] Fase 1 UI: identidad Torre CEDI, tema modular y colores consistentes por modulo - 2026-06-11
+- [x] Rechazar solicitud de despacho con motivo, cajón de rechazados para TIENDA, re-envío — 2026-06-11
 
 ---
 

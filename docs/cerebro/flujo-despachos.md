@@ -13,7 +13,17 @@
 │   Agrega: cliente, documento, dirección, nota de entrega, PLUs  │
 └───────────────────────┬─────────────────────────────────────────┘
                         │
-                        ▼
+                        │◄──────────────────────────────────────┐
+                        │    re-envío (RECHAZADO → CREADO_TIENDA)│
+                        ▼                                        │
+┌─────────────────────────────────────────────────────────────────┐
+│ SUPERVISOR_TRANSPORTE / GERENTE / ADMIN                          │
+│   Puede rechazar → estado: RECHAZADO                            │
+│   Debe indicar motivo (mínimo 5 chars)                          │
+│   → Notificación al creador; cajón visual en UI de tienda       │
+└─────────────────────────────────────────────────────────────────┘
+
+Si no rechaza, recoge la mercancía:
 ┌─────────────────────────────────────────────────────────────────┐
 │ SUPERVISOR_TRANSPORTE                                            │
 │   Recoge en tienda → estado: RECOGIDO_TIENDA                    │
@@ -33,7 +43,7 @@
 │   Enviado al cliente → estado: ENVIADO_CLIENTE                  │
 └─────────────────────────────────────────────────────────────────┘
 
-En cualquier etapa:
+En cualquier etapa activa (CREADO → RECOGIDO → ENTREGADO):
   └─► CON_NOVEDAD — incidencia registrada, requiere revisión
 ```
 
