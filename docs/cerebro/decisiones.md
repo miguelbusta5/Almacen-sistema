@@ -6,6 +6,27 @@ Registro cronológico de decisiones importantes. Una entrada por decisión, con 
 
 ---
 
+## 2026-06-12 - Fase 2 UI: shell operativo y command palette por rol
+
+**Decision:**
+- El shell principal ahora expone contexto de rol y alcance visible en el header.
+- El sidebar mantiene `canSeeModule` como filtro único de navegación y mejora la señal visual del módulo activo.
+- La command palette funciona como centro de mando por rol: acciones y navegación solo aparecen si el usuario puede ver el módulo.
+- La búsqueda viva de la command palette no consulta APIs de módulos no visibles para el rol actual.
+
+**Contexto:**
+- Después de Fase 1, la identidad modular ya existía, pero el shell seguía sintiéndose genérico.
+- Fase 2 buscaba mejorar navegación, command palette y microcopy sin rediseñar dashboards completos ni tocar reglas de negocio.
+
+**Consecuencias:**
+- La Fase 3 puede enfocarse en Dashboard/Torre CEDI usando el shell ya estabilizado.
+- No se reactivan Logística, GPS, rutas ni Mi Ruta.
+- No hay cambios de schema, APIs ni permisos server-side.
+
+**Archivos afectados:** `src/components/common/Header.tsx`, `src/components/common/Sidebar.tsx`, `src/components/ui/CommandPalette.tsx`, `docs/cerebro/ux-ui.md`, `docs/cerebro/pendientes.md`
+
+---
+
 ## 2026-06-11 - Cierre Fase 1 UI post-Claude
 
 **Decision:**

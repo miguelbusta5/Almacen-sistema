@@ -9,14 +9,14 @@ import { useSession } from "next-auth/react";
 import {
   Search, Home, Package, Truck, ClipboardList,
   Users, ScrollText, Plus, ArrowRight, X,
-  BarChart3, FileText, Store, ShieldCheck,
+  BarChart3, FileText, Store, ShieldCheck, GitMerge, CheckSquare,
 } from "lucide-react";
 import { useCommandPalette } from "@/contexts/CommandPaletteContext";
 import { canSeeModule } from "@/lib/modulePermissions";
 import { getModuleColor } from "@/lib/moduleTheme";
 
 // ── Tipos ─────────────────────────────────────────────────
-type ResultGroup = "actions" | "navigate" | "muebles" | "transporte";
+type ResultGroup = "actions" | "navigate" | "muebles" | "transporte" | "tienda" | "integracion" | "preoperacional" | "admin";
 
 interface PaletteResult {
   id: string;
@@ -30,12 +30,16 @@ interface PaletteResult {
 
 const GROUP_LABEL: Record<ResultGroup, string> = {
   actions:    "Centro de mando",
-  navigate:   "Navegación CEDI",
+  navigate:   "Navegación",
   muebles:    "Novedades Inventario",
   transporte: "Guardados Transporte",
+  tienda:     "Despachos Tienda",
+  integracion:"Integración Pedidos",
+  preoperacional: "Preoperacional",
+  admin:      "Administración",
 };
 
-const GROUP_ORDER: ResultGroup[] = ["actions", "navigate", "muebles", "transporte"];
+const GROUP_ORDER: ResultGroup[] = ["actions", "navigate", "tienda", "muebles", "transporte", "integracion", "preoperacional", "admin"];
 
 // ── Búsqueda debounced ────────────────────────────────────
 function useDebounce<T>(value: T, delay = 300): T {
@@ -91,14 +95,20 @@ export default function CommandPalette() {
       ...(see("transporte") ? [{ id: "a-guardado", group: "actions" as ResultGroup, icon: <Plus size={14} />, label: "Nuevo guardado en transporte",  description: "Registrar pedido en custodia",          color: getModuleColor("transporte"), action: () => go("/dashboard/transporte") }] : []),
       ...(see("tienda")     ? [{ id: "a-despacho", group: "actions" as ResultGroup, icon: <Store size={14} />, label: "Nuevo despacho de tienda", description: "Registrar despacho para flujo de transporte", color: getModuleColor("tienda"), action: () => go("/dashboard/tienda") }] : []),
       ...(see("preoperacional") ? [{ id: "a-preop", group: "actions" as ResultGroup, icon: <ShieldCheck size={14} />, label: "Registrar preoperacional", description: "Inspección diaria del vehículo", color: getModuleColor("preoperacional"), action: () => go("/dashboard/preoperacional") }] : []),
+      ...(see("integracion") ? [{ id: "a-integracion", group: "actions" as ResultGroup, icon: <GitMerge size={14} />, label: "Nueva integración de pedido", description: "Coordinar OVDM/TSDM entre áreas", color: getModuleColor("integracion"), action: () => go("/dashboard/integracion") }] : []),
+      ...(see("mis-tareas") ? [{ id: "a-tareas", group: "actions" as ResultGroup, icon: <CheckSquare size={14} />, label: "Revisar mis tareas", description: "Abrir pendientes del día", color: getModuleColor("mis-tareas"), action: () => go("/dashboard/mis-tareas") }] : []),
+      ...(see("centro-control") ? [{ id: "a-control", group: "actions" as ResultGroup, icon: <BarChart3 size={14} />, label: "Abrir centro de control", description: "KPIs y señales operativas", color: getModuleColor("centro-control"), action: () => go("/dashboard/centro-control") }] : []),
+      ...(see("usuarios") ? [{ id: "a-usuarios", group: "admin" as ResultGroup, icon: <Users size={14} />, label: "Gestionar usuarios", description: "Roles, vehículos y transportistas", color: getModuleColor("usuarios"), action: () => go("/dashboard/usuarios") }] : []),
     ];
 
     const navigate: PaletteResult[] = [
       { id: "n-inicio", group: "navigate", icon: <Home size={14} />, label: "Inicio", action: () => go("/dashboard") },
+      ...(see("mis-tareas")    ? [{ id: "n-tareas",      group: "navigate" as ResultGroup, icon: <CheckSquare size={14} />,    label: "Mis tareas",              action: () => go("/dashboard/mis-tareas") }] : []),
       ...(see("inventario")    ? [{ id: "n-inventario",  group: "navigate" as ResultGroup, icon: <Package size={14} />,       label: "Novedades Inventario",    action: () => go("/dashboard/inventario") }] : []),
       ...(see("tienda")        ? [{ id: "n-tienda",      group: "navigate" as ResultGroup, icon: <Store size={14} />,          label: "Despachos Tienda",        action: () => go("/dashboard/tienda") }] : []),
       ...(see("transporte")    ? [{ id: "n-transporte",  group: "navigate" as ResultGroup, icon: <Truck size={14} />,          label: "Guardados Transporte",    action: () => go("/dashboard/transporte") }] : []),
       ...(see("preoperacional")? [{ id: "n-preop",       group: "navigate" as ResultGroup, icon: <ShieldCheck size={14} />,    label: "Preoperacional",          action: () => go("/dashboard/preoperacional") }] : []),
+      ...(see("integracion")   ? [{ id: "n-integracion", group: "navigate" as ResultGroup, icon: <GitMerge size={14} />,       label: "Integración Pedidos",     action: () => go("/dashboard/integracion") }] : []),
       ...(see("conteo-contar") ? [{ id: "n-contar",      group: "navigate" as ResultGroup, icon: <ClipboardList size={14} />,  label: "Conteo",                  action: () => go("/dashboard/conteo/contar") }] : []),
       ...(see("conteo")        ? [{ id: "n-conteo",      group: "navigate" as ResultGroup, icon: <BarChart3 size={14} />,      label: "Gestión de Conteo",       action: () => go("/dashboard/conteo") }] : []),
       ...(see("centro-control")? [{ id: "n-control",     group: "navigate" as ResultGroup, icon: <BarChart3 size={14} />,      label: "Centro de Control",       action: () => go("/dashboard/centro-control") }] : []),
@@ -112,19 +122,22 @@ export default function CommandPalette() {
   // Búsqueda en vivo (debounced)
   useEffect(() => {
     if (debouncedQuery.length < 2) { setLiveResults([]); return; }
+    const canSearchInventario = canSeeModule(role, "inventario");
+    const canSearchTransporte = canSeeModule(role, "transporte");
+    if (!canSearchInventario && !canSearchTransporte) { setLiveResults([]); return; }
     let cancelled = false;
     setSearching(true);
     (async () => {
       try {
         const [nRes, gRes] = await Promise.all([
-          fetch(`/api/novedades?q=${encodeURIComponent(debouncedQuery)}&pageSize=5`),
-          fetch(`/api/transporte?q=${encodeURIComponent(debouncedQuery)}&pageSize=5`),
+          canSearchInventario ? fetch(`/api/novedades?q=${encodeURIComponent(debouncedQuery)}&pageSize=5`) : Promise.resolve(null),
+          canSearchTransporte ? fetch(`/api/transporte?q=${encodeURIComponent(debouncedQuery)}&pageSize=5`) : Promise.resolve(null),
         ]);
         if (cancelled) return;
-        const [nJ, gJ] = await Promise.all([nRes.json(), gRes.json()]);
+        const [nJ, gJ] = await Promise.all([nRes?.json() ?? null, gRes?.json() ?? null]);
         const results: PaletteResult[] = [];
 
-        if (nJ.success) {
+        if (nJ?.success) {
           for (const n of nJ.data ?? []) {
             results.push({
               id: `nov-${n.id}`,
@@ -137,7 +150,7 @@ export default function CommandPalette() {
             });
           }
         }
-        if (gJ.success) {
+        if (gJ?.success) {
           for (const g of gJ.data ?? []) {
             results.push({
               id: `gua-${g.clientId}`,
@@ -156,7 +169,7 @@ export default function CommandPalette() {
       }
     })();
     return () => { cancelled = true; };
-  }, [debouncedQuery, go]);
+  }, [debouncedQuery, go, role]);
 
   // Resultados combinados y filtrados
   const allResults = useMemo((): PaletteResult[] => {

@@ -1,16 +1,17 @@
 "use client";
 
 import { signOut } from "next-auth/react";
-import { LogOut, ChevronDown, Search, Bell } from "lucide-react";
+import { LogOut, ChevronDown, Search, Bell, Activity } from "lucide-react";
 import ThemeToggle from "./ThemeToggle";
 import Logo from "./Logo";
 import { useIsMobile } from "@/lib/useIsMobile";
 import { useEffect, useState } from "react";
 import { useCommandPalette } from "@/contexts/CommandPaletteContext";
 import Link from "next/link";
+import { getVisibleModules, ROLE_LABEL_EXT, type AppRole } from "@/lib/modulePermissions";
 
 interface HeaderProps {
-  user?: { name?: string | null; email?: string | null };
+  user?: { name?: string | null; email?: string | null; role?: string | null };
 }
 
 function UserInitials({ name }: { name: string }) {
@@ -35,6 +36,12 @@ export default function Header({ user }: HeaderProps) {
   const isMobile = useIsMobile();
   const [menuOpen, setMenuOpen] = useState(false);
   const userName = user?.name ?? "Usuario";
+  const role = user?.role ?? undefined;
+  const roleLabel = role ? (ROLE_LABEL_EXT[role as AppRole] ?? role) : "Sin rol";
+  const visibleModules = getVisibleModules(role);
+  const scopeLabel = visibleModules.length <= 2
+    ? visibleModules.map((m) => m.replace("-", " ")).join(" · ") || "Operación"
+    : `${visibleModules.length} módulos`;
   const { open: openPalette } = useCommandPalette();
   const [notifCount, setNotifCount] = useState(0);
 
@@ -69,11 +76,16 @@ export default function Header({ user }: HeaderProps) {
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
           <span style={{ width: 6, height: 6, borderRadius: "50%", background: "var(--brand)", boxShadow: "0 0 0 3px var(--brand-tint)" }} />
           <div>
-            <div style={{ fontSize: 11, color: "var(--muted2)", fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", lineHeight: 1 }}>
-              Torre CEDI
+            <div style={{ display: "flex", alignItems: "center", gap: 8, lineHeight: 1 }}>
+              <span style={{ fontSize: 11, color: "var(--muted2)", fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase" }}>
+                Torre CEDI
+              </span>
+              <span style={{ display: "inline-flex", alignItems: "center", gap: 4, padding: "2px 6px", borderRadius: 999, background: "var(--surface2)", border: "1px solid var(--border)", color: "var(--muted)", fontSize: 10, fontWeight: 700 }}>
+                <Activity size={10} />{roleLabel}
+              </span>
             </div>
             <div style={{ fontSize: 12, color: "var(--muted)", letterSpacing: "-0.01em", marginTop: 3 }}>
-              {new Date().toLocaleDateString("es-CO", { weekday: "long", year: "numeric", month: "long", day: "numeric" })}
+              {new Date().toLocaleDateString("es-CO", { weekday: "long", year: "numeric", month: "long", day: "numeric" })} · {scopeLabel}
             </div>
           </div>
         </div>
@@ -101,7 +113,7 @@ export default function Header({ user }: HeaderProps) {
             onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = "var(--surface2)"; (e.currentTarget as HTMLElement).style.borderColor = "var(--border)"; }}
           >
             <Search size={12} />
-            <span>Buscar…</span>
+            <span>Comando CEDI</span>
             <kbd style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 4, padding: "1px 5px", fontSize: 10, fontFamily: "var(--mono)", color: "var(--faint)" }}>Ctrl K</kbd>
           </button>
         )}

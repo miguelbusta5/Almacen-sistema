@@ -77,6 +77,20 @@ Revisión aplicada antes de pasar a Fase 2:
 
 ---
 
+## Fase 2 Shell y Command Palette
+
+Aplicada el 2026-06-12:
+
+- `Header` muestra contexto operativo del rol y alcance visible sin cambiar permisos.
+- `Sidebar` sube a `v2.3`, mejora estados activos con el color del módulo y conserva el filtrado por `canSeeModule`.
+- `CommandPalette` agrega acciones por rol para Integración, Mis tareas, Centro de control y Usuarios.
+- La búsqueda viva de la paleta solo consulta APIs de módulos visibles para el rol actual. No debe llamar Inventario o Transporte si el rol no ve esos módulos.
+- La paleta y la navegación siguen ocultando Logística, GPS, rutas y Mi Ruta.
+
+Regla para Fase 3: el Dashboard puede volverse Torre CEDI por rol, pero debe consumir estos mismos permisos y temas; no duplicar matrices de visibilidad dentro de la página.
+
+---
+
 ## Componentes del design system
 
 Importados desde `@/components/ui`:

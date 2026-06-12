@@ -91,4 +91,5 @@ Solo para conductores (TRANSPORTISTA):
 
 - Claves de módulos: `src/lib/modulePermissions.ts` → tipo `ModuleKey`
 - Navegación: `src/components/common/Sidebar.tsx` → array `ALL_ITEMS`
+- Command palette: `src/components/ui/CommandPalette.tsx` → acciones y búsqueda filtradas por `canSeeModule`
 - Acciones rápidas del home: `src/config/homeActions.ts`

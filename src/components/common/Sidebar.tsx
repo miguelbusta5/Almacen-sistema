@@ -83,9 +83,10 @@ const SECTIONS = [
   },
 ];
 
-const W = 204;
+const W = 220;
 const SIDE_BG = "#08111F";
 const SIDE_BORDER = "rgba(255,255,255,0.05)";
+const SIDE_PANEL = "rgba(255,255,255,0.045)";
 
 export default function Sidebar({ role }: SidebarProps) {
   const path = usePathname();
@@ -107,14 +108,15 @@ export default function Sidebar({ role }: SidebarProps) {
     const active = isActive(item.href);
     const theme = getModuleTheme(item.moduleKey ?? "home");
     return (
-      <Link href={item.href} onClick={onNav} style={{ textDecoration: "none", display: "block", padding: "1px 8px" }}>
+      <Link href={item.href} onClick={onNav} title={theme.description} style={{ textDecoration: "none", display: "block", padding: "1px 8px" }}>
         <div
           style={{
             display: "flex", alignItems: "center", gap: 9,
-            padding: "6px 10px", borderRadius: 8,
+            padding: "7px 10px", borderRadius: 8,
             fontSize: 13, fontWeight: active ? 500 : 400,
             color: active ? "#FFFFFF" : "rgba(255,255,255,0.45)",
-            background: active ? "rgba(255,255,255,0.09)" : "transparent",
+            background: active ? "rgba(255,255,255,0.10)" : "transparent",
+            boxShadow: active ? `inset 0 0 0 1px ${theme.color}33` : "none",
             transition: "all .12s ease", position: "relative",
           }}
           onMouseEnter={(e) => { if (!active) { (e.currentTarget as HTMLElement).style.background = "rgba(255,255,255,0.05)"; (e.currentTarget as HTMLElement).style.color = "rgba(255,255,255,0.75)"; } }}
@@ -124,7 +126,10 @@ export default function Sidebar({ role }: SidebarProps) {
           <span style={{ color: active ? theme.color : "rgba(255,255,255,0.30)", display: "flex", flexShrink: 0 }}>
             {item.icon}
           </span>
-          {item.label}
+          <span style={{ flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{item.label}</span>
+          {active && item.moduleKey && (
+            <span style={{ width: 5, height: 5, borderRadius: "50%", background: theme.color, boxShadow: `0 0 0 3px ${theme.color}22`, flexShrink: 0 }} />
+          )}
         </div>
       </Link>
     );
@@ -155,12 +160,15 @@ export default function Sidebar({ role }: SidebarProps) {
         })}
       </nav>
 
-      <div style={{ padding: "12px 16px", borderTop: `1px solid ${SIDE_BORDER}` }}>
-        <div style={{ fontSize: 11, color: "rgba(255,255,255,0.34)", fontFamily: "var(--mono)", marginBottom: 2 }}>
-          v2.2 · Torre CEDI
-        </div>
-        <div style={{ fontSize: 10, color: "rgba(255,255,255,0.18)", fontFamily: "var(--mono)" }}>
-          Grupo Ambiente
+      <div style={{ padding: "12px 14px", borderTop: `1px solid ${SIDE_BORDER}` }}>
+        <div style={{ borderRadius: 8, background: SIDE_PANEL, border: `1px solid ${SIDE_BORDER}`, padding: "9px 10px" }}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, marginBottom: 3 }}>
+            <span style={{ fontSize: 11, color: "rgba(255,255,255,0.58)", fontFamily: "var(--mono)" }}>v2.3</span>
+            <span style={{ width: 7, height: 7, borderRadius: "50%", background: "#22C55E", boxShadow: "0 0 0 3px rgba(34,197,94,0.14)" }} />
+          </div>
+          <div style={{ fontSize: 10, color: "rgba(255,255,255,0.24)", fontFamily: "var(--mono)" }}>
+            Grupo Ambiente CEDI
+          </div>
         </div>
       </div>
     </>
