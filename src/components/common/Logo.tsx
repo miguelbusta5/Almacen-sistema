@@ -1,3 +1,5 @@
+import { PRODUCT } from "@/config/product";
+
 // Logotipo Grupo Ambiente. El archivo /logo.png es un wordmark negro (356x131)
 // sobre transparente. En fondos oscuros se invierte a blanco vía CSS.
 //   variant="dark"  → siempre blanco (fondos oscuros fijos: sidebar, panel login)
@@ -23,7 +25,7 @@ export default function Logo({ variant = "auto", height = 26, tagline = false }:
       <div style={{ display: "flex", flexDirection: "column", gap: 4, lineHeight: 1 }}>
         {tagline && (
           <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: ".2em", textTransform: "uppercase", color: variant === "dark" ? "#8aa0c6" : "var(--muted)" }}>
-            Torre CEDI
+            {PRODUCT.shortName}
           </span>
         )}
         {/* eslint-disable-next-line @next/next/no-img-element */}

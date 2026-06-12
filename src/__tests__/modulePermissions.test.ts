@@ -12,6 +12,7 @@ describe("canSeeModule — Sprint 8", () => {
     it("NO ve usuarios",    () => expect(canSeeModule("TRANSPORTISTA", "usuarios")).toBe(false));
     it("NO ve auditoria",   () => expect(canSeeModule("TRANSPORTISTA", "auditoria")).toBe(false));
     it("NO ve centro-control", () => expect(canSeeModule("TRANSPORTISTA", "centro-control")).toBe(false));
+    it("NO ve solicitudes-transporte", () => expect(canSeeModule("TRANSPORTISTA", "solicitudes-transporte")).toBe(false));
     it("solo tiene acceso a 1 módulo", () =>
       expect(getVisibleModules("TRANSPORTISTA")).toEqual(["preoperacional"])
     );
@@ -25,12 +26,14 @@ describe("canSeeModule — Sprint 8", () => {
     it("ve usuarios",        () => expect(canSeeModule("ADMIN", "usuarios")).toBe(true));
     it("ve auditoria",       () => expect(canSeeModule("ADMIN", "auditoria")).toBe(true));
     it("ve centro-control",  () => expect(canSeeModule("ADMIN", "centro-control")).toBe(true));
+    it("ve solicitudes-transporte", () => expect(canSeeModule("ADMIN", "solicitudes-transporte")).toBe(true));
     it("ve preoperacional (vista supervisor)", () => expect(canSeeModule("ADMIN", "preoperacional")).toBe(true));
   });
 
   // ── TIENDA: solo su módulo ───────────────────────────
   describe("TIENDA", () => {
     it("ve tienda",         () => expect(canSeeModule("TIENDA", "tienda")).toBe(true));
+    it("ve solicitudes-transporte", () => expect(canSeeModule("TIENDA", "solicitudes-transporte")).toBe(true));
     it("NO ve inventario",  () => expect(canSeeModule("TIENDA", "inventario")).toBe(false));
     it("NO ve transporte",  () => expect(canSeeModule("TIENDA", "transporte")).toBe(false));
     it("NO ve usuarios",    () => expect(canSeeModule("TIENDA", "usuarios")).toBe(false));
@@ -79,6 +82,10 @@ describe("canSeeModule — Sprint 8", () => {
 
   it.each(["TIENDA", "SUPERVISOR_TIENDA", "INVENTARIO", "SUPERVISOR_INVENTARIO", "TRANSPORTISTA", "OPERADOR"] as const)(
     "%s NO ve integracion", (role) => expect(canSeeModule(role, "integracion")).toBe(false)
+  );
+
+  it.each(["ADMIN", "GERENTE", "OPERADOR", "INVENTARIO", "TRANSPORTE", "SUPERVISOR_INVENTARIO", "SUPERVISOR_TRANSPORTE", "TIENDA", "SUPERVISOR_TIENDA", "OPERACIONES_MUEBLES", "OPERACIONES_GOURMET"] as const)(
+    "%s ve solicitudes-transporte", (role) => expect(canSeeModule(role, "solicitudes-transporte")).toBe(true)
   );
 
   // ── Guardias de edge cases ────────────────────────────

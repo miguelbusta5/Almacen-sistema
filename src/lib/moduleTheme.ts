@@ -1,4 +1,5 @@
 import type { ModuleKey } from "@/lib/modulePermissions";
+import { PRODUCT } from "@/config/product";
 
 export type ModuleThemeKey = ModuleKey | "home";
 
@@ -14,9 +15,9 @@ export interface ModuleTheme {
 export const MODULE_THEME: Record<ModuleThemeKey, ModuleTheme> = {
   home: {
     key: "home",
-    label: "Torre CEDI",
-    shortLabel: "CEDI",
-    description: "Centro operativo Grupo Ambiente",
+    label: PRODUCT.displayName,
+    shortLabel: PRODUCT.shortName,
+    description: PRODUCT.tagline,
     color: "#2563EB",
     tint: "rgba(37,99,235,0.12)",
   },
@@ -67,6 +68,14 @@ export const MODULE_THEME: Record<ModuleThemeKey, ModuleTheme> = {
     description: "Despachos desde tienda hacia el flujo CEDI",
     color: "#D97706",
     tint: "rgba(217,119,6,0.14)",
+  },
+  "solicitudes-transporte": {
+    key: "solicitudes-transporte",
+    label: "Solicitudes Transporte",
+    shortLabel: "Solicitudes",
+    description: "Solicitudes internas que gestiona el lider de transporte",
+    color: "#0E7490",
+    tint: "rgba(14,116,144,0.12)",
   },
   "mis-tareas": {
     key: "mis-tareas",

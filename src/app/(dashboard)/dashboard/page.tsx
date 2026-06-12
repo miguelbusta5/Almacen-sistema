@@ -6,7 +6,7 @@ import { useSession } from "next-auth/react";
 import {
   Package, Truck, ClipboardList, ArrowRight, AlertTriangle,
   Clock, Plus, CheckCircle2,
-  CheckSquare, Store, BarChart2, Users, History, ShieldCheck, GitMerge,
+  CheckSquare, Store, BarChart2, Users, History, ShieldCheck, GitMerge, FileText,
 } from "lucide-react";
 import { Badge, Stat, TimelineItem, SectionHeader, SkeletonStat as SK } from "@/components/ui";
 import { IntelBanner } from "@/components/ui/SlidePanel";
@@ -17,6 +17,15 @@ import type { Guardado } from "@/lib/transporte";
 import { getHomeActionsByRole, type HomeAction } from "@/config/homeActions";
 import { useIsMobile } from "@/lib/useIsMobile";
 import { getModuleColor, getModuleTheme } from "@/lib/moduleTheme";
+import { PRODUCT } from "@/config/product";
+import type { ControlLogisticoResumen } from "@/lib/controlLogistico/types";
+import {
+  ControlHero,
+  ModuleSignalGrid,
+  PriorityPanel,
+  RecommendedActions,
+  controlStatusColor,
+} from "@/components/control-logistico";
 
 // ── Helpers ──────────────────────────────────────────────
 function timeAgo(iso: string) {
@@ -142,6 +151,7 @@ const ICON_MAP: Record<string, React.ReactNode> = {
   History:      <History size={18} />,
   GitMerge:     <GitMerge size={18} />,
   ShieldCheck:  <ShieldCheck size={18} />,
+  FileText:     <FileText size={18} />,
 };
 
 // ── Botón de acción rápida ────────────────────────────────
@@ -336,7 +346,7 @@ function AdminDashboard({ nombre }: { nombre: string }) {
       <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1fr 320px", gap: 28, alignItems: "start" }}>
         {/* Módulos */}
         <div>
-          <SectionHeader title="Torre CEDI" />
+          <SectionHeader title={PRODUCT.displayName} />
           <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr", gap: 14 }}>
             <ModuleCard href="/dashboard/inventario" icon={<Package size={17} />} label={getModuleTheme("inventario").label} color={getModuleColor("inventario")} value={stats?.novedades.total} sub={`${stats?.novedades.pendientes ?? 0} sin resolver`} alert={(stats?.novedades.pendientes ?? 0) > 0} />
             <ModuleCard href="/dashboard/tienda" icon={<Store size={17} />} label={getModuleTheme("tienda").label} color={getModuleColor("tienda")} value={tiendaDespachos.length} sub={`${tiendaRechazados.length} rechazados`} alert={tiendaRechazados.length > 0 || tiendaNovedad.length > 0} />
@@ -706,11 +716,62 @@ function TransportistaDashboard({ nombre }: { nombre: string }) {
 // ════════════════════════════════════════════════════════════
 // ROUTER POR ROL — página raíz del dashboard
 // ════════════════════════════════════════════════════════════
+function ControlLogisticoDashboard({ nombre }: { nombre: string }) {
+  const isMobile = useIsMobile();
+  const [data, setData] = useState<ControlLogisticoResumen | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let active = true;
+    fetch("/api/control-logistico/resumen")
+      .then((res) => res.json())
+      .then((json) => { if (active && json.success) setData(json); })
+      .catch(() => {})
+      .finally(() => { if (active) setLoading(false); });
+    return () => { active = false; };
+  }, []);
+
+  if (loading || !data) {
+    return (
+      <div className="animate-fade-in" style={{ maxWidth: 1180 }}>
+        <div className="skeleton" style={{ height: 176, borderRadius: 14, marginBottom: 18 }} />
+        <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1.2fr .8fr", gap: 16 }}>
+          <div className="skeleton" style={{ height: 260, borderRadius: 14 }} />
+          <div className="skeleton" style={{ height: 260, borderRadius: 14 }} />
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="animate-fade-in control-dashboard" style={{ maxWidth: 1180 }}>
+      <ControlHero nombre={nombre} resumen={data} isMobile={isMobile} />
+
+      <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1.15fr .85fr", gap: 18, alignItems: "start" }}>
+        <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
+          <section className="ds-card" style={{ padding: isMobile ? 16 : 18 }}>
+            <SectionHeader title="Flujo logistico CEDI" />
+            <OperationFlow stages={data.flow.map((stage) => ({ ...stage, color: controlStatusColor(stage.status) }))} isMobile={isMobile} />
+          </section>
+
+          <ModuleSignalGrid modules={data.modules} isMobile={isMobile} />
+        </div>
+
+        <aside style={{ display: "flex", flexDirection: "column", gap: 18 }}>
+          <PriorityPanel priorities={data.priorities} isMobile={isMobile} />
+          <RecommendedActions actions={data.actions} isMobile={isMobile} />
+        </aside>
+      </div>
+    </div>
+  );
+}
+
 export default function DashboardPage() {
   const isMobile = useIsMobile();
   const { data: session } = useSession();
   const role = (session?.user as { role?: string } | undefined)?.role;
   const nombre = (session?.user?.name || "").split(" ")[0] || "";
+  if (session) return <ControlLogisticoDashboard nombre={nombre} />;
 
   // Mientras carga la sesión
   if (!session) {

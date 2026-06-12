@@ -29,6 +29,7 @@ export type ModuleKey =
   | "conteo"
   | "conteo-contar"
   | "tienda"
+  | "solicitudes-transporte"
   | "mis-tareas"
   | "usuarios"
   | "auditoria"
@@ -63,6 +64,12 @@ export const MODULE_ACCESS: Record<ModuleKey, AppRole[]> = {
     "TIENDA", "SUPERVISOR_TIENDA",
     "SUPERVISOR_TRANSPORTE",
     "GERENTE", "ADMIN",
+  ],
+  "solicitudes-transporte": [
+    "ADMIN", "GERENTE", "OPERADOR",
+    "INVENTARIO", "TRANSPORTE", "SUPERVISOR_INVENTARIO", "SUPERVISOR_TRANSPORTE",
+    "TIENDA", "SUPERVISOR_TIENDA",
+    "OPERACIONES_MUEBLES", "OPERACIONES_GOURMET",
   ],
   "usuarios": ["ADMIN"],
   "auditoria": ["ADMIN", "GERENTE"],

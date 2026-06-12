@@ -14,9 +14,10 @@ import {
 import { useCommandPalette } from "@/contexts/CommandPaletteContext";
 import { canSeeModule } from "@/lib/modulePermissions";
 import { getModuleColor } from "@/lib/moduleTheme";
+import { PRODUCT } from "@/config/product";
 
 // ── Tipos ─────────────────────────────────────────────────
-type ResultGroup = "actions" | "navigate" | "muebles" | "transporte" | "tienda" | "integracion" | "preoperacional" | "admin";
+type ResultGroup = "actions" | "navigate" | "muebles" | "transporte" | "solicitudes" | "tienda" | "integracion" | "preoperacional" | "admin";
 
 interface PaletteResult {
   id: string;
@@ -29,17 +30,18 @@ interface PaletteResult {
 }
 
 const GROUP_LABEL: Record<ResultGroup, string> = {
-  actions:    "Centro de mando",
+  actions:    PRODUCT.commandLabel,
   navigate:   "Navegación",
   muebles:    "Novedades Inventario",
   transporte: "Guardados Transporte",
+  solicitudes: "Solicitudes Transporte",
   tienda:     "Despachos Tienda",
   integracion:"Integración Pedidos",
   preoperacional: "Preoperacional",
   admin:      "Administración",
 };
 
-const GROUP_ORDER: ResultGroup[] = ["actions", "navigate", "tienda", "muebles", "transporte", "integracion", "preoperacional", "admin"];
+const GROUP_ORDER: ResultGroup[] = ["actions", "navigate", "solicitudes", "tienda", "muebles", "transporte", "integracion", "preoperacional", "admin"];
 
 // ── Búsqueda debounced ────────────────────────────────────
 function useDebounce<T>(value: T, delay = 300): T {
@@ -93,6 +95,7 @@ export default function CommandPalette() {
     const actions: PaletteResult[] = [
       ...(see("inventario") ? [{ id: "a-novedad",  group: "actions" as ResultGroup, icon: <Plus size={14} />, label: "Nueva novedad de inventario", description: "Registrar diferencia de PLU en el CEDI", color: getModuleColor("inventario"), action: () => go("/dashboard/inventario") }] : []),
       ...(see("transporte") ? [{ id: "a-guardado", group: "actions" as ResultGroup, icon: <Plus size={14} />, label: "Nuevo guardado en transporte",  description: "Registrar pedido en custodia",          color: getModuleColor("transporte"), action: () => go("/dashboard/transporte") }] : []),
+      ...(see("solicitudes-transporte") ? [{ id: "a-solicitud-transporte", group: "actions" as ResultGroup, icon: <FileText size={14} />, label: "Nueva solicitud de transporte", description: "Pedir gestion de transporte interna", color: getModuleColor("solicitudes-transporte"), action: () => go("/dashboard/solicitudes-transporte") }] : []),
       ...(see("tienda")     ? [{ id: "a-despacho", group: "actions" as ResultGroup, icon: <Store size={14} />, label: "Nuevo despacho de tienda", description: "Registrar despacho para flujo de transporte", color: getModuleColor("tienda"), action: () => go("/dashboard/tienda") }] : []),
       ...(see("preoperacional") ? [{ id: "a-preop", group: "actions" as ResultGroup, icon: <ShieldCheck size={14} />, label: "Registrar preoperacional", description: "Inspección diaria del vehículo", color: getModuleColor("preoperacional"), action: () => go("/dashboard/preoperacional") }] : []),
       ...(see("integracion") ? [{ id: "a-integracion", group: "actions" as ResultGroup, icon: <GitMerge size={14} />, label: "Nueva integración de pedido", description: "Coordinar OVDM/TSDM entre áreas", color: getModuleColor("integracion"), action: () => go("/dashboard/integracion") }] : []),
@@ -106,6 +109,7 @@ export default function CommandPalette() {
       ...(see("mis-tareas")    ? [{ id: "n-tareas",      group: "navigate" as ResultGroup, icon: <CheckSquare size={14} />,    label: "Mis tareas",              action: () => go("/dashboard/mis-tareas") }] : []),
       ...(see("inventario")    ? [{ id: "n-inventario",  group: "navigate" as ResultGroup, icon: <Package size={14} />,       label: "Novedades Inventario",    action: () => go("/dashboard/inventario") }] : []),
       ...(see("tienda")        ? [{ id: "n-tienda",      group: "navigate" as ResultGroup, icon: <Store size={14} />,          label: "Despachos Tienda",        action: () => go("/dashboard/tienda") }] : []),
+      ...(see("solicitudes-transporte") ? [{ id: "n-solicitudes-transporte", group: "navigate" as ResultGroup, icon: <FileText size={14} />, label: "Solicitudes Transporte", action: () => go("/dashboard/solicitudes-transporte") }] : []),
       ...(see("transporte")    ? [{ id: "n-transporte",  group: "navigate" as ResultGroup, icon: <Truck size={14} />,          label: "Guardados Transporte",    action: () => go("/dashboard/transporte") }] : []),
       ...(see("preoperacional")? [{ id: "n-preop",       group: "navigate" as ResultGroup, icon: <ShieldCheck size={14} />,    label: "Preoperacional",          action: () => go("/dashboard/preoperacional") }] : []),
       ...(see("integracion")   ? [{ id: "n-integracion", group: "navigate" as ResultGroup, icon: <GitMerge size={14} />,       label: "Integración Pedidos",     action: () => go("/dashboard/integracion") }] : []),

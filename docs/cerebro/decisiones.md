@@ -6,6 +6,52 @@ Registro cronológico de decisiones importantes. Una entrada por decisión, con 
 
 ---
 
+## 2026-06-12 - Modulo Solicitudes de Transporte interno
+
+**Decision:**
+- Se crea el modulo interno **Solicitudes de Transporte** para reemplazar el Google Form/Sheet en nuevas solicitudes.
+- No hay sincronizacion con Google Sheets ni importacion historica en v1.
+- Todos los usuarios autenticados pueden crear solicitudes excepto `TRANSPORTISTA`.
+- `SUPERVISOR_TRANSPORTE`, `GERENTE` y `ADMIN` gestionan Documento NetSuite, Stella, transportadora, guia, fecha de programacion y observacion.
+- Stella alimenta estado y semaforo: PENDIENTE, PROGRAMADO, EFECTUADO, CANCELADO.
+
+**Contexto:**
+- Transporte necesitaba centralizar solicitudes de servicio y dejar de depender de un formulario externo para la operacion diaria.
+- El flujo debe permitir rechazo con motivo, correccion y reenvio por parte del solicitante.
+
+**Consecuencias:**
+- Nuevos modelos `SolicitudTransporte` e `HistorialSolicitudTransporte`.
+- Nuevos enums de estado, Stella, prioridad y semaforo.
+- Nuevo modulo `solicitudes-transporte` en permisos, sidebar, command palette, home actions y resumen Control Logistico.
+- Logistica, rutas, GPS y Mi Ruta siguen suspendidos.
+
+**Archivos afectados:** `prisma/schema.prisma`, `src/lib/solicitudesTransporte.ts`, `src/app/api/solicitudes-transporte/*`, `src/app/(dashboard)/dashboard/solicitudes-transporte/page.tsx`, `src/lib/modulePermissions.ts`, `src/lib/moduleTheme.ts`, `src/components/common/Sidebar.tsx`, `src/components/ui/CommandPalette.tsx`, `src/config/homeActions.ts`
+
+---
+
+## 2026-06-12 - Plataforma Control Logistico CEDI
+
+**Decision:**
+- La identidad operativa vigente pasa de Torre CEDI a **Control Logistico CEDI**.
+- El dashboard principal se convierte en una consola alimentada por una capa de resumen operacional por rol.
+- Se crea `/api/control-logistico/resumen` como base para prioridades, flujo, modulos bajo control y acciones recomendadas.
+- Se centraliza el nombre de producto en `src/config/product.ts`.
+
+**Contexto:**
+- La interfaz anterior funcionaba, pero seguia sintiendose como un SaaS generico con modulos conectados por pantalla.
+- Para escalar, el producto necesita una capa comun de operacion y no duplicar fetches/calculos entre Dashboard, Mis Tareas y Centro de Control.
+
+**Consecuencias:**
+- Fases siguientes deben migrar shell, command palette y modulos clave hacia componentes de plataforma.
+- Los componentes iniciales de plataforma viven en `src/components/control-logistico` y deben reutilizarse antes de crear bloques visuales nuevos.
+- `src/__tests__/controlLogisticoResumen.test.ts` protege que el resumen no exponga modulos no visibles por rol.
+- No hay cambios de base de datos en esta primera entrega.
+- Logistica, rutas, GPS y Mi Ruta siguen suspendidos.
+
+**Archivos afectados:** `src/config/product.ts`, `src/lib/controlLogistico/*`, `src/components/control-logistico/*`, `src/app/api/control-logistico/resumen/route.ts`, `src/app/(dashboard)/dashboard/page.tsx`, `src/components/common/*`, `src/components/ui/CommandPalette.tsx`, `src/__tests__/controlLogisticoResumen.test.ts`
+
+---
+
 ## 2026-06-12 - Fase 4 UI: pulido operativo y QA predeploy
 
 **Decision:**

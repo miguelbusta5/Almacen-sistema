@@ -48,6 +48,22 @@ export const HOME_ACTIONS: HomeAction[] = [
   },
   // ── Transporte ──────────────────────────────────────────
   {
+    id: "nueva-solicitud-transporte",
+    title: "Nueva solicitud de transporte",
+    description: "Solicitar entrega, recoleccion o traslado interno",
+    href: "/dashboard/solicitudes-transporte",
+    icon: "FileText",
+    color: getModuleColor("solicitudes-transporte"),
+    moduleKey: "solicitudes-transporte",
+    roles: [
+      "ADMIN", "GERENTE", "OPERADOR",
+      "INVENTARIO", "TRANSPORTE", "SUPERVISOR_INVENTARIO", "SUPERVISOR_TRANSPORTE",
+      "TIENDA", "SUPERVISOR_TIENDA",
+      "OPERACIONES_MUEBLES", "OPERACIONES_GOURMET",
+    ],
+    priority: 1,
+  },
+  {
     id: "nuevo-guardado",
     title: "Nuevo guardado en transporte",
     description: "Registrar pedido en custodia de almacén",
@@ -56,7 +72,7 @@ export const HOME_ACTIONS: HomeAction[] = [
     color: getModuleColor("transporte"),
     moduleKey: "transporte",
     roles: ["TRANSPORTE", "SUPERVISOR_TRANSPORTE", "OPERADOR", "GERENTE", "ADMIN"],
-    priority: 1,
+    priority: 2,
   },
   // ── Tienda ──────────────────────────────────────────────
   {

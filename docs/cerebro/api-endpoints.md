@@ -75,6 +75,17 @@ await prisma.notificacion.createMany({
 | GET/POST | `/api/transporte/[clientId]/contactos` | Contactos del cliente |
 | GET | `/api/transporte/sin-contacto` | Guardados sin contacto |
 
+### Solicitudes de Transporte
+| Metodo | Ruta | Descripcion | Auth |
+|---|---|---|---|
+| GET | `/api/solicitudes-transporte` | Lista solicitudes con filtros por estado, prioridad, semaforo, area y busqueda | Todos excepto TRANSPORTISTA; no gestores ven solo propias |
+| POST | `/api/solicitudes-transporte` | Crear solicitud interna | Todos excepto TRANSPORTISTA |
+| GET | `/api/solicitudes-transporte/[id]` | Detalle con historial | Creador o SUPERVISOR_TRANSPORTE/GERENTE/ADMIN |
+| PATCH | `/api/solicitudes-transporte/[id]` | Editar datos de solicitud o gestion transporte | Creador en pendiente/rechazada; gestion solo SUPERVISOR_TRANSPORTE/GERENTE/ADMIN |
+| POST | `/api/solicitudes-transporte/[id]/rechazar` | Rechazar con motivo obligatorio | SUPERVISOR_TRANSPORTE/GERENTE/ADMIN |
+| POST | `/api/solicitudes-transporte/[id]/reenviar` | Reenviar solicitud rechazada | Creador o gestor |
+| GET | `/api/solicitudes-transporte/catalogos` | Areas, ciudades, puntos de recogida y opciones del formulario | Todos excepto TRANSPORTISTA |
+
 ### Integración de Pedidos
 | Método | Ruta | Descripción |
 |---|---|---|

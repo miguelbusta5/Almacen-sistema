@@ -5,12 +5,13 @@ import { usePathname } from "next/navigation";
 import { useState, useEffect } from "react";
 import {
   Menu, X, Home, Package, Truck, Users, ScrollText, ShieldCheck,
-  ClipboardList, BarChart3, Store, CheckSquare, GitMerge,
+  ClipboardList, BarChart3, Store, CheckSquare, GitMerge, FileText,
 } from "lucide-react";
 import { useIsMobile } from "@/lib/useIsMobile";
 import Logo from "./Logo";
 import { canSeeModule, type ModuleKey } from "@/lib/modulePermissions";
 import { getModuleTheme } from "@/lib/moduleTheme";
+import { PRODUCT } from "@/config/product";
 
 interface SidebarProps { role?: string; }
 
@@ -39,6 +40,7 @@ const ALL_ITEMS: NavItem[] = [
   { href: "/dashboard/integracion",            label: "Integración Pedidos", icon: <GitMerge size={16} />,   moduleKey: "integracion" },
 
   // ── Área de Transporte ───────────────────────────
+  { href: "/dashboard/solicitudes-transporte", label: "Solicitudes Transporte", icon: <FileText size={16} />, moduleKey: "solicitudes-transporte" },
   { href: "/dashboard/transporte",             label: "Guardados",          icon: <Truck size={16} />,        moduleKey: "transporte" },
 
   // ── Operaciones (Supervisores + Gerencia) ────────
@@ -55,27 +57,33 @@ const ALL_ITEMS: NavItem[] = [
 // Secciones visuales del sidebar
 const SECTIONS = [
   {
-    label: null, // sin etiqueta para items principales
+    label: "Control operativo",
     items: [
       "/dashboard",
       "/dashboard/mis-tareas",
       "/dashboard/preoperacional",
+    ],
+  },
+  {
+    label: "Operacion CEDI",
+    items: [
       "/dashboard/inventario",
       "/dashboard/tienda",
       "/dashboard/integracion",
+      "/dashboard/solicitudes-transporte",
       "/dashboard/transporte",
       "/dashboard/conteo/contar",
     ],
   },
   {
-    label: "Operaciones",
+    label: "Supervision",
     items: [
       "/dashboard/conteo",
       "/dashboard/centro-control",
     ],
   },
   {
-    label: "Admin",
+    label: "Gobierno",
     items: [
       "/dashboard/usuarios",
       "/dashboard/auditoria",
@@ -163,11 +171,11 @@ export default function Sidebar({ role }: SidebarProps) {
       <div style={{ padding: "12px 14px", borderTop: `1px solid ${SIDE_BORDER}` }}>
         <div style={{ borderRadius: 8, background: SIDE_PANEL, border: `1px solid ${SIDE_BORDER}`, padding: "9px 10px" }}>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, marginBottom: 3 }}>
-            <span style={{ fontSize: 11, color: "rgba(255,255,255,0.58)", fontFamily: "var(--mono)" }}>v2.3</span>
+            <span style={{ fontSize: 11, color: "rgba(255,255,255,0.58)", fontFamily: "var(--mono)" }}>{PRODUCT.version}</span>
             <span style={{ width: 7, height: 7, borderRadius: "50%", background: "#22C55E", boxShadow: "0 0 0 3px rgba(34,197,94,0.14)" }} />
           </div>
           <div style={{ fontSize: 10, color: "rgba(255,255,255,0.24)", fontFamily: "var(--mono)" }}>
-            Grupo Ambiente CEDI
+            {PRODUCT.shortName} · {PRODUCT.environmentLabel}
           </div>
         </div>
       </div>

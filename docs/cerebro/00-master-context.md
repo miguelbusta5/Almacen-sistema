@@ -7,7 +7,7 @@
 
 ## Qué es este proyecto
 
-Aplicación web operativa interna de **Grupo Ambiente** para gestionar inventario, tienda, transporte, preoperacional, conteo e integración operativa. Reemplaza una solución previa en HTML + Google Sheets.
+Aplicación web operativa interna de **Grupo Ambiente** para gestionar inventario, tienda, solicitudes de transporte, transporte, preoperacional, conteo e integración operativa. Reemplaza una solución previa en HTML + Google Sheets.
 
 - **Área responsable:** Analista de inventario (quien construye la app)
 - **Usuarios finales:** Personal operativo de tienda, transporte, inventario, conductores y gerencia
@@ -52,7 +52,7 @@ src/
 │   ├── common/Sidebar.tsx     # Navegación filtrada por rol
 │   └── ui/                    # Design system (Badge, SlidePanel, etc.)
 ├── types/index.ts             # UserRole, AppUser, interfaces compartidas
-└── __tests__/                 # Tests con Vitest (228 tests activos)
+└── __tests__/                 # Tests con Vitest (251 tests activos)
 ```
 
 ---
@@ -63,7 +63,7 @@ src/
 npm run dev          # Desarrollo local (Turbopack)
 npm run build        # Build de producción
 npx tsc --noEmit     # Verificar tipos (obligatorio antes de push)
-npm test             # Vitest (228 tests)
+npm test             # Vitest (251 tests)
 npx prisma db push   # Aplicar cambios del schema a Railway
 npx prisma generate  # Regenerar cliente Prisma (después de editar schema.prisma)
 node prisma/seed.js  # Crear usuario admin inicial
@@ -75,7 +75,7 @@ git push origin master  # Deploy a producción (CI/CD automático)
 ## Identidad visual
 
 - **Marca:** Grupo Ambiente
-- **Nombre operativo UI:** Torre CEDI
+- **Nombre operativo UI:** Control Logistico CEDI
 - **Paleta:** Azules intensos — sin pasteles
   - Muebles/Inventario: `#2563EB`
   - Transporte: `#0E7490`

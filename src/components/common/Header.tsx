@@ -9,6 +9,7 @@ import { useEffect, useState } from "react";
 import { useCommandPalette } from "@/contexts/CommandPaletteContext";
 import Link from "next/link";
 import { getVisibleModules, ROLE_LABEL_EXT, type AppRole } from "@/lib/modulePermissions";
+import { PRODUCT } from "@/config/product";
 
 interface HeaderProps {
   user?: { name?: string | null; email?: string | null; role?: string | null };
@@ -78,7 +79,7 @@ export default function Header({ user }: HeaderProps) {
           <div>
             <div style={{ display: "flex", alignItems: "center", gap: 8, lineHeight: 1 }}>
               <span style={{ fontSize: 11, color: "var(--muted2)", fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase" }}>
-                Torre CEDI
+                {PRODUCT.displayName}
               </span>
               <span style={{ display: "inline-flex", alignItems: "center", gap: 4, padding: "2px 6px", borderRadius: 999, background: "var(--surface2)", border: "1px solid var(--border)", color: "var(--muted)", fontSize: 10, fontWeight: 700 }}>
                 <Activity size={10} />{roleLabel}
@@ -113,7 +114,7 @@ export default function Header({ user }: HeaderProps) {
             onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = "var(--surface2)"; (e.currentTarget as HTMLElement).style.borderColor = "var(--border)"; }}
           >
             <Search size={12} />
-            <span>Comando CEDI</span>
+            <span>{PRODUCT.commandLabel}</span>
             <kbd style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 4, padding: "1px 5px", fontSize: 10, fontFamily: "var(--mono)", color: "var(--faint)" }}>Ctrl K</kbd>
           </button>
         )}

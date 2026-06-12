@@ -10,6 +10,7 @@
 |---|---|---|---|
 | `inventario` | `/dashboard/inventario` `/dashboard/muebles` | ADMIN, GERENTE, SUPERVISOR_INV, INVENTARIO, OPERADOR | Novedades de inventario (diferencias de PLU, posición, cantidad) |
 | `transporte` | `/dashboard/transporte` | ADMIN, GERENTE, SUPERVISOR_TRA, TRANSPORTE, OPERADOR | Guardados en custodia del almacén |
+| `solicitudes-transporte` | `/dashboard/solicitudes-transporte` | Todos excepto TRANSPORTISTA | Solicitudes internas de transporte y gestion por lider transporte |
 | `tienda` | `/dashboard/tienda` | ADMIN, GERENTE, SUPERVISOR_TRA, SUPERVISOR_TIE, TIENDA | Despachos desde tienda hasta cliente |
 | `preoperacional` | `/dashboard/preoperacional` | ADMIN, GERENTE, SUPERVISOR_TRA, TRANSPORTISTA | Inspección diaria de vehículos |
 | `conteo` | `/dashboard/conteo` | ADMIN, GERENTE, SUPERVISOR_INV, INVENTARIO | Gestión de ciclos de conteo cíclico |
@@ -65,6 +66,20 @@ Archivos:
 - `src/app/(dashboard)/dashboard/integracion/page.tsx`
 - `src/app/api/integracion/route.ts`
 - `src/app/api/integracion/[id]/route.ts`
+
+### Solicitudes de Transporte (`solicitudes-transporte`)
+
+Centraliza el formulario que antes se manejaba en Google Forms/Sheets:
+- Solicitantes internos crean solicitudes desde la app
+- `TRANSPORTISTA` queda excluido y sigue solo en Preoperacional
+- `SUPERVISOR_TRANSPORTE`, `GERENTE` y `ADMIN` gestionan Documento NetSuite, Stella, transportadora, guia, fecha de programacion y observacion
+- Stella alimenta estado y semaforo: PENDIENTE, PROGRAMADO, EFECTUADO, CANCELADO
+- El rechazo funciona con motivo visible para el solicitante, correccion y reenvio
+
+Archivos:
+- `src/app/(dashboard)/dashboard/solicitudes-transporte/page.tsx`
+- `src/app/api/solicitudes-transporte/*`
+- `src/lib/solicitudesTransporte.ts`
 
 ### Novedades Inventario (`inventario`)
 

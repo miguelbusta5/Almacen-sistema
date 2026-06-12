@@ -23,10 +23,12 @@
 - [ ] Revisar si `HANDOFF.md` en la raiz esta actualizado con el estado del Sprint 8
 - [ ] Actualizar `docs/cerebro/` despues de cada sprint
 
-### UI / UX Torre CEDI
+### UI / UX Control Logistico CEDI
 
 - [ ] QA visual desktop/mobile con sesion real por rol de Login, Dashboard, Usuarios, Tienda, Conteo y Preoperacional
-- [ ] Planificar siguiente etapa de interfaz menos generica y mas propia de Grupo Ambiente CEDI
+- [ ] Fase plataforma 2: migrar Header/Sidebar/Command Palette a componentes de shell reutilizables
+- [ ] Fase plataforma 3: agregar preferencias de usuario y vistas operativas guardadas
+- [ ] Fase plataforma 4: aplicar ModulePageShell a Tienda, Transporte, Inventario y Conteo
 - [x] Vista de detalle de inspecciones preoperacionales en la app (SlidePanel con checklist) — 2026-06-10
 - [x] Checklist preoperacional completo con 58 ítems reales en 15 categorías — 2026-06-10
 
@@ -55,9 +57,11 @@
 - [x] Fase 3 UI: Dashboard Torre CEDI con flujo operativo y prioridades por rol - 2026-06-12
 - [x] Fase 4 UI: pulido de Usuarios, Tienda, Conteo, Preoperacional y alertas del Dashboard - 2026-06-12
 - [x] QA tecnico predeploy: TypeScript, tests y build para cierre de Fases 3/4 - 2026-06-12
+- [x] Inicio plataforma Control Logistico CEDI: identidad central, API de resumen y dashboard operativo inicial - 2026-06-12
 - [x] Rechazar solicitud de despacho con motivo, cajón de rechazados para TIENDA, re-envío — 2026-06-11
 - [x] Permitir edición de datos del despacho en estado RECHAZADO antes de re-enviar — 2026-06-11
 - [x] Restringir TIENDA: solo puede editar despachos en RECHAZADO, no en CREADO_TIENDA — 2026-06-11
+- [x] Modulo Solicitudes de Transporte interno con rechazo, correccion, gestion Stella y semaforo — 2026-06-12
 
 ---
 

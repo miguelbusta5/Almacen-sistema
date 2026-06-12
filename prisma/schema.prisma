@@ -113,6 +113,9 @@ model User {
   guardadosPendientes GuardadoPendienteTienda[]  @relation("GuardadosPendientesAsignados")
   integracionesCreadoras   IntegracionPedido[]   @relation("integracionesCreadoras")
   integracionesCompletadas IntegracionPedido[]   @relation("integracionesCompletadas")
+  solicitudesTransporte    SolicitudTransporte[] @relation("SolicitudesTransporteCreadas")
+  solicitudesGestionadas   SolicitudTransporte[] @relation("SolicitudesTransporteGestionadas")
+  historialSolicitudesTransporte HistorialSolicitudTransporte[] @relation("HistorialSolicitudTransporteUsuario")
 
   @@index([email])
   @@map("users")
@@ -152,6 +155,37 @@ enum EstadoIntegracion {
   PENDIENTE_AREA2
   LISTA_TRANSPORTE
   COMPLETADA
+}
+
+enum EstadoSolicitudTransporte {
+  PENDIENTE
+  RECHAZADA
+  REENVIADA
+  PROGRAMADA
+  EFECTUADA
+  CANCELADA
+}
+
+enum StellaEstado {
+  PENDIENTE
+  PROGRAMADO
+  EFECTUADO
+  CANCELADO
+}
+
+enum PrioridadSolicitudTransporte {
+  ALTO
+  MEDIO
+  BAJO
+}
+
+enum SemaforoSolicitudTransporte {
+  SIN_FECHA
+  VENCIDO
+  ALERTA
+  NORMAL
+  EFECTUADO
+  CANCELADO
 }
 
 enum ResultadoInspeccion {
@@ -634,4 +668,95 @@ model PlinIntegracion {
 
   @@index([integracionId])
   @@map("plines_integracion")
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// MODULO SOLICITUDES DE TRANSPORTE
+// ═══════════════════════════════════════════════════════════════════
+
+model SolicitudTransporte {
+  id        String @id @default(cuid())
+
+  fechaSolicitud      DateTime @map("fecha_solicitud") @db.Date
+  areaSolicitante     String   @map("area_solicitante") @db.VarChar(80)
+  areaOtro            String?  @map("area_otro") @db.VarChar(120)
+  solicitanteNombre   String   @map("solicitante_nombre") @db.VarChar(255)
+  solicitanteCorreo   String   @map("solicitante_correo") @db.VarChar(255)
+  solicitanteTelefono String?  @map("solicitante_telefono") @db.VarChar(40)
+
+  tipoVenta          String?  @map("tipo_venta") @db.VarChar(40)
+  numeroPedido       String?  @map("numero_pedido") @db.VarChar(120)
+  facturaIntegracion String?  @map("factura_integracion") @db.VarChar(120)
+  cobroFlete         Boolean? @map("cobro_flete")
+  valorFlete         Decimal? @map("valor_flete") @db.Decimal(12, 2)
+  unidades           Int?
+  volumenEstimado    String?  @map("volumen_estimado") @db.VarChar(30)
+  tipoMercancia      String?  @map("tipo_mercancia") @db.VarChar(40)
+
+  ciudadOrigen      String  @map("ciudad_origen") @db.VarChar(80)
+  zonaRecogida      String? @map("zona_recogida") @db.VarChar(20)
+  direccionRecogida String? @map("direccion_recogida")
+  puntoRecogida     String? @map("punto_recogida") @db.VarChar(255)
+  puntoRecogidaOtro String? @map("punto_recogida_otro") @db.VarChar(255)
+
+  ciudadEntrega    String  @map("ciudad_entrega") @db.VarChar(80)
+  direccionEntrega String  @map("direccion_entrega")
+  zonaEntrega      String? @map("zona_entrega") @db.VarChar(20)
+
+  fechaPromesaEntrega   DateTime? @map("fecha_promesa_entrega") @db.Date
+  ventanaEntrega        String?   @map("ventana_entrega") @db.VarChar(40)
+  restriccionHoraria    Boolean?  @map("restriccion_horaria")
+  descripcionRestriccion String?  @map("descripcion_restriccion")
+
+  tipoServicio             String? @map("tipo_servicio") @db.VarChar(80)
+  tipoServicioOtro         String? @map("tipo_servicio_otro") @db.VarChar(120)
+  observacionesSolicitante String? @map("observaciones_solicitante")
+
+  estado             EstadoSolicitudTransporte @default(PENDIENTE)
+  stellaEstado       StellaEstado              @default(PENDIENTE) @map("stella_estado")
+  documentoNetSuite  String? @map("documento_netsuite") @db.VarChar(120)
+  transportadora     String? @db.VarChar(120)
+  numeroGuia         String? @map("numero_guia") @db.VarChar(120)
+  fechaProgramacion  DateTime? @map("fecha_programacion") @db.Date
+  observacionTransporte String? @map("observacion_transporte")
+
+  prioridad    PrioridadSolicitudTransporte? @map("prioridad")
+  semaforo     SemaforoSolicitudTransporte   @default(SIN_FECHA)
+  mesSolicitud String? @map("mes_solicitud") @db.VarChar(20)
+
+  motivoRechazo String?   @map("motivo_rechazo")
+  rechazadoAt   DateTime? @map("rechazado_at")
+  reenviadoAt   DateTime? @map("reenviado_at")
+
+  creadoPorId String @map("creado_por_id")
+  creadoPor   User   @relation("SolicitudesTransporteCreadas", fields: [creadoPorId], references: [id])
+  gestionadoPorId String? @map("gestionado_por_id")
+  gestionadoPor   User?   @relation("SolicitudesTransporteGestionadas", fields: [gestionadoPorId], references: [id])
+
+  historial HistorialSolicitudTransporte[]
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([estado, createdAt])
+  @@index([semaforo, fechaPromesaEntrega])
+  @@index([prioridad, fechaPromesaEntrega])
+  @@index([creadoPorId, estado])
+  @@index([areaSolicitante, estado])
+  @@map("solicitudes_transporte")
+}
+
+model HistorialSolicitudTransporte {
+  id             String @id @default(cuid())
+  solicitudId    String @map("solicitud_id")
+  solicitud      SolicitudTransporte @relation(fields: [solicitudId], references: [id], onDelete: Cascade)
+  estadoAnterior EstadoSolicitudTransporte? @map("estado_anterior")
+  estadoNuevo    EstadoSolicitudTransporte  @map("estado_nuevo")
+  observacion    String?
+  usuarioId      String @map("usuario_id")
+  usuario        User   @relation("HistorialSolicitudTransporteUsuario", fields: [usuarioId], references: [id])
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  @@index([solicitudId, createdAt])
+  @@index([usuarioId])
+  @@map("historial_solicitudes_transporte")
 }

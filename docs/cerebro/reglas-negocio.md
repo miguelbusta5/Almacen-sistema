@@ -41,11 +41,13 @@ Cada etapa tiene un estado de despacho asociado. Ver [[estados-despacho]].
 - Puede guardar un despacho en custodia del almacén
 - Puede asignar un despacho a un operario de transporte
 - Puede marcar despachos CON_NOVEDAD en cualquier etapa activa
+- Gestiona Solicitudes de Transporte: completa Documento NetSuite, Stella, transportadora, guia, fecha de programacion y observacion; puede rechazar con motivo
 
 ### Operario de Transporte (`TRANSPORTE`)
 - Ve los guardados y pendientes que le asignen
 - No avanza estados de despacho de tienda directamente
 - Puede gestionar los guardados en transporte
+- Puede crear Solicitudes de Transporte como solicitante interno, pero no gestionarlas ni rechazarlas
 
 ### Conductor (`TRANSPORTISTA`)
 - **Solo ve el módulo Preoperacional**
@@ -55,6 +57,7 @@ Cada etapa tiene un estado de despacho asociado. Ver [[estados-despacho]].
 - Fuente del checklist: `src/lib/preoperacional.ts`
 - Requiere tener un vehículo asignado para acceder
 - No ve despachos, inventario ni nada más
+- No ve Solicitudes de Transporte
 
 ### Inventario (`INVENTARIO`, `SUPERVISOR_INVENTARIO`)
 - Solo accede a módulos de inventario y conteo

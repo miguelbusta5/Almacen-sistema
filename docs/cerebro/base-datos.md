@@ -29,6 +29,10 @@ node prisma/seed.js       # Crear usuario admin inicial
 | `Role` | ADMIN, GERENTE, OPERADOR, TRANSPORTISTA, INVENTARIO, TRANSPORTE, SUPERVISOR_INVENTARIO, SUPERVISOR_TRANSPORTE, TIENDA, SUPERVISOR_TIENDA, OPERACIONES_MUEBLES, OPERACIONES_GOURMET |
 | `EstadoDespacho` | CREADO_TIENDA, RECHAZADO, RECOGIDO_TIENDA, ENTREGADO_CEDI, ENVIADO_CLIENTE, CON_NOVEDAD |
 | `EstadoIntegracion` | PENDIENTE_AREA2, LISTA_TRANSPORTE, COMPLETADA |
+| `EstadoSolicitudTransporte` | PENDIENTE, RECHAZADA, REENVIADA, PROGRAMADA, EFECTUADA, CANCELADA |
+| `StellaEstado` | PENDIENTE, PROGRAMADO, EFECTUADO, CANCELADO |
+| `PrioridadSolicitudTransporte` | ALTO, MEDIO, BAJO |
+| `SemaforoSolicitudTransporte` | SIN_FECHA, VENCIDO, ALERTA, NORMAL, EFECTUADO, CANCELADO |
 | `EstadoInspeccion` | APROBADA, APROBADA_CON_OBSERVACIONES, BLOQUEADA |
 | `ResultadoInspeccion` | CONFORME, NO_CONFORME, NO_APLICA |
 
@@ -52,6 +56,9 @@ node prisma/seed.js       # Crear usuario admin inicial
 - `notificaciones` → Notificacion[]
 - `integracionesCreadoras` → IntegracionPedido[]
 - `integracionesCompletadas` → IntegracionPedido[]
+- `solicitudesTransporte` → SolicitudTransporte[]
+- `solicitudesGestionadas` → SolicitudTransporte[]
+- `historialSolicitudesTransporte` → HistorialSolicitudTransporte[]
 - `ciclosConteo`, `guardadosPendientes`, `novedadesAsign`, `contactosGuard`
 
 ### Módulo Tienda
@@ -72,6 +79,18 @@ node prisma/seed.js       # Crear usuario admin inicial
 | `ContactoGuardado` | *(tabla propia)* | Contactos de clientes en guardados |
 | `Transportista` | `transportistas` | Conductores operativos |
 | `Vehiculo` | `vehiculos` | Flota de vehículos |
+
+### Módulo Solicitudes de Transporte
+
+| Modelo | Tabla | Propósito |
+|---|---|---|
+| `SolicitudTransporte` | `solicitudes_transporte` | Solicitud interna creada por areas y gestionada por transporte |
+| `HistorialSolicitudTransporte` | `historial_solicitudes_transporte` | Trazabilidad de estados, rechazo y reenvio |
+
+**Relaciones clave:**
+- `creadoPor` → User (relación "SolicitudesTransporteCreadas")
+- `gestionadoPor` → User? (relación "SolicitudesTransporteGestionadas")
+- `historial` → HistorialSolicitudTransporte[]
 
 ### Módulo Integración (Sprint 8)
 

@@ -1,6 +1,17 @@
-# UX / UI — Torre CEDI Design System
+# UX / UI — Control Logistico CEDI Design System
 
 > Links: [[00-master-context]] · [[modulos]]
+
+---
+
+## Direccion vigente 2026-06-12: Control Logistico CEDI
+
+- La app deja de evolucionar como "Torre CEDI" y adopta **Control Logistico CEDI** como identidad operativa.
+- El rediseño no es cosmetico: debe crear una plataforma escalable con shell profesional, resumen operacional por rol y componentes reutilizables.
+- El dashboard principal se alimenta desde `/api/control-logistico/resumen` para evitar fetches duplicados y preparar vistas configurables.
+- La interfaz debe sentirse como consola de operacion CEDI: prioridades, flujo, señales por modulo y acciones recomendadas.
+- Los bloques reutilizables de plataforma viven en `src/components/control-logistico`: hero operativo, señales de modulo, prioridades y acciones recomendadas.
+- Logistica avanzada, rutas, GPS y Mi Ruta siguen suspendidos indefinidamente.
 
 ---
 
