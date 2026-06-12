@@ -6,6 +6,51 @@ Registro cronológico de decisiones importantes. Una entrada por decisión, con 
 
 ---
 
+## 2026-06-12 - Fase 4 UI: pulido operativo y QA predeploy
+
+**Decision:**
+- Cerrar Fase 4 con mejoras pequeñas de alto impacto en Usuarios, Tienda, Conteo, Preoperacional y Dashboard.
+- Usuarios mantiene la gestion minima de vehiculos/transportistas dentro del modulo Admin, usando colores de `moduleTheme`.
+- Tienda mejora microcopy de instrucciones de entrega sin cambiar estados ni permisos.
+- Conteo y Preoperacional mejoran estados vacios/error para que la operacion entienda el siguiente paso.
+- Dashboard suma todas las alertas visibles por rol y trata rechazos de Tienda como prioridad critica.
+
+**Contexto:**
+- Fase 3 ya entrego la Torre CEDI por rol, pero Fase 4 necesitaba cerrar inconsistencias de microcopy, vacios y señales visuales.
+- La app debe seguir compacta y operativa; esta fase no busca rediseño completo ni una apariencia promocional.
+
+**Consecuencias:**
+- No hay cambios de schema, APIs ni permisos server-side.
+- No se reactivan Logistica, GPS, rutas ni Mi Ruta.
+- El QA visual con sesion real por rol queda como validacion manual post-deploy si no hay credenciales disponibles en el entorno.
+
+**Archivos afectados:** `src/app/(dashboard)/dashboard/page.tsx`, `src/app/(dashboard)/dashboard/usuarios/page.tsx`, `src/app/(dashboard)/dashboard/tienda/page.tsx`, `src/app/(dashboard)/dashboard/conteo/page.tsx`, `src/app/(dashboard)/dashboard/conteo/contar/page.tsx`, `src/config/homeActions.ts`, `docs/cerebro/ux-ui.md`, `docs/cerebro/pendientes.md`
+
+---
+
+## 2026-06-12 - Fase 3 UI: Dashboard Torre CEDI por rol
+
+**Decision:**
+- El inicio `/dashboard` se convierte en Torre CEDI operativa con flujo, prioridades y KPIs por rol.
+- ADMIN/GERENTE ven flujo general Inventario → Tienda → CEDI → Conteo, prioridades críticas y actividad reciente.
+- SUPERVISOR_TRANSPORTE ve señales de Tienda, CEDI, guardados y pendientes por guardar.
+- TRANSPORTE ve pendientes de guardado y guardados por despachar.
+- TIENDA/SUPERVISOR_TIENDA ven solicitudes creadas, rechazadas, con novedad y enviadas.
+- TRANSPORTISTA conserva una vista enfocada únicamente en Preoperacional.
+
+**Contexto:**
+- Fase 2 dejó el shell y la command palette estabilizados.
+- El dashboard todavía funcionaba como una suma de tarjetas, pero no como tablero de operación diaria.
+
+**Consecuencias:**
+- No se crean APIs nuevas; se reutilizan `/api/stats`, `/api/activity`, `/api/novedades`, `/api/transporte`, `/api/tienda` y `/api/transporte/pendientes-tienda`.
+- No hay cambios de schema ni permisos server-side.
+- Logística, GPS, rutas y Mi Ruta siguen suspendidos.
+
+**Archivos afectados:** `src/app/(dashboard)/dashboard/page.tsx`, `docs/cerebro/ux-ui.md`, `docs/cerebro/pendientes.md`
+
+---
+
 ## 2026-06-12 - Fase 2 UI: shell operativo y command palette por rol
 
 **Decision:**

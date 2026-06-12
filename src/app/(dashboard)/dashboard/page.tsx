@@ -5,10 +5,10 @@ import Link from "next/link";
 import { useSession } from "next-auth/react";
 import {
   Package, Truck, ClipboardList, ArrowRight, AlertTriangle,
-  Clock, Plus,
+  Clock, Plus, CheckCircle2,
   CheckSquare, Store, BarChart2, Users, History, ShieldCheck, GitMerge,
 } from "lucide-react";
-import { Stat, SkeletonStat, TimelineItem, SectionHeader, SkeletonStat as SK } from "@/components/ui";
+import { Badge, Stat, TimelineItem, SectionHeader, SkeletonStat as SK } from "@/components/ui";
 import { IntelBanner } from "@/components/ui/SlidePanel";
 import { consolidarInsights } from "@/lib/inteligencia";
 import { urgencia } from "@/lib/transporte";
@@ -62,6 +62,22 @@ interface Stats {
 interface ActivityItem {
   id: string; action: string; module: string; details: string | null;
   createdAt: string; user: { name: string; email: string } | null;
+}
+interface DespachoHome {
+  id: string;
+  estado: string;
+  numeroDocumento: string;
+  clienteNombre: string;
+  centroCostos: string;
+  createdAt: string;
+  guardadoPendiente?: { estado: string; asignadoANombre?: string | null } | null;
+}
+interface PendienteGuardadoHome {
+  id: string;
+  estado: string;
+  createdAt: string;
+  asignadoANombre?: string | null;
+  despacho?: { numeroDocumento: string; clienteNombre: string; centroCostos: string };
 }
 
 // ── Tarjeta de módulo (estilo Vercel) ───────────────────
@@ -150,6 +166,70 @@ function QuickAction({ href, icon, label, color, description }: { href: string; 
   );
 }
 
+function OperationFlow({ stages, isMobile }: {
+  isMobile: boolean;
+  stages: Array<{ key: string; label: string; value: number | string; href: string; color: string; sub?: string; alert?: boolean }>;
+}) {
+  return (
+    <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : `repeat(${Math.max(stages.length, 1)}, minmax(0, 1fr))`, gap: 10 }}>
+      {stages.map((stage, i) => (
+        <Link key={stage.key} href={stage.href} style={{ textDecoration: "none", minWidth: 0 }}>
+          <div style={{
+            minHeight: 104, padding: "14px 14px 12px", border: "1px solid var(--border)",
+            borderRadius: 8, background: "var(--surface)", position: "relative", overflow: "hidden",
+            display: "flex", flexDirection: "column", justifyContent: "space-between",
+          }}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
+              <span style={{ fontSize: 11, color: "var(--muted)", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em" }}>
+                {String(i + 1).padStart(2, "0")}
+              </span>
+              {stage.alert ? <AlertTriangle size={14} color="var(--warning)" /> : <CheckCircle2 size={14} color={stage.color} />}
+            </div>
+            <div>
+              <div style={{ fontSize: 24, lineHeight: 1, fontWeight: 800, color: stage.color, letterSpacing: "-0.03em", marginBottom: 5 }}>
+                {stage.value}
+              </div>
+              <div style={{ fontSize: 13, fontWeight: 700, color: "var(--text)", overflowWrap: "anywhere" }}>{stage.label}</div>
+              {stage.sub && <div style={{ fontSize: 11, color: "var(--muted)", marginTop: 2 }}>{stage.sub}</div>}
+            </div>
+            <span style={{ position: "absolute", left: 0, right: 0, bottom: 0, height: 3, background: stage.color }} />
+          </div>
+        </Link>
+      ))}
+    </div>
+  );
+}
+
+function PriorityList({ items, emptyText }: {
+  emptyText: string;
+  items: Array<{ id: string; label: string; sub?: string; href: string; color: string; badge?: string; level?: "error" | "warning" | "info" }>;
+}) {
+  if (items.length === 0) {
+    return (
+      <div style={{ padding: "18px 0", color: "var(--muted)", fontSize: 13, display: "flex", alignItems: "center", gap: 8 }}>
+        <CheckCircle2 size={15} color="var(--success)" />{emptyText}
+      </div>
+    );
+  }
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+      {items.slice(0, 6).map((item) => (
+        <Link key={item.id} href={item.href} style={{ textDecoration: "none" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 12px", borderRadius: 8, background: "var(--surface)", border: "1px solid var(--border)" }}>
+            <span style={{ width: 8, height: 8, borderRadius: "50%", background: item.color, boxShadow: `0 0 0 3px ${item.color}20`, flexShrink: 0 }} />
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontSize: 13, fontWeight: 700, color: "var(--text)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{item.label}</div>
+              {item.sub && <div style={{ fontSize: 11, color: "var(--muted)", marginTop: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{item.sub}</div>}
+            </div>
+            {item.badge && <Badge label={item.badge} variant={item.level === "error" ? "error" : item.level === "warning" ? "warning" : "info"} dot={false} />}
+            <ArrowRight size={13} color="var(--faint)" />
+          </div>
+        </Link>
+      ))}
+    </div>
+  );
+}
+
 // ════════════════════════════════════════════════════════════
 // VISTA: ADMIN / GERENTE
 // "¿Qué está pasando en toda la empresa?"
@@ -160,24 +240,55 @@ function AdminDashboard({ nombre }: { nombre: string }) {
   const [activity, setActivity] = useState<ActivityItem[]>([]);
   const [novedades, setNovedades] = useState<Novedad[]>([]);
   const [guardados, setGuardados] = useState<Guardado[]>([]);
+  const [tiendaDespachos, setTiendaDespachos] = useState<DespachoHome[]>([]);
+  const [pendientesGuardado, setPendientesGuardado] = useState<PendienteGuardadoHome[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     (async () => {
       try {
-        const [sR, aR, nR, gR] = await Promise.all([
+        const [sR, aR, nR, gR, tR, pR] = await Promise.all([
           fetch("/api/stats"), fetch("/api/activity?pageSize=12"),
           fetch("/api/novedades?pageSize=200"), fetch("/api/transporte?pageSize=200"),
+          fetch("/api/tienda?pageSize=300"), fetch("/api/transporte/pendientes-tienda"),
         ]);
         if (sR.ok) setStats(await sR.json());
         const aJ = await aR.json(); if (aJ.success) setActivity(aJ.data ?? []);
         const nJ = await nR.json(); if (nJ.success) setNovedades(nJ.data ?? []);
         const gJ = await gR.json(); if (gJ.success) setGuardados(gJ.data ?? []);
+        const tJ = await tR.json(); if (tJ.success) setTiendaDespachos(tJ.data ?? []);
+        const pJ = await pR.json(); if (pJ.success) setPendientesGuardado(pJ.data ?? []);
       } catch { /* noop */ } finally { setLoading(false); }
     })();
   }, []);
 
   const insights = useMemo(() => consolidarInsights(novedades, guardados, []), [novedades, guardados]);
+  const tiendaCreados = useMemo(() => tiendaDespachos.filter((d) => d.estado === "CREADO_TIENDA"), [tiendaDespachos]);
+  const tiendaCedi = useMemo(() => tiendaDespachos.filter((d) => d.estado === "ENTREGADO_CEDI"), [tiendaDespachos]);
+  const tiendaRechazados = useMemo(() => tiendaDespachos.filter((d) => d.estado === "RECHAZADO"), [tiendaDespachos]);
+  const tiendaNovedad = useMemo(() => tiendaDespachos.filter((d) => d.estado === "CON_NOVEDAD"), [tiendaDespachos]);
+  const integraciones = useMemo(() => activity.filter((a) => a.module === "integracion"), [activity]);
+  const prioridades = useMemo(() => [
+    ...tiendaRechazados.slice(0, 2).map((d) => ({
+      id: `rech-${d.id}`, label: d.numeroDocumento, sub: `${d.clienteNombre} · despacho rechazado`,
+      href: "/dashboard/tienda", color: "var(--error)", badge: "Rechazado", level: "error" as const,
+    })),
+    ...tiendaNovedad.slice(0, 2).map((d) => ({
+      id: `nov-t-${d.id}`, label: d.numeroDocumento, sub: `${d.clienteNombre} · con novedad`,
+      href: "/dashboard/tienda", color: "var(--warning)", badge: "Novedad", level: "warning" as const,
+    })),
+    ...pendientesGuardado.slice(0, 2).map((p) => ({
+      id: `pg-${p.id}`, label: p.despacho?.numeroDocumento ?? "Pendiente de guardado",
+      sub: p.despacho ? `${p.despacho.clienteNombre} · ${p.despacho.centroCostos}` : "Asignado a transporte",
+      href: "/dashboard/transporte", color: getModuleColor("transporte"), badge: "Guardado", level: "info" as const,
+    })),
+  ], [tiendaRechazados, tiendaNovedad, pendientesGuardado]);
+  const flowStages = [
+    { key: "inventario", label: "Inventario", value: stats?.novedades.pendientes ?? 0, sub: "novedades abiertas", href: "/dashboard/inventario", color: getModuleColor("inventario"), alert: (stats?.novedades.pendientes ?? 0) > 0 },
+    { key: "tienda", label: "Tienda", value: tiendaCreados.length, sub: "solicitudes creadas", href: "/dashboard/tienda", color: getModuleColor("tienda"), alert: tiendaRechazados.length > 0 },
+    { key: "cedi", label: "CEDI", value: tiendaCedi.length, sub: "en llegada/guardado", href: "/dashboard/tienda", color: getModuleColor("transporte"), alert: pendientesGuardado.length > 0 },
+    { key: "conteo", label: "Conteo", value: "Activo", sub: "control cíclico", href: "/dashboard/conteo", color: getModuleColor("conteo") },
+  ];
   const hora = new Date().getHours();
   const saludo = hora < 12 ? "Buenos días" : hora < 18 ? "Buenas tardes" : "Buenas noches";
 
@@ -199,6 +310,17 @@ function AdminDashboard({ nombre }: { nombre: string }) {
         </div>
       )}
 
+      <div style={{ marginBottom: 30 }}>
+        <SectionHeader title="Flujo operativo" />
+        {loading ? (
+          <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "repeat(4,1fr)", gap: 10 }}>
+            <SK /><SK /><SK /><SK />
+          </div>
+        ) : (
+          <OperationFlow stages={flowStages} isMobile={isMobile} />
+        )}
+      </div>
+
       {/* KPIs */}
       <div style={{ display: "grid", gridTemplateColumns: isMobile ? "repeat(2,1fr)" : "repeat(4,1fr)", gap: isMobile ? 14 : 28, marginBottom: 36, padding: "0 2px" }}>
         {loading ? <><SK /><SK /><SK /><SK /></> : (
@@ -211,19 +333,25 @@ function AdminDashboard({ nombre }: { nombre: string }) {
         )}
       </div>
 
-      <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1fr 300px", gap: 28, alignItems: "start" }}>
+      <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1fr 320px", gap: 28, alignItems: "start" }}>
         {/* Módulos */}
         <div>
           <SectionHeader title="Torre CEDI" />
           <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr", gap: 14 }}>
             <ModuleCard href="/dashboard/inventario" icon={<Package size={17} />} label={getModuleTheme("inventario").label} color={getModuleColor("inventario")} value={stats?.novedades.total} sub={`${stats?.novedades.pendientes ?? 0} sin resolver`} alert={(stats?.novedades.pendientes ?? 0) > 0} />
+            <ModuleCard href="/dashboard/tienda" icon={<Store size={17} />} label={getModuleTheme("tienda").label} color={getModuleColor("tienda")} value={tiendaDespachos.length} sub={`${tiendaRechazados.length} rechazados`} alert={tiendaRechazados.length > 0 || tiendaNovedad.length > 0} />
             <ModuleCard href="/dashboard/transporte" icon={<Truck size={17} />} label={getModuleTheme("transporte").label} color={getModuleColor("transporte")} value={stats?.transporte.total} sub={`${stats?.transporte.pendientes ?? 0} pendientes`} alert={(stats?.transporte.alertas ?? 0) > 0} />
             <ModuleCard href="/dashboard/conteo" icon={<ClipboardList size={17} />} label={getModuleTheme("conteo").label} color={getModuleColor("conteo")} sub="Conteos de inventario" />
+            <ModuleCard href="/dashboard/integracion" icon={<GitMerge size={17} />} label={getModuleTheme("integracion").label} color={getModuleColor("integracion")} value={integraciones.length} sub="movimientos recientes" />
+            <ModuleCard href="/dashboard/preoperacional" icon={<ShieldCheck size={17} />} label={getModuleTheme("preoperacional").label} color={getModuleColor("preoperacional")} sub="inspecciones diarias" />
           </div>
         </div>
 
-        {/* Timeline */}
         <div>
+          <SectionHeader title="Prioridades" />
+          <PriorityList items={prioridades} emptyText="Sin prioridades críticas en el flujo CEDI." />
+
+          <div style={{ height: 22 }} />
           <SectionHeader title="Actividad reciente" />
           {loading ? (
             <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
@@ -272,11 +400,14 @@ function OperadorDashboard({ nombre, role }: { nombre: string; role: string }) {
   // ── Determinar qué datos necesita este rol ──────────────
   const needsNovedades = ["INVENTARIO", "SUPERVISOR_INVENTARIO", "OPERADOR"].includes(role);
   const needsGuardados = ["TRANSPORTE", "SUPERVISOR_TRANSPORTE", "OPERADOR"].includes(role);
-  const needsTienda    = ["TIENDA", "SUPERVISOR_TIENDA"].includes(role);
+  const needsTienda    = ["TIENDA", "SUPERVISOR_TIENDA", "SUPERVISOR_TRANSPORTE"].includes(role);
+  const needsPendientesGuardado = ["TRANSPORTE", "SUPERVISOR_TRANSPORTE"].includes(role);
+  const needsIntegracion = ["OPERACIONES_MUEBLES", "OPERACIONES_GOURMET"].includes(role);
 
   const [guardados, setGuardados] = useState<Guardado[]>([]);
   const [novedades, setNovedades] = useState<Novedad[]>([]);
-  const [tiendaDespachos, setTiendaDespachos] = useState<{ estado: string }[]>([]);
+  const [tiendaDespachos, setTiendaDespachos] = useState<DespachoHome[]>([]);
+  const [pendientesGuardado, setPendientesGuardado] = useState<PendienteGuardadoHome[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -293,6 +424,10 @@ function OperadorDashboard({ nombre, role }: { nombre: string; role: string }) {
       fetch("/api/tienda?pageSize=200").then((r) => r.json())
         .then((j) => { if (j.success) setTiendaDespachos(j.data ?? []); }).catch(() => {})
     );
+    if (needsPendientesGuardado) fetches.push(
+      fetch("/api/transporte/pendientes-tienda").then((r) => r.json())
+        .then((j) => { if (j.success) setPendientesGuardado(j.data ?? []); }).catch(() => {})
+    );
     Promise.all(fetches).finally(() => setLoading(false));
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [role]);
@@ -308,15 +443,17 @@ function OperadorDashboard({ nombre, role }: { nombre: string; role: string }) {
   const tiendaPend    = useMemo(() => tiendaDespachos.filter((d) => d.estado === "CREADO_TIENDA" || d.estado === "RECOGIDO_TIENDA" || d.estado === "ENTREGADO_CEDI"), [tiendaDespachos]);
   const tiendaNovedad = useMemo(() => tiendaDespachos.filter((d) => d.estado === "CON_NOVEDAD"), [tiendaDespachos]);
   const tiendaDesp    = useMemo(() => tiendaDespachos.filter((d) => d.estado === "ENVIADO_CLIENTE"), [tiendaDespachos]);
+  const tiendaCreados = useMemo(() => tiendaDespachos.filter((d) => d.estado === "CREADO_TIENDA"), [tiendaDespachos]);
+  const tiendaRecogidos = useMemo(() => tiendaDespachos.filter((d) => d.estado === "RECOGIDO_TIENDA"), [tiendaDespachos]);
+  const tiendaCedi = useMemo(() => tiendaDespachos.filter((d) => d.estado === "ENTREGADO_CEDI"), [tiendaDespachos]);
+  const tiendaRechazados = useMemo(() => tiendaDespachos.filter((d) => d.estado === "RECHAZADO"), [tiendaDespachos]);
 
   // ── Alerta total para el header de greeting ──────────────
-  const totalAlertas = (() => {
-    if (needsNovedades && needsGuardados) return vencidas.length + proximas.length + pendientesNov.length; // OPERADOR
-    if (needsNovedades) return pendientesNov.length;
-    if (needsGuardados) return vencidas.length + proximas.length;
-    if (needsTienda)    return tiendaNovedad.length;
-    return 0;
-  })();
+  const totalAlertas =
+    (needsNovedades ? pendientesNov.length : 0) +
+    (needsGuardados ? vencidas.length + proximas.length : 0) +
+    (needsPendientesGuardado ? pendientesGuardado.length : 0) +
+    (needsTienda ? tiendaNovedad.length + tiendaRechazados.length : 0);
 
   const hora = new Date().getHours();
   const saludo = hora < 12 ? "Buenos días" : hora < 18 ? "Buenas tardes" : "Buenas noches";
@@ -325,8 +462,33 @@ function OperadorDashboard({ nombre, role }: { nombre: string; role: string }) {
   // ── Alertas visibles según área ──────────────────────────
   const showGuardadosAlerts = needsGuardados && (vencidas.length > 0 || proximas.length > 0);
   const showNovedadesAlerts = needsNovedades && pendientesNov.length > 0;
-  const showTiendaAlerts    = needsTienda && tiendaNovedad.length > 0;
-  const hasAlerts = showGuardadosAlerts || showNovedadesAlerts || showTiendaAlerts;
+  const showTiendaAlerts    = needsTienda && (tiendaNovedad.length > 0 || tiendaRechazados.length > 0);
+  const showPendientesGuardado = needsPendientesGuardado && pendientesGuardado.length > 0;
+  const hasAlerts = showGuardadosAlerts || showNovedadesAlerts || showTiendaAlerts || showPendientesGuardado;
+  const flowStages = [
+    ...(needsNovedades ? [
+      { key: "inventario", label: "Inventario", value: pendientesNov.length, sub: "novedades pendientes", href: "/dashboard/inventario", color: getModuleColor("inventario"), alert: pendientesNov.length > 0 },
+      { key: "conteo", label: "Conteo", value: enProcesoNov.length, sub: "en proceso", href: "/dashboard/conteo/contar", color: getModuleColor("conteo") },
+    ] : []),
+    ...(needsTienda ? [
+      { key: "creados", label: "Creados", value: tiendaCreados.length, sub: "esperan transporte", href: "/dashboard/tienda", color: getModuleColor("tienda"), alert: tiendaRechazados.length > 0 },
+      { key: "recogidos", label: "Recogidos", value: tiendaRecogidos.length, sub: "en tránsito CEDI", href: "/dashboard/tienda", color: getModuleColor("transporte") },
+      { key: "cedi", label: "En CEDI", value: tiendaCedi.length, sub: "listos para guardado/envío", href: "/dashboard/tienda", color: getModuleColor("transporte"), alert: pendientesGuardado.length > 0 },
+    ] : []),
+    ...(needsGuardados ? [
+      { key: "guardados", label: "Guardados", value: guardadosPend.length, sub: "pendientes despacho", href: "/dashboard/transporte", color: getModuleColor("transporte"), alert: vencidas.length + proximas.length > 0 },
+    ] : []),
+    ...(needsIntegracion ? [
+      { key: "integracion", label: "Integración", value: "OVDM", sub: "picking coordinado", href: "/dashboard/integracion", color: getModuleColor("integracion") },
+    ] : []),
+  ];
+  const prioridades = [
+    ...tiendaRechazados.slice(0, 2).map((d) => ({ id: `rech-${d.id}`, label: d.numeroDocumento, sub: `${d.clienteNombre} · corregir y re-enviar`, href: "/dashboard/tienda", color: "var(--error)", badge: "Rechazado", level: "error" as const })),
+    ...tiendaNovedad.slice(0, 2).map((d) => ({ id: `nov-t-${d.id}`, label: d.numeroDocumento, sub: `${d.clienteNombre} · revisar novedad`, href: "/dashboard/tienda", color: "var(--warning)", badge: "Novedad", level: "warning" as const })),
+    ...pendientesGuardado.slice(0, 3).map((p) => ({ id: `pg-${p.id}`, label: p.despacho?.numeroDocumento ?? "Pendiente de guardado", sub: p.despacho ? `${p.despacho.clienteNombre} · asignado a guardado` : "Pendiente asignado", href: "/dashboard/transporte", color: getModuleColor("transporte"), badge: "Guardar", level: "info" as const })),
+    ...vencidas.slice(0, 2).map((g) => ({ id: `ven-${g.clientId}`, label: g.documento, sub: `${g.ubicacion} · fecha vencida`, href: "/dashboard/transporte", color: "var(--error)", badge: "Vencida", level: "error" as const })),
+    ...pendientesNov.slice(0, 2).map((n) => ({ id: `nov-${n.id}`, label: `PLU ${n.plu}`, sub: `${n.descripcion ?? "Sin descripción"} · ${n.posicion}`, href: "/dashboard/inventario", color: getModuleColor("inventario"), badge: "Pendiente", level: "warning" as const })),
+  ];
 
   return (
     <div className="animate-fade-in" style={{ maxWidth: 680 }}>
@@ -344,6 +506,20 @@ function OperadorDashboard({ nombre, role }: { nombre: string; role: string }) {
           )}
         </p>
       </div>
+
+      {!loading && flowStages.length > 0 && (
+        <div style={{ marginBottom: 28 }}>
+          <SectionHeader title="Flujo operativo" />
+          <OperationFlow stages={flowStages} isMobile={isMobile} />
+        </div>
+      )}
+
+      {!loading && (
+        <div style={{ marginBottom: 28 }}>
+          <SectionHeader title="Prioridades de hoy" />
+          <PriorityList items={prioridades} emptyText="Sin bloqueos visibles para tu rol." />
+        </div>
+      )}
 
       {/* Alertas que requieren atención */}
       {!loading && hasAlerts && (
@@ -376,12 +552,28 @@ function OperadorDashboard({ nombre, role }: { nombre: string; role: string }) {
                 href="/dashboard/inventario"
               />
             )}
+            {tiendaRechazados.length > 0 && (
+              <AlertItem
+                level="critical"
+                text={`${tiendaRechazados.length} despacho${tiendaRechazados.length !== 1 ? "s" : ""} de tienda rechazado${tiendaRechazados.length !== 1 ? "s" : ""}`}
+                sub="Tienda debe corregir y re-enviar"
+                href="/dashboard/tienda"
+              />
+            )}
             {tiendaNovedad.length > 0 && (
               <AlertItem
                 level="warning"
                 text={`${tiendaNovedad.length} despacho${tiendaNovedad.length !== 1 ? "s" : ""} de tienda con novedad`}
                 sub="Requieren revisión y reasignación"
                 href="/dashboard/tienda"
+              />
+            )}
+            {showPendientesGuardado && (
+              <AlertItem
+                level="warning"
+                text={`${pendientesGuardado.length} despacho${pendientesGuardado.length !== 1 ? "s" : ""} de tienda pendiente${pendientesGuardado.length !== 1 ? "s" : ""} por guardar`}
+                sub={pendientesGuardado.slice(0, 2).map((p) => p.despacho?.numeroDocumento).filter(Boolean).join(" · ")}
+                href="/dashboard/transporte"
               />
             )}
           </div>
@@ -441,12 +633,14 @@ function OperadorDashboard({ nombre, role }: { nombre: string; role: string }) {
             {/* Tienda */}
             {needsTienda && (
               <>
-                <Stat value={tiendaPend.length} label="Activos tienda"
+                <Stat value={tiendaCreados.length} label="Creados tienda"
                   color={tiendaPend.length > 0 ? "var(--warning)" : "var(--success)"}
                   onClick={() => { window.location.href = "/dashboard/tienda"; }} />
-                <Stat value={tiendaNovedad.length} label="Con novedad"
-                  color={tiendaNovedad.length > 0 ? "var(--error)" : "var(--success)"} />
-                <Stat value={tiendaDesp.length} label="Completados"
+                <Stat value={tiendaCedi.length} label="En CEDI"
+                  color={tiendaCedi.length > 0 ? getModuleColor("transporte") : "var(--success)"} />
+                <Stat value={tiendaRechazados.length + tiendaNovedad.length} label="Bloqueados"
+                  color={(tiendaRechazados.length + tiendaNovedad.length) > 0 ? "var(--error)" : "var(--success)"} />
+                <Stat value={tiendaDesp.length} label="Enviados cliente"
                   color="var(--success)" />
               </>
             )}

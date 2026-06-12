@@ -5,6 +5,7 @@ import { createPortal } from "react-dom";
 import { useSession } from "next-auth/react";
 import { Users, Plus, Pencil, X, Shield, ShieldCheck, ShieldAlert, Truck, Car, Upload, Search, GitMerge } from "lucide-react";
 import { SkeletonTable, EmptyState } from "@/components/ui";
+import { getModuleColor } from "@/lib/moduleTheme";
 
 type Role = "ADMIN" | "GERENTE" | "OPERADOR" | "TRANSPORTISTA" | "INVENTARIO" | "TRANSPORTE" | "SUPERVISOR_INVENTARIO" | "SUPERVISOR_TRANSPORTE" | "TIENDA" | "SUPERVISOR_TIENDA" | "OPERACIONES_MUEBLES" | "OPERACIONES_GOURMET";
 
@@ -43,18 +44,18 @@ interface TransportistaOperativo {
 }
 
 const ROLE_META: Record<Role, { label: string; color: string; icon: React.ReactNode }> = {
-  ADMIN:                  { label: "Administrador",      color: "#6366f1", icon: <ShieldCheck size={13} /> },
-  GERENTE:                { label: "Gerente",            color: "#0ea5e9", icon: <Shield size={13} /> },
-  SUPERVISOR_INVENTARIO:  { label: "Sup. Inventario",    color: "#2563eb", icon: <Shield size={13} /> },
-  SUPERVISOR_TRANSPORTE:  { label: "Sup. Transporte",    color: "#0e7490", icon: <Shield size={13} /> },
+  ADMIN:                  { label: "Administrador",      color: getModuleColor("usuarios"), icon: <ShieldCheck size={13} /> },
+  GERENTE:                { label: "Gerente",            color: getModuleColor("centro-control"), icon: <Shield size={13} /> },
+  SUPERVISOR_INVENTARIO:  { label: "Sup. Inventario",    color: getModuleColor("inventario"), icon: <Shield size={13} /> },
+  SUPERVISOR_TRANSPORTE:  { label: "Sup. Transporte",    color: getModuleColor("transporte"), icon: <Shield size={13} /> },
   INVENTARIO:             { label: "Op. Inventario",     color: "#64748b", icon: <ShieldAlert size={13} /> },
   TRANSPORTE:             { label: "Op. Transporte",     color: "#64748b", icon: <ShieldAlert size={13} /> },
-  TIENDA:                 { label: "Op. Tienda",         color: "#7c3aed", icon: <ShieldAlert size={13} /> },
-  SUPERVISOR_TIENDA:      { label: "Sup. Tienda",        color: "#7c3aed", icon: <Shield size={13} /> },
+  TIENDA:                 { label: "Op. Tienda",         color: getModuleColor("tienda"), icon: <ShieldAlert size={13} /> },
+  SUPERVISOR_TIENDA:      { label: "Sup. Tienda",        color: getModuleColor("tienda"), icon: <Shield size={13} /> },
   OPERADOR:               { label: "Operador (General)", color: "#94a3b8", icon: <ShieldAlert size={13} /> },
-  TRANSPORTISTA:          { label: "Transportista",      color: "#0e7490", icon: <ShieldAlert size={13} /> },
-  OPERACIONES_MUEBLES:    { label: "Op. Muebles",        color: "#7C3AED", icon: <GitMerge size={13} /> },
-  OPERACIONES_GOURMET:    { label: "Op. Gourmet",        color: "#7C3AED", icon: <GitMerge size={13} /> },
+  TRANSPORTISTA:          { label: "Transportista",      color: getModuleColor("preoperacional"), icon: <ShieldAlert size={13} /> },
+  OPERACIONES_MUEBLES:    { label: "Op. Muebles",        color: getModuleColor("integracion"), icon: <GitMerge size={13} /> },
+  OPERACIONES_GOURMET:    { label: "Op. Gourmet",        color: getModuleColor("integracion"), icon: <GitMerge size={13} /> },
 };
 
 export default function UsuariosPage() {
@@ -107,7 +108,7 @@ export default function UsuariosPage() {
       if (vehiculosJson.success) setVehiculos(vehiculosJson.data);
       if (transportistasJson.success) setTransportistasOperativos(transportistasJson.data);
     } catch {
-      showToast("Error al cargar conductores y vehiculos", true);
+      showToast("Error al cargar conductores y vehículos", true);
     } finally {
       setLoadingCatalogos(false);
     }
@@ -144,7 +145,7 @@ export default function UsuariosPage() {
   if (role && role !== "ADMIN") {
     return (
       <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 14, padding: "3rem 2rem", textAlign: "center" }}>
-        <ShieldAlert size={40} color="#ef4444" style={{ margin: "0 auto 1rem" }} />
+        <ShieldAlert size={40} color="var(--error)" style={{ margin: "0 auto 1rem" }} />
         <div style={{ fontSize: 16, fontWeight: 700, color: "var(--text)" }}>Acceso restringido</div>
         <div style={{ fontSize: 13, color: "var(--muted)", marginTop: 6 }}>Solo los administradores pueden gestionar usuarios.</div>
       </div>
@@ -260,7 +261,7 @@ export default function UsuariosPage() {
       {editing && <ModalEditar u={editing} selfId={(session?.user as any)?.id} onClose={() => setEditing(null)} onSaved={() => { setEditing(null); load(); showToast("Usuario actualizado ✓"); }} onError={m => showToast(m, true)} />}
 
       {toast && (
-        <div style={{ position: "fixed", bottom: 24, right: 24, zIndex: 10001, background: toast.err ? "#ef4444" : "#0f172a", color: "#fff", padding: "0.8rem 1.2rem", borderRadius: 10, fontSize: 13, fontWeight: 600, boxShadow: "0 8px 28px #0f172a40" }}>
+        <div style={{ position: "fixed", bottom: 24, right: 24, zIndex: 10001, background: toast.err ? "var(--error)" : "var(--text)", color: "#fff", padding: "0.8rem 1.2rem", borderRadius: 10, fontSize: 13, fontWeight: 600, boxShadow: "var(--shadow-xl)" }}>
           {toast.msg}
         </div>
       )}
@@ -308,16 +309,16 @@ function CatalogosPreoperacional({
       });
       const json = await res.json();
       if (!json.success) {
-        onToast(json.error || "Error al crear vehiculo", true);
+        onToast(json.error || "Error al crear vehículo", true);
         return;
       }
       setPlaca("");
       setTipo("CAMION");
       setCapacidadKg("");
       onReload();
-      onToast("Vehiculo creado");
+      onToast("Vehículo creado");
     } catch {
-      onToast("Error de conexion", true);
+      onToast("Error de conexión", true);
     } finally {
       setSavingVehiculo(false);
     }
@@ -346,7 +347,7 @@ function CatalogosPreoperacional({
       onReload();
       onToast("Transportista operativo creado");
     } catch {
-      onToast("Error de conexion", true);
+      onToast("Error de conexión", true);
     } finally {
       setSavingTransportista(false);
     }
@@ -362,13 +363,13 @@ function CatalogosPreoperacional({
       });
       const json = await res.json();
       if (!json.success) {
-        onToast(json.error || "Error al asignar vehiculo", true);
+        onToast(json.error || "Error al asignar vehículo", true);
         return;
       }
       onReload();
-      onToast("Vehiculo asignado");
+      onToast("Vehículo asignado");
     } catch {
-      onToast("Error de conexion", true);
+      onToast("Error de conexión", true);
     } finally {
       setUpdatingId(null);
     }
@@ -391,7 +392,7 @@ function CatalogosPreoperacional({
       setResultadoMaestro(`${data.importados} importados, ${data.actualizados} actualizados, ${data.ignorados} ignorados`);
       onToast("Maestro PLU importado");
     } catch {
-      onToast("Error de conexion", true);
+      onToast("Error de conexión", true);
     } finally {
       setImportandoMaestro(false);
     }
@@ -404,7 +405,7 @@ function CatalogosPreoperacional({
           <Upload size={18} color="#6366f1" />
           <div>
             <h2 style={{ fontSize: 15, fontWeight: 800, color: "var(--text)" }}>Maestro PLU</h2>
-            <p style={{ fontSize: 12, color: "var(--muted)", marginTop: 2 }}>Importa MAESTRO.xlsx para autollenar descripcion, fabricante, marca y precio.</p>
+            <p style={{ fontSize: 12, color: "var(--muted)", marginTop: 2 }}>Importa MAESTRO.xlsx para autollenar descripción, fabricante, marca y precio.</p>
             {resultadoMaestro && <p style={{ fontSize: 12, color: "#10b981", marginTop: 4, fontWeight: 800 }}>{resultadoMaestro}</p>}
           </div>
         </div>
@@ -416,31 +417,31 @@ function CatalogosPreoperacional({
       <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 14, padding: "1rem" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: "0.9rem" }}>
           <Car size={18} color="#0e7490" />
-          <h2 style={{ fontSize: 15, fontWeight: 800, color: "var(--text)" }}>Vehiculos</h2>
+          <h2 style={{ fontSize: 15, fontWeight: 800, color: "var(--text)" }}>Vehículos</h2>
         </div>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(130px, 1fr))", gap: 8 }}>
           <Field label="Placa"><input value={placa} onChange={e => setPlaca(e.target.value.toUpperCase())} style={inp} placeholder="ABC123" /></Field>
           <Field label="Tipo">
             <select value={tipo} onChange={e => setTipo(e.target.value)} style={inp}>
-              <option value="CAMION">Camion</option>
-              <option value="FURGON">Furgon</option>
+              <option value="CAMION">Camión</option>
+              <option value="FURGON">Furgón</option>
               <option value="VAN">Van</option>
               <option value="MOTO">Moto</option>
             </select>
           </Field>
           <Field label="Capacidad kg"><input type="number" min={1} value={capacidadKg} onChange={e => setCapacidadKg(e.target.value)} style={inp} placeholder="Opcional" /></Field>
           <button onClick={crearVehiculo} disabled={savingVehiculo} style={{ ...btnPri, alignSelf: "end", background: "#0e7490" }}>
-            {savingVehiculo ? "Creando..." : "Crear vehiculo"}
+            {savingVehiculo ? "Creando..." : "Crear vehículo"}
           </button>
         </div>
         <div style={{ marginTop: "1rem", display: "flex", flexDirection: "column", gap: 6 }}>
-          {loading ? <div style={{ color: "var(--muted)", fontSize: 12 }}>Cargando...</div> : vehiculos.map(v => (
+          {loading ? <div style={{ color: "var(--muted)", fontSize: 12 }}>Cargando vehículos...</div> : vehiculos.map(v => (
             <div key={v.id} style={{ display: "flex", justifyContent: "space-between", gap: 10, borderTop: "1px solid var(--border)", paddingTop: 8, fontSize: 12 }}>
               <span style={{ fontWeight: 800 }}>{v.placa} <span style={{ color: "var(--muted)", fontWeight: 600 }}>{v.tipo}</span></span>
               <span style={{ color: v.estado === "ACTIVO" ? "#10b981" : "#f59e0b", fontWeight: 800 }}>{v.estado}</span>
             </div>
           ))}
-          {!loading && vehiculos.length === 0 && <div style={{ color: "var(--muted)", fontSize: 12 }}>No hay vehiculos registrados.</div>}
+          {!loading && vehiculos.length === 0 && <div style={{ color: "var(--muted)", fontSize: 12 }}>No hay vehículos registrados. Crea uno para habilitar usuarios transportistas.</div>}
         </div>
       </div>
 
@@ -451,10 +452,10 @@ function CatalogosPreoperacional({
         </div>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))", gap: 8, alignItems: "end" }}>
           <Field label="Nombre"><input value={nombre} onChange={e => setNombre(e.target.value)} style={inp} placeholder="Nombre conductor" /></Field>
-          <Field label="Telefono"><input value={telefono} onChange={e => setTelefono(e.target.value)} style={inp} placeholder="Opcional" /></Field>
-          <Field label="Vehiculo">
+          <Field label="Teléfono"><input value={telefono} onChange={e => setTelefono(e.target.value)} style={inp} placeholder="Opcional" /></Field>
+          <Field label="Vehículo">
             <select value={vehiculoId} onChange={e => setVehiculoId(e.target.value)} style={inp}>
-              <option value="">Sin vehiculo</option>
+              <option value="">Sin vehículo</option>
               {vehiculos.map(v => <option key={v.id} value={v.id}>{v.placa} - {v.tipo}</option>)}
             </select>
           </Field>
@@ -469,7 +470,7 @@ function CatalogosPreoperacional({
               <tr style={{ borderBottom: "1px solid var(--border)", color: "var(--muted)" }}>
                 <th style={{ textAlign: "left", padding: "0.5rem" }}>Nombre</th>
                 <th style={{ textAlign: "left", padding: "0.5rem" }}>Usuario</th>
-                <th style={{ textAlign: "left", padding: "0.5rem" }}>Vehiculo</th>
+                <th style={{ textAlign: "left", padding: "0.5rem" }}>Vehículo</th>
                 <th style={{ textAlign: "left", padding: "0.5rem" }}>Estado</th>
               </tr>
             </thead>
@@ -485,7 +486,7 @@ function CatalogosPreoperacional({
                       disabled={updatingId === t.id}
                       style={{ ...inp, padding: "0.4rem 0.55rem", fontSize: 12 }}
                     >
-                      <option value="">Sin vehiculo</option>
+                      <option value="">Sin vehículo</option>
                       {vehiculos.map(v => <option key={v.id} value={v.id}>{v.placa} - {v.tipo}</option>)}
                     </select>
                   </td>
@@ -494,7 +495,7 @@ function CatalogosPreoperacional({
               ))}
             </tbody>
           </table>
-          {!loading && transportistas.length === 0 && <div style={{ color: "var(--muted)", fontSize: 12, paddingTop: 10 }}>No hay transportistas operativos.</div>}
+          {!loading && transportistas.length === 0 && <div style={{ color: "var(--muted)", fontSize: 12, paddingTop: 10 }}>No hay transportistas operativos. Crea uno y asígnale vehículo antes de vincular usuario.</div>}
         </div>
       </div>
     </section>
@@ -572,8 +573,8 @@ function FormNuevo({ onClose, onSaved, onError }: { onClose: () => void; onSaved
         onError(msg);
       }
     } catch {
-      setFormError("Error de conexion");
-      onError("Error de conexion");
+      setFormError("Error de conexión");
+      onError("Error de conexión");
     }
     finally { setSaving(false); }
   }
@@ -617,13 +618,13 @@ function FormNuevo({ onClose, onSaved, onError }: { onClose: () => void; onSaved
               <option value="">{loadingTransportistas ? "Cargando transportistas..." : "Seleccionar transportista"}</option>
               {transportistas.map((t) => (
                 <option key={t.id} value={t.id}>
-                  {t.nombre}{t.vehiculo ? ` - ${t.vehiculo.placa} (${t.vehiculo.tipo})` : " - sin vehiculo"}
+                  {t.nombre}{t.vehiculo ? ` - ${t.vehiculo.placa} (${t.vehiculo.tipo})` : " - sin vehículo"}
                 </option>
               ))}
             </select>
             {!loadingTransportistas && transportistas.length === 0 && (
               <p style={{ fontSize: 11, color: "#f59e0b", marginTop: 4 }}>
-                No hay transportistas activos con vehiculo y sin usuario asignado.
+                No hay transportistas activos con vehículo y sin usuario asignado.
               </p>
             )}
           </Field>

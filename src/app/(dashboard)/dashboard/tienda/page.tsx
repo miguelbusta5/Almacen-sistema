@@ -800,7 +800,7 @@ function ModalAsignarGuardado({ despacho, onClose, onAsignado, onError }: {
               <textarea
                 value={nota}
                 onChange={(e) => setNota(e.target.value)}
-                placeholder="Ubicacion sugerida, instrucciones internas o contexto para el operario"
+                placeholder="Ubicación sugerida, instrucciones internas o contexto para el operario"
                 style={{ ...inp, minHeight: 80, height: "auto", paddingTop: 10, resize: "vertical" }}
                 {...focusProps}
               />
@@ -932,7 +932,7 @@ function ModalDespacho({ despacho, role, onClose, onSaved, onError }: {
           <textarea
             value={notaEntrega}
             onChange={(e) => setNotaEntrega(e.target.value)}
-            placeholder="Direccion, contacto, observaciones o instrucciones de entrega"
+            placeholder="Dirección, contacto, observaciones o instrucciones de entrega"
             style={{ ...inp, minHeight: 88, height: "auto", paddingTop: 10, resize: "vertical" }}
             {...focusProps}
           />

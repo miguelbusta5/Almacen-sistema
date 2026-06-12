@@ -105,7 +105,7 @@ export const HOME_ACTIONS: HomeAction[] = [
   {
     id: "preoperacional",
     title: "Preoperacional",
-    description: "Registrar inspeccion diaria del vehiculo",
+    description: "Registrar inspección diaria del vehículo",
     href: "/dashboard/preoperacional",
     icon: "ShieldCheck",
     color: getModuleColor("preoperacional"),

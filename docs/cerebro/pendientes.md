@@ -25,9 +25,8 @@
 
 ### UI / UX Torre CEDI
 
-- [ ] Fase 3 UI: convertir Dashboard en Torre CEDI con prioridades por rol y flujo operativo
-- [ ] Fase 4 UI: pulir Usuarios, Tienda, Conteo y Preoperacional con estados vacios/carga/error consistentes
-- [ ] QA visual desktop/mobile de Login, Dashboard, Usuarios, Tienda, Conteo y Preoperacional
+- [ ] QA visual desktop/mobile con sesion real por rol de Login, Dashboard, Usuarios, Tienda, Conteo y Preoperacional
+- [ ] Planificar siguiente etapa de interfaz menos generica y mas propia de Grupo Ambiente CEDI
 - [x] Vista de detalle de inspecciones preoperacionales en la app (SlidePanel con checklist) — 2026-06-10
 - [x] Checklist preoperacional completo con 58 ítems reales en 15 categorías — 2026-06-10
 
@@ -53,6 +52,9 @@
 - [x] Fase 1 UI: identidad Torre CEDI, tema modular y colores consistentes por modulo - 2026-06-11
 - [x] Revisión Fase 1 post-Claude: Tienda RECHAZADO, guardado y Preoperacional alineados al tema modular - 2026-06-11
 - [x] Fase 2 UI: shell operativo, sidebar v2.3 y command palette por rol - 2026-06-12
+- [x] Fase 3 UI: Dashboard Torre CEDI con flujo operativo y prioridades por rol - 2026-06-12
+- [x] Fase 4 UI: pulido de Usuarios, Tienda, Conteo, Preoperacional y alertas del Dashboard - 2026-06-12
+- [x] QA tecnico predeploy: TypeScript, tests y build para cierre de Fases 3/4 - 2026-06-12
 - [x] Rechazar solicitud de despacho con motivo, cajón de rechazados para TIENDA, re-envío — 2026-06-11
 - [x] Permitir edición de datos del despacho en estado RECHAZADO antes de re-enviar — 2026-06-11
 - [x] Restringir TIENDA: solo puede editar despachos en RECHAZADO, no en CREADO_TIENDA — 2026-06-11

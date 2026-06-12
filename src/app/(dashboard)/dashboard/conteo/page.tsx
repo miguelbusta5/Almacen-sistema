@@ -154,7 +154,7 @@ function ModalImportar({ ciclo, onClose, onImportado }: { ciclo: CicloConteo; on
             <Upload size={16} />Seleccionar archivo Excel o CSV
           </button>
         )}
-        {error && <div style={{ color: "#ef4444", fontSize: 12 }}>{error}</div>}
+        {error && <div style={{ color: "var(--error)", fontSize: 12 }}>{error}</div>}
         {resultado && (
           <div style={{ background: "#f0fdf4", border: "1px solid #bbf7d0", borderRadius: 10, padding: "0.85rem 1rem" }}>
             <div style={{ fontSize: 14, fontWeight: 700, color: "#15803d", marginBottom: 6 }}>✓ Importación exitosa</div>
@@ -256,7 +256,7 @@ function ModalOperarios({ operarios, onClose, onCambio }: { operarios: OperarioC
         </button>
       </form>
       <div style={{ maxHeight: 400, overflowY: "auto", border: "1px solid var(--border)", borderRadius: 10, overflow: "hidden" }}>
-        {lista.length === 0 && <div style={{ padding: "1.5rem", textAlign: "center", color: "var(--muted)", fontSize: 13 }}>Sin operarios. Agrega el primero.</div>}
+        {lista.length === 0 && <div style={{ padding: "1.5rem", textAlign: "center", color: "var(--muted)", fontSize: 13 }}>Sin operarios configurados. Agrega el primero para asignar rangos de conteo.</div>}
         {lista.map((op, i) => (
           <div key={op.id} style={{ display: "flex", alignItems: "center", gap: 10, padding: "0.65rem 0.9rem", borderBottom: i < lista.length - 1 ? "1px solid var(--border)" : "none", background: op.activo ? "var(--surface)" : "var(--surface2)", opacity: op.activo ? 1 : 0.6 }}>
             <span style={{ flex: 1, fontSize: 13, fontWeight: 600, color: "var(--text)" }}>{op.nombre}</span>
@@ -448,7 +448,7 @@ export default function ConteoPage() {
               ))}
             </tr></thead>
             <tbody>
-              {ciclos.length === 0 && <tr><td colSpan={6} style={{ padding: "2rem", textAlign: "center", color: "var(--muted)" }}>Sin ciclos aún. Crea el primero.</td></tr>}
+              {ciclos.length === 0 && <tr><td colSpan={6} style={{ padding: "2rem", textAlign: "center", color: "var(--muted)" }}>Sin ciclos aún. Crea el primero e importa el teórico para empezar.</td></tr>}
               {ciclos.map((c) => {
                 const completados = (c.ok ?? 0) + (c.novedades ?? 0);
                 return (
@@ -520,7 +520,7 @@ export default function ConteoPage() {
                         ))}
                       </tr></thead>
                       <tbody>
-                        {lineas.length === 0 && <tr><td colSpan={9} style={{ padding: "2rem", textAlign: "center", color: "var(--muted)" }}>Sin líneas (mostrando hasta 500)</td></tr>}
+                        {lineas.length === 0 && <tr><td colSpan={9} style={{ padding: "2rem", textAlign: "center", color: "var(--muted)" }}>{fq || fEstado || fDia || fOperario ? "Sin líneas para los filtros seleccionados." : "Sin líneas importadas para este ciclo."}</td></tr>}
                         {lineas.map((l) => {
                           const contada = l.cantidadRecontada ?? l.cantidadContada;
                           const dif = l.diferenciaFinal;

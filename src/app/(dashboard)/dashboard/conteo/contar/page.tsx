@@ -123,7 +123,7 @@ function ModalConteo({ linea, tipo, operario, onClose, onGuardado }: {
           </div>
         )}
 
-        {error && <div style={{ color: "#ef4444", fontSize: 12, marginBottom: "0.75rem" }}>{error}</div>}
+        {error && <div style={{ color: "var(--error)", fontSize: 12, marginBottom: "0.75rem" }}>{error}</div>}
 
         <div style={{ display: "flex", gap: 10 }}>
           <button onClick={guardar} disabled={saving} style={{ flex: 2, padding: "0.9rem", background: saving ? "#94a3b8" : COLOR_CONTEO, color: "#fff", border: "none", borderRadius: 12, fontSize: 15, fontWeight: 800, cursor: saving ? "not-allowed" : "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
@@ -224,7 +224,7 @@ export default function ContarPage() {
         </div>
         {loading ? <div className="skeleton" style={{ height: 300, borderRadius: 14 }} /> : (
           <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 14, overflow: "hidden" }}>
-            {operarios.length === 0 && <div style={{ padding: "2rem", textAlign: "center", color: "var(--muted)" }}>Sin operarios configurados. Pide al admin que los agregue.</div>}
+            {operarios.length === 0 && <div style={{ padding: "2rem", textAlign: "center", color: "var(--muted)" }}>Sin operarios configurados. Pide al supervisor de inventario que los agregue.</div>}
             {operarios.map((o, i) => (
               <button key={o.id} onClick={() => seleccionarOperario(o.nombre)} style={{ width: "100%", padding: "1rem 1.25rem", textAlign: "left", background: "none", border: "none", borderBottom: i < operarios.length - 1 ? "1px solid var(--border)" : "none", cursor: "pointer", fontSize: 14, fontWeight: 600, color: "var(--text)", display: "flex", alignItems: "center", justifyContent: "space-between" }}
                 onMouseEnter={(e) => { e.currentTarget.style.background = "var(--surface2)"; }}
@@ -258,7 +258,7 @@ export default function ContarPage() {
         <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 14, padding: "3rem 2rem", textAlign: "center" }}>
           <ClipboardList size={40} color="var(--muted)" style={{ margin: "0 auto 1rem" }} />
           <div style={{ fontSize: 16, fontWeight: 700, color: "var(--text)" }}>Sin ciclo activo</div>
-          <div style={{ fontSize: 13, color: "var(--muted)", marginTop: 6 }}>El admin lanzará el ciclo cuando esté listo.</div>
+          <div style={{ fontSize: 13, color: "var(--muted)", marginTop: 6 }}>El supervisor lanzará el ciclo e importará el teórico cuando esté listo.</div>
         </div>
       )}
 

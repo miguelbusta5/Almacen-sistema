@@ -91,6 +91,42 @@ Regla para Fase 3: el Dashboard puede volverse Torre CEDI por rol, pero debe con
 
 ---
 
+## Fase 3 Dashboard Torre CEDI
+
+Aplicada el 2026-06-12:
+
+- `/dashboard` pasa a priorizar flujo operativo y tareas accionables por rol.
+- Dirección (`ADMIN`, `GERENTE`) ve una vista ejecutiva: flujo Inventario → Tienda → CEDI → Conteo, prioridades críticas, módulos y actividad reciente.
+- `SUPERVISOR_TRANSPORTE` ve Tienda, CEDI, guardados y pendientes de guardado como señales principales.
+- `TRANSPORTE` ve pendientes de guardado asignados y guardados por despachar.
+- `TIENDA` y `SUPERVISOR_TIENDA` ven solicitudes creadas, rechazadas, con novedad y enviadas.
+- `TRANSPORTISTA` se mantiene limitado a Preoperacional.
+- `OPERACIONES_MUEBLES` y `OPERACIONES_GOURMET` conservan foco en Integración de Pedidos.
+
+Regla para Fase 4: el pulido de módulos debe mejorar estados vacíos/carga/error dentro de cada pantalla, no ampliar el alcance funcional ni reactivar logística.
+
+---
+
+## Fase 4 Pulido de modulos y QA
+
+Aplicada el 2026-06-12:
+
+- Usuarios usa colores de `moduleTheme` para roles y mejora textos de carga/error/vacio en vehiculos y transportistas operativos.
+- Tienda ajusta microcopy de `notaEntrega` para indicar direccion, contacto, observaciones e instrucciones.
+- Conteo mejora estados vacios para ciclos, lineas filtradas, operarios y errores de importacion.
+- Preoperacional mantiene experiencia guiada para transportistas y corrige textos de vehiculo/inspeccion.
+- Dashboard suma todas las alertas accionables por rol y muestra rechazos de Tienda como prioridad critica.
+
+QA:
+
+- Desktop/mobile visual debe revisarse en navegador real despues del deploy cuando haya sesion disponible por rol.
+- Smoke tecnico predeploy se valida con TypeScript, tests y build.
+- Smoke publico de produccion valida disponibilidad y endpoints protegidos sin sesion.
+
+Regla para la siguiente fase: antes de rediseñar pantallas completas, planificar una identidad visual menos generica que mantenga densidad operativa CEDI.
+
+---
+
 ## Componentes del design system
 
 Importados desde `@/components/ui`:
