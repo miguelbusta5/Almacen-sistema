@@ -77,8 +77,8 @@ export const HOME_ACTIONS: HomeAction[] = [
   // ── Tienda ──────────────────────────────────────────────
   {
     id: "nuevo-despacho-tienda",
-    title: "Nuevo despacho de tienda",
-    description: "Registrar despacho desde tienda hacia el flujo CEDI",
+    title: "Nueva Factura Contado",
+    description: "Registrar factura contado para el flujo CEDI",
     href: "/dashboard/tienda",
     icon: "Store",
     color: getModuleColor("tienda"),

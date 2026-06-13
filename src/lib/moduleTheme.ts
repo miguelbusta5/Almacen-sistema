@@ -63,9 +63,9 @@ export const MODULE_THEME: Record<ModuleThemeKey, ModuleTheme> = {
   },
   tienda: {
     key: "tienda",
-    label: "Despachos Tienda",
-    shortLabel: "Tienda",
-    description: "Despachos desde tienda hacia el flujo CEDI",
+    label: "Facturas Contado",
+    shortLabel: "Facturas",
+    description: "Facturas contado desde tienda hacia el flujo CEDI",
     color: "#D97706",
     tint: "rgba(217,119,6,0.14)",
   },

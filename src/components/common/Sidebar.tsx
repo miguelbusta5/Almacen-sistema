@@ -34,7 +34,7 @@ const ALL_ITEMS: NavItem[] = [
   { href: "/dashboard/conteo/contar",          label: "Contar",             icon: <ClipboardList size={16} />, moduleKey: "conteo-contar" },
 
   // ── Área de Tienda ───────────────────────────────
-  { href: "/dashboard/tienda",                 label: "Despachos Tienda",   icon: <Store size={16} />,        moduleKey: "tienda" },
+  { href: "/dashboard/tienda",                 label: "Facturas Contado",   icon: <Store size={16} />,        moduleKey: "tienda" },
 
   // ── Integración de Pedidos ───────────────────────
   { href: "/dashboard/integracion",            label: "Integración Pedidos", icon: <GitMerge size={16} />,   moduleKey: "integracion" },

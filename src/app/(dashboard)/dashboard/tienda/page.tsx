@@ -224,14 +224,14 @@ export default function TiendaPage() {
             <div style={{ width: 30, height: 30, borderRadius: 8, background: COLOR_TIENDA + "14", display: "flex", alignItems: "center", justifyContent: "center" }}>
               <Store size={16} color={COLOR_TIENDA} />
             </div>
-            <h1 style={{ fontSize: 22, fontWeight: 700, color: "var(--text)", letterSpacing: "-0.03em", margin: 0 }}>Despachos Tienda</h1>
+            <h1 style={{ fontSize: 22, fontWeight: 700, color: "var(--text)", letterSpacing: "-0.03em", margin: 0 }}>Facturas Contado</h1>
           </div>
           <p style={{ fontSize: 13, color: "var(--muted)", margin: 0 }}>
             {loading ? "Cargando…" : `${items.length} registros · ${kpis.pendientesRecogida} creados en tienda`}
           </p>
         </div>
         <button className="ds-btn ds-btn-primary" style={{ background: COLOR_TIENDA, boxShadow: `0 2px 12px ${COLOR_TIENDA}28` }} onClick={() => setCreando(true)}>
-          <Plus size={14} />Nuevo despacho
+          <Plus size={14} />Nueva Factura
         </button>
       </div>
 
@@ -368,9 +368,9 @@ export default function TiendaPage() {
         {loading ? <SkeletonTable rows={8} cols={7} /> : filtered.length === 0 ? (
           <EmptyState
             icon={<Store size={22} />}
-            title="Sin despachos"
-            description={(fq || fEstado || fCC) ? "No hay resultados para estos filtros." : "Los despachos de tienda aparecerán aquí."}
-            action={(fq || fEstado || fCC) ? { label: "Limpiar filtros", onClick: () => { setFq(""); setFEstado(""); setFCC(""); } } : { label: "Nuevo despacho", onClick: () => setCreando(true) }}
+            title="Sin facturas"
+            description={(fq || fEstado || fCC) ? "No hay resultados para estos filtros." : "Las facturas contado aparecerán aquí."}
+            action={(fq || fEstado || fCC) ? { label: "Limpiar filtros", onClick: () => { setFq(""); setFEstado(""); setFCC(""); } } : { label: "Nueva Factura", onClick: () => setCreando(true) }}
           />
         ) : (
           <div style={{ overflowX: "auto" }}>
@@ -545,7 +545,7 @@ export default function TiendaPage() {
               )}
             </DetailSection>
 
-            <DetailSection title="Datos del despacho">
+            <DetailSection title="Datos de la factura">
               <DetailGrid items={[
                 { label: "Centro de costos",         value: <span style={{ fontWeight: 700 }}>{panelItem.centroCostos}</span> },
                 { label: "Fecha creación",           value: fmtFechaTienda(panelItem.fechaCreacion) },
@@ -583,7 +583,7 @@ export default function TiendaPage() {
             </DetailSection>
 
             {panelItem.plines && panelItem.plines.length > 0 && (
-              <DetailSection title={`PLUs del despacho (${panelItem.plines.length})`}>
+              <DetailSection title={`PLUs de la factura (${panelItem.plines.length})`}>
                 <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
                   {panelItem.plines.map((p: PlinDespacho) => (
                     <div key={p.id} style={{ display: "flex", alignItems: "center", gap: 10, padding: "6px 10px", background: "var(--surface2)", borderRadius: 8 }}>
@@ -656,13 +656,13 @@ export default function TiendaPage() {
           despacho={editing ?? undefined}
           role={role}
           onClose={() => { setCreando(false); setEditing(null); }}
-          onSaved={() => { setCreando(false); setEditing(null); load(); showToast(editing ? "Actualizado ✓" : "Despacho registrado ✓"); }}
+          onSaved={() => { setCreando(false); setEditing(null); load(); showToast(editing ? "Actualizado ✓" : "Factura registrada ✓"); }}
           onError={(m) => showToast(m, true)}
         />
       )}
 
       {deleting && (
-        <ModalBase title="Eliminar despacho" sub={`${deleting.numeroDocumento} · ${deleting.clienteNombre}`} onClose={() => setDeleting(null)}>
+        <ModalBase title="Eliminar factura" sub={`${deleting.numeroDocumento} · ${deleting.clienteNombre}`} onClose={() => setDeleting(null)}>
           <p style={{ fontSize: 13, color: "var(--muted)", marginBottom: 20 }}>Esta acción es permanente.</p>
           <div style={{ display: "flex", gap: 8 }}>
             <button className="ds-btn ds-btn-secondary" style={{ flex: 1 }} onClick={() => setDeleting(null)}>Cancelar</button>
@@ -688,7 +688,7 @@ export default function TiendaPage() {
         <ModalRechazar
           despacho={rechazarItem}
           onClose={() => setRechazarItem(null)}
-          onRechazado={() => { setRechazarItem(null); setPanelItem(null); load(); showToast("Despacho rechazado"); }}
+          onRechazado={() => { setRechazarItem(null); setPanelItem(null); load(); showToast("Factura rechazada"); }}
         />
       )}
 
@@ -733,7 +733,7 @@ function ModalRechazar({ despacho, onClose, onRechazado }: {
     <ModalBase title="Rechazar solicitud" sub={`Doc. ${despacho.numeroDocumento} · ${despacho.clienteNombre}`} onClose={onClose}>
       <form onSubmit={submit} style={{ display: "flex", flexDirection: "column", gap: 14 }}>
         <p style={{ fontSize: 13, color: "var(--muted)", margin: 0 }}>
-          El despacho será devuelto al área de tienda con el motivo indicado para que pueda ser corregido y re-enviado.
+          La factura será devuelta al área de tienda con el motivo indicado para que pueda ser corregida y re-enviada.
         </p>
         <Field label="Motivo del rechazo *">
           <textarea
@@ -908,7 +908,7 @@ function ModalDespacho({ despacho, role, onClose, onSaved, onError }: {
   }
 
   return (
-    <ModalBase title={isEdit ? "Editar despacho" : "Nuevo despacho"} sub={isEdit ? `${despacho!.numeroDocumento}` : undefined} onClose={onClose}>
+    <ModalBase title={isEdit ? "Editar factura" : "Nueva Factura"} sub={isEdit ? `${despacho!.numeroDocumento}` : undefined} onClose={onClose}>
       <form onSubmit={submit} style={{ display: "flex", flexDirection: "column", gap: 14, maxHeight: "70vh", overflowY: "auto" }}>
         <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr", gap: 12 }}>
           <Field label="Centro de costos *"><input value={centroCostos} onChange={(e) => setCC(e.target.value)} placeholder="CC-001" style={inp} {...focusProps} /></Field>
@@ -941,7 +941,7 @@ function ModalDespacho({ despacho, role, onClose, onSaved, onError }: {
         {/* PLUs del despacho */}
         <div style={{ borderTop: "1px solid var(--border)", paddingTop: 12 }}>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
-            <span style={{ fontSize: 12, fontWeight: 600, color: "var(--muted2)" }}>PLUs del despacho ({plines.length})</span>
+            <span style={{ fontSize: 12, fontWeight: 600, color: "var(--muted2)" }}>PLUs de la factura ({plines.length})</span>
             <button type="button" className="ds-btn ds-btn-sm" style={{ background: COLOR_TIENDA + "14", color: COLOR_TIENDA, height: 28, fontSize: 11 }} onClick={addPlin}>
               <Plus size={12} />Agregar PLU
             </button>
@@ -976,7 +976,7 @@ function ModalDespacho({ despacho, role, onClose, onSaved, onError }: {
         <div style={{ display: "flex", gap: 8, paddingTop: 4 }}>
           <button type="button" className="ds-btn ds-btn-secondary" onClick={onClose} style={{ flex: 1 }}>Cancelar</button>
           <button type="submit" className="ds-btn ds-btn-primary" disabled={saving} style={{ flex: 2, background: COLOR_TIENDA }}>
-            {saving ? "Guardando…" : isEdit ? "Guardar cambios" : "Registrar despacho"}
+            {saving ? "Guardando…" : isEdit ? "Guardar cambios" : "Registrar Factura"}
           </button>
         </div>
       </form>

@@ -6,7 +6,7 @@
 
 ## Tareas pendientes
 
-### Modulo Tienda / Despachos
+### Modulo Tienda / Facturas Contado
 
 - [ ] Verificar en produccion que el sidebar no muestra Logistica, Rutas, GPS ni Mi Ruta
 - [ ] Smoke test de flujo Tienda: CREADO_TIENDA -> RECOGIDO_TIENDA -> ENTREGADO_CEDI -> ENVIADO_CLIENTE
@@ -62,6 +62,7 @@
 - [x] Permitir edición de datos del despacho en estado RECHAZADO antes de re-enviar — 2026-06-11
 - [x] Restringir TIENDA: solo puede editar despachos en RECHAZADO, no en CREADO_TIENDA — 2026-06-11
 - [x] Modulo Solicitudes de Transporte interno con rechazo, correccion, gestion Stella y semaforo — 2026-06-12
+- [x] Renombrar modulo "Despachos Tienda" → "Facturas Contado" en toda la UI (sidebar, command palette, home actions, page, modales) — 2026-06-13
 
 ---
 
