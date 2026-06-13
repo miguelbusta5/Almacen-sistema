@@ -4,6 +4,8 @@
 
 ---
 
+> **Nombre en UI:** "Facturas Contado". Nombre del modelo en código: `DespachoTienda`. Enum en DB: `EstadoDespacho`. Ruta API: `/api/tienda`. URL: `/dashboard/tienda`.
+
 ## Estados reales en la base de datos
 
 Enum `EstadoDespacho` en `prisma/schema.prisma`:

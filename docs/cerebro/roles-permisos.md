@@ -19,11 +19,11 @@
 | Administrador | `ADMIN` | Acceso total + Usuarios + Auditoría |
 | Gerente | `GERENTE` | Todo operativo + Centro de Control |
 | Supervisor Inventario | `SUPERVISOR_INVENTARIO` | Inventario + Conteo + Centro de Control |
-| Supervisor Transporte | `SUPERVISOR_TRANSPORTE` | Tienda + Guardados + Centro de Control |
+| Supervisor Transporte | `SUPERVISOR_TRANSPORTE` | Facturas Contado + Guardados + Centro de Control |
 | Supervisor Tienda | `SUPERVISOR_TIENDA` | Tienda + Centro de Control |
 | Operario Inventario | `INVENTARIO` | Solo Inventario + Conteo |
 | Operario Transporte | `TRANSPORTE` | Solo Guardados |
-| Operario Tienda | `TIENDA` | Solo Despachos Tienda |
+| Operario Tienda | `TIENDA` | Solo Facturas Contado (módulo `tienda`) |
 | Conductor | `TRANSPORTISTA` | **Solo Preoperacional** (requiere vehículo asignado) |
 | Operador (legado) | `OPERADOR` | Inventario + Transporte (rol heredado) |
 | Operaciones Muebles | `OPERACIONES_MUEBLES` | Solo Integración de Pedidos |

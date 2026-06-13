@@ -19,28 +19,30 @@ Cada etapa tiene un estado de despacho asociado. Ver [[estados-despacho]].
 
 ## Reglas por actor
 
+> El módulo "Tienda" se llama **"Facturas Contado"** en la UI. El modelo en código sigue siendo `DespachoTienda` y la ruta `/dashboard/tienda`. Ver [[flujo-despachos]].
+
 ### Tienda (`TIENDA`, `SUPERVISOR_TIENDA`)
-- Crea el despacho con los datos del cliente
+- Crea la factura contado con los datos del cliente
 - Debe registrar en una nota los datos de dirección y entrega
 - No puede avanzar el estado — solo crea
-- Ve únicamente sus propios despachos en curso
-- **No puede editar** un despacho en estado CREADO_TIENDA
-- Si un despacho es **rechazado** por transporte:
-  - Ve el cajón de rechazados con el motivo visible
-  - Puede **editar** los datos del despacho mientras está en RECHAZADO (corregir PLUs, cliente, documento, etc.)
+- Ve únicamente sus propios registros en curso
+- **No puede editar** una factura en estado CREADO_TIENDA
+- Si una factura es **rechazada** por transporte:
+  - Ve el cajón de rechazadas con el motivo visible
+  - Puede **editar** los datos mientras está en RECHAZADO (corregir PLUs, cliente, documento, etc.)
   - Puede **re-enviar** una vez corregido → vuelve a CREADO_TIENDA
 
 ### Supervisor de Transporte (`SUPERVISOR_TRANSPORTE`)
-- Puede marcar el despacho como:
+- Puede marcar la factura como:
   1. **Recogido en tienda** (RECOGIDO_TIENDA)
   2. **Llegó al CEDI** (ENTREGADO_CEDI)
   3. **Enviado al cliente** (ENVIADO_CLIENTE)
-- Puede **rechazar** un despacho (RECHAZADO) mientras está en CREADO_TIENDA — debe indicar motivo
-  - El creador recibe notificación y ve el despacho en un "cajón" prominente
-  - El creador puede re-enviarlo (vuelve a CREADO_TIENDA) después de corregirlo
-- Puede guardar un despacho en custodia del almacén
-- Puede asignar un despacho a un operario de transporte
-- Puede marcar despachos CON_NOVEDAD en cualquier etapa activa
+- Puede **rechazar** una factura (RECHAZADO) mientras está en CREADO_TIENDA — debe indicar motivo
+  - El creador recibe notificación y ve la factura en un "cajón" prominente
+  - El creador puede re-enviarla (vuelve a CREADO_TIENDA) después de corregirla
+- Puede guardar una factura en custodia del almacén
+- Puede asignar una factura a un operario de transporte
+- Puede marcar facturas CON_NOVEDAD en cualquier etapa activa
 - Gestiona Solicitudes de Transporte: completa Documento NetSuite, Stella, transportadora, guia, fecha de programacion y observacion; puede rechazar con motivo
 
 ### Operario de Transporte (`TRANSPORTE`)
@@ -61,7 +63,7 @@ Cada etapa tiene un estado de despacho asociado. Ver [[estados-despacho]].
 
 ### Inventario (`INVENTARIO`, `SUPERVISOR_INVENTARIO`)
 - Solo accede a módulos de inventario y conteo
-- No ve despachos de tienda
+- No ve el módulo Facturas Contado
 
 ### Operaciones Muebles / Gourmet (`OPERACIONES_MUEBLES`, `OPERACIONES_GOURMET`)
 - Solo ven el módulo Integración de Pedidos

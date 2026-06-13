@@ -4,12 +4,14 @@
 
 ---
 
-## Flujo de vida — Despacho de Tienda
+## Flujo de vida — Factura Contado (módulo Tienda)
+
+> **Nombre en UI:** "Facturas Contado". Nombre interno en código: `DespachoTienda`.
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
 │ TIENDA / SUPERVISOR_TIENDA                                       │
-│   Crea despacho → estado: CREADO_TIENDA                         │
+│   Crea factura → estado: CREADO_TIENDA                          │
 │   Agrega: cliente, documento, dirección, nota de entrega, PLUs  │
 └───────────────────────┬─────────────────────────────────────────┘
                         │

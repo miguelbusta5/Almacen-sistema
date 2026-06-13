@@ -7,7 +7,7 @@
 
 ## Qué es este proyecto
 
-Aplicación web operativa interna de **Grupo Ambiente** para gestionar inventario, tienda, solicitudes de transporte, transporte, preoperacional, conteo e integración operativa. Reemplaza una solución previa en HTML + Google Sheets.
+Aplicación web operativa interna de **Grupo Ambiente** para gestionar inventario, facturas contado, solicitudes de transporte, transporte, preoperacional, conteo e integración operativa. Reemplaza una solución previa en HTML + Google Sheets.
 
 - **Área responsable:** Analista de inventario (quien construye la app)
 - **Usuarios finales:** Personal operativo de tienda, transporte, inventario, conductores y gerencia
