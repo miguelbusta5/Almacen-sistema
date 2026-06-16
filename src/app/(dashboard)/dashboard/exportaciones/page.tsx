@@ -205,7 +205,7 @@ export default function ExportacionesPage() {
   if (!canUse) return <EmptyState icon={<Tags size={28} />} title="Sin acceso" description="Tu rol no tiene acceso al modulo Exportaciones." />;
 
   const captureCard = (
-    <section className="ds-card" style={{ padding: isMobile ? 16 : 18 }}>
+    <section className="op-panel" style={{ "--module-color": COLOR, padding: isMobile ? 16 : 18 } as React.CSSProperties}>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, marginBottom: 16 }}>
         <div>
           <h1 style={{ margin: 0, fontSize: isMobile ? 22 : 26, letterSpacing: 0 }}>Exportaciones</h1>
@@ -235,7 +235,7 @@ export default function ExportacionesPage() {
         <Field label="PLU">
           <input required value={form.plu} onBlur={() => autocomplete(form.plu, "create")} onChange={(e) => setForm((f) => ({ ...f, plu: e.target.value }))} style={inputStyle} />
         </Field>
-        <Field label="Descripcion">
+        <Field label="Descripción">
           <input value={form.descripcion} readOnly placeholder="Se carga desde maestro" style={{ ...inputStyle, opacity: 0.85 }} />
         </Field>
         <Field label="Unidad de empaque">
@@ -293,7 +293,7 @@ export default function ExportacionesPage() {
   ) : isMobile ? (
     <div style={{ display: "grid", gap: 10 }}>
       {items.map((item) => (
-        <article key={item.id} className="ds-card" style={{ padding: 14 }}>
+        <article key={item.id} className="op-record-card" style={{ "--module-color": COLOR, padding: 14 } as React.CSSProperties}>
           <div style={{ display: "flex", justifyContent: "space-between", gap: 10 }}>
             <strong>Caja {item.numeroCaja}</strong>
             <span style={{ color: item.horaFinalizacion ? "#16A34A" : COLOR, fontSize: 12, fontWeight: 800 }}>{item.horaFinalizacion ? "Finalizado" : "En curso"}</span>
@@ -307,10 +307,10 @@ export default function ExportacionesPage() {
       ))}
     </div>
   ) : (
-    <div style={{ overflowX: "auto" }}>
+    <div className="op-table-wrap" style={{ "--module-color": COLOR, overflowX: "auto" } as React.CSSProperties}>
       <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
         <thead><tr style={{ color: "var(--muted)", textAlign: "left", borderBottom: "1px solid var(--border)" }}>
-          <th style={th}>Fecha</th><th style={th}>Usuario</th><th style={th}>Caja</th><th style={th}>PLU</th><th style={th}>Descripcion</th><th style={th}>Empaque</th><th style={th}>Reguero</th><th style={th}>Inicio</th><th style={th}>Fin</th><th style={th}>Dur.</th>{canManage && <th style={th}>Acciones</th>}
+          <th style={th}>Fecha</th><th style={th}>Usuario</th><th style={th}>Caja</th><th style={th}>PLU</th><th style={th}>Descripción</th><th style={th}>Empaque</th><th style={th}>Reguero</th><th style={th}>Inicio</th><th style={th}>Fin</th><th style={th}>Dur.</th>{canManage && <th style={th}>Acciones</th>}
         </tr></thead>
         <tbody>
           {items.map((item) => (
@@ -325,9 +325,14 @@ export default function ExportacionesPage() {
   );
 
   return (
-    <div className="animate-fade-in" style={{ display: "grid", gap: 16, maxWidth: 1180 }}>
+    <div className="animate-fade-in" style={{ "--module-color": COLOR, display: "grid", gap: 16, maxWidth: 1180 } as React.CSSProperties}>
+      <section className="op-module-header" style={{ "--module-color": COLOR } as React.CSSProperties}>
+        <div className="op-module-kicker">Operación de etiquetado</div>
+        <h1 className="op-module-title">Exportaciones</h1>
+        <p className="op-module-copy">Captura consecutiva por caja, PLU maestro, unidad de empaque y tiempos automáticos de inicio/finalización.</p>
+      </section>
       {captureCard}
-      <section className="ds-card" style={{ padding: isMobile ? 14 : 18 }}>
+      <section className="op-panel" style={{ padding: isMobile ? 14 : 18 }}>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
           <div>
             <h2 style={{ margin: 0, fontSize: 18 }}>Registros</h2>
@@ -349,7 +354,7 @@ export default function ExportacionesPage() {
             <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr", gap: 12 }}>
               <Field label="Numero caja"><input required value={editForm.numeroCaja} onChange={(e) => setEditForm((f) => ({ ...f, numeroCaja: e.target.value }))} style={inputStyle} /></Field>
               <Field label="PLU"><input required value={editForm.plu} onBlur={() => autocomplete(editForm.plu, "edit")} onChange={(e) => setEditForm((f) => ({ ...f, plu: e.target.value }))} style={inputStyle} /></Field>
-              <Field label="Descripcion"><input readOnly value={editForm.descripcion} style={inputStyle} /></Field>
+              <Field label="Descripción"><input readOnly value={editForm.descripcion} style={inputStyle} /></Field>
               <Field label="Unidad empaque"><input required type="number" min={1} value={editForm.unidadEmpaque} onChange={(e) => setEditForm((f) => ({ ...f, unidadEmpaque: e.target.value }))} style={inputStyle} /></Field>
               <Field label="¿Hay reguero?">
                 <div style={{ display: "flex", gap: 8 }}>
@@ -373,7 +378,7 @@ export default function ExportacionesPage() {
                 </Field>
               )}
               <Field label="Hora inicio"><input type="datetime-local" value={editForm.horaInicio} onChange={(e) => setEditForm((f) => ({ ...f, horaInicio: e.target.value }))} style={inputStyle} /></Field>
-              <Field label="Hora finalizacion"><input type="datetime-local" value={editForm.horaFinalizacion} onChange={(e) => setEditForm((f) => ({ ...f, horaFinalizacion: e.target.value }))} style={inputStyle} /></Field>
+              <Field label="Hora finalización"><input type="datetime-local" value={editForm.horaFinalizacion} onChange={(e) => setEditForm((f) => ({ ...f, horaFinalizacion: e.target.value }))} style={inputStyle} /></Field>
             </div>
             <Field label="Motivo correccion"><textarea value={editForm.motivoCorreccion} onChange={(e) => setEditForm((f) => ({ ...f, motivoCorreccion: e.target.value }))} rows={3} style={{ ...inputStyle, height: "auto", padding: 10 }} /></Field>
             <button disabled={saving} style={{ height: 40, border: "none", borderRadius: 8, background: COLOR, color: "white", fontWeight: 800, cursor: "pointer" }}>Guardar cambios</button>

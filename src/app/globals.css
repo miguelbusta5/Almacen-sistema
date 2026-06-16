@@ -6,18 +6,21 @@
    ═══════════════════════════════════════════════════════════ */
 
 :root {
-  /* ── Superficies ────────────────────────────────────────── */
-  --bg:        #F7F7F8;      /* App background */
-  --surface:   #FFFFFF;      /* Cards, panels */
-  --surface2:  #F2F2F4;      /* Secondary bg, hover */
-  --surface3:  #EAEAEC;      /* Inputs at rest, tertiary */
+  /* Superficies operativas CEDI */
+  --bg:        #EEF3F8;
+  --surface:   #FFFFFF;
+  --surface2:  #F4F7FA;
+  --surface3:  #E8EEF5;
+  --surface-elevated: #FFFFFF;
+  --surface-command: #0A1628;
+  --surface-rail: #111D2E;
   --overlay:   rgba(0,0,0,0.38);  /* Modal backdrop */
 
   /* ── Bordes ─────────────────────────────────────────────── */
   --border:        rgba(0, 0, 0, 0.11);
   --border-strong: rgba(0, 0, 0, 0.20);
 
-  /* ── Tipografía (Apple/Vercel system) ──────────────────── */
+  /* Tipografia */
   --text:   #0F0F10;   /* Primary label */
   --muted2: #454549;   /* Secondary label */
   --muted:  #717179;   /* Tertiary label */
@@ -59,13 +62,13 @@
   --amber:        #F59E0B;
   --purple:       #7C3AED;
 
-  /* ── Sombras multi-capa (Stripe/Linear style) ───────────── */
-  --shadow-xs: 0 1px 2px rgba(0,0,0,0.06);
-  --shadow-sm: 0 1px 3px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.05);
-  --shadow:    0 2px 8px rgba(0,0,0,0.11), 0 1px 3px rgba(0,0,0,0.07);
-  --shadow-md: 0 4px 16px rgba(0,0,0,0.13), 0 2px 6px rgba(0,0,0,0.08);
-  --shadow-lg: 0 8px 32px rgba(0,0,0,0.10), 0 3px 10px rgba(0,0,0,0.05);
-  --shadow-xl: 0 16px 48px rgba(0,0,0,0.12), 0 6px 16px rgba(0,0,0,0.07);
+  /* Sombras operativas: profundidad sin parecer landing */
+  --shadow-xs: 0 1px 2px rgba(15, 23, 42, 0.06);
+  --shadow-sm: 0 1px 2px rgba(15, 23, 42, 0.07), 0 8px 20px rgba(15, 23, 42, 0.04);
+  --shadow:    0 10px 28px rgba(15, 23, 42, 0.08), 0 1px 2px rgba(15, 23, 42, 0.06);
+  --shadow-md: 0 16px 36px rgba(15, 23, 42, 0.11), 0 2px 8px rgba(15, 23, 42, 0.07);
+  --shadow-lg: 0 22px 54px rgba(15, 23, 42, 0.13), 0 6px 18px rgba(15, 23, 42, 0.08);
+  --shadow-xl: 0 28px 72px rgba(15, 23, 42, 0.18), 0 8px 24px rgba(15, 23, 42, 0.10);
   --ring:      0 0 0 2.5px rgba(37,99,235,0.30);
   --ring-error:0 0 0 2.5px rgba(239,68,68,0.30);
 
@@ -84,12 +87,15 @@
   --radius-xl: 20px;
 }
 
-/* ── DARK MODE (Vercel/Linear dark) ──────────────────────── */
+/* Dark mode operativo */
 html[data-theme="dark"] {
-  --bg:        #09090B;    /* Vercel dark bg */
-  --surface:   #111113;
-  --surface2:  #18181B;
-  --surface3:  #27272A;
+  --bg:        #07111E;
+  --surface:   #0D1726;
+  --surface2:  #132033;
+  --surface3:  #1B2A40;
+  --surface-elevated: #101C2D;
+  --surface-command: #07111E;
+  --surface-rail: #0A1628;
   --overlay:   rgba(0,0,0,0.55);
 
   --border:        rgba(255,255,255,0.10);
@@ -151,7 +157,9 @@ html { transition: background .2s ease; }
 * { box-sizing: border-box; margin: 0; padding: 0; }
 
 body {
-  background: var(--bg);
+  background:
+    linear-gradient(180deg, rgba(8,17,31,0.045), transparent 260px),
+    var(--bg);
   color: var(--text);
   font-family: var(--sans);
   font-size: 14px;
@@ -609,6 +617,239 @@ html[data-theme="dark"] .logo-auto { filter: invert(1) brightness(1.8); }
 .dash-main { padding: 28px 32px; }
 @media (max-width: 760px) {
   .dash-main { padding: 16px 16px 80px; }
+}
+
+/* Plataforma visual CEDI v2 */
+.op-shell {
+  background:
+    linear-gradient(180deg, rgba(8,17,31,0.055), transparent 330px),
+    var(--bg);
+}
+
+.op-workbench {
+  position: relative;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  background:
+    linear-gradient(180deg, rgba(255,255,255,0.80), rgba(255,255,255,0.50)),
+    repeating-linear-gradient(90deg, rgba(15,23,42,0.025) 0 1px, transparent 1px 72px);
+  border-radius: 16px;
+  box-shadow: var(--shadow);
+  overflow: hidden;
+}
+html[data-theme="dark"] .op-workbench {
+  background:
+    linear-gradient(180deg, rgba(16,28,45,0.92), rgba(12,23,38,0.88)),
+    repeating-linear-gradient(90deg, rgba(255,255,255,0.025) 0 1px, transparent 1px 72px);
+  border-color: rgba(255,255,255,0.09);
+}
+
+.op-module-header {
+  position: relative;
+  padding: 18px 20px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background:
+    linear-gradient(135deg, rgba(10,22,40,0.96), rgba(15,31,53,0.90)),
+    var(--surface-command);
+  color: #fff;
+  box-shadow: var(--shadow-md);
+  overflow: hidden;
+}
+.op-module-header::after {
+  content: "";
+  position: absolute;
+  inset: auto 0 0 0;
+  height: 3px;
+  background: linear-gradient(90deg, var(--module-color, var(--brand)), transparent);
+}
+.op-module-kicker {
+  color: rgba(255,255,255,0.62);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+.op-module-title {
+  color: #fff;
+  font-size: clamp(22px, 3vw, 34px);
+  line-height: 1.05;
+  font-weight: 850;
+  margin: 6px 0 0;
+}
+.op-module-copy {
+  color: rgba(255,255,255,0.66);
+  font-size: 13px;
+  margin-top: 8px;
+  max-width: 720px;
+}
+
+.op-panel,
+.ds-card,
+.ds-panel {
+  background:
+    linear-gradient(180deg, rgba(255,255,255,0.88), rgba(255,255,255,0.74)),
+    var(--surface);
+  border: 1px solid rgba(15,23,42,0.10);
+  border-radius: 12px;
+  box-shadow: var(--shadow-sm);
+}
+html[data-theme="dark"] .op-panel,
+html[data-theme="dark"] .ds-card,
+html[data-theme="dark"] .ds-panel {
+  background:
+    linear-gradient(180deg, rgba(16,28,45,0.92), rgba(13,23,38,0.86)),
+    var(--surface);
+  border-color: rgba(255,255,255,0.10);
+}
+
+.op-record-card {
+  border: 1px solid var(--border);
+  border-left: 4px solid var(--module-color, var(--brand));
+  background: var(--surface);
+  border-radius: 10px;
+  box-shadow: var(--shadow-xs);
+}
+
+.op-status-band {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 40px;
+  padding: 9px 12px;
+  border: 1px solid color-mix(in srgb, var(--module-color, var(--brand)) 30%, transparent);
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--module-color, var(--brand)) 10%, transparent);
+}
+
+.op-metric-strip {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(136px, 1fr));
+  gap: 10px;
+}
+.op-kpi,
+.ds-stat {
+  position: relative;
+  overflow: hidden;
+  background:
+    linear-gradient(180deg, rgba(255,255,255,0.92), rgba(255,255,255,0.74)),
+    var(--surface);
+  border: 1px solid rgba(15,23,42,0.10);
+  border-radius: 12px;
+  box-shadow: var(--shadow-sm);
+}
+.op-kpi::before,
+.ds-stat::before {
+  content: "";
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 3px;
+  background: var(--module-color, var(--brand));
+  opacity: 0.75;
+}
+
+.op-table-wrap {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  box-shadow: var(--shadow-sm);
+  overflow: hidden;
+}
+.op-table-wrap table,
+.ds-table {
+  background: transparent;
+}
+.op-table-wrap thead tr,
+.ds-table th {
+  background: color-mix(in srgb, var(--surface2) 82%, var(--module-color, var(--brand)) 8%);
+}
+.op-table-wrap tbody tr,
+.ds-table tbody tr {
+  transition: background .14s ease, box-shadow .14s ease;
+}
+.op-table-wrap tbody tr:hover,
+.ds-table tbody tr:hover {
+  background: color-mix(in srgb, var(--module-color, var(--brand)) 8%, var(--surface));
+}
+
+.op-command-surface {
+  border: 1px solid rgba(255,255,255,0.08);
+  background:
+    linear-gradient(180deg, rgba(255,255,255,0.08), rgba(255,255,255,0.035)),
+    #0A1628;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.08), var(--shadow-md);
+}
+
+.op-action {
+  border: 1px solid var(--border);
+  background: var(--surface);
+  border-radius: 9px;
+  box-shadow: var(--shadow-xs);
+}
+
+.op-muted-label {
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+input,
+select,
+textarea {
+  accent-color: var(--module-color, var(--brand));
+}
+
+.dash-main > .animate-fade-in,
+.dash-main > div:not([class]) {
+  width: 100%;
+}
+
+.dash-main h1 {
+  font-weight: 850;
+}
+
+.dash-main table {
+  font-variant-numeric: tabular-nums;
+}
+
+.dash-main :where(input, select, textarea) {
+  border-color: var(--border) !important;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.45);
+}
+
+.dash-main :where(input, select, textarea):focus {
+  border-color: var(--module-color, var(--brand)) !important;
+  box-shadow: var(--ring) !important;
+}
+
+.dash-main :where(button) {
+  transition: transform .12s ease, box-shadow .12s ease, background-color .12s ease, border-color .12s ease;
+}
+
+.dash-main :where(button:not(:disabled)):active {
+  transform: translateY(1px);
+}
+
+.dash-main :where(table thead tr) {
+  box-shadow: inset 0 -1px 0 var(--border);
+}
+
+.dash-main :where(table tbody tr:hover) {
+  background: color-mix(in srgb, var(--module-color, var(--brand)) 7%, var(--surface)) !important;
+}
+
+.dash-main :where([style*="borderRadius: 14"], [style*="border-radius: 14"]) {
+  box-shadow: var(--shadow-sm);
+}
+
+@media (max-width: 760px) {
+  .op-module-header {
+    border-radius: 12px;
+  }
+  .op-metric-strip {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 }
 
 /* Separador de sección */

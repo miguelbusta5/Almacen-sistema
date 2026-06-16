@@ -950,7 +950,7 @@ function ModalDespacho({ despacho, role, onClose, onSaved, onError }: {
             <div key={i}>
               <div style={{ display: "grid", gridTemplateColumns: isMobile ? "70px 1fr 54px 28px" : "100px 1fr 70px 28px", gap: 6, marginBottom: 6, alignItems: "center" }}>
                 <input value={p.plu} onChange={(e) => { updatePlin(i, "plu", e.target.value); updatePlin(i, "status", "idle"); }} onBlur={() => lookupPlinMaestro(i)} placeholder="PLU" style={{ ...inp, height: 32, fontSize: 12 }} />
-                <input value={p.descripcion} onChange={(e) => updatePlin(i, "descripcion", e.target.value)} disabled={!!p.maestro && !p.override} placeholder="Descripcion (opc.)" style={{ ...inp, height: 32, fontSize: 12, opacity: p.maestro && !p.override ? 0.7 : 1 }} {...focusProps} />
+                <input value={p.descripcion} onChange={(e) => updatePlin(i, "descripcion", e.target.value)} disabled={!!p.maestro && !p.override} placeholder="Descripción (opc.)" style={{ ...inp, height: 32, fontSize: 12, opacity: p.maestro && !p.override ? 0.7 : 1 }} {...focusProps} />
                 <input type="number" value={p.unidades} onChange={(e) => updatePlin(i, "unidades", e.target.value)} min="1" placeholder="Uds." style={{ ...inp, height: 32, fontSize: 12 }} {...focusProps} />
                 <button type="button" onClick={() => removePlin(i)} style={{ width: 28, height: 32, background: "var(--error-tint)", border: "none", borderRadius: 6, cursor: "pointer", color: "var(--error)", display: "flex", alignItems: "center", justifyContent: "center" }}>
                   <Minus size={12} />

@@ -6,6 +6,27 @@ Registro cronológico de decisiones importantes. Una entrada por decisión, con 
 
 ---
 
+## 2026-06-16 - Rediseño Operativo Premium Control Logístico CEDI
+
+**Decision:**
+- La app adopta una dirección visual **Operativo Premium** para dejar de sentirse como SaaS genérico.
+- Se abandona definitivamente "Torre CEDI" como lenguaje vigente; la identidad activa es **Control Logístico CEDI**.
+- Se crea una capa visual v2 con workbench, paneles operativos, record cards, status bands, tablas con profundidad y encabezados de módulo.
+- El rediseño mantiene densidad operativa y no cambia permisos, APIs ni reglas de negocio.
+
+**Contexto:**
+- En comité se percibió la interfaz como plana y genérica.
+- La app ya tiene valor funcional; el reto era elevar jerarquía visual, identidad y escalabilidad del sistema de interfaz.
+
+**Consecuencias:**
+- Login, shell, dashboard, Exportaciones, Solicitudes Transporte y Usuarios quedan como referencia visual inicial.
+- `globals.css` centraliza clases `op-*` para que el resto de módulos herede profundidad sin reescribir toda la lógica.
+- Logística, rutas, GPS y Mi Ruta siguen suspendidos.
+
+**Archivos afectados:** `src/app/globals.css`, `src/components/common/*`, `src/components/control-logistico/*`, `src/app/(auth)/login/page.tsx`, pantallas clave del dashboard y `docs/cerebro/ux-ui.md`.
+
+---
+
 ## 2026-06-16 - Modulo Exportaciones para etiquetado
 
 **Decision:**

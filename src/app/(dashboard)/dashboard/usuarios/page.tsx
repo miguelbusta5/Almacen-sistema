@@ -154,8 +154,15 @@ export default function UsuariosPage() {
     );
   }
 
+  const COLOR = getModuleColor("usuarios");
+
   return (
-    <div className="animate-fade-in">
+    <div className="animate-fade-in" style={{ "--module-color": COLOR, display: "grid", gap: 18 } as React.CSSProperties}>
+      <section className="op-module-header" style={{ "--module-color": COLOR } as React.CSSProperties}>
+        <div className="op-module-kicker">Gobierno del sistema</div>
+        <h1 className="op-module-title">Usuarios y operación base</h1>
+        <p className="op-module-copy">Administración de cuentas, roles, maestro PLU, vehículos y transportistas operativos sin convertirlo en módulo de logística.</p>
+      </section>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 12, marginBottom: "1.5rem" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
           <div style={{ width: 40, height: 40, borderRadius: 10, background: "#6366f115", display: "flex", alignItems: "center", justifyContent: "center" }}>

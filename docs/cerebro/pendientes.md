@@ -26,9 +26,9 @@
 ### UI / UX Control Logistico CEDI
 
 - [ ] QA visual desktop/mobile con sesion real por rol de Login, Dashboard, Usuarios, Tienda, Conteo y Preoperacional
-- [ ] Fase plataforma 2: migrar Header/Sidebar/Command Palette a componentes de shell reutilizables
+- [ ] Fase plataforma 2: extender componentes `op-*` a Tienda, Transporte, Inventario, Conteo, Preoperacional, Integracion, Auditoria y Mis Tareas con QA visual por rol
 - [ ] Fase plataforma 3: agregar preferencias de usuario y vistas operativas guardadas
-- [ ] Fase plataforma 4: aplicar ModulePageShell a Tienda, Transporte, Inventario y Conteo
+- [ ] Fase plataforma 4: consolidar `ModulePageShell` si la repeticion de encabezados operativos vuelve a crecer
 - [x] Vista de detalle de inspecciones preoperacionales en la app (SlidePanel con checklist) — 2026-06-10
 - [x] Checklist preoperacional completo con 58 ítems reales en 15 categorías — 2026-06-10
 
@@ -69,6 +69,8 @@
 - [x] Exportaciones: campo reguero (hayReguero bool + cantidadReguero int?) en schema, API (POST/PATCH), UI toggle Si/No + campo condicional en captura y modal edicion, columna en tabla y card mobile - 2026-06-16
 - [x] Restructuracion visual (bordes, sombras, tints, .ds-stat card, .ds-panel borde+sombra, hover tabla, btn-primary gradiente, helper getModuleIconBg, Stat con borderLeft, iconos header opacidad 26) - 2026-06-16
 - [x] Exportaciones: boton "Finalizar rotulacion" — endpoint POST /api/exportaciones/[id]/finalize cierra horaFinalizacion sin requerir motivo; banner "Registro en curso" muestra el boton para cerrar la jornada manualmente - 2026-06-16
+
+- [x] Rediseño Operativo Premium Control Logístico CEDI: base visual `op-*`, shell, login, dashboard, Exportaciones, Solicitudes Transporte y Usuarios - 2026-06-16
 
 ---
 

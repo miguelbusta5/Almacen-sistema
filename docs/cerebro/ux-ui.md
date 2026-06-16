@@ -1,62 +1,37 @@
-# UX / UI — Control Logistico CEDI Design System
+# UX / UI - Control Logístico CEDI
 
-> Links: [[00-master-context]] · [[modulos]]
-
----
-
-## Direccion vigente 2026-06-12: Control Logistico CEDI
-
-- La app deja de evolucionar como "Torre CEDI" y adopta **Control Logistico CEDI** como identidad operativa.
-- El rediseño no es cosmetico: debe crear una plataforma escalable con shell profesional, resumen operacional por rol y componentes reutilizables.
-- El dashboard principal se alimenta desde `/api/control-logistico/resumen` para evitar fetches duplicados y preparar vistas configurables.
-- La interfaz debe sentirse como consola de operacion CEDI: prioridades, flujo, señales por modulo y acciones recomendadas.
-- Los bloques reutilizables de plataforma viven en `src/components/control-logistico`: hero operativo, señales de modulo, prioridades y acciones recomendadas.
-- Logistica avanzada, rutas, GPS y Mi Ruta siguen suspendidos indefinidamente.
+> Links: [[00-master-context]] · [[modulos]] · [[decisiones]]
 
 ---
 
-## Paleta de colores
+## Dirección vigente 2026-06-16: Operativo Premium
 
-La identidad visual se centraliza en `src/lib/moduleTheme.ts`. Cualquier navegación, acción rápida, command palette o badge principal debe tomar color desde ese catálogo para evitar choques entre módulos.
+- La interfaz adopta **Control Logístico CEDI** como identidad definitiva.
+- Se abandona el lenguaje "Torre CEDI" como rumbo visual vigente.
+- La app debe sentirse como consola interna de operación CEDI: densa, clara, con jerarquía, señales de estado y trazabilidad por rol.
+- El rediseño no debe parecer landing page ni plantilla SaaS genérica.
+- Logística, rutas, GPS y Mi Ruta siguen suspendidos indefinidamente.
 
-| Área | Color | Hex |
-|---|---|---|
-| Muebles / Inventario | Azul | `#2563EB` |
-| Transporte / Conductores | Cian | `#0E7490` |
-| Tienda | Ámbar | `#D97706` |
-| Integración de Pedidos | Violeta | `#7C3AED` |
-| Conteo / Inventario activo | Verde | `#16A34A` |
-| Usuarios / Admin | Gris pizarra | `#475569` |
-| Éxito | Verde semántico | `var(--success)` |
-| Error | Rojo | `var(--error)` |
-| Alerta | Ámbar | `var(--warning)` |
+## Principios visuales
 
-> Regla: Verde/Rojo/Ámbar **solo** para significado semántico. No decorativo.
+- **Workbench operativo:** las páginas se organizan como superficies de trabajo, no como colecciones de cards flotantes.
+- **Profundidad sobria:** usar sombras, bordes y bandas de estado para separar jerarquía; evitar orbes, fondos decorativos y hero marketing.
+- **Módulos con señal propia:** cada módulo toma color desde `src/lib/moduleTheme.ts`.
+- **Densidad profesional:** tablas, filtros y formularios deben seguir compactos para operación diaria.
+- **Mobile funcional:** en celular se priorizan captura, tarjetas compactas y acciones claras.
 
----
-
-## Tokens CSS (variables)
+## Tokens y clases v2
 
 Definidos en `src/app/globals.css`:
 
 ```css
---bg          /* Fondo de página */
---surface     /* Tarjetas / panels */
---surface2    /* Inputs / fondos secundarios */
---text        /* Texto principal */
---muted       /* Texto secundario */
---muted2      /* Labels de inputs */
---faint       /* Texto muy tenue */
---brand       /* Color primario (#2563EB) */
---border      /* Bordes suaves */
---shadow-md / --shadow-xl  /* Sombras */
---ring        /* Focus ring */
---overlay     /* Fondo de modales */
---error / --error-tint
---warning / --warning-tint
---success
---sans        /* Fuente sans-serif */
---mono        /* Fuente monospace */
+--bg
+--surface
+--surface2
+--surface3
+--surface-command
+--surface-rail
+--brand
 --module-inventario
 --module-transporte
 --module-tienda
@@ -65,200 +40,62 @@ Definidos en `src/app/globals.css`:
 --module-admin
 ```
 
-## Dirección visual 2026-06-11
-
-- La app debe sentirse como una herramienta interna CEDI, no como una plantilla genérica.
-- Nombre operativo recomendado en shell y metadata: **Torre CEDI**.
-- Mantener densidad operativa: tablas claras, KPIs sobrios, acciones directas y pantallas listas para uso diario.
-- Evitar páginas tipo landing, orbes decorativos, gradientes dominantes y héroes de marketing dentro del dashboard.
-- Tienda usa ámbar; Integración usa violeta. No reutilizar violeta para Tienda.
-
----
-
-## Cierre Fase 1 post-Claude
-
-Revisión aplicada antes de pasar a Fase 2:
-
-- El flujo `RECHAZADO` de Tienda se mantiene como alerta semántica roja, pero sus acciones de corrección y re-envío usan el color de módulo Tienda (`moduleTheme.tienda`).
-- Las acciones de guardado asignadas desde Tienda usan el color de módulo Transporte (`moduleTheme.transporte`).
-- `ENTREGADO_CEDI` toma color desde `ESTADO_DESPACHO_COLOR`, no desde valores violeta hardcodeados.
-- Preoperacional usa `moduleTheme.preoperacional` para encabezados, acciones y enlaces del detalle de inspección.
-- Las pantallas nuevas deben evitar `#0e7490`, `#2563EB` o `#8b5cf6` hardcodeados cuando el color represente un módulo. Usar `getModuleColor` o variables CSS.
-- Los mensajes visibles deben quedar en español natural con tildes: "vehículo", "inspección", "crítico", "observación".
-
----
-
-## Fase 2 Shell y Command Palette
-
-Aplicada el 2026-06-12:
-
-- `Header` muestra contexto operativo del rol y alcance visible sin cambiar permisos.
-- `Sidebar` sube a `v2.3`, mejora estados activos con el color del módulo y conserva el filtrado por `canSeeModule`.
-- `CommandPalette` agrega acciones por rol para Integración, Mis tareas, Centro de control y Usuarios.
-- La búsqueda viva de la paleta solo consulta APIs de módulos visibles para el rol actual. No debe llamar Inventario o Transporte si el rol no ve esos módulos.
-- La paleta y la navegación siguen ocultando Logística, GPS, rutas y Mi Ruta.
-
-Regla para Fase 3: el Dashboard puede volverse Torre CEDI por rol, pero debe consumir estos mismos permisos y temas; no duplicar matrices de visibilidad dentro de la página.
-
----
-
-## Fase 3 Dashboard Torre CEDI
-
-Aplicada el 2026-06-12:
-
-- `/dashboard` pasa a priorizar flujo operativo y tareas accionables por rol.
-- Dirección (`ADMIN`, `GERENTE`) ve una vista ejecutiva: flujo Inventario → Tienda → CEDI → Conteo, prioridades críticas, módulos y actividad reciente.
-- `SUPERVISOR_TRANSPORTE` ve Tienda, CEDI, guardados y pendientes de guardado como señales principales.
-- `TRANSPORTE` ve pendientes de guardado asignados y guardados por despachar.
-- `TIENDA` y `SUPERVISOR_TIENDA` ven solicitudes creadas, rechazadas, con novedad y enviadas.
-- `TRANSPORTISTA` se mantiene limitado a Preoperacional.
-- `OPERACIONES_MUEBLES` y `OPERACIONES_GOURMET` conservan foco en Integración de Pedidos.
-
-Regla para Fase 4: el pulido de módulos debe mejorar estados vacíos/carga/error dentro de cada pantalla, no ampliar el alcance funcional ni reactivar logística.
-
----
-
-## Fase 4 Pulido de modulos y QA
-
-Aplicada el 2026-06-12:
-
-- Usuarios usa colores de `moduleTheme` para roles y mejora textos de carga/error/vacio en vehiculos y transportistas operativos.
-- Tienda ajusta microcopy de `notaEntrega` para indicar direccion, contacto, observaciones e instrucciones.
-- Conteo mejora estados vacios para ciclos, lineas filtradas, operarios y errores de importacion.
-- Preoperacional mantiene experiencia guiada para transportistas y corrige textos de vehiculo/inspeccion.
-- Dashboard suma todas las alertas accionables por rol y muestra rechazos de Tienda como prioridad critica.
-
-QA:
-
-- Desktop/mobile visual debe revisarse en navegador real despues del deploy cuando haya sesion disponible por rol.
-- Smoke tecnico predeploy se valida con TypeScript, tests y build.
-- Smoke publico de produccion valida disponibilidad y endpoints protegidos sin sesion.
-
-Regla para la siguiente fase: antes de rediseñar pantallas completas, planificar una identidad visual menos generica que mantenga densidad operativa CEDI.
-
----
-
-## Componentes del design system
-
-Importados desde `@/components/ui`:
-
-### `Badge`
-```tsx
-<Badge variant="success" label="Completada" />
-// variants: "success" | "warning" | "error" | "info" | "default" | "muted"
-```
-
-### `SkeletonTable`
-```tsx
-<SkeletonTable rows={6} cols={5} />
-// Loader animado que imita una tabla
-```
-
-### `EmptyState`
-```tsx
-<EmptyState
-  icon={<Icon size={28} />}
-  title="Sin registros"
-  description="Descripción opcional"
-  action={{ label: "Crear nuevo", onClick: () => {} }}
-/>
-```
-
-### `Stat` / `SkeletonStat`
-```tsx
-<Stat label="Total" value={42} sub="este mes" color="#2563EB" />
-```
-
-### `SlidePanel` (de `@/components/ui/SlidePanel`)
-```tsx
-<SlidePanel
-  open={!!selected}
-  onClose={() => setSelected(null)}
-  title="Título del panel"
-  subtitle="Subtítulo opcional"
-  badge={<Badge ... />}
-  primaryAction={<button>Acción</button>}
->
-  {/* Contenido */}
-</SlidePanel>
-```
-
-### `DetailSection` + `DetailGrid`
-```tsx
-<DetailSection title="Información general">
-  <DetailGrid items={[
-    { label: "Campo", value: "Valor" },
-  ]} />
-</DetailSection>
-```
-
-### `TimelineItem`
-Para historiales y líneas de tiempo.
-
-### `MiniHistory`
-```tsx
-<MiniHistory items={[{ label: "Creado", meta: "por Juan", time: "10:30", color: "#2563EB" }]} />
-```
-
----
-
-## Patrón mobile
-
-Hook `useIsMobile()` en `src/lib/useIsMobile.ts` (breakpoint: 768px):
-
-```tsx
-const isMobile = useIsMobile();
-
-// Ejemplo: grid responsivo
-gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr"
-```
-
-**No usar Tailwind breakpoints** — todo el responsive se hace con este hook via inline styles.
-
----
-
-## Clases de utilidad CSS
+Clases de plataforma:
 
 ```css
-.ds-btn              /* Botón base */
-.ds-btn-primary      /* Botón primario */
-.ds-btn-ghost        /* Botón fantasma */
-.ds-btn-lg / .ds-btn-sm  /* Tamaños */
-.ds-badge            /* Badge base */
-.ds-empty            /* EmptyState */
-.dsrow               /* Fila de tabla con hover */
-.animate-scale-in    /* Animación de entrada */
-.animate-fade-in     /* Fade in */
-.lift                /* Efecto hover elevación */
+.op-shell
+.op-workbench
+.op-module-header
+.op-module-kicker
+.op-module-title
+.op-module-copy
+.op-panel
+.op-record-card
+.op-status-band
+.op-metric-strip
+.op-kpi
+.op-table-wrap
+.op-command-surface
+.op-action
 ```
 
----
+## Componentes y uso
 
-## Navegación (Sidebar)
+- `src/components/common/Sidebar.tsx`: navegación por rol con identidad Control CEDI y `canSeeModule`.
+- `src/components/common/Header.tsx`: contexto operativo, rol, alcance visible, notificaciones y comando.
+- `src/components/control-logistico/index.tsx`: hero operativo, señales de módulo, prioridades y acciones recomendadas.
+- `src/components/ui`: componentes base como `Badge`, `Stat`, `EmptyState`, `SkeletonTable`, `SlidePanel`.
 
-`src/components/common/Sidebar.tsx`:
-- Filtrado automático por `canSeeModule(role, moduleKey)`
-- Mobile: drawer con overlay (toggle con botón hamburguesa fijo)
-- Desktop: sidebar fijo 204px de ancho
-- Fondo: azul noche operativo
-- Ítems activos con indicador del color del módulo + texto blanco
+## Módulos priorizados en rediseño
 
----
+- **Login:** portal interno CEDI con marca, módulos y acceso corporativo.
+- **Dashboard:** consola Control Logístico CEDI con prioridades, KPIs y flujo por rol.
+- **Exportaciones:** captura de etiquetado con estado en curso, tabla de gestión y PLU maestro.
+- **Solicitudes Transporte:** bandeja operativa con prioridad, semáforo, detalle y gestión.
+- **Usuarios:** administración de cuentas, maestro PLU, vehículos y transportistas operativos.
 
-## Logo
+## Reglas no negociables
 
-`src/components/common/Logo.tsx`:
-- Fuente: `public/logo.png`
-- Variantes: `variant="auto"` (adapta al tema) | `variant="dark"` (siempre blanco) | `variant="light"` (siempre color)
-- Prop `tagline`: muestra "Centro de Operaciones" debajo
+- No reactivar Logística, rutas, GPS ni Mi Ruta.
+- No crear estética de marketing dentro del dashboard.
+- No duplicar colores de módulo fuera de `moduleTheme`.
+- No sacrificar velocidad de captura por decoración.
+- Mantener permisos con doble validación: server + UI.
 
----
+## QA visual
 
-## Modales
+Revisar en desktop, tablet y móvil:
 
-Patrón con `createPortal`:
-- Siempre montar en `document.body`
-- Cerrar con `Escape` (useEffect keydown)
-- Bloquear scroll del body mientras está abierto
-- Animación: clase `.animate-scale-in`
-- Fondo: `background: "var(--overlay)"` con `backdropFilter: "blur(4px)"`
+- Login
+- Dashboard
+- Exportaciones
+- Solicitudes Transporte
+- Usuarios
+- Facturas Contado
+- Inventario
+- Conteo / Contar
+- Guardados
+- Preoperacional
+- Integración
+- Auditoría
+- Mis Tareas
