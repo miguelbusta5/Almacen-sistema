@@ -3,15 +3,17 @@ import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { requireAuth } from "@/lib/authz";
 import { mapExportacion } from "../route";
-import { normalizePlu, puedeGestionarExportaciones } from "@/lib/exportaciones";
+import { normalizePlu, puedeGestionarExportaciones, validarRegueroExportacion } from "@/lib/exportaciones";
 
 const patchSchema = z.object({
-  numeroCaja: z.string().min(1).max(100).optional(),
-  plu: z.string().min(1).max(100).optional(),
-  unidadEmpaque: z.number().int().min(1).optional(),
-  horaInicio: z.string().datetime().optional(),
+  numeroCaja:      z.string().min(1).max(100).optional(),
+  plu:             z.string().min(1).max(100).optional(),
+  unidadEmpaque:   z.number().int().min(1).optional(),
+  horaInicio:      z.string().datetime().optional(),
   horaFinalizacion: z.string().datetime().optional().nullable(),
   motivoCorreccion: z.string().min(5).optional(),
+  hayReguero:      z.boolean().optional(),
+  cantidadReguero: z.number().int().min(1).optional().nullable(),
 });
 
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -36,6 +38,14 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   const current = await prisma.etiquetadoExportacion.findUnique({ where: { id }, select: { deletedAt: true } });
   if (!current || current.deletedAt) return NextResponse.json({ error: "No encontrado" }, { status: 404 });
 
+  if (d.hayReguero !== undefined || d.cantidadReguero !== undefined) {
+    const validReguero = validarRegueroExportacion({
+      hayReguero: d.hayReguero,
+      cantidadReguero: d.cantidadReguero,
+    });
+    if (validReguero) return NextResponse.json({ error: validReguero }, { status: 400 });
+  }
+
   const data: any = {
     actualizadoPorId: actor.id,
     ...(d.numeroCaja !== undefined && { numeroCaja: d.numeroCaja.trim() }),
@@ -44,6 +54,13 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     ...(d.horaFinalizacion !== undefined && { horaFinalizacion: d.horaFinalizacion ? new Date(d.horaFinalizacion) : null }),
     ...(d.motivoCorreccion !== undefined && { motivoCorreccion: d.motivoCorreccion.trim() }),
   };
+
+  if (d.hayReguero !== undefined) {
+    data.hayReguero = d.hayReguero;
+    data.cantidadReguero = d.hayReguero ? (d.cantidadReguero ?? null) : null;
+  } else if (d.cantidadReguero !== undefined) {
+    data.cantidadReguero = d.cantidadReguero;
+  }
 
   if (d.plu !== undefined) {
     const plu = normalizePlu(d.plu);

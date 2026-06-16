@@ -1,5 +1,6 @@
 "use client";
 import React from "react";
+import { getModuleIconBg } from "@/lib/moduleTheme";
 
 // ═══════════════════════════════════════════════════════════
 // BADGE — estado inteligente con dot semántico
@@ -41,7 +42,7 @@ export function Stat({ value, label, trend, trendUp, size = "md", color, onClick
     <div
       className="ds-stat"
       onClick={onClick}
-      style={{ cursor: onClick ? "pointer" : "default" }}
+      style={{ cursor: onClick ? "pointer" : "default", borderLeft: color ? `3px solid ${color}` : undefined }}
     >
       <div
         className={`ds-stat-value ${sizeClass}`}
@@ -163,7 +164,7 @@ export function TimelineItem({ title, meta, time, dot = "default", module, modul
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 2 }}>
           {module && (
-            <span style={{ fontSize: 11, fontWeight: 600, color: moduleColor ?? "var(--muted)", background: (moduleColor ?? "var(--muted)") + "14", padding: "1px 7px", borderRadius: 20 }}>
+            <span style={{ fontSize: 11, fontWeight: 600, color: moduleColor ?? "var(--muted)", background: moduleColor ? getModuleIconBg(moduleColor) : "var(--surface2)", padding: "1px 7px", borderRadius: 20 }}>
               {module}
             </span>
           )}

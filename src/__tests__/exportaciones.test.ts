@@ -5,6 +5,7 @@ import {
   puedeGestionarExportaciones,
   puedeUsarExportaciones,
   validarCapturaExportacion,
+  validarRegueroExportacion,
 } from "@/lib/exportaciones";
 
 describe("exportaciones", () => {
@@ -37,5 +38,24 @@ describe("exportaciones", () => {
   it("calcula duracion en minutos", () => {
     expect(calcularDuracionMinutos("2026-06-16T10:00:00.000Z", "2026-06-16T10:17:00.000Z")).toBe(17);
     expect(calcularDuracionMinutos("2026-06-16T10:00:00.000Z", null)).toBeNull();
+  });
+});
+
+describe("validarRegueroExportacion", () => {
+  it("pasa cuando hayReguero es false, null o undefined", () => {
+    expect(validarRegueroExportacion({ hayReguero: false })).toBeNull();
+    expect(validarRegueroExportacion({ hayReguero: null })).toBeNull();
+    expect(validarRegueroExportacion({})).toBeNull();
+  });
+
+  it("falla cuando hayReguero=true y cantidad es null o cero", () => {
+    expect(validarRegueroExportacion({ hayReguero: true, cantidadReguero: null })).not.toBeNull();
+    expect(validarRegueroExportacion({ hayReguero: true, cantidadReguero: 0 })).not.toBeNull();
+    expect(validarRegueroExportacion({ hayReguero: true })).not.toBeNull();
+  });
+
+  it("acepta cantidad >= 1 cuando hayReguero=true", () => {
+    expect(validarRegueroExportacion({ hayReguero: true, cantidadReguero: 1 })).toBeNull();
+    expect(validarRegueroExportacion({ hayReguero: true, cantidadReguero: 50 })).toBeNull();
   });
 });

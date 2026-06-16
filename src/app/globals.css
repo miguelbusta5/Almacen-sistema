@@ -13,9 +13,9 @@
   --surface3:  #EAEAEC;      /* Inputs at rest, tertiary */
   --overlay:   rgba(0,0,0,0.38);  /* Modal backdrop */
 
-  /* ── Bordes — casi invisibles ───────────────────────────── */
-  --border:        rgba(0, 0, 0, 0.07);
-  --border-strong: rgba(0, 0, 0, 0.14);
+  /* ── Bordes ─────────────────────────────────────────────── */
+  --border:        rgba(0, 0, 0, 0.11);
+  --border-strong: rgba(0, 0, 0, 0.20);
 
   /* ── Tipografía (Apple/Vercel system) ──────────────────── */
   --text:   #0F0F10;   /* Primary label */
@@ -41,13 +41,13 @@
 
   /* ── Semánticos ─────────────────────────────────────────── */
   --success:       #10B981;
-  --success-tint:  rgba(16,185,129,0.09);
+  --success-tint:  rgba(16,185,129,0.14);
   --warning:       #F59E0B;
-  --warning-tint:  rgba(245,158,11,0.09);
+  --warning-tint:  rgba(245,158,11,0.14);
   --error:         #EF4444;
-  --error-tint:    rgba(239,68,68,0.09);
+  --error-tint:    rgba(239,68,68,0.14);
   --info:          #3B82F6;
-  --info-tint:     rgba(59,130,246,0.09);
+  --info-tint:     rgba(59,130,246,0.14);
 
   /* ── Compat con código existente ───────────────────────── */
   --blue:         #2563EB;
@@ -60,10 +60,10 @@
   --purple:       #7C3AED;
 
   /* ── Sombras multi-capa (Stripe/Linear style) ───────────── */
-  --shadow-xs: 0 1px 2px rgba(0,0,0,0.04);
-  --shadow-sm: 0 1px 3px rgba(0,0,0,0.05), 0 1px 2px rgba(0,0,0,0.03);
-  --shadow:    0 2px 8px rgba(0,0,0,0.07), 0 1px 3px rgba(0,0,0,0.04);
-  --shadow-md: 0 4px 16px rgba(0,0,0,0.09), 0 2px 6px rgba(0,0,0,0.05);
+  --shadow-xs: 0 1px 2px rgba(0,0,0,0.06);
+  --shadow-sm: 0 1px 3px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.05);
+  --shadow:    0 2px 8px rgba(0,0,0,0.11), 0 1px 3px rgba(0,0,0,0.07);
+  --shadow-md: 0 4px 16px rgba(0,0,0,0.13), 0 2px 6px rgba(0,0,0,0.08);
   --shadow-lg: 0 8px 32px rgba(0,0,0,0.10), 0 3px 10px rgba(0,0,0,0.05);
   --shadow-xl: 0 16px 48px rgba(0,0,0,0.12), 0 6px 16px rgba(0,0,0,0.07);
   --ring:      0 0 0 2.5px rgba(37,99,235,0.30);
@@ -92,8 +92,8 @@ html[data-theme="dark"] {
   --surface3:  #27272A;
   --overlay:   rgba(0,0,0,0.55);
 
-  --border:        rgba(255,255,255,0.06);
-  --border-strong: rgba(255,255,255,0.13);
+  --border:        rgba(255,255,255,0.10);
+  --border-strong: rgba(255,255,255,0.20);
 
   --text:   #FAFAFA;
   --muted2: #B4B4BB;
@@ -115,13 +115,13 @@ html[data-theme="dark"] {
   --module-admin: #94A3B8;
 
   --success:       #34D399;
-  --success-tint:  rgba(52,211,153,0.10);
+  --success-tint:  rgba(52,211,153,0.16);
   --warning:       #FBBF24;
-  --warning-tint:  rgba(251,191,36,0.10);
+  --warning-tint:  rgba(251,191,36,0.16);
   --error:         #F87171;
-  --error-tint:    rgba(248,113,113,0.10);
+  --error-tint:    rgba(248,113,113,0.16);
   --info:          #60A5FA;
-  --info-tint:     rgba(96,165,250,0.10);
+  --info-tint:     rgba(96,165,250,0.16);
 
   --blue:         #3B82F6;
   --blue-light:   rgba(59,130,246,0.12);
@@ -293,7 +293,7 @@ html[data-theme="dark"] .skeleton::after {
 }
 .ds-table tr:last-child td { border-bottom: none; }
 .ds-table .ds-row { transition: background .1s ease; cursor: pointer; }
-.ds-table .ds-row:hover { background: var(--surface2); }
+.ds-table .ds-row:hover { background: var(--surface3); }
 
 /* Acciones de fila — visibles solo en hover */
 .ds-row-actions {
@@ -359,13 +359,14 @@ html[data-theme="dark"] .skeleton::after {
 .ds-btn:disabled:active { transform: none; }
 
 .ds-btn-primary {
-  background: var(--brand);
+  background: linear-gradient(135deg, #1E40AF 0%, var(--brand) 100%);
   color: #fff;
-  box-shadow: 0 1px 2px rgba(37,99,235,0.20), 0 2px 8px rgba(37,99,235,0.15);
+  box-shadow: 0 1px 3px rgba(37,99,235,0.30), 0 3px 10px rgba(37,99,235,0.18);
 }
 .ds-btn-primary:hover:not(:disabled) {
-  background: var(--brand-600);
-  box-shadow: 0 2px 6px rgba(37,99,235,0.30), 0 4px 12px rgba(37,99,235,0.18);
+  background: linear-gradient(135deg, #2563EB 0%, #3B82F6 100%);
+  box-shadow: 0 2px 6px rgba(37,99,235,0.40), 0 5px 16px rgba(37,99,235,0.22);
+  transform: translateY(-1px);
 }
 
 .ds-btn-secondary {
@@ -443,7 +444,9 @@ html[data-theme="dark"] .skeleton::after {
 }
 .ds-panel {
   background: var(--surface);
+  border: 1px solid var(--border);
   border-radius: var(--radius);
+  box-shadow: var(--shadow-sm);
   overflow: hidden;
 }
 
@@ -515,10 +518,19 @@ html[data-theme="dark"] .skeleton::after {
 .ds-timeline-dot.error { background: var(--error); border-color: var(--error); }
 
 /* ═══════════════════════════════════════════════════════════
-   STAT / KPI (sin cajas, solo tipografía)
+   STAT / KPI
    ═══════════════════════════════════════════════════════════ */
 
-.ds-stat { display: flex; flex-direction: column; gap: 2px; }
+.ds-stat {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 16px 20px;
+  box-shadow: var(--shadow-sm);
+}
 .ds-stat-value {
   font-size: 28px;
   font-weight: 700;

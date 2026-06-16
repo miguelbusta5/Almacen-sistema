@@ -221,7 +221,7 @@ export default function TiendaPage() {
       <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 24, flexWrap: "wrap", gap: 12 }}>
         <div>
           <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 4 }}>
-            <div style={{ width: 30, height: 30, borderRadius: 8, background: COLOR_TIENDA + "14", display: "flex", alignItems: "center", justifyContent: "center" }}>
+            <div style={{ width: 30, height: 30, borderRadius: 8, background: COLOR_TIENDA + "26", display: "flex", alignItems: "center", justifyContent: "center" }}>
               <Store size={16} color={COLOR_TIENDA} />
             </div>
             <h1 style={{ fontSize: 22, fontWeight: 700, color: "var(--text)", letterSpacing: "-0.03em", margin: 0 }}>Facturas Contado</h1>

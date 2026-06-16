@@ -795,6 +795,8 @@ model EtiquetadoExportacion {
   horaInicio        DateTime  @map("hora_inicio")
   horaFinalizacion  DateTime? @map("hora_finalizacion")
   motivoCorreccion  String?   @map("motivo_correccion")
+  hayReguero        Boolean   @default(false) @map("hay_reguero")
+  cantidadReguero   Int?                      @map("cantidad_reguero")
   deletedAt         DateTime? @map("deleted_at")
 
   creadoPorId       String   @map("creado_por_id")

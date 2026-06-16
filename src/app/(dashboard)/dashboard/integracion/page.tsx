@@ -521,7 +521,7 @@ export default function IntegracionPage() {
       {/* Header */}
       <div style={{ display: "flex", alignItems: isMobile ? "flex-start" : "center", justifyContent: "space-between", flexDirection: isMobile ? "column" : "row", gap: isMobile ? 12 : 0 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-          <div style={{ width: 36, height: 36, borderRadius: 10, background: `${COLOR}18`, display: "flex", alignItems: "center", justifyContent: "center", color: COLOR }}>
+          <div style={{ width: 36, height: 36, borderRadius: 10, background: `${COLOR}26`, display: "flex", alignItems: "center", justifyContent: "center", color: COLOR }}>
             <GitMerge size={18} />
           </div>
           <div>

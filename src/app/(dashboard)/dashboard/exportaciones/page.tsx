@@ -20,6 +20,8 @@ interface Exportacion {
   horaInicio: string;
   horaFinalizacion: string | null;
   duracionMinutos: number | null;
+  hayReguero: boolean;
+  cantidadReguero: number | null;
   motivoCorreccion?: string | null;
   creadoPorNombre?: string | null;
 }
@@ -73,9 +75,9 @@ export default function ExportacionesPage() {
   const [query, setQuery] = useState("");
   const [fecha, setFecha] = useState("");
   const [estado, setEstado] = useState("");
-  const [form, setForm] = useState({ numeroCaja: "", plu: "", descripcion: "", unidadEmpaque: "1" });
+  const [form, setForm] = useState({ numeroCaja: "", plu: "", descripcion: "", unidadEmpaque: "1", hayReguero: false, cantidadReguero: "" });
   const [editing, setEditing] = useState<Exportacion | null>(null);
-  const [editForm, setEditForm] = useState({ numeroCaja: "", plu: "", descripcion: "", unidadEmpaque: "1", horaInicio: "", horaFinalizacion: "", motivoCorreccion: "" });
+  const [editForm, setEditForm] = useState({ numeroCaja: "", plu: "", descripcion: "", unidadEmpaque: "1", horaInicio: "", horaFinalizacion: "", motivoCorreccion: "", hayReguero: false, cantidadReguero: "" });
 
   const openItem = useMemo(() => items.find((item) => !item.horaFinalizacion) ?? null, [items]);
 
@@ -110,9 +112,11 @@ export default function ExportacionesPage() {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        numeroCaja: form.numeroCaja,
-        plu: form.plu,
-        unidadEmpaque: Number(form.unidadEmpaque),
+        numeroCaja:      form.numeroCaja,
+        plu:             form.plu,
+        unidadEmpaque:   Number(form.unidadEmpaque),
+        hayReguero:      form.hayReguero,
+        cantidadReguero: form.hayReguero && form.cantidadReguero ? Number(form.cantidadReguero) : null,
       }),
     });
     const json = await res.json().catch(() => ({}));
@@ -121,20 +125,22 @@ export default function ExportacionesPage() {
       setError(json.error ?? "No se pudo guardar");
       return;
     }
-    setForm({ numeroCaja: "", plu: "", descripcion: "", unidadEmpaque: "1" });
+    setForm({ numeroCaja: "", plu: "", descripcion: "", unidadEmpaque: "1", hayReguero: false, cantidadReguero: "" });
     await load();
   }
 
   function startEdit(item: Exportacion) {
     setEditing(item);
     setEditForm({
-      numeroCaja: item.numeroCaja,
-      plu: item.plu,
-      descripcion: item.descripcion,
-      unidadEmpaque: String(item.unidadEmpaque),
-      horaInicio: item.horaInicio.slice(0, 16),
+      numeroCaja:     item.numeroCaja,
+      plu:            item.plu,
+      descripcion:    item.descripcion,
+      unidadEmpaque:  String(item.unidadEmpaque),
+      horaInicio:     item.horaInicio.slice(0, 16),
       horaFinalizacion: item.horaFinalizacion ? item.horaFinalizacion.slice(0, 16) : "",
       motivoCorreccion: "",
+      hayReguero:     item.hayReguero,
+      cantidadReguero: item.cantidadReguero != null ? String(item.cantidadReguero) : "",
     });
   }
 
@@ -144,10 +150,12 @@ export default function ExportacionesPage() {
     setSaving(true);
     setError("");
     const payload: any = {
-      numeroCaja: editForm.numeroCaja,
-      plu: editForm.plu,
-      unidadEmpaque: Number(editForm.unidadEmpaque),
+      numeroCaja:      editForm.numeroCaja,
+      plu:             editForm.plu,
+      unidadEmpaque:   Number(editForm.unidadEmpaque),
       motivoCorreccion: editForm.motivoCorreccion || undefined,
+      hayReguero:      editForm.hayReguero,
+      cantidadReguero: editForm.hayReguero && editForm.cantidadReguero ? Number(editForm.cantidadReguero) : null,
     };
     if (editForm.horaInicio) payload.horaInicio = new Date(editForm.horaInicio).toISOString();
     payload.horaFinalizacion = editForm.horaFinalizacion ? new Date(editForm.horaFinalizacion).toISOString() : null;
@@ -191,7 +199,7 @@ export default function ExportacionesPage() {
           <h1 style={{ margin: 0, fontSize: isMobile ? 22 : 26, letterSpacing: 0 }}>Exportaciones</h1>
           <p style={{ margin: "5px 0 0", color: "var(--muted)", fontSize: 13 }}>Captura de etiquetado por caja y PLU maestro</p>
         </div>
-        <span style={{ width: 44, height: 44, borderRadius: 10, display: "grid", placeItems: "center", background: `${COLOR}18`, color: COLOR }}>
+        <span style={{ width: 44, height: 44, borderRadius: 10, display: "grid", placeItems: "center", background: `${COLOR}26`, color: COLOR }}>
           <Tags size={22} />
         </span>
       </div>
@@ -216,6 +224,27 @@ export default function ExportacionesPage() {
         <Field label="Unidad de empaque">
           <input required type="number" min={1} value={form.unidadEmpaque} onChange={(e) => setForm((f) => ({ ...f, unidadEmpaque: e.target.value }))} style={inputStyle} />
         </Field>
+        <Field label="¿Hay reguero?">
+          <div style={{ display: "flex", gap: 8 }}>
+            <button type="button"
+              onClick={() => setForm((f) => ({ ...f, hayReguero: false, cantidadReguero: "" }))}
+              style={{ flex: 1, height: 38, borderRadius: 8, fontWeight: 700, cursor: "pointer", border: "1px solid var(--border)", background: !form.hayReguero ? COLOR : "var(--surface)", color: !form.hayReguero ? "white" : "var(--muted2)" }}>
+              No
+            </button>
+            <button type="button"
+              onClick={() => setForm((f) => ({ ...f, hayReguero: true }))}
+              style={{ flex: 1, height: 38, borderRadius: 8, fontWeight: 700, cursor: "pointer", border: "1px solid var(--border)", background: form.hayReguero ? COLOR : "var(--surface)", color: form.hayReguero ? "white" : "var(--muted2)" }}>
+              Sí
+            </button>
+          </div>
+        </Field>
+        {form.hayReguero && (
+          <Field label="Cantidad de reguero">
+            <input required type="number" min={1} value={form.cantidadReguero}
+              onChange={(e) => setForm((f) => ({ ...f, cantidadReguero: e.target.value }))}
+              style={inputStyle} />
+          </Field>
+        )}
         <button disabled={saving} style={{ gridColumn: isMobile ? "auto" : "1 / -1", height: 42, border: "none", borderRadius: 9, background: COLOR, color: "white", fontWeight: 800, cursor: saving ? "not-allowed" : "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
           <CheckCircle2 size={17} /> {saving ? "Guardando..." : "Guardar y comenzar siguiente"}
         </button>
@@ -254,7 +283,7 @@ export default function ExportacionesPage() {
           </div>
           <div style={{ marginTop: 8, color: "var(--muted)", fontSize: 13, lineHeight: 1.6 }}>
             PLU {item.plu} · {item.descripcion}<br />
-            Empaque {item.unidadEmpaque} · Inicio {fmtTime(item.horaInicio)} · Fin {fmtTime(item.horaFinalizacion)}
+            Empaque {item.unidadEmpaque} · Reguero {item.hayReguero ? `Sí (${item.cantidadReguero})` : "No"} · Inicio {fmtTime(item.horaInicio)} · Fin {fmtTime(item.horaFinalizacion)}
           </div>
           {canManage && <div style={{ display: "flex", gap: 8, marginTop: 10 }}><button onClick={() => startEdit(item)} style={miniBtn}><Pencil size={14} /> Editar</button><button onClick={() => remove(item)} style={miniBtn}><Trash2 size={14} /> Borrar</button></div>}
         </article>
@@ -264,12 +293,12 @@ export default function ExportacionesPage() {
     <div style={{ overflowX: "auto" }}>
       <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
         <thead><tr style={{ color: "var(--muted)", textAlign: "left", borderBottom: "1px solid var(--border)" }}>
-          <th style={th}>Fecha</th><th style={th}>Usuario</th><th style={th}>Caja</th><th style={th}>PLU</th><th style={th}>Descripcion</th><th style={th}>Empaque</th><th style={th}>Inicio</th><th style={th}>Fin</th><th style={th}>Dur.</th>{canManage && <th style={th}>Acciones</th>}
+          <th style={th}>Fecha</th><th style={th}>Usuario</th><th style={th}>Caja</th><th style={th}>PLU</th><th style={th}>Descripcion</th><th style={th}>Empaque</th><th style={th}>Reguero</th><th style={th}>Inicio</th><th style={th}>Fin</th><th style={th}>Dur.</th>{canManage && <th style={th}>Acciones</th>}
         </tr></thead>
         <tbody>
           {items.map((item) => (
             <tr key={item.id} style={{ borderBottom: "1px solid var(--border)" }}>
-              <td style={td}>{item.fecha}</td><td style={td}>{item.creadoPorNombre ?? "-"}</td><td style={td}>{item.numeroCaja}</td><td style={td}>{item.plu}</td><td style={td}>{item.descripcion}</td><td style={td}>{item.unidadEmpaque}</td><td style={td}>{fmtTime(item.horaInicio)}</td><td style={td}>{fmtTime(item.horaFinalizacion)}</td><td style={td}>{item.duracionMinutos ?? "-"}</td>
+              <td style={td}>{item.fecha}</td><td style={td}>{item.creadoPorNombre ?? "-"}</td><td style={td}>{item.numeroCaja}</td><td style={td}>{item.plu}</td><td style={td}>{item.descripcion}</td><td style={td}>{item.unidadEmpaque}</td><td style={td}>{item.hayReguero ? `Sí (${item.cantidadReguero ?? "?"})` : "–"}</td><td style={td}>{fmtTime(item.horaInicio)}</td><td style={td}>{fmtTime(item.horaFinalizacion)}</td><td style={td}>{item.duracionMinutos ?? "-"}</td>
               {canManage && <td style={td}><button onClick={() => startEdit(item)} style={iconBtn}><Pencil size={15} /></button><button onClick={() => remove(item)} style={iconBtn}><Trash2 size={15} /></button></td>}
             </tr>
           ))}
@@ -305,6 +334,27 @@ export default function ExportacionesPage() {
               <Field label="PLU"><input required value={editForm.plu} onBlur={() => autocomplete(editForm.plu, "edit")} onChange={(e) => setEditForm((f) => ({ ...f, plu: e.target.value }))} style={inputStyle} /></Field>
               <Field label="Descripcion"><input readOnly value={editForm.descripcion} style={inputStyle} /></Field>
               <Field label="Unidad empaque"><input required type="number" min={1} value={editForm.unidadEmpaque} onChange={(e) => setEditForm((f) => ({ ...f, unidadEmpaque: e.target.value }))} style={inputStyle} /></Field>
+              <Field label="¿Hay reguero?">
+                <div style={{ display: "flex", gap: 8 }}>
+                  <button type="button"
+                    onClick={() => setEditForm((f) => ({ ...f, hayReguero: false, cantidadReguero: "" }))}
+                    style={{ flex: 1, height: 38, borderRadius: 8, fontWeight: 700, cursor: "pointer", border: "1px solid var(--border)", background: !editForm.hayReguero ? COLOR : "var(--surface)", color: !editForm.hayReguero ? "white" : "var(--muted2)" }}>
+                    No
+                  </button>
+                  <button type="button"
+                    onClick={() => setEditForm((f) => ({ ...f, hayReguero: true }))}
+                    style={{ flex: 1, height: 38, borderRadius: 8, fontWeight: 700, cursor: "pointer", border: "1px solid var(--border)", background: editForm.hayReguero ? COLOR : "var(--surface)", color: editForm.hayReguero ? "white" : "var(--muted2)" }}>
+                    Sí
+                  </button>
+                </div>
+              </Field>
+              {editForm.hayReguero && (
+                <Field label="Cantidad de reguero">
+                  <input required type="number" min={1} value={editForm.cantidadReguero}
+                    onChange={(e) => setEditForm((f) => ({ ...f, cantidadReguero: e.target.value }))}
+                    style={inputStyle} />
+                </Field>
+              )}
               <Field label="Hora inicio"><input type="datetime-local" value={editForm.horaInicio} onChange={(e) => setEditForm((f) => ({ ...f, horaInicio: e.target.value }))} style={inputStyle} /></Field>
               <Field label="Hora finalizacion"><input type="datetime-local" value={editForm.horaFinalizacion} onChange={(e) => setEditForm((f) => ({ ...f, horaFinalizacion: e.target.value }))} style={inputStyle} /></Field>
             </div>
