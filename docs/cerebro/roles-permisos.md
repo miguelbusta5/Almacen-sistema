@@ -70,6 +70,8 @@ Definidas en `src/lib/permissions.ts`:
 
 - **TRANSPORTISTA** requiere tener un registro en la tabla `Transportista` con `vehiculoId` asignado para poder iniciar sesión correctamente
 - **Solicitudes de Transporte** puede ser creado por todos los usuarios autenticados excepto `TRANSPORTISTA`; la gestion/rechazo queda en `SUPERVISOR_TRANSPORTE`, `GERENTE` y `ADMIN`
+- En **Solicitudes de Transporte**, `ADMIN` y `GERENTE` pueden editar cualquier solicitud no eliminada y ejecutar borrado logico; los demas solicitantes solo editan sus propias solicitudes cuando el flujo lo permite
+- En **Solicitudes de Transporte**, `TRANSPORTISTA` no ve el modulo ni puede crear, consultar, editar o borrar solicitudes
 - **OPERADOR** es un rol legado — acceso general a inventario y transporte. No crear usuarios nuevos con este rol
 - Los roles **OPERACIONES_MUEBLES** y **OPERACIONES_GOURMET** son los más recientes (Sprint 8, 2026-06-09)
 - La gestión de vehículos y transportistas es exclusiva del ADMIN desde el módulo Usuarios

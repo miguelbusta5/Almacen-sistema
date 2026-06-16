@@ -85,12 +85,19 @@ node prisma/seed.js       # Crear usuario admin inicial
 | Modelo | Tabla | Propósito |
 |---|---|---|
 | `SolicitudTransporte` | `solicitudes_transporte` | Solicitud interna creada por areas y gestionada por transporte |
+| `PluSolicitudTransporte` | `plus_solicitud_transporte` | PLUs, descripciones y unidades/cajas asociados a una solicitud |
 | `HistorialSolicitudTransporte` | `historial_solicitudes_transporte` | Trazabilidad de estados, rechazo y reenvio |
 
 **Relaciones clave:**
 - `creadoPor` → User (relación "SolicitudesTransporteCreadas")
 - `gestionadoPor` → User? (relación "SolicitudesTransporteGestionadas")
 - `historial` → HistorialSolicitudTransporte[]
+- `plines` → PluSolicitudTransporte[]
+
+**Notas de compatibilidad:**
+- `SolicitudTransporte.unidades` se conserva como columna existente, pero en UI/API se expone como **cantidad cajas**.
+- `SolicitudTransporte.deletedAt`, `deletedById` y `deleteReason` implementan borrado logico para ADMIN/GERENTE.
+- El borrado logico no elimina `historial` ni `plines`.
 
 ### Módulo Integración (Sprint 8)
 

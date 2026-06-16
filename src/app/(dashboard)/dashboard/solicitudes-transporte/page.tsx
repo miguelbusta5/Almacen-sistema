@@ -2,13 +2,23 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useSession } from "next-auth/react";
-import { AlertTriangle, CheckCircle2, Clock, FileText, Plus, RefreshCw, Search, Send, X } from "lucide-react";
+import {
+  AlertTriangle, CheckCircle2, Clock, FileText, Minus, Pencil,
+  Plus, RefreshCw, Search, Send, Trash2, X,
+} from "lucide-react";
 import { EmptyState, SkeletonTable } from "@/components/ui";
 import { getModuleColor } from "@/lib/moduleTheme";
-import { puedeGestionarSolicitudTransporte } from "@/lib/solicitudesTransporte";
+import { puedeEliminarSolicitudTransporte, puedeGestionarSolicitudTransporte } from "@/lib/solicitudesTransporte";
 
 type Estado = "PENDIENTE" | "RECHAZADA" | "REENVIADA" | "PROGRAMADA" | "EFECTUADA" | "CANCELADA";
 type StellaEstado = "PENDIENTE" | "PROGRAMADO" | "EFECTUADO" | "CANCELADO";
+
+interface PluLinea {
+  id?: string;
+  plu: string;
+  descripcion: string;
+  unidades: number;
+}
 
 interface Solicitud {
   id: string;
@@ -17,30 +27,31 @@ interface Solicitud {
   areaOtro?: string | null;
   solicitanteNombre: string;
   solicitanteCorreo: string;
-  solicitanteTelefono?: string | null;
-  tipoVenta?: string | null;
-  numeroPedido?: string | null;
-  facturaIntegracion?: string | null;
-  cobroFlete?: boolean | null;
+  solicitanteTelefono: string;
+  tipoVenta: string;
+  numeroPedido: string;
+  facturaIntegracion: string;
+  cobroFlete: boolean;
   valorFlete?: number | null;
+  cantidadCajas?: number | null;
   unidades?: number | null;
-  volumenEstimado?: string | null;
-  tipoMercancia?: string | null;
+  volumenEstimado: string;
+  tipoMercancia: string;
   ciudadOrigen: string;
-  zonaRecogida?: string | null;
-  direccionRecogida?: string | null;
-  puntoRecogida?: string | null;
+  zonaRecogida: string;
+  direccionRecogida: string;
+  puntoRecogida: string;
   puntoRecogidaOtro?: string | null;
   ciudadEntrega: string;
   direccionEntrega: string;
-  zonaEntrega?: string | null;
-  fechaPromesaEntrega?: string | null;
-  ventanaEntrega?: string | null;
-  restriccionHoraria?: boolean | null;
+  zonaEntrega: string;
+  fechaPromesaEntrega: string;
+  ventanaEntrega: string;
+  restriccionHoraria: boolean;
   descripcionRestriccion?: string | null;
-  tipoServicio?: string | null;
+  tipoServicio: string;
   tipoServicioOtro?: string | null;
-  observacionesSolicitante?: string | null;
+  observacionesSolicitante: string;
   estado: Estado;
   stellaEstado: StellaEstado;
   documentoNetSuite?: string | null;
@@ -50,11 +61,12 @@ interface Solicitud {
   observacionTransporte?: string | null;
   prioridad?: "ALTO" | "MEDIO" | "BAJO" | null;
   semaforo: string;
-  mesSolicitud?: string | null;
   motivoRechazo?: string | null;
   creadoPorId: string;
   creadoPorNombre?: string | null;
   gestionadoPorNombre?: string | null;
+  deletedAt?: string | null;
+  plines: PluLinea[];
   updatedAt: string;
 }
 
@@ -68,6 +80,7 @@ interface Catalogos {
   tiposMercancia: string[];
   ventanasEntrega: string[];
   tiposServicio: string[];
+  transportadoras: string[];
 }
 
 const COLOR = getModuleColor("solicitudes-transporte");
@@ -83,6 +96,8 @@ const inputStyle: React.CSSProperties = {
   outline: "none",
 };
 
+const emptyPlu = (): PluLinea => ({ plu: "", descripcion: "", unidades: 1 });
+
 const emptyForm = {
   fechaSolicitud: new Date().toISOString().slice(0, 10),
   areaSolicitante: "Despachos",
@@ -95,7 +110,7 @@ const emptyForm = {
   facturaIntegracion: "",
   cobroFlete: false,
   valorFlete: "",
-  unidades: "1",
+  cantidadCajas: "1",
   volumenEstimado: "Mediano",
   tipoMercancia: "Mixto",
   ciudadOrigen: "Bogota D.C.",
@@ -113,6 +128,7 @@ const emptyForm = {
   tipoServicio: "Entrega directa",
   tipoServicioOtro: "",
   observacionesSolicitante: "",
+  plines: [emptyPlu()],
 };
 
 function estadoColor(estado: Estado) {
@@ -141,19 +157,46 @@ function StatusBadge({ label, color }: { label: string; color: string }) {
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
-    <label style={{ display: "grid", gap: 5, fontSize: 12, fontWeight: 600, color: "var(--muted2)" }}>
+    <label style={{ display: "grid", gap: 5, fontSize: 12, fontWeight: 700, color: "var(--muted2)" }}>
       {label}
       {children}
     </label>
   );
 }
 
-function SelectField({ value, onChange, options }: { value: string; onChange: (v: string) => void; options: string[] }) {
+function SelectField({ value, onChange, options, required = true }: { value: string; onChange: (v: string) => void; options: string[]; required?: boolean }) {
   return (
-    <select value={value} onChange={(e) => onChange(e.target.value)} style={inputStyle}>
+    <select required={required} value={value} onChange={(e) => onChange(e.target.value)} style={inputStyle}>
       {options.map((option) => <option key={option} value={option}>{option}</option>)}
     </select>
   );
+}
+
+function DetailSection({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <section style={{ borderTop: "1px solid var(--border)", paddingTop: 14, display: "grid", gap: 9 }}>
+      <strong style={{ color: "var(--text)", fontSize: 14 }}>{title}</strong>
+      <div style={{ display: "grid", gap: 7, fontSize: 13, color: "var(--text)" }}>{children}</div>
+    </section>
+  );
+}
+
+function DetailLine({ label, value }: { label: string; value: React.ReactNode }) {
+  return (
+    <div style={{ display: "grid", gridTemplateColumns: "150px 1fr", gap: 10 }}>
+      <span style={{ color: "var(--muted)" }}>{label}</span>
+      <span>{value || "N/A"}</span>
+    </div>
+  );
+}
+
+async function buscarProductoMaestro(plu: string): Promise<string | null> {
+  const clean = plu.trim();
+  if (!clean) return null;
+  const res = await fetch(`/api/productos-maestro/${encodeURIComponent(clean)}`);
+  if (!res.ok) return null;
+  const json = await res.json();
+  return json?.data?.descripcion ?? null;
 }
 
 function SolicitudForm({ catalogos, initial, onClose, onSaved }: {
@@ -166,10 +209,11 @@ function SolicitudForm({ catalogos, initial, onClose, onSaved }: {
     ...emptyForm,
     ...initial,
     valorFlete: initial.valorFlete?.toString() ?? "",
-    unidades: initial.unidades?.toString() ?? "1",
+    cantidadCajas: (initial.cantidadCajas ?? initial.unidades ?? 1).toString(),
     fechaPromesaEntrega: initial.fechaPromesaEntrega ?? "",
     cobroFlete: Boolean(initial.cobroFlete),
     restriccionHoraria: Boolean(initial.restriccionHoraria),
+    plines: initial.plines?.length ? initial.plines.map((p) => ({ ...p, unidades: p.unidades || 1 })) : [emptyPlu()],
   } : emptyForm);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
@@ -179,18 +223,35 @@ function SolicitudForm({ catalogos, initial, onClose, onSaved }: {
     setForm((prev) => ({ ...prev, [key]: value }));
   }
 
+  function setPlu(index: number, patch: Partial<PluLinea>) {
+    set("plines", form.plines.map((item, i) => i === index ? { ...item, ...patch } : item));
+  }
+
+  async function autocompletePlu(index: number) {
+    const row = form.plines[index];
+    const descripcion = await buscarProductoMaestro(row.plu);
+    if (descripcion) setPlu(index, { descripcion });
+  }
+
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     setSaving(true);
     setError("");
     const payload = {
       ...form,
-      valorFlete: form.valorFlete ? Number(form.valorFlete) : null,
-      unidades: form.unidades ? Number(form.unidades) : null,
-      fechaPromesaEntrega: form.fechaPromesaEntrega || null,
+      cantidadCajas: Number(form.cantidadCajas),
+      unidades: Number(form.cantidadCajas),
+      valorFlete: form.cobroFlete ? Number(form.valorFlete) : null,
+      fechaPromesaEntrega: form.fechaPromesaEntrega,
       areaOtro: form.areaSolicitante === "Otro" ? form.areaOtro : null,
       puntoRecogidaOtro: form.puntoRecogida === "Otros" ? form.puntoRecogidaOtro : null,
       tipoServicioOtro: form.tipoServicio === "Otro" ? form.tipoServicioOtro : null,
+      descripcionRestriccion: form.restriccionHoraria ? form.descripcionRestriccion : null,
+      plines: form.plines.map((p) => ({
+        plu: p.plu.trim(),
+        descripcion: p.descripcion.trim(),
+        unidades: Number(p.unidades),
+      })),
     };
     const res = await fetch(initial ? `/api/solicitudes-transporte/${initial.id}` : "/api/solicitudes-transporte", {
       method: initial ? "PATCH" : "POST",
@@ -208,11 +269,11 @@ function SolicitudForm({ catalogos, initial, onClose, onSaved }: {
 
   return (
     <div style={{ position: "fixed", inset: 0, background: "var(--overlay)", zIndex: 9000, display: "flex", justifyContent: "center", alignItems: "flex-start", padding: 18, overflowY: "auto" }} onClick={onClose}>
-      <form onSubmit={submit} onClick={(e) => e.stopPropagation()} style={{ width: "100%", maxWidth: 940, background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 14, boxShadow: "var(--shadow-xl)", padding: 20, display: "grid", gap: 18 }}>
+      <form onSubmit={submit} onClick={(e) => e.stopPropagation()} style={{ width: "100%", maxWidth: 980, background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 14, boxShadow: "var(--shadow-xl)", padding: 20, display: "grid", gap: 18 }}>
         <div style={{ display: "flex", justifyContent: "space-between", gap: 12 }}>
           <div>
-            <h2 style={{ margin: 0, color: "var(--text)", fontSize: 18 }}>{initial ? "Corregir solicitud" : "Nueva solicitud de transporte"}</h2>
-            <p style={{ margin: "4px 0 0", color: "var(--muted)", fontSize: 13 }}>Formulario interno para centralizar servicios de transporte.</p>
+            <h2 style={{ margin: 0, color: "var(--text)", fontSize: 18 }}>{initial ? "Editar solicitud" : "Nueva solicitud de transporte"}</h2>
+            <p style={{ margin: "4px 0 0", color: "var(--muted)", fontSize: 13 }}>Todos los campos visibles son obligatorios.</p>
           </div>
           <button type="button" onClick={onClose} style={{ border: "none", background: "transparent", color: "var(--muted)", cursor: "pointer" }}><X size={18} /></button>
         </div>
@@ -224,10 +285,10 @@ function SolicitudForm({ catalogos, initial, onClose, onSaved }: {
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(210px,1fr))", gap: 10 }}>
             <Field label="Fecha de solicitud"><input required type="date" value={form.fechaSolicitud} onChange={(e) => set("fechaSolicitud", e.target.value)} style={inputStyle} /></Field>
             <Field label="Area solicitante"><SelectField value={form.areaSolicitante} onChange={(v) => set("areaSolicitante", v)} options={c?.areas ?? [form.areaSolicitante]} /></Field>
-            {form.areaSolicitante === "Otro" && <Field label="Otra area"><input value={form.areaOtro ?? ""} onChange={(e) => set("areaOtro", e.target.value)} style={inputStyle} /></Field>}
+            {form.areaSolicitante === "Otro" && <Field label="Otra area"><input required value={form.areaOtro ?? ""} onChange={(e) => set("areaOtro", e.target.value)} style={inputStyle} /></Field>}
             <Field label="Nombre solicitante"><input required value={form.solicitanteNombre} onChange={(e) => set("solicitanteNombre", e.target.value)} style={inputStyle} /></Field>
             <Field label="Correo corporativo"><input required type="email" value={form.solicitanteCorreo} onChange={(e) => set("solicitanteCorreo", e.target.value)} style={inputStyle} /></Field>
-            <Field label="Contacto"><input value={form.solicitanteTelefono ?? ""} onChange={(e) => set("solicitanteTelefono", e.target.value)} style={inputStyle} /></Field>
+            <Field label="Contacto"><input required value={form.solicitanteTelefono ?? ""} onChange={(e) => set("solicitanteTelefono", e.target.value)} style={inputStyle} /></Field>
           </div>
         </section>
 
@@ -235,12 +296,37 @@ function SolicitudForm({ catalogos, initial, onClose, onSaved }: {
           <h3 style={{ margin: 0, fontSize: 13, color: COLOR }}>Pedido y mercancia</h3>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(170px,1fr))", gap: 10 }}>
             <Field label="Tipo de venta"><SelectField value={form.tipoVenta ?? "N/A"} onChange={(v) => set("tipoVenta", v)} options={c?.tiposVenta ?? ["N/A"]} /></Field>
-            <Field label="Pedido / orden"><input value={form.numeroPedido ?? ""} onChange={(e) => set("numeroPedido", e.target.value)} style={inputStyle} /></Field>
+            <Field label="Pedido / orden"><input required value={form.numeroPedido ?? ""} onChange={(e) => set("numeroPedido", e.target.value)} style={inputStyle} /></Field>
             <Field label="Factura integracion"><input value={form.facturaIntegracion ?? ""} onChange={(e) => set("facturaIntegracion", e.target.value)} style={inputStyle} /></Field>
-            <Field label="Unidades"><input type="number" min={1} value={form.unidades ?? "1"} onChange={(e) => set("unidades", e.target.value)} style={inputStyle} /></Field>
+            <Field label="Cantidad cajas"><input required type="number" min={1} value={form.cantidadCajas ?? "1"} onChange={(e) => set("cantidadCajas", e.target.value)} style={inputStyle} /></Field>
             <Field label="Volumen"><SelectField value={form.volumenEstimado ?? "Mediano"} onChange={(v) => set("volumenEstimado", v)} options={c?.volumenes ?? ["Mediano"]} /></Field>
             <Field label="Tipo mercancia"><SelectField value={form.tipoMercancia ?? "Mixto"} onChange={(v) => set("tipoMercancia", v)} options={c?.tiposMercancia ?? ["Mixto"]} /></Field>
-            <Field label="Valor flete"><input type="number" min={0} value={form.valorFlete ?? ""} onChange={(e) => set("valorFlete", e.target.value)} style={inputStyle} /></Field>
+            <Field label="Se cobro flete">
+              <select required value={form.cobroFlete ? "SI" : "NO"} onChange={(e) => set("cobroFlete", e.target.value === "SI")} style={inputStyle}>
+                <option value="NO">No</option>
+                <option value="SI">Si</option>
+              </select>
+            </Field>
+            {form.cobroFlete && <Field label="Valor flete"><input required type="number" min={0} value={form.valorFlete ?? ""} onChange={(e) => set("valorFlete", e.target.value)} style={inputStyle} /></Field>}
+          </div>
+
+          <div style={{ display: "grid", gap: 8 }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <strong style={{ fontSize: 12, color: "var(--muted2)" }}>PLUs</strong>
+              <button type="button" onClick={() => set("plines", [...form.plines, emptyPlu()])} style={{ border: "none", background: `${COLOR}18`, color: COLOR, borderRadius: 8, height: 30, padding: "0 10px", cursor: "pointer", display: "flex", alignItems: "center", gap: 6 }}>
+                <Plus size={13} /> Agregar PLU
+              </button>
+            </div>
+            {form.plines.map((line, index) => (
+              <div key={index} style={{ display: "grid", gridTemplateColumns: "120px 1fr 92px 34px", gap: 8, alignItems: "center" }}>
+                <input required placeholder="PLU" value={line.plu} onBlur={() => autocompletePlu(index)} onChange={(e) => setPlu(index, { plu: e.target.value })} style={inputStyle} />
+                <input required placeholder="Descripcion" value={line.descripcion} onChange={(e) => setPlu(index, { descripcion: e.target.value })} style={inputStyle} />
+                <input required type="number" min={1} placeholder="Unid." value={line.unidades} onChange={(e) => setPlu(index, { unidades: Math.max(1, Number(e.target.value) || 1) })} style={inputStyle} />
+                <button type="button" disabled={form.plines.length === 1} onClick={() => set("plines", form.plines.filter((_, i) => i !== index))} style={{ width: 34, height: 34, border: "1px solid var(--border)", background: "var(--surface)", color: "var(--muted)", borderRadius: 8, cursor: form.plines.length === 1 ? "not-allowed" : "pointer" }}>
+                  <Minus size={14} />
+                </button>
+              </div>
+            ))}
           </div>
         </section>
 
@@ -249,8 +335,9 @@ function SolicitudForm({ catalogos, initial, onClose, onSaved }: {
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(210px,1fr))", gap: 10 }}>
             <Field label="Ciudad origen"><SelectField value={form.ciudadOrigen} onChange={(v) => set("ciudadOrigen", v)} options={c?.ciudades ?? [form.ciudadOrigen]} /></Field>
             <Field label="Zona recogida"><SelectField value={form.zonaRecogida ?? "Urbana"} onChange={(v) => set("zonaRecogida", v)} options={c?.zonas ?? ["Urbana"]} /></Field>
-            <Field label="Direccion recogida"><input value={form.direccionRecogida ?? ""} onChange={(e) => set("direccionRecogida", e.target.value)} style={inputStyle} /></Field>
+            <Field label="Direccion recogida"><input required value={form.direccionRecogida ?? ""} onChange={(e) => set("direccionRecogida", e.target.value)} style={inputStyle} /></Field>
             <Field label="Punto recogida"><SelectField value={form.puntoRecogida ?? "90 Cedi"} onChange={(v) => set("puntoRecogida", v)} options={c?.puntosRecogida ?? ["90 Cedi"]} /></Field>
+            {form.puntoRecogida === "Otros" && <Field label="Otro punto"><input required value={form.puntoRecogidaOtro ?? ""} onChange={(e) => set("puntoRecogidaOtro", e.target.value)} style={inputStyle} /></Field>}
             <Field label="Ciudad entrega"><SelectField value={form.ciudadEntrega} onChange={(v) => set("ciudadEntrega", v)} options={c?.ciudades ?? [form.ciudadEntrega]} /></Field>
             <Field label="Direccion entrega"><input required value={form.direccionEntrega} onChange={(e) => set("direccionEntrega", e.target.value)} style={inputStyle} /></Field>
             <Field label="Zona entrega"><SelectField value={form.zonaEntrega ?? "Urbana"} onChange={(v) => set("zonaEntrega", v)} options={c?.zonas ?? ["Urbana"]} /></Field>
@@ -260,22 +347,31 @@ function SolicitudForm({ catalogos, initial, onClose, onSaved }: {
         <section style={{ display: "grid", gap: 10 }}>
           <h3 style={{ margin: 0, fontSize: 13, color: COLOR }}>Programacion y servicio</h3>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(210px,1fr))", gap: 10 }}>
-            <Field label="Fecha promesa"><input type="date" value={form.fechaPromesaEntrega ?? ""} onChange={(e) => set("fechaPromesaEntrega", e.target.value)} style={inputStyle} /></Field>
+            <Field label="Fecha promesa"><input required type="date" value={form.fechaPromesaEntrega ?? ""} onChange={(e) => set("fechaPromesaEntrega", e.target.value)} style={inputStyle} /></Field>
             <Field label="Ventana entrega"><SelectField value={form.ventanaEntrega ?? "Horario A.M"} onChange={(v) => set("ventanaEntrega", v)} options={c?.ventanasEntrega ?? ["Horario A.M"]} /></Field>
             <Field label="Tipo servicio"><SelectField value={form.tipoServicio ?? "Entrega directa"} onChange={(v) => set("tipoServicio", v)} options={c?.tiposServicio ?? ["Entrega directa"]} /></Field>
+            {form.tipoServicio === "Otro" && <Field label="Otro servicio"><input required value={form.tipoServicioOtro ?? ""} onChange={(e) => set("tipoServicioOtro", e.target.value)} style={inputStyle} /></Field>}
+            <Field label="Restriccion horaria">
+              <select required value={form.restriccionHoraria ? "SI" : "NO"} onChange={(e) => set("restriccionHoraria", e.target.value === "SI")} style={inputStyle}>
+                <option value="NO">No</option>
+                <option value="SI">Si</option>
+              </select>
+            </Field>
           </div>
-          <Field label="Restriccion horaria">
-            <textarea value={form.descripcionRestriccion ?? ""} onChange={(e) => set("descripcionRestriccion", e.target.value)} rows={2} style={{ ...inputStyle, height: "auto", padding: 10 }} />
-          </Field>
+          {form.restriccionHoraria && (
+            <Field label="Descripcion restriccion">
+              <textarea required value={form.descripcionRestriccion ?? ""} onChange={(e) => set("descripcionRestriccion", e.target.value)} rows={2} style={{ ...inputStyle, height: "auto", padding: 10 }} />
+            </Field>
+          )}
           <Field label="Observaciones">
-            <textarea value={form.observacionesSolicitante ?? ""} onChange={(e) => set("observacionesSolicitante", e.target.value)} rows={3} style={{ ...inputStyle, height: "auto", padding: 10 }} />
+            <textarea required value={form.observacionesSolicitante ?? ""} onChange={(e) => set("observacionesSolicitante", e.target.value)} rows={3} style={{ ...inputStyle, height: "auto", padding: 10 }} />
           </Field>
         </section>
 
         <div style={{ display: "flex", justifyContent: "flex-end", gap: 10 }}>
           <button type="button" onClick={onClose} style={{ height: 38, padding: "0 16px", borderRadius: 8, border: "1px solid var(--border)", background: "var(--surface)", color: "var(--text)", cursor: "pointer" }}>Cancelar</button>
           <button disabled={saving} style={{ height: 38, padding: "0 16px", borderRadius: 8, border: "none", background: COLOR, color: "white", fontWeight: 700, cursor: "pointer" }}>
-            {saving ? "Guardando..." : initial ? "Guardar correccion" : "Crear solicitud"}
+            {saving ? "Guardando..." : initial ? "Guardar cambios" : "Crear solicitud"}
           </button>
         </div>
       </form>
@@ -285,8 +381,11 @@ function SolicitudForm({ catalogos, initial, onClose, onSaved }: {
 
 export default function SolicitudesTransportePage() {
   const { data: session } = useSession();
-  const role = (session?.user as { role?: string; id?: string; name?: string; email?: string } | undefined)?.role;
+  const user = session?.user as { role?: string; id?: string } | undefined;
+  const role = user?.role;
+  const userId = user?.id;
   const isGestor = puedeGestionarSolicitudTransporte(role);
+  const canDelete = puedeEliminarSolicitudTransporte(role);
   const [rows, setRows] = useState<Solicitud[]>([]);
   const [catalogos, setCatalogos] = useState<Catalogos | null>(null);
   const [loading, setLoading] = useState(true);
@@ -305,7 +404,6 @@ export default function SolicitudesTransportePage() {
     rechazadas: rows.filter((r) => r.estado === "RECHAZADA").length,
     alerta: rows.filter((r) => ["VENCIDO", "ALERTA"].includes(r.semaforo)).length,
   }), [rows]);
-
   const rechazadas = rows.filter((r) => r.estado === "RECHAZADA");
 
   async function load() {
@@ -348,8 +446,16 @@ export default function SolicitudesTransportePage() {
     setRejectText("");
   }, [selected]);
 
+  function canEditSelected(solicitud: Solicitud) {
+    return canDelete || solicitud.creadoPorId === userId || isGestor;
+  }
+
   async function saveGestion() {
     if (!selected) return;
+    if (!gestion.transportadora) {
+      setError("Selecciona una transportadora");
+      return;
+    }
     const res = await fetch(`/api/solicitudes-transporte/${selected.id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
@@ -392,6 +498,22 @@ export default function SolicitudesTransportePage() {
     await load();
   }
 
+  async function borrarSolicitud(solicitud: Solicitud) {
+    if (!window.confirm("Esta solicitud se ocultara del modulo y conservara historial. ¿Continuar?")) return;
+    const res = await fetch(`/api/solicitudes-transporte/${solicitud.id}`, {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ deleteReason: "Eliminada desde interfaz" }),
+    });
+    const json = await res.json();
+    if (!res.ok) {
+      setError(json.error ?? "No se pudo borrar");
+      return;
+    }
+    setSelected(null);
+    await load();
+  }
+
   return (
     <div style={{ display: "grid", gap: 18 }}>
       <div style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "flex-start", flexWrap: "wrap" }}>
@@ -403,7 +525,7 @@ export default function SolicitudesTransportePage() {
           <h1 style={{ margin: 0, color: "var(--text)", fontSize: 28, letterSpacing: "-0.04em" }}>Solicitudes de Transporte</h1>
           <p style={{ margin: "5px 0 0", color: "var(--muted)", fontSize: 14 }}>Servicio interno para entregas, recolecciones, traslados e inversa.</p>
         </div>
-        <button onClick={() => setShowForm(true)} style={{ height: 40, border: "none", borderRadius: 10, background: COLOR, color: "#fff", padding: "0 16px", fontWeight: 800, display: "flex", alignItems: "center", gap: 8, cursor: "pointer" }}>
+        <button onClick={() => { setEditing(null); setShowForm(true); }} style={{ height: 40, border: "none", borderRadius: 10, background: COLOR, color: "#fff", padding: "0 16px", fontWeight: 800, display: "flex", alignItems: "center", gap: 8, cursor: "pointer" }}>
           <Plus size={16} /> Nueva solicitud
         </button>
       </div>
@@ -456,10 +578,10 @@ export default function SolicitudesTransportePage() {
           <EmptyState icon={<FileText size={28} />} title="Sin solicitudes" description="Crea la primera solicitud de transporte interna." />
         ) : (
           <div style={{ overflowX: "auto" }}>
-            <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 920 }}>
+            <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 980 }}>
               <thead>
                 <tr style={{ background: "var(--surface2)", textAlign: "left", color: "var(--muted)", fontSize: 11, textTransform: "uppercase", letterSpacing: ".06em" }}>
-                  {["Solicitud", "Origen", "Destino", "Promesa", "Estado", "Semaforo", "Gestion"].map((h) => <th key={h} style={{ padding: "11px 12px" }}>{h}</th>)}
+                  {["Solicitud", "Origen", "Destino", "Cajas", "Promesa", "Estado", "Semaforo", "Gestion"].map((h) => <th key={h} style={{ padding: "11px 12px" }}>{h}</th>)}
                 </tr>
               </thead>
               <tbody>
@@ -471,6 +593,7 @@ export default function SolicitudesTransportePage() {
                     </td>
                     <td style={{ padding: 12, color: "var(--text)", fontSize: 13 }}>{r.ciudadOrigen}</td>
                     <td style={{ padding: 12, color: "var(--text)", fontSize: 13 }}>{r.ciudadEntrega}</td>
+                    <td style={{ padding: 12, color: "var(--text)", fontSize: 13 }}>{r.cantidadCajas ?? r.unidades ?? "N/A"}</td>
                     <td style={{ padding: 12, color: "var(--muted)", fontSize: 13 }}>{r.fechaPromesaEntrega ?? "Sin fecha"}</td>
                     <td style={{ padding: 12 }}><StatusBadge label={r.estado} color={estadoColor(r.estado)} /></td>
                     <td style={{ padding: 12 }}><StatusBadge label={r.semaforo} color={semaforoColor(r.semaforo)} /></td>
@@ -485,7 +608,7 @@ export default function SolicitudesTransportePage() {
 
       {selected && (
         <div style={{ position: "fixed", inset: 0, zIndex: 8500, background: "rgba(0,0,0,.35)", display: "flex", justifyContent: "flex-end" }} onClick={() => setSelected(null)}>
-          <aside onClick={(e) => e.stopPropagation()} style={{ width: "min(560px,100vw)", height: "100%", background: "var(--surface)", borderLeft: "1px solid var(--border)", padding: 20, overflowY: "auto", display: "grid", gap: 16, alignContent: "start" }}>
+          <aside onClick={(e) => e.stopPropagation()} style={{ width: "min(640px,100vw)", height: "100%", background: "var(--surface)", borderLeft: "1px solid var(--border)", padding: 20, overflowY: "auto", display: "grid", gap: 16, alignContent: "start" }}>
             <div style={{ display: "flex", justifyContent: "space-between", gap: 12 }}>
               <div>
                 <h2 style={{ margin: 0, fontSize: 18, color: "var(--text)" }}>{selected.numeroPedido || "Solicitud transporte"}</h2>
@@ -494,25 +617,72 @@ export default function SolicitudesTransportePage() {
               <button onClick={() => setSelected(null)} style={{ border: "none", background: "transparent", color: "var(--muted)", cursor: "pointer" }}><X size={18} /></button>
             </div>
 
+            <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+              <StatusBadge label={selected.estado} color={estadoColor(selected.estado)} />
+              <StatusBadge label={selected.semaforo} color={semaforoColor(selected.semaforo)} />
+              {canEditSelected(selected) && (
+                <button onClick={() => { setEditing(selected); setShowForm(true); }} style={{ height: 30, border: "1px solid var(--border)", borderRadius: 8, background: "var(--surface2)", color: "var(--text)", display: "flex", alignItems: "center", gap: 6, padding: "0 10px", cursor: "pointer" }}>
+                  <Pencil size={13} /> Editar
+                </button>
+              )}
+              {canDelete && (
+                <button onClick={() => borrarSolicitud(selected)} style={{ height: 30, border: "1px solid rgba(220,38,38,.35)", borderRadius: 8, background: "var(--error-tint)", color: "var(--error)", display: "flex", alignItems: "center", gap: 6, padding: "0 10px", cursor: "pointer" }}>
+                  <Trash2 size={13} /> Borrar
+                </button>
+              )}
+            </div>
+
             {selected.motivoRechazo && (
               <div style={{ padding: 12, borderRadius: 10, background: "var(--error-tint)", color: "var(--error)", fontSize: 13 }}>
                 <strong>Motivo de rechazo:</strong> {selected.motivoRechazo}
               </div>
             )}
 
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-              <StatusBadge label={selected.estado} color={estadoColor(selected.estado)} />
-              <StatusBadge label={selected.semaforo} color={semaforoColor(selected.semaforo)} />
-            </div>
+            <DetailSection title="Informacion general">
+              <DetailLine label="Fecha solicitud" value={selected.fechaSolicitud} />
+              <DetailLine label="Area" value={selected.areaSolicitante === "Otro" ? selected.areaOtro : selected.areaSolicitante} />
+              <DetailLine label="Solicitante" value={selected.solicitanteNombre} />
+              <DetailLine label="Correo" value={selected.solicitanteCorreo} />
+              <DetailLine label="Contacto" value={selected.solicitanteTelefono} />
+            </DetailSection>
 
-            <section style={{ display: "grid", gap: 8, fontSize: 13, color: "var(--text)" }}>
-              <strong>Datos de solicitud</strong>
-              <span>Solicitante: {selected.solicitanteNombre} ({selected.solicitanteCorreo})</span>
-              <span>Entrega: {selected.direccionEntrega}</span>
-              <span>Servicio: {selected.tipoServicio ?? "N/A"} - {selected.tipoMercancia ?? "N/A"}</span>
-              <span>Unidades: {selected.unidades ?? "N/A"} - Volumen: {selected.volumenEstimado ?? "N/A"}</span>
-              {selected.observacionesSolicitante && <span>Observaciones: {selected.observacionesSolicitante}</span>}
-            </section>
+            <DetailSection title="Pedido y mercancia">
+              <DetailLine label="Tipo venta" value={selected.tipoVenta} />
+              <DetailLine label="Pedido / orden" value={selected.numeroPedido} />
+              <DetailLine label="Factura integracion" value={selected.facturaIntegracion} />
+              <DetailLine label="Cantidad cajas" value={selected.cantidadCajas ?? selected.unidades} />
+              <DetailLine label="Volumen" value={selected.volumenEstimado} />
+              <DetailLine label="Tipo mercancia" value={selected.tipoMercancia} />
+              <DetailLine label="Flete" value={selected.cobroFlete ? `Si - $${selected.valorFlete ?? 0}` : "No"} />
+            </DetailSection>
+
+            <DetailSection title="PLUs">
+              {selected.plines?.length ? selected.plines.map((p, i) => (
+                <div key={p.id ?? i} style={{ display: "grid", gridTemplateColumns: "90px 1fr 70px", gap: 8, padding: "8px 10px", borderRadius: 8, background: "var(--surface2)" }}>
+                  <strong>{p.plu}</strong>
+                  <span>{p.descripcion}</span>
+                  <span>{p.unidades} und.</span>
+                </div>
+              )) : <span style={{ color: "var(--muted)" }}>Sin PLUs registrados</span>}
+            </DetailSection>
+
+            <DetailSection title="Origen y destino">
+              <DetailLine label="Ciudad origen" value={selected.ciudadOrigen} />
+              <DetailLine label="Zona recogida" value={selected.zonaRecogida} />
+              <DetailLine label="Direccion recogida" value={selected.direccionRecogida} />
+              <DetailLine label="Punto recogida" value={selected.puntoRecogida === "Otros" ? selected.puntoRecogidaOtro : selected.puntoRecogida} />
+              <DetailLine label="Ciudad entrega" value={selected.ciudadEntrega} />
+              <DetailLine label="Direccion entrega" value={selected.direccionEntrega} />
+              <DetailLine label="Zona entrega" value={selected.zonaEntrega} />
+            </DetailSection>
+
+            <DetailSection title="Programacion y servicio">
+              <DetailLine label="Fecha promesa" value={selected.fechaPromesaEntrega} />
+              <DetailLine label="Ventana" value={selected.ventanaEntrega} />
+              <DetailLine label="Restriccion" value={selected.restriccionHoraria ? selected.descripcionRestriccion : "No"} />
+              <DetailLine label="Tipo servicio" value={selected.tipoServicio === "Otro" ? selected.tipoServicioOtro : selected.tipoServicio} />
+              <DetailLine label="Observaciones" value={selected.observacionesSolicitante} />
+            </DetailSection>
 
             {!isGestor && selected.estado === "RECHAZADA" && (
               <div style={{ display: "flex", gap: 8 }}>
@@ -522,8 +692,7 @@ export default function SolicitudesTransportePage() {
             )}
 
             {isGestor && (
-              <section style={{ display: "grid", gap: 10, borderTop: "1px solid var(--border)", paddingTop: 14 }}>
-                <strong style={{ color: "var(--text)", fontSize: 14 }}>Gestion transporte</strong>
+              <DetailSection title="Gestion transporte">
                 <Field label="Stella / estado gestion">
                   <select value={gestion.stellaEstado} onChange={(e) => setGestion((g) => ({ ...g, stellaEstado: e.target.value }))} style={inputStyle}>
                     {["PENDIENTE", "PROGRAMADO", "EFECTUADO", "CANCELADO"].map((e) => <option key={e}>{e}</option>)}
@@ -532,7 +701,12 @@ export default function SolicitudesTransportePage() {
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
                   <Field label="Documento NetSuite"><input value={gestion.documentoNetSuite} onChange={(e) => setGestion((g) => ({ ...g, documentoNetSuite: e.target.value }))} style={inputStyle} /></Field>
                   <Field label="Fecha programacion"><input type="date" value={gestion.fechaProgramacion} onChange={(e) => setGestion((g) => ({ ...g, fechaProgramacion: e.target.value }))} style={inputStyle} /></Field>
-                  <Field label="Transportadora"><input value={gestion.transportadora} onChange={(e) => setGestion((g) => ({ ...g, transportadora: e.target.value }))} style={inputStyle} /></Field>
+                  <Field label="Transportadora">
+                    <select required value={gestion.transportadora} onChange={(e) => setGestion((g) => ({ ...g, transportadora: e.target.value }))} style={inputStyle}>
+                      <option value="">Seleccionar</option>
+                      {(catalogos?.transportadoras ?? []).map((t) => <option key={t} value={t}>{t}</option>)}
+                    </select>
+                  </Field>
                   <Field label="Numero guia"><input value={gestion.numeroGuia} onChange={(e) => setGestion((g) => ({ ...g, numeroGuia: e.target.value }))} style={inputStyle} /></Field>
                 </div>
                 <Field label="Observacion transporte">
@@ -548,7 +722,7 @@ export default function SolicitudesTransportePage() {
                     <button onClick={rechazar} style={{ height: 36, border: "1px solid rgba(220,38,38,.35)", borderRadius: 8, background: "var(--error-tint)", color: "var(--error)", fontWeight: 700, cursor: "pointer" }}>Rechazar solicitud</button>
                   </div>
                 )}
-              </section>
+              </DetailSection>
             )}
           </aside>
         </div>

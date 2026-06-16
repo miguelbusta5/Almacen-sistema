@@ -2,10 +2,14 @@ import { describe, expect, it } from "vitest";
 import {
   calcularPrioridadSolicitudTransporte,
   calcularSemaforoSolicitudTransporte,
+  esTransportadoraValida,
   estadoDesdeStella,
   puedeCrearSolicitudTransporte,
+  puedeEliminarSolicitudTransporte,
   puedeGestionarSolicitudTransporte,
   puedeVerSolicitudTransporte,
+  validarFlete,
+  validarPlinesSolicitudTransporte,
 } from "@/lib/solicitudesTransporte";
 
 function d(value: string) {
@@ -26,6 +30,13 @@ describe("solicitudesTransporte", () => {
     expect(puedeGestionarSolicitudTransporte("ADMIN")).toBe(true);
     expect(puedeGestionarSolicitudTransporte("TRANSPORTE")).toBe(false);
     expect(puedeGestionarSolicitudTransporte("TIENDA")).toBe(false);
+  });
+
+  it("limita borrado logico a admin y gerente", () => {
+    expect(puedeEliminarSolicitudTransporte("ADMIN")).toBe(true);
+    expect(puedeEliminarSolicitudTransporte("GERENTE")).toBe(true);
+    expect(puedeEliminarSolicitudTransporte("SUPERVISOR_TRANSPORTE")).toBe(false);
+    expect(puedeEliminarSolicitudTransporte("TIENDA")).toBe(false);
   });
 
   it("permite ver propias solicitudes y todas a gestores", () => {
@@ -56,5 +67,27 @@ describe("solicitudesTransporte", () => {
     expect(estadoDesdeStella("PROGRAMADO")).toBe("PROGRAMADA");
     expect(estadoDesdeStella("EFECTUADO")).toBe("EFECTUADA");
     expect(estadoDesdeStella("CANCELADO")).toBe("CANCELADA");
+  });
+
+  it("valida flete condicional", () => {
+    expect(validarFlete(true, null)).toBe("Debes ingresar el valor del flete");
+    expect(validarFlete(true, -1)).toBe("Debes ingresar el valor del flete");
+    expect(validarFlete(true, 0)).toBeNull();
+    expect(validarFlete(false, null)).toBeNull();
+  });
+
+  it("exige al menos un PLU valido", () => {
+    expect(validarPlinesSolicitudTransporte([])).toBe("Agrega al menos un PLU");
+    expect(validarPlinesSolicitudTransporte([{ plu: "", descripcion: "Mesa", unidades: 1 }])).toBe("Cada linea debe tener PLU");
+    expect(validarPlinesSolicitudTransporte([{ plu: "ABC", descripcion: "", unidades: 1 }])).toBe("Cada linea debe tener descripcion");
+    expect(validarPlinesSolicitudTransporte([{ plu: "ABC", descripcion: "Mesa", unidades: 0 }])).toBe("Cada linea debe tener unidades validas");
+    expect(validarPlinesSolicitudTransporte([{ plu: "ABC", descripcion: "Mesa", unidades: 2 }])).toBeNull();
+  });
+
+  it("restringe transportadoras al catalogo cerrado", () => {
+    expect(esTransportadoraValida("ONE SITE")).toBe(true);
+    expect(esTransportadoraValida("PAKING TO GO")).toBe(true);
+    expect(esTransportadoraValida("Otra transportadora")).toBe(false);
+    expect(esTransportadoraValida(null)).toBe(false);
   });
 });

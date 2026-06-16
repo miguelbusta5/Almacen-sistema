@@ -57,6 +57,24 @@ export const TIPO_SERVICIO_OPTIONS = [
   "Otro",
 ] as const;
 
+export const TRANSPORTADORA_OPTIONS = [
+  "ONE SITE",
+  "TRANSTELITAL",
+  "V2 TOGO",
+  "PROPIO",
+  "PROESLOG",
+  "PAKING TO GO",
+  "NOTA INTERNA",
+] as const;
+
+export type TransportadoraSolicitudTransporte = typeof TRANSPORTADORA_OPTIONS[number];
+
+export interface PluSolicitudInput {
+  plu: string;
+  descripcion: string;
+  unidades: number;
+}
+
 export const PUNTO_RECOGIDA_OPTIONS = [
   "109 AG Oviedo",
   "111 AG Santafe Bogota",
@@ -116,6 +134,10 @@ export function puedeCrearSolicitudTransporte(role: UserRole | string | undefine
 
 export function puedeGestionarSolicitudTransporte(role: UserRole | string | undefined | null): boolean {
   return Boolean(role && (GESTORES_SOLICITUDES_TRANSPORTE as string[]).includes(role));
+}
+
+export function puedeEliminarSolicitudTransporte(role: UserRole | string | undefined | null): boolean {
+  return role === "ADMIN" || role === "GERENTE";
 }
 
 export function puedeVerSolicitudTransporte(
@@ -184,4 +206,26 @@ export function estadoDesdeStella(stellaEstado: "PENDIENTE" | "PROGRAMADO" | "EF
   if (stellaEstado === "EFECTUADO") return "EFECTUADA" as const;
   if (stellaEstado === "CANCELADO") return "CANCELADA" as const;
   return "PENDIENTE" as const;
+}
+
+export function esTransportadoraValida(value: string | null | undefined): value is TransportadoraSolicitudTransporte {
+  return Boolean(value && (TRANSPORTADORA_OPTIONS as readonly string[]).includes(value));
+}
+
+export function validarFlete(cobroFlete: boolean | null | undefined, valorFlete: number | null | undefined): string | null {
+  if (typeof cobroFlete !== "boolean") return "Debes indicar si se cobro flete";
+  if (cobroFlete && (valorFlete === null || valorFlete === undefined || Number.isNaN(valorFlete) || valorFlete < 0)) {
+    return "Debes ingresar el valor del flete";
+  }
+  return null;
+}
+
+export function validarPlinesSolicitudTransporte(plines: PluSolicitudInput[] | null | undefined): string | null {
+  if (!plines || plines.length === 0) return "Agrega al menos un PLU";
+  for (const item of plines) {
+    if (!item.plu.trim()) return "Cada linea debe tener PLU";
+    if (!item.descripcion.trim()) return "Cada linea debe tener descripcion";
+    if (!Number.isInteger(item.unidades) || item.unidades < 1) return "Cada linea debe tener unidades validas";
+  }
+  return null;
 }

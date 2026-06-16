@@ -733,11 +733,17 @@ model SolicitudTransporte {
   gestionadoPorId String? @map("gestionado_por_id")
   gestionadoPor   User?   @relation("SolicitudesTransporteGestionadas", fields: [gestionadoPorId], references: [id])
 
+  deletedAt     DateTime? @map("deleted_at")
+  deletedById   String?   @map("deleted_by_id")
+  deleteReason  String?   @map("delete_reason")
+
+  plines    PluSolicitudTransporte[]
   historial HistorialSolicitudTransporte[]
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
   @@index([estado, createdAt])
+  @@index([deletedAt])
   @@index([semaforo, fechaPromesaEntrega])
   @@index([prioridad, fechaPromesaEntrega])
   @@index([creadoPorId, estado])
@@ -759,4 +765,18 @@ model HistorialSolicitudTransporte {
   @@index([solicitudId, createdAt])
   @@index([usuarioId])
   @@map("historial_solicitudes_transporte")
+}
+
+model PluSolicitudTransporte {
+  id          String               @id @default(cuid())
+  solicitudId String               @map("solicitud_id")
+  solicitud   SolicitudTransporte  @relation(fields: [solicitudId], references: [id], onDelete: Cascade)
+  plu         String               @db.VarChar(100)
+  descripcion String               @db.VarChar(255)
+  unidades    Int
+  createdAt   DateTime             @default(now()) @map("created_at")
+
+  @@index([solicitudId])
+  @@index([plu])
+  @@map("plus_solicitud_transporte")
 }

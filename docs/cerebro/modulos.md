@@ -73,6 +73,11 @@ Centraliza el formulario que antes se manejaba en Google Forms/Sheets:
 - Solicitantes internos crean solicitudes desde la app
 - `TRANSPORTISTA` queda excluido y sigue solo en Preoperacional
 - `SUPERVISOR_TRANSPORTE`, `GERENTE` y `ADMIN` gestionan Documento NetSuite, Stella, transportadora, guia, fecha de programacion y observacion
+- El campo de unidades se opera como **cantidad cajas** por compatibilidad con la columna existente
+- Cada solicitud exige minimo 1 PLU con descripcion y unidades; la descripcion se autocompleta desde `ProductoMaestro` cuando existe
+- La pregunta de flete es obligatoria; si se cobro flete, el valor es obligatorio
+- La transportadora se elige desde lista cerrada: ONE SITE, TRANSTELITAL, V2 TOGO, PROPIO, PROESLOG, PAKING TO GO, NOTA INTERNA
+- `ADMIN` y `GERENTE` pueden editar y borrar logicamente solicitudes no eliminadas
 - Stella alimenta estado y semaforo: PENDIENTE, PROGRAMADO, EFECTUADO, CANCELADO
 - El rechazo funciona con motivo visible para el solicitante, correccion y reenvio
 

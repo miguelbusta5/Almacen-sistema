@@ -8,23 +8,64 @@ import {
   estadoDesdeStella,
   mesSolicitud,
   parseDateOnly,
+  puedeEliminarSolicitudTransporte,
   puedeGestionarSolicitudTransporte,
   puedeVerSolicitudTransporte,
+  TRANSPORTADORA_OPTIONS,
+  validarFlete,
+  validarPlinesSolicitudTransporte,
 } from "@/lib/solicitudesTransporte";
-import { mapSolicitudTransporte, solicitudCreateSchema } from "../route";
+import { mapSolicitudTransporte } from "../route";
 
 const stellaSchema = z.enum(["PENDIENTE", "PROGRAMADO", "EFECTUADO", "CANCELADO"]);
+const transportadoraSchema = z.enum(TRANSPORTADORA_OPTIONS);
 
 const gestionSchema = z.object({
   documentoNetSuite: z.string().max(120).optional().nullable(),
   stellaEstado: stellaSchema.optional(),
-  transportadora: z.string().max(120).optional().nullable(),
+  transportadora: transportadoraSchema.optional().nullable(),
   numeroGuia: z.string().max(120).optional().nullable(),
   fechaProgramacion: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional().nullable(),
   observacionTransporte: z.string().optional().nullable(),
 });
 
-const patchSchema = solicitudCreateSchema.partial().merge(gestionSchema);
+const patchSchema = z.object({
+  fechaSolicitud: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+  areaSolicitante: z.string().min(2).max(80).optional(),
+  areaOtro: z.string().max(120).optional().nullable(),
+  solicitanteNombre: z.string().min(2).max(255).optional(),
+  solicitanteCorreo: z.string().email().max(255).optional(),
+  solicitanteTelefono: z.string().min(1).max(40).optional(),
+  tipoVenta: z.string().min(1).max(40).optional(),
+  numeroPedido: z.string().min(1).max(120).optional(),
+  facturaIntegracion: z.string().max(120).optional().nullable(),
+  cobroFlete: z.boolean().optional(),
+  valorFlete: z.number().nonnegative().optional().nullable(),
+  cantidadCajas: z.number().int().min(1).optional(),
+  unidades: z.number().int().min(1).optional().nullable(),
+  volumenEstimado: z.string().min(1).max(30).optional(),
+  tipoMercancia: z.string().min(1).max(40).optional(),
+  ciudadOrigen: z.string().min(2).max(80).optional(),
+  zonaRecogida: z.string().min(1).max(20).optional(),
+  direccionRecogida: z.string().min(3).optional(),
+  puntoRecogida: z.string().min(1).max(255).optional(),
+  puntoRecogidaOtro: z.string().max(255).optional().nullable(),
+  ciudadEntrega: z.string().min(2).max(80).optional(),
+  direccionEntrega: z.string().min(5).optional(),
+  zonaEntrega: z.string().min(1).max(20).optional(),
+  fechaPromesaEntrega: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional().nullable(),
+  ventanaEntrega: z.string().min(1).max(40).optional(),
+  restriccionHoraria: z.boolean().optional(),
+  descripcionRestriccion: z.string().optional().nullable(),
+  tipoServicio: z.string().min(1).max(80).optional(),
+  tipoServicioOtro: z.string().max(120).optional().nullable(),
+  observacionesSolicitante: z.string().min(1).optional(),
+  plines: z.array(z.object({
+    plu: z.string().min(1).max(100),
+    descripcion: z.string().min(1).max(255),
+    unidades: z.number().int().min(1),
+  })).min(1).optional(),
+}).merge(gestionSchema);
 
 function recalcular(fechaSolicitud: Date, fechaPromesaEntrega: Date | null, stellaEstado: "PENDIENTE" | "PROGRAMADO" | "EFECTUADO" | "CANCELADO") {
   return {
@@ -44,13 +85,14 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
     include: {
       creadoPor: { select: { id: true, name: true } },
       gestionadoPor: { select: { id: true, name: true } },
+      plines: true,
       historial: {
         include: { usuario: { select: { name: true } } },
         orderBy: { createdAt: "desc" },
       },
     },
   });
-  if (!row) return NextResponse.json({ error: "No encontrado" }, { status: 404 });
+  if (!row || row.deletedAt) return NextResponse.json({ error: "No encontrado" }, { status: 404 });
   if (!puedeVerSolicitudTransporte(actor.role, actor.id, row.creadoPorId)) {
     return NextResponse.json({ error: "Sin acceso" }, { status: 403 });
   }
@@ -88,9 +130,12 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       creadoPorId: true,
       fechaSolicitud: true,
       fechaPromesaEntrega: true,
+      cobroFlete: true,
+      valorFlete: true,
+      deletedAt: true,
     },
   });
-  if (!current) return NextResponse.json({ error: "No encontrado" }, { status: 404 });
+  if (!current || current.deletedAt) return NextResponse.json({ error: "No encontrado" }, { status: 404 });
   if (!puedeVerSolicitudTransporte(actor.role, actor.id, current.creadoPorId)) {
     return NextResponse.json({ error: "Sin acceso" }, { status: 403 });
   }
@@ -104,10 +149,11 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   }
   if (isSolicitanteEdit) {
     const puedeEditar = actor.id === current.creadoPorId && ["PENDIENTE", "RECHAZADA", "REENVIADA"].includes(current.estado);
+    const puedeEditarAdmin = puedeEliminarSolicitudTransporte(actor.role);
     if (!puedeEditar && !puedeGestionarSolicitudTransporte(actor.role)) {
       return NextResponse.json({ error: "Solo puedes editar solicitudes pendientes o rechazadas propias" }, { status: 403 });
     }
-    if (["PROGRAMADA", "EFECTUADA", "CANCELADA"].includes(current.estado) && !puedeGestionarSolicitudTransporte(actor.role)) {
+    if (["PROGRAMADA", "EFECTUADA", "CANCELADA"].includes(current.estado) && !puedeGestionarSolicitudTransporte(actor.role) && !puedeEditarAdmin) {
       return NextResponse.json({ error: "La solicitud ya esta en gestion de transporte" }, { status: 409 });
     }
   }
@@ -116,9 +162,19 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   const fechaPromesaEntrega = d.fechaPromesaEntrega !== undefined
     ? parseDateOnly(d.fechaPromesaEntrega)
     : current.fechaPromesaEntrega;
+  if (d.fechaPromesaEntrega !== undefined && !fechaPromesaEntrega) {
+    return NextResponse.json({ error: "Fecha promesa invalida" }, { status: 400 });
+  }
+  const nextCobroFlete = d.cobroFlete ?? current.cobroFlete;
+  const nextValorFlete = d.valorFlete !== undefined ? d.valorFlete : (current.valorFlete === null ? null : Number(current.valorFlete));
+  const fleteError = validarFlete(nextCobroFlete, nextValorFlete);
+  if (fleteError) return NextResponse.json({ error: fleteError }, { status: 400 });
+  const plinesError = d.plines ? validarPlinesSolicitudTransporte(d.plines) : null;
+  if (plinesError) return NextResponse.json({ error: plinesError }, { status: 400 });
   const stellaEstado = (d.stellaEstado ?? current.stellaEstado) as "PENDIENTE" | "PROGRAMADO" | "EFECTUADO" | "CANCELADO";
   const calculated = recalcular(fechaSolicitud, fechaPromesaEntrega, stellaEstado);
   const nextEstado = isGestion && d.stellaEstado ? estadoDesdeStella(d.stellaEstado) : current.estado;
+  const cantidadCajas = d.cantidadCajas ?? d.unidades ?? undefined;
 
   const row = await prisma.solicitudTransporte.update({
     where: { id },
@@ -133,8 +189,8 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       ...(d.numeroPedido !== undefined && { numeroPedido: d.numeroPedido }),
       ...(d.facturaIntegracion !== undefined && { facturaIntegracion: d.facturaIntegracion }),
       ...(d.cobroFlete !== undefined && { cobroFlete: d.cobroFlete }),
-      ...(d.valorFlete !== undefined && { valorFlete: d.valorFlete }),
-      ...(d.unidades !== undefined && { unidades: d.unidades }),
+      ...(d.valorFlete !== undefined || d.cobroFlete === false ? { valorFlete: d.cobroFlete === false ? null : d.valorFlete } : {}),
+      ...(cantidadCajas !== undefined && { unidades: cantidadCajas }),
       ...(d.volumenEstimado !== undefined && { volumenEstimado: d.volumenEstimado }),
       ...(d.tipoMercancia !== undefined && { tipoMercancia: d.tipoMercancia }),
       ...(d.ciudadOrigen !== undefined && { ciudadOrigen: d.ciudadOrigen }),
@@ -152,6 +208,16 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       ...(d.tipoServicio !== undefined && { tipoServicio: d.tipoServicio }),
       ...(d.tipoServicioOtro !== undefined && { tipoServicioOtro: d.tipoServicioOtro }),
       ...(d.observacionesSolicitante !== undefined && { observacionesSolicitante: d.observacionesSolicitante }),
+      ...(d.plines !== undefined && {
+        plines: {
+          deleteMany: {},
+          create: d.plines.map((p) => ({
+            plu: p.plu.trim().toUpperCase(),
+            descripcion: p.descripcion.trim(),
+            unidades: p.unidades,
+          })),
+        },
+      }),
       ...(isGestion && {
         ...(d.documentoNetSuite !== undefined && { documentoNetSuite: d.documentoNetSuite }),
         ...(d.stellaEstado !== undefined && { stellaEstado: d.stellaEstado, estado: nextEstado }),
@@ -179,11 +245,59 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     include: {
       creadoPor: { select: { name: true } },
       gestionadoPor: { select: { name: true } },
+      plines: true,
     },
   });
 
   await prisma.activityLog.create({
     data: { userId: actor.id, action: "UPDATE", module: "solicitudes-transporte", recordId: id, details: isGestion ? "Gestion transporte actualizada" : "Solicitud actualizada" },
+  }).catch(() => {});
+
+  return NextResponse.json({ success: true, data: mapSolicitudTransporte(row) });
+}
+
+export async function DELETE(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const actor = await requireAuth();
+  if (actor instanceof NextResponse) return actor;
+  if (!puedeEliminarSolicitudTransporte(actor.role)) {
+    return NextResponse.json({ error: "Solo ADMIN o GERENTE pueden borrar solicitudes" }, { status: 403 });
+  }
+  const { id } = await params;
+  const body = await req.json().catch(() => ({}));
+  const reason = typeof body?.deleteReason === "string" && body.deleteReason.trim()
+    ? body.deleteReason.trim()
+    : "Eliminada por administracion";
+
+  const current = await prisma.solicitudTransporte.findUnique({
+    where: { id },
+    select: { estado: true, deletedAt: true },
+  });
+  if (!current || current.deletedAt) return NextResponse.json({ error: "No encontrado" }, { status: 404 });
+
+  const row = await prisma.solicitudTransporte.update({
+    where: { id },
+    data: {
+      deletedAt: new Date(),
+      deletedById: actor.id,
+      deleteReason: reason,
+      historial: {
+        create: {
+          estadoAnterior: current.estado,
+          estadoNuevo: current.estado,
+          observacion: `Borrado logico: ${reason}`,
+          usuarioId: actor.id,
+        },
+      },
+    },
+    include: {
+      creadoPor: { select: { name: true } },
+      gestionadoPor: { select: { name: true } },
+      plines: true,
+    },
+  });
+
+  await prisma.activityLog.create({
+    data: { userId: actor.id, action: "DELETE", module: "solicitudes-transporte", recordId: id, details: reason },
   }).catch(() => {});
 
   return NextResponse.json({ success: true, data: mapSolicitudTransporte(row) });

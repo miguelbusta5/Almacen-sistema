@@ -6,6 +6,30 @@ Registro cronológico de decisiones importantes. Una entrada por decisión, con 
 
 ---
 
+## 2026-06-16 - Solicitudes Transporte con PLUs, cajas y borrado logico
+
+**Decision:**
+- Solicitudes de Transporte captura PLUs por solicitud, cantidad cajas, flete condicional y detalle completo por secciones.
+- `SolicitudTransporte.unidades` se conserva por compatibilidad, pero se expone en UI/API como **cantidad cajas**.
+- La descripcion del PLU se autocompleta desde `ProductoMaestro`; si no existe, el solicitante puede escribirla manualmente.
+- La transportadora de gestion transporte queda limitada a lista cerrada: ONE SITE, TRANSTELITAL, V2 TOGO, PROPIO, PROESLOG, PAKING TO GO, NOTA INTERNA.
+- `ADMIN` y `GERENTE` pueden editar cualquier solicitud no eliminada y borrar logicamente.
+
+**Contexto:**
+- Transporte necesita que la solicitud interna reemplace mejor al Google Sheet, incluyendo mercancia por PLU, cajas y validaciones obligatorias.
+- El borrado debe permitir corregir registros administrativos sin perder trazabilidad ni borrar historial.
+
+**Consecuencias:**
+- Nuevo modelo `PluSolicitudTransporte`.
+- Nuevos campos `deletedAt`, `deletedById` y `deleteReason` en `SolicitudTransporte`.
+- `GET` y detalle excluyen eliminadas y devuelven PLUs.
+- `DELETE /api/solicitudes-transporte/[id]` ejecuta borrado logico solo para `ADMIN` y `GERENTE`.
+- Logistica, rutas, GPS y Mi Ruta siguen suspendidos.
+
+**Archivos afectados:** `prisma/schema.prisma`, `src/lib/solicitudesTransporte.ts`, `src/app/api/solicitudes-transporte/*`, `src/app/(dashboard)/dashboard/solicitudes-transporte/page.tsx`, `src/__tests__/solicitudesTransporte.test.ts`
+
+---
+
 ## 2026-06-12 - Modulo Solicitudes de Transporte interno
 
 **Decision:**

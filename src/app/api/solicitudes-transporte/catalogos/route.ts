@@ -7,6 +7,7 @@ import {
   TIPO_MERCANCIA_OPTIONS,
   TIPO_SERVICIO_OPTIONS,
   TIPO_VENTA_OPTIONS,
+  TRANSPORTADORA_OPTIONS,
   VENTANA_ENTREGA_OPTIONS,
   VOLUMEN_OPTIONS,
   ZONA_OPTIONS,
@@ -30,6 +31,7 @@ export async function GET() {
       tiposMercancia: TIPO_MERCANCIA_OPTIONS,
       ventanasEntrega: VENTANA_ENTREGA_OPTIONS,
       tiposServicio: TIPO_SERVICIO_OPTIONS,
+      transportadoras: TRANSPORTADORA_OPTIONS,
     },
   });
 }

@@ -61,6 +61,36 @@ Cada etapa tiene un estado de despacho asociado. Ver [[estados-despacho]].
 - No ve despachos, inventario ni nada más
 - No ve Solicitudes de Transporte
 
+---
+
+## Solicitudes de Transporte
+
+Modulo interno para reemplazar el formulario de Google y su Google Sheet operativo.
+
+### Solicitante interno
+- Cualquier usuario autenticado excepto `TRANSPORTISTA` puede crear una solicitud.
+- Debe registrar todos los campos visibles del formulario: informacion general, pedido y mercancia, origen, destino, programacion, servicio y observaciones.
+- El campo antiguo `unidades` en base de datos se expone en UI/API como **cantidad cajas**.
+- Cada solicitud debe tener minimo 1 PLU asociado.
+- Cada linea PLU registra `plu`, `descripcion` y `unidades`.
+- La descripcion se autocompleta desde `ProductoMaestro`; si el PLU no existe, se permite descripcion manual.
+- La pregunta "Se cobro flete" es obligatoria.
+  - Si responde SI, `valorFlete` es obligatorio y debe ser mayor o igual a 0.
+  - Si responde NO, no se exige valor de flete.
+- Si transporte rechaza la solicitud, el solicitante ve el motivo, puede corregir y reenviar.
+
+### Lider / Gestion Transporte
+- `SUPERVISOR_TRANSPORTE`, `GERENTE` y `ADMIN` pueden gestionar la solicitud.
+- Campos de gestion: Documento NetSuite, Stella, transportadora, numero de guia, fecha de programacion y observacion.
+- `transportadora` es lista cerrada: ONE SITE, TRANSTELITAL, V2 TOGO, PROPIO, PROESLOG, PAKING TO GO, NOTA INTERNA.
+- Stella deriva estado operativo: PENDIENTE, PROGRAMADO, EFECTUADO, CANCELADO.
+- Puede rechazar con motivo obligatorio.
+
+### Administracion
+- `ADMIN` y `GERENTE` pueden editar cualquier solicitud no eliminada.
+- `ADMIN` y `GERENTE` pueden borrar solicitudes solo con borrado logico (`deletedAt`, `deletedById`, `deleteReason`).
+- El borrado logico no elimina historial ni PLUs.
+
 ### Inventario (`INVENTARIO`, `SUPERVISOR_INVENTARIO`)
 - Solo accede a módulos de inventario y conteo
 - No ve el módulo Facturas Contado

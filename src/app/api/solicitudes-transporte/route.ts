@@ -10,6 +10,8 @@ import {
   puedeCrearSolicitudTransporte,
   puedeGestionarSolicitudTransporte,
   SOLICITUDES_TRANSPORTE_PATH,
+  validarFlete,
+  validarPlinesSolicitudTransporte,
 } from "@/lib/solicitudesTransporte";
 import { requireAuth } from "@/lib/authz";
 
@@ -23,30 +25,57 @@ export const solicitudCreateSchema = z.object({
   areaOtro: z.string().max(120).optional().nullable(),
   solicitanteNombre: z.string().min(2).max(255),
   solicitanteCorreo: z.string().email().max(255),
-  solicitanteTelefono: z.string().max(40).optional().nullable(),
-  tipoVenta: z.string().max(40).optional().nullable(),
-  numeroPedido: z.string().max(120).optional().nullable(),
+  solicitanteTelefono: z.string().min(1).max(40),
+  tipoVenta: z.string().min(1).max(40),
+  numeroPedido: z.string().min(1).max(120),
   facturaIntegracion: z.string().max(120).optional().nullable(),
-  cobroFlete: z.boolean().optional().nullable(),
+  cobroFlete: z.boolean(),
   valorFlete: z.number().nonnegative().optional().nullable(),
+  cantidadCajas: z.number().int().min(1).optional(),
   unidades: z.number().int().min(1).optional().nullable(),
-  volumenEstimado: z.string().max(30).optional().nullable(),
-  tipoMercancia: z.string().max(40).optional().nullable(),
+  volumenEstimado: z.string().min(1).max(30),
+  tipoMercancia: z.string().min(1).max(40),
   ciudadOrigen: z.string().min(2).max(80),
-  zonaRecogida: z.string().max(20).optional().nullable(),
-  direccionRecogida: z.string().optional().nullable(),
-  puntoRecogida: z.string().max(255).optional().nullable(),
+  zonaRecogida: z.string().min(1).max(20),
+  direccionRecogida: z.string().min(3),
+  puntoRecogida: z.string().min(1).max(255),
   puntoRecogidaOtro: z.string().max(255).optional().nullable(),
   ciudadEntrega: z.string().min(2).max(80),
   direccionEntrega: z.string().min(5),
-  zonaEntrega: z.string().max(20).optional().nullable(),
-  fechaPromesaEntrega: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional().nullable(),
-  ventanaEntrega: z.string().max(40).optional().nullable(),
-  restriccionHoraria: z.boolean().optional().nullable(),
+  zonaEntrega: z.string().min(1).max(20),
+  fechaPromesaEntrega: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  ventanaEntrega: z.string().min(1).max(40),
+  restriccionHoraria: z.boolean(),
   descripcionRestriccion: z.string().optional().nullable(),
-  tipoServicio: z.string().max(80).optional().nullable(),
+  tipoServicio: z.string().min(1).max(80),
   tipoServicioOtro: z.string().max(120).optional().nullable(),
-  observacionesSolicitante: z.string().optional().nullable(),
+  observacionesSolicitante: z.string().min(1),
+  plines: z.array(z.object({
+    plu: z.string().min(1).max(100),
+    descripcion: z.string().min(1).max(255),
+    unidades: z.number().int().min(1),
+  })).min(1),
+}).superRefine((data, ctx) => {
+  const cantidadCajas = data.cantidadCajas ?? data.unidades ?? null;
+  if (!cantidadCajas) {
+    ctx.addIssue({ code: "custom", path: ["cantidadCajas"], message: "Cantidad cajas es obligatoria" });
+  }
+  const fleteError = validarFlete(data.cobroFlete, data.valorFlete ?? null);
+  if (fleteError) ctx.addIssue({ code: "custom", path: ["valorFlete"], message: fleteError });
+  const plinesError = validarPlinesSolicitudTransporte(data.plines);
+  if (plinesError) ctx.addIssue({ code: "custom", path: ["plines"], message: plinesError });
+  if (data.areaSolicitante === "Otro" && !data.areaOtro?.trim()) {
+    ctx.addIssue({ code: "custom", path: ["areaOtro"], message: "Debes indicar el area" });
+  }
+  if (data.puntoRecogida === "Otros" && !data.puntoRecogidaOtro?.trim()) {
+    ctx.addIssue({ code: "custom", path: ["puntoRecogidaOtro"], message: "Debes indicar el punto de recogida" });
+  }
+  if (data.tipoServicio === "Otro" && !data.tipoServicioOtro?.trim()) {
+    ctx.addIssue({ code: "custom", path: ["tipoServicioOtro"], message: "Debes indicar el tipo de servicio" });
+  }
+  if (data.restriccionHoraria && !data.descripcionRestriccion?.trim()) {
+    ctx.addIssue({ code: "custom", path: ["descripcionRestriccion"], message: "Debes describir la restriccion horaria" });
+  }
 });
 
 export function mapSolicitudTransporte(row: any) {
@@ -63,6 +92,7 @@ export function mapSolicitudTransporte(row: any) {
     facturaIntegracion: row.facturaIntegracion,
     cobroFlete: row.cobroFlete,
     valorFlete: row.valorFlete === null || row.valorFlete === undefined ? null : Number(row.valorFlete),
+    cantidadCajas: row.unidades,
     unidades: row.unidades,
     volumenEstimado: row.volumenEstimado,
     tipoMercancia: row.tipoMercancia,
@@ -98,6 +128,8 @@ export function mapSolicitudTransporte(row: any) {
     creadoPorNombre: row.creadoPor?.name ?? null,
     gestionadoPorId: row.gestionadoPorId,
     gestionadoPorNombre: row.gestionadoPor?.name ?? null,
+    deletedAt: row.deletedAt ? row.deletedAt.toISOString() : null,
+    plines: row.plines ?? [],
     createdAt: row.createdAt.toISOString(),
     updatedAt: row.updatedAt.toISOString(),
   };
@@ -148,6 +180,7 @@ export async function GET(req: NextRequest) {
   const area = url.searchParams.get("area")?.trim();
 
   const where: any = {
+    deletedAt: null,
     ...(puedeGestionarSolicitudTransporte(actor.role) ? {} : { creadoPorId: actor.id }),
     ...(estado ? { estado } : {}),
     ...(prioridad ? { prioridad } : {}),
@@ -170,6 +203,7 @@ export async function GET(req: NextRequest) {
       include: {
         creadoPor: { select: { name: true } },
         gestionadoPor: { select: { name: true } },
+        plines: true,
       },
       orderBy: [{ updatedAt: "desc" }],
       skip: (page - 1) * pageSize,
@@ -205,18 +239,52 @@ export async function POST(req: NextRequest) {
   const fechaSolicitud = parseDateOnly(parsed.data.fechaSolicitud);
   const fechaPromesaEntrega = parseDateOnly(parsed.data.fechaPromesaEntrega);
   if (!fechaSolicitud) return NextResponse.json({ error: "Fecha de solicitud invalida" }, { status: 400 });
+  if (!fechaPromesaEntrega) return NextResponse.json({ error: "Fecha promesa invalida" }, { status: 400 });
 
   const calculated = buildCalculatedFields({ fechaSolicitud, fechaPromesaEntrega });
+  const cantidadCajas = parsed.data.cantidadCajas ?? parsed.data.unidades!;
   const row = await prisma.solicitudTransporte.create({
     data: {
-      ...parsed.data,
       fechaSolicitud,
+      areaSolicitante: parsed.data.areaSolicitante,
+      areaOtro: parsed.data.areaOtro || null,
+      solicitanteNombre: parsed.data.solicitanteNombre,
+      solicitanteCorreo: parsed.data.solicitanteCorreo,
+      solicitanteTelefono: parsed.data.solicitanteTelefono,
+      tipoVenta: parsed.data.tipoVenta,
+      numeroPedido: parsed.data.numeroPedido,
+      facturaIntegracion: parsed.data.facturaIntegracion,
+      cobroFlete: parsed.data.cobroFlete,
+      valorFlete: parsed.data.cobroFlete ? parsed.data.valorFlete ?? null : null,
+      unidades: cantidadCajas,
+      volumenEstimado: parsed.data.volumenEstimado,
+      tipoMercancia: parsed.data.tipoMercancia,
+      ciudadOrigen: parsed.data.ciudadOrigen,
+      zonaRecogida: parsed.data.zonaRecogida,
+      direccionRecogida: parsed.data.direccionRecogida,
+      puntoRecogida: parsed.data.puntoRecogida,
+      puntoRecogidaOtro: parsed.data.puntoRecogidaOtro || null,
+      ciudadEntrega: parsed.data.ciudadEntrega,
+      direccionEntrega: parsed.data.direccionEntrega,
+      zonaEntrega: parsed.data.zonaEntrega,
       fechaPromesaEntrega,
-      valorFlete: parsed.data.valorFlete ?? null,
+      ventanaEntrega: parsed.data.ventanaEntrega,
+      restriccionHoraria: parsed.data.restriccionHoraria,
+      descripcionRestriccion: parsed.data.descripcionRestriccion || null,
+      tipoServicio: parsed.data.tipoServicio,
+      tipoServicioOtro: parsed.data.tipoServicioOtro || null,
+      observacionesSolicitante: parsed.data.observacionesSolicitante,
       prioridad: calculated.prioridad,
       semaforo: calculated.semaforo,
       mesSolicitud: calculated.mesSolicitud,
       creadoPorId: actor.id,
+      plines: {
+        create: parsed.data.plines.map((p) => ({
+          plu: p.plu.trim().toUpperCase(),
+          descripcion: p.descripcion.trim(),
+          unidades: p.unidades,
+        })),
+      },
       historial: {
         create: {
           estadoAnterior: null,
@@ -229,6 +297,7 @@ export async function POST(req: NextRequest) {
     include: {
       creadoPor: { select: { name: true } },
       gestionadoPor: { select: { name: true } },
+      plines: true,
     },
   });
 
