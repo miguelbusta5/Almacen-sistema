@@ -10,7 +10,7 @@
 
 ---
 
-## Roles del sistema (12 en total)
+## Roles del sistema (14 en total)
 
 ### Mapeo conceptual → técnico
 
@@ -28,6 +28,8 @@
 | Operador (legado) | `OPERADOR` | Inventario + Transporte (rol heredado) |
 | Operaciones Muebles | `OPERACIONES_MUEBLES` | Solo Integración de Pedidos |
 | Operaciones Gourmet | `OPERACIONES_GOURMET` | Solo Integración de Pedidos |
+| Etiquetado | `ETIQUETADO` | Solo Exportaciones |
+| Supervisor Almacenamiento | `SUPERVISOR_ALMACENAMIENTO` | Exportaciones + Centro de Control |
 
 ---
 
@@ -47,6 +49,11 @@
 | auditoria | ✅ | ✅ | — | — | — | — | — | — | — | — | — | — |
 | centro-control | ✅ | ✅ | ✅ | ✅ | ✅ | — | — | — | — | — | — | — |
 | integracion | ✅ | ✅ | — | ✅ | — | — | ✅ | — | — | — | ✅ | ✅ |
+| exportaciones | ✅ | ✅ | — | — | — | — | — | — | — | — | — | — |
+
+Roles adicionales de Exportaciones:
+- `ETIQUETADO`: solo ve `exportaciones`.
+- `SUPERVISOR_ALMACENAMIENTO`: ve `exportaciones` y `centro-control`.
 
 ---
 
@@ -56,8 +63,8 @@ Definidas en `src/lib/permissions.ts`:
 
 | Acción | Roles autorizados |
 |---|---|
-| `create` | OPERADOR, GERENTE, ADMIN, INVENTARIO, SUPERVISOR_INVENTARIO, TRANSPORTE, SUPERVISOR_TRANSPORTE, TIENDA, SUPERVISOR_TIENDA, OPERACIONES_MUEBLES, OPERACIONES_GOURMET |
-| `edit` | GERENTE, ADMIN, SUPERVISOR_INVENTARIO, SUPERVISOR_TRANSPORTE |
+| `create` | OPERADOR, GERENTE, ADMIN, INVENTARIO, SUPERVISOR_INVENTARIO, TRANSPORTE, SUPERVISOR_TRANSPORTE, TIENDA, SUPERVISOR_TIENDA, OPERACIONES_MUEBLES, OPERACIONES_GOURMET, ETIQUETADO, SUPERVISOR_ALMACENAMIENTO |
+| `edit` | GERENTE, ADMIN, SUPERVISOR_INVENTARIO, SUPERVISOR_TRANSPORTE, SUPERVISOR_ALMACENAMIENTO |
 | `delete` | ADMIN |
 | `manageUsers` | ADMIN |
 | `viewAudit` | ADMIN |
@@ -72,6 +79,7 @@ Definidas en `src/lib/permissions.ts`:
 - **Solicitudes de Transporte** puede ser creado por todos los usuarios autenticados excepto `TRANSPORTISTA`; la gestion/rechazo queda en `SUPERVISOR_TRANSPORTE`, `GERENTE` y `ADMIN`
 - En **Solicitudes de Transporte**, `ADMIN` y `GERENTE` pueden editar cualquier solicitud no eliminada y ejecutar borrado logico; los demas solicitantes solo editan sus propias solicitudes cuando el flujo lo permite
 - En **Solicitudes de Transporte**, `TRANSPORTISTA` no ve el modulo ni puede crear, consultar, editar o borrar solicitudes
+- **Exportaciones**: `ETIQUETADO` solo captura cajas; `SUPERVISOR_ALMACENAMIENTO`, `ADMIN` y `GERENTE` consultan, editan y borran logicamente
 - **OPERADOR** es un rol legado — acceso general a inventario y transporte. No crear usuarios nuevos con este rol
 - Los roles **OPERACIONES_MUEBLES** y **OPERACIONES_GOURMET** son los más recientes (Sprint 8, 2026-06-09)
 - La gestión de vehículos y transportistas es exclusiva del ADMIN desde el módulo Usuarios

@@ -99,6 +99,19 @@ Modulo interno para reemplazar el formulario de Google y su Google Sheet operati
 - Solo ven el módulo Integración de Pedidos
 - Coordinan picking de órdenes OVDM/TSDM entre áreas
 
+### Etiquetado Exportaciones (`ETIQUETADO`)
+- Solo ve el modulo **Exportaciones**
+- Registra numero de caja, PLU y unidad de empaque
+- La descripcion del PLU se carga desde `ProductoMaestro`
+- Si el PLU no existe en maestro, no puede guardar
+- Al crear un nuevo registro, el sistema cierra la hora de finalizacion del registro anterior abierto del mismo usuario y abre el siguiente con hora de inicio actual
+
+### Supervisor Almacenamiento (`SUPERVISOR_ALMACENAMIENTO`)
+- Gestiona Exportaciones junto con `ADMIN` y `GERENTE`
+- Puede consultar todos los registros, editar caja/PLU/unidad y corregir horas
+- Toda correccion de horas requiere motivo
+- El borrado es logico y queda auditado
+
 ---
 
 ## Módulo Logística / Rutas / GPS

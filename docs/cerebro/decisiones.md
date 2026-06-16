@@ -6,6 +6,29 @@ Registro cronológico de decisiones importantes. Una entrada por decisión, con 
 
 ---
 
+## 2026-06-16 - Modulo Exportaciones para etiquetado
+
+**Decision:**
+- Se crea el modulo **Exportaciones** para captura operativa de etiquetado de cajas.
+- Se agregan roles `ETIQUETADO` y `SUPERVISOR_ALMACENAMIENTO`.
+- `ETIQUETADO` solo ve Exportaciones; supervisor almacenamiento, admin y gerente gestionan.
+- El PLU debe existir en `ProductoMaestro`; la descripcion siempre viene del maestro.
+- La hora de inicio se toma al crear; la hora de finalizacion del registro anterior se cierra al crear el siguiente registro del mismo usuario.
+
+**Contexto:**
+- El area requiere medir y controlar etiquetado de exportaciones con trazabilidad por caja, PLU, unidad de empaque, fecha y tiempos.
+
+**Consecuencias:**
+- Nuevo modelo `EtiquetadoExportacion`.
+- Nuevas APIs `/api/exportaciones` y `/api/exportaciones/[id]`.
+- Nuevo modulo `/dashboard/exportaciones` responsive para PC, celular y tablet.
+- Cambios de roles en Prisma, permisos, usuarios, sidebar, command palette y home actions.
+- Logistica, rutas, GPS y Mi Ruta siguen suspendidos.
+
+**Archivos afectados:** `prisma/schema.prisma`, `src/lib/exportaciones.ts`, `src/app/api/exportaciones/*`, `src/app/(dashboard)/dashboard/exportaciones/page.tsx`, permisos, usuarios y cerebro.
+
+---
+
 ## 2026-06-16 - Solicitudes Transporte con PLUs, cajas y borrado logico
 
 **Decision:**

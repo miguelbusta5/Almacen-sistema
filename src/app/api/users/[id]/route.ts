@@ -3,10 +3,11 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import bcrypt from "bcryptjs";
 import { z } from "zod";
+import { USER_ROLE_VALUES } from "@/lib/roles";
 
 const updateSchema = z.object({
   name: z.string().min(2).optional(),
-  role: z.enum(["ADMIN","GERENTE","OPERADOR","TRANSPORTISTA","INVENTARIO","TRANSPORTE","SUPERVISOR_INVENTARIO","SUPERVISOR_TRANSPORTE","TIENDA","SUPERVISOR_TIENDA","OPERACIONES_MUEBLES","OPERACIONES_GOURMET"]).optional(),
+  role: z.enum(USER_ROLE_VALUES).optional(),
   active: z.boolean().optional(),
   password: z.string().min(8, "Contraseña mínimo 8 caracteres").optional(),
 });

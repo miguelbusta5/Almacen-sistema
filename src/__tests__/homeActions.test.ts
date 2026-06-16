@@ -119,6 +119,16 @@ describe("getHomeActionsByRole", () => {
     });
   });
 
+  describe("ETIQUETADO", () => {
+    it("solo ve registrar-exportacion", () => {
+      expect(ids("ETIQUETADO", 99)).toEqual(["registrar-exportacion"]);
+    });
+    it("navega a /dashboard/exportaciones", () => {
+      const action = getHomeActionsByRole("ETIQUETADO", 99)[0];
+      expect(action.href).toBe("/dashboard/exportaciones");
+    });
+  });
+
   // ── OPERADOR (legacy) ────────────────────────────────
   describe("OPERADOR", () => {
     it("ve nueva-novedad", () => expect(hasAction("OPERADOR", "nueva-novedad")).toBe(true));
@@ -186,7 +196,7 @@ describe("getHomeActionsByRole", () => {
   // ── Orden por prioridad ──────────────────────────────
   describe("orden por prioridad", () => {
     it("las acciones vienen ordenadas de menor a mayor prioridad", () => {
-      for (const role of ["INVENTARIO", "TRANSPORTE", "TIENDA", "TRANSPORTISTA", "ADMIN", "GERENTE", "OPERADOR"]) {
+      for (const role of ["INVENTARIO", "TRANSPORTE", "TIENDA", "TRANSPORTISTA", "ADMIN", "GERENTE", "OPERADOR", "ETIQUETADO"]) {
         const actions = getHomeActionsByRole(role, 99);
         for (let i = 1; i < actions.length; i++) {
           expect(actions[i].priority).toBeGreaterThanOrEqual(actions[i - 1].priority);

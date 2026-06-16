@@ -64,6 +64,17 @@ export const HOME_ACTIONS: HomeAction[] = [
     priority: 1,
   },
   {
+    id: "registrar-exportacion",
+    title: "Registrar exportacion",
+    description: "Capturar caja, PLU y unidad de empaque",
+    href: "/dashboard/exportaciones",
+    icon: "Tags",
+    color: getModuleColor("exportaciones"),
+    moduleKey: "exportaciones",
+    roles: ["ETIQUETADO", "SUPERVISOR_ALMACENAMIENTO", "GERENTE", "ADMIN"],
+    priority: 1,
+  },
+  {
     id: "nuevo-guardado",
     title: "Nuevo guardado en transporte",
     description: "Registrar pedido en custodia de almacén",

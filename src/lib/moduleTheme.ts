@@ -77,6 +77,14 @@ export const MODULE_THEME: Record<ModuleThemeKey, ModuleTheme> = {
     color: "#0E7490",
     tint: "rgba(14,116,144,0.12)",
   },
+  exportaciones: {
+    key: "exportaciones",
+    label: "Exportaciones",
+    shortLabel: "Export",
+    description: "Etiquetado operativo de cajas de exportacion",
+    color: "#1D4ED8",
+    tint: "rgba(29,78,216,0.12)",
+  },
   "mis-tareas": {
     key: "mis-tareas",
     label: "Mis Tareas",

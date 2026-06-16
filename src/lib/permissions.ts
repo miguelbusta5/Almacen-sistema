@@ -1,6 +1,7 @@
 // Matriz de permisos por rol. Módulo PURO (sin imports de servidor) para
 // poder usarlo tanto en API routes como en componentes cliente.
 import type { UserRole } from "@/types";
+import { USER_ROLE_VALUES } from "@/lib/roles";
 
 export type Action =
   | "create" | "edit" | "delete"
@@ -14,11 +15,12 @@ const CREADORES: UserRole[] = [
   "TRANSPORTE", "SUPERVISOR_TRANSPORTE",
   "TIENDA", "SUPERVISOR_TIENDA",
   "OPERACIONES_MUEBLES", "OPERACIONES_GOURMET",
+  "ETIQUETADO", "SUPERVISOR_ALMACENAMIENTO",
 ];
 
 const MATRIX: Record<Action, UserRole[]> = {
   create:           CREADORES,
-  edit:             ["GERENTE", "ADMIN", "SUPERVISOR_INVENTARIO", "SUPERVISOR_TRANSPORTE"],
+  edit:             ["GERENTE", "ADMIN", "SUPERVISOR_INVENTARIO", "SUPERVISOR_TRANSPORTE", "SUPERVISOR_ALMACENAMIENTO"],
   delete:           ["ADMIN"],
   manageUsers:      ["ADMIN"],
   viewAudit:        ["ADMIN"],          // visibilidad del módulo → modulePermissions.ts
@@ -45,4 +47,8 @@ export const ROLE_LABEL: Record<UserRole, string> = {
   SUPERVISOR_TIENDA:      "Supervisor Tienda",
   OPERACIONES_MUEBLES:    "Operaciones Muebles",
   OPERACIONES_GOURMET:    "Operaciones Gourmet",
+  ETIQUETADO:             "Etiquetado",
+  SUPERVISOR_ALMACENAMIENTO: "Supervisor Almacenamiento",
 };
+
+export { USER_ROLE_VALUES };

@@ -7,6 +7,7 @@ const mocks = vi.hoisted(() => ({
   despachoCount: vi.fn(),
   guardadoPendienteCount: vi.fn(),
   solicitudTransporteCount: vi.fn(),
+  exportacionCount: vi.fn(),
   integracionCount: vi.fn(),
   notificacionCount: vi.fn(),
   inspeccionCount: vi.fn(),
@@ -19,6 +20,7 @@ vi.mock("@/lib/prisma", () => ({
     despachoTienda: { count: mocks.despachoCount },
     guardadoPendienteTienda: { count: mocks.guardadoPendienteCount },
     solicitudTransporte: { count: mocks.solicitudTransporteCount },
+    etiquetadoExportacion: { count: mocks.exportacionCount },
     integracionPedido: { count: mocks.integracionCount },
     notificacion: { count: mocks.notificacionCount },
     inspeccionPreoperacional: { count: mocks.inspeccionCount },
@@ -39,6 +41,7 @@ describe("buildControlLogisticoResumen", () => {
     mocks.despachoCount.mockResolvedValue(0);
     mocks.guardadoPendienteCount.mockResolvedValue(0);
     mocks.solicitudTransporteCount.mockResolvedValue(0);
+    mocks.exportacionCount.mockResolvedValue(0);
     mocks.integracionCount.mockResolvedValue(0);
     mocks.notificacionCount.mockResolvedValue(0);
     mocks.inspeccionCount.mockResolvedValue(0);
@@ -102,5 +105,18 @@ describe("buildControlLogisticoResumen", () => {
     expect(moduleKeys).not.toContain("usuarios");
     expect(resumen.flow.map((f) => f.key)).toEqual(["tienda", "cedi", "guardados", "cliente"]);
     expect(resumen.priorities.map((p) => p.id)).toContain("guardado-tienda");
+  });
+
+  it("ETIQUETADO solo recibe exportaciones", async () => {
+    mocks.exportacionCount.mockResolvedValueOnce(1);
+
+    const resumen = await buildControlLogisticoResumen(actor("ETIQUETADO"));
+
+    expect(resumen.visibleModules).toEqual(["exportaciones"]);
+    expect(resumen.modules.map((m) => m.key)).toEqual(["exportaciones"]);
+    expect(resumen.actions.map((a) => a.href)).toEqual(["/dashboard/exportaciones"]);
+    expect(mocks.exportacionCount).toHaveBeenCalledWith({
+      where: { deletedAt: null, horaFinalizacion: null, creadoPorId: "u_1" },
+    });
   });
 });

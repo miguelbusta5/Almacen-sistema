@@ -15,12 +15,12 @@ describe("validateTransportistaBinding", () => {
   );
 
   // ── Otros roles rechazan transportistaId ─────────────
-  it.each(["ADMIN", "GERENTE", "OPERADOR", "INVENTARIO", "TRANSPORTE", "TIENDA", "SUPERVISOR_INVENTARIO", "SUPERVISOR_TRANSPORTE", "SUPERVISOR_TIENDA"] as const)(
+  it.each(["ADMIN", "GERENTE", "OPERADOR", "INVENTARIO", "TRANSPORTE", "TIENDA", "SUPERVISOR_INVENTARIO", "SUPERVISOR_TRANSPORTE", "SUPERVISOR_TIENDA", "ETIQUETADO", "SUPERVISOR_ALMACENAMIENTO"] as const)(
     "%s con transportistaId → error",
     (role) => expect(validateTransportistaBinding(role, "tid_123")).toBe("Solo el rol Transportista puede vincularse a un conductor")
   );
 
-  it.each(["ADMIN", "GERENTE", "INVENTARIO", "TRANSPORTE"] as const)(
+  it.each(["ADMIN", "GERENTE", "INVENTARIO", "TRANSPORTE", "ETIQUETADO", "SUPERVISOR_ALMACENAMIENTO"] as const)(
     "%s sin transportistaId → null (OK)",
     (role) => expect(validateTransportistaBinding(role, null)).toBeNull()
   );

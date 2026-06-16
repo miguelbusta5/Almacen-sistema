@@ -46,6 +46,7 @@ export async function buildControlLogisticoResumen(actor: SessionUser): Promise<
     pendientesGuardado,
     solicitudesPendientes,
     solicitudesAlertas,
+    exportacionesEnCurso,
     integracionesPendientes,
     notifNoLeidas,
     preopBloqueadas,
@@ -79,6 +80,13 @@ export async function buildControlLogisticoResumen(actor: SessionUser): Promise<
       where: {
         semaforo: { in: ["VENCIDO", "ALERTA"] },
         ...(role === "SUPERVISOR_TRANSPORTE" || role === "GERENTE" || role === "ADMIN" ? {} : { creadoPorId: actor.id }),
+      },
+    }) : 0,
+    see("exportaciones") ? prisma.etiquetadoExportacion.count({
+      where: {
+        deletedAt: null,
+        horaFinalizacion: null,
+        ...(role === "ETIQUETADO" ? { creadoPorId: actor.id } : {}),
       },
     }) : 0,
     see("integracion") ? prisma.integracionPedido.count({ where: { estado: { not: "COMPLETADA" } } }) : 0,
@@ -204,6 +212,7 @@ export async function buildControlLogisticoResumen(actor: SessionUser): Promise<
     ...(see("tienda") ? [moduleSignal("tienda", tiendaCreados + tiendaRechazados + tiendaNovedad, statusFrom(tiendaRechazados + tiendaNovedad, 1, 5), "/dashboard/tienda")] : []),
     ...(see("transporte") ? [moduleSignal("transporte", guardadosPendientes + pendientesGuardado, statusFrom(guardadosPendientes + pendientesGuardado, 1, 10), "/dashboard/transporte")] : []),
     ...(see("solicitudes-transporte") ? [moduleSignal("solicitudes-transporte", solicitudesPendientes, statusFrom(solicitudesAlertas, 1, 5), "/dashboard/solicitudes-transporte")] : []),
+    ...(see("exportaciones") ? [moduleSignal("exportaciones", exportacionesEnCurso, statusFrom(exportacionesEnCurso, 1, 20), "/dashboard/exportaciones")] : []),
     ...(see("conteo") ? [moduleSignal("conteo", undefined, "neutral", "/dashboard/conteo")] : []),
     ...(see("preoperacional") ? [moduleSignal("preoperacional", preopBloqueadas, statusFrom(preopBloqueadas, 1, 2), "/dashboard/preoperacional")] : []),
     ...(see("integracion") ? [moduleSignal("integracion", integracionesPendientes, statusFrom(integracionesPendientes, 1, 8), "/dashboard/integracion")] : []),
@@ -215,7 +224,7 @@ export async function buildControlLogisticoResumen(actor: SessionUser): Promise<
 
   const critical = priorities.filter((p) => p.level === "critical").length;
   const warning = priorities.filter((p) => p.level === "warning").length;
-  const pending = novedadesPendientes + guardadosPendientes + tiendaCreados + tiendaNovedad + tiendaRechazados + pendientesGuardado + solicitudesPendientes + integracionesPendientes + notifNoLeidas + preopBloqueadas;
+  const pending = novedadesPendientes + guardadosPendientes + tiendaCreados + tiendaNovedad + tiendaRechazados + pendientesGuardado + solicitudesPendientes + exportacionesEnCurso + integracionesPendientes + notifNoLeidas + preopBloqueadas;
 
   return {
     success: true,

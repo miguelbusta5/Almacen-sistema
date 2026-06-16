@@ -3,12 +3,13 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import bcrypt from "bcryptjs";
 import { z } from "zod";
+import { USER_ROLE_VALUES } from "@/lib/roles";
 
 const createUserSchema = z.object({
   email: z.string().email("Email invalido"),
   name: z.string().min(2, "Nombre muy corto"),
   password: z.string().min(8, "Contrasena minimo 8 caracteres"),
-  role: z.enum(["ADMIN","GERENTE","OPERADOR","TRANSPORTISTA","INVENTARIO","TRANSPORTE","SUPERVISOR_INVENTARIO","SUPERVISOR_TRANSPORTE","TIENDA","SUPERVISOR_TIENDA","OPERACIONES_MUEBLES","OPERACIONES_GOURMET"]).default("INVENTARIO"),
+  role: z.enum(USER_ROLE_VALUES).default("INVENTARIO"),
   transportistaId: z.string().nullable().optional(), // vincular a transportista existente
 });
 

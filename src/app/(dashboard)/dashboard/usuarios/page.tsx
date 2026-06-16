@@ -3,11 +3,11 @@
 import { useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 import { useSession } from "next-auth/react";
-import { Users, Plus, Pencil, X, Shield, ShieldCheck, ShieldAlert, Truck, Car, Upload, Search, GitMerge } from "lucide-react";
+import { Users, Plus, Pencil, X, Shield, ShieldCheck, ShieldAlert, Truck, Car, Upload, Search, GitMerge, Package } from "lucide-react";
 import { SkeletonTable, EmptyState } from "@/components/ui";
 import { getModuleColor } from "@/lib/moduleTheme";
 
-type Role = "ADMIN" | "GERENTE" | "OPERADOR" | "TRANSPORTISTA" | "INVENTARIO" | "TRANSPORTE" | "SUPERVISOR_INVENTARIO" | "SUPERVISOR_TRANSPORTE" | "TIENDA" | "SUPERVISOR_TIENDA" | "OPERACIONES_MUEBLES" | "OPERACIONES_GOURMET";
+type Role = "ADMIN" | "GERENTE" | "OPERADOR" | "TRANSPORTISTA" | "INVENTARIO" | "TRANSPORTE" | "SUPERVISOR_INVENTARIO" | "SUPERVISOR_TRANSPORTE" | "TIENDA" | "SUPERVISOR_TIENDA" | "OPERACIONES_MUEBLES" | "OPERACIONES_GOURMET" | "ETIQUETADO" | "SUPERVISOR_ALMACENAMIENTO";
 
 interface User {
   id: string;
@@ -56,6 +56,8 @@ const ROLE_META: Record<Role, { label: string; color: string; icon: React.ReactN
   TRANSPORTISTA:          { label: "Transportista",      color: getModuleColor("preoperacional"), icon: <ShieldAlert size={13} /> },
   OPERACIONES_MUEBLES:    { label: "Op. Muebles",        color: getModuleColor("integracion"), icon: <GitMerge size={13} /> },
   OPERACIONES_GOURMET:    { label: "Op. Gourmet",        color: getModuleColor("integracion"), icon: <GitMerge size={13} /> },
+  ETIQUETADO:             { label: "Etiquetado",         color: getModuleColor("exportaciones"), icon: <Package size={13} /> },
+  SUPERVISOR_ALMACENAMIENTO: { label: "Sup. Almacenamiento", color: getModuleColor("exportaciones"), icon: <Shield size={13} /> },
 };
 
 export default function UsuariosPage() {
@@ -596,6 +598,8 @@ function FormNuevo({ onClose, onSaved, onError }: { onClose: () => void; onSaved
               <optgroup label="Área Operaciones">
                 <option value="OPERACIONES_MUEBLES">Operaciones Muebles</option>
                 <option value="OPERACIONES_GOURMET">Operaciones Gourmet</option>
+                <option value="ETIQUETADO">Etiquetado</option>
+                <option value="SUPERVISOR_ALMACENAMIENTO">Supervisor Almacenamiento</option>
               </optgroup>
               <optgroup label="Área Transporte">
                 <option value="TRANSPORTE">Operario Transporte</option>
@@ -679,6 +683,8 @@ function ModalEditar({ u, selfId, onClose, onSaved, onError }: { u: User; selfId
               <optgroup label="Área Operaciones">
                 <option value="OPERACIONES_MUEBLES">Operaciones Muebles</option>
                 <option value="OPERACIONES_GOURMET">Operaciones Gourmet</option>
+                <option value="ETIQUETADO">Etiquetado</option>
+                <option value="SUPERVISOR_ALMACENAMIENTO">Supervisor Almacenamiento</option>
               </optgroup>
               <optgroup label="Área Transporte">
                 <option value="TRANSPORTE">Operario Transporte</option>

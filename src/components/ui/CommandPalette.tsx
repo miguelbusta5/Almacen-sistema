@@ -9,7 +9,7 @@ import { useSession } from "next-auth/react";
 import {
   Search, Home, Package, Truck, ClipboardList,
   Users, ScrollText, Plus, ArrowRight, X,
-  BarChart3, FileText, Store, ShieldCheck, GitMerge, CheckSquare,
+  BarChart3, FileText, Store, ShieldCheck, GitMerge, CheckSquare, Tags,
 } from "lucide-react";
 import { useCommandPalette } from "@/contexts/CommandPaletteContext";
 import { canSeeModule } from "@/lib/modulePermissions";
@@ -96,6 +96,7 @@ export default function CommandPalette() {
       ...(see("inventario") ? [{ id: "a-novedad",  group: "actions" as ResultGroup, icon: <Plus size={14} />, label: "Nueva novedad de inventario", description: "Registrar diferencia de PLU en el CEDI", color: getModuleColor("inventario"), action: () => go("/dashboard/inventario") }] : []),
       ...(see("transporte") ? [{ id: "a-guardado", group: "actions" as ResultGroup, icon: <Plus size={14} />, label: "Nuevo guardado en transporte",  description: "Registrar pedido en custodia",          color: getModuleColor("transporte"), action: () => go("/dashboard/transporte") }] : []),
       ...(see("solicitudes-transporte") ? [{ id: "a-solicitud-transporte", group: "actions" as ResultGroup, icon: <FileText size={14} />, label: "Nueva solicitud de transporte", description: "Pedir gestion de transporte interna", color: getModuleColor("solicitudes-transporte"), action: () => go("/dashboard/solicitudes-transporte") }] : []),
+      ...(see("exportaciones") ? [{ id: "a-exportaciones", group: "actions" as ResultGroup, icon: <Tags size={14} />, label: "Registrar exportacion", description: "Capturar caja, PLU y unidad de empaque", color: getModuleColor("exportaciones"), action: () => go("/dashboard/exportaciones") }] : []),
       ...(see("tienda")     ? [{ id: "a-despacho", group: "actions" as ResultGroup, icon: <Store size={14} />, label: "Nueva Factura Contado", description: "Registrar factura contado para el flujo CEDI", color: getModuleColor("tienda"), action: () => go("/dashboard/tienda") }] : []),
       ...(see("preoperacional") ? [{ id: "a-preop", group: "actions" as ResultGroup, icon: <ShieldCheck size={14} />, label: "Registrar preoperacional", description: "Inspección diaria del vehículo", color: getModuleColor("preoperacional"), action: () => go("/dashboard/preoperacional") }] : []),
       ...(see("integracion") ? [{ id: "a-integracion", group: "actions" as ResultGroup, icon: <GitMerge size={14} />, label: "Nueva integración de pedido", description: "Coordinar OVDM/TSDM entre áreas", color: getModuleColor("integracion"), action: () => go("/dashboard/integracion") }] : []),
@@ -110,6 +111,7 @@ export default function CommandPalette() {
       ...(see("inventario")    ? [{ id: "n-inventario",  group: "navigate" as ResultGroup, icon: <Package size={14} />,       label: "Novedades Inventario",    action: () => go("/dashboard/inventario") }] : []),
       ...(see("tienda")        ? [{ id: "n-tienda",      group: "navigate" as ResultGroup, icon: <Store size={14} />,          label: "Facturas Contado",        action: () => go("/dashboard/tienda") }] : []),
       ...(see("solicitudes-transporte") ? [{ id: "n-solicitudes-transporte", group: "navigate" as ResultGroup, icon: <FileText size={14} />, label: "Solicitudes Transporte", action: () => go("/dashboard/solicitudes-transporte") }] : []),
+      ...(see("exportaciones") ? [{ id: "n-exportaciones", group: "navigate" as ResultGroup, icon: <Tags size={14} />, label: "Exportaciones", action: () => go("/dashboard/exportaciones") }] : []),
       ...(see("transporte")    ? [{ id: "n-transporte",  group: "navigate" as ResultGroup, icon: <Truck size={14} />,          label: "Guardados Transporte",    action: () => go("/dashboard/transporte") }] : []),
       ...(see("preoperacional")? [{ id: "n-preop",       group: "navigate" as ResultGroup, icon: <ShieldCheck size={14} />,    label: "Preoperacional",          action: () => go("/dashboard/preoperacional") }] : []),
       ...(see("integracion")   ? [{ id: "n-integracion", group: "navigate" as ResultGroup, icon: <GitMerge size={14} />,       label: "Integración Pedidos",     action: () => go("/dashboard/integracion") }] : []),

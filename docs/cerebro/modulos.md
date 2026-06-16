@@ -11,6 +11,7 @@
 | `inventario` | `/dashboard/inventario` `/dashboard/muebles` | ADMIN, GERENTE, SUPERVISOR_INV, INVENTARIO, OPERADOR | Novedades de inventario (diferencias de PLU, posición, cantidad) |
 | `transporte` | `/dashboard/transporte` | ADMIN, GERENTE, SUPERVISOR_TRA, TRANSPORTE, OPERADOR | Guardados en custodia del almacén |
 | `solicitudes-transporte` | `/dashboard/solicitudes-transporte` | Todos excepto TRANSPORTISTA | Solicitudes internas de transporte y gestion por lider transporte |
+| `exportaciones` | `/dashboard/exportaciones` | ETIQUETADO, SUPERVISOR_ALMACENAMIENTO, ADMIN, GERENTE | Etiquetado de cajas de exportacion con PLU maestro |
 | `tienda` | `/dashboard/tienda` | ADMIN, GERENTE, SUPERVISOR_TRA, SUPERVISOR_TIE, TIENDA | Despachos desde tienda hasta cliente |
 | `preoperacional` | `/dashboard/preoperacional` | ADMIN, GERENTE, SUPERVISOR_TRA, TRANSPORTISTA | Inspección diaria de vehículos |
 | `conteo` | `/dashboard/conteo` | ADMIN, GERENTE, SUPERVISOR_INV, INVENTARIO | Gestión de ciclos de conteo cíclico |
@@ -85,6 +86,20 @@ Archivos:
 - `src/app/(dashboard)/dashboard/solicitudes-transporte/page.tsx`
 - `src/app/api/solicitudes-transporte/*`
 - `src/lib/solicitudesTransporte.ts`
+
+### Exportaciones (`exportaciones`)
+
+Modulo de etiquetado para cajas de exportacion:
+- `ETIQUETADO` solo ve este modulo y captura caja, PLU y unidad de empaque
+- La descripcion del PLU se toma obligatoriamente desde `ProductoMaestro`
+- Cada captura cierra el registro anterior abierto del mismo usuario y abre el siguiente con hora de inicio actual
+- `SUPERVISOR_ALMACENAMIENTO`, `ADMIN` y `GERENTE` ven todos los registros, editan, corrigen horas con motivo y borran logicamente
+- La UI usa formulario mobile-first y tabla/tarjetas responsive
+
+Archivos:
+- `src/app/(dashboard)/dashboard/exportaciones/page.tsx`
+- `src/app/api/exportaciones/*`
+- `src/lib/exportaciones.ts`
 
 ### Novedades Inventario (`inventario`)
 

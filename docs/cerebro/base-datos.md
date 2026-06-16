@@ -26,7 +26,7 @@ node prisma/seed.js       # Crear usuario admin inicial
 
 | Enum | Valores |
 |---|---|
-| `Role` | ADMIN, GERENTE, OPERADOR, TRANSPORTISTA, INVENTARIO, TRANSPORTE, SUPERVISOR_INVENTARIO, SUPERVISOR_TRANSPORTE, TIENDA, SUPERVISOR_TIENDA, OPERACIONES_MUEBLES, OPERACIONES_GOURMET |
+| `Role` | ADMIN, GERENTE, OPERADOR, TRANSPORTISTA, INVENTARIO, TRANSPORTE, SUPERVISOR_INVENTARIO, SUPERVISOR_TRANSPORTE, TIENDA, SUPERVISOR_TIENDA, OPERACIONES_MUEBLES, OPERACIONES_GOURMET, ETIQUETADO, SUPERVISOR_ALMACENAMIENTO |
 | `EstadoDespacho` | CREADO_TIENDA, RECHAZADO, RECOGIDO_TIENDA, ENTREGADO_CEDI, ENVIADO_CLIENTE, CON_NOVEDAD |
 | `EstadoIntegracion` | PENDIENTE_AREA2, LISTA_TRANSPORTE, COMPLETADA |
 | `EstadoSolicitudTransporte` | PENDIENTE, RECHAZADA, REENVIADA, PROGRAMADA, EFECTUADA, CANCELADA |
@@ -59,6 +59,8 @@ node prisma/seed.js       # Crear usuario admin inicial
 - `solicitudesTransporte` → SolicitudTransporte[]
 - `solicitudesGestionadas` → SolicitudTransporte[]
 - `historialSolicitudesTransporte` → HistorialSolicitudTransporte[]
+- `exportacionesEtiquetado` → EtiquetadoExportacion[]
+- `exportacionesActualizadas` → EtiquetadoExportacion[]
 - `ciclosConteo`, `guardadosPendientes`, `novedadesAsign`, `contactosGuard`
 
 ### Módulo Tienda
@@ -98,6 +100,21 @@ node prisma/seed.js       # Crear usuario admin inicial
 - `SolicitudTransporte.unidades` se conserva como columna existente, pero en UI/API se expone como **cantidad cajas**.
 - `SolicitudTransporte.deletedAt`, `deletedById` y `deleteReason` implementan borrado logico para ADMIN/GERENTE.
 - El borrado logico no elimina `historial` ni `plines`.
+
+### Módulo Exportaciones
+
+| Modelo | Tabla | Propósito |
+|---|---|---|
+| `EtiquetadoExportacion` | `etiquetado_exportaciones` | Captura de caja, PLU, unidad de empaque y tiempos de etiquetado |
+
+**Relaciones clave:**
+- `creadoPor` → User (relación "ExportacionesEtiquetadoCreadas")
+- `actualizadoPor` → User? (relación "ExportacionesEtiquetadoActualizadas")
+
+**Reglas de datos:**
+- `descripcion` se copia desde `ProductoMaestro`; PLU inexistente bloquea la creacion.
+- `horaInicio` se crea automaticamente; `horaFinalizacion` se cierra cuando el usuario crea la siguiente caja.
+- `deletedAt` implementa borrado logico.
 
 ### Módulo Integración (Sprint 8)
 

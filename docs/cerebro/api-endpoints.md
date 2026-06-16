@@ -87,6 +87,14 @@ await prisma.notificacion.createMany({
 | POST | `/api/solicitudes-transporte/[id]/reenviar` | Reenviar solicitud rechazada | Creador o gestor |
 | GET | `/api/solicitudes-transporte/catalogos` | Areas, ciudades, puntos de recogida, transportadoras y opciones del formulario | Todos excepto TRANSPORTISTA |
 
+### Exportaciones
+| Metodo | Ruta | Descripcion | Auth |
+|---|---|---|---|
+| GET | `/api/exportaciones` | Lista registros no eliminados con filtros por fecha, usuario, caja, PLU y estado | ETIQUETADO ve propios; SUPERVISOR_ALMACENAMIENTO/GERENTE/ADMIN ven todos |
+| POST | `/api/exportaciones` | Crea captura con caja, PLU y unidad; autocompleta descripcion desde maestro y cierra el registro anterior abierto del usuario | ETIQUETADO, SUPERVISOR_ALMACENAMIENTO, GERENTE, ADMIN |
+| PATCH | `/api/exportaciones/[id]` | Corrige caja, PLU, unidad y horas; cambiar horas exige motivo | SUPERVISOR_ALMACENAMIENTO, GERENTE, ADMIN |
+| DELETE | `/api/exportaciones/[id]` | Borrado logico auditado | SUPERVISOR_ALMACENAMIENTO, GERENTE, ADMIN |
+
 ### Integración de Pedidos
 | Método | Ruta | Descripción |
 |---|---|---|

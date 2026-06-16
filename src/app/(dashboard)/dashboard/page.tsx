@@ -2,11 +2,12 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import {
   Package, Truck, ClipboardList, ArrowRight, AlertTriangle,
   Clock, Plus, CheckCircle2,
-  CheckSquare, Store, BarChart2, Users, History, ShieldCheck, GitMerge, FileText,
+  CheckSquare, Store, BarChart2, Users, History, ShieldCheck, GitMerge, FileText, Tags,
 } from "lucide-react";
 import { Badge, Stat, TimelineItem, SectionHeader, SkeletonStat as SK } from "@/components/ui";
 import { IntelBanner } from "@/components/ui/SlidePanel";
@@ -41,6 +42,7 @@ function moduleColor(mod: string) {
   if (mod === "conteo") return getModuleColor("conteo");
   if (mod === "tienda") return getModuleColor("tienda");
   if (mod === "integracion") return getModuleColor("integracion");
+  if (mod === "exportaciones") return getModuleColor("exportaciones");
   if (mod === "users" || mod === "usuarios") return getModuleColor("usuarios");
   return "#6B7280";
 }
@@ -52,6 +54,7 @@ function moduleLabel(mod: string) {
     conteo: getModuleTheme("conteo").shortLabel,
     tienda: getModuleTheme("tienda").shortLabel,
     integracion: getModuleTheme("integracion").shortLabel,
+    exportaciones: getModuleTheme("exportaciones").shortLabel,
     users: getModuleTheme("usuarios").shortLabel,
     usuarios: getModuleTheme("usuarios").shortLabel,
   };
@@ -152,6 +155,7 @@ const ICON_MAP: Record<string, React.ReactNode> = {
   GitMerge:     <GitMerge size={18} />,
   ShieldCheck:  <ShieldCheck size={18} />,
   FileText:     <FileText size={18} />,
+  Tags:         <Tags size={18} />,
 };
 
 // ── Botón de acción rápida ────────────────────────────────
@@ -768,9 +772,20 @@ function ControlLogisticoDashboard({ nombre }: { nombre: string }) {
 
 export default function DashboardPage() {
   const isMobile = useIsMobile();
+  const router = useRouter();
   const { data: session } = useSession();
   const role = (session?.user as { role?: string } | undefined)?.role;
   const nombre = (session?.user?.name || "").split(" ")[0] || "";
+  useEffect(() => {
+    if (role === "ETIQUETADO") router.replace("/dashboard/exportaciones");
+  }, [role, router]);
+  if (role === "ETIQUETADO") {
+    return (
+      <div style={{ display: "grid", gridTemplateColumns: isMobile ? "repeat(2,1fr)" : "repeat(4,1fr)", gap: isMobile ? 14 : 28, maxWidth: 900, padding: "0 2px" }}>
+        <SK /><SK /><SK /><SK />
+      </div>
+    );
+  }
   if (session) return <ControlLogisticoDashboard nombre={nombre} />;
 
   // Mientras carga la sesión

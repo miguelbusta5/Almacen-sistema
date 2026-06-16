@@ -116,6 +116,8 @@ model User {
   solicitudesTransporte    SolicitudTransporte[] @relation("SolicitudesTransporteCreadas")
   solicitudesGestionadas   SolicitudTransporte[] @relation("SolicitudesTransporteGestionadas")
   historialSolicitudesTransporte HistorialSolicitudTransporte[] @relation("HistorialSolicitudTransporteUsuario")
+  exportacionesEtiquetado  EtiquetadoExportacion[] @relation("ExportacionesEtiquetadoCreadas")
+  exportacionesActualizadas EtiquetadoExportacion[] @relation("ExportacionesEtiquetadoActualizadas")
 
   @@index([email])
   @@map("users")
@@ -134,6 +136,8 @@ enum Role {
   SUPERVISOR_TIENDA // Supervisor tienda — tienda + análisis + Centro de Control
   OPERACIONES_MUEBLES // Operario Operaciones Muebles — solo módulo integración
   OPERACIONES_GOURMET // Operario Operaciones Gourmet — solo módulo integración
+  ETIQUETADO // Operario etiquetado exportaciones — solo módulo exportaciones
+  SUPERVISOR_ALMACENAMIENTO // Supervisor almacenamiento — gestiona exportaciones
 }
 
 enum EstadoDespacho {
@@ -779,4 +783,32 @@ model PluSolicitudTransporte {
   @@index([solicitudId])
   @@index([plu])
   @@map("plus_solicitud_transporte")
+}
+
+model EtiquetadoExportacion {
+  id                String    @id @default(cuid())
+  numeroCaja        String    @map("numero_caja") @db.VarChar(100)
+  plu               String    @db.VarChar(100)
+  descripcion       String    @db.VarChar(255)
+  unidadEmpaque     Int       @map("unidad_empaque")
+  fecha             DateTime  @db.Date
+  horaInicio        DateTime  @map("hora_inicio")
+  horaFinalizacion  DateTime? @map("hora_finalizacion")
+  motivoCorreccion  String?   @map("motivo_correccion")
+  deletedAt         DateTime? @map("deleted_at")
+
+  creadoPorId       String   @map("creado_por_id")
+  creadoPor         User     @relation("ExportacionesEtiquetadoCreadas", fields: [creadoPorId], references: [id])
+  actualizadoPorId  String?  @map("actualizado_por_id")
+  actualizadoPor    User?    @relation("ExportacionesEtiquetadoActualizadas", fields: [actualizadoPorId], references: [id])
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([creadoPorId, deletedAt])
+  @@index([fecha])
+  @@index([plu])
+  @@index([numeroCaja])
+  @@index([horaFinalizacion])
+  @@map("etiquetado_exportaciones")
 }

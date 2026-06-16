@@ -18,6 +18,18 @@ describe("canSeeModule — Sprint 8", () => {
     );
   });
 
+  describe("ETIQUETADO", () => {
+    it("solo ve exportaciones", () => {
+      expect(getVisibleModules("ETIQUETADO")).toEqual(["exportaciones"]);
+    });
+    it("NO ve otros modulos operativos", () => {
+      expect(canSeeModule("ETIQUETADO", "inventario")).toBe(false);
+      expect(canSeeModule("ETIQUETADO", "transporte")).toBe(false);
+      expect(canSeeModule("ETIQUETADO", "solicitudes-transporte")).toBe(false);
+      expect(canSeeModule("ETIQUETADO", "preoperacional")).toBe(false);
+    });
+  });
+
   // ── ADMIN: ve todo incluido preoperacional (vista supervisor) ──
   describe("ADMIN", () => {
     it("ve inventario",      () => expect(canSeeModule("ADMIN", "inventario")).toBe(true));
@@ -27,8 +39,13 @@ describe("canSeeModule — Sprint 8", () => {
     it("ve auditoria",       () => expect(canSeeModule("ADMIN", "auditoria")).toBe(true));
     it("ve centro-control",  () => expect(canSeeModule("ADMIN", "centro-control")).toBe(true));
     it("ve solicitudes-transporte", () => expect(canSeeModule("ADMIN", "solicitudes-transporte")).toBe(true));
+    it("ve exportaciones", () => expect(canSeeModule("ADMIN", "exportaciones")).toBe(true));
     it("ve preoperacional (vista supervisor)", () => expect(canSeeModule("ADMIN", "preoperacional")).toBe(true));
   });
+
+  it.each(["ADMIN", "GERENTE", "SUPERVISOR_ALMACENAMIENTO"] as const)(
+    "%s ve exportaciones como gestion", (role) => expect(canSeeModule(role, "exportaciones")).toBe(true)
+  );
 
   // ── TIENDA: solo su módulo ───────────────────────────
   describe("TIENDA", () => {

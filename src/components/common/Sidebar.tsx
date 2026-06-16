@@ -5,7 +5,7 @@ import { usePathname } from "next/navigation";
 import { useState, useEffect } from "react";
 import {
   Menu, X, Home, Package, Truck, Users, ScrollText, ShieldCheck,
-  ClipboardList, BarChart3, Store, CheckSquare, GitMerge, FileText,
+  ClipboardList, BarChart3, Store, CheckSquare, GitMerge, FileText, Tags,
 } from "lucide-react";
 import { useIsMobile } from "@/lib/useIsMobile";
 import Logo from "./Logo";
@@ -38,6 +38,7 @@ const ALL_ITEMS: NavItem[] = [
 
   // ── Integración de Pedidos ───────────────────────
   { href: "/dashboard/integracion",            label: "Integración Pedidos", icon: <GitMerge size={16} />,   moduleKey: "integracion" },
+  { href: "/dashboard/exportaciones",          label: "Exportaciones",       icon: <Tags size={16} />,       moduleKey: "exportaciones" },
 
   // ── Área de Transporte ───────────────────────────
   { href: "/dashboard/solicitudes-transporte", label: "Solicitudes Transporte", icon: <FileText size={16} />, moduleKey: "solicitudes-transporte" },
@@ -70,6 +71,7 @@ const SECTIONS = [
       "/dashboard/inventario",
       "/dashboard/tienda",
       "/dashboard/integracion",
+      "/dashboard/exportaciones",
       "/dashboard/solicitudes-transporte",
       "/dashboard/transporte",
       "/dashboard/conteo/contar",
