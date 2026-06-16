@@ -71,6 +71,7 @@ export default function ExportacionesPage() {
   const [items, setItems] = useState<Exportacion[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [finalizing, setFinalizing] = useState(false);
   const [error, setError] = useState("");
   const [query, setQuery] = useState("");
   const [fecha, setFecha] = useState("");
@@ -126,6 +127,17 @@ export default function ExportacionesPage() {
       return;
     }
     setForm({ numeroCaja: "", plu: "", descripcion: "", unidadEmpaque: "1", hayReguero: false, cantidadReguero: "" });
+    await load();
+  }
+
+  async function finalize() {
+    if (!openItem) return;
+    setFinalizing(true);
+    setError("");
+    const res = await fetch(`/api/exportaciones/${openItem.id}/finalize`, { method: "POST" });
+    const json = await res.json().catch(() => ({}));
+    setFinalizing(false);
+    if (!res.ok) { setError(json.error ?? "No se pudo finalizar"); return; }
     await load();
   }
 
@@ -205,9 +217,14 @@ export default function ExportacionesPage() {
       </div>
 
       {openItem && (
-        <div style={{ border: `1px solid ${COLOR}44`, background: `${COLOR}10`, borderRadius: 10, padding: 12, marginBottom: 14, display: "grid", gap: 4 }}>
-          <strong style={{ fontSize: 13, color: COLOR }}>Registro en curso</strong>
-          <span style={{ fontSize: 12, color: "var(--muted)" }}>Caja {openItem.numeroCaja} · PLU {openItem.plu} · inicio {fmtTime(openItem.horaInicio)}</span>
+        <div style={{ border: `1px solid ${COLOR}44`, background: `${COLOR}10`, borderRadius: 10, padding: 12, marginBottom: 14, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
+          <div style={{ display: "grid", gap: 4 }}>
+            <strong style={{ fontSize: 13, color: COLOR }}>Registro en curso</strong>
+            <span style={{ fontSize: 12, color: "var(--muted)" }}>Caja {openItem.numeroCaja} · PLU {openItem.plu} · inicio {fmtTime(openItem.horaInicio)}</span>
+          </div>
+          <button onClick={finalize} disabled={finalizing} style={{ height: 34, padding: "0 14px", border: `1px solid ${COLOR}55`, borderRadius: 8, background: COLOR, color: "white", fontWeight: 700, cursor: finalizing ? "not-allowed" : "pointer", fontSize: 12, display: "flex", alignItems: "center", gap: 6, opacity: finalizing ? 0.65 : 1, whiteSpace: "nowrap", flexShrink: 0 }}>
+            <CheckCircle2 size={14} />{finalizing ? "Finalizando..." : "Finalizar rotulación"}
+          </button>
         </div>
       )}
 
