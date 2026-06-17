@@ -138,6 +138,14 @@ export const MODULE_THEME: Record<ModuleThemeKey, ModuleTheme> = {
     color: BLUE,
     tint: BLUE_TINT,
   },
+  studio: {
+    key: "studio",
+    label: "Studio",
+    shortLabel: "Studio",
+    description: "Dashboards conectados a Google Sheets",
+    color: "#0E7490",
+    tint: "rgba(14,116,144,0.10)",
+  },
 };
 
 export function getModuleTheme(key: ModuleThemeKey | string | null | undefined): ModuleTheme {

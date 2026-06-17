@@ -75,6 +75,7 @@
 
 - [x] Solicitudes Transporte: cantidad cajas, PLUs, flete condicional, detalle completo, transportadora cerrada y borrado logico admin/gerente - 2026-06-16
 - [x] Modulo Exportaciones para etiquetado: roles ETIQUETADO/SUPERVISOR_ALMACENAMIENTO, PLU maestro obligatorio, tiempos automaticos y UI responsive - 2026-06-16
+- [x] Modulo Studio MVP: builder de dashboards conectado a Google Sheets, editor 3 paneles drag-and-drop, KPI/Tabla/BarChart, campos formulados, parametros, guardado JSON en BD - 2026-06-17
 - [x] Exportaciones: campo reguero (hayReguero bool + cantidadReguero int?) en schema, API (POST/PATCH), UI toggle Si/No + campo condicional en captura y modal edicion, columna en tabla y card mobile - 2026-06-16
 - [x] Restructuracion visual (bordes, sombras, tints, .ds-stat card, .ds-panel borde+sombra, hover tabla, btn-primary gradiente, helper getModuleIconBg, Stat con borderLeft, iconos header opacidad 26) - 2026-06-16
 - [x] Exportaciones: boton "Finalizar rotulacion" — endpoint POST /api/exportaciones/[id]/finalize cierra horaFinalizacion sin requerir motivo; banner "Registro en curso" muestra el boton para cerrar la jornada manualmente - 2026-06-16

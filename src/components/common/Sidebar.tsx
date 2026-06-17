@@ -11,6 +11,7 @@ import {
   Gauge,
   GitMerge,
   Home,
+  LayoutDashboard,
   Menu,
   Package,
   ScrollText,
@@ -51,6 +52,7 @@ const ALL_ITEMS: NavItem[] = [
   { href: "/dashboard/transporte", label: "Guardados", icon: <Truck size={16} strokeWidth={2.1} />, moduleKey: "transporte" },
   { href: "/dashboard/conteo", label: "Conteo", icon: <ClipboardList size={16} strokeWidth={2.1} />, moduleKey: "conteo" },
   { href: "/dashboard/indicadores", label: "Indicadores", icon: <Gauge size={16} strokeWidth={2.1} />, moduleKey: "indicadores" },
+  { href: "/dashboard/studio", label: "Studio", icon: <LayoutDashboard size={16} strokeWidth={2.1} />, moduleKey: "studio" },
   { href: "/dashboard/centro-control", label: "Centro de Control", icon: <BarChart3 size={16} strokeWidth={2.1} />, moduleKey: "centro-control" },
   { href: "/dashboard/usuarios", label: "Usuarios", icon: <Users size={16} strokeWidth={2.1} />, moduleKey: "usuarios" },
   { href: "/dashboard/auditoria", label: "Auditoria", icon: <ScrollText size={16} strokeWidth={2.1} />, moduleKey: "auditoria" },
@@ -70,7 +72,7 @@ const SECTIONS = [
       "/dashboard/conteo/contar",
     ],
   },
-  { label: "Supervision", items: ["/dashboard/conteo", "/dashboard/indicadores", "/dashboard/centro-control"] },
+  { label: "Supervision", items: ["/dashboard/conteo", "/dashboard/indicadores", "/dashboard/studio", "/dashboard/centro-control"] },
   { label: "Gobierno", items: ["/dashboard/usuarios", "/dashboard/auditoria"] },
 ];
 

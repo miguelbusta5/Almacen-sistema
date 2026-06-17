@@ -170,6 +170,18 @@ export const HOME_ACTIONS: HomeAction[] = [
     ],
     priority: 2,
   },
+  // ── Studio ──────────────────────────────────────────────
+  {
+    id: "studio",
+    title: "Studio",
+    description: "Crea y visualiza dashboards conectados a Google Sheets",
+    href: "/dashboard/studio",
+    icon: "LayoutDashboard",
+    color: getModuleColor("studio"),
+    moduleKey: "studio",
+    roles: ["ADMIN", "GERENTE"],
+    priority: 3,
+  },
   // ── Administración ──────────────────────────────────────
   {
     id: "gestionar-usuarios",

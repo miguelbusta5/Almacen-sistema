@@ -119,6 +119,7 @@ model User {
   exportacionesEtiquetado  EtiquetadoExportacion[] @relation("ExportacionesEtiquetadoCreadas")
   exportacionesActualizadas EtiquetadoExportacion[] @relation("ExportacionesEtiquetadoActualizadas")
   indicadoresSync          IndicadorFuente[]        @relation("IndicadoresSyncUsuario")
+  studiosDashboards        StudioDashboard[]        @relation("StudioDashboardCreador")
 
   @@index([email])
   @@map("users")
@@ -881,4 +882,47 @@ model IndicadorPLU {
   @@unique([plu, anio, grupo])
   @@index([anio, grupo])
   @@map("indicador_plu")
+}
+
+// ═══════════════════════════════════════════
+// MÓDULO STUDIO — Dashboard Builder
+// ═══════════════════════════════════════════
+
+model StudioDashboard {
+  id          String   @id @default(cuid())
+  nombre      String   @db.VarChar(120)
+  descripcion String?  @db.Text
+  layout      Json     @default("[]")
+  componentes Json     @default("[]")
+  estilos     Json     @default("{}")
+  estado      String   @default("BORRADOR") @db.VarChar(20)
+  createdById String   @map("created_by_id")
+  createdBy   User     @relation("StudioDashboardCreador", fields: [createdById], references: [id])
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  fuentes     StudioFuente[]
+
+  @@index([createdById])
+  @@index([estado])
+  @@map("studio_dashboards")
+}
+
+model StudioFuente {
+  id               String    @id @default(cuid())
+  dashboardId      String    @map("dashboard_id")
+  nombre           String    @db.VarChar(80)
+  tipo             String    @default("sheets_csv") @db.VarChar(40)
+  urlSheets        String?   @map("url_sheets") @db.VarChar(500)
+  hojaActiva       String?   @map("hoja_activa") @db.VarChar(120)
+  campos           Json      @default("[]")
+  camposFormulados Json      @default("[]") @map("campos_formulados")
+  parametros       Json      @default("[]")
+  combinaciones    Json      @default("[]")
+  syncedAt         DateTime? @map("synced_at")
+
+  dashboard        StudioDashboard @relation(fields: [dashboardId], references: [id], onDelete: Cascade)
+
+  @@index([dashboardId])
+  @@map("studio_fuentes")
 }
