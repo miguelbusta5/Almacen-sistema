@@ -111,7 +111,7 @@ function ModuleCard({ href, icon, label, color, value, sub, alert }: {
           <div style={{ width: 34, height: 34, borderRadius: 9, background: color + "14", display: "flex", alignItems: "center", justifyContent: "center", color }}>
             {icon}
           </div>
-          {alert && <span style={{ width: 8, height: 8, borderRadius: "50%", background: "#EF4444" }} />}
+          {alert && <span style={{ width: 8, height: 8, borderRadius: "50%", background: "var(--error)" }} />}
         </div>
         <div style={{ fontSize: 28, fontWeight: 700, letterSpacing: "-0.04em", color: "var(--text)", lineHeight: 1, marginBottom: 4 }}>{value ?? "—"}</div>
         <div style={{ fontSize: 13, fontWeight: 600, color: "var(--text)", marginBottom: 2 }}>{label}</div>

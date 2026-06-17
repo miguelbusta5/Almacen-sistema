@@ -43,11 +43,11 @@
   --module-admin: #475569;
 
   /* ── Semánticos ─────────────────────────────────────────── */
-  --success:       #10B981;
+  --success:       #2563EB;
   --success-tint:  rgba(16,185,129,0.14);
-  --warning:       #F59E0B;
+  --warning:       #475569;
   --warning-tint:  rgba(245,158,11,0.14);
-  --error:         #EF4444;
+  --error:         #B42318;
   --error-tint:    rgba(239,68,68,0.14);
   --info:          #3B82F6;
   --info-tint:     rgba(59,130,246,0.14);
@@ -58,8 +58,8 @@
   --orange:       #2563EB;
   --orange-light: rgba(37,99,235,0.09);
   --green:        #2563EB;
-  --red:          #EF4444;
-  --amber:        #F59E0B;
+  --red:          #B42318;
+  --amber:        #475569;
   --purple:       #2563EB;
 
   /* Sombras operativas: profundidad sin parecer landing */
@@ -122,9 +122,9 @@ html[data-theme="dark"] {
 
   --success:       #60A5FA;
   --success-tint:  rgba(52,211,153,0.16);
-  --warning:       #FBBF24;
+  --warning:       #CBD5E1;
   --warning-tint:  rgba(251,191,36,0.16);
-  --error:         #F87171;
+  --error:         #FCA5A5;
   --error-tint:    rgba(248,113,113,0.16);
   --info:          #60A5FA;
   --info-tint:     rgba(96,165,250,0.16);
@@ -134,8 +134,8 @@ html[data-theme="dark"] {
   --orange:       #60A5FA;
   --orange-light: rgba(96,165,250,0.12);
   --green:        #60A5FA;
-  --red:          #F87171;
-  --amber:        #FBBF24;
+  --red:          #FCA5A5;
+  --amber:        #CBD5E1;
   --purple:       #60A5FA;
 
   --shadow-xs: 0 1px 2px rgba(0,0,0,0.40);
@@ -908,7 +908,7 @@ textarea {
 
   --success: #1D4ED8;
   --success-tint: rgba(21, 128, 61, 0.10);
-  --warning: #B45309;
+  --warning: #475569;
   --warning-tint: rgba(180, 83, 9, 0.11);
   --error: #B42318;
   --error-tint: rgba(220, 38, 38, 0.10);
@@ -959,11 +959,11 @@ html[data-theme="dark"] {
   --module-integracion: #60A5FA;
   --module-conteo: #60A5FA;
   --module-admin: #CBD5E1;
-  --success: #4ADE80;
+  --success: #60A5FA;
   --success-tint: rgba(74, 222, 128, 0.14);
-  --warning: #FBBF24;
+  --warning: #CBD5E1;
   --warning-tint: rgba(251, 191, 36, 0.14);
-  --error: #F87171;
+  --error: #FCA5A5;
   --error-tint: rgba(248, 113, 113, 0.14);
   --info: #60A5FA;
   --info-tint: rgba(96, 165, 250, 0.14);
