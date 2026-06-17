@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useSession } from "next-auth/react";
-import { CheckCircle2, Clock, Pencil, RefreshCw, Search, Tags, Trash2, X } from "lucide-react";
+import { BarChart3, CheckCircle2, ChevronDown, ChevronUp, Clock, Pencil, RefreshCw, Search, Tags, Trash2, X } from "lucide-react";
 import { EmptyState, SkeletonTable } from "@/components/ui";
 import { AutoRefreshIndicator } from "@/components/ui/AutoRefreshIndicator";
 import { getModuleColor } from "@/lib/moduleTheme";
@@ -26,6 +26,16 @@ interface Exportacion {
   cantidadReguero: number | null;
   motivoCorreccion?: string | null;
   creadoPorNombre?: string | null;
+}
+
+interface UserStat {
+  id: string;
+  nombre: string;
+  cajas: number;
+  plusDistintos: number;
+  finalizadas: number;
+  duracionTotalMin: number;
+  promedioPorCajaMin: number | null;
 }
 
 const inputStyle: React.CSSProperties = {
@@ -75,6 +85,9 @@ export default function ExportacionesPage() {
   const [saving, setSaving] = useState(false);
   const [finalizing, setFinalizing] = useState(false);
   const [error, setError] = useState("");
+  const [stats, setStats] = useState<UserStat[]>([]);
+  const [loadingStats, setLoadingStats] = useState(false);
+  const [showStats, setShowStats] = useState(true);
   const [query, setQuery] = useState("");
   const [fecha, setFecha] = useState("");
   const [estado, setEstado] = useState("");
@@ -98,7 +111,19 @@ export default function ExportacionesPage() {
     setLoading(false);
   }
 
+  async function loadStats() {
+    if (!canManage) return;
+    setLoadingStats(true);
+    const params = new URLSearchParams();
+    if (fecha) params.set("fecha", fecha);
+    const res = await fetch(`/api/exportaciones/stats?${params.toString()}`);
+    const json = await res.json().catch(() => ({}));
+    if (res.ok && json.success) setStats(json.data ?? []);
+    setLoadingStats(false);
+  }
+
   useEffect(() => { if (canUse) load(); }, [canUse]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { if (canManage) loadStats(); }, [canManage]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const autoRefresh = useAutoRefresh({
     enabled: canUse,
@@ -291,7 +316,7 @@ export default function ExportacionesPage() {
         <option value="en-curso">En curso</option>
         <option value="finalizado">Finalizados</option>
       </select>
-      <button onClick={load} style={{ height: 38, border: `1px solid ${COLOR}55`, color: COLOR, background: `${COLOR}10`, borderRadius: 8, fontWeight: 800, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 7 }}>
+      <button onClick={() => { load(); loadStats(); }} style={{ height: 38, border: `1px solid ${COLOR}55`, color: COLOR, background: `${COLOR}10`, borderRadius: 8, fontWeight: 800, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 7 }}>
         <RefreshCw size={15} /> Filtrar
       </button>
     </div>
@@ -341,6 +366,88 @@ export default function ExportacionesPage() {
         <p className="op-module-copy">Captura consecutiva por caja, PLU maestro, unidad de empaque y tiempos automáticos de inicio/finalización.</p>
       </section>
       {captureCard}
+
+      {canManage && (
+        <section className="op-panel" style={{ padding: isMobile ? 14 : 18 }}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: showStats ? 14 : 0 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+              <span style={{ width: 32, height: 32, borderRadius: 8, display: "grid", placeItems: "center", background: `${COLOR}18`, color: COLOR, flexShrink: 0 }}>
+                <BarChart3 size={16} />
+              </span>
+              <div>
+                <h2 style={{ margin: 0, fontSize: 15, fontWeight: 700 }}>Productividad por operario</h2>
+                <p style={{ margin: 0, fontSize: 12, color: "var(--muted)" }}>{fecha || "Hoy"} · promedio minutos por caja finalizada</p>
+              </div>
+            </div>
+            <button
+              onClick={() => setShowStats((v) => !v)}
+              style={{ border: "1px solid var(--border)", background: "transparent", borderRadius: 6, padding: "4px 10px", cursor: "pointer", display: "flex", alignItems: "center", gap: 6, color: "var(--muted2)", fontSize: 12, fontWeight: 600 }}
+            >
+              {showStats ? <><ChevronUp size={14} /> Colapsar</> : <><ChevronDown size={14} /> Expandir</>}
+            </button>
+          </div>
+          {showStats && (
+            loadingStats ? (
+              <div style={{ height: 60, display: "flex", alignItems: "center", justifyContent: "center", color: "var(--muted)", fontSize: 13 }}>Cargando estadísticas…</div>
+            ) : stats.length === 0 ? (
+              <div style={{ height: 60, display: "flex", alignItems: "center", justifyContent: "center", color: "var(--muted)", fontSize: 13 }}>Sin registros para esta fecha</div>
+            ) : (
+              <div style={{ overflowX: "auto" }}>
+                <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
+                  <thead>
+                    <tr style={{ color: "var(--muted)", textAlign: "left", borderBottom: "1px solid var(--border)" }}>
+                      <th style={th}>Operario</th>
+                      <th style={{ ...th, textAlign: "right" }}>Cajas</th>
+                      <th style={{ ...th, textAlign: "right" }}>PLUs</th>
+                      <th style={{ ...th, textAlign: "right" }}>Finalizadas</th>
+                      <th style={{ ...th, textAlign: "right" }}>Tiempo total</th>
+                      <th style={{ ...th, textAlign: "right" }}>Prom. min/caja</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {stats.map((s) => (
+                      <tr key={s.id} style={{ borderBottom: "1px solid var(--border)" }}>
+                        <td style={td}><strong>{s.nombre}</strong></td>
+                        <td style={{ ...td, textAlign: "right", fontVariantNumeric: "tabular-nums" }}>{s.cajas}</td>
+                        <td style={{ ...td, textAlign: "right", fontVariantNumeric: "tabular-nums" }}>{s.plusDistintos}</td>
+                        <td style={{ ...td, textAlign: "right", fontVariantNumeric: "tabular-nums" }}>{s.finalizadas}</td>
+                        <td style={{ ...td, textAlign: "right", fontVariantNumeric: "tabular-nums", color: "var(--muted)" }}>{s.duracionTotalMin > 0 ? `${s.duracionTotalMin} min` : "–"}</td>
+                        <td style={{ ...td, textAlign: "right" }}>
+                          {s.promedioPorCajaMin != null ? (
+                            <span style={{ fontWeight: 700, color: s.promedioPorCajaMin <= 5 ? "var(--success)" : s.promedioPorCajaMin <= 10 ? "var(--warning)" : "var(--error)" }}>
+                              {s.promedioPorCajaMin} min
+                            </span>
+                          ) : <span style={{ color: "var(--muted)" }}>–</span>}
+                        </td>
+                      </tr>
+                    ))}
+                    {stats.length > 1 && (() => {
+                      const totalCajas = stats.reduce((a, s) => a + s.cajas, 0);
+                      const totalPLUs = new Set(stats.flatMap(() => [])).size;
+                      const totalFin = stats.reduce((a, s) => a + s.finalizadas, 0);
+                      const totalMin = stats.reduce((a, s) => a + s.duracionTotalMin, 0);
+                      const promTotal = totalFin > 0 ? Math.round((totalMin / totalFin) * 10) / 10 : null;
+                      return (
+                        <tr style={{ borderTop: "2px solid var(--border)", background: "var(--surface2)" }}>
+                          <td style={{ ...td, fontWeight: 700 }}>Total</td>
+                          <td style={{ ...td, textAlign: "right", fontWeight: 700, fontVariantNumeric: "tabular-nums" }}>{totalCajas}</td>
+                          <td style={{ ...td, textAlign: "right", color: "var(--muted)" }}>—</td>
+                          <td style={{ ...td, textAlign: "right", fontWeight: 700, fontVariantNumeric: "tabular-nums" }}>{totalFin}</td>
+                          <td style={{ ...td, textAlign: "right", fontVariantNumeric: "tabular-nums", color: "var(--muted)" }}>{totalMin > 0 ? `${totalMin} min` : "–"}</td>
+                          <td style={{ ...td, textAlign: "right", fontWeight: 700 }}>
+                            {promTotal != null ? `${promTotal} min` : "–"}
+                          </td>
+                        </tr>
+                      );
+                    })()}
+                  </tbody>
+                </table>
+              </div>
+            )
+          )}
+        </section>
+      )}
+
       <section className="op-panel" style={{ padding: isMobile ? 14 : 18 }}>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
           <div>

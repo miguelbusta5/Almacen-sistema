@@ -6,6 +6,17 @@
 
 ## Tareas pendientes
 
+### Módulo Studio — Fase 2
+
+- [ ] Gráficos adicionales: Línea y Pie usando Chart.js (ya instalado)
+- [ ] Filtros interactivos: Filtro fecha, Filtro texto, Filtro categoría (afectan todos los componentes del dashboard)
+- [ ] Datos Combinados: LEFT JOIN entre dos hojas del mismo Sheet (por campo común)
+- [ ] Publicar/compartir: cambiar estado BORRADOR → PUBLICADO, URL pública de solo lectura
+- [ ] Google Sheets privados: conexión via service account
+- [ ] Tests unitarios: studio-formula.ts (evaluateFormula), studio-sheets.ts (extractSheetId, detectColumns)
+- [ ] QA visual Desktop/Mobile con sesión real (ADMIN y SUPERVISOR)
+- [ ] Imagen/logo: componente StudioImagen con URL configurable
+
 ### Modulo Tienda / Facturas Contado
 
 - [ ] Verificar en produccion que el sidebar no muestra Logistica, Rutas, GPS ni Mi Ruta
@@ -82,6 +93,8 @@
 
 - [x] Rediseño Operativo Premium Control Logístico CEDI: base visual `op-*`, shell, login, dashboard, Exportaciones, Solicitudes Transporte y Usuarios - 2026-06-16
 - [x] Rediseño Claro Ejecutivo Azul/Gris: paleta contenida, shell claro, login claro, moduleTheme monolineal y datos en vivo en pantallas principales - 2026-06-16
+- [x] Restaurar colores semánticos: --success=verde, --warning=ambar en :root y dark mode; corregir overrides ds-badge y cedi-badge que los pisaban con azul/gris — 2026-06-17
+- [x] Exportaciones: panel de productividad por operario con cajas, PLUs, finalizadas, tiempo total y promedio min/caja; endpoint GET /api/exportaciones/stats — 2026-06-17
 
 - [x] Revision predeploy Lovable/Base44: Lovable como referencia visual, Base44 como checklist comparativo, pulido azul/gris en Integracion, Mis Tareas y Centro de Control - 2026-06-16
 - [x] Capa CEDI Harmony: fondo operativo sutil, semantica contenida y limpieza de colores rojo/verde/ambar/violeta/teal hardcodeados - 2026-06-16
