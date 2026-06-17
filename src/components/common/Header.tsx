@@ -141,7 +141,7 @@ export default function Header({ user }: HeaderProps) {
             <Bell size={15} />
           </button>
           {notifCount > 0 && (
-            <span style={{ position: "absolute", top: -4, right: -4, background: "var(--error)", color: "#fff", fontSize: 9, fontWeight: 800, width: 16, height: 16, borderRadius: 999, display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "var(--mono)" }}>
+            <span style={{ position: "absolute", top: -4, right: -4, background: "var(--brand)", color: "#fff", fontSize: 9, fontWeight: 800, width: 16, height: 16, borderRadius: 999, display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "var(--mono)", boxShadow: "0 0 0 3px var(--brand-tint)" }}>
               {notifCount > 9 ? "9+" : notifCount}
             </span>
           )}
@@ -205,11 +205,11 @@ export default function Header({ user }: HeaderProps) {
                     border: "none",
                     borderRadius: 8,
                     fontSize: 13,
-                    color: "var(--error)",
+                    color: "var(--muted2)",
                     cursor: "pointer",
                     textAlign: "left",
                   }}
-                  onMouseEnter={(e) => (e.currentTarget.style.background = "var(--error-tint)")}
+                  onMouseEnter={(e) => (e.currentTarget.style.background = "var(--surface3)")}
                   onMouseLeave={(e) => (e.currentTarget.style.background = "none")}
                 >
                   <LogOut size={14} />Cerrar sesion

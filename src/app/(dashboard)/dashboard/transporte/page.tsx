@@ -253,17 +253,17 @@ export default function TransportePage() {
 
   const Th = ({ col, label, right }: { col: string; label: string; right?: boolean }) => {
     const active = sortCol === col;
-    return <th className="sortable" onClick={() => toggleSort(col)} style={{ textAlign: right ? "right" : "left", color: active ? "#0e7490" : undefined }}>{label}{active ? (sortDir === "asc" ? " ↑" : " ↓") : " ↕"}</th>;
+    return <th className="sortable" onClick={() => toggleSort(col)} style={{ textAlign: right ? "right" : "left", color: active ? "var(--brand)" : undefined }}>{label}{active ? (sortDir === "asc" ? " ↑" : " ↓") : " ↕"}</th>;
   };
 
   // Gráficos
-  const donutData = useMemo(() => ({ labels: ["Pendiente", "Despachado"], datasets: [{ data: [kpis.pend, kpis.desp], backgroundColor: ["#f59e0b", "#10b981"], borderWidth: 0 }] }), [kpis]);
+  const donutData = useMemo(() => ({ labels: ["Pendiente", "Despachado"], datasets: [{ data: [kpis.pend, kpis.desp], backgroundColor: ["#CBD5E1", "#1D4ED8"], borderWidth: 0 }] }), [kpis]);
   const barData = useMemo(() => {
     const meses: Record<string, number> = {};
     for (const g of guardados) { const mes = g.fecha.slice(0, 7); meses[mes] = (meses[mes] || 0) + 1; }
     const keys = Object.keys(meses).sort().slice(-6);
     const M = ["Ene","Feb","Mar","Abr","May","Jun","Jul","Ago","Sep","Oct","Nov","Dic"];
-    return { labels: keys.map((k) => { const [y, m] = k.split("-"); return M[+m - 1] + " " + y.slice(2); }), datasets: [{ data: keys.map((k) => meses[k]), backgroundColor: "#0e7490", borderRadius: 4 }] };
+    return { labels: keys.map((k) => { const [y, m] = k.split("-"); return M[+m - 1] + " " + y.slice(2); }), datasets: [{ data: keys.map((k) => meses[k]), backgroundColor: "#1D4ED8", borderRadius: 4 }] };
   }, [guardados]);
 
   // Panel: detalle de almacenaje
@@ -282,7 +282,7 @@ export default function TransportePage() {
         <div>
           <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 4 }}>
             <div style={{ width: 30, height: 30, borderRadius: 8, background: "rgba(14,116,144,0.10)", display: "flex", alignItems: "center", justifyContent: "center" }}>
-              <Truck size={16} color="#0e7490" />
+              <Truck size={16} color="var(--brand)" />
             </div>
             <h1 style={{ fontSize: 22, fontWeight: 700, color: "var(--text)", letterSpacing: "-0.03em", margin: 0 }}>Guardados Transporte</h1>
           </div>
@@ -302,7 +302,7 @@ export default function TransportePage() {
           <button className="ds-btn ds-btn-ghost" onClick={exportarCSV} title="Descargar Excel (CSV)">
             <Download size={14} />Excel
           </button>
-          <button className="ds-btn ds-btn-primary" style={{ background: "#0e7490", boxShadow: "0 2px 12px rgba(14,116,144,0.28)" }} onClick={() => setCreando(true)}>
+          <button className="ds-btn ds-btn-primary" style={{ background: "var(--brand)", boxShadow: "0 2px 12px rgba(29,78,216,0.24)" }} onClick={() => setCreando(true)}>
             <Plus size={14} />Nuevo guardado
           </button>
         </div>
@@ -310,10 +310,10 @@ export default function TransportePage() {
 
       {/* ── KPIs ── */}
       {!loading && pendientesTienda.length > 0 && (
-        <div className="ds-card" style={{ padding: 18, marginBottom: 22, borderColor: "#0e749040" }}>
+        <div className="ds-card" style={{ padding: 18, marginBottom: 22, borderColor: "rgba(29,78,216,.18)" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 9, marginBottom: 12 }}>
-            <div style={{ width: 28, height: 28, borderRadius: 8, background: "#0e749014", display: "flex", alignItems: "center", justifyContent: "center" }}>
-              <Truck size={15} color="#0e7490" />
+            <div style={{ width: 28, height: 28, borderRadius: 8, background: "var(--brand-tint)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+              <Truck size={15} color="var(--brand)" />
             </div>
             <div>
               <div style={{ fontSize: 13, fontWeight: 700, color: "var(--text)" }}>Despachos de tienda pendientes por guardar</div>
@@ -329,7 +329,7 @@ export default function TransportePage() {
                     {p.despacho.centroCostos}{p.despacho.numeroCajas ? ` - ${p.despacho.numeroCajas} cajas` : ""}{p.nota ? ` - ${p.nota}` : ""}
                   </div>
                 </div>
-                <button className="ds-btn ds-btn-sm ds-btn-primary" style={{ background: "#0e7490", flexShrink: 0 }} onClick={() => convertirPendienteTienda(p)}>
+                <button className="ds-btn ds-btn-sm ds-btn-primary" style={{ background: "var(--brand)", flexShrink: 0 }} onClick={() => convertirPendienteTienda(p)}>
                   <PackageCheck size={13} />Registrar guardado
                 </button>
               </div>
@@ -342,10 +342,10 @@ export default function TransportePage() {
         {loading ? <><SkeletonStat /><SkeletonStat /><SkeletonStat /><SkeletonStat /><SkeletonStat /></> : (
           <>
             <Stat value={guardados.length} label="Total registros" />
-            <Stat value={kpis.pend} label="Pendientes despacho" color="#f59e0b" onClick={() => setFEstado("PENDIENTE DESPACHO")} />
+            <Stat value={kpis.pend} label="Pendientes despacho" color="var(--muted2)" onClick={() => setFEstado("PENDIENTE DESPACHO")} />
             <Stat value={kpis.desp} label="Despachados" color="var(--success)" onClick={() => setFEstado("DESPACHADO")} />
             <Stat value={kpis.alertas} label="Con alerta" color={kpis.alertas > 0 ? "var(--error)" : "var(--success)"} onClick={() => setFAlerta(true)} />
-            <Stat value={fmtCOP(kpis.costoTotal)} label="Almacenaje activo" color="#0e7490" />
+            <Stat value={fmtCOP(kpis.costoTotal)} label="Almacenaje activo" color="var(--brand)" />
           </>
         )}
       </div>
@@ -450,8 +450,8 @@ export default function TransportePage() {
                             {alm.fase === "gracia"
                               ? <span style={{ color: "var(--success)", fontWeight: 600, fontSize: 11 }}>En gracia</span>
                               : alm.meses === 0
-                                ? <span style={{ color: "#f59e0b", fontWeight: 600, fontSize: 11 }}>Día {alm.diasEnPeriodo}/30</span>
-                                : <span style={{ color: "#0e7490", fontWeight: 700 }}>{fmtCOP(alm.costo)}</span>}
+                                ? <span style={{ color: "var(--muted2)", fontWeight: 600, fontSize: 11 }}>Día {alm.diasEnPeriodo}/30</span>
+                                : <span style={{ color: "var(--brand)", fontWeight: 700 }}>{fmtCOP(alm.costo)}</span>}
                           </td>
                           {/* Acciones on-hover */}
                           <td style={{ padding: "0 12px" }}>
@@ -555,7 +555,7 @@ export default function TransportePage() {
               <div style={{ fontSize: 11, color: "var(--muted)", marginBottom: 4, textTransform: "uppercase", letterSpacing: ".05em", fontWeight: 600 }}>
                 💰 Cobro de almacenaje
               </div>
-              <div style={{ fontSize: 30, fontWeight: 700, letterSpacing: "-0.04em", lineHeight: 1, marginBottom: 4, color: panelAlm.fase === "gracia" ? "var(--success)" : panelAlm.meses === 0 ? "#f59e0b" : "#0e7490" }}>
+              <div style={{ fontSize: 30, fontWeight: 700, letterSpacing: "-0.04em", lineHeight: 1, marginBottom: 4, color: panelAlm.fase === "gracia" ? "var(--brand)" : panelAlm.meses === 0 ? "var(--muted2)" : "var(--brand)" }}>
                 {panelAlm.fase === "gracia" ? "En gracia" : panelAlm.meses === 0 ? `Día ${panelAlm.diasEnPeriodo}/30` : fmtCOP(panelAlm.costo)}
               </div>
               <div style={{ fontSize: 12, color: "var(--muted)" }}>
@@ -758,7 +758,7 @@ function FormContacto({ clientId, onGuardado, onCancel }: {
       <input value={nota} onChange={(e) => setNota(e.target.value)} placeholder="Observaciones (opcional)…" style={{ ...inp, height: 32, fontSize: 12 }} />
       <div style={{ display: "flex", gap: 8 }}>
         <button type="button" className="ds-btn ds-btn-ghost ds-btn-sm" onClick={onCancel} style={{ flex: 1 }}>Cancelar</button>
-        <button type="submit" className="ds-btn ds-btn-primary ds-btn-sm" disabled={saving} style={{ flex: 2, background: "#0e7490" }}>
+        <button type="submit" className="ds-btn ds-btn-primary ds-btn-sm" disabled={saving} style={{ flex: 2, background: "var(--brand)" }}>
           {saving ? "…" : "Registrar"}
         </button>
       </div>
@@ -832,7 +832,7 @@ function ModalFechaEntrega({ g, onClose, onSaved, onError }: { g: Guardado; onCl
         </div>
         <div style={{ display: "flex", gap: 8 }}>
           <button type="button" className="ds-btn ds-btn-secondary" onClick={onClose} style={{ flex: 1 }}>Cancelar</button>
-          <button type="submit" className="ds-btn ds-btn-primary" disabled={saving} style={{ flex: 2, background: "#0e7490" }}>
+          <button type="submit" className="ds-btn ds-btn-primary" disabled={saving} style={{ flex: 2, background: "var(--brand)" }}>
             <Calendar size={13} />{saving ? "Guardando…" : "Guardar fecha"}
           </button>
         </div>
@@ -917,7 +917,7 @@ function ModalGuardado({ guardado, onClose, onSaved, onError, isAdmin }: { guard
         </div>
         <div style={{ display: "flex", gap: 8, paddingTop: 4 }}>
           <button type="button" className="ds-btn ds-btn-secondary" onClick={onClose} style={{ flex: 1 }}>Cancelar</button>
-          <button type="submit" className="ds-btn ds-btn-primary" disabled={saving} style={{ flex: 2, background: "#0e7490" }}>
+          <button type="submit" className="ds-btn ds-btn-primary" disabled={saving} style={{ flex: 2, background: "var(--brand)" }}>
             {saving ? "Guardando…" : isEdit ? "Guardar cambios" : "Registrar guardado"}
           </button>
         </div>

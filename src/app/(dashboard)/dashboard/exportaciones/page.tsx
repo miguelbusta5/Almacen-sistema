@@ -275,7 +275,7 @@ export default function ExportacionesPage() {
           <CheckCircle2 size={17} /> {saving ? "Guardando..." : "Guardar y comenzar siguiente"}
         </button>
       </form>
-      {error && <p style={{ margin: "12px 0 0", color: "#DC2626", fontSize: 13, fontWeight: 700 }}>{error}</p>}
+      {error && <p style={{ margin: "12px 0 0", color: "var(--error)", fontSize: 13, fontWeight: 700 }}>{error}</p>}
     </section>
   );
 
@@ -305,7 +305,7 @@ export default function ExportacionesPage() {
         <article key={item.id} className="op-record-card" style={{ "--module-color": COLOR, padding: 14 } as React.CSSProperties}>
           <div style={{ display: "flex", justifyContent: "space-between", gap: 10 }}>
             <strong>Caja {item.numeroCaja}</strong>
-            <span style={{ color: item.horaFinalizacion ? "#16A34A" : COLOR, fontSize: 12, fontWeight: 800 }}>{item.horaFinalizacion ? "Finalizado" : "En curso"}</span>
+            <span style={{ color: item.horaFinalizacion ? "var(--muted2)" : COLOR, fontSize: 12, fontWeight: 800 }}>{item.horaFinalizacion ? "Finalizado" : "En curso"}</span>
           </div>
           <div style={{ marginTop: 8, color: "var(--muted)", fontSize: 13, lineHeight: 1.6 }}>
             PLU {item.plu} · {item.descripcion}<br />

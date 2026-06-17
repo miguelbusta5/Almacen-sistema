@@ -22,13 +22,13 @@ import {
 
 // ── Paleta de tipos de novedad (compacta para chips) ─────
 const CHIP_TIPOS: Array<{ id: TipoNovedad; label: string; color: string }> = [
-  { id: "FALTANTE",       label: "Faltante",    color: "#ef4444" },
-  { id: "SOBRANTE",       label: "Sobrante",    color: "#10b981" },
-  { id: "DAÑADO",         label: "Dañado",      color: "#f59e0b" },
-  { id: "MAL_UBICADO",    label: "Mal ubicado", color: "#7c3aed" },
-  { id: "ERROR_DESPACHO", label: "Despacho",    color: "#dc2626" },
-  { id: "ERROR_SISTEMA",  label: "Sistema",     color: "#0e7490" },
-  { id: "ERROR_PROVEEDOR",label: "Proveedor",   color: "#6366f1" },
+  { id: "FALTANTE",       label: "Faltante",    color: "var(--error)" },
+  { id: "SOBRANTE",       label: "Sobrante",    color: "var(--brand)" },
+  { id: "DAÑADO",         label: "Dañado",      color: "var(--warning)" },
+  { id: "MAL_UBICADO",    label: "Mal ubicado", color: "var(--muted2)" },
+  { id: "ERROR_DESPACHO", label: "Despacho",    color: "var(--error)" },
+  { id: "ERROR_SISTEMA",  label: "Sistema",     color: "var(--brand)" },
+  { id: "ERROR_PROVEEDOR",label: "Proveedor",   color: "var(--muted2)" },
 ];
 
 // ── Estado de foto con máquina de estados clara ───────────
@@ -118,7 +118,7 @@ function NovedadCard({ item, onTap }: { item: Novedad; onTap: () => void }) {
           {item.posicion} {item.fabricante ? `· ${item.fabricante}` : ""}
         </div>
         {isOld && item.estado !== "SOLUCIONADO" && (
-          <div style={{ fontSize: 11, color: "#ef4444", marginTop: 2, fontWeight: 600 }}>
+          <div style={{ fontSize: 11, color: "var(--error)", marginTop: 2, fontWeight: 600 }}>
             {diasAgo} días sin resolver
           </div>
         )}
@@ -128,7 +128,7 @@ function NovedadCard({ item, onTap }: { item: Novedad; onTap: () => void }) {
       <div style={{ textAlign: "right", flexShrink: 0 }}>
         <div style={{
           fontSize: 16, fontWeight: 800, fontFamily: "var(--mono)",
-          color: item.cantidad > 0 ? "#10b981" : item.cantidad < 0 ? "#ef4444" : "var(--muted)",
+          color: item.cantidad > 0 ? "var(--brand)" : item.cantidad < 0 ? "var(--error)" : "var(--muted)",
         }}>
           {item.cantidad > 0 ? "+" : ""}{item.cantidad}
         </div>
@@ -435,7 +435,7 @@ function NuevaNovedadSheet({ onClose, onCreada, existingPlus, existingPosiciones
           </label>
           {/* Toggle faltante / sobrante */}
           <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
-            {[{ val: -1, label: "Faltante (−)", color: "#ef4444" }, { val: 1, label: "Sobrante (+)", color: "#10b981" }].map(({ val, label, color }) => (
+            {[{ val: -1, label: "Faltante (-)", color: "var(--error)" }, { val: 1, label: "Sobrante (+)", color: "var(--brand)" }].map(({ val, label, color }) => (
               <button
                 key={val}
                 type="button"
@@ -462,7 +462,7 @@ function NuevaNovedadSheet({ onClose, onCreada, existingPlus, existingPosiciones
               <Minus size={22} />
             </button>
             <div style={{ flex: 1, textAlign: "center" }}>
-              <div style={{ fontSize: 40, fontWeight: 800, fontFamily: "var(--mono)", letterSpacing: "-0.04em", color: cantidad < 0 ? "#ef4444" : "#10b981", lineHeight: 1 }}>
+              <div style={{ fontSize: 40, fontWeight: 800, fontFamily: "var(--mono)", letterSpacing: "-0.04em", color: cantidad < 0 ? "var(--error)" : "var(--brand)", lineHeight: 1 }}>
                 {cantidad > 0 ? "+" : ""}{cantidad}
               </div>
               <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 4 }}>unidades</div>
@@ -698,7 +698,7 @@ function DetalleSheet({ item, onClose, onUpdated, canEdit }: {
           <div style={{
             fontSize: 52, fontWeight: 900, fontFamily: "var(--mono)",
             letterSpacing: "-0.04em", lineHeight: 1,
-            color: item.cantidad < 0 ? "#ef4444" : "#10b981",
+            color: item.cantidad < 0 ? "var(--error)" : "var(--brand)",
           }}>
             {item.cantidad > 0 ? "+" : ""}{item.cantidad}
           </div>
@@ -713,7 +713,7 @@ function DetalleSheet({ item, onClose, onUpdated, canEdit }: {
                 type="button"
                 onClick={() => cambiarEstado("EN PROCESO")}
                 disabled={saving}
-                style={{ height: 52, borderRadius: 14, border: "2px solid #f59e0b", background: "#f59e0b14", color: "#f59e0b", fontSize: 15, fontWeight: 700, cursor: "pointer", WebkitTapHighlightColor: "transparent" }}
+                style={{ height: 52, borderRadius: 14, border: "2px solid var(--border)", background: "var(--surface3)", color: "var(--muted2)", fontSize: 15, fontWeight: 700, cursor: "pointer", WebkitTapHighlightColor: "transparent" }}
               >
                 En proceso
               </button>
@@ -722,7 +722,7 @@ function DetalleSheet({ item, onClose, onUpdated, canEdit }: {
               type="button"
               onClick={() => cambiarEstado("SOLUCIONADO")}
               disabled={saving}
-              style={{ height: 58, borderRadius: 14, border: "none", background: "#10b981", color: "#fff", fontSize: 16, fontWeight: 800, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 8, WebkitTapHighlightColor: "transparent" }}
+              style={{ height: 58, borderRadius: 14, border: "none", background: "var(--brand)", color: "#fff", fontSize: 16, fontWeight: 800, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 8, WebkitTapHighlightColor: "transparent" }}
             >
               <CheckCircle2 size={18} />
               Marcar como solucionado
@@ -906,7 +906,7 @@ export default function InventarioMobilePage() {
         <div style={{ display: "flex", gap: 8, overflowX: "auto", paddingBottom: 12, scrollbarWidth: "none" }}>
           {FILTROS.map(({ val, label }) => {
             const isActive = filter === val;
-            const color = val === "" ? "var(--brand)" : val === "PENDIENTE" ? "#ef4444" : val === "EN PROCESO" ? "#f59e0b" : "#10b981";
+            const color = val === "" ? "var(--brand)" : val === "PENDIENTE" ? "var(--error)" : val === "EN PROCESO" ? "var(--muted2)" : "var(--brand)";
             return (
               <button
                 key={val}
@@ -1025,7 +1025,7 @@ export default function InventarioMobilePage() {
           bottom: 100, left: 20, right: 20,
           zIndex: 10000,
           padding: "14px 20px",
-          background: toast.ok ? "#0F0F10" : "#ef4444",
+          background: toast.ok ? "#0F0F10" : "var(--error)",
           color: "#fff",
           borderRadius: 14,
           fontSize: 15, fontWeight: 600,

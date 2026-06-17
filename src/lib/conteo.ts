@@ -66,10 +66,10 @@ export const CICLO_ESTADO_LABEL: Record<CicloEstado, string> = {
 };
 
 export const CICLO_ESTADO_COLOR: Record<CicloEstado, string> = {
-  PLANIFICADO: "#f59e0b",
+  PLANIFICADO: "#475569",
   EN_PROGRESO: "#3b82f6",
-  EN_RECONTEO: "#7c3aed",
-  CERRADO: "#10b981",
+  EN_RECONTEO: "#475569",
+  CERRADO: "#1D4ED8",
 };
 
 export const LINEA_ESTADO_LABEL: Record<LineaEstado, string> = {
@@ -83,12 +83,12 @@ export const LINEA_ESTADO_LABEL: Record<LineaEstado, string> = {
 export const LINEA_ESTADO_COLOR: Record<LineaEstado, string> = {
   PENDIENTE: "#94a3b8",
   CONTADO: "#3b82f6",
-  EN_RECONTEO: "#7c3aed",
-  OK: "#10b981",
-  NOVEDAD: "#ef4444",
+  EN_RECONTEO: "#475569",
+  OK: "#1D4ED8",
+  NOVEDAD: "#B42318",
 };
 
-export const COLOR_CONTEO = "#16a34a";
+export const COLOR_CONTEO = "#1D4ED8";
 
 // ── Cálculo de cantidad contada ───────────────────────
 // Si el operario ingresó cajas/undEmp/reguero → calcula

@@ -1,5 +1,26 @@
 # Decisiones de Arquitectura y Producto
 
+## 2026-06-16 - Capa CEDI Harmony para armonia visual azul/gris
+
+**Decision:**
+- Se agrega una capa visual **CEDI Harmony** encima del rediseño azul/gris.
+- La interfaz reduce al minimo los colores rojo, verde y ambar visibles; verde y ambar dejan de funcionar como colores principales de estado.
+- Los estados positivos, finalizados, activos y OK usan azul; los estados pendientes/alerta usan gris; rojo queda reservado para errores, rechazos, bloqueos y acciones destructivas.
+- Se agrega un fondo operativo sutil con textura de plano/grid para que la app tenga presencia visual y no se sienta plana.
+
+**Contexto:**
+- El usuario reporto que la app todavia se veia sin armonia por mezcla de rojo, verde y otros colores, y que faltaba un fondo visual satisfactorio.
+- La mencion `@base44` se trato como referencia/checklist; el repo no tiene `base44/config.jsonc`, por lo que no hay proyecto Base44 que operar por CLI.
+
+**Consecuencias:**
+- `globals.css` centraliza la nueva capa Harmony.
+- Constantes visuales de Inventario, Conteo, Tienda y Transporte se alinean a azul/gris.
+- Se limpian colores hardcodeados en Dashboard, Usuarios, Transporte, Inventario, Conteo, Tienda, Exportaciones, Solicitudes, Centro de Control, Auditoria y ruta legacy Muebles.
+- No hay cambios de APIs, schema, permisos ni flujos de negocio.
+- Logistica, rutas, GPS y Mi Ruta siguen suspendidos.
+
+---
+
 ## 2026-06-16 - Revision predeploy Lovable/Base44 del rediseno azul/gris
 
 **Decision:**

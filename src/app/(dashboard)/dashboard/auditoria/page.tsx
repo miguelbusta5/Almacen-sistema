@@ -20,9 +20,9 @@ interface LogItem {
 }
 
 const ACTION_META: Record<string, { label: string; color: string }> = {
-  CREATE: { label: "Creó", color: "#10b981" },
+  CREATE: { label: "Creó", color: "var(--brand)" },
   UPDATE: { label: "Editó", color: "#0ea5e9" },
-  DELETE: { label: "Eliminó", color: "#ef4444" },
+  DELETE: { label: "Eliminó", color: "var(--error)" },
 };
 const MODULE_META: Record<string, { label: string; color: string }> = {
   muebles: { label: "Muebles", color: "#0ea5e9" },
@@ -140,7 +140,7 @@ export default function AuditoriaPage() {
   if (role && role !== "ADMIN") {
     return (
       <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 14, padding: "3rem 2rem", textAlign: "center" }}>
-        <ShieldAlert size={40} color="#ef4444" style={{ margin: "0 auto 1rem" }} />
+        <ShieldAlert size={40} color="var(--error)" style={{ margin: "0 auto 1rem" }} />
         <div style={{ fontSize: 16, fontWeight: 700, color: "var(--text)" }}>Acceso restringido</div>
         <div style={{ fontSize: 13, color: "var(--muted)", marginTop: 6 }}>Solo los administradores pueden ver la auditoría.</div>
       </div>

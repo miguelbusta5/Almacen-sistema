@@ -110,10 +110,10 @@ export const ALERTA_TIER_LABEL: Record<AlertaTier, string> = {
 };
 
 export const ALERTA_TIER_COLOR: Record<AlertaTier, string> = {
-  ok:        "#10b981",
-  aviso:     "#f59e0b",
-  alerta:    "#ef4444",
-  critico:   "#dc2626",
+  ok:        "#1D4ED8",
+  aviso:     "#475569",
+  alerta:    "#B42318",
+  critico:   "#B42318",
   emergencia:"#7f1d1d",
 };
 

@@ -28,13 +28,13 @@ export const TIPO_NOVEDAD_LABEL: Record<TipoNovedad, string> = {
 };
 
 export const TIPO_NOVEDAD_COLOR: Record<TipoNovedad, string> = {
-  SOBRANTE:        "#10b981",
-  FALTANTE:        "#ef4444",
-  DAÑADO:          "#f59e0b",
-  MAL_UBICADO:     "#7c3aed",
-  ERROR_SISTEMA:   "#0e7490",
+  SOBRANTE:        "#1D4ED8",
+  FALTANTE:        "#B42318",
+  DAÑADO:          "#475569",
+  MAL_UBICADO:     "#475569",
+  ERROR_SISTEMA:   "#1D4ED8",
   ERROR_PROVEEDOR: "#6366f1",
-  ERROR_DESPACHO:  "#dc2626",
+  ERROR_DESPACHO:  "#B42318",
 };
 
 // ── Causa raíz ───────────────────────────────────────────
@@ -112,9 +112,9 @@ export function todayISO(): string {
 }
 
 export const ESTADO_COLOR: Record<EstadoNovedad, string> = {
-  "PENDIENTE": "#ef4444",
-  "EN PROCESO": "#f59e0b",
-  "SOLUCIONADO": "#10b981",
+  "PENDIENTE": "#B42318",
+  "EN PROCESO": "#475569",
+  "SOLUCIONADO": "#1D4ED8",
 };
 
 export function estadoLabel(e: EstadoNovedad): string {

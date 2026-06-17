@@ -219,7 +219,7 @@ export default function TiendaPage() {
     label: h.details ?? h.action,
     meta: h.userName ?? "Sistema",
     time: h.createdAt ? new Date(h.createdAt).toLocaleString("es-CO", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" }) : "",
-    color: h.action === "CREATE" ? "#3b82f6" : h.action === "DELETE" ? "#ef4444" : "#10b981",
+    color: h.action === "CREATE" ? "var(--brand)" : h.action === "DELETE" ? "var(--error)" : "var(--muted2)",
   }));
 
   return (
@@ -533,7 +533,7 @@ export default function TiendaPage() {
                       <div style={{ display: "flex", flexDirection: "column", alignItems: "center", flex: 1, minWidth: 0 }}>
                         <div style={{
                           width: 28, height: 28, borderRadius: "50%", flexShrink: 0,
-                          background: isNovedad && isCurrent ? "#ef4444" : active ? color : "var(--surface2)",
+                          background: isNovedad && isCurrent ? "var(--error)" : active ? color : "var(--surface2)",
                           border: `2px solid ${active ? color : "var(--border)"}`,
                           display: "flex", alignItems: "center", justifyContent: "center",
                           transition: "all .2s",
@@ -971,7 +971,7 @@ function ModalDespacho({ despacho, role, onClose, onSaved, onError }: {
                 </button>
               </div>
               {p.status && p.status !== "idle" && (
-                <div style={{ margin: "-2px 0 8px", fontSize: 11, color: p.status === "found" ? "#10b981" : p.status === "missing" ? "#f59e0b" : "var(--muted)", fontWeight: 700 }}>
+                <div style={{ margin: "-2px 0 8px", fontSize: 11, color: p.status === "found" ? "var(--brand)" : p.status === "missing" ? "var(--muted2)" : "var(--muted)", fontWeight: 700 }}>
                   {p.status === "loading" && "Buscando PLU en maestro..."}
                   {p.status === "found" && "Datos cargados desde maestro"}
                   {p.status === "missing" && "PLU no encontrado en maestro"}

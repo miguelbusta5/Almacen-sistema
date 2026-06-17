@@ -25,6 +25,8 @@
 
 ### UI / UX Control Logistico CEDI
 
+- [ ] QA visual con sesion real de la capa CEDI Harmony en desktop, tablet y movil
+- [ ] Revisar y corregir mojibake visible en Cerebro y pantallas legacy
 - [ ] QA visual desktop/mobile con sesion real para el rediseño Claro Ejecutivo Azul/Gris
 - [ ] Extender datos en vivo a pantallas secundarias que aun usan carga manual si la operacion lo requiere
 - [ ] QA visual desktop/mobile con sesion real por rol de Login, Dashboard, Usuarios, Tienda, Conteo y Preoperacional
@@ -76,6 +78,7 @@
 - [x] Rediseño Claro Ejecutivo Azul/Gris: paleta contenida, shell claro, login claro, moduleTheme monolineal y datos en vivo en pantallas principales - 2026-06-16
 
 - [x] Revision predeploy Lovable/Base44: Lovable como referencia visual, Base44 como checklist comparativo, pulido azul/gris en Integracion, Mis Tareas y Centro de Control - 2026-06-16
+- [x] Capa CEDI Harmony: fondo operativo sutil, semantica contenida y limpieza de colores rojo/verde/ambar/violeta/teal hardcodeados - 2026-06-16
 
 ---
 

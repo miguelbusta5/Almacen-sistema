@@ -56,8 +56,8 @@
   --blue:         #2563EB;
   --blue-light:   rgba(37,99,235,0.09);
   --orange:       #2563EB;
-  --orange-light: rgba(14,116,144,0.09);
-  --green:        #10B981;
+  --orange-light: rgba(37,99,235,0.09);
+  --green:        #2563EB;
   --red:          #EF4444;
   --amber:        #F59E0B;
   --purple:       #2563EB;
@@ -120,7 +120,7 @@ html[data-theme="dark"] {
   --module-conteo: #60A5FA;
   --module-admin: #94A3B8;
 
-  --success:       #34D399;
+  --success:       #60A5FA;
   --success-tint:  rgba(52,211,153,0.16);
   --warning:       #FBBF24;
   --warning-tint:  rgba(251,191,36,0.16);
@@ -131,12 +131,12 @@ html[data-theme="dark"] {
 
   --blue:         #3B82F6;
   --blue-light:   rgba(59,130,246,0.12);
-  --orange:       #22D3EE;
-  --orange-light: rgba(34,211,238,0.12);
-  --green:        #34D399;
+  --orange:       #60A5FA;
+  --orange-light: rgba(96,165,250,0.12);
+  --green:        #60A5FA;
   --red:          #F87171;
   --amber:        #FBBF24;
-  --purple:       #A78BFA;
+  --purple:       #60A5FA;
 
   --shadow-xs: 0 1px 2px rgba(0,0,0,0.40);
   --shadow-sm: 0 1px 3px rgba(0,0,0,0.50);
@@ -906,11 +906,11 @@ textarea {
   --module-conteo: #2563EB;
   --module-admin: #334155;
 
-  --success: #15803D;
+  --success: #1D4ED8;
   --success-tint: rgba(21, 128, 61, 0.10);
   --warning: #B45309;
   --warning-tint: rgba(180, 83, 9, 0.11);
-  --error: #DC2626;
+  --error: #B42318;
   --error-tint: rgba(220, 38, 38, 0.10);
   --info: #2563EB;
   --info-tint: rgba(37, 99, 235, 0.10);
@@ -919,8 +919,8 @@ textarea {
   --blue-light: rgba(37, 99, 235, 0.09);
   --orange: #2563EB;
   --orange-light: rgba(37, 99, 235, 0.09);
-  --green: #15803D;
-  --red: #DC2626;
+  --green: #1D4ED8;
+  --red: #B42318;
   --amber: #B45309;
   --purple: #2563EB;
 
@@ -1135,4 +1135,238 @@ html[data-theme="dark"] .op-module-header {
 .dash-main :where(input, select, textarea):focus {
   border-color: var(--brand) !important;
   box-shadow: var(--ring) !important;
+}
+
+/* CEDI v4 - Harmony layer
+   Los estados dejan de dominar la interfaz: se muestran como micro-senales
+   sobre una base blanco/gris/azul mas satisfactoria y consistente. */
+:root {
+  --bg: #EDF3FA;
+  --canvas: #E9F1F9;
+  --surface: #FFFFFF;
+  --surface2: #F6F9FD;
+  --surface3: #EEF4FA;
+  --surface-elevated: #FFFFFF;
+
+  --text: #0B1220;
+  --muted2: #334155;
+  --muted: #64748B;
+  --faint: #94A3B8;
+
+  --brand: #1D4ED8;
+  --brand-600: #1E40AF;
+  --brand-700: #1E3A8A;
+  --brand-bright: #3B82F6;
+  --brand-grad: linear-gradient(135deg, #1E3A8A 0%, #1D4ED8 58%, #3B82F6 100%);
+  --brand-tint: rgba(29, 78, 216, 0.085);
+
+  --border: rgba(15, 23, 42, 0.095);
+  --border-strong: rgba(15, 23, 42, 0.16);
+
+  --success: #1D4ED8;
+  --success-tint: rgba(29, 78, 216, 0.075);
+  --warning: #475569;
+  --warning-tint: rgba(71, 85, 105, 0.075);
+  --error: #B42318;
+  --error-tint: rgba(180, 35, 24, 0.075);
+  --info: #1D4ED8;
+  --info-tint: rgba(29, 78, 216, 0.075);
+
+  --green: var(--success);
+  --amber: var(--warning);
+  --red: var(--error);
+  --purple: var(--brand);
+  --orange: var(--brand);
+
+  --shadow-xs: 0 1px 2px rgba(15, 23, 42, 0.045);
+  --shadow-sm: 0 1px 2px rgba(15, 23, 42, 0.055), 0 8px 24px rgba(15, 23, 42, 0.035);
+  --shadow: 0 14px 34px rgba(15, 23, 42, 0.070), 0 1px 2px rgba(15, 23, 42, 0.045);
+  --shadow-md: 0 18px 42px rgba(15, 23, 42, 0.095), 0 3px 10px rgba(15, 23, 42, 0.055);
+  --shadow-lg: 0 28px 64px rgba(15, 23, 42, 0.130), 0 8px 20px rgba(15, 23, 42, 0.075);
+  --ring: 0 0 0 3px rgba(29, 78, 216, 0.20);
+  --ring-error: 0 0 0 3px rgba(180, 35, 24, 0.16);
+}
+
+html[data-theme="dark"] {
+  --bg: #08111F;
+  --canvas: #0A1424;
+  --surface: #101827;
+  --surface2: #152033;
+  --surface3: #1B2940;
+  --surface-elevated: #121D2F;
+  --success: #60A5FA;
+  --success-tint: rgba(96, 165, 250, 0.12);
+  --warning: #CBD5E1;
+  --warning-tint: rgba(203, 213, 225, 0.10);
+  --error: #FCA5A5;
+  --error-tint: rgba(252, 165, 165, 0.10);
+}
+
+body {
+  background-color: var(--canvas);
+  background-image:
+    radial-gradient(circle at 18% -8%, rgba(29, 78, 216, 0.12), transparent 34%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.82), rgba(237, 243, 250, 0.72) 34%, rgba(237, 243, 250, 0.96)),
+    repeating-linear-gradient(90deg, rgba(30, 64, 175, 0.035) 0 1px, transparent 1px 84px),
+    repeating-linear-gradient(0deg, rgba(30, 64, 175, 0.026) 0 1px, transparent 1px 84px);
+  background-attachment: fixed;
+}
+
+html[data-theme="dark"] body {
+  background-image:
+    radial-gradient(circle at 18% -8%, rgba(96, 165, 250, 0.16), transparent 34%),
+    linear-gradient(180deg, rgba(8, 17, 31, 0.94), rgba(10, 20, 36, 0.98)),
+    repeating-linear-gradient(90deg, rgba(96, 165, 250, 0.040) 0 1px, transparent 1px 84px),
+    repeating-linear-gradient(0deg, rgba(96, 165, 250, 0.030) 0 1px, transparent 1px 84px);
+}
+
+.op-shell {
+  background: transparent;
+}
+
+.dash-main {
+  position: relative;
+}
+
+.dash-main::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(circle at 82% 8%, rgba(29, 78, 216, 0.075), transparent 26%),
+    linear-gradient(135deg, transparent 0 54%, rgba(255, 255, 255, 0.32) 54% 56%, transparent 56%);
+  opacity: 0.78;
+  z-index: -1;
+}
+
+.glass {
+  background: rgba(255, 255, 255, 0.78);
+  border-color: rgba(148, 163, 184, 0.24);
+  backdrop-filter: blur(22px) saturate(160%);
+  -webkit-backdrop-filter: blur(22px) saturate(160%);
+}
+
+.op-workbench,
+.op-panel,
+.ds-card,
+.ds-panel,
+.op-table-wrap,
+.ds-stat {
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(255, 255, 255, 0.88)),
+    var(--surface);
+  border-color: rgba(15, 23, 42, 0.085);
+  box-shadow: var(--shadow-sm);
+}
+
+.op-panel:hover,
+.ds-card:hover,
+.ds-panel:hover,
+.op-record-card:hover {
+  border-color: rgba(29, 78, 216, 0.18);
+}
+
+.op-module-header {
+  background:
+    linear-gradient(135deg, rgba(29, 78, 216, 0.115), rgba(255, 255, 255, 0.94) 46%, rgba(255, 255, 255, 0.88)),
+    var(--surface);
+  border-color: rgba(29, 78, 216, 0.16);
+}
+
+.op-module-header::after {
+  height: 1px;
+  opacity: 0.52;
+}
+
+.ds-badge {
+  background: rgba(255, 255, 255, 0.72);
+  border: 1px solid rgba(148, 163, 184, 0.22);
+  color: var(--muted2);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.60);
+}
+.ds-badge-success,
+.ds-badge-info {
+  background: rgba(29, 78, 216, 0.070);
+  color: var(--brand);
+  border-color: rgba(29, 78, 216, 0.16);
+}
+.ds-badge-warning {
+  background: rgba(71, 85, 105, 0.070);
+  color: var(--muted2);
+  border-color: rgba(71, 85, 105, 0.14);
+}
+.ds-badge-error {
+  background: rgba(180, 35, 24, 0.058);
+  color: var(--error);
+  border-color: rgba(180, 35, 24, 0.14);
+}
+.ds-badge-dot {
+  width: 6px;
+  height: 6px;
+}
+
+.ds-btn-danger {
+  background: rgba(180, 35, 24, 0.060);
+  color: var(--error);
+  border: 1px solid rgba(180, 35, 24, 0.14);
+}
+.ds-btn-danger:hover:not(:disabled) {
+  background: rgba(180, 35, 24, 0.10);
+  color: var(--error);
+  box-shadow: var(--shadow-sm);
+}
+
+.ds-timeline-dot.success,
+.ds-timeline-dot.warning,
+.ds-timeline-dot.active {
+  background: var(--brand);
+  border-color: var(--brand);
+}
+.ds-timeline-dot.error {
+  background: #fff;
+  border-color: rgba(180, 35, 24, 0.46);
+}
+
+.op-status-band {
+  background: rgba(29, 78, 216, 0.065);
+  border-color: rgba(29, 78, 216, 0.15);
+}
+
+.op-action {
+  background: rgba(255, 255, 255, 0.82);
+}
+
+.op-action:hover,
+.ds-btn-secondary:hover:not(:disabled),
+.ds-btn-ghost:hover:not(:disabled) {
+  background: rgba(29, 78, 216, 0.060);
+  border-color: rgba(29, 78, 216, 0.18);
+}
+
+.ds-btn-primary {
+  background: linear-gradient(135deg, var(--brand-700), var(--brand) 62%, var(--brand-bright));
+  box-shadow: 0 10px 22px rgba(29, 78, 216, 0.22);
+}
+
+.ds-btn-primary:hover:not(:disabled) {
+  background: linear-gradient(135deg, var(--brand-600), var(--brand-bright));
+  box-shadow: 0 14px 30px rgba(29, 78, 216, 0.28);
+}
+
+.ds-stat::before,
+.op-kpi::before {
+  width: 2px;
+  opacity: 0.48;
+}
+
+html[data-theme="dark"] .glass,
+html[data-theme="dark"] .op-workbench,
+html[data-theme="dark"] .op-panel,
+html[data-theme="dark"] .ds-card,
+html[data-theme="dark"] .ds-panel,
+html[data-theme="dark"] .op-table-wrap,
+html[data-theme="dark"] .ds-stat {
+  background: rgba(16, 24, 39, 0.86);
+  border-color: rgba(148, 163, 184, 0.14);
 }

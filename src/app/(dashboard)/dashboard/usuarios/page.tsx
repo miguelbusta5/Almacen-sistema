@@ -258,7 +258,7 @@ export default function UsuariosPage() {
                             </span>
                           </td>
                           <td style={{ padding: "0.7rem 0.9rem" }}>
-                            <span style={{ fontSize: 11, fontWeight: 700, padding: "2px 8px", borderRadius: 20, background: u.active ? "#ecfdf5" : "#fef2f2", color: u.active ? "#10b981" : "#ef4444" }}>
+                            <span style={{ fontSize: 11, fontWeight: 700, padding: "2px 8px", borderRadius: 20, background: u.active ? "var(--brand-tint)" : "var(--surface3)", color: u.active ? "var(--brand)" : "var(--muted)" }}>
                               {u.active ? "Activo" : "Inactivo"}
                             </span>
                           </td>
@@ -433,7 +433,7 @@ function CatalogosPreoperacional({
           <div>
             <h2 style={{ fontSize: 15, fontWeight: 800, color: "var(--text)" }}>Maestro PLU</h2>
             <p style={{ fontSize: 12, color: "var(--muted)", marginTop: 2 }}>Importa MAESTRO.xlsx para autollenar descripción, fabricante, marca y precio.</p>
-            {resultadoMaestro && <p style={{ fontSize: 12, color: "#10b981", marginTop: 4, fontWeight: 800 }}>{resultadoMaestro}</p>}
+            {resultadoMaestro && <p style={{ fontSize: 12, color: "var(--brand)", marginTop: 4, fontWeight: 800 }}>{resultadoMaestro}</p>}
           </div>
         </div>
         <label style={{ ...btnPri, flex: "0 0 auto", background: "#6366f1", minWidth: 160, textAlign: "center", opacity: importandoMaestro ? 0.7 : 1 }}>
@@ -443,7 +443,7 @@ function CatalogosPreoperacional({
       </div>
       <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 14, padding: "1rem" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: "0.9rem" }}>
-          <Car size={18} color="#0e7490" />
+          <Car size={18} color="var(--brand)" />
           <h2 style={{ fontSize: 15, fontWeight: 800, color: "var(--text)" }}>Vehículos</h2>
         </div>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(130px, 1fr))", gap: 8 }}>
@@ -457,7 +457,7 @@ function CatalogosPreoperacional({
             </select>
           </Field>
           <Field label="Capacidad kg"><input type="number" min={1} value={capacidadKg} onChange={e => setCapacidadKg(e.target.value)} style={inp} placeholder="Opcional" /></Field>
-          <button onClick={crearVehiculo} disabled={savingVehiculo} style={{ ...btnPri, alignSelf: "end", background: "#0e7490" }}>
+          <button onClick={crearVehiculo} disabled={savingVehiculo} style={{ ...btnPri, alignSelf: "end", background: "var(--brand)" }}>
             {savingVehiculo ? "Creando..." : "Crear vehículo"}
           </button>
         </div>
@@ -465,7 +465,7 @@ function CatalogosPreoperacional({
           {loading ? <div style={{ color: "var(--muted)", fontSize: 12 }}>Cargando vehículos...</div> : vehiculos.map(v => (
             <div key={v.id} style={{ display: "flex", justifyContent: "space-between", gap: 10, borderTop: "1px solid var(--border)", paddingTop: 8, fontSize: 12 }}>
               <span style={{ fontWeight: 800 }}>{v.placa} <span style={{ color: "var(--muted)", fontWeight: 600 }}>{v.tipo}</span></span>
-              <span style={{ color: v.estado === "ACTIVO" ? "#10b981" : "#f59e0b", fontWeight: 800 }}>{v.estado}</span>
+              <span style={{ color: v.estado === "ACTIVO" ? "var(--brand)" : "var(--muted2)", fontWeight: 800 }}>{v.estado}</span>
             </div>
           ))}
           {!loading && vehiculos.length === 0 && <div style={{ color: "var(--muted)", fontSize: 12 }}>No hay vehículos registrados. Crea uno para habilitar usuarios transportistas.</div>}
@@ -474,7 +474,7 @@ function CatalogosPreoperacional({
 
       <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 14, padding: "1rem" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: "0.9rem" }}>
-          <Truck size={18} color="#0e7490" />
+          <Truck size={18} color="var(--brand)" />
           <h2 style={{ fontSize: 15, fontWeight: 800, color: "var(--text)" }}>Transportistas operativos</h2>
         </div>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))", gap: 8, alignItems: "end" }}>
@@ -486,7 +486,7 @@ function CatalogosPreoperacional({
               {vehiculos.map(v => <option key={v.id} value={v.id}>{v.placa} - {v.tipo}</option>)}
             </select>
           </Field>
-          <button onClick={crearTransportista} disabled={savingTransportista} style={{ ...btnPri, background: "#0e7490", minWidth: 120 }}>
+          <button onClick={crearTransportista} disabled={savingTransportista} style={{ ...btnPri, background: "var(--brand)", minWidth: 120 }}>
             {savingTransportista ? "Creando..." : "Crear"}
           </button>
         </div>
@@ -517,7 +517,7 @@ function CatalogosPreoperacional({
                       {vehiculos.map(v => <option key={v.id} value={v.id}>{v.placa} - {v.tipo}</option>)}
                     </select>
                   </td>
-                  <td style={{ padding: "0.5rem", color: t.activo ? "#10b981" : "#ef4444", fontWeight: 800 }}>{t.activo ? "Activo" : "Inactivo"}</td>
+                  <td style={{ padding: "0.5rem", color: t.activo ? "var(--brand)" : "var(--muted)", fontWeight: 800 }}>{t.activo ? "Activo" : "Inactivo"}</td>
                 </tr>
               ))}
             </tbody>
@@ -652,14 +652,14 @@ function FormNuevo({ onClose, onSaved, onError }: { onClose: () => void; onSaved
               ))}
             </select>
             {!loadingTransportistas && transportistas.length === 0 && (
-              <p style={{ fontSize: 11, color: "#f59e0b", marginTop: 4 }}>
+              <p style={{ fontSize: 11, color: "var(--muted2)", marginTop: 4 }}>
                 No hay transportistas activos con vehículo y sin usuario asignado.
               </p>
             )}
           </Field>
         )}
         {formError && (
-          <div style={{ border: "1px solid #ef444455", background: "#ef444418", color: "#fca5a5", borderRadius: 8, padding: "0.6rem 0.75rem", fontSize: 12, fontWeight: 700 }}>
+          <div style={{ border: "1px solid rgba(180,35,24,.20)", background: "var(--error-tint)", color: "var(--error)", borderRadius: 8, padding: "0.6rem 0.75rem", fontSize: 12, fontWeight: 700 }}>
             {formError}
           </div>
         )}

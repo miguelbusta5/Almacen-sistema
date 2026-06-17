@@ -425,7 +425,7 @@ export default function MueblesPage() {
                     .map(([turno, count]) => {
                       const total = Object.values((stats.byTurno as Record<string, number>) ?? {}).filter((_, i, arr) => Object.keys((stats.byTurno as object) ?? {})[i] !== "SIN_TURNO").reduce((a, b) => a + (b as number), 0);
                       const pct = total > 0 ? Math.round((count as number) / total * 100) : 0;
-                      const col = turno === "MAÑANA" ? "#f59e0b" : turno === "TARDE" ? "#2563eb" : "#7c3aed";
+                      const col = turno === "MAÑANA" ? "var(--muted2)" : turno === "TARDE" ? "var(--brand)" : "var(--muted)";
                       return (
                         <div key={turno} style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10 }}>
                           <div style={{ flex: 1 }}>
@@ -903,7 +903,7 @@ function ModalForm({ novedad, role, onClose, onSaved, onError }: {
             </div>
           </div>
           {maestroStatus !== "idle" && (
-            <div style={{ marginTop: -4, padding: "8px 10px", borderRadius: 8, background: maestroStatus === "found" ? "#10b98118" : maestroStatus === "missing" ? "#f59e0b18" : "var(--surface2)", color: maestroStatus === "found" ? "#10b981" : maestroStatus === "missing" ? "#f59e0b" : "var(--muted)", fontSize: 12, fontWeight: 700 }}>
+            <div style={{ marginTop: -4, padding: "8px 10px", borderRadius: 8, background: maestroStatus === "found" ? "var(--brand-tint)" : maestroStatus === "missing" ? "var(--surface3)" : "var(--surface2)", color: maestroStatus === "found" ? "var(--brand)" : maestroStatus === "missing" ? "var(--muted2)" : "var(--muted)", fontSize: 12, fontWeight: 700 }}>
               {maestroStatus === "loading" && "Buscando PLU en maestro..."}
               {maestroStatus === "found" && "Datos cargados desde maestro"}
               {maestroStatus === "missing" && "PLU no encontrado en maestro"}

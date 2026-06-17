@@ -134,17 +134,16 @@ const emptyForm = {
 };
 
 function estadoColor(estado: Estado) {
-  if (estado === "RECHAZADA" || estado === "CANCELADA") return "#DC2626";
-  if (estado === "PROGRAMADA") return "#2563EB";
-  if (estado === "EFECTUADA") return "#16A34A";
-  if (estado === "REENVIADA") return "#D97706";
-  return COLOR;
+  if (estado === "RECHAZADA" || estado === "CANCELADA") return "#B42318";
+  if (estado === "PROGRAMADA" || estado === "EFECTUADA") return "#1D4ED8";
+  if (estado === "REENVIADA") return "#475569";
+  return "#1D4ED8";
 }
 
 function semaforoColor(semaforo: string) {
-  if (semaforo === "VENCIDO" || semaforo === "CANCELADO") return "#DC2626";
-  if (semaforo === "ALERTA") return "#D97706";
-  if (semaforo === "EFECTUADO" || semaforo === "NORMAL") return "#16A34A";
+  if (semaforo === "VENCIDO" || semaforo === "CANCELADO") return "#B42318";
+  if (semaforo === "ALERTA") return "#475569";
+  if (semaforo === "EFECTUADO" || semaforo === "NORMAL") return "#1D4ED8";
   return "#64748B";
 }
 
@@ -553,8 +552,8 @@ export default function SolicitudesTransportePage() {
         {[
           ["Pendientes", kpis.pendientes, <Clock key="i" size={16} />, COLOR],
           ["Programadas", kpis.programadas, <Send key="i" size={16} />, "#2563EB"],
-          ["Rechazadas", kpis.rechazadas, <AlertTriangle key="i" size={16} />, "#DC2626"],
-          ["Alertas", kpis.alerta, <AlertTriangle key="i" size={16} />, "#D97706"],
+          ["Rechazadas", kpis.rechazadas, <AlertTriangle key="i" size={16} />, "#B42318"],
+          ["Alertas", kpis.alerta, <AlertTriangle key="i" size={16} />, "#475569"],
         ].map(([label, value, icon, color]) => (
           <div key={String(label)} style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 10, padding: 14 }}>
             <div style={{ display: "flex", justifyContent: "space-between", color: color as string }}>{icon}</div>

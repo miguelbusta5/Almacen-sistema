@@ -99,3 +99,13 @@ Revisar en desktop, tablet y movil:
 - Base44 no expuso herramienta callable en esta sesion; se documenta como checklist comparativo: navegacion, densidad, jerarquia, estados, formularios, responsive y operacion por rol.
 - Antes de deploy se pulieron rastros multicolor restantes en Integracion, Mis Tareas, Centro de Control y tokens globales.
 - Integracion, Mis Tareas y Centro de Control ahora usan indicador consistente de datos en vivo.
+
+## Capa Harmony - 2026-06-16
+
+- Se agrega una capa visual **CEDI Harmony** para resolver la falta de armonia reportada en comite.
+- La aplicacion debe sentirse satisfactoria de mirar: fondo claro con textura sutil tipo plano operativo, superficies blancas profundas y azul como unico acento protagonista.
+- Los estados dejan de colorear superficies completas. Verde y ambar desaparecen como colores de sistema; quedan reemplazados por azul/gris.
+- Rojo queda reservado para errores, rechazos o bloqueos reales, siempre en tintes suaves salvo confirmaciones destructivas.
+- Las constantes antiguas de Inventario, Conteo, Tienda y Transporte se alinean a azul/gris para evitar que modulos secundarios vuelvan a verse multicolor.
+- Notificaciones, estados OK, finalizados y activos usan azul o gris, no verde.
+- Base44 no esta configurado en el repo (`base44/config.jsonc` no existe); se usa solo como referencia conceptual/checklist, no como destino de deploy.

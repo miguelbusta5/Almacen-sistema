@@ -147,7 +147,7 @@ function ModalImportar({ ciclo, onClose, onImportado }: { ciclo: CicloConteo; on
               <div style={{ fontSize: 13, fontWeight: 600 }}>{file.name}</div>
               <div style={{ fontSize: 11, color: "var(--muted)" }}>{(file.size / 1024).toFixed(1)} KB</div>
             </div>
-            <button onClick={() => setFile(null)} style={{ ...iconBtn, color: "#ef4444" }}><X size={14} /></button>
+            <button onClick={() => setFile(null)} style={{ ...iconBtn, color: "var(--muted2)" }}><X size={14} /></button>
           </div>
         ) : (
           <button onClick={() => fileRef.current?.click()} style={{ padding: "0.9rem", background: "var(--surface2)", border: "1px dashed var(--border)", borderRadius: 10, cursor: "pointer", color: "var(--muted2)", fontSize: 13, display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
@@ -211,7 +211,7 @@ function ModalAsignar({ ciclo, operarios, onClose, onAsignado }: { ciclo: CicloC
             <option value="3">Día 3</option><option value="4">Día 4</option>
           </select>
         </Field>
-        {msg && <div style={{ fontSize: 12, color: msg.startsWith("✓") ? COLOR_CONTEO : "#ef4444" }}>{msg}</div>}
+        {msg && <div style={{ fontSize: 12, color: msg.startsWith("✓") ? "var(--brand)" : "var(--error)" }}>{msg}</div>}
         <button type="submit" disabled={saving} style={{ padding: "0.65rem", background: saving ? "#94a3b8" : COLOR_CONTEO, color: "#fff", border: "none", borderRadius: 9, fontSize: 13, fontWeight: 700, cursor: "pointer" }}>
           {saving ? "Asignando…" : "Asignar bloque"}
         </button>
@@ -260,9 +260,9 @@ function ModalOperarios({ operarios, onClose, onCambio }: { operarios: OperarioC
         {lista.map((op, i) => (
           <div key={op.id} style={{ display: "flex", alignItems: "center", gap: 10, padding: "0.65rem 0.9rem", borderBottom: i < lista.length - 1 ? "1px solid var(--border)" : "none", background: op.activo ? "var(--surface)" : "var(--surface2)", opacity: op.activo ? 1 : 0.6 }}>
             <span style={{ flex: 1, fontSize: 13, fontWeight: 600, color: "var(--text)" }}>{op.nombre}</span>
-            <span style={{ fontSize: 11, fontWeight: 700, padding: "2px 8px", borderRadius: 20, background: op.activo ? "#10b98118" : "#94a3b818", color: op.activo ? "#10b981" : "#94a3b8" }}>{op.activo ? "Activo" : "Inactivo"}</span>
+            <span style={{ fontSize: 11, fontWeight: 700, padding: "2px 8px", borderRadius: 20, background: op.activo ? "var(--brand-tint)" : "var(--surface3)", color: op.activo ? "var(--brand)" : "var(--muted)" }}>{op.activo ? "Activo" : "Inactivo"}</span>
             <button onClick={() => toggleActivo(op)} style={{ ...iconBtn, fontSize: 11, padding: "4px 8px" }} title={op.activo ? "Desactivar" : "Activar"}>{op.activo ? "Pausar" : "Activar"}</button>
-            <button onClick={() => eliminar(op)} style={{ ...iconBtn, color: "#ef4444" }} title="Eliminar"><Trash2 size={13} /></button>
+            <button onClick={() => eliminar(op)} style={{ ...iconBtn, color: "var(--muted2)" }} title="Eliminar"><Trash2 size={13} /></button>
           </div>
         ))}
       </div>
@@ -409,9 +409,9 @@ export default function ConteoPage() {
             <Kpi label="Total líneas" val={activo.totalLineas} color={COLOR_CONTEO} />
             <Kpi label="Pendientes" val={activo.pendientes ?? 0} color="#94a3b8" />
             <Kpi label="Contados" val={activo.contados ?? 0} color="#3b82f6" />
-            <Kpi label="En reconteo" val={activo.enReconteo ?? 0} color="#7c3aed" />
-            <Kpi label="OK" val={activo.ok ?? 0} color="#10b981" />
-            <Kpi label="Novedades" val={activo.novedades ?? 0} color="#ef4444" />
+            <Kpi label="En reconteo" val={activo.enReconteo ?? 0} color="var(--muted2)" />
+            <Kpi label="OK" val={activo.ok ?? 0} color="var(--brand)" />
+            <Kpi label="Novedades" val={activo.novedades ?? 0} color="var(--error)" />
           </div>
           <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 12, padding: "0.9rem 1.1rem" }}>
             <div style={{ fontSize: 11, color: "var(--muted)", marginBottom: 6 }}>Progreso del conteo</div>
@@ -425,12 +425,12 @@ export default function ConteoPage() {
                 const json = await res.json();
                 if (json.success) { await loadCiclos(); showToast(`✓ Recalculado: ${json.pasaronAAutoFill} auto-fill · ${json.pasaronAFisica} físicas`); }
                 else showToast(json.error, true);
-              }} style={{ display: "flex", alignItems: "center", gap: 6, padding: "0.5rem 0.9rem", background: "#f59e0b15", color: "#d97706", border: "1px solid #f59e0b40", borderRadius: 9, fontSize: 12, fontWeight: 700, cursor: "pointer" }}><RefreshCw size={14} />Recalcular auto-fill</button>
+              }} style={{ display: "flex", alignItems: "center", gap: 6, padding: "0.5rem 0.9rem", background: "var(--surface3)", color: "var(--muted2)", border: "1px solid var(--border)", borderRadius: 9, fontSize: 12, fontWeight: 700, cursor: "pointer" }}><RefreshCw size={14} />Recalcular auto-fill</button>
               <button onClick={() => { setCicloActivo(activo); setShowImportar(true); }} style={{ display: "flex", alignItems: "center", gap: 6, padding: "0.5rem 0.9rem", background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 9, fontSize: 12, fontWeight: 700, cursor: "pointer", color: "var(--muted2)" }}><Upload size={14} />Reimportar</button>
               <button onClick={() => { setCicloActivo(activo); setShowAsignar(true); }} style={{ display: "flex", alignItems: "center", gap: 6, padding: "0.5rem 0.9rem", background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 9, fontSize: 12, fontWeight: 700, cursor: "pointer", color: "var(--muted2)" }}><Users size={14} />Asignar</button>
-              <button onClick={calcularDiferencias} style={{ display: "flex", alignItems: "center", gap: 6, padding: "0.5rem 0.9rem", background: "#7c3aed15", color: "#7c3aed", border: "1px solid #7c3aed40", borderRadius: 9, fontSize: 12, fontWeight: 700, cursor: "pointer" }}><Calculator size={14} />Calcular diferencias</button>
+              <button onClick={calcularDiferencias} style={{ display: "flex", alignItems: "center", gap: 6, padding: "0.5rem 0.9rem", background: "var(--surface3)", color: "var(--muted2)", border: "1px solid var(--border)", borderRadius: 9, fontSize: 12, fontWeight: 700, cursor: "pointer" }}><Calculator size={14} />Calcular diferencias</button>
               {activo.estado === "EN_PROGRESO" && (
-                <button onClick={() => cambiarEstado(activo, "CERRADO")} style={{ display: "flex", alignItems: "center", gap: 6, padding: "0.5rem 0.9rem", background: "#10b98115", color: "#10b981", border: "1px solid #10b98140", borderRadius: 9, fontSize: 12, fontWeight: 700, cursor: "pointer" }}><CheckCircle2 size={14} />Cerrar ciclo</button>
+                <button onClick={() => cambiarEstado(activo, "CERRADO")} style={{ display: "flex", alignItems: "center", gap: 6, padding: "0.5rem 0.9rem", background: "var(--brand-tint)", color: "var(--brand)", border: "1px solid rgba(29,78,216,.18)", borderRadius: 9, fontSize: 12, fontWeight: 700, cursor: "pointer" }}><CheckCircle2 size={14} />Cerrar ciclo</button>
               )}
               {canDownload && <button onClick={() => descargarReporte(activo)} style={{ display: "flex", alignItems: "center", gap: 6, padding: "0.5rem 0.9rem", background: COLOR_CONTEO + "15", color: COLOR_CONTEO, border: `1px solid ${COLOR_CONTEO}40`, borderRadius: 9, fontSize: 12, fontWeight: 700, cursor: "pointer" }}><Download size={14} />Descargar Excel</button>}
             </div>
@@ -461,7 +461,7 @@ export default function ConteoPage() {
                       <ProgBar val={completados} total={c.totalLineas} color={COLOR_CONTEO} />
                     </td>
                     <td style={{ padding: "0.65rem 0.85rem" }}>
-                      {(c.novedades ?? 0) > 0 && <span style={{ display: "inline-flex", alignItems: "center", gap: 4, fontSize: 11, fontWeight: 700, color: "#ef4444" }}><AlertTriangle size={12} />{c.novedades}</span>}
+                      {(c.novedades ?? 0) > 0 && <span style={{ display: "inline-flex", alignItems: "center", gap: 4, fontSize: 11, fontWeight: 700, color: "var(--error)" }}><AlertTriangle size={12} />{c.novedades}</span>}
                       {(c.novedades ?? 0) === 0 && <span style={{ color: "var(--border)" }}>—</span>}
                     </td>
                     <td style={{ padding: "0.65rem 0.85rem", whiteSpace: "nowrap" }}>
@@ -476,7 +476,7 @@ export default function ConteoPage() {
                         <button onClick={() => descargarReporte(c)} style={{ ...iconBtn, color: COLOR_CONTEO }} title="Descargar reporte"><Download size={13} /></button>
                       )}
                       <button onClick={() => { setCicloActivo(c); setView("lineas"); }} style={{ ...iconBtn, marginLeft: 4 }} title="Ver líneas"><ChevronRight size={13} /></button>
-                      {canManage && <button onClick={() => setCicloABorrar(c)} style={{ ...iconBtn, marginLeft: 4, color: "#ef4444" }} title="Eliminar ciclo"><Trash2 size={13} /></button>}
+                      {canManage && <button onClick={() => setCicloABorrar(c)} style={{ ...iconBtn, marginLeft: 4, color: "var(--muted2)" }} title="Eliminar ciclo"><Trash2 size={13} /></button>}
                     </td>
                   </tr>
                 );
@@ -533,7 +533,7 @@ export default function ConteoPage() {
                               <td style={{ padding: "0.5rem 0.85rem", fontFamily: "var(--mono)" }}>{l.diaAsignado ?? "—"}</td>
                               <td style={{ padding: "0.5rem 0.85rem", fontFamily: "var(--mono)", textAlign: "right" }}>{fmtNum(l.teorico)}</td>
                               <td style={{ padding: "0.5rem 0.85rem", fontFamily: "var(--mono)", textAlign: "right" }}>{fmtNum(contada)}</td>
-                              <td style={{ padding: "0.5rem 0.85rem", fontFamily: "var(--mono)", textAlign: "right", color: dif == null ? "var(--muted)" : dif === 0 ? "#10b981" : "#ef4444", fontWeight: dif != null && dif !== 0 ? 700 : 400 }}>
+                              <td style={{ padding: "0.5rem 0.85rem", fontFamily: "var(--mono)", textAlign: "right", color: dif == null ? "var(--muted)" : dif === 0 ? "var(--brand)" : "var(--error)", fontWeight: dif != null && dif !== 0 ? 700 : 400 }}>
                                 {dif == null ? "—" : dif > 0 ? `+${fmtNum(dif)}` : fmtNum(dif)}
                               </td>
                               <td style={{ padding: "0.5rem 0.85rem" }}><Badge label={LINEA_ESTADO_LABEL[l.estado as keyof typeof LINEA_ESTADO_LABEL]} color={LINEA_ESTADO_COLOR[l.estado as keyof typeof LINEA_ESTADO_COLOR]} /></td>
@@ -560,12 +560,12 @@ export default function ConteoPage() {
           <p style={{ fontSize: 13, color: "var(--muted2)", marginBottom: "1rem" }}>Esta acción eliminará el ciclo y todas sus líneas de conteo. No se puede deshacer.</p>
           <div style={{ display: "flex", gap: 8 }}>
             <button onClick={() => setCicloABorrar(null)} style={{ flex: 1, padding: "0.65rem", background: "var(--surface2)", color: "var(--muted2)", border: "1px solid var(--border)", borderRadius: 9, fontSize: 13, fontWeight: 700, cursor: "pointer" }}>Cancelar</button>
-            <button onClick={() => borrarCiclo(cicloABorrar)} style={{ flex: 1, padding: "0.65rem", background: "#ef4444", color: "#fff", border: "none", borderRadius: 9, fontSize: 13, fontWeight: 700, cursor: "pointer" }}>Eliminar</button>
+            <button onClick={() => borrarCiclo(cicloABorrar)} style={{ flex: 1, padding: "0.65rem", background: "var(--error)", color: "#fff", border: "none", borderRadius: 9, fontSize: 13, fontWeight: 700, cursor: "pointer" }}>Eliminar</button>
           </div>
         </Modal>
       )}
 
-      {toast && <div style={{ position: "fixed", bottom: 24, right: 24, zIndex: 10000, background: toast.err ? "#ef4444" : "#0f172a", color: "#fff", padding: "0.8rem 1.2rem", borderRadius: 10, fontSize: 13, fontWeight: 600, boxShadow: "0 8px 28px #0f172a40" }}>{toast.msg}</div>}
+      {toast && <div style={{ position: "fixed", bottom: 24, right: 24, zIndex: 10000, background: toast.err ? "var(--error)" : "#0f172a", color: "#fff", padding: "0.8rem 1.2rem", borderRadius: 10, fontSize: 13, fontWeight: 600, boxShadow: "0 8px 28px #0f172a40" }}>{toast.msg}</div>}
     </div>
   );
 }

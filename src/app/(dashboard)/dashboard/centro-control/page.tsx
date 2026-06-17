@@ -407,12 +407,12 @@ export default function CentroControlPage() {
           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
             <div style={{
               width: 30, height: 30, borderRadius: 8,
-              background: hasExcepctions ? "#ef444414" : "#10b98114",
+              background: hasExcepctions ? "var(--error-tint)" : "var(--brand-tint)",
               display: "flex", alignItems: "center", justifyContent: "center",
             }}>
               {hasExcepctions
-                ? <ShieldAlert size={16} color="#ef4444" />
-                : <CheckCircle2 size={16} color="#10b981" />}
+                ? <ShieldAlert size={16} color="var(--error)" />
+                : <CheckCircle2 size={16} color="var(--brand)" />}
             </div>
             <span style={{ fontSize: 13, fontWeight: 700, color: "var(--text)", letterSpacing: "-0.01em" }}>
               Alertas Operacionales
@@ -423,7 +423,7 @@ export default function CentroControlPage() {
             {alertas.totalCritical > 0 && (
               <span style={{
                 fontSize: 11, fontWeight: 700, padding: "3px 9px", borderRadius: 20,
-                background: "#ef444414", color: "#ef4444", border: "1px solid #ef444425",
+                background: "var(--error-tint)", color: "var(--error)", border: "1px solid rgba(180,35,24,.14)",
               }}>
                 {alertas.totalCritical} crítica{alertas.totalCritical !== 1 ? "s" : ""}
               </span>
@@ -431,7 +431,7 @@ export default function CentroControlPage() {
             {alertas.totalWarning > 0 && (
               <span style={{
                 fontSize: 11, fontWeight: 700, padding: "3px 9px", borderRadius: 20,
-                background: "#f59e0b14", color: "#f59e0b", border: "1px solid #f59e0b25",
+                background: "var(--warning-tint)", color: "var(--warning)", border: "1px solid rgba(71,85,105,.14)",
               }}>
                 {alertas.totalWarning} advertencia{alertas.totalWarning !== 1 ? "s" : ""}
               </span>
@@ -439,7 +439,7 @@ export default function CentroControlPage() {
             {!hasExcepctions && (
               <span style={{
                 fontSize: 11, fontWeight: 700, padding: "3px 9px", borderRadius: 20,
-                background: "#10b98114", color: "#10b981", border: "1px solid #10b98125",
+                background: "var(--brand-tint)", color: "var(--brand)", border: "1px solid rgba(29,78,216,.15)",
               }}>
                 Sin excepciones
               </span>
@@ -451,9 +451,9 @@ export default function CentroControlPage() {
         {!hasExcepctions && alertas.info.length === 0 && (
           <div style={{
             display: "flex", alignItems: "center", gap: 10, padding: "14px 16px",
-            background: "#10b98108", borderRadius: 10, border: "1px solid #10b98120",
+            background: "var(--brand-tint)", borderRadius: 10, border: "1px solid rgba(29,78,216,.15)",
           }}>
-            <CheckCircle2 size={16} color="#10b981" />
+            <CheckCircle2 size={16} color="var(--brand)" />
             <span style={{ fontSize: 13, color: "var(--muted)" }}>
               Sistema operando sin excepciones. Todos los indicadores dentro del rango normal.
             </span>
