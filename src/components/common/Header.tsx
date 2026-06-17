@@ -94,7 +94,7 @@ export default function Header({ user }: HeaderProps) {
           <span style={{ width: 9, height: 9, borderRadius: 999, background: "var(--brand)", boxShadow: "0 0 0 4px var(--brand-tint)" }} />
           <div>
             <div style={{ display: "flex", alignItems: "center", gap: 8, lineHeight: 1 }}>
-              <span style={{ fontSize: 11, color: "var(--muted2)", fontWeight: 850, letterSpacing: "0.10em", textTransform: "uppercase" }}>
+              <span style={{ fontSize: 11, color: "var(--muted2)", fontWeight: 800, letterSpacing: "0.10em", textTransform: "uppercase" }}>
                 {PRODUCT.displayName}
               </span>
               <span className="op-status-band" style={{ minHeight: 24, padding: "3px 8px", borderRadius: 999, fontSize: 10, fontWeight: 800, color: "var(--brand)", background: "var(--brand-tint)" }}>

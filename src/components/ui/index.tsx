@@ -5,7 +5,7 @@ import { getModuleIconBg } from "@/lib/moduleTheme";
 // ═══════════════════════════════════════════════════════════
 // BADGE — estado inteligente con dot semántico
 // ═══════════════════════════════════════════════════════════
-type BadgeVariant = "success" | "warning" | "error" | "info" | "default" | "muted";
+type BadgeVariant = "success" | "warning" | "error" | "info" | "default" | "muted" | "purple" | "teal";
 
 interface BadgeProps {
   label: string;
@@ -20,6 +20,32 @@ export function Badge({ label, variant = "default", dot = true }: BadgeProps) {
       {dot && <span className="ds-badge-dot" style={{ background: "currentColor" }} />}
       {label}
     </span>
+  );
+}
+
+// ═══════════════════════════════════════════════════════════
+// ALERT — mensaje contextual con variante semántica
+// ═══════════════════════════════════════════════════════════
+type AlertVariant = "success" | "warning" | "error" | "info";
+
+interface AlertProps {
+  variant?: AlertVariant;
+  title?: string;
+  description: string;
+  icon?: React.ReactNode;
+  action?: React.ReactNode;
+}
+
+export function Alert({ variant = "info", title, description, icon, action }: AlertProps) {
+  return (
+    <div className={`ds-alert ds-alert-${variant}`} role="alert">
+      {icon && <span style={{ flexShrink: 0, marginTop: 1 }}>{icon}</span>}
+      <div style={{ flex: 1 }}>
+        {title && <div className="ds-alert-title">{title}</div>}
+        <div style={{ color: "var(--text)", opacity: 0.85 }}>{description}</div>
+        {action && <div style={{ marginTop: 8 }}>{action}</div>}
+      </div>
+    </div>
   );
 }
 

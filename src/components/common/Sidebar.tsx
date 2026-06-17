@@ -98,6 +98,7 @@ export default function Sidebar({ role }: SidebarProps) {
   const Item = ({ item, onNav }: { item: NavItem; onNav?: () => void }) => {
     const active = isActive(item.href);
     const theme = getModuleTheme(item.moduleKey ?? "home");
+    const accentColor = active ? theme.color : "var(--muted2)";
     return (
       <Link href={item.href} onClick={onNav} title={theme.description} style={{ textDecoration: "none", display: "block", padding: "2px 10px" }}>
         <div
@@ -108,11 +109,11 @@ export default function Sidebar({ role }: SidebarProps) {
             padding: "9px 11px",
             borderRadius: 10,
             fontSize: 13,
-            fontWeight: active ? 760 : 540,
-            color: active ? "var(--brand)" : "var(--muted2)",
-            background: active ? "var(--brand-tint)" : "transparent",
-            boxShadow: active ? "inset 0 0 0 1px rgba(37,99,235,0.16)" : "none",
-            transition: "background .14s ease, color .14s ease, transform .14s ease",
+            fontWeight: active ? 700 : 500,
+            color: accentColor,
+            background: active ? theme.tint : "transparent",
+            boxShadow: active ? `inset 0 0 0 1px ${theme.color}28` : "none",
+            transition: "background .14s ease, color .14s ease",
             position: "relative",
           }}
           onMouseEnter={(e) => {
@@ -122,8 +123,8 @@ export default function Sidebar({ role }: SidebarProps) {
             if (!active) e.currentTarget.style.background = "transparent";
           }}
         >
-          {active && <span style={{ position: "absolute", left: -10, top: 9, bottom: 9, width: 3, borderRadius: 2, background: "var(--brand)" }} />}
-          <span style={{ color: active ? "var(--brand)" : "var(--faint)", display: "flex", flexShrink: 0 }}>
+          {active && <span style={{ position: "absolute", left: -10, top: 9, bottom: 9, width: 3, borderRadius: 2, background: theme.color }} />}
+          <span style={{ color: active ? theme.color : "var(--faint)", display: "flex", flexShrink: 0 }}>
             {item.icon}
           </span>
           <span style={{ flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{item.label}</span>
