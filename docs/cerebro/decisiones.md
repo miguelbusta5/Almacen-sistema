@@ -6,7 +6,7 @@
 - Se crea el modulo propio **Indicadores CEDI** en `/dashboard/indicadores`.
 - Los datos de Google Sheets se sincronizan a PostgreSQL con service account; la UI consulta datos cacheados.
 - `ADMIN` y `GERENTE` pueden sincronizar manualmente; supervisores autorizados solo consultan.
-- Vercel Cron ejecuta `/api/cron/indicadores-sync` cada 15 minutos.
+- Vercel Cron ejecuta `/api/cron/indicadores-sync` diario a las 06:00 UTC en el plan actual; una frecuencia de 15 minutos queda para un plan que lo permita.
 - Se inicia la consolidacion visual **CEDI Clean Platform** con componentes reutilizables en `src/components/ui/cedi.tsx`.
 
 **Contexto:**

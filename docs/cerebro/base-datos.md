@@ -129,7 +129,7 @@ node prisma/seed.js       # Crear usuario admin inicial
 - `rowKey` identifica la fila fuente y evita duplicados.
 - `rowHash` permite detectar cambios de contenido en una fila sincronizada.
 - `rawRow` conserva la fila normalizada para trazabilidad sin acoplar toda la UI a columnas del Sheet.
-- El cron recomendado corre cada 15 minutos desde Vercel.
+- El cron en Vercel Hobby corre diario a las 06:00 UTC (`0 6 * * *`); si se sube a un plan con mayor frecuencia permitida puede ajustarse a cada 15 minutos.
 
 ### Módulo Integración (Sprint 8)
 

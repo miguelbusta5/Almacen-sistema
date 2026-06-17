@@ -108,7 +108,7 @@ Modulo ejecutivo para consultar KPIs alimentados desde Google Sheets:
 - No consulta Google Sheets desde el cliente; usa snapshots cacheados en PostgreSQL.
 - Sincronizacion manual: `ADMIN` y `GERENTE`.
 - Consulta: `ADMIN`, `GERENTE`, `SUPERVISOR_INVENTARIO`, `SUPERVISOR_TRANSPORTE`, `SUPERVISOR_TIENDA`, `SUPERVISOR_ALMACENAMIENTO`.
-- Cron recomendado cada 15 minutos por `/api/cron/indicadores-sync`.
+- Cron activo diario a las 06:00 UTC por `/api/cron/indicadores-sync`; puede subirse a cada 15 minutos si el plan de Vercel lo permite.
 - Looker Studio queda como referencia externa, no embebido en v1.
 
 Archivos:
