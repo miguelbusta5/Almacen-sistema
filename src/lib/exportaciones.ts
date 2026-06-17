@@ -53,14 +53,3 @@ export function validarCapturaExportacion(input: {
   return null;
 }
 
-export function validarRegueroExportacion(input: {
-  hayReguero?: boolean | null;
-  cantidadReguero?: number | null;
-}): string | null {
-  if (input.hayReguero === true) {
-    if (!input.cantidadReguero || !Number.isInteger(input.cantidadReguero) || input.cantidadReguero < 1) {
-      return "Cantidad de reguero debe ser un entero mayor o igual a 1";
-    }
-  }
-  return null;
-}

@@ -10,15 +10,12 @@ import {
   puedeUsarExportaciones,
   todayBogota,
   validarCapturaExportacion,
-  validarRegueroExportacion,
 } from "@/lib/exportaciones";
 
 const createSchema = z.object({
-  numeroCaja:      z.string().min(1).max(100),
-  plu:             z.string().min(1).max(100),
-  unidadEmpaque:   z.number().int().min(1),
-  hayReguero:      z.boolean().optional().default(false),
-  cantidadReguero: z.number().int().min(1).optional().nullable(),
+  numeroCaja:    z.string().min(1).max(100),
+  plu:           z.string().min(1).max(100),
+  unidadEmpaque: z.number().int().min(1),
 });
 
 export function mapExportacion(row: any) {
@@ -32,8 +29,6 @@ export function mapExportacion(row: any) {
     horaInicio: row.horaInicio.toISOString(),
     horaFinalizacion: row.horaFinalizacion ? row.horaFinalizacion.toISOString() : null,
     duracionMinutos: calcularDuracionMinutos(row.horaInicio, row.horaFinalizacion),
-    hayReguero:      row.hayReguero,
-    cantidadReguero: row.cantidadReguero ?? null,
     motivoCorreccion: row.motivoCorreccion ?? null,
     creadoPorId: row.creadoPorId,
     creadoPorNombre: row.creadoPor?.name ?? null,
@@ -108,8 +103,6 @@ export async function POST(req: NextRequest) {
   }
   const validation = validarCapturaExportacion(parsed.data);
   if (validation) return NextResponse.json({ error: validation }, { status: 400 });
-  const validReguero = validarRegueroExportacion(parsed.data);
-  if (validReguero) return NextResponse.json({ error: validReguero }, { status: 400 });
 
   const plu = normalizePlu(parsed.data.plu);
   const producto = await prisma.productoMaestro.findUnique({
@@ -129,12 +122,10 @@ export async function POST(req: NextRequest) {
     });
     return tx.etiquetadoExportacion.create({
       data: {
-        numeroCaja:      parsed.data.numeroCaja.trim(),
+        numeroCaja:    parsed.data.numeroCaja.trim(),
         plu,
         descripcion,
-        unidadEmpaque:   parsed.data.unidadEmpaque,
-        hayReguero:      parsed.data.hayReguero ?? false,
-        cantidadReguero: parsed.data.hayReguero ? (parsed.data.cantidadReguero ?? null) : null,
+        unidadEmpaque: parsed.data.unidadEmpaque,
         fecha: todayBogota(now),
         horaInicio: now,
         creadoPorId: actor.id,
