@@ -33,6 +33,7 @@ interface UserStat {
   nombre: string;
   cajas: number;
   plusDistintos: number;
+  totalUnidades: number;
   finalizadas: number;
   duracionTotalMin: number;
   promedioPorCajaMin: number | null;
@@ -399,6 +400,7 @@ export default function ExportacionesPage() {
                       <th style={th}>Operario</th>
                       <th style={{ ...th, textAlign: "right" }}>Cajas</th>
                       <th style={{ ...th, textAlign: "right" }}>PLUs</th>
+                      <th style={{ ...th, textAlign: "right" }}>Unidades</th>
                       <th style={{ ...th, textAlign: "right" }}>Finalizadas</th>
                       <th style={{ ...th, textAlign: "right" }}>Tiempo total</th>
                       <th style={{ ...th, textAlign: "right" }}>Prom. min/caja</th>
@@ -410,6 +412,7 @@ export default function ExportacionesPage() {
                         <td style={td}><strong>{s.nombre}</strong></td>
                         <td style={{ ...td, textAlign: "right", fontVariantNumeric: "tabular-nums" }}>{s.cajas}</td>
                         <td style={{ ...td, textAlign: "right", fontVariantNumeric: "tabular-nums" }}>{s.plusDistintos}</td>
+                        <td style={{ ...td, textAlign: "right", fontVariantNumeric: "tabular-nums" }}>{s.totalUnidades.toLocaleString("es-CO")}</td>
                         <td style={{ ...td, textAlign: "right", fontVariantNumeric: "tabular-nums" }}>{s.finalizadas}</td>
                         <td style={{ ...td, textAlign: "right", fontVariantNumeric: "tabular-nums", color: "var(--muted)" }}>{s.duracionTotalMin > 0 ? `${s.duracionTotalMin} min` : "–"}</td>
                         <td style={{ ...td, textAlign: "right" }}>
@@ -423,7 +426,7 @@ export default function ExportacionesPage() {
                     ))}
                     {stats.length > 1 && (() => {
                       const totalCajas = stats.reduce((a, s) => a + s.cajas, 0);
-                      const totalPLUs = new Set(stats.flatMap(() => [])).size;
+                      const totalUnidades = stats.reduce((a, s) => a + s.totalUnidades, 0);
                       const totalFin = stats.reduce((a, s) => a + s.finalizadas, 0);
                       const totalMin = stats.reduce((a, s) => a + s.duracionTotalMin, 0);
                       const promTotal = totalFin > 0 ? Math.round((totalMin / totalFin) * 10) / 10 : null;
@@ -432,6 +435,7 @@ export default function ExportacionesPage() {
                           <td style={{ ...td, fontWeight: 700 }}>Total</td>
                           <td style={{ ...td, textAlign: "right", fontWeight: 700, fontVariantNumeric: "tabular-nums" }}>{totalCajas}</td>
                           <td style={{ ...td, textAlign: "right", color: "var(--muted)" }}>—</td>
+                          <td style={{ ...td, textAlign: "right", fontWeight: 700, fontVariantNumeric: "tabular-nums" }}>{totalUnidades.toLocaleString("es-CO")}</td>
                           <td style={{ ...td, textAlign: "right", fontWeight: 700, fontVariantNumeric: "tabular-nums" }}>{totalFin}</td>
                           <td style={{ ...td, textAlign: "right", fontVariantNumeric: "tabular-nums", color: "var(--muted)" }}>{totalMin > 0 ? `${totalMin} min` : "–"}</td>
                           <td style={{ ...td, textAlign: "right", fontWeight: 700 }}>

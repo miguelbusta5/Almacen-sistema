@@ -18,6 +18,7 @@ export async function GET(req: NextRequest) {
     where: { fecha, deletedAt: null },
     select: {
       plu: true,
+      unidadEmpaque: true,
       horaInicio: true,
       horaFinalizacion: true,
       creadoPorId: true,
@@ -31,6 +32,7 @@ export async function GET(req: NextRequest) {
     plusSet: Set<string>;
     duracionTotal: number;
     finalizadas: number;
+    totalUnidades: number;
   }>();
 
   for (const r of registros) {
@@ -41,11 +43,13 @@ export async function GET(req: NextRequest) {
         plusSet: new Set(),
         duracionTotal: 0,
         finalizadas: 0,
+        totalUnidades: 0,
       });
     }
     const u = byUser.get(r.creadoPorId)!;
     u.cajas++;
     u.plusSet.add(r.plu);
+    u.totalUnidades += r.unidadEmpaque;
     if (r.horaFinalizacion) {
       u.finalizadas++;
       const min = calcularDuracionMinutos(r.horaInicio, r.horaFinalizacion);
@@ -59,6 +63,7 @@ export async function GET(req: NextRequest) {
       nombre: u.nombre,
       cajas: u.cajas,
       plusDistintos: u.plusSet.size,
+      totalUnidades: u.totalUnidades,
       finalizadas: u.finalizadas,
       duracionTotalMin: u.duracionTotal,
       promedioPorCajaMin:
