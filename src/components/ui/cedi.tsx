@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import type { CSSProperties, ReactNode } from "react";
 
 export function CediPage({
   title,
@@ -31,14 +31,16 @@ export function CediPanel({
   description,
   children,
   actions,
+  style,
 }: {
   title?: string;
   description?: string;
   children: ReactNode;
   actions?: ReactNode;
+  style?: CSSProperties;
 }) {
   return (
-    <section className="cedi-panel">
+    <section className="cedi-panel" style={style}>
       {(title || actions) && (
         <div className="cedi-panel-head">
           <div>

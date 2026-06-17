@@ -28,6 +28,8 @@
 - [ ] Migrar pantallas legacy clave a componentes `CediPage/CediPanel/CediStat` por fases
 - [ ] QA visual real de Indicadores CEDI en desktop, tablet y movil con datos sincronizados
 - [x] Adaptar Indicadores CEDI a estructura real del Sheet (Base general + Rotacion PLU) — 2026-06-17
+- [x] Indicadores CEDI con graficas ejecutivas: BarGroupedChart, LineTrendChart, DonutChart, HBarChart via `src/components/ui/charts.tsx` — 2026-06-17
+- [x] Fase 2 UI: CediPage aplicado a Transporte (Guardados) y Conteo — Inventario excluido por diseno fullscreen movil intencional — 2026-06-17
 - [ ] QA visual con sesion real de la capa CEDI Harmony en desktop, tablet y movil
 - [ ] Revisar y corregir mojibake visible en Cerebro y pantallas legacy
 - [ ] QA visual desktop/mobile con sesion real para el rediseño Claro Ejecutivo Azul/Gris

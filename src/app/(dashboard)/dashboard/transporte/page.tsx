@@ -16,6 +16,7 @@ import {
 } from "@/lib/transporte";
 import { calcAlmacenaje, TARIFA_ALM } from "@/lib/almacenaje";
 import { insightsGuardados, insightsPorGuardado } from "@/lib/inteligencia";
+import { CediPage } from "@/components/ui/cedi";
 import { Stat, SkeletonStat, Badge, EmptyState, SkeletonTable } from "@/components/ui";
 import { AutoRefreshIndicator } from "@/components/ui/AutoRefreshIndicator";
 import { SlidePanel, IntelBanner, DetailSection, DetailGrid, MiniHistory } from "@/components/ui/SlidePanel";
@@ -276,21 +277,11 @@ export default function TransportePage() {
   const panelEntrega = useMemo(() => panelItem ? parseEntrega(panelItem.nota) : null, [panelItem]);
 
   return (
-    <div className="animate-fade-in">
-      {/* ── Header ── */}
-      <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 24, flexWrap: "wrap", gap: 12 }}>
-        <div>
-          <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 4 }}>
-            <div style={{ width: 30, height: 30, borderRadius: 8, background: "rgba(14,116,144,0.10)", display: "flex", alignItems: "center", justifyContent: "center" }}>
-              <Truck size={16} color="var(--brand)" />
-            </div>
-            <h1 style={{ fontSize: 22, fontWeight: 700, color: "var(--text)", letterSpacing: "-0.03em", margin: 0 }}>Guardados Transporte</h1>
-          </div>
-          <p style={{ fontSize: 13, color: "var(--muted)", margin: 0 }}>
-            {loading ? "Cargando…" : `${guardados.length} registros · ${kpis.pend} pendientes`}
-          </p>
-        </div>
-        <div style={{ display: "flex", gap: 8, flexWrap: "wrap", justifyContent: "flex-end" }}>
+    <CediPage
+      title="Guardados Transporte"
+      description={loading ? "Cargando…" : `${guardados.length} registros · ${kpis.pend} pendientes despacho`}
+      actions={
+        <>
           <AutoRefreshIndicator
             lastUpdatedAt={autoRefresh.lastUpdatedAt}
             refreshing={autoRefresh.refreshing}
@@ -302,11 +293,12 @@ export default function TransportePage() {
           <button className="ds-btn ds-btn-ghost" onClick={exportarCSV} title="Descargar Excel (CSV)">
             <Download size={14} />Excel
           </button>
-          <button className="ds-btn ds-btn-primary" style={{ background: "var(--brand)", boxShadow: "0 2px 12px rgba(29,78,216,0.24)" }} onClick={() => setCreando(true)}>
+          <button className="ds-btn ds-btn-primary" onClick={() => setCreando(true)}>
             <Plus size={14} />Nuevo guardado
           </button>
-        </div>
-      </div>
+        </>
+      }
+    >
 
       {/* ── KPIs ── */}
       {!loading && pendientesTienda.length > 0 && (
@@ -702,7 +694,7 @@ export default function TransportePage() {
           {!toast.err && <CheckCircle2 size={14} />}{toast.msg}
         </div>
       )}
-    </div>
+    </CediPage>
   );
 }
 

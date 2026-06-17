@@ -9,6 +9,7 @@ import {
   ChevronRight, Download, RefreshCw, CheckCircle2, AlertTriangle,
   Settings, Play, Calculator, Trash2, Pencil, UserPlus,
 } from "lucide-react";
+import { CediPage } from "@/components/ui/cedi";
 import {
   CicloConteo, OperarioCiclo, LineaConteo,
   CICLO_ESTADO_LABEL, CICLO_ESTADO_COLOR, LINEA_ESTADO_LABEL, LINEA_ESTADO_COLOR,
@@ -375,29 +376,39 @@ export default function ConteoPage() {
   );
 
   return (
-    <div className="animate-fade-in">
-      {/* Header */}
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 12, marginBottom: "1.5rem" }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-          <div style={{ width: 40, height: 40, borderRadius: 10, background: COLOR_CONTEO + "15", display: "flex", alignItems: "center", justifyContent: "center" }}>
-            <ClipboardList size={20} color={COLOR_CONTEO} />
-          </div>
-          <div>
-            <h1 style={{ fontSize: 22, fontWeight: 800, color: "var(--text)", letterSpacing: "-0.02em" }}>Conteo Cíclico</h1>
-            <p style={{ fontSize: 12, color: "var(--muted)" }}>{ciclos.length} ciclo{ciclos.length !== 1 ? "s" : ""} · {activo ? `1 activo (${CICLO_ESTADO_LABEL[activo.estado as keyof typeof CICLO_ESTADO_LABEL]})` : "Sin ciclo activo"}</p>
-          </div>
-        </div>
-        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-          {["ciclos", "lineas"].map((v) => (
-            <button key={v} onClick={() => setView(v as View)} style={{ padding: "0.5rem 0.9rem", borderRadius: 9, fontSize: 12, fontWeight: 700, cursor: "pointer", border: `1px solid ${view === v ? COLOR_CONTEO : "var(--border)"}`, background: view === v ? COLOR_CONTEO : "var(--surface)", color: view === v ? "#fff" : "var(--muted2)" }}>
-              {v === "ciclos" ? <><BarChart3 size={14} style={{ marginRight: 5, verticalAlign: "middle" }} />Ciclos</> : <><List size={14} style={{ marginRight: 5, verticalAlign: "middle" }} />Líneas</>}
+    <CediPage
+      title="Conteo Cíclico"
+      description={`${ciclos.length} ciclo${ciclos.length !== 1 ? "s" : ""} · ${activo ? `1 activo (${CICLO_ESTADO_LABEL[activo.estado as keyof typeof CICLO_ESTADO_LABEL]})` : "Sin ciclo activo"}`}
+      actions={
+        <>
+          <button
+            className={`ds-btn${view === "ciclos" ? " ds-btn-primary" : ""}`}
+            onClick={() => setView("ciclos")}
+            style={{ display: "flex", alignItems: "center", gap: 6 }}
+          >
+            <BarChart3 size={14} />Ciclos
+          </button>
+          <button
+            className={`ds-btn${view === "lineas" ? " ds-btn-primary" : ""}`}
+            onClick={() => setView("lineas")}
+            style={{ display: "flex", alignItems: "center", gap: 6 }}
+          >
+            <List size={14} />Líneas
+          </button>
+          <button className="ds-btn" onClick={loadCiclos}><RefreshCw size={14} /></button>
+          {canManage && (
+            <button className="ds-btn" onClick={() => setShowOperarios(true)} style={{ display: "flex", alignItems: "center", gap: 6 }}>
+              <Users size={14} />Operarios
             </button>
-          ))}
-          <button onClick={loadCiclos} style={{ ...iconBtn }}><RefreshCw size={14} /></button>
-          {canManage && <button onClick={() => setShowOperarios(true)} style={{ display: "flex", alignItems: "center", gap: 6, padding: "0.5rem 0.9rem", background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 9, fontSize: 12, fontWeight: 700, cursor: "pointer", color: "var(--muted2)" }}><Users size={14} />Operarios</button>}
-          {canManage && <button onClick={() => setShowNuevo(true)} style={{ display: "flex", alignItems: "center", gap: 6, padding: "0.5rem 0.9rem", background: COLOR_CONTEO, color: "#fff", border: "none", borderRadius: 9, fontSize: 12, fontWeight: 700, cursor: "pointer" }}><Plus size={14} />Nuevo ciclo</button>}
-        </div>
-      </div>
+          )}
+          {canManage && (
+            <button className="ds-btn ds-btn-primary" onClick={() => setShowNuevo(true)} style={{ display: "flex", alignItems: "center", gap: 6 }}>
+              <Plus size={14} />Nuevo ciclo
+            </button>
+          )}
+        </>
+      }
+    >
 
       {/* KPIs del ciclo activo */}
       {activo && (
@@ -566,6 +577,6 @@ export default function ConteoPage() {
       )}
 
       {toast && <div style={{ position: "fixed", bottom: 24, right: 24, zIndex: 10000, background: toast.err ? "var(--error)" : "#0f172a", color: "#fff", padding: "0.8rem 1.2rem", borderRadius: 10, fontSize: 13, fontWeight: 600, boxShadow: "0 8px 28px #0f172a40" }}>{toast.msg}</div>}
-    </div>
+    </CediPage>
   );
 }
