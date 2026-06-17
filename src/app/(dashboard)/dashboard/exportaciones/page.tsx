@@ -25,6 +25,7 @@ interface Exportacion {
   hayReguero: boolean;
   cantidadReguero: number | null;
   motivoCorreccion?: string | null;
+  creadoPorId?: string | null;
   creadoPorNombre?: string | null;
 }
 
@@ -92,6 +93,10 @@ export default function ExportacionesPage() {
   const [query, setQuery] = useState("");
   const [fecha, setFecha] = useState("");
   const [estado, setEstado] = useState("");
+  const [page, setPage] = useState(1);
+  const [totalItems, setTotalItems] = useState(0);
+  const PAGE_SIZE = 40;
+  const userId = (session?.user as { id?: string } | undefined)?.id;
   const [form, setForm] = useState({ numeroCaja: "", plu: "", descripcion: "", unidadEmpaque: "1", hayReguero: false, cantidadReguero: "" });
   const [editing, setEditing] = useState<Exportacion | null>(null);
   const [editForm, setEditForm] = useState({ numeroCaja: "", plu: "", descripcion: "", unidadEmpaque: "1", horaInicio: "", horaFinalizacion: "", motivoCorreccion: "", hayReguero: false, cantidadReguero: "" });
@@ -99,16 +104,22 @@ export default function ExportacionesPage() {
   const openItem = useMemo(() => items.find((item) => !item.horaFinalizacion) ?? null, [items]);
   const formDirty = Boolean(form.numeroCaja.trim() || form.plu.trim() || form.descripcion.trim() || form.hayReguero || form.cantidadReguero.trim());
 
-  async function load() {
+  async function load(targetPage = page) {
     setLoading(true);
     const params = new URLSearchParams();
     if (query.trim()) params.set("q", query.trim());
     if (fecha) params.set("fecha", fecha);
     if (estado) params.set("estado", estado);
+    params.set("page", String(targetPage));
+    params.set("pageSize", String(PAGE_SIZE));
     const res = await fetch(`/api/exportaciones?${params.toString()}`);
     const json = await res.json().catch(() => ({}));
-    if (res.ok && json.success) setItems(json.data ?? []);
-    else setError(json.error ?? "No se pudo cargar Exportaciones");
+    if (res.ok && json.success) {
+      setItems(json.data ?? []);
+      setTotalItems(json.total ?? 0);
+    } else {
+      setError(json.error ?? "No se pudo cargar Exportaciones");
+    }
     setLoading(false);
   }
 
@@ -123,7 +134,7 @@ export default function ExportacionesPage() {
     setLoadingStats(false);
   }
 
-  useEffect(() => { if (canUse) load(); }, [canUse]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { if (canUse) load(1); }, [canUse]); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => { if (canManage) loadStats(); }, [canManage]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const autoRefresh = useAutoRefresh({
@@ -317,7 +328,7 @@ export default function ExportacionesPage() {
         <option value="en-curso">En curso</option>
         <option value="finalizado">Finalizados</option>
       </select>
-      <button onClick={() => { load(); loadStats(); }} style={{ height: 38, border: `1px solid ${COLOR}55`, color: COLOR, background: `${COLOR}10`, borderRadius: 8, fontWeight: 800, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 7 }}>
+      <button onClick={() => { setPage(1); load(1); loadStats(); }} style={{ height: 38, border: `1px solid ${COLOR}55`, color: COLOR, background: `${COLOR}10`, borderRadius: 8, fontWeight: 800, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 7 }}>
         <RefreshCw size={15} /> Filtrar
       </button>
     </div>
@@ -337,7 +348,7 @@ export default function ExportacionesPage() {
             PLU {item.plu} · {item.descripcion}<br />
             Empaque {item.unidadEmpaque} · Reguero {item.hayReguero ? `Sí (${item.cantidadReguero})` : "No"} · Inicio {fmtTime(item.horaInicio)} · Fin {fmtTime(item.horaFinalizacion)}
           </div>
-          {canManage && <div style={{ display: "flex", gap: 8, marginTop: 10 }}><button onClick={() => startEdit(item)} style={miniBtn}><Pencil size={14} /> Editar</button><button onClick={() => remove(item)} style={miniBtn}><Trash2 size={14} /> Borrar</button></div>}
+          {(canManage || item.creadoPorId === userId) && <div style={{ display: "flex", gap: 8, marginTop: 10 }}><button onClick={() => startEdit(item)} style={miniBtn}><Pencil size={14} /> Editar</button>{canManage && <button onClick={() => remove(item)} style={miniBtn}><Trash2 size={14} /> Borrar</button>}</div>}
         </article>
       ))}
     </div>
@@ -345,19 +356,51 @@ export default function ExportacionesPage() {
     <div className="op-table-wrap" style={{ "--module-color": COLOR, overflowX: "auto" } as React.CSSProperties}>
       <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
         <thead><tr style={{ color: "var(--muted)", textAlign: "left", borderBottom: "1px solid var(--border)" }}>
-          <th style={th}>Fecha</th><th style={th}>Usuario</th><th style={th}>Caja</th><th style={th}>PLU</th><th style={th}>Descripción</th><th style={th}>Empaque</th><th style={th}>Reguero</th><th style={th}>Inicio</th><th style={th}>Fin</th><th style={th}>Dur.</th>{canManage && <th style={th}>Acciones</th>}
+          <th style={th}>Fecha</th><th style={th}>Usuario</th><th style={th}>Caja</th><th style={th}>PLU</th><th style={th}>Descripción</th><th style={th}>Empaque</th><th style={th}>Reguero</th><th style={th}>Inicio</th><th style={th}>Fin</th><th style={th}>Dur.</th><th style={th}>Acciones</th>
         </tr></thead>
         <tbody>
-          {items.map((item) => (
-            <tr key={item.id} style={{ borderBottom: "1px solid var(--border)" }}>
-              <td style={td}>{item.fecha}</td><td style={td}>{item.creadoPorNombre ?? "-"}</td><td style={td}>{item.numeroCaja}</td><td style={td}>{item.plu}</td><td style={td}>{item.descripcion}</td><td style={td}>{item.unidadEmpaque}</td><td style={td}>{item.hayReguero ? `Sí (${item.cantidadReguero ?? "?"})` : "–"}</td><td style={td}>{fmtTime(item.horaInicio)}</td><td style={td}>{fmtTime(item.horaFinalizacion)}</td><td style={td}>{item.duracionMinutos ?? "-"}</td>
-              {canManage && <td style={td}><button onClick={() => startEdit(item)} style={iconBtn}><Pencil size={15} /></button><button onClick={() => remove(item)} style={iconBtn}><Trash2 size={15} /></button></td>}
-            </tr>
-          ))}
+          {items.map((item) => {
+            const canEditItem = canManage || item.creadoPorId === userId;
+            return (
+              <tr key={item.id} style={{ borderBottom: "1px solid var(--border)" }}>
+                <td style={td}>{item.fecha}</td><td style={td}>{item.creadoPorNombre ?? "-"}</td><td style={td}>{item.numeroCaja}</td><td style={td}>{item.plu}</td><td style={td}>{item.descripcion}</td><td style={td}>{item.unidadEmpaque}</td><td style={td}>{item.hayReguero ? `Sí (${item.cantidadReguero ?? "?"})` : "–"}</td><td style={td}>{fmtTime(item.horaInicio)}</td><td style={td}>{fmtTime(item.horaFinalizacion)}</td><td style={td}>{item.duracionMinutos ?? "-"}</td>
+                <td style={td}>
+                  {canEditItem && <button onClick={() => startEdit(item)} style={iconBtn}><Pencil size={15} /></button>}
+                  {canManage && <button onClick={() => remove(item)} style={iconBtn}><Trash2 size={15} /></button>}
+                </td>
+              </tr>
+            );
+          })}
         </tbody>
       </table>
     </div>
   );
+
+  const totalPages = Math.max(1, Math.ceil(totalItems / PAGE_SIZE));
+  const pagination = totalItems > PAGE_SIZE ? (
+    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "12px 4px 0", borderTop: "1px solid var(--border)", fontSize: 13, color: "var(--muted2)" }}>
+      <span>Mostrando {(page - 1) * PAGE_SIZE + 1}–{Math.min(page * PAGE_SIZE, totalItems)} de {totalItems} registros</span>
+      <div style={{ display: "flex", gap: 6 }}>
+        <button
+          disabled={page <= 1}
+          onClick={() => { const p = page - 1; setPage(p); load(p); }}
+          style={{ ...iconBtn, opacity: page <= 1 ? 0.4 : 1, padding: "0 12px", minWidth: "auto" }}
+        >
+          ← Anterior
+        </button>
+        <span style={{ padding: "0 8px", lineHeight: "30px", fontWeight: 700 }}>
+          {page} / {totalPages}
+        </span>
+        <button
+          disabled={page >= totalPages}
+          onClick={() => { const p = page + 1; setPage(p); load(p); }}
+          style={{ ...iconBtn, opacity: page >= totalPages ? 0.4 : 1, padding: "0 12px", minWidth: "auto" }}
+        >
+          Siguiente →
+        </button>
+      </div>
+    </div>
+  ) : null;
 
   return (
     <div className="animate-fade-in" style={{ "--module-color": COLOR, display: "grid", gap: 16, maxWidth: 1180 } as React.CSSProperties}>
@@ -469,9 +512,10 @@ export default function ExportacionesPage() {
         </div>
         {filters}
         {list}
+        {pagination}
       </section>
 
-      {editing && canManage && (
+      {editing && (canManage || editing.creadoPorId === userId) && (
         <div style={{ position: "fixed", inset: 0, zIndex: 80, background: "rgba(0,0,0,.35)", display: "grid", placeItems: "center", padding: 16 }}>
           <form onSubmit={saveEdit} className="ds-card" style={{ width: "min(620px, 100%)", padding: 18, display: "grid", gap: 12 }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
@@ -504,10 +548,12 @@ export default function ExportacionesPage() {
                     style={inputStyle} />
                 </Field>
               )}
-              <Field label="Hora inicio"><input type="datetime-local" value={editForm.horaInicio} onChange={(e) => setEditForm((f) => ({ ...f, horaInicio: e.target.value }))} style={inputStyle} /></Field>
-              <Field label="Hora finalización"><input type="datetime-local" value={editForm.horaFinalizacion} onChange={(e) => setEditForm((f) => ({ ...f, horaFinalizacion: e.target.value }))} style={inputStyle} /></Field>
+              {canManage && <>
+                <Field label="Hora inicio"><input type="datetime-local" value={editForm.horaInicio} onChange={(e) => setEditForm((f) => ({ ...f, horaInicio: e.target.value }))} style={inputStyle} /></Field>
+                <Field label="Hora finalización"><input type="datetime-local" value={editForm.horaFinalizacion} onChange={(e) => setEditForm((f) => ({ ...f, horaFinalizacion: e.target.value }))} style={inputStyle} /></Field>
+              </>}
             </div>
-            <Field label="Motivo correccion"><textarea value={editForm.motivoCorreccion} onChange={(e) => setEditForm((f) => ({ ...f, motivoCorreccion: e.target.value }))} rows={3} style={{ ...inputStyle, height: "auto", padding: 10 }} /></Field>
+            {canManage && <Field label="Motivo correccion"><textarea value={editForm.motivoCorreccion} onChange={(e) => setEditForm((f) => ({ ...f, motivoCorreccion: e.target.value }))} rows={3} style={{ ...inputStyle, height: "auto", padding: 10 }} /></Field>}
             <button disabled={saving} style={{ height: 40, border: "none", borderRadius: 8, background: COLOR, color: "white", fontWeight: 800, cursor: "pointer" }}>Guardar cambios</button>
           </form>
         </div>

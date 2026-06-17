@@ -3,7 +3,7 @@ import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { requireAuth } from "@/lib/authz";
 import { mapExportacion } from "../route";
-import { normalizePlu, puedeGestionarExportaciones, validarRegueroExportacion } from "@/lib/exportaciones";
+import { normalizePlu, puedeGestionarExportaciones, puedeUsarExportaciones, validarRegueroExportacion } from "@/lib/exportaciones";
 
 const patchSchema = z.object({
   numeroCaja:      z.string().min(1).max(100).optional(),
@@ -19,8 +19,8 @@ const patchSchema = z.object({
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const actor = await requireAuth();
   if (actor instanceof NextResponse) return actor;
-  if (!puedeGestionarExportaciones(actor.role)) {
-    return NextResponse.json({ error: "Solo gestion puede editar Exportaciones" }, { status: 403 });
+  if (!puedeUsarExportaciones(actor.role)) {
+    return NextResponse.json({ error: "Sin acceso a Exportaciones" }, { status: 403 });
   }
 
   const { id } = await params;
@@ -30,13 +30,26 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     return NextResponse.json({ error: parsed.error.issues[0].message }, { status: 400 });
   }
   const d = parsed.data;
+
+  const current = await prisma.etiquetadoExportacion.findUnique({
+    where: { id },
+    select: { deletedAt: true, creadoPorId: true },
+  });
+  if (!current || current.deletedAt) return NextResponse.json({ error: "No encontrado" }, { status: 404 });
+
+  const isGestor = puedeGestionarExportaciones(actor.role);
+  const isOwner = current.creadoPorId === actor.id;
+  if (!isGestor && !isOwner) {
+    return NextResponse.json({ error: "Solo puedes editar tus propios registros" }, { status: 403 });
+  }
+
   const cambiaHoras = d.horaInicio !== undefined || d.horaFinalizacion !== undefined;
+  if (cambiaHoras && !isGestor) {
+    return NextResponse.json({ error: "Solo gestores pueden modificar las horas" }, { status: 403 });
+  }
   if (cambiaHoras && !d.motivoCorreccion?.trim()) {
     return NextResponse.json({ error: "Motivo de correccion obligatorio para modificar horas" }, { status: 400 });
   }
-
-  const current = await prisma.etiquetadoExportacion.findUnique({ where: { id }, select: { deletedAt: true } });
-  if (!current || current.deletedAt) return NextResponse.json({ error: "No encontrado" }, { status: 404 });
 
   if (d.hayReguero !== undefined || d.cantidadReguero !== undefined) {
     const validReguero = validarRegueroExportacion({
