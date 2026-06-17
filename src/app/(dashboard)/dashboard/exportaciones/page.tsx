@@ -412,7 +412,7 @@ export default function ExportacionesPage() {
                         <td style={td}><strong>{s.nombre}</strong></td>
                         <td style={{ ...td, textAlign: "right", fontVariantNumeric: "tabular-nums" }}>{s.cajas}</td>
                         <td style={{ ...td, textAlign: "right", fontVariantNumeric: "tabular-nums" }}>{s.plusDistintos}</td>
-                        <td style={{ ...td, textAlign: "right", fontVariantNumeric: "tabular-nums" }}>{s.totalUnidades.toLocaleString("es-CO")}</td>
+                        <td style={{ ...td, textAlign: "right", fontVariantNumeric: "tabular-nums" }}>{s.totalUnidades}</td>
                         <td style={{ ...td, textAlign: "right", fontVariantNumeric: "tabular-nums" }}>{s.finalizadas}</td>
                         <td style={{ ...td, textAlign: "right", fontVariantNumeric: "tabular-nums", color: "var(--muted)" }}>{s.duracionTotalMin > 0 ? `${s.duracionTotalMin} min` : "–"}</td>
                         <td style={{ ...td, textAlign: "right" }}>
@@ -435,7 +435,7 @@ export default function ExportacionesPage() {
                           <td style={{ ...td, fontWeight: 700 }}>Total</td>
                           <td style={{ ...td, textAlign: "right", fontWeight: 700, fontVariantNumeric: "tabular-nums" }}>{totalCajas}</td>
                           <td style={{ ...td, textAlign: "right", color: "var(--muted)" }}>—</td>
-                          <td style={{ ...td, textAlign: "right", fontWeight: 700, fontVariantNumeric: "tabular-nums" }}>{totalUnidades.toLocaleString("es-CO")}</td>
+                          <td style={{ ...td, textAlign: "right", fontWeight: 700, fontVariantNumeric: "tabular-nums" }}>{totalUnidades}</td>
                           <td style={{ ...td, textAlign: "right", fontWeight: 700, fontVariantNumeric: "tabular-nums" }}>{totalFin}</td>
                           <td style={{ ...td, textAlign: "right", fontVariantNumeric: "tabular-nums", color: "var(--muted)" }}>{totalMin > 0 ? `${totalMin} min` : "–"}</td>
                           <td style={{ ...td, textAlign: "right", fontWeight: 700 }}>

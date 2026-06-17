@@ -49,7 +49,7 @@ export async function GET(req: NextRequest) {
     const u = byUser.get(r.creadoPorId)!;
     u.cajas++;
     u.plusSet.add(r.plu);
-    u.totalUnidades += r.unidadEmpaque;
+    u.totalUnidades += Math.round(r.unidadEmpaque);
     if (r.horaFinalizacion) {
       u.finalizadas++;
       const min = calcularDuracionMinutos(r.horaInicio, r.horaFinalizacion);
@@ -63,7 +63,7 @@ export async function GET(req: NextRequest) {
       nombre: u.nombre,
       cajas: u.cajas,
       plusDistintos: u.plusSet.size,
-      totalUnidades: u.totalUnidades,
+      totalUnidades: Math.round(u.totalUnidades),
       finalizadas: u.finalizadas,
       duracionTotalMin: u.duracionTotal,
       promedioPorCajaMin:
