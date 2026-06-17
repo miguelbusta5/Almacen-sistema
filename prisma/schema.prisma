@@ -820,7 +820,6 @@ model IndicadorFuente {
   id             String    @id @default(cuid())
   nombre         String    @unique @db.VarChar(120)
   spreadsheetId  String?   @map("spreadsheet_id") @db.VarChar(160)
-  rango          String    @default("Indicadores!A:Z") @db.VarChar(120)
   activa         Boolean   @default(true)
   lastSyncAt     DateTime? @map("last_sync_at")
   lastSyncStatus String?   @map("last_sync_status") @db.VarChar(30)
@@ -830,33 +829,56 @@ model IndicadorFuente {
   createdAt      DateTime  @default(now()) @map("created_at")
   updatedAt      DateTime  @updatedAt @map("updated_at")
 
-  indicadores IndicadorCedi[]
-
   @@index([activa])
   @@map("indicadores_fuentes")
 }
 
-model IndicadorCedi {
-  id        String @id @default(cuid())
-  fuenteId  String @map("fuente_id")
-  fuente    IndicadorFuente @relation(fields: [fuenteId], references: [id], onDelete: Cascade)
-
-  proceso   String  @db.VarChar(120)
-  indicador String  @db.VarChar(180)
-  periodo   String  @db.VarChar(80)
-  valor     Decimal @db.Decimal(14, 2)
-  meta      Decimal? @db.Decimal(14, 2)
-  unidad    String? @db.VarChar(40)
-  estado    String  @default("NORMAL") @db.VarChar(30)
-  rawRow    Json    @map("raw_row")
-  rowKey    String  @unique @map("row_key") @db.VarChar(220)
-  rowHash   String  @map("row_hash") @db.VarChar(80)
+// Agregaciones mensuales: grupo (AG | MUEBLES | OTROS) × tipoMov (OVDM | TSDM)
+model IndicadorResumenMes {
+  id        String   @id @default(cuid())
+  anio      Int
+  mes       Int
+  mesNombre String   @db.VarChar(20) @map("mes_nombre")
+  grupo     String   @db.VarChar(20)
+  tipoMov   String   @db.VarChar(10) @map("tipo_mov")
+  ordenes   Int      @default(0)
+  unidades  Int      @default(0)
+  lineas    Int      @default(0)
   syncedAt  DateTime @default(now()) @map("synced_at")
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
 
-  @@index([proceso, periodo])
-  @@index([estado])
-  @@index([fuenteId, syncedAt])
-  @@map("indicadores_cedi")
+  @@unique([anio, mes, grupo, tipoMov])
+  @@index([anio, mes])
+  @@index([grupo])
+  @@map("indicador_resumen_mes")
+}
+
+// Órdenes por tipo (ECOMMERCE, CARULLA, etc.) × grupo × año
+model IndicadorTipoOrden {
+  id        String   @id @default(cuid())
+  anio      Int
+  tipoOrden String   @db.VarChar(80) @map("tipo_orden")
+  grupo     String   @db.VarChar(20)
+  ordenes   Int      @default(0)
+  unidades  Int      @default(0)
+  syncedAt  DateTime @default(now()) @map("synced_at")
+
+  @@unique([anio, tipoOrden, grupo])
+  @@index([anio])
+  @@map("indicador_tipo_orden")
+}
+
+// Rotación por PLU desde pestaña "Rotacion PLU"
+model IndicadorPLU {
+  id          String   @id @default(cuid())
+  plu         String   @db.VarChar(30)
+  descripcion String   @db.VarChar(220)
+  grupo       String   @db.VarChar(30)
+  anio        Int
+  enviados    Int      @default(0)
+  unidades    Int      @default(0)
+  syncedAt    DateTime @default(now()) @map("synced_at")
+
+  @@unique([plu, anio, grupo])
+  @@index([anio, grupo])
+  @@map("indicador_plu")
 }

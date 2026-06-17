@@ -27,7 +27,7 @@
 
 - [ ] Migrar pantallas legacy clave a componentes `CediPage/CediPanel/CediStat` por fases
 - [ ] QA visual real de Indicadores CEDI en desktop, tablet y movil con datos sincronizados
-- [ ] Configurar credenciales Google Sheets en Vercel: service account, spreadsheet id y secret de cron
+- [x] Adaptar Indicadores CEDI a estructura real del Sheet (Base general + Rotacion PLU) — 2026-06-17
 - [ ] QA visual con sesion real de la capa CEDI Harmony en desktop, tablet y movil
 - [ ] Revisar y corregir mojibake visible en Cerebro y pantallas legacy
 - [ ] QA visual desktop/mobile con sesion real para el rediseño Claro Ejecutivo Azul/Gris

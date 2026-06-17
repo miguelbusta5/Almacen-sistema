@@ -1,5 +1,3 @@
-import { createHash } from "crypto";
-import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 
 export const INDICADORES_ROLES = [
@@ -14,114 +12,162 @@ export const INDICADORES_ROLES = [
 export const INDICADORES_SYNC_ROLES = ["ADMIN", "GERENTE"] as const;
 
 const DEFAULT_SOURCE_NAME = "Google Sheets CEDI";
-const DEFAULT_RANGE = "Indicadores!A:Z";
+const RANGE_BASE = "Base general!A:Z";
+const RANGE_PLU = "Rotacion PLU!A:Z";
 
-type SheetRow = Record<string, string>;
-
-export interface ParsedIndicador {
-  proceso: string;
-  indicador: string;
-  periodo: string;
-  valor: number;
-  meta: number | null;
-  unidad: string | null;
-  estado: string;
-  rawRow: SheetRow;
-  rowKey: string;
-  rowHash: string;
-}
+const MES_NOMBRES: Record<string, number> = {
+  enero: 1, febrero: 2, marzo: 3, abril: 4, mayo: 5, junio: 6,
+  julio: 7, agosto: 8, septiembre: 9, octubre: 10, noviembre: 11, diciembre: 12,
+};
+const MES_POR_NUM = ["", "enero", "febrero", "marzo", "abril", "mayo", "junio",
+  "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre"];
 
 export interface IndicadoresSyncResult {
   fuenteId: string;
-  importados: number;
-  actualizados: number;
-  ignorados: number;
-  errores: string[];
+  resumenMes: number;
+  tipoOrden: number;
+  plus: number;
   syncedAt: string;
-}
-
-function normalizeHeader(value: string): string {
-  return value
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "_")
-    .replace(/^_+|_+$/g, "");
-}
-
-function first(row: SheetRow, keys: string[]): string {
-  for (const key of keys) {
-    const value = row[key]?.trim();
-    if (value) return value;
-  }
-  return "";
 }
 
 export function parseNumber(value: string | null | undefined): number | null {
   if (!value) return null;
-  const cleaned = value
-    .toString()
-    .replace(/\$/g, "")
-    .replace(/\s/g, "")
-    .replace(/\./g, "")
-    .replace(",", ".");
+  const cleaned = value.toString().replace(/\$/g, "").replace(/\s/g, "")
+    .replace(/\./g, "").replace(",", ".");
   const n = Number(cleaned);
   return Number.isFinite(n) ? n : null;
 }
 
-function inferEstado(valor: number, meta: number | null, explicit: string): string {
-  const status = explicit.trim().toUpperCase();
-  if (status) return status.slice(0, 30);
-  if (meta === null || meta === 0) return "NORMAL";
-  const cumplimiento = valor / meta;
-  if (cumplimiento >= 1) return "EN_META";
-  if (cumplimiento >= 0.9) return "ALERTA";
-  return "CRITICO";
+function normalizeHeader(value: string): string {
+  return value
+    .normalize("NFD").replace(/[̀-ͯ]/g, "")
+    .toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_+|_+$/g, "");
 }
 
-export function rowsToIndicadores(values: string[][], fuenteId: string): ParsedIndicador[] {
+function toRow(headers: string[], cells: string[]): Record<string, string> {
+  return headers.reduce<Record<string, string>>((acc, h, i) => {
+    if (h) acc[h] = (cells[i] ?? "").trim();
+    return acc;
+  }, {});
+}
+
+function mesToNum(raw: string): number | null {
+  const v = raw.trim().toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
+  const byName = MES_NOMBRES[v];
+  if (byName) return byName;
+  const n = parseInt(v, 10);
+  return isNaN(n) ? null : n;
+}
+
+function normalizeGrupo(raw: string): string {
+  const v = raw.trim().toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
+  if (v.includes("gourmet") || v === "ag") return "AG";
+  if (v.includes("mueble")) return "MUEBLES";
+  return "OTROS";
+}
+
+function normalizeTipoMov(raw: string): "OVDM" | "TSDM" {
+  return raw.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "")
+    .includes("traslado") ? "TSDM" : "OVDM";
+}
+
+// ── Parsers exportados para tests ───────────────────────────────────────────
+
+export interface ResumenMesRow {
+  anio: number; mes: number; mesNombre: string; grupo: string; tipoMov: string;
+  ordenes: number; unidades: number; lineas: number;
+}
+export interface TipoOrdenRow {
+  anio: number; tipoOrden: string; grupo: string; ordenes: number; unidades: number;
+}
+export interface PLURow {
+  plu: string; descripcion: string; grupo: string; anio: number; enviados: number; unidades: number;
+}
+
+export function parseBaseGeneral(values: string[][]): { resumen: ResumenMesRow[]; tipoOrden: TipoOrdenRow[] } {
+  const [headersRaw, ...rows] = values;
+  if (!headersRaw?.length) return { resumen: [], tipoOrden: [] };
+  const headers = headersRaw.map((h) => normalizeHeader(String(h ?? "")));
+
+  const resumenMap = new Map<string, ResumenMesRow>();
+  const tipoOrdenMap = new Map<string, TipoOrdenRow>();
+
+  for (const cells of rows) {
+    const row = toRow(headers, cells);
+
+    const anioRaw = row["ano"] ?? row["anio"] ?? row["year"] ?? "";
+    const mesRaw = row["mes"] ?? row["mes_de_fecha"] ?? "";
+    const tipoRaw = row["tipo"] ?? "";
+    const tipoOrdenRaw = (row["tipo_de_orden"] ?? "").trim().toUpperCase() || "OTROS";
+    const grupoRaw = row["tipo_e_inventario_wms"] ?? row["tipo_inventario_wms"] ?? row["grupo"] ?? "";
+    const unidades = parseNumber(row["cantidad_completada"] ?? row["cantidad_orden"] ?? "") ?? 0;
+    const lineas = parseNumber(row["cantidad_de_lineas"] ?? row["cantidad_lineas"] ?? "") ?? 0;
+
+    const anio = parseNumber(anioRaw);
+    const mes = mesToNum(mesRaw);
+    if (!anio || !mes) continue;
+
+    const mesNombre = MES_POR_NUM[mes] ?? mesRaw.toLowerCase();
+    const grupo = normalizeGrupo(grupoRaw);
+    const tipoMov = normalizeTipoMov(tipoRaw);
+
+    // Acumular resumen en granularidad (grupo × tipoMov)
+    const rKey = `${anio}_${mes}_${grupo}_${tipoMov}`;
+    const rExisting = resumenMap.get(rKey);
+    if (rExisting) {
+      rExisting.ordenes++;
+      rExisting.unidades += unidades;
+      rExisting.lineas += lineas;
+    } else {
+      resumenMap.set(rKey, { anio, mes, mesNombre, grupo, tipoMov, ordenes: 1, unidades, lineas });
+    }
+
+    // Acumular tipoOrden en grupo propio + TODOS (combinado)
+    for (const g of [grupo, "TODOS"]) {
+      const tKey = `${anio}_${tipoOrdenRaw}_${g}`;
+      const tExisting = tipoOrdenMap.get(tKey);
+      if (tExisting) {
+        tExisting.ordenes++;
+        tExisting.unidades += unidades;
+      } else {
+        tipoOrdenMap.set(tKey, { anio, tipoOrden: tipoOrdenRaw, grupo: g, ordenes: 1, unidades });
+      }
+    }
+  }
+
+  return { resumen: Array.from(resumenMap.values()), tipoOrden: Array.from(tipoOrdenMap.values()) };
+}
+
+export function parseRotacionPLU(values: string[][]): PLURow[] {
   const [headersRaw, ...rows] = values;
   if (!headersRaw?.length) return [];
   const headers = headersRaw.map((h) => normalizeHeader(String(h ?? "")));
 
-  return rows.flatMap((cells, index) => {
-    const rawRow = headers.reduce<SheetRow>((acc, header, cellIndex) => {
-      if (header) acc[header] = String(cells[cellIndex] ?? "").trim();
-      return acc;
-    }, {});
+  const plusMap = new Map<string, PLURow>();
+  const years = [2024, 2025, 2026];
 
-    const proceso = first(rawRow, ["proceso", "area", "modulo", "departamento"]);
-    const indicador = first(rawRow, ["indicador", "kpi", "nombre", "metrica"]);
-    const periodo = first(rawRow, ["periodo", "mes", "fecha", "semana"]);
-    const valor = parseNumber(first(rawRow, ["valor", "resultado", "actual", "cantidad"]));
-    const meta = parseNumber(first(rawRow, ["meta", "objetivo", "target"]));
-    const unidad = first(rawRow, ["unidad", "tipo_unidad", "medida"]) || null;
-    const explicitEstado = first(rawRow, ["estado", "semaforo", "status"]);
+  for (const cells of rows) {
+    const row = toRow(headers, cells);
+    const plu = (row["articulo"] ?? row["plu"] ?? "").trim();
+    if (!plu) continue;
 
-    if (!proceso || !indicador || !periodo || valor === null) return [];
+    const descripcion = (row["descripcion"] ?? "").trim().slice(0, 220);
+    const grupo = (row["grupo"] ?? "AG").trim().toUpperCase();
 
-    const rowKey = `${fuenteId}:${index + 2}:${proceso}:${indicador}:${periodo}`
-      .normalize("NFD")
-      .replace(/[\u0300-\u036f]/g, "")
-      .toLowerCase()
-      .replace(/[^a-z0-9:.-]+/g, "_")
-      .slice(0, 220);
-    const rowHash = createHash("sha256").update(JSON.stringify(rawRow)).digest("hex");
+    for (const anio of years) {
+      const enviados = parseNumber(row[`enviados_${anio}`]);
+      const unidades = parseNumber(row[`unidades_${anio}`]);
+      if (enviados === null && unidades === null) continue;
 
-    return [{
-      proceso,
-      indicador,
-      periodo,
-      valor,
-      meta,
-      unidad,
-      estado: inferEstado(valor, meta, explicitEstado),
-      rawRow,
-      rowKey,
-      rowHash,
-    }];
-  });
+      const key = `${plu}_${anio}_${grupo}`;
+      plusMap.set(key, { plu, descripcion, grupo, anio, enviados: enviados ?? 0, unidades: unidades ?? 0 });
+    }
+  }
+
+  return Array.from(plusMap.values());
 }
+
+// ── Helpers internos ─────────────────────────────────────────────────────────
 
 function getPrivateKey(): string | null {
   const key = process.env.GOOGLE_SHEETS_PRIVATE_KEY;
@@ -131,24 +177,14 @@ function getPrivateKey(): string | null {
 
 async function ensureFuente(actorId?: string) {
   const spreadsheetId = process.env.GOOGLE_SHEETS_INDICADORES_SPREADSHEET_ID;
-  const rango = process.env.GOOGLE_SHEETS_INDICADORES_RANGE || DEFAULT_RANGE;
-
   return prisma.indicadorFuente.upsert({
     where: { nombre: DEFAULT_SOURCE_NAME },
-    update: {
-      spreadsheetId,
-      rango,
-      activa: true,
-      syncedById: actorId ?? null,
-    },
-    create: {
-      nombre: DEFAULT_SOURCE_NAME,
-      spreadsheetId,
-      rango,
-      syncedById: actorId ?? null,
-    },
+    update: { spreadsheetId, activa: true, syncedById: actorId ?? null },
+    create: { nombre: DEFAULT_SOURCE_NAME, spreadsheetId, syncedById: actorId ?? null },
   });
 }
+
+// ── Sync principal ────────────────────────────────────────────────────────────
 
 export async function syncIndicadoresFromSheets(actorId?: string): Promise<IndicadoresSyncResult> {
   const clientEmail = process.env.GOOGLE_SHEETS_CLIENT_EMAIL;
@@ -160,11 +196,7 @@ export async function syncIndicadoresFromSheets(actorId?: string): Promise<Indic
   if (!clientEmail || !privateKey || !spreadsheetId) {
     await prisma.indicadorFuente.update({
       where: { id: fuente.id },
-      data: {
-        lastSyncAt: syncedAt,
-        lastSyncStatus: "ERROR",
-        lastSyncError: "Faltan credenciales de Google Sheets",
-      },
+      data: { lastSyncAt: syncedAt, lastSyncStatus: "ERROR", lastSyncError: "Faltan credenciales de Google Sheets" },
     });
     throw new Error("Faltan credenciales de Google Sheets");
   }
@@ -172,83 +204,64 @@ export async function syncIndicadoresFromSheets(actorId?: string): Promise<Indic
   try {
     const { google } = await import("googleapis");
     const auth = new google.auth.JWT({
-      email: clientEmail,
-      key: privateKey,
+      email: clientEmail, key: privateKey,
       scopes: ["https://www.googleapis.com/auth/spreadsheets.readonly"],
     });
     const sheets = google.sheets({ version: "v4", auth });
-    const response = await sheets.spreadsheets.values.get({
-      spreadsheetId,
-      range: fuente.rango,
+
+    const fetchRange = async (range: string): Promise<string[][]> => {
+      const res = await sheets.spreadsheets.values.get({ spreadsheetId, range });
+      return (res.data.values ?? []) as string[][];
+    };
+
+    const [baseValues, pluValues] = await Promise.all([
+      fetchRange(RANGE_BASE),
+      fetchRange(RANGE_PLU),
+    ]);
+
+    const { resumen, tipoOrden } = parseBaseGeneral(baseValues);
+    const plus = parseRotacionPLU(pluValues);
+
+    const now = syncedAt;
+    await prisma.$transaction(async (tx) => {
+      await tx.indicadorResumenMes.deleteMany({});
+      await tx.indicadorTipoOrden.deleteMany({});
+      await tx.indicadorPLU.deleteMany({});
+
+      if (resumen.length) {
+        await tx.indicadorResumenMes.createMany({
+          data: resumen.map((r) => ({ ...r, syncedAt: now })),
+        });
+      }
+      if (tipoOrden.length) {
+        await tx.indicadorTipoOrden.createMany({
+          data: tipoOrden.map((r) => ({ ...r, syncedAt: now })),
+        });
+      }
+      if (plus.length) {
+        await tx.indicadorPLU.createMany({
+          data: plus.map((r) => ({ ...r, syncedAt: now })),
+        });
+      }
     });
 
-    const values = (response.data.values ?? []) as string[][];
-    const parsed = rowsToIndicadores(values, fuente.id);
-    let importados = 0;
-    let actualizados = 0;
-
-    for (const item of parsed) {
-      const existing = await prisma.indicadorCedi.findUnique({
-        where: { rowKey: item.rowKey },
-        select: { id: true, rowHash: true },
-      });
-
-      const data = {
-        fuenteId: fuente.id,
-        proceso: item.proceso,
-        indicador: item.indicador,
-        periodo: item.periodo,
-        valor: new Prisma.Decimal(item.valor),
-        meta: item.meta === null ? null : new Prisma.Decimal(item.meta),
-        unidad: item.unidad,
-        estado: item.estado,
-        rawRow: item.rawRow,
-        rowHash: item.rowHash,
-        syncedAt,
-      };
-
-      await prisma.indicadorCedi.upsert({
-        where: { rowKey: item.rowKey },
-        update: data,
-        create: { ...data, rowKey: item.rowKey },
-      });
-
-      if (existing) {
-        if (existing.rowHash !== item.rowHash) actualizados += 1;
-      } else {
-        importados += 1;
-      }
-    }
-
-    const ignored = Math.max(0, values.length - 1 - parsed.length);
     await prisma.indicadorFuente.update({
       where: { id: fuente.id },
-      data: {
-        lastSyncAt: syncedAt,
-        lastSyncStatus: "OK",
-        lastSyncError: null,
-        syncedById: actorId ?? null,
-      },
+      data: { lastSyncAt: syncedAt, lastSyncStatus: "OK", lastSyncError: null, syncedById: actorId ?? null },
     });
 
     return {
       fuenteId: fuente.id,
-      importados,
-      actualizados,
-      ignorados: ignored,
-      errores: [],
+      resumenMes: resumen.length,
+      tipoOrden: tipoOrden.length,
+      plus: plus.length,
       syncedAt: syncedAt.toISOString(),
     };
   } catch (error) {
     const message = error instanceof Error ? error.message : "Error desconocido sincronizando Sheets";
     await prisma.indicadorFuente.update({
       where: { id: fuente.id },
-      data: {
-        lastSyncAt: syncedAt,
-        lastSyncStatus: "ERROR",
-        lastSyncError: message,
-        syncedById: actorId ?? null,
-      },
+      data: { lastSyncAt: syncedAt, lastSyncStatus: "ERROR", lastSyncError: message },
     });
     throw error;
   }
