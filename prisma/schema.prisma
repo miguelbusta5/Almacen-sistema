@@ -118,6 +118,7 @@ model User {
   historialSolicitudesTransporte HistorialSolicitudTransporte[] @relation("HistorialSolicitudTransporteUsuario")
   exportacionesEtiquetado  EtiquetadoExportacion[] @relation("ExportacionesEtiquetadoCreadas")
   exportacionesActualizadas EtiquetadoExportacion[] @relation("ExportacionesEtiquetadoActualizadas")
+  indicadoresSync          IndicadorFuente[]        @relation("IndicadoresSyncUsuario")
 
   @@index([email])
   @@map("users")
@@ -813,4 +814,49 @@ model EtiquetadoExportacion {
   @@index([numeroCaja])
   @@index([horaFinalizacion])
   @@map("etiquetado_exportaciones")
+}
+
+model IndicadorFuente {
+  id             String    @id @default(cuid())
+  nombre         String    @unique @db.VarChar(120)
+  spreadsheetId  String?   @map("spreadsheet_id") @db.VarChar(160)
+  rango          String    @default("Indicadores!A:Z") @db.VarChar(120)
+  activa         Boolean   @default(true)
+  lastSyncAt     DateTime? @map("last_sync_at")
+  lastSyncStatus String?   @map("last_sync_status") @db.VarChar(30)
+  lastSyncError  String?   @map("last_sync_error")
+  syncedById     String?   @map("synced_by_id")
+  syncedBy       User?     @relation("IndicadoresSyncUsuario", fields: [syncedById], references: [id], onDelete: SetNull)
+  createdAt      DateTime  @default(now()) @map("created_at")
+  updatedAt      DateTime  @updatedAt @map("updated_at")
+
+  indicadores IndicadorCedi[]
+
+  @@index([activa])
+  @@map("indicadores_fuentes")
+}
+
+model IndicadorCedi {
+  id        String @id @default(cuid())
+  fuenteId  String @map("fuente_id")
+  fuente    IndicadorFuente @relation(fields: [fuenteId], references: [id], onDelete: Cascade)
+
+  proceso   String  @db.VarChar(120)
+  indicador String  @db.VarChar(180)
+  periodo   String  @db.VarChar(80)
+  valor     Decimal @db.Decimal(14, 2)
+  meta      Decimal? @db.Decimal(14, 2)
+  unidad    String? @db.VarChar(40)
+  estado    String  @default("NORMAL") @db.VarChar(30)
+  rawRow    Json    @map("raw_row")
+  rowKey    String  @unique @map("row_key") @db.VarChar(220)
+  rowHash   String  @map("row_hash") @db.VarChar(80)
+  syncedAt  DateTime @default(now()) @map("synced_at")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([proceso, periodo])
+  @@index([estado])
+  @@index([fuenteId, syncedAt])
+  @@map("indicadores_cedi")
 }

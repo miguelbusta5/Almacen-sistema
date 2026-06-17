@@ -216,6 +216,7 @@ export async function buildControlLogisticoResumen(actor: SessionUser): Promise<
     ...(see("conteo") ? [moduleSignal("conteo", undefined, "neutral", "/dashboard/conteo")] : []),
     ...(see("preoperacional") ? [moduleSignal("preoperacional", preopBloqueadas, statusFrom(preopBloqueadas, 1, 2), "/dashboard/preoperacional")] : []),
     ...(see("integracion") ? [moduleSignal("integracion", integracionesPendientes, statusFrom(integracionesPendientes, 1, 8), "/dashboard/integracion")] : []),
+    ...(see("indicadores") ? [moduleSignal("indicadores", undefined, "neutral", "/dashboard/indicadores")] : []),
     ...(see("usuarios") ? [moduleSignal("usuarios", undefined, "neutral", "/dashboard/usuarios")] : []),
     ...(see("auditoria") ? [moduleSignal("auditoria", undefined, "neutral", "/dashboard/auditoria")] : []),
     ...(see("centro-control") ? [moduleSignal("centro-control", undefined, "neutral", "/dashboard/centro-control")] : []),

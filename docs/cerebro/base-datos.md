@@ -61,6 +61,7 @@ node prisma/seed.js       # Crear usuario admin inicial
 - `historialSolicitudesTransporte` → HistorialSolicitudTransporte[]
 - `exportacionesEtiquetado` → EtiquetadoExportacion[]
 - `exportacionesActualizadas` → EtiquetadoExportacion[]
+- `indicadoresSync` → IndicadorFuente[]
 - `ciclosConteo`, `guardadosPendientes`, `novedadesAsign`, `contactosGuard`
 
 ### Módulo Tienda
@@ -115,6 +116,20 @@ node prisma/seed.js       # Crear usuario admin inicial
 - `descripcion` se copia desde `ProductoMaestro`; PLU inexistente bloquea la creacion.
 - `horaInicio` se crea automaticamente; `horaFinalizacion` se cierra cuando el usuario crea la siguiente caja.
 - `deletedAt` implementa borrado logico.
+
+### Módulo Indicadores CEDI
+
+| Modelo | Tabla | Propósito |
+|---|---|---|
+| `IndicadorFuente` | `indicadores_fuentes` | Fuente/rango de Google Sheets y estado de sincronizacion |
+| `IndicadorCedi` | `indicadores_cedi` | Snapshot cacheado de KPIs por proceso, indicador y periodo |
+
+**Reglas de datos:**
+- La UI consulta PostgreSQL; nunca consulta Google Sheets directamente.
+- `rowKey` identifica la fila fuente y evita duplicados.
+- `rowHash` permite detectar cambios de contenido en una fila sincronizada.
+- `rawRow` conserva la fila normalizada para trazabilidad sin acoplar toda la UI a columnas del Sheet.
+- El cron recomendado corre cada 15 minutos desde Vercel.
 
 ### Módulo Integración (Sprint 8)
 

@@ -1,5 +1,28 @@
 # Decisiones de Arquitectura y Producto
 
+## 2026-06-17 - Indicadores CEDI sincronizados desde Google Sheets
+
+**Decision:**
+- Se crea el modulo propio **Indicadores CEDI** en `/dashboard/indicadores`.
+- Los datos de Google Sheets se sincronizan a PostgreSQL con service account; la UI consulta datos cacheados.
+- `ADMIN` y `GERENTE` pueden sincronizar manualmente; supervisores autorizados solo consultan.
+- Vercel Cron ejecuta `/api/cron/indicadores-sync` cada 15 minutos.
+- Se inicia la consolidacion visual **CEDI Clean Platform** con componentes reutilizables en `src/components/ui/cedi.tsx`.
+
+**Contexto:**
+- La empresa usa actualmente Looker Studio sobre Google Sheets para indicadores.
+- El objetivo es llevar esos indicadores dentro de la app sin exponer credenciales ni depender de consultas directas desde el navegador.
+- La interfaz se percibia plana/generica; la respuesta tecnica es crear componentes limpios y reutilizables, no otra capa visual aislada.
+
+**Consecuencias:**
+- Nuevos modelos `IndicadorFuente` e `IndicadorCedi`.
+- Nuevas APIs `/api/indicadores`, `/api/indicadores/sync` y `/api/cron/indicadores-sync`.
+- Nuevo modulo en permisos, sidebar, command palette, home actions y resumen operativo.
+- Se instala `googleapis`.
+- Logistica, rutas, GPS y Mi Ruta siguen suspendidos.
+
+**Archivos afectados:** `prisma/schema.prisma`, `src/lib/indicadores.ts`, `src/app/api/indicadores/*`, `src/app/api/cron/indicadores-sync/route.ts`, `src/app/(dashboard)/dashboard/indicadores/page.tsx`, permisos/navegacion y `docs/cerebro/*`.
+
 ## 2026-06-16 - Capa CEDI Harmony para armonia visual azul/gris
 
 **Decision:**

@@ -7,7 +7,7 @@ import { useSession } from "next-auth/react";
 import {
   Package, Truck, ClipboardList, ArrowRight, AlertTriangle,
   Clock, Plus, CheckCircle2,
-  CheckSquare, Store, BarChart2, Users, History, ShieldCheck, GitMerge, FileText, Tags,
+  CheckSquare, Store, BarChart2, Users, History, ShieldCheck, GitMerge, FileText, Tags, Gauge,
 } from "lucide-react";
 import { Badge, Stat, TimelineItem, SectionHeader, SkeletonStat as SK } from "@/components/ui";
 import { AutoRefreshIndicator } from "@/components/ui/AutoRefreshIndicator";
@@ -152,6 +152,7 @@ const ICON_MAP: Record<string, React.ReactNode> = {
   CheckSquare:  <CheckSquare size={18} />,
   Store:        <Store size={18} />,
   BarChart2:    <BarChart2 size={18} />,
+  Gauge:        <Gauge size={18} />,
   Users:        <Users size={18} />,
   History:      <History size={18} />,
   GitMerge:     <GitMerge size={18} />,

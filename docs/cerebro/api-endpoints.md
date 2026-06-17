@@ -95,6 +95,13 @@ await prisma.notificacion.createMany({
 | PATCH | `/api/exportaciones/[id]` | Corrige caja, PLU, unidad y horas; cambiar horas exige motivo | SUPERVISOR_ALMACENAMIENTO, GERENTE, ADMIN |
 | DELETE | `/api/exportaciones/[id]` | Borrado logico auditado | SUPERVISOR_ALMACENAMIENTO, GERENTE, ADMIN |
 
+### Indicadores CEDI
+| Metodo | Ruta | Descripcion | Auth |
+|---|---|---|---|
+| GET | `/api/indicadores` | Lista indicadores cacheados desde PostgreSQL con filtros por proceso, periodo, fuente y busqueda | Roles con acceso al modulo `indicadores` |
+| POST | `/api/indicadores/sync` | Sincronizacion manual desde Google Sheets hacia PostgreSQL | ADMIN, GERENTE |
+| GET/POST | `/api/cron/indicadores-sync` | Sincronizacion automatica para Vercel Cron | Header `Authorization: Bearer <secret>` o `x-cron-secret` |
+
 ### Integración de Pedidos
 | Método | Ruta | Descripción |
 |---|---|---|
@@ -151,6 +158,7 @@ await prisma.notificacion.createMany({
 | `/api/notificaciones/leer` | Marcar como leídas |
 | `/api/activity` | Log de actividad (paginado) |
 | `/api/stats` | Estadísticas globales |
+| `/api/indicadores` | Indicadores CEDI cacheados desde Google Sheets |
 | `/api/productos-maestro/[plu]` | Búsqueda de PLU en catálogo |
 | `/api/productos-maestro/importar` | Importar CSV/Excel de productos |
 | `/api/uploads/foto` | Upload de imágenes |
@@ -164,3 +172,4 @@ await prisma.notificacion.createMany({
 - `/api/conteo/ciclos/[id]/importar` acepta `.xlsx` y `.csv`, con limite de tamano y filas.
 - `/api/uploads/foto` acepta solo JPG, PNG o WebP, maximo 5 MB. SVG queda rechazado.
 - `/api/stats` esta restringido a `ADMIN` y `GERENTE`.
+- Google Sheets se consume solo desde backend con service account y variables de entorno; ningun secreto se expone al cliente.

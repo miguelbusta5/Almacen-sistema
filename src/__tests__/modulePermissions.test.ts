@@ -12,6 +12,7 @@ describe("canSeeModule — Sprint 8", () => {
     it("NO ve usuarios",    () => expect(canSeeModule("TRANSPORTISTA", "usuarios")).toBe(false));
     it("NO ve auditoria",   () => expect(canSeeModule("TRANSPORTISTA", "auditoria")).toBe(false));
     it("NO ve centro-control", () => expect(canSeeModule("TRANSPORTISTA", "centro-control")).toBe(false));
+    it("NO ve indicadores", () => expect(canSeeModule("TRANSPORTISTA", "indicadores")).toBe(false));
     it("NO ve solicitudes-transporte", () => expect(canSeeModule("TRANSPORTISTA", "solicitudes-transporte")).toBe(false));
     it("solo tiene acceso a 1 módulo", () =>
       expect(getVisibleModules("TRANSPORTISTA")).toEqual(["preoperacional"])
@@ -27,6 +28,7 @@ describe("canSeeModule — Sprint 8", () => {
       expect(canSeeModule("ETIQUETADO", "transporte")).toBe(false);
       expect(canSeeModule("ETIQUETADO", "solicitudes-transporte")).toBe(false);
       expect(canSeeModule("ETIQUETADO", "preoperacional")).toBe(false);
+      expect(canSeeModule("ETIQUETADO", "indicadores")).toBe(false);
     });
   });
 
@@ -38,6 +40,7 @@ describe("canSeeModule — Sprint 8", () => {
     it("ve usuarios",        () => expect(canSeeModule("ADMIN", "usuarios")).toBe(true));
     it("ve auditoria",       () => expect(canSeeModule("ADMIN", "auditoria")).toBe(true));
     it("ve centro-control",  () => expect(canSeeModule("ADMIN", "centro-control")).toBe(true));
+    it("ve indicadores",  () => expect(canSeeModule("ADMIN", "indicadores")).toBe(true));
     it("ve solicitudes-transporte", () => expect(canSeeModule("ADMIN", "solicitudes-transporte")).toBe(true));
     it("ve exportaciones", () => expect(canSeeModule("ADMIN", "exportaciones")).toBe(true));
     it("ve preoperacional (vista supervisor)", () => expect(canSeeModule("ADMIN", "preoperacional")).toBe(true));
@@ -45,6 +48,10 @@ describe("canSeeModule — Sprint 8", () => {
 
   it.each(["ADMIN", "GERENTE", "SUPERVISOR_ALMACENAMIENTO"] as const)(
     "%s ve exportaciones como gestion", (role) => expect(canSeeModule(role, "exportaciones")).toBe(true)
+  );
+
+  it.each(["ADMIN", "GERENTE", "SUPERVISOR_INVENTARIO", "SUPERVISOR_TRANSPORTE", "SUPERVISOR_TIENDA", "SUPERVISOR_ALMACENAMIENTO"] as const)(
+    "%s ve indicadores CEDI", (role) => expect(canSeeModule(role, "indicadores")).toBe(true)
   );
 
   // ── TIENDA: solo su módulo ───────────────────────────

@@ -55,6 +55,11 @@ Roles adicionales de Exportaciones:
 - `ETIQUETADO`: solo ve `exportaciones`.
 - `SUPERVISOR_ALMACENAMIENTO`: ve `exportaciones` y `centro-control`.
 
+Indicadores CEDI:
+- `ADMIN`, `GERENTE`, `SUPERVISOR_INVENTARIO`, `SUPERVISOR_TRANSPORTE`, `SUPERVISOR_TIENDA` y `SUPERVISOR_ALMACENAMIENTO` ven `indicadores`.
+- Solo `ADMIN` y `GERENTE` pueden ejecutar sincronizacion manual con Google Sheets.
+- `TRANSPORTISTA` y `ETIQUETADO` no ven `indicadores`.
+
 ---
 
 ## Acciones CRUD por rol

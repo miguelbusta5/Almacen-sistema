@@ -122,6 +122,14 @@ export const MODULE_THEME: Record<ModuleThemeKey, ModuleTheme> = {
     color: SLATE,
     tint: SLATE_TINT,
   },
+  indicadores: {
+    key: "indicadores",
+    label: "Indicadores CEDI",
+    shortLabel: "Indicadores",
+    description: "KPIs sincronizados desde Google Sheets",
+    color: BLUE,
+    tint: BLUE_TINT,
+  },
   integracion: {
     key: "integracion",
     label: "Integracion Pedidos",

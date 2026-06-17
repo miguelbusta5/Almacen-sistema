@@ -109,3 +109,12 @@ Revisar en desktop, tablet y movil:
 - Las constantes antiguas de Inventario, Conteo, Tienda y Transporte se alinean a azul/gris para evitar que modulos secundarios vuelvan a verse multicolor.
 - Notificaciones, estados OK, finalizados y activos usan azul o gris, no verde.
 - Base44 no esta configurado en el repo (`base44/config.jsonc` no existe); se usa solo como referencia conceptual/checklist, no como destino de deploy.
+
+## CEDI Clean Platform - 2026-06-17
+
+- La nueva evolucion visual debe consolidar, no superponer: los componentes nuevos viven en `src/components/ui/cedi.tsx`.
+- Las pantallas nuevas deben usar `CediPage`, `CediPanel`, `CediStat`, `CediBadge` y tablas `.cedi-table` antes de crear estilos inline.
+- La base visual se mantiene blanco/gris/azul con sombras sobrias, botones con microinteraccion y layout mobile-first.
+- El primer modulo creado sobre esta base es **Indicadores CEDI**.
+- En mobile, las tablas deben transformarse en tarjetas con `data-label` para conservar lectura tipo iOS/Android.
+- Queda pendiente migrar pantallas legacy a estos componentes por fases, sin romper flujos operativos.

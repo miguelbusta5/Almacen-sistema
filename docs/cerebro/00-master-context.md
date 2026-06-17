@@ -85,6 +85,8 @@ git push origin master  # Deploy a producción (CI/CD automático)
   - Integración de Pedidos: `#7C3AED`
   - Verde/Rojo/Ámbar: solo para significado semántico (éxito/error/alerta)
 - **Tema modular:** `src/lib/moduleTheme.ts`
+- **Componentes visuales nuevos:** `src/components/ui/cedi.tsx`
+- **Indicadores externos:** Google Sheets se sincroniza a PostgreSQL; no se consulta desde el cliente.
 - **Logo:** `public/logo.png` — se invierte a blanco en modo oscuro
 - **Tipografía:** Variable CSS `--sans` (sistema) y `--mono` (código)
 

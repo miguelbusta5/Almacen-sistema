@@ -155,6 +155,21 @@ export const HOME_ACTIONS: HomeAction[] = [
     ],
     priority: 1,
   },
+  {
+    id: "indicadores-cedi",
+    title: "Indicadores CEDI",
+    description: "Ver KPIs sincronizados desde Google Sheets",
+    href: "/dashboard/indicadores",
+    icon: "Gauge",
+    color: getModuleColor("indicadores"),
+    moduleKey: "indicadores",
+    roles: [
+      "ADMIN", "GERENTE",
+      "SUPERVISOR_INVENTARIO", "SUPERVISOR_TRANSPORTE", "SUPERVISOR_TIENDA",
+      "SUPERVISOR_ALMACENAMIENTO",
+    ],
+    priority: 2,
+  },
   // ── Administración ──────────────────────────────────────
   {
     id: "gestionar-usuarios",
