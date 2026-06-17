@@ -12,10 +12,18 @@ export interface ModuleTheme {
   tint: string;
 }
 
-const BLUE = "#1D4ED8";
-const BLUE_TINT = "rgba(29,78,216,0.10)";
-const SLATE = "#334155";
+const BLUE       = "#1D4ED8";
+const BLUE_TINT  = "rgba(29,78,216,0.10)";
+const SLATE      = "#334155";
 const SLATE_TINT = "rgba(51,65,85,0.10)";
+const VIOLET     = "#7C3AED";
+const VIOLET_TINT = "rgba(124,58,237,0.10)";
+const TEAL       = "#0E7490";
+const TEAL_TINT  = "rgba(14,116,144,0.10)";
+const SKY        = "#0369A1";
+const SKY_TINT   = "rgba(3,105,161,0.10)";
+const GREEN      = "#16A34A";
+const GREEN_TINT = "rgba(22,163,74,0.10)";
 
 export const MODULE_THEME: Record<ModuleThemeKey, ModuleTheme> = {
   home: {
@@ -31,72 +39,72 @@ export const MODULE_THEME: Record<ModuleThemeKey, ModuleTheme> = {
     label: "Novedades Inventario",
     shortLabel: "Inventario",
     description: "PLUs, posiciones y novedades del CEDI",
-    color: BLUE,
-    tint: BLUE_TINT,
+    color: VIOLET,
+    tint: VIOLET_TINT,
   },
   transporte: {
     key: "transporte",
     label: "Guardados Transporte",
     shortLabel: "Transporte",
     description: "Custodia, guardados y pendientes operativos",
-    color: BLUE,
-    tint: BLUE_TINT,
+    color: TEAL,
+    tint: TEAL_TINT,
   },
   preoperacional: {
     key: "preoperacional",
     label: "Preoperacional",
     shortLabel: "Preop",
     description: "Inspeccion diaria de vehiculos",
-    color: BLUE,
-    tint: BLUE_TINT,
+    color: GREEN,
+    tint: GREEN_TINT,
   },
   conteo: {
     key: "conteo",
     label: "Conteo Ciclico",
     shortLabel: "Conteo",
     description: "Control activo de inventario",
-    color: BLUE,
-    tint: BLUE_TINT,
+    color: VIOLET,
+    tint: VIOLET_TINT,
   },
   "conteo-contar": {
     key: "conteo-contar",
     label: "Contar",
     shortLabel: "Contar",
     description: "Captura operativa de conteo",
-    color: BLUE,
-    tint: BLUE_TINT,
+    color: VIOLET,
+    tint: VIOLET_TINT,
   },
   tienda: {
     key: "tienda",
     label: "Facturas Contado",
     shortLabel: "Facturas",
     description: "Facturas contado desde tienda hacia el flujo CEDI",
-    color: BLUE,
-    tint: BLUE_TINT,
+    color: SKY,
+    tint: SKY_TINT,
   },
   "solicitudes-transporte": {
     key: "solicitudes-transporte",
     label: "Solicitudes Transporte",
     shortLabel: "Solicitudes",
     description: "Solicitudes internas que gestiona el lider de transporte",
-    color: BLUE,
-    tint: BLUE_TINT,
+    color: TEAL,
+    tint: TEAL_TINT,
   },
   exportaciones: {
     key: "exportaciones",
     label: "Exportaciones",
     shortLabel: "Export",
     description: "Etiquetado operativo de cajas de exportacion",
-    color: BLUE,
-    tint: BLUE_TINT,
+    color: "#DC2626",
+    tint: "rgba(220,38,38,0.10)",
   },
   "mis-tareas": {
     key: "mis-tareas",
     label: "Mis Tareas",
     shortLabel: "Tareas",
     description: "Pendientes del dia por usuario",
-    color: BLUE,
-    tint: BLUE_TINT,
+    color: VIOLET,
+    tint: VIOLET_TINT,
   },
   usuarios: {
     key: "usuarios",
@@ -135,16 +143,16 @@ export const MODULE_THEME: Record<ModuleThemeKey, ModuleTheme> = {
     label: "Integracion Pedidos",
     shortLabel: "Integracion",
     description: "Picking OVDM/TSDM entre areas",
-    color: BLUE,
-    tint: BLUE_TINT,
+    color: SKY,
+    tint: SKY_TINT,
   },
   studio: {
     key: "studio",
     label: "Studio",
     shortLabel: "Studio",
     description: "Dashboards conectados a Google Sheets",
-    color: "#0E7490",
-    tint: "rgba(14,116,144,0.10)",
+    color: TEAL,
+    tint: TEAL_TINT,
   },
 };
 
