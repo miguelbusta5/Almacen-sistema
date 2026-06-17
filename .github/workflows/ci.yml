@@ -40,6 +40,13 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Instalar Vercel CLI
+        run: npm install -g vercel@latest
+
       - name: Crear .vercel/project.json
         run: |
           mkdir -p .vercel
@@ -48,4 +55,4 @@ jobs:
             '${{ secrets.VERCEL_ORG_ID }}' > .vercel/project.json
 
       - name: Deploy a producción
-        run: npx vercel deploy --prod --yes --token=${{ secrets.VERCEL_TOKEN }}
+        run: vercel deploy --prod --yes --token=${{ secrets.VERCEL_TOKEN }}
