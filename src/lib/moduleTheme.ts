@@ -12,118 +12,123 @@ export interface ModuleTheme {
   tint: string;
 }
 
+const BLUE = "#1D4ED8";
+const BLUE_TINT = "rgba(29,78,216,0.10)";
+const SLATE = "#334155";
+const SLATE_TINT = "rgba(51,65,85,0.10)";
+
 export const MODULE_THEME: Record<ModuleThemeKey, ModuleTheme> = {
   home: {
     key: "home",
     label: PRODUCT.displayName,
     shortLabel: PRODUCT.shortName,
     description: PRODUCT.tagline,
-    color: "#2563EB",
-    tint: "rgba(37,99,235,0.12)",
+    color: BLUE,
+    tint: BLUE_TINT,
   },
   inventario: {
     key: "inventario",
     label: "Novedades Inventario",
     shortLabel: "Inventario",
     description: "PLUs, posiciones y novedades del CEDI",
-    color: "#2563EB",
-    tint: "rgba(37,99,235,0.12)",
+    color: BLUE,
+    tint: BLUE_TINT,
   },
   transporte: {
     key: "transporte",
     label: "Guardados Transporte",
     shortLabel: "Transporte",
     description: "Custodia, guardados y pendientes operativos",
-    color: "#0E7490",
-    tint: "rgba(14,116,144,0.12)",
+    color: BLUE,
+    tint: BLUE_TINT,
   },
   preoperacional: {
     key: "preoperacional",
     label: "Preoperacional",
     shortLabel: "Preop",
-    description: "Inspección diaria de vehículos",
-    color: "#0E7490",
-    tint: "rgba(14,116,144,0.12)",
+    description: "Inspeccion diaria de vehiculos",
+    color: BLUE,
+    tint: BLUE_TINT,
   },
   conteo: {
     key: "conteo",
-    label: "Conteo Cíclico",
+    label: "Conteo Ciclico",
     shortLabel: "Conteo",
     description: "Control activo de inventario",
-    color: "#16A34A",
-    tint: "rgba(22,163,74,0.12)",
+    color: BLUE,
+    tint: BLUE_TINT,
   },
   "conteo-contar": {
     key: "conteo-contar",
     label: "Contar",
     shortLabel: "Contar",
     description: "Captura operativa de conteo",
-    color: "#16A34A",
-    tint: "rgba(22,163,74,0.12)",
+    color: BLUE,
+    tint: BLUE_TINT,
   },
   tienda: {
     key: "tienda",
     label: "Facturas Contado",
     shortLabel: "Facturas",
     description: "Facturas contado desde tienda hacia el flujo CEDI",
-    color: "#D97706",
-    tint: "rgba(217,119,6,0.14)",
+    color: BLUE,
+    tint: BLUE_TINT,
   },
   "solicitudes-transporte": {
     key: "solicitudes-transporte",
     label: "Solicitudes Transporte",
     shortLabel: "Solicitudes",
-    description: "Solicitudes internas que gestiona el líder de transporte",
-    color: "#0E7490",
-    tint: "rgba(14,116,144,0.12)",
+    description: "Solicitudes internas que gestiona el lider de transporte",
+    color: BLUE,
+    tint: BLUE_TINT,
   },
   exportaciones: {
     key: "exportaciones",
     label: "Exportaciones",
     shortLabel: "Export",
-    description: "Etiquetado operativo de cajas de exportación",
-    color: "#1D4ED8",
-    tint: "rgba(29,78,216,0.12)",
+    description: "Etiquetado operativo de cajas de exportacion",
+    color: BLUE,
+    tint: BLUE_TINT,
   },
   "mis-tareas": {
     key: "mis-tareas",
     label: "Mis Tareas",
     shortLabel: "Tareas",
-    description: "Pendientes del día por usuario",
-    color: "#2563EB",
-    tint: "rgba(37,99,235,0.12)",
+    description: "Pendientes del dia por usuario",
+    color: BLUE,
+    tint: BLUE_TINT,
   },
   usuarios: {
     key: "usuarios",
     label: "Usuarios",
     shortLabel: "Usuarios",
-    description: "Cuentas, roles y operación base",
-    color: "#475569",
-    tint: "rgba(71,85,105,0.14)",
+    description: "Cuentas, roles y operacion base",
+    color: SLATE,
+    tint: SLATE_TINT,
   },
   auditoria: {
     key: "auditoria",
-    label: "Auditoría",
-    shortLabel: "Auditoría",
+    label: "Auditoria",
+    shortLabel: "Auditoria",
     description: "Historial de acciones del sistema",
-    color: "#475569",
-    tint: "rgba(71,85,105,0.14)",
+    color: SLATE,
+    tint: SLATE_TINT,
   },
   "centro-control": {
     key: "centro-control",
     label: "Centro de Control",
     shortLabel: "Control",
     description: "Inteligencia operacional y KPIs",
-    color: "#0F172A",
-    tint: "rgba(15,23,42,0.12)",
+    color: SLATE,
+    tint: SLATE_TINT,
   },
   integracion: {
     key: "integracion",
-    label: "Integración Pedidos",
-    shortLabel: "Integración",
-    description: "Picking OVDM/TSDM entre áreas",
-    color: "#7C3AED",
-    tint: "rgba(124,58,237,0.12)",
+    label: "Integracion Pedidos",
+    shortLabel: "Integracion",
+    description: "Picking OVDM/TSDM entre areas",
+    color: BLUE,
+    tint: BLUE_TINT,
   },
 };
 
@@ -136,7 +141,7 @@ export function getModuleColor(key: ModuleThemeKey | string | null | undefined):
   return getModuleTheme(key).color;
 }
 
-export function getModuleIconBg(hexColor: string, opacity = 0.15): string {
+export function getModuleIconBg(hexColor: string, opacity = 0.12): string {
   const h = hexColor.replace("#", "");
   if (h.length === 6) {
     const r = parseInt(h.slice(0, 2), 16);
@@ -144,5 +149,5 @@ export function getModuleIconBg(hexColor: string, opacity = 0.15): string {
     const b = parseInt(h.slice(4, 6), 16);
     return `rgba(${r},${g},${b},${opacity})`;
   }
-  return hexColor + "26";
+  return hexColor + "1F";
 }

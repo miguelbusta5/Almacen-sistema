@@ -38,26 +38,26 @@ interface NavItem {
 }
 
 const ALL_ITEMS: NavItem[] = [
-  { href: "/dashboard", label: "Inicio", icon: <Home size={16} />, moduleKey: null },
-  { href: "/dashboard/mis-tareas", label: "Mis Tareas", icon: <CheckSquare size={16} />, moduleKey: "mis-tareas" },
-  { href: "/dashboard/preoperacional", label: "Preoperacional", icon: <ShieldCheck size={16} />, moduleKey: "preoperacional" },
-  { href: "/dashboard/inventario", label: "Novedades Inventario", icon: <Package size={16} />, moduleKey: "inventario" },
-  { href: "/dashboard/conteo/contar", label: "Contar", icon: <ClipboardList size={16} />, moduleKey: "conteo-contar" },
-  { href: "/dashboard/tienda", label: "Facturas Contado", icon: <Store size={16} />, moduleKey: "tienda" },
-  { href: "/dashboard/integracion", label: "Integración Pedidos", icon: <GitMerge size={16} />, moduleKey: "integracion" },
-  { href: "/dashboard/exportaciones", label: "Exportaciones", icon: <Tags size={16} />, moduleKey: "exportaciones" },
-  { href: "/dashboard/solicitudes-transporte", label: "Solicitudes Transporte", icon: <FileText size={16} />, moduleKey: "solicitudes-transporte" },
-  { href: "/dashboard/transporte", label: "Guardados", icon: <Truck size={16} />, moduleKey: "transporte" },
-  { href: "/dashboard/conteo", label: "Conteo", icon: <ClipboardList size={16} />, moduleKey: "conteo" },
-  { href: "/dashboard/centro-control", label: "Centro de Control", icon: <BarChart3 size={16} />, moduleKey: "centro-control" },
-  { href: "/dashboard/usuarios", label: "Usuarios", icon: <Users size={16} />, moduleKey: "usuarios" },
-  { href: "/dashboard/auditoria", label: "Auditoría", icon: <ScrollText size={16} />, moduleKey: "auditoria" },
+  { href: "/dashboard", label: "Inicio", icon: <Home size={16} strokeWidth={2.1} />, moduleKey: null },
+  { href: "/dashboard/mis-tareas", label: "Mis Tareas", icon: <CheckSquare size={16} strokeWidth={2.1} />, moduleKey: "mis-tareas" },
+  { href: "/dashboard/preoperacional", label: "Preoperacional", icon: <ShieldCheck size={16} strokeWidth={2.1} />, moduleKey: "preoperacional" },
+  { href: "/dashboard/inventario", label: "Novedades Inventario", icon: <Package size={16} strokeWidth={2.1} />, moduleKey: "inventario" },
+  { href: "/dashboard/conteo/contar", label: "Contar", icon: <ClipboardList size={16} strokeWidth={2.1} />, moduleKey: "conteo-contar" },
+  { href: "/dashboard/tienda", label: "Facturas Contado", icon: <Store size={16} strokeWidth={2.1} />, moduleKey: "tienda" },
+  { href: "/dashboard/integracion", label: "Integracion Pedidos", icon: <GitMerge size={16} strokeWidth={2.1} />, moduleKey: "integracion" },
+  { href: "/dashboard/exportaciones", label: "Exportaciones", icon: <Tags size={16} strokeWidth={2.1} />, moduleKey: "exportaciones" },
+  { href: "/dashboard/solicitudes-transporte", label: "Solicitudes Transporte", icon: <FileText size={16} strokeWidth={2.1} />, moduleKey: "solicitudes-transporte" },
+  { href: "/dashboard/transporte", label: "Guardados", icon: <Truck size={16} strokeWidth={2.1} />, moduleKey: "transporte" },
+  { href: "/dashboard/conteo", label: "Conteo", icon: <ClipboardList size={16} strokeWidth={2.1} />, moduleKey: "conteo" },
+  { href: "/dashboard/centro-control", label: "Centro de Control", icon: <BarChart3 size={16} strokeWidth={2.1} />, moduleKey: "centro-control" },
+  { href: "/dashboard/usuarios", label: "Usuarios", icon: <Users size={16} strokeWidth={2.1} />, moduleKey: "usuarios" },
+  { href: "/dashboard/auditoria", label: "Auditoria", icon: <ScrollText size={16} strokeWidth={2.1} />, moduleKey: "auditoria" },
 ];
 
 const SECTIONS = [
   { label: "Control operativo", items: ["/dashboard", "/dashboard/mis-tareas", "/dashboard/preoperacional"] },
   {
-    label: "Operación CEDI",
+    label: "Operacion CEDI",
     items: [
       "/dashboard/inventario",
       "/dashboard/tienda",
@@ -68,13 +68,12 @@ const SECTIONS = [
       "/dashboard/conteo/contar",
     ],
   },
-  { label: "Supervisión", items: ["/dashboard/conteo", "/dashboard/centro-control"] },
+  { label: "Supervision", items: ["/dashboard/conteo", "/dashboard/centro-control"] },
   { label: "Gobierno", items: ["/dashboard/usuarios", "/dashboard/auditoria"] },
 ];
 
 const W = 244;
-const SIDE_BG = "linear-gradient(180deg, #07111E 0%, #0A1628 48%, #08111F 100%)";
-const SIDE_BORDER = "rgba(255,255,255,0.075)";
+const SIDE_BORDER = "var(--border)";
 
 export default function Sidebar({ role }: SidebarProps) {
   const path = usePathname();
@@ -105,41 +104,32 @@ export default function Sidebar({ role }: SidebarProps) {
             padding: "9px 11px",
             borderRadius: 10,
             fontSize: 13,
-            fontWeight: active ? 750 : 520,
-            color: active ? "#FFFFFF" : "rgba(255,255,255,0.56)",
-            background: active ? `linear-gradient(90deg, ${theme.color}24, rgba(255,255,255,0.08))` : "transparent",
-            boxShadow: active ? `inset 0 0 0 1px ${theme.color}44, 0 8px 18px rgba(0,0,0,0.16)` : "none",
-            transition: "all .12s ease",
+            fontWeight: active ? 760 : 540,
+            color: active ? "var(--brand)" : "var(--muted2)",
+            background: active ? "var(--brand-tint)" : "transparent",
+            boxShadow: active ? "inset 0 0 0 1px rgba(37,99,235,0.16)" : "none",
+            transition: "background .14s ease, color .14s ease, transform .14s ease",
             position: "relative",
           }}
           onMouseEnter={(e) => {
-            if (!active) {
-              e.currentTarget.style.background = "rgba(255,255,255,0.055)";
-              e.currentTarget.style.color = "rgba(255,255,255,0.78)";
-            }
+            if (!active) e.currentTarget.style.background = "var(--surface2)";
           }}
           onMouseLeave={(e) => {
-            if (!active) {
-              e.currentTarget.style.background = "transparent";
-              e.currentTarget.style.color = "rgba(255,255,255,0.56)";
-            }
+            if (!active) e.currentTarget.style.background = "transparent";
           }}
         >
-          {active && <span style={{ position: "absolute", left: -10, top: 8, bottom: 8, width: 3, borderRadius: 2, background: theme.color }} />}
-          <span style={{ color: active ? theme.color : "rgba(255,255,255,0.36)", display: "flex", flexShrink: 0 }}>
+          {active && <span style={{ position: "absolute", left: -10, top: 9, bottom: 9, width: 3, borderRadius: 2, background: "var(--brand)" }} />}
+          <span style={{ color: active ? "var(--brand)" : "var(--faint)", display: "flex", flexShrink: 0 }}>
             {item.icon}
           </span>
           <span style={{ flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{item.label}</span>
-          {active && item.moduleKey && (
-            <span style={{ width: 6, height: 6, borderRadius: "50%", background: theme.color, boxShadow: `0 0 0 3px ${theme.color}24`, flexShrink: 0 }} />
-          )}
         </div>
       </Link>
     );
   };
 
   const SectionDivider = ({ label }: { label: string }) => (
-    <div style={{ padding: "14px 20px 6px", fontSize: 10, fontWeight: 800, letterSpacing: "0.11em", textTransform: "uppercase", color: "rgba(255,255,255,0.30)", display: "flex", alignItems: "center", gap: 8 }}>
+    <div style={{ padding: "14px 20px 6px", fontSize: 10, fontWeight: 800, letterSpacing: "0.10em", textTransform: "uppercase", color: "var(--muted)", display: "flex", alignItems: "center", gap: 8 }}>
       <span style={{ flex: 1, height: 1, background: SIDE_BORDER }} />
       {label}
       <span style={{ flex: 1, height: 1, background: SIDE_BORDER }} />
@@ -166,11 +156,11 @@ export default function Sidebar({ role }: SidebarProps) {
       <div style={{ padding: "12px 14px", borderTop: `1px solid ${SIDE_BORDER}` }}>
         <div className="op-command-surface" style={{ borderRadius: 12, padding: "11px 12px" }}>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, marginBottom: 4 }}>
-            <span style={{ fontSize: 11, color: "rgba(255,255,255,0.66)", fontFamily: "var(--mono)" }}>{PRODUCT.version}</span>
-            <span style={{ width: 7, height: 7, borderRadius: "50%", background: "#22C55E", boxShadow: "0 0 0 3px rgba(34,197,94,0.16)" }} />
+            <span style={{ fontSize: 11, color: "var(--muted2)", fontFamily: "var(--mono)" }}>{PRODUCT.version}</span>
+            <span style={{ width: 7, height: 7, borderRadius: "50%", background: "var(--brand)", boxShadow: "0 0 0 3px var(--brand-tint)" }} />
           </div>
-          <div style={{ fontSize: 10, color: "rgba(255,255,255,0.36)", fontFamily: "var(--mono)" }}>
-            {PRODUCT.shortName} · {PRODUCT.environmentLabel}
+          <div style={{ fontSize: 10, color: "var(--muted)", fontFamily: "var(--mono)" }}>
+            {PRODUCT.shortName} / {PRODUCT.environmentLabel}
           </div>
         </div>
       </div>
@@ -179,13 +169,13 @@ export default function Sidebar({ role }: SidebarProps) {
 
   const Brand = () => (
     <div style={{ padding: "20px 16px 16px", borderBottom: `1px solid ${SIDE_BORDER}` }}>
-      <Logo variant="dark" height={18} tagline />
-      <div style={{ marginTop: 13, padding: "9px 10px", borderRadius: 12, background: "rgba(255,255,255,0.055)", border: `1px solid ${SIDE_BORDER}` }}>
-        <div style={{ color: "rgba(255,255,255,0.72)", fontSize: 11, fontWeight: 800, letterSpacing: "0.08em", textTransform: "uppercase" }}>
-          Control operativo
+      <Logo variant="auto" height={18} tagline />
+      <div style={{ marginTop: 13, padding: "9px 10px", borderRadius: 12, background: "var(--surface2)", border: `1px solid ${SIDE_BORDER}` }}>
+        <div style={{ color: "var(--brand)", fontSize: 11, fontWeight: 800, letterSpacing: "0.08em", textTransform: "uppercase" }}>
+          Control logistico
         </div>
-        <div style={{ color: "rgba(255,255,255,0.38)", fontSize: 11, marginTop: 2 }}>
-          Inventario · Tienda · Transporte
+        <div style={{ color: "var(--muted)", fontSize: 11, marginTop: 2 }}>
+          Inventario / Tienda / Transporte
         </div>
       </div>
     </div>
@@ -194,17 +184,17 @@ export default function Sidebar({ role }: SidebarProps) {
   if (isMobile) {
     return (
       <>
-        <button onClick={() => setOpen(true)} aria-label="Abrir menú"
-          style={{ position: "fixed", top: 10, left: 12, zIndex: 300, width: 36, height: 36, borderRadius: 10, border: "1px solid rgba(255,255,255,0.08)", background: "rgba(8,17,31,0.94)", backdropFilter: "blur(8px)", color: "rgba(255,255,255,0.82)", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", boxShadow: "0 2px 12px rgba(0,0,0,0.35)" }}>
+        <button onClick={() => setOpen(true)} aria-label="Abrir menu"
+          style={{ position: "fixed", top: 10, left: 12, zIndex: 300, width: 36, height: 36, borderRadius: 10, border: "1px solid var(--border)", background: "var(--surface)", color: "var(--brand)", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", boxShadow: "var(--shadow-sm)" }}>
           <Menu size={17} />
         </button>
         {open && (
-          <div onClick={() => setOpen(false)} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.50)", zIndex: 400, backdropFilter: "blur(3px)" }} />
+          <div onClick={() => setOpen(false)} style={{ position: "fixed", inset: 0, background: "rgba(15,23,42,0.36)", zIndex: 400, backdropFilter: "blur(3px)" }} />
         )}
-        <aside style={{ position: "fixed", top: 0, left: 0, height: "100vh", width: W, background: SIDE_BG, display: "flex", flexDirection: "column", zIndex: 401, transform: open ? "translateX(0)" : "translateX(-110%)", transition: "transform .26s cubic-bezier(.16,1,.3,1)", boxShadow: open ? "4px 0 32px rgba(0,0,0,0.5)" : "none" }}>
+        <aside style={{ position: "fixed", top: 0, left: 0, height: "100vh", width: W, background: "var(--surface)", borderRight: "1px solid var(--border)", display: "flex", flexDirection: "column", zIndex: 401, transform: open ? "translateX(0)" : "translateX(-110%)", transition: "transform .26s cubic-bezier(.16,1,.3,1)", boxShadow: open ? "4px 0 32px rgba(15,23,42,0.18)" : "none" }}>
           <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between" }}>
             <div style={{ flex: 1 }}><Brand /></div>
-            <button onClick={() => setOpen(false)} style={{ background: "none", border: "none", color: "rgba(255,255,255,0.5)", cursor: "pointer", padding: "18px 12px 0" }}><X size={18} /></button>
+            <button onClick={() => setOpen(false)} style={{ background: "none", border: "none", color: "var(--muted)", cursor: "pointer", padding: "18px 12px 0" }}><X size={18} /></button>
           </div>
           <NavContent onNav={() => setOpen(false)} />
         </aside>
@@ -213,7 +203,7 @@ export default function Sidebar({ role }: SidebarProps) {
   }
 
   return (
-    <aside style={{ width: W, background: SIDE_BG, display: "flex", flexDirection: "column", position: "sticky", top: 0, height: "100vh", flexShrink: 0 }}>
+    <aside style={{ width: W, background: "var(--surface)", borderRight: "1px solid var(--border)", display: "flex", flexDirection: "column", position: "sticky", top: 0, height: "100vh", flexShrink: 0 }}>
       <Brand />
       <NavContent />
     </aside>

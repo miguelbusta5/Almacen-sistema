@@ -8,6 +8,8 @@ import {
   CheckCircle2, ArrowRight, TrendingUp, Info, ShieldAlert,
 } from "lucide-react";
 import { SectionHeader } from "@/components/ui";
+import { AutoRefreshIndicator } from "@/components/ui/AutoRefreshIndicator";
+import { useAutoRefresh } from "@/hooks/useAutoRefresh";
 import { useIsMobile } from "@/lib/useIsMobile";
 import { calcAlmacenaje } from "@/lib/almacenaje";
 import { scoreGuardado, urgencia } from "@/lib/transporte";
@@ -44,9 +46,9 @@ function AlertaRow({ level, count, title, context, href }: {
   context?: string;
   href: string;
 }) {
-  const COLOR = level === "critical" ? "#ef4444" : level === "warning" ? "#f59e0b" : "#3b82f6";
-  const BG    = COLOR + "0d";
-  const BORDER = COLOR + "25";
+  const COLOR = level === "critical" ? "var(--error)" : level === "warning" ? "var(--warning)" : "var(--brand)";
+  const BG    = level === "critical" ? "var(--error-tint)" : level === "warning" ? "var(--warning-tint)" : "var(--brand-tint)";
+  const BORDER = level === "critical" ? "rgba(220, 38, 38, 0.22)" : level === "warning" ? "rgba(217, 119, 6, 0.22)" : "rgba(37, 99, 235, 0.22)";
 
   return (
     <Link href={href} style={{ textDecoration: "none" }}>
@@ -100,8 +102,8 @@ function AlertaGroup({ level, items }: {
   items: AlertaItem[] | InfoItem[];
 }) {
   if (items.length === 0) return null;
-  const LABELS = { critical: "CRÍTICO", warning: "ADVERTENCIA", info: "INFORMACIÓN" };
-  const COLORS = { critical: "#ef4444", warning: "#f59e0b", info: "#3b82f6" };
+  const LABELS = { critical: "CRITICO", warning: "ADVERTENCIA", info: "INFORMACION" };
+  const COLORS = { critical: "var(--error)", warning: "var(--warning)", info: "var(--brand)" };
   return (
     <div>
       <div style={{
@@ -180,30 +182,35 @@ export default function CentroControlPage() {
   const [sinContacto, setSinContacto] = useState<SinContactoData>({ count: 0, items: [] });
   const [loading,     setLoading]     = useState(true);
 
-  useEffect(() => {
-    (async () => {
-      try {
-        const [nR, gR, sR, dR, scR] = await Promise.all([
-          fetch("/api/novedades?pageSize=500"),
-          fetch("/api/transporte?pageSize=500"),
-          fetch("/api/novedades/stats?dias=30"),
-          fetch("/api/tienda?pageSize=500"),
-          fetch("/api/transporte/sin-contacto"),
-        ]);
-        const [nJ, gJ, sJ, dJ, scJ] = await Promise.all([
-          nR.json(), gR.json(), sR.json(), dR.json(), scR.json(),
-        ]);
-        if (nJ.success)  setNovedades(nJ.data ?? []);
-        if (gJ.success)  setGuardados(gJ.data ?? []);
-        if (dJ.success)  setDespachos(dJ.data ?? []);
-        if (scJ.success) setSinContacto({ count: scJ.count ?? 0, items: scJ.items ?? [] });
-        setKpis({
-          stats:       sJ.success ? sJ : null,
-        });
-      } catch { /* noop */ }
-      finally { setLoading(false); }
-    })();
-  }, []);
+  async function load(silent = false) {
+    if (!silent) setLoading(true);
+    try {
+      const [nR, gR, sR, dR, scR] = await Promise.all([
+        fetch("/api/novedades?pageSize=500"),
+        fetch("/api/transporte?pageSize=500"),
+        fetch("/api/novedades/stats?dias=30"),
+        fetch("/api/tienda?pageSize=500"),
+        fetch("/api/transporte/sin-contacto"),
+      ]);
+      const [nJ, gJ, sJ, dJ, scJ] = await Promise.all([
+        nR.json(), gR.json(), sR.json(), dR.json(), scR.json(),
+      ]);
+      if (nJ.success)  setNovedades(nJ.data ?? []);
+      if (gJ.success)  setGuardados(gJ.data ?? []);
+      if (dJ.success)  setDespachos(dJ.data ?? []);
+      if (scJ.success) setSinContacto({ count: scJ.count ?? 0, items: scJ.items ?? [] });
+      setKpis({
+        stats:       sJ.success ? sJ : null,
+      });
+    } catch { /* noop */ }
+    finally { if (!silent) setLoading(false); }
+  }
+
+  useEffect(() => { void load(); }, []);
+
+  const autoRefresh = useAutoRefresh({
+    onRefresh: () => load(true),
+  });
 
   // ── Rankings (para INFO y KPI blocks) ────────────────────
   const rankingCC = useMemo(() => {
@@ -382,6 +389,13 @@ export default function CentroControlPage() {
           {new Date().toLocaleDateString("es-CO", { weekday: "long", day: "numeric", month: "long" })}
           {userName && ` · ${userName}`}
         </p>
+        <div style={{ marginTop: 12 }}>
+          <AutoRefreshIndicator
+            lastUpdatedAt={autoRefresh.lastUpdatedAt}
+            refreshing={autoRefresh.refreshing}
+            onRefresh={autoRefresh.refreshNow}
+          />
+        </div>
       </div>
 
       {/* ══════════════════════════════════════════════════════

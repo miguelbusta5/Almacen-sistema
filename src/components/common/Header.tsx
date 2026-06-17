@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { signOut } from "next-auth/react";
-import { Activity, Bell, ChevronDown, LogOut, Search, ShieldCheck } from "lucide-react";
+import { Bell, ChevronDown, Clock3, LogOut, Search, ShieldCheck, Wifi } from "lucide-react";
 import { useEffect, useState } from "react";
 import ThemeToggle from "./ThemeToggle";
 import Logo from "./Logo";
@@ -20,12 +20,13 @@ function UserInitials({ name }: { name: string }) {
   const initials = parts.length >= 2
     ? (parts[0][0] + parts[parts.length - 1][0]).toUpperCase()
     : name.slice(0, 2).toUpperCase();
+
   return (
     <div style={{
       width: 30,
       height: 30,
       borderRadius: 10,
-      background: "linear-gradient(135deg, #0A1628, var(--brand))",
+      background: "var(--brand)",
       display: "flex",
       alignItems: "center",
       justifyContent: "center",
@@ -33,7 +34,7 @@ function UserInitials({ name }: { name: string }) {
       fontWeight: 800,
       color: "#fff",
       flexShrink: 0,
-      boxShadow: "0 8px 18px rgba(37,99,235,0.22)",
+      boxShadow: "0 8px 18px rgba(37,99,235,0.20)",
     }}>
       {initials}
     </div>
@@ -51,8 +52,8 @@ export default function Header({ user }: HeaderProps) {
   const roleLabel = role ? (ROLE_LABEL_EXT[role as AppRole] ?? role) : "Sin rol";
   const visibleModules = getVisibleModules(role);
   const scopeLabel = visibleModules.length <= 2
-    ? visibleModules.map((m) => m.replace("-", " ")).join(" · ") || "Operación"
-    : `${visibleModules.length} módulos visibles`;
+    ? visibleModules.map((m) => m.replace("-", " ")).join(" / ") || "Operacion"
+    : `${visibleModules.length} modulos visibles`;
 
   useEffect(() => {
     async function fetchNotif() {
@@ -83,25 +84,25 @@ export default function Header({ user }: HeaderProps) {
         top: 0,
         zIndex: 100,
         flexShrink: 0,
-        boxShadow: "0 10px 28px rgba(15,23,42,0.06)",
+        boxShadow: "0 8px 22px rgba(15,23,42,0.055)",
       }}
     >
       {isMobile ? (
         <Logo variant="auto" height={16} />
       ) : (
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-          <span style={{ width: 9, height: 9, borderRadius: 3, background: "var(--success)", boxShadow: "0 0 0 4px var(--success-tint)" }} />
+          <span style={{ width: 9, height: 9, borderRadius: 999, background: "var(--brand)", boxShadow: "0 0 0 4px var(--brand-tint)" }} />
           <div>
             <div style={{ display: "flex", alignItems: "center", gap: 8, lineHeight: 1 }}>
               <span style={{ fontSize: 11, color: "var(--muted2)", fontWeight: 850, letterSpacing: "0.10em", textTransform: "uppercase" }}>
                 {PRODUCT.displayName}
               </span>
-              <span className="op-status-band" style={{ minHeight: 24, padding: "3px 8px", borderRadius: 999, fontSize: 10, fontWeight: 800, color: "var(--muted2)", background: "var(--surface2)" }}>
-                <Activity size={11} />{PRODUCT.statusLabel}
+              <span className="op-status-band" style={{ minHeight: 24, padding: "3px 8px", borderRadius: 999, fontSize: 10, fontWeight: 800, color: "var(--brand)", background: "var(--brand-tint)" }}>
+                <Wifi size={11} />{PRODUCT.statusLabel}
               </span>
             </div>
             <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 4 }}>
-              {roleLabel} · {scopeLabel} · {new Date().toLocaleDateString("es-CO", { weekday: "long", day: "numeric", month: "long" })}
+              {roleLabel} / {scopeLabel} / {new Date().toLocaleDateString("es-CO", { weekday: "long", day: "numeric", month: "long" })}
             </div>
           </div>
         </div>
@@ -188,7 +189,9 @@ export default function Header({ user }: HeaderProps) {
                   <div style={{ display: "flex", alignItems: "center", gap: 7, fontSize: 13, fontWeight: 800, color: "var(--text)" }}>
                     <ShieldCheck size={14} color="var(--brand)" />{userName}
                   </div>
-                  <div style={{ fontSize: 11, color: "var(--muted)", fontFamily: "var(--mono)", marginTop: 3 }}>{user?.email}</div>
+                  <div style={{ fontSize: 11, color: "var(--muted)", fontFamily: "var(--mono)", marginTop: 3, display: "flex", alignItems: "center", gap: 5 }}>
+                    <Clock3 size={11} />{user?.email}
+                  </div>
                 </div>
                 <button
                   onClick={() => signOut({ callbackUrl: "/login" })}
@@ -209,7 +212,7 @@ export default function Header({ user }: HeaderProps) {
                   onMouseEnter={(e) => (e.currentTarget.style.background = "var(--error-tint)")}
                   onMouseLeave={(e) => (e.currentTarget.style.background = "none")}
                 >
-                  <LogOut size={14} />Cerrar sesión
+                  <LogOut size={14} />Cerrar sesion
                 </button>
               </div>
             </>

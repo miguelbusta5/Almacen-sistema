@@ -14,9 +14,11 @@ import {
   fmtFechaTienda, todayISO, horasDesde, FLUJO_ESTADOS, ESTADOS_ACTIVOS,
 } from "@/lib/tienda";
 import { Stat, SkeletonStat, Badge, EmptyState, SkeletonTable, TimelineItem } from "@/components/ui";
+import { AutoRefreshIndicator } from "@/components/ui/AutoRefreshIndicator";
 import { SlidePanel, IntelBanner, DetailSection, DetailGrid, MiniHistory } from "@/components/ui/SlidePanel";
 import { insightsTienda, insightsPorDespacho } from "@/lib/inteligencia";
 import { useIsMobile } from "@/lib/useIsMobile";
+import { useAutoRefresh } from "@/hooks/useAutoRefresh";
 import { getModuleColor } from "@/lib/moduleTheme";
 
 type ProductoMaestro = {
@@ -115,6 +117,11 @@ export default function TiendaPage() {
     finally { setLoading(false); }
   }
   useEffect(() => { load(); }, []);
+
+  const autoRefresh = useAutoRefresh({
+    pause: Boolean(creando || editing || panelItem || rechazarItem || deleting || asignandoGuardado),
+    onRefresh: () => load(),
+  });
 
   function showToast(msg: string, err = false) { setToast({ msg, err }); setTimeout(() => setToast(null), 3000); }
 
@@ -230,9 +237,16 @@ export default function TiendaPage() {
             {loading ? "Cargando…" : `${items.length} registros · ${kpis.pendientesRecogida} creados en tienda`}
           </p>
         </div>
-        <button className="ds-btn ds-btn-primary" style={{ background: COLOR_TIENDA, boxShadow: `0 2px 12px ${COLOR_TIENDA}28` }} onClick={() => setCreando(true)}>
-          <Plus size={14} />Nueva Factura
-        </button>
+        <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", justifyContent: "flex-end" }}>
+          <AutoRefreshIndicator
+            lastUpdatedAt={autoRefresh.lastUpdatedAt}
+            refreshing={autoRefresh.refreshing}
+            onRefresh={autoRefresh.refreshNow}
+          />
+          <button className="ds-btn ds-btn-primary" style={{ background: COLOR_TIENDA, boxShadow: `0 2px 12px ${COLOR_TIENDA}28` }} onClick={() => setCreando(true)}>
+            <Plus size={14} />Nueva Factura
+          </button>
+        </div>
       </div>
 
       {/* ── KPIs flotantes ── */}

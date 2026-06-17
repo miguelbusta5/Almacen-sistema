@@ -5,7 +5,9 @@ import { createPortal } from "react-dom";
 import { useSession } from "next-auth/react";
 import { Users, Plus, Pencil, X, Shield, ShieldCheck, ShieldAlert, Truck, Car, Upload, Search, GitMerge, Package } from "lucide-react";
 import { SkeletonTable, EmptyState } from "@/components/ui";
+import { AutoRefreshIndicator } from "@/components/ui/AutoRefreshIndicator";
 import { getModuleColor } from "@/lib/moduleTheme";
+import { useAutoRefresh } from "@/hooks/useAutoRefresh";
 
 type Role = "ADMIN" | "GERENTE" | "OPERADOR" | "TRANSPORTISTA" | "INVENTARIO" | "TRANSPORTE" | "SUPERVISOR_INVENTARIO" | "SUPERVISOR_TRANSPORTE" | "TIENDA" | "SUPERVISOR_TIENDA" | "OPERACIONES_MUEBLES" | "OPERACIONES_GOURMET" | "ETIQUETADO" | "SUPERVISOR_ALMACENAMIENTO";
 
@@ -126,6 +128,15 @@ export default function UsuariosPage() {
     }
   }, [role]);
 
+  const autoRefresh = useAutoRefresh({
+    enabled: role === "ADMIN",
+    pause: Boolean(showForm || editing),
+    onRefresh: async () => {
+      await load();
+      await loadCatalogos();
+    },
+  });
+
   const filteredUsers = useMemo(() => {
     const q = searchQ.toLowerCase().trim();
     return [...users]
@@ -173,9 +184,16 @@ export default function UsuariosPage() {
             <p style={{ fontSize: 12, color: "var(--muted)" }}>{users.length} usuario{users.length !== 1 ? "s" : ""} registrado{users.length !== 1 ? "s" : ""}</p>
           </div>
         </div>
-        <button onClick={() => setShowForm(true)} style={{ display: "flex", alignItems: "center", gap: 6, padding: "0.55rem 1rem", background: "#6366f1", color: "#fff", border: "none", borderRadius: 9, fontSize: 12, fontWeight: 700, cursor: "pointer" }}>
-          <Plus size={15} />Nuevo usuario
-        </button>
+        <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", justifyContent: "flex-end" }}>
+          <AutoRefreshIndicator
+            lastUpdatedAt={autoRefresh.lastUpdatedAt}
+            refreshing={autoRefresh.refreshing}
+            onRefresh={autoRefresh.refreshNow}
+          />
+          <button onClick={() => setShowForm(true)} style={{ display: "flex", alignItems: "center", gap: 6, padding: "0.55rem 1rem", background: "var(--brand)", color: "#fff", border: "none", borderRadius: 9, fontSize: 12, fontWeight: 700, cursor: "pointer", boxShadow: "0 8px 18px rgba(37,99,235,0.20)" }}>
+            <Plus size={15} />Nuevo usuario
+          </button>
+        </div>
       </div>
 
       {loading ? (

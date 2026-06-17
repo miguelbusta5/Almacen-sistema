@@ -4,9 +4,11 @@ import { useEffect, useMemo, useState } from "react";
 import { useSession } from "next-auth/react";
 import { CheckCircle2, Clock, Pencil, RefreshCw, Search, Tags, Trash2, X } from "lucide-react";
 import { EmptyState, SkeletonTable } from "@/components/ui";
+import { AutoRefreshIndicator } from "@/components/ui/AutoRefreshIndicator";
 import { getModuleColor } from "@/lib/moduleTheme";
 import { puedeGestionarExportaciones, puedeUsarExportaciones } from "@/lib/exportaciones";
 import { useIsMobile } from "@/lib/useIsMobile";
+import { useAutoRefresh } from "@/hooks/useAutoRefresh";
 
 const COLOR = getModuleColor("exportaciones");
 
@@ -81,6 +83,7 @@ export default function ExportacionesPage() {
   const [editForm, setEditForm] = useState({ numeroCaja: "", plu: "", descripcion: "", unidadEmpaque: "1", horaInicio: "", horaFinalizacion: "", motivoCorreccion: "", hayReguero: false, cantidadReguero: "" });
 
   const openItem = useMemo(() => items.find((item) => !item.horaFinalizacion) ?? null, [items]);
+  const formDirty = Boolean(form.numeroCaja.trim() || form.plu.trim() || form.descripcion.trim() || form.hayReguero || form.cantidadReguero.trim());
 
   async function load() {
     setLoading(true);
@@ -96,6 +99,12 @@ export default function ExportacionesPage() {
   }
 
   useEffect(() => { if (canUse) load(); }, [canUse]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const autoRefresh = useAutoRefresh({
+    enabled: canUse,
+    pause: Boolean(editing || saving || finalizing || formDirty),
+    onRefresh: () => load(),
+  });
 
   async function autocomplete(plu: string, target: "create" | "edit") {
     const descripcion = await lookupDescripcion(plu);
@@ -338,7 +347,14 @@ export default function ExportacionesPage() {
             <h2 style={{ margin: 0, fontSize: 18 }}>Registros</h2>
             <p style={{ margin: "4px 0 0", color: "var(--muted)", fontSize: 12 }}>Inicio y finalizacion se calculan automaticamente al capturar cajas consecutivas.</p>
           </div>
-          <Clock size={20} color={COLOR} />
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <AutoRefreshIndicator
+              lastUpdatedAt={autoRefresh.lastUpdatedAt}
+              refreshing={autoRefresh.refreshing}
+              onRefresh={autoRefresh.refreshNow}
+            />
+            <Clock size={20} color={COLOR} />
+          </div>
         </div>
         {filters}
         {list}

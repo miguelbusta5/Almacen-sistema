@@ -1,11 +1,11 @@
 export const PRODUCT = {
-  name: "Control Logístico CEDI",
-  displayName: "Control Logístico CEDI",
+  name: "Control Logistico CEDI",
+  displayName: "Control Logistico CEDI",
   shortName: "Control CEDI",
   brand: "Grupo Ambiente",
-  version: "v3.0",
-  environmentLabel: "Producción",
+  version: "v3.1",
+  environmentLabel: "Produccion",
   tagline: "Centro operativo de inventario, tienda y transporte",
   commandLabel: "Comando CEDI",
-  statusLabel: "Operación activa",
+  statusLabel: "Datos en vivo",
 } as const;

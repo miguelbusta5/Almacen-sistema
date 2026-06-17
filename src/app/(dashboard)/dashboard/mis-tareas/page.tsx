@@ -3,13 +3,15 @@
 import { useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
 import {
-  CheckSquare, Package, Truck, Store, RefreshCw,
+  CheckSquare, Package, Truck, Store,
   AlertTriangle, Clock, CheckCircle2, Calendar,
 } from "lucide-react";
 import { SlaEstado, SLA_COLOR, SLA_LABEL, calcSla, diasRestantesSla } from "@/lib/sla";
 import { urgencia } from "@/lib/transporte";
 import { horasDesde } from "@/lib/tienda";
 import { Badge, EmptyState } from "@/components/ui";
+import { AutoRefreshIndicator } from "@/components/ui/AutoRefreshIndicator";
+import { useAutoRefresh } from "@/hooks/useAutoRefresh";
 import Link from "next/link";
 
 interface MisTareas {
@@ -94,6 +96,10 @@ export default function MisTareasPage() {
   }
   useEffect(() => { load(); }, []);
 
+  const autoRefresh = useAutoRefresh({
+    onRefresh: () => load(),
+  });
+
   // ── Calcular KPIs ─────────────────────────────────────────
   const kpis = data ? {
     total: data.novedades.length + data.guardados.length + data.guardadosTiendaPendientes.length + data.despachosTienda.length,
@@ -108,7 +114,7 @@ export default function MisTareasPage() {
   } : { total: 0, vencidas: 0, proximas: 0 };
 
   const hora = new Date().getHours();
-  const saludo = hora < 12 ? "Buenos días" : hora < 18 ? "Buenas tardes" : "Buenas noches";
+  const saludo = hora < 12 ? "Buenos dias" : hora < 18 ? "Buenas tardes" : "Buenas noches";
 
   return (
     <div className="animate-fade-in" style={{ maxWidth: 720 }}>
@@ -122,12 +128,14 @@ export default function MisTareasPage() {
             <h1 style={{ fontSize: 22, fontWeight: 700, color: "var(--text)", letterSpacing: "-0.03em", margin: 0 }}>Mis Tareas</h1>
           </div>
           <p style={{ fontSize: 13, color: "var(--muted)", margin: 0 }}>
-            {saludo}{userName ? `, ${userName}` : ""} · {new Date().toLocaleDateString("es-CO", { weekday: "long", day: "numeric", month: "long" })}
+            {saludo}{userName ? `, ${userName}` : ""} / {new Date().toLocaleDateString("es-CO", { weekday: "long", day: "numeric", month: "long" })}
           </p>
         </div>
-        <button className="ds-btn ds-btn-secondary ds-btn-sm" onClick={load} disabled={loading}>
-          <RefreshCw size={13} style={{ animation: loading ? "spin .8s linear infinite" : "none" }} />Actualizar
-        </button>
+        <AutoRefreshIndicator
+          lastUpdatedAt={autoRefresh.lastUpdatedAt}
+          refreshing={autoRefresh.refreshing || loading}
+          onRefresh={autoRefresh.refreshNow}
+        />
       </div>
 
       {/* ── KPIs flotantes ── */}
@@ -143,7 +151,7 @@ export default function MisTareasPage() {
           </div>
           <div className="ds-stat">
             <div className="ds-stat-value" style={{ color: kpis.proximas > 0 ? "var(--warning)" : "var(--muted)" }}>{kpis.proximas}</div>
-            <div className="ds-stat-label">Próximas a vencer</div>
+            <div className="ds-stat-label">Proximas a vencer</div>
           </div>
         </div>
       )}
@@ -166,22 +174,22 @@ export default function MisTareasPage() {
                   <TareaCard
                     key={n.id}
                     href="/dashboard/inventario"
-                    titulo={`PLU ${n.plu} · ${n.posicion}`}
+                    titulo={`PLU ${n.plu} / ${n.posicion}`}
                     sub={n.fabricante ?? n.estado}
                     badge={n.fechaCompromiso ? (sla === "VENCIDO" ? `Vencido ${Math.abs(dias!)}d` : sla === "PROXIMO" ? `${dias}d restantes` : SLA_LABEL[sla]) : n.estado}
                     badgeColor={SLA_COLOR[sla]}
                     alerta={sla === "VENCIDO"}
-                    tiempo={n.esPropio ? "👤 mía" : n.asignadoA ?? undefined}
+                    tiempo={n.esPropio ? "mia" : n.asignadoA ?? undefined}
                   />
                 );
               })}
-              {data.novedades.length > 10 && <div style={{ fontSize: 12, color: "var(--muted)", textAlign: "center", padding: "8px 0" }}>+{data.novedades.length - 10} más en <Link href="/dashboard/inventario" style={{ color: "var(--brand)" }}>Novedades</Link></div>}
+              {data.novedades.length > 10 && <div style={{ fontSize: 12, color: "var(--muted)", textAlign: "center", padding: "8px 0" }}>+{data.novedades.length - 10} mas en <Link href="/dashboard/inventario" style={{ color: "var(--brand)" }}>Novedades</Link></div>}
             </Seccion>
           )}
 
           {/* ── TRANSPORTE: Guardados ─────────────────────── */}
           {data.guardados.length > 0 && (
-            <Seccion icon={<Truck size={15} />} title="Guardados pendientes" count={data.guardados.length} color="#0E7490">
+            <Seccion icon={<Truck size={15} />} title="Guardados pendientes" count={data.guardados.length} color="var(--brand)">
               {data.guardados.slice(0, 8).map((g: any) => {
                 const u = urgencia(g);
                 const alerta = u?.tipo === "vencida";
@@ -190,7 +198,7 @@ export default function MisTareasPage() {
                     key={g.clientId}
                     href="/dashboard/transporte"
                     titulo={g.documento}
-                    sub={`${g.ubicacion} · ${g.tipo ?? ""}`}
+                    sub={`${g.ubicacion} / ${g.tipo ?? ""}`}
                     badge={alerta ? `Entrega vencida ${u!.dias}d` : u?.tipo === "proxima" ? `${u.dias}d para entrega` : "Pendiente"}
                     badgeColor={alerta ? "var(--error)" : u?.tipo === "proxima" ? "var(--warning)" : "var(--muted)"}
                     alerta={alerta}
@@ -198,20 +206,20 @@ export default function MisTareasPage() {
                   />
                 );
               })}
-              {data.guardados.length > 8 && <div style={{ fontSize: 12, color: "var(--muted)", textAlign: "center", padding: "8px 0" }}>+{data.guardados.length - 8} más en <Link href="/dashboard/transporte" style={{ color: "#0E7490" }}>Transporte</Link></div>}
+              {data.guardados.length > 8 && <div style={{ fontSize: 12, color: "var(--muted)", textAlign: "center", padding: "8px 0" }}>+{data.guardados.length - 8} mas en <Link href="/dashboard/transporte" style={{ color: "var(--brand)" }}>Transporte</Link></div>}
             </Seccion>
           )}
 
           {data.guardadosTiendaPendientes.length > 0 && (
-            <Seccion icon={<Truck size={15} />} title="Despachos de tienda por guardar" count={data.guardadosTiendaPendientes.length} color="#0E7490">
+            <Seccion icon={<Truck size={15} />} title="Despachos de tienda por guardar" count={data.guardadosTiendaPendientes.length} color="var(--brand)">
               {data.guardadosTiendaPendientes.slice(0, 8).map((p: any) => (
                 <TareaCard
                   key={p.id}
                   href="/dashboard/transporte"
-                  titulo={`${p.documento} · ${p.clienteNombre}`}
-                  sub={`${p.centroCostos}${p.numeroCajas ? ` · ${p.numeroCajas} cajas` : ""}`}
+                  titulo={`${p.documento} / ${p.clienteNombre}`}
+                  sub={`${p.centroCostos}${p.numeroCajas ? ` / ${p.numeroCajas} cajas` : ""}`}
                   badge="Pendiente por guardar"
-                  badgeColor="#0E7490"
+                  badgeColor="var(--brand)"
                   tiempo={new Date(p.createdAt).toLocaleDateString("es-CO")}
                 />
               ))}
@@ -220,7 +228,7 @@ export default function MisTareasPage() {
 
           {/* ── TIENDA: Despachos pendientes ──────────────── */}
           {data.despachosTienda.length > 0 && (
-            <Seccion icon={<Store size={15} />} title="Despachos tienda pendientes" count={data.despachosTienda.length} color="#7C3AED">
+            <Seccion icon={<Store size={15} />} title="Despachos tienda pendientes" count={data.despachosTienda.length} color="var(--brand)">
               {data.despachosTienda.slice(0, 8).map((d: any) => {
                 const horas = horasDesde(d.createdAt);
                 const critico = horas >= 24;
@@ -229,8 +237,8 @@ export default function MisTareasPage() {
                   <TareaCard
                     key={d.id}
                     href="/dashboard/tienda"
-                    titulo={`${d.numeroDocumento} · ${d.clienteNombre}`}
-                    sub={`${d.centroCostos} · ${d.estado}`}
+                    titulo={`${d.numeroDocumento} / ${d.clienteNombre}`}
+                    sub={`${d.centroCostos} / ${d.estado}`}
                     badge={critico ? `${horas}h pendiente` : slaDespach ? SLA_LABEL[slaDespach] : d.estado}
                     badgeColor={critico ? "var(--error)" : slaDespach ? SLA_COLOR[slaDespach] : "var(--muted)"}
                     alerta={critico || slaDespach === "VENCIDO"}
@@ -238,7 +246,7 @@ export default function MisTareasPage() {
                   />
                 );
               })}
-              {data.despachosTienda.length > 8 && <div style={{ fontSize: 12, color: "var(--muted)", textAlign: "center", padding: "8px 0" }}>+{data.despachosTienda.length - 8} más en <Link href="/dashboard/tienda" style={{ color: "#7C3AED" }}>Tienda</Link></div>}
+              {data.despachosTienda.length > 8 && <div style={{ fontSize: 12, color: "var(--muted)", textAlign: "center", padding: "8px 0" }}>+{data.despachosTienda.length - 8} mas en <Link href="/dashboard/tienda" style={{ color: "var(--brand)" }}>Tienda</Link></div>}
             </Seccion>
           )}
 
@@ -246,7 +254,7 @@ export default function MisTareasPage() {
           {kpis.total === 0 && (
             <EmptyState
               icon={<CheckSquare size={22} />}
-              title="¡Todo al día!"
+              title="Todo al dia"
               description="No tienes tareas pendientes en este momento. Buen trabajo."
             />
           )}

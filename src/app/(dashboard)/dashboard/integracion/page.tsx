@@ -6,9 +6,11 @@ import { useSession } from "next-auth/react";
 import { GitMerge, Plus, Search, X, Minus, CheckCircle2, Trash2 } from "lucide-react";
 import { Badge, EmptyState, SkeletonTable } from "@/components/ui";
 import { SlidePanel, DetailSection, DetailGrid } from "@/components/ui/SlidePanel";
+import { AutoRefreshIndicator } from "@/components/ui/AutoRefreshIndicator";
+import { useAutoRefresh } from "@/hooks/useAutoRefresh";
 import { useIsMobile } from "@/lib/useIsMobile";
 
-const COLOR = "#7C3AED";
+const COLOR = "var(--brand)";
 const TIPO_DOC_OPTIONS = ["OVDM", "TSDM"] as const;
 const AREA_OPTIONS = ["MUEBLES", "GOURMET"] as const;
 
@@ -49,9 +51,9 @@ const ESTADO_LABEL: Record<EstadoIntegracion, string> = {
 };
 
 const ESTADO_COLOR: Record<EstadoIntegracion, string> = {
-  PENDIENTE_AREA2:   "#D97706",
-  LISTA_TRANSPORTE:  "#2563EB",
-  COMPLETADA:        "#16A34A",
+  PENDIENTE_AREA2:   "var(--warning)",
+  LISTA_TRANSPORTE:  "var(--brand)",
+  COMPLETADA:        "var(--success)",
 };
 
 function estadoVariant(e: EstadoIntegracion): "warning" | "info" | "success" {
@@ -79,7 +81,7 @@ const inp: React.CSSProperties = {
 const focusProps = {
   onFocus: (e: React.FocusEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     e.target.style.borderColor = COLOR;
-    e.target.style.boxShadow = `0 0 0 2.5px ${COLOR}30`;
+    e.target.style.boxShadow = "0 0 0 2.5px var(--ring)";
     e.target.style.background = "var(--surface)";
   },
   onBlur: (e: React.FocusEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
@@ -417,7 +419,7 @@ function ModalMarcarRecibido({ integracion, onClose, onDone }: {
         {error && <p style={{ fontSize: 13, color: "var(--error)", margin: 0 }}>{error}</p>}
         <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
           <button type="button" onClick={onClose} className="ds-btn ds-btn-ghost" style={{ fontSize: 14 }}>Cancelar</button>
-          <button type="submit" disabled={saving} className="ds-btn ds-btn-primary" style={{ fontSize: 14, background: saving ? "var(--muted)" : "#16A34A", border: "none" }}>
+          <button type="submit" disabled={saving} className="ds-btn ds-btn-primary" style={{ fontSize: 14, background: saving ? "var(--muted)" : "var(--success)", border: "none" }}>
             {saving ? "Guardando…" : "Confirmar recepción"}
           </button>
         </div>
@@ -484,6 +486,12 @@ export default function IntegracionPage() {
 
   useEffect(() => { if (role && ALLOWED.includes(role)) load(); }, [load, role]);
 
+  const autoRefresh = useAutoRefresh({
+    enabled: Boolean(role && ALLOWED.includes(role)),
+    pause: Boolean(selected || showNueva || completarItem || recibidoItem || deletingIntId),
+    onRefresh: () => load(),
+  });
+
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
     if (!q) return integraciones;
@@ -531,11 +539,18 @@ export default function IntegracionPage() {
             </p>
           </div>
         </div>
-        {canCreate && (
-          <button onClick={() => setShowNueva(true)} className="ds-btn ds-btn-primary" style={{ background: COLOR, border: "none", display: "flex", alignItems: "center", gap: 7, fontSize: 14 }}>
-            <Plus size={15} /> Nueva integración
-          </button>
-        )}
+        <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+          <AutoRefreshIndicator
+            lastUpdatedAt={autoRefresh.lastUpdatedAt}
+            refreshing={autoRefresh.refreshing}
+            onRefresh={autoRefresh.refreshNow}
+          />
+          {canCreate && (
+            <button onClick={() => setShowNueva(true)} className="ds-btn ds-btn-primary" style={{ background: COLOR, border: "none", display: "flex", alignItems: "center", gap: 7, fontSize: 14 }}>
+              <Plus size={15} /> Nueva integración
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Filtros */}
@@ -596,7 +611,7 @@ export default function IntegracionPage() {
                     </td>
                     <td style={{ padding: "11px 14px", color: "var(--muted)", whiteSpace: "nowrap" }}>{fmtDate(item.fecha)}</td>
                     <td style={{ padding: "11px 14px" }}>
-                      <span style={{ fontSize: 12, fontWeight: 500, color: item.areaIniciadora === "MUEBLES" ? "#2563EB" : "#D97706" }}>{item.areaIniciadora}</span>
+                      <span style={{ fontSize: 12, fontWeight: 500, color: "var(--brand)" }}>{item.areaIniciadora}</span>
                     </td>
                     <td style={{ padding: "11px 14px" }}>
                       <Badge variant={estadoVariant(item.estado)} label={ESTADO_LABEL[item.estado]} />
@@ -614,7 +629,7 @@ export default function IntegracionPage() {
                         )}
                         {canTransport && item.estado === "LISTA_TRANSPORTE" && (
                           <button onClick={(e) => { e.stopPropagation(); setRecibidoItem(item); }}
-                            className="ds-btn ds-btn-ghost" style={{ fontSize: 12, padding: "4px 10px", color: "#16A34A", border: "1px solid #16A34A40" }}>
+                            className="ds-btn ds-btn-ghost" style={{ fontSize: 12, padding: "4px 10px", color: "var(--success)", border: "1px solid color-mix(in srgb, var(--success) 35%, transparent)" }}>
                             <CheckCircle2 size={12} style={{ marginRight: 4 }} />Recibido
                           </button>
                         )}
@@ -662,7 +677,7 @@ export default function IntegracionPage() {
             </button>
           ) : selected && canTransport && selected.estado === "LISTA_TRANSPORTE" ? (
             <button onClick={() => { setRecibidoItem(selected); setSelected(null); }}
-              className="ds-btn ds-btn-primary" style={{ fontSize: 13, background: "#16A34A", border: "none" }}>
+              className="ds-btn ds-btn-primary" style={{ fontSize: 13, background: "var(--success)", border: "none" }}>
               Confirmar recepción
             </button>
           ) : undefined

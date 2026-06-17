@@ -25,6 +25,8 @@
 
 ### UI / UX Control Logistico CEDI
 
+- [ ] QA visual desktop/mobile con sesion real para el rediseño Claro Ejecutivo Azul/Gris
+- [ ] Extender datos en vivo a pantallas secundarias que aun usan carga manual si la operacion lo requiere
 - [ ] QA visual desktop/mobile con sesion real por rol de Login, Dashboard, Usuarios, Tienda, Conteo y Preoperacional
 - [ ] Fase plataforma 2: extender componentes `op-*` a Tienda, Transporte, Inventario, Conteo, Preoperacional, Integracion, Auditoria y Mis Tareas con QA visual por rol
 - [ ] Fase plataforma 3: agregar preferencias de usuario y vistas operativas guardadas
@@ -71,6 +73,9 @@
 - [x] Exportaciones: boton "Finalizar rotulacion" — endpoint POST /api/exportaciones/[id]/finalize cierra horaFinalizacion sin requerir motivo; banner "Registro en curso" muestra el boton para cerrar la jornada manualmente - 2026-06-16
 
 - [x] Rediseño Operativo Premium Control Logístico CEDI: base visual `op-*`, shell, login, dashboard, Exportaciones, Solicitudes Transporte y Usuarios - 2026-06-16
+- [x] Rediseño Claro Ejecutivo Azul/Gris: paleta contenida, shell claro, login claro, moduleTheme monolineal y datos en vivo en pantallas principales - 2026-06-16
+
+- [x] Revision predeploy Lovable/Base44: Lovable como referencia visual, Base44 como checklist comparativo, pulido azul/gris en Integracion, Mis Tareas y Centro de Control - 2026-06-16
 
 ---
 

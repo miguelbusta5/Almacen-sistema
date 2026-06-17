@@ -7,10 +7,12 @@ import {
   Download, RefreshCw, Save, ShieldCheck, Trash2, Truck, XCircle,
 } from "lucide-react";
 import { Badge, EmptyState, SkeletonTable, Stat } from "@/components/ui";
+import { AutoRefreshIndicator } from "@/components/ui/AutoRefreshIndicator";
 import { SlidePanel, DetailSection, DetailGrid } from "@/components/ui/SlidePanel";
 import { useIsMobile } from "@/lib/useIsMobile";
 import type { ResultadoInspeccion } from "@/lib/preoperacional";
 import { getModuleColor } from "@/lib/moduleTheme";
+import { useAutoRefresh } from "@/hooks/useAutoRefresh";
 
 // ─── tipos ──────────────────────────────────────────────────────────────────
 
@@ -172,6 +174,11 @@ function ConductorView() {
 
   useEffect(() => { load(); }, []);
 
+  const autoRefresh = useAutoRefresh({
+    pause: Boolean(saving || kilometraje || observaciones || items.some((item) => item.resultado !== "CONFORME" || item.observacion || item.fotoUrl)),
+    onRefresh: () => load(),
+  });
+
   const resumen = useMemo(() => {
     const noConformes = items.filter((i) => i.resultado === "NO_CONFORME");
     return {
@@ -267,7 +274,11 @@ function ConductorView() {
             {data.transportista.nombre} — {data.vehiculo.placa} — {data.vehiculo.tipo}
           </p>
         </div>
-        <button className="ds-btn ds-btn-ghost" onClick={load}><RefreshCw size={14} />Actualizar</button>
+        <AutoRefreshIndicator
+          lastUpdatedAt={autoRefresh.lastUpdatedAt}
+          refreshing={autoRefresh.refreshing}
+          onRefresh={autoRefresh.refreshNow}
+        />
       </div>
 
       {/* Stats */}
@@ -450,6 +461,11 @@ function SupervisorView({ role }: { role: string }) {
 
   useEffect(() => { load(1); }, [load]);
 
+  const autoRefresh = useAutoRefresh({
+    pause: Boolean(selected || deletingId || exporting),
+    onRefresh: () => load(page),
+  });
+
   async function exportar() {
     setExporting(true);
     try {
@@ -516,7 +532,12 @@ function SupervisorView({ role }: { role: string }) {
             <p style={{ fontSize: 12, color: "var(--muted)", margin: 0 }}>{total} inspeccion{total !== 1 ? "es" : ""} registrada{total !== 1 ? "s" : ""}</p>
           </div>
         </div>
-        <div style={{ display: "flex", gap: 8 }}>
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap", justifyContent: "flex-end" }}>
+          <AutoRefreshIndicator
+            lastUpdatedAt={autoRefresh.lastUpdatedAt}
+            refreshing={autoRefresh.refreshing}
+            onRefresh={autoRefresh.refreshNow}
+          />
           <button onClick={exportar} disabled={exporting} style={{ display: "flex", alignItems: "center", gap: 6, padding: "0.55rem 1rem", background: PREOP_COLOR, color: "#fff", border: "none", borderRadius: 9, fontSize: 12, fontWeight: 700, cursor: "pointer", opacity: exporting ? 0.7 : 1 }}>
             <Download size={14} />{exporting ? "Exportando..." : "Exportar Excel"}
           </button>

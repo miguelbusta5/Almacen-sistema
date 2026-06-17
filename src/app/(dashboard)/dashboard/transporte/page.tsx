@@ -17,8 +17,10 @@ import {
 import { calcAlmacenaje, TARIFA_ALM } from "@/lib/almacenaje";
 import { insightsGuardados, insightsPorGuardado } from "@/lib/inteligencia";
 import { Stat, SkeletonStat, Badge, EmptyState, SkeletonTable } from "@/components/ui";
+import { AutoRefreshIndicator } from "@/components/ui/AutoRefreshIndicator";
 import { SlidePanel, IntelBanner, DetailSection, DetailGrid, MiniHistory } from "@/components/ui/SlidePanel";
 import { useIsMobile } from "@/lib/useIsMobile";
+import { useAutoRefresh } from "@/hooks/useAutoRefresh";
 
 ChartJS.register(ArcElement, BarElement, CategoryScale, LinearScale, Tooltip, Legend);
 
@@ -99,6 +101,11 @@ export default function TransportePage() {
     finally { setLoading(false); }
   }
   useEffect(() => { load(); }, []);
+
+  const autoRefresh = useAutoRefresh({
+    pause: Boolean(creando || editing || panelItem || deleting || mostrarFormContacto || fechaModal),
+    onRefresh: () => load(),
+  });
   function showToast(msg: string, err = false) { setToast({ msg, err }); setTimeout(() => setToast(null), 3000); }
 
   async function abrirPanel(g: Guardado) {
@@ -283,7 +290,12 @@ export default function TransportePage() {
             {loading ? "Cargando…" : `${guardados.length} registros · ${kpis.pend} pendientes`}
           </p>
         </div>
-        <div style={{ display: "flex", gap: 8 }}>
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap", justifyContent: "flex-end" }}>
+          <AutoRefreshIndicator
+            lastUpdatedAt={autoRefresh.lastUpdatedAt}
+            refreshing={autoRefresh.refreshing}
+            onRefresh={autoRefresh.refreshNow}
+          />
           <button className={`ds-btn ${view === "graficos" ? "ds-btn-secondary" : "ds-btn-ghost"}`} onClick={() => setView(view === "graficos" ? "lista" : "graficos")}>
             {view === "graficos" ? <><List size={14} />Lista</> : <><BarChart3 size={14} />Gráficos</>}
           </button>

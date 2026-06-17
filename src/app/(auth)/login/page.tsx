@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { signIn } from "next-auth/react";
 import { useRouter } from "next/navigation";
-import { Activity, ArrowRight, Eye, EyeOff, Loader2, ShieldCheck } from "lucide-react";
+import { ArrowRight, Eye, EyeOff, Loader2, ShieldCheck, Wifi } from "lucide-react";
 import Logo from "@/components/common/Logo";
 import { PRODUCT } from "@/config/product";
 
@@ -25,7 +25,7 @@ export default function LoginPage() {
       redirect: false,
     });
     if (result?.error) {
-      setError("Email o contraseña incorrectos.");
+      setError("Email o contrasena incorrectos.");
       setLoading(false);
     } else {
       router.push("/dashboard");
@@ -36,52 +36,55 @@ export default function LoginPage() {
     width: "100%",
     height: 44,
     padding: "0 14px",
-    background: "var(--surface2)",
+    background: "var(--surface)",
     border: "1px solid var(--border)",
     borderRadius: 10,
     fontSize: 15,
     fontFamily: "var(--sans)",
     color: "var(--text)",
     outline: "none",
+    boxShadow: "inset 0 1px 0 rgba(255,255,255,0.55)",
   };
 
   return (
     <div style={{
       minHeight: "100vh",
-      background: "linear-gradient(180deg, #07111E 0%, #0A1628 52%, #EEF3F8 52%, #EEF3F8 100%)",
+      background:
+        "linear-gradient(135deg, rgba(37,99,235,0.10), transparent 36%), var(--bg)",
       display: "grid",
       placeItems: "center",
       padding: "clamp(16px, 4vw, 32px)",
     }}>
-      <main style={{ width: "min(980px, 100%)", display: "grid", gridTemplateColumns: "minmax(0, 1.05fr) minmax(340px, .75fr)", borderRadius: 18, overflow: "hidden", boxShadow: "var(--shadow-xl)", border: "1px solid rgba(255,255,255,0.12)" }}>
+      <main style={{ width: "min(980px, 100%)", display: "grid", gridTemplateColumns: "minmax(0, 1fr) minmax(340px, .78fr)", borderRadius: 18, overflow: "hidden", boxShadow: "var(--shadow-xl)", border: "1px solid var(--border)", background: "var(--surface)" }}>
         <section style={{
           minHeight: 520,
           padding: "clamp(28px, 5vw, 44px)",
-          background: "linear-gradient(135deg, rgba(7,17,30,0.98), rgba(13,31,55,0.94))",
-          color: "#fff",
+          background: "linear-gradient(135deg, rgba(37,99,235,0.10), rgba(255,255,255,0.96))",
+          color: "var(--text)",
           display: "flex",
           flexDirection: "column",
           justifyContent: "space-between",
+          borderRight: "1px solid var(--border)",
         }}>
-          <Logo variant="dark" height={22} tagline />
+          <Logo variant="auto" height={22} tagline />
 
           <div>
-            <div style={{ display: "inline-flex", alignItems: "center", gap: 8, border: "1px solid rgba(255,255,255,0.12)", background: "rgba(255,255,255,0.06)", borderRadius: 999, padding: "6px 10px", color: "rgba(255,255,255,0.78)", fontSize: 12, fontWeight: 800, marginBottom: 18 }}>
-              <Activity size={14} /> {PRODUCT.statusLabel}
+            <div style={{ display: "inline-flex", alignItems: "center", gap: 8, border: "1px solid rgba(37,99,235,0.18)", background: "var(--brand-tint)", borderRadius: 999, padding: "6px 10px", color: "var(--brand)", fontSize: 12, fontWeight: 800, marginBottom: 18 }}>
+              <Wifi size={14} /> {PRODUCT.statusLabel}
             </div>
-            <h1 style={{ fontSize: "clamp(32px, 5vw, 52px)", lineHeight: 1, fontWeight: 900, color: "#fff", margin: 0 }}>
+            <h1 style={{ fontSize: "clamp(32px, 5vw, 52px)", lineHeight: 1, fontWeight: 900, color: "var(--text)", margin: 0 }}>
               {PRODUCT.displayName}
             </h1>
-            <p style={{ color: "rgba(255,255,255,0.66)", fontSize: 15, lineHeight: 1.65, maxWidth: 560, marginTop: 16 }}>
-              Consola interna para controlar inventario, facturas contado, transporte, conteo, preoperacional y exportaciones con trazabilidad por rol.
+            <p style={{ color: "var(--muted)", fontSize: 15, lineHeight: 1.65, maxWidth: 560, marginTop: 16 }}>
+              Portal interno para controlar inventario, facturas contado, transporte, conteo, preoperacional y exportaciones con trazabilidad por rol.
             </p>
           </div>
 
           <div style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", gap: 10 }}>
             {["Inventario", "Transporte", "CEDI"].map((label) => (
-              <div key={label} style={{ border: "1px solid rgba(255,255,255,0.10)", background: "rgba(255,255,255,0.055)", borderRadius: 12, padding: 12 }}>
-                <div style={{ color: "rgba(255,255,255,0.46)", fontSize: 10, textTransform: "uppercase", letterSpacing: "0.10em", fontWeight: 800 }}>Módulo</div>
-                <div style={{ color: "#fff", fontSize: 13, fontWeight: 800, marginTop: 5 }}>{label}</div>
+              <div key={label} style={{ border: "1px solid var(--border)", background: "var(--surface)", borderRadius: 12, padding: 12, boxShadow: "var(--shadow-xs)" }}>
+                <div style={{ color: "var(--muted)", fontSize: 10, textTransform: "uppercase", letterSpacing: "0.10em", fontWeight: 800 }}>Modulo</div>
+                <div style={{ color: "var(--text)", fontSize: 13, fontWeight: 800, marginTop: 5 }}>{label}</div>
               </div>
             ))}
           </div>
@@ -93,7 +96,7 @@ export default function LoginPage() {
               <ShieldCheck size={22} />
             </div>
             <h2 style={{ fontSize: 26, fontWeight: 850, color: "var(--text)", margin: 0 }}>
-              Iniciar sesión
+              Iniciar sesion
             </h2>
             <p style={{ fontSize: 14, color: "var(--muted)", marginTop: 6 }}>
               Ingresa con tu cuenta corporativa para continuar.
@@ -102,7 +105,7 @@ export default function LoginPage() {
 
           <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: 16 }}>
             <label style={{ display: "grid", gap: 6, fontSize: 12, fontWeight: 800, color: "var(--muted2)" }}>
-              Correo electrónico
+              Correo electronico
               <input
                 type="email"
                 value={email}
@@ -115,13 +118,13 @@ export default function LoginPage() {
             </label>
 
             <label style={{ display: "grid", gap: 6, fontSize: 12, fontWeight: 800, color: "var(--muted2)" }}>
-              Contraseña
+              Contrasena
               <span style={{ position: "relative" }}>
                 <input
                   type={showPass ? "text" : "password"}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  placeholder="••••••••"
+                  placeholder="********"
                   required
                   autoComplete="current-password"
                   style={{ ...baseInp, paddingRight: 44 }}
@@ -129,7 +132,7 @@ export default function LoginPage() {
                 <button
                   type="button"
                   onClick={() => setShowPass(!showPass)}
-                  aria-label={showPass ? "Ocultar contraseña" : "Mostrar contraseña"}
+                  aria-label={showPass ? "Ocultar contrasena" : "Mostrar contrasena"}
                   style={{ position: "absolute", right: 11, top: "50%", transform: "translateY(-50%)", background: "none", border: "none", cursor: "pointer", color: "var(--muted)", padding: 4, display: "flex" }}
                 >
                   {showPass ? <EyeOff size={16} /> : <Eye size={16} />}
@@ -138,7 +141,7 @@ export default function LoginPage() {
             </label>
 
             {error && (
-              <div style={{ background: "var(--error-tint)", border: "1px solid rgba(239,68,68,0.22)", borderRadius: 10, padding: "10px 12px", fontSize: 13, color: "var(--error)", fontWeight: 700 }}>
+              <div style={{ background: "var(--error-tint)", border: "1px solid rgba(220,38,38,0.20)", borderRadius: 10, padding: "10px 12px", fontSize: 13, color: "var(--error)", fontWeight: 700 }}>
                 {error}
               </div>
             )}
@@ -149,7 +152,7 @@ export default function LoginPage() {
           </form>
 
           <p style={{ marginTop: 24, textAlign: "center", fontSize: 12, color: "var(--faint)", fontFamily: "var(--mono)" }}>
-            ¿Sin acceso? Contacta al administrador.
+            Sin acceso? Contacta al administrador.
           </p>
         </section>
       </main>
@@ -160,7 +163,7 @@ export default function LoginPage() {
             grid-template-columns: 1fr !important;
           }
           main > section:first-child {
-            min-height: 360px !important;
+            min-height: 330px !important;
           }
         }
       `}</style>

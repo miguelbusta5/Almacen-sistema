@@ -7,8 +7,10 @@ import {
   Plus, RefreshCw, Search, Send, Trash2, X,
 } from "lucide-react";
 import { EmptyState, SkeletonTable } from "@/components/ui";
+import { AutoRefreshIndicator } from "@/components/ui/AutoRefreshIndicator";
 import { getModuleColor } from "@/lib/moduleTheme";
 import { puedeEliminarSolicitudTransporte, puedeGestionarSolicitudTransporte } from "@/lib/solicitudesTransporte";
+import { useAutoRefresh } from "@/hooks/useAutoRefresh";
 
 type Estado = "PENDIENTE" | "RECHAZADA" | "REENVIADA" | "PROGRAMADA" | "EFECTUADA" | "CANCELADA";
 type StellaEstado = "PENDIENTE" | "PROGRAMADO" | "EFECTUADO" | "CANCELADO";
@@ -433,6 +435,11 @@ export default function SolicitudesTransportePage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [estado]);
 
+  const autoRefresh = useAutoRefresh({
+    pause: Boolean(showForm || editing || selected || rejectText.trim()),
+    onRefresh: () => load(),
+  });
+
   useEffect(() => {
     if (!selected) return;
     setGestion({
@@ -530,9 +537,16 @@ export default function SolicitudesTransportePage() {
           <h1 style={{ margin: 0, color: "var(--text)", fontSize: 28 }}>Bandeja operativa</h1>
           <p style={{ margin: "5px 0 0", color: "var(--muted)", fontSize: 14 }}>Servicio interno para entregas, recolecciones, traslados e inversa.</p>
         </div>
-        <button onClick={() => { setEditing(null); setShowForm(true); }} style={{ height: 40, border: "none", borderRadius: 10, background: COLOR, color: "#fff", padding: "0 16px", fontWeight: 800, display: "flex", alignItems: "center", gap: 8, cursor: "pointer" }}>
-          <Plus size={16} /> Nueva solicitud
-        </button>
+        <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", justifyContent: "flex-end" }}>
+          <AutoRefreshIndicator
+            lastUpdatedAt={autoRefresh.lastUpdatedAt}
+            refreshing={autoRefresh.refreshing}
+            onRefresh={autoRefresh.refreshNow}
+          />
+          <button onClick={() => { setEditing(null); setShowForm(true); }} style={{ height: 40, border: "none", borderRadius: 10, background: COLOR, color: "#fff", padding: "0 16px", fontWeight: 800, display: "flex", alignItems: "center", gap: 8, cursor: "pointer" }}>
+            <Plus size={16} /> Nueva solicitud
+          </button>
+        </div>
       </div>
 
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(160px,1fr))", gap: 10 }}>

@@ -1,5 +1,46 @@
 # Decisiones de Arquitectura y Producto
 
+## 2026-06-16 - Revision predeploy Lovable/Base44 del rediseno azul/gris
+
+**Decision:**
+- El deploy del rediseno queda condicionado a una revision visual previa con Lovable como referencia y Base44 como checklist comparativo cuando no haya herramienta callable.
+- Lovable se usa solo para criterio visual/prototipo, sin conectar produccion ni reemplazar la app Next.js.
+- La app conserva la identidad **Claro Ejecutivo Azul/Gris** y elimina rastros multicolor de pantallas operativas secundarias.
+
+**Contexto:**
+- Antes de produccion se pidio una revision adicional para elevar estetica, jerarquia, navegacion y estados en vivo.
+- Base44 no expuso herramienta callable en esta sesion, por lo que se registra como revision comparativa documentada.
+
+**Consecuencias:**
+- `Integracion`, `Mis Tareas` y `Centro de Control` quedan alineados a azul/gris y datos en vivo.
+- Los tokens heredados de colores por modulo se neutralizan hacia azul.
+- Logistica, rutas, GPS y Mi Ruta siguen suspendidos.
+
+**Referencia Lovable:** https://lovable.dev/projects/4d6b97cb-f3a2-4767-8980-571366817628
+
+---
+
+## 2026-06-16 - Rediseño Claro Ejecutivo Azul/Gris y datos en vivo
+
+**Decision:**
+- Se reemplaza la capa visual **Operativo Premium** multicolor por una identidad **Claro Ejecutivo Azul/Gris**.
+- El azul CEDI queda como acento principal para navegacion, accion y foco; rojo, ambar y verde quedan solo para estados semanticos.
+- Se crea una capa de datos en vivo con refresh en segundo plano para bandejas y tableros, sin recargar toda la pagina ni perder formularios.
+
+**Contexto:**
+- El cambio visual anterior no gusto porque la app seguia sintiendose generica y demasiado cargada de colores.
+- El usuario pidio una reestructuracion visual real con grises, blanco, azul, mejores iconos, sombras y animaciones de botones.
+
+**Consecuencias:**
+- `moduleTheme` deja de diferenciar modulos por colores fuertes.
+- `globals.css` mantiene compatibilidad con clases existentes, pero la salida visual pasa a blanco/gris/azul.
+- Se agregan `useAutoRefresh` y `AutoRefreshIndicator` para actualizar datos cada 60 segundos y pausar durante captura/edicion.
+- Logistica, rutas, GPS y Mi Ruta siguen suspendidos.
+
+**Archivos afectados:** `src/app/globals.css`, `src/lib/moduleTheme.ts`, `src/components/common/*`, `src/components/control-logistico/*`, pantallas principales del dashboard, `src/hooks/useAutoRefresh.ts`, `docs/cerebro/ux-ui.md`.
+
+---
+
 > Links: [[pendientes]] · [[modulos]] · [[flujo-despachos]]
 
 Registro cronológico de decisiones importantes. Una entrada por decisión, con fecha, contexto y consecuencias.

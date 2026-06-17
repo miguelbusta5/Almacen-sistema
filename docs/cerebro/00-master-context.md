@@ -74,6 +74,8 @@ git push origin master  # Deploy a producción (CI/CD automático)
 
 ## Identidad visual
 
+> Vigente desde 2026-06-16: **Claro Ejecutivo Azul/Gris**. Usar azul CEDI (`#2563EB`), blanco y grises frios. Rojo/ambar/verde solo para estados semanticos. No usar paletas multicolor por modulo.
+
 - **Marca:** Grupo Ambiente
 - **Nombre operativo UI:** Control Logistico CEDI
 - **Paleta:** Azules intensos — sin pasteles

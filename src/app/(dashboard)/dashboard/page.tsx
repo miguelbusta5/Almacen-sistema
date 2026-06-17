@@ -10,6 +10,7 @@ import {
   CheckSquare, Store, BarChart2, Users, History, ShieldCheck, GitMerge, FileText, Tags,
 } from "lucide-react";
 import { Badge, Stat, TimelineItem, SectionHeader, SkeletonStat as SK } from "@/components/ui";
+import { AutoRefreshIndicator } from "@/components/ui/AutoRefreshIndicator";
 import { IntelBanner } from "@/components/ui/SlidePanel";
 import { consolidarInsights } from "@/lib/inteligencia";
 import { urgencia } from "@/lib/transporte";
@@ -27,6 +28,7 @@ import {
   RecommendedActions,
   controlStatusColor,
 } from "@/components/control-logistico";
+import { useAutoRefresh } from "@/hooks/useAutoRefresh";
 
 // ── Helpers ──────────────────────────────────────────────
 function timeAgo(iso: string) {
@@ -725,15 +727,22 @@ function ControlLogisticoDashboard({ nombre }: { nombre: string }) {
   const [data, setData] = useState<ControlLogisticoResumen | null>(null);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    let active = true;
-    fetch("/api/control-logistico/resumen")
+  async function load(silent = false) {
+    if (!silent) setLoading(true);
+    const json = await fetch("/api/control-logistico/resumen")
       .then((res) => res.json())
-      .then((json) => { if (active && json.success) setData(json); })
-      .catch(() => {})
-      .finally(() => { if (active) setLoading(false); });
-    return () => { active = false; };
+      .catch(() => null);
+    if (json?.success) setData(json);
+    if (!silent) setLoading(false);
+  }
+
+  useEffect(() => {
+    void load();
   }, []);
+
+  const autoRefresh = useAutoRefresh({
+    onRefresh: () => load(true),
+  });
 
   if (loading || !data) {
     return (
@@ -749,6 +758,13 @@ function ControlLogisticoDashboard({ nombre }: { nombre: string }) {
 
   return (
     <div className="animate-fade-in control-dashboard" style={{ maxWidth: 1180 }}>
+      <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 10 }}>
+        <AutoRefreshIndicator
+          lastUpdatedAt={autoRefresh.lastUpdatedAt}
+          refreshing={autoRefresh.refreshing}
+          onRefresh={autoRefresh.refreshNow}
+        />
+      </div>
       <ControlHero nombre={nombre} resumen={data} isMobile={isMobile} />
 
       <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1.15fr .85fr", gap: 18, alignItems: "start" }}>

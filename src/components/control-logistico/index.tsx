@@ -21,7 +21,7 @@ export function controlStatusColor(status: ControlStatus | string) {
 }
 
 function levelLabel(level: ControlPriority["level"]) {
-  if (level === "critical") return "Crítico";
+  if (level === "critical") return "Critico";
   if (level === "warning") return "Alerta";
   return "Info";
 }
@@ -32,33 +32,31 @@ export function ControlHero({ nombre, resumen, isMobile }: {
   isMobile: boolean;
 }) {
   const hora = new Date().getHours();
-  const saludo = hora < 12 ? "Buenos días" : hora < 18 ? "Buenas tardes" : "Buenas noches";
+  const saludo = hora < 12 ? "Buenos dias" : hora < 18 ? "Buenas tardes" : "Buenas noches";
   const accent = controlStatusColor(resumen.headline.status);
 
   return (
     <section className="op-module-header" style={{ "--module-color": accent, padding: isMobile ? 18 : 26, marginBottom: 18 } as React.CSSProperties}>
       <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 18, flexWrap: "wrap", position: "relative", zIndex: 1 }}>
         <div style={{ maxWidth: 720 }}>
-          <div className="op-module-kicker" style={{ color: accent }}>
-            {PRODUCT.displayName}
-          </div>
+          <div className="op-module-kicker">{PRODUCT.displayName}</div>
           <h1 className="op-module-title">
             {saludo}{nombre ? `, ${nombre}` : ""}.
           </h1>
           <p className="op-module-copy">
-            Consola operativa por rol: prioridades, flujo CEDI, señales críticas y acciones recomendadas.
+            Consola operativa por rol: prioridades, flujo CEDI, senales criticas y acciones recomendadas.
           </p>
         </div>
 
         <div style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(76px, 1fr))", gap: 10, minWidth: isMobile ? "100%" : 330 }}>
           {[
-            { label: "Críticos", value: resumen.headline.critical, color: accent },
-            { label: "Pendientes", value: resumen.headline.pending, color: "#fff" },
+            { label: "Criticos", value: resumen.headline.critical, color: accent },
+            { label: "Pendientes", value: resumen.headline.pending, color: "var(--brand)" },
             { label: "Cerrados", value: resumen.headline.completedToday, color: "var(--success)" },
           ].map((kpi) => (
-            <div key={kpi.label} style={{ border: "1px solid rgba(255,255,255,0.10)", background: "rgba(255,255,255,0.065)", borderRadius: 12, padding: 12 }}>
+            <div key={kpi.label} style={{ border: "1px solid var(--border)", background: "var(--surface)", borderRadius: 12, padding: 12, boxShadow: "var(--shadow-xs)" }}>
               <div style={{ fontSize: 26, fontWeight: 900, color: kpi.color, lineHeight: 1, fontVariantNumeric: "tabular-nums" }}>{kpi.value}</div>
-              <div style={{ fontSize: 11, color: "rgba(255,255,255,0.58)", fontWeight: 800, marginTop: 4 }}>{kpi.label}</div>
+              <div style={{ fontSize: 11, color: "var(--muted)", fontWeight: 800, marginTop: 4 }}>{kpi.label}</div>
             </div>
           ))}
         </div>
@@ -70,7 +68,7 @@ export function ControlHero({ nombre, resumen, isMobile }: {
 export function ModuleSignalGrid({ modules, isMobile }: { modules: ControlModuleSignal[]; isMobile: boolean }) {
   return (
     <section className="op-workbench" style={{ padding: isMobile ? 16 : 18 }}>
-      <SectionHeader title="Módulos bajo control" />
+      <SectionHeader title="Modulos bajo control" />
       <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "repeat(3, minmax(0, 1fr))", gap: 10 }}>
         {modules.map((m) => {
           const color = getModuleColor(m.key);
@@ -82,7 +80,7 @@ export function ModuleSignalGrid({ modules, isMobile }: { modules: ControlModule
                   <span style={{ width: 8, height: 8, borderRadius: "50%", background: controlStatusColor(m.status), boxShadow: `0 0 0 3px ${controlStatusColor(m.status)}22` }} />
                 </div>
                 <div>
-                  <div style={{ fontSize: 24, fontWeight: 900, color, lineHeight: 1 }}>{m.count ?? "Activo"}</div>
+                  <div style={{ fontSize: 24, fontWeight: 900, color: "var(--brand)", lineHeight: 1 }}>{m.count ?? "Activo"}</div>
                   <div style={{ fontSize: 11, color: "var(--muted)", marginTop: 5 }}>{m.description}</div>
                 </div>
               </div>
@@ -138,7 +136,7 @@ export function RecommendedActions({ actions, isMobile }: { actions: ControlActi
           return (
             <Link key={action.id} href={action.href} style={{ textDecoration: "none" }}>
               <div className="op-record-card" style={{ "--module-color": color, display: "flex", alignItems: "center", gap: 10, padding: "10px 12px" } as React.CSSProperties}>
-                <span style={{ width: 30, height: 30, borderRadius: 9, display: "flex", alignItems: "center", justifyContent: "center", background: `${color}18`, color }}>
+                <span style={{ width: 30, height: 30, borderRadius: 9, display: "flex", alignItems: "center", justifyContent: "center", background: "var(--brand-tint)", color: "var(--brand)" }}>
                   <RadioTower size={14} />
                 </span>
                 <span style={{ flex: 1, minWidth: 0, fontSize: 13, fontWeight: 800, color: "var(--text)" }}>{action.label}</span>

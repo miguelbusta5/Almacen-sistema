@@ -9,6 +9,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useSession } from "next-auth/react";
 import { can } from "@/lib/permissions";
+import { useAutoRefresh } from "@/hooks/useAutoRefresh";
 import {
   Plus, X, Camera, Search, RefreshCw,
   CheckCircle2, Minus, Package, ChevronDown,
@@ -791,6 +792,11 @@ export default function InventarioMobilePage() {
 
   useEffect(() => { load(); }, []);
 
+  const autoRefresh = useAutoRefresh({
+    pause: Boolean(sheet),
+    onRefresh: () => load(true),
+  });
+
   function showToast(msg: string, ok = true) {
     setToast({ msg, ok });
     setTimeout(() => setToast(null), 2500);
@@ -881,10 +887,10 @@ export default function InventarioMobilePage() {
             <div style={{ display: "flex", gap: 8 }}>
               <button
                 onClick={() => load(true)}
-                disabled={refreshing}
+                disabled={refreshing || autoRefresh.refreshing}
                 style={{ width: 38, height: 38, borderRadius: 10, background: "var(--surface2)", border: "none", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}
               >
-                <RefreshCw size={16} color="var(--muted)" style={{ animation: refreshing ? "spin .8s linear infinite" : "none" }} />
+                <RefreshCw size={16} color="var(--muted)" style={{ animation: (refreshing || autoRefresh.refreshing) ? "spin .8s linear infinite" : "none" }} />
               </button>
               <button
                 onClick={() => setSearchOpen(true)}
