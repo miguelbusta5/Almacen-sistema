@@ -94,7 +94,7 @@ interface PendienteGuardadoHome {
   despacho?: { numeroDocumento: string; clienteNombre: string; centroCostos: string };
 }
 
-// ── Tarjeta de módulo (estilo Vercel) ───────────────────
+// ── Tarjeta de módulo — estilo WealthOS (degradado de color) ─
 function ModuleCard({ href, icon, label, color, value, sub, alert }: {
   href: string; icon: React.ReactNode; label: string; color: string;
   value?: number | string; sub?: string; alert?: boolean;
@@ -102,22 +102,49 @@ function ModuleCard({ href, icon, label, color, value, sub, alert }: {
   return (
     <Link href={href} style={{ textDecoration: "none" }}>
       <div
-        className="lift"
-        style={{ background: "var(--surface)", border: "1px solid var(--border)", borderLeft: `3px solid ${color}`, borderRadius: 12, padding: "20px", cursor: "pointer", transition: "border-color .15s, box-shadow .15s" }}
-        onMouseEnter={(e) => { const el = e.currentTarget as HTMLElement; el.style.borderColor = color + "55"; el.style.boxShadow = `0 8px 24px ${color}22`; }}
-        onMouseLeave={(e) => { const el = e.currentTarget as HTMLElement; el.style.borderColor = "var(--border)"; el.style.boxShadow = "none"; }}
+        style={{
+          borderRadius: 14,
+          padding: "20px 22px",
+          background: `linear-gradient(135deg, ${color}E8 0%, ${color}90 100%)`,
+          cursor: "pointer",
+          position: "relative",
+          overflow: "hidden",
+          minHeight: 128,
+          display: "flex",
+          flexDirection: "column",
+          justifyContent: "space-between",
+          transition: "transform .15s ease, box-shadow .15s ease",
+        }}
+        onMouseEnter={(e) => {
+          const el = e.currentTarget as HTMLElement;
+          el.style.transform = "translateY(-2px)";
+          el.style.boxShadow = `0 12px 32px ${color}55`;
+        }}
+        onMouseLeave={(e) => {
+          const el = e.currentTarget as HTMLElement;
+          el.style.transform = "none";
+          el.style.boxShadow = "none";
+        }}
       >
-        <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 16 }}>
-          <div style={{ width: 34, height: 34, borderRadius: 9, background: color + "18", border: `1px solid ${color}28`, display: "flex", alignItems: "center", justifyContent: "center", color }}>
-            {icon}
+        <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between" }}>
+          <div style={{ fontSize: 11, fontWeight: 700, color: "rgba(255,255,255,0.80)", textTransform: "uppercase", letterSpacing: "0.08em" }}>
+            {label}
           </div>
-          {alert && <span style={{ width: 8, height: 8, borderRadius: "50%", background: "var(--error)", boxShadow: "0 0 0 3px var(--error-tint)" }} />}
+          {alert && (
+            <span style={{ width: 8, height: 8, borderRadius: "50%", background: "#fff", opacity: 0.9, boxShadow: "0 0 0 3px rgba(255,255,255,0.30)", flexShrink: 0 }} />
+          )}
         </div>
-        <div style={{ fontSize: 28, fontWeight: 800, letterSpacing: "-0.04em", color: color, lineHeight: 1, marginBottom: 4 }}>{value ?? "—"}</div>
-        <div style={{ fontSize: 13, fontWeight: 600, color: "var(--text)", marginBottom: 2 }}>{label}</div>
-        {sub && <div style={{ fontSize: 12, color: "var(--muted)" }}>{sub}</div>}
-        <div style={{ display: "flex", alignItems: "center", gap: 4, marginTop: 14, fontSize: 12, color, fontWeight: 600 }}>
-          Abrir <ArrowRight size={12} />
+        <div>
+          <div style={{ fontSize: 34, fontWeight: 800, color: "#fff", lineHeight: 1, letterSpacing: "-0.04em" }}>
+            {value ?? "—"}
+          </div>
+          {sub && <div style={{ fontSize: 12, color: "rgba(255,255,255,0.72)", marginTop: 4 }}>{sub}</div>}
+          <div style={{ display: "flex", alignItems: "center", gap: 4, marginTop: 10, fontSize: 12, color: "rgba(255,255,255,0.75)", fontWeight: 600 }}>
+            Abrir <ArrowRight size={12} />
+          </div>
+        </div>
+        <div style={{ position: "absolute", right: 16, bottom: 12, opacity: 0.18, color: "#fff" }}>
+          {icon}
         </div>
       </div>
     </Link>
@@ -312,19 +339,22 @@ function AdminDashboard({ nombre }: { nombre: string }) {
 
   return (
     <div className="animate-fade-in" style={{ maxWidth: 900 }}>
-      <div className="ds-card" style={{ marginBottom: 28, padding: isMobile ? "20px" : "24px 28px", background: "linear-gradient(135deg, var(--brand-tint), transparent 70%)", borderLeft: "3px solid var(--brand)" }}>
-        <div style={{ display: "flex", flexWrap: "wrap", alignItems: "flex-start", justifyContent: "space-between", gap: 16 }}>
+      {/* Hero — estilo WealthOS: título limpio + KPIs en fila */}
+      <div style={{ marginBottom: 32, paddingBottom: 24, borderBottom: "1px solid var(--border)" }}>
+        <p style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.10em", textTransform: "uppercase", color: "var(--brand)", marginBottom: 8 }}>
+          {PRODUCT.displayName}
+        </p>
+        <div style={{ display: "flex", flexWrap: "wrap", alignItems: "flex-end", justifyContent: "space-between", gap: 16 }}>
           <div>
-            <p style={{ fontSize: 11, fontWeight: 800, letterSpacing: "0.10em", textTransform: "uppercase", color: "var(--brand)", marginBottom: 6 }}>{PRODUCT.displayName}</p>
-            <h1 style={{ fontSize: "clamp(20px, 2.5vw, 26px)", fontWeight: 800, color: "var(--text)", letterSpacing: "-0.03em", lineHeight: 1.2 }}>
+            <h1 style={{ fontSize: "clamp(22px, 2.8vw, 30px)", fontWeight: 800, color: "var(--text)", letterSpacing: "-0.03em", lineHeight: 1.15 }}>
               {saludo}{nombre ? `, ${nombre}` : ""}.
             </h1>
-            <p style={{ fontSize: 14, color: "var(--muted)", marginTop: 6 }}>
+            <p style={{ fontSize: 14, color: "var(--muted)", marginTop: 5 }}>
               {new Date().toLocaleDateString("es-CO", { weekday: "long", day: "numeric", month: "long", year: "numeric" })}
             </p>
           </div>
           {!loading && (
-            <div style={{ display: "flex", gap: isMobile ? 12 : 20, flexWrap: "wrap" }}>
+            <div style={{ display: "flex", gap: isMobile ? 16 : 28, flexWrap: "wrap" }}>
               <Stat value={stats?.novedades.pendientes ?? 0} label="Sin resolver" size="sm" color={(stats?.novedades.pendientes ?? 0) > 0 ? "var(--error)" : "var(--success)"} />
               <Stat value={stats?.transporte.total ?? 0} label="Guardados" size="sm" color={getModuleColor("transporte")} />
               <Stat value={stats?.transporte.alertas ?? 0} label="Alertas" size="sm" color={(stats?.transporte.alertas ?? 0) > 0 ? "var(--warning)" : "var(--success)"} />
@@ -522,9 +552,9 @@ function OperadorDashboard({ nombre, role }: { nombre: string; role: string }) {
 
   return (
     <div className="animate-fade-in" style={{ maxWidth: 680 }}>
-      {/* Greeting */}
-      <div style={{ marginBottom: 28 }}>
-        <h1 style={{ fontSize: 26, fontWeight: 700, color: "var(--text)", letterSpacing: "-0.03em", lineHeight: 1.2 }}>
+      {/* Greeting — estilo WealthOS */}
+      <div style={{ marginBottom: 28, paddingBottom: 22, borderBottom: "1px solid var(--border)" }}>
+        <h1 style={{ fontSize: "clamp(22px, 2.8vw, 28px)", fontWeight: 800, color: "var(--text)", letterSpacing: "-0.03em", lineHeight: 1.15 }}>
           {saludo}{nombre ? `, ${nombre}` : ""}.
         </h1>
         <p style={{ fontSize: 14, color: "var(--muted)", marginTop: 5 }}>
