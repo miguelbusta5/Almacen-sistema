@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { createPortal } from "react-dom";
 import { useSession } from "next-auth/react";
 import { can } from "@/lib/permissions";
 import {
@@ -14,6 +13,7 @@ import {
   fmtFechaTienda, todayISO, horasDesde, FLUJO_ESTADOS, ESTADOS_ACTIVOS,
 } from "@/lib/tienda";
 import { Stat, SkeletonStat, Badge, EmptyState, SkeletonTable, TimelineItem } from "@/components/ui";
+import { Modal } from "@/components/ui/Modal";
 import { AutoRefreshIndicator } from "@/components/ui/AutoRefreshIndicator";
 import { SlidePanel, IntelBanner, DetailSection, DetailGrid, MiniHistory } from "@/components/ui/SlidePanel";
 import { insightsTienda, insightsPorDespacho } from "@/lib/inteligencia";
@@ -32,32 +32,15 @@ type ProductoMaestro = {
 const COLOR_TRANSPORTE = getModuleColor("transporte");
 const COLOR_CEDI = ESTADO_DESPACHO_COLOR.ENTREGADO_CEDI;
 
-// ── Modal base para crear/editar ──────────────────────────
+// ── Modal base (adaptador del Modal premium compartido) ───
+// Mantiene la firma { title, sub, children, onClose } usada por los
+// modales de esta página; delega chrome (portal, blur, Esc, scroll-lock,
+// animación) al Modal único del design system.
 function ModalBase({ title, sub, children, onClose }: { title: string; sub?: string; children: React.ReactNode; onClose: () => void }) {
-  const [mounted, setMounted] = useState(false);
-  useEffect(() => { setMounted(true); }, []);
-  useEffect(() => {
-    const h = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
-    window.addEventListener("keydown", h);
-    document.body.style.overflow = "hidden";
-    return () => { window.removeEventListener("keydown", h); document.body.style.overflow = ""; };
-  }, [onClose]);
-  if (!mounted) return null;
-  return createPortal(
-    <div onClick={onClose} style={{ position: "fixed", inset: 0, zIndex: 9999, background: "var(--overlay)", display: "flex", alignItems: "center", justifyContent: "center", padding: 16, backdropFilter: "blur(4px)" }}>
-      <div onClick={(e) => e.stopPropagation()} className="animate-scale-in"
-        style={{ background: "var(--surface)", borderRadius: 16, width: "100%", maxWidth: 500, maxHeight: "90vh", overflowY: "auto", boxShadow: "var(--shadow-xl)", border: "1px solid var(--border)", padding: "24px" }}>
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20 }}>
-          <div>
-            <h2 style={{ fontSize: 17, fontWeight: 700, color: "var(--text)", margin: 0 }}>{title}</h2>
-            {sub && <p style={{ fontSize: 12, color: "var(--muted)", margin: "3px 0 0" }}>{sub}</p>}
-          </div>
-          <button onClick={onClose} style={{ background: "var(--surface2)", border: "none", borderRadius: 7, padding: 7, cursor: "pointer", color: "var(--muted)", display: "flex" }}><X size={16} /></button>
-        </div>
-        {children}
-      </div>
-    </div>,
-    document.body
+  return (
+    <Modal open onClose={onClose} title={title} subtitle={sub}>
+      {children}
+    </Modal>
   );
 }
 
