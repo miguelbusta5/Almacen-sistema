@@ -1383,16 +1383,18 @@ html[data-theme="dark"] .ds-badge-teal {
   --state-info:    #22D3EE;
 }
 
+/* Body: coherente por tema — claro permanece claro, oscuro = navy neón.
+   El brillo de módulo es un acento sutil arriba, no un fondo oscuro forzado. */
 body {
   background:
-    radial-gradient(circle at 22% 0%, color-mix(in srgb, var(--mod-color, #7C3AED) 12%, transparent), transparent 32rem),
-    linear-gradient(180deg, #0B1220 0%, #07111F 42%, #050B14 100%) !important;
+    radial-gradient(circle at 22% -4%, color-mix(in srgb, var(--mod-color, var(--brand)) 6%, transparent), transparent 30rem),
+    var(--canvas);
 }
 
 html[data-theme="dark"] body {
   background:
-    radial-gradient(circle at 20% 0%, color-mix(in srgb, var(--mod-color, #A78BFA) 18%, transparent), transparent 34rem),
-    linear-gradient(180deg, #08111F 0%, #050B14 100%) !important;
+    radial-gradient(circle at 20% 0%, color-mix(in srgb, var(--mod-color, #A78BFA) 16%, transparent), transparent 34rem),
+    linear-gradient(180deg, #08111F 0%, #050B14 100%);
 }
 
 .module-hero,
@@ -1400,23 +1402,22 @@ html[data-theme="dark"] body {
 .op-module-header,
 .g-hero,
 .cedi-hero {
-  min-height: 170px;
+  min-height: 156px;
   position: relative;
   overflow: hidden;
   display: flex;
   align-items: center;
   gap: 24px;
-  border-radius: 16px;
-  padding: 28px 30px;
-  border: 1px solid color-mix(in srgb, var(--mod-color, var(--module-color, var(--brand))) 62%, rgba(148,163,184,0.18));
+  border-radius: 18px;
+  padding: 26px 30px;
+  border: 1px solid color-mix(in srgb, var(--mod-color, var(--module-color, var(--brand))) 40%, rgba(148,163,184,0.16));
   background:
-    radial-gradient(circle at 82% 42%, color-mix(in srgb, var(--mod-color, var(--module-color, var(--brand))) 48%, transparent), transparent 19rem),
-    radial-gradient(circle at 8% 16%, color-mix(in srgb, var(--mod-color, var(--module-color, var(--brand))) 22%, transparent), transparent 18rem),
-    var(--module-hero-gradient, linear-gradient(135deg,#120B2E 0%,#25105E 52%,#07111F 100%)) !important;
+    radial-gradient(circle at 84% 44%, color-mix(in srgb, var(--mod-color, var(--module-color, var(--brand))) 30%, transparent), transparent 18rem),
+    var(--module-hero-gradient, linear-gradient(135deg,#1B1140 0%,#2A1466 52%,#0A1020 100%)) !important;
   box-shadow:
-    0 0 0 1px color-mix(in srgb, var(--mod-color, var(--module-color, var(--brand))) 16%, transparent),
-    0 20px 55px color-mix(in srgb, var(--module-glow, var(--mod-color, var(--brand))) 26%, transparent),
-    0 24px 72px rgba(0,0,0,0.34) !important;
+    inset 0 1px 0 rgba(255,255,255,0.06),
+    0 14px 40px color-mix(in srgb, var(--module-glow, var(--mod-color, var(--brand))) 14%, transparent),
+    0 18px 50px rgba(2,6,16,0.30) !important;
 }
 
 .module-hero::before,
@@ -1439,18 +1440,16 @@ html[data-theme="dark"] body {
 .cedi-hero::after {
   content: "";
   position: absolute;
-  inset: 0 0 0 auto;
-  width: min(48%, 520px);
+  top: 0; right: 0; bottom: 0;
+  width: min(40%, 400px);
   pointer-events: none;
-  background-image:
-    linear-gradient(90deg, rgba(7,17,31,0) 0%, rgba(7,17,31,0.12) 20%, rgba(7,17,31,0) 100%),
-    var(--module-hero-image);
+  background-image: var(--module-hero-image);
   background-repeat: no-repeat;
   background-position: right center;
-  background-size: cover;
-  opacity: 0.98;
-  filter: saturate(1.14) contrast(1.06);
-  mask-image: linear-gradient(90deg, transparent 0%, black 22%, black 100%);
+  background-size: contain;
+  opacity: 0.95;
+  filter: saturate(1.06) drop-shadow(0 14px 30px rgba(0,0,0,0.42));
+  mask-image: linear-gradient(90deg, transparent 0%, black 34%, black 100%);
 }
 
 .module-hero-copy,
@@ -1489,11 +1488,11 @@ html[data-theme="dark"] body {
 .op-module-title,
 .cedi-hero h1 {
   color: #F8FAFC !important;
-  font-size: clamp(32px, 4vw, 48px) !important;
-  line-height: 0.98 !important;
-  letter-spacing: -0.045em !important;
-  font-weight: 950 !important;
-  text-shadow: 0 10px 34px rgba(0,0,0,0.36);
+  font-size: clamp(26px, 3vw, 34px) !important;
+  line-height: 1.04 !important;
+  letter-spacing: -0.03em !important;
+  font-weight: 850 !important;
+  text-shadow: 0 6px 22px rgba(0,0,0,0.32);
 }
 
 .module-hero p,
@@ -1603,84 +1602,82 @@ html[data-theme="dark"] body {
   color: #F8FBFF !important;
 }
 
-.ds-card,
-.ds-panel,
-.g-panel,
-.op-panel,
-.op-workbench,
-.op-table-wrap,
-.cedi-panel,
-.g-table-wrap {
+html[data-theme="dark"] .ds-card,
+html[data-theme="dark"] .ds-panel,
+html[data-theme="dark"] .g-panel,
+html[data-theme="dark"] .op-panel,
+html[data-theme="dark"] .op-workbench,
+html[data-theme="dark"] .op-table-wrap,
+html[data-theme="dark"] .cedi-panel,
+html[data-theme="dark"] .g-table-wrap {
   background:
     linear-gradient(180deg,
-      color-mix(in srgb, var(--mod-color, var(--module-color, var(--brand))) 9%, #101B2D),
+      color-mix(in srgb, var(--mod-color, var(--module-color, var(--brand))) 8%, #101B2D),
       #0B1626) !important;
-  border-color: color-mix(in srgb, var(--mod-color, var(--module-color, var(--brand))) 26%, rgba(148,163,184,0.16)) !important;
+  border-color: color-mix(in srgb, var(--mod-color, var(--module-color, var(--brand))) 22%, rgba(148,163,184,0.16)) !important;
   color: #E5EDF7;
-  box-shadow: 0 18px 48px rgba(0,0,0,0.26), inset 0 1px 0 rgba(255,255,255,0.035) !important;
+  box-shadow: 0 14px 38px rgba(0,0,0,0.24), inset 0 1px 0 rgba(255,255,255,0.03) !important;
 }
 
-.ds-stat,
-.g-stat,
-.op-kpi,
-.cedi-stat {
-  position: relative;
-  overflow: hidden;
+html[data-theme="dark"] .ds-stat,
+html[data-theme="dark"] .g-stat,
+html[data-theme="dark"] .op-kpi,
+html[data-theme="dark"] .cedi-stat {
   border-radius: 13px;
   background:
-    radial-gradient(circle at 86% 20%, color-mix(in srgb, var(--stat-color, var(--mod-color)) 28%, transparent), transparent 44%),
+    radial-gradient(circle at 88% 18%, color-mix(in srgb, var(--stat-color, var(--mod-color)) 16%, transparent), transparent 46%),
     linear-gradient(135deg,
-      color-mix(in srgb, var(--stat-color, var(--mod-color)) 20%, #111D31),
+      color-mix(in srgb, var(--stat-color, var(--mod-color)) 13%, #111D31),
       #0B1626) !important;
-  border: 1px solid color-mix(in srgb, var(--stat-color, var(--mod-color)) 48%, rgba(148,163,184,0.16)) !important;
+  border: 1px solid color-mix(in srgb, var(--stat-color, var(--mod-color)) 34%, rgba(148,163,184,0.16)) !important;
   box-shadow:
-    0 14px 34px color-mix(in srgb, var(--stat-color, var(--mod-color)) 16%, transparent),
-    inset 0 1px 0 rgba(255,255,255,0.05) !important;
+    0 12px 30px color-mix(in srgb, var(--stat-color, var(--mod-color)) 12%, transparent),
+    inset 0 1px 0 rgba(255,255,255,0.04) !important;
 }
 
-.ds-stat-label,
-.g-stat-label,
-.cedi-stat-label,
-.ds-stat span,
-.g-stat span,
-.op-kpi span {
+html[data-theme="dark"] .ds-stat-label,
+html[data-theme="dark"] .g-stat-label,
+html[data-theme="dark"] .cedi-stat-label,
+html[data-theme="dark"] .ds-stat span,
+html[data-theme="dark"] .g-stat span,
+html[data-theme="dark"] .op-kpi span {
   color: rgba(203,213,225,0.76) !important;
 }
 
-.ds-table,
-.g-table,
-.cedi-table {
+html[data-theme="dark"] .ds-table,
+html[data-theme="dark"] .g-table,
+html[data-theme="dark"] .cedi-table {
   background: #081320 !important;
   color: #DDE7F3 !important;
 }
 
-.ds-table thead tr,
-.g-table thead tr,
-.cedi-table thead tr {
+html[data-theme="dark"] .ds-table thead tr,
+html[data-theme="dark"] .g-table thead tr,
+html[data-theme="dark"] .cedi-table thead tr {
   background: linear-gradient(90deg, rgba(124,58,237,0.16), rgba(8,145,178,0.08), rgba(7,17,31,0.98)) !important;
 }
 
-.ds-table th,
-.g-table th,
-.cedi-table th {
+html[data-theme="dark"] .ds-table th,
+html[data-theme="dark"] .g-table th,
+html[data-theme="dark"] .cedi-table th {
   color: rgba(203,213,225,0.72) !important;
 }
 
-.ds-table td,
-.g-table td,
-.cedi-table td {
+html[data-theme="dark"] .ds-table td,
+html[data-theme="dark"] .g-table td,
+html[data-theme="dark"] .cedi-table td {
   border-color: rgba(148,163,184,0.10) !important;
 }
 
-.ds-table tbody tr,
-.g-table tbody tr,
-.cedi-table tbody tr {
+html[data-theme="dark"] .ds-table tbody tr,
+html[data-theme="dark"] .g-table tbody tr,
+html[data-theme="dark"] .cedi-table tbody tr {
   background: rgba(7,17,31,0.72) !important;
 }
 
-.ds-table tbody tr:hover,
-.g-table tbody tr:hover,
-.cedi-table tbody tr:hover {
+html[data-theme="dark"] .ds-table tbody tr:hover,
+html[data-theme="dark"] .g-table tbody tr:hover,
+html[data-theme="dark"] .cedi-table tbody tr:hover {
   background: color-mix(in srgb, var(--row-color, var(--mod-color, var(--brand))) 16%, #0B1626) !important;
   box-shadow:
     inset 4px 0 0 var(--row-color, var(--mod-color, var(--module-color, var(--brand)))),
@@ -1693,17 +1690,17 @@ html[data-theme="dark"] body {
 .cedi-stat::after {
   content: "";
   position: absolute;
-  inset: -48px -42px auto auto;
-  width: 150px;
-  height: 150px;
+  inset: -44px -40px auto auto;
+  width: 118px;
+  height: 118px;
   border-radius: 999px;
   background: radial-gradient(circle, var(--module-glow), transparent 68%);
-  opacity: .38;
+  opacity: .16;
   pointer-events: none;
 }
 
-.status-tab,
-.op-status-band {
+html[data-theme="dark"] .status-tab,
+html[data-theme="dark"] .op-status-band {
   background:
     linear-gradient(135deg,
       color-mix(in srgb, var(--state-color, var(--mod-color)) 26%, #101B2D),
@@ -1712,7 +1709,7 @@ html[data-theme="dark"] body {
   box-shadow: 0 12px 26px color-mix(in srgb, var(--state-color, var(--mod-color)) 14%, transparent);
 }
 
-.slide-panel {
+html[data-theme="dark"] .slide-panel {
   background:
     radial-gradient(circle at 20% 0%, color-mix(in srgb, var(--panel-color, var(--mod-color)) 24%, transparent), transparent 24rem),
     linear-gradient(180deg, #0B1626 0%, #07111F 100%) !important;
@@ -1720,8 +1717,8 @@ html[data-theme="dark"] body {
   border-left-color: color-mix(in srgb, var(--panel-color, var(--mod-color)) 48%, rgba(148,163,184,0.18)) !important;
 }
 
-.slide-panel .detail-section,
-.detail-section {
+html[data-theme="dark"] .slide-panel .detail-section,
+html[data-theme="dark"] .detail-section {
   background:
     linear-gradient(135deg,
       color-mix(in srgb, var(--section-color, var(--panel-color, var(--mod-color))) 18%, #101B2D),

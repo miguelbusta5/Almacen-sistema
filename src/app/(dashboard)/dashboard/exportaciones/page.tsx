@@ -78,6 +78,7 @@ export default function ExportacionesPage() {
   const [stats, setStats] = useState<UserStat[]>([]);
   const [loadingStats, setLoadingStats] = useState(false);
   const [showStats, setShowStats] = useState(true);
+  const [statsOperario, setStatsOperario] = useState("");
   const [query, setQuery] = useState("");
   const [fecha, setFecha] = useState("");
   const [estado, setEstado] = useState("");
@@ -91,6 +92,10 @@ export default function ExportacionesPage() {
 
   const openItem = useMemo(() => items.find((item) => !item.horaFinalizacion) ?? null, [items]);
   const formDirty = Boolean(form.numeroCaja.trim() || form.plu.trim() || form.descripcion.trim());
+  const statsFiltrados = useMemo(
+    () => (statsOperario ? stats.filter((s) => s.id === statsOperario) : stats),
+    [stats, statsOperario],
+  );
 
   async function load(targetPage = page) {
     setLoading(true);
@@ -385,18 +390,34 @@ export default function ExportacionesPage() {
                 <p style={{ margin: 0, fontSize: 12, color: "var(--muted)" }}>{fecha || "Hoy"} · promedio minutos por caja finalizada</p>
               </div>
             </div>
-            <button
-              onClick={() => setShowStats((v) => !v)}
-              style={{ border: "1px solid var(--border)", background: "transparent", borderRadius: 6, padding: "4px 10px", cursor: "pointer", display: "flex", alignItems: "center", gap: 6, color: "var(--muted2)", fontSize: 12, fontWeight: 600 }}
-            >
-              {showStats ? <><ChevronUp size={14} /> Colapsar</> : <><ChevronDown size={14} /> Expandir</>}
-            </button>
+            <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+              {stats.length > 0 && (
+                <select
+                  value={statsOperario}
+                  onChange={(e) => setStatsOperario(e.target.value)}
+                  className="ds-input"
+                  style={{ height: 32, width: "auto", minWidth: 170, fontSize: 12 }}
+                  aria-label="Filtrar productividad por operario"
+                >
+                  <option value="">Todos los operarios</option>
+                  {stats.map((s) => <option key={s.id} value={s.id}>{s.nombre}</option>)}
+                </select>
+              )}
+              <button
+                onClick={() => setShowStats((v) => !v)}
+                style={{ border: "1px solid var(--border)", background: "transparent", borderRadius: 6, padding: "4px 10px", cursor: "pointer", display: "flex", alignItems: "center", gap: 6, color: "var(--muted2)", fontSize: 12, fontWeight: 600 }}
+              >
+                {showStats ? <><ChevronUp size={14} /> Colapsar</> : <><ChevronDown size={14} /> Expandir</>}
+              </button>
+            </div>
           </div>
           {showStats && (
             loadingStats ? (
               <div style={{ height: 60, display: "flex", alignItems: "center", justifyContent: "center", color: "var(--muted)", fontSize: 13 }}>Cargando estadísticas…</div>
-            ) : stats.length === 0 ? (
-              <div style={{ height: 60, display: "flex", alignItems: "center", justifyContent: "center", color: "var(--muted)", fontSize: 13 }}>Sin registros para esta fecha</div>
+            ) : statsFiltrados.length === 0 ? (
+              <div style={{ height: 60, display: "flex", alignItems: "center", justifyContent: "center", color: "var(--muted)", fontSize: 13 }}>
+                {statsOperario ? "Sin registros del operario seleccionado en esta fecha" : "Sin registros para esta fecha"}
+              </div>
             ) : (
               <div style={{ overflowX: "auto" }}>
                 <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
@@ -412,7 +433,7 @@ export default function ExportacionesPage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {stats.map((s) => (
+                    {statsFiltrados.map((s) => (
                       <tr key={s.id} style={{ borderBottom: "1px solid var(--border)" }}>
                         <td style={td}><strong>{s.nombre}</strong></td>
                         <td style={{ ...td, textAlign: "right", fontVariantNumeric: "tabular-nums" }}>{s.cajas}</td>
@@ -429,11 +450,11 @@ export default function ExportacionesPage() {
                         </td>
                       </tr>
                     ))}
-                    {stats.length > 1 && (() => {
-                      const totalCajas = stats.reduce((a, s) => a + s.cajas, 0);
-                      const totalUnidades = stats.reduce((a, s) => a + s.totalUnidades, 0);
-                      const totalFin = stats.reduce((a, s) => a + s.finalizadas, 0);
-                      const totalMin = stats.reduce((a, s) => a + s.duracionTotalMin, 0);
+                    {statsFiltrados.length > 1 && (() => {
+                      const totalCajas = statsFiltrados.reduce((a, s) => a + s.cajas, 0);
+                      const totalUnidades = statsFiltrados.reduce((a, s) => a + s.totalUnidades, 0);
+                      const totalFin = statsFiltrados.reduce((a, s) => a + s.finalizadas, 0);
+                      const totalMin = statsFiltrados.reduce((a, s) => a + s.duracionTotalMin, 0);
                       const promTotal = totalFin > 0 ? Math.round((totalMin / totalFin) * 10) / 10 : null;
                       return (
                         <tr style={{ borderTop: "2px solid var(--border)", background: "var(--surface2)" }}>

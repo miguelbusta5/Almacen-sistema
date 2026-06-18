@@ -108,3 +108,11 @@ Revisar en claro y oscuro, desktop, tablet y movil:
 - 2026-06-17: CEDI Clean Platform para componentes reutilizables.
 - 2026-06-18: se adopta **Colorido Completo Enterprise** como direccion vigente y se abandona azul/gris como restriccion.
 - 2026-06-18: se corrige la direccion hacia **Colorido Neon Enterprise con assets**, usando `ModuleHero`, renders por modulo, KPIs con glow y tablas con rails.
+- 2026-06-18 (fix neon): el rediseno neon forzaba apariencia oscura con `!important` en `body`, cards, tablas, stats, status-band, slide-panel y detail-section **en ambos temas**, rompiendo el modo claro (todo salia navy) y dando exceso de glow. Correccion con criterio (sin agregar otra capa nueva):
+  - `body` vuelve a ser **coherente por tema** (claro = `--canvas` claro con halo sutil de modulo; oscuro = navy neon). Sin `!important`.
+  - Las superficies de contenido neon-oscuras se **acotan a `html[data-theme="dark"]`**; en claro caen a las superficies claras de la capa Colorido Enterprise.
+  - **Glow controlado:** halos de KPI (`opacity .16`, 118px), hero (sombra/borde menos saturados, radiales mas suaves), titulo del hero a `clamp(26-34px)` peso 850.
+  - **Asset 3D del hero:** de `cover` (recortaba/agrandaba) a `contain`, ancho `min(40%,400px)`, mascara para no tapar texto/acciones.
+  - El `ModuleHero` sigue siendo banda neon oscura en ambos temas (intencional, como la referencia).
+  - **Pendiente:** consolidar los tres bloques `:root` apilados en una sola fuente de verdad (riesgo medio, requiere migrar radii/tipografia/layout del primer `:root`).
+  - **Exportaciones:** filtro de **productividad por operario** (cliente, sobre datos ya cargados) ademas del filtro por fecha existente; sin cambios de API.

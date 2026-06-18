@@ -1,5 +1,21 @@
 # Decisiones de Arquitectura y Producto
 
+## 2026-06-18 - Fix del rediseño Neon (coherencia claro/oscuro)
+
+**Decisión:**
+- El rediseño Neon Enterprise forzaba apariencia oscura con `!important` en `body`, cards, tablas, stats, status-band, slide-panel y detail-section **sin importar el tema**, rompiendo el modo claro y generando exceso de glow. Se corrige con criterio (no se agrega otra capa):
+  - `body` y superficies de contenido vuelven a ser **coherentes por tema**; el tratamiento neón-oscuro de contenido se **acota a `html[data-theme="dark"]`**.
+  - Glow controlado en KPI/hero; asset 3D del hero pasa de `cover` a `contain` (ya no se recorta).
+  - `ModuleHero` permanece como banda neón oscura en ambos temas (intencional, igual a la referencia aprobada).
+- Exportaciones: filtro de productividad **por operario** (cliente) sobre los datos ya cargados, combinable con el filtro por fecha existente. Sin cambios de API/BD/permisos.
+
+**Contexto:**
+- Las referencias aprobadas viven en `.codex` (solo referencia); los assets versionados están en `public/ui/module-heroes/`.
+- Queda pendiente consolidar los tres bloques `:root` apilados en una sola fuente de verdad y QA visual con capturas en 1440/768/390.
+
+**Archivos:** `src/app/globals.css`, `src/app/(dashboard)/dashboard/exportaciones/page.tsx`, `docs/cerebro/ux-ui.md`.
+
+
 ## 2026-06-18 - Rediseño Colorido Neon con assets por modulo
 
 **Decision:**

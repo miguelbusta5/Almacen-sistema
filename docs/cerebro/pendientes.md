@@ -6,6 +6,15 @@
 
 ## Tareas pendientes
 
+### Fix rediseño Neon (2026-06-18)
+
+- [x] Coherencia claro/oscuro: quitar el forzado dark `!important` global; acotar superficies neón a `html[data-theme="dark"]`. `body` coherente por tema.
+- [x] Glow controlado (KPI/hero) + asset 3D del hero `cover`→`contain` (sin recorte).
+- [x] Exportaciones: filtro de productividad por operario (cliente, sin cambio de API).
+- [ ] **Consolidar los 3 bloques `:root` apilados** en `globals.css` en una sola fuente de verdad (migrar radii/tipografía/layout del primer `:root`). Riesgo medio.
+- [ ] **QA visual con capturas** en 1440px / 768px / 390px, claro y oscuro, en las 12 pantallas; comparar contra referencias aprobadas. Requiere app levantada.
+- [ ] Verificar en vivo: TRANSPORTISTA solo Preoperacional · ETIQUETADO solo Exportaciones · Logística/Rutas/GPS/Mi Ruta ausentes.
+
 ### Rediseño premium Vercel/Linear (Design System v6)
 
 - [x] **Fase 1** — Fundación: paleta gris neutra, sombras suaves, componentes reutilizables (`PageShell`, `Modal`/`ConfirmModal`, `DataTable`, `form`), `CediPage`→alias, charts sin hex muertos. (2026-06-18)
