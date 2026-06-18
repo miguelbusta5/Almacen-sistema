@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { createPortal } from "react-dom";
 import { useSession } from "next-auth/react";
 import { can } from "@/lib/permissions";
 import {
@@ -19,6 +18,7 @@ import {
 } from "@/lib/muebles";
 import { insightsNovedades, insightsPorNovedad } from "@/lib/inteligencia";
 import { Stat, SkeletonStat, Badge, EmptyState, SkeletonTable } from "@/components/ui";
+import { Modal, ConfirmModal } from "@/components/ui/Modal";
 import { SlidePanel, IntelBanner, IntelAlert, DetailSection, DetailGrid, MiniHistory } from "@/components/ui/SlidePanel";
 
 ChartJS.register(ArcElement, BarElement, CategoryScale, LinearScale, PointElement, LineElement, Tooltip, Legend);
@@ -58,20 +58,12 @@ const focusProps = {
   },
 };
 
-// Modal para confirmación de borrado (sí usamos modal para destructivo)
+// Confirmación de borrado (destructivo) — usa el ConfirmModal del DS
 function DeleteModal({ novedad, onClose, onDeleted, onError }: {
   novedad: Novedad; onClose: () => void;
   onDeleted: () => void; onError: (m: string) => void;
 }) {
   const [deleting, setDeleting] = useState(false);
-  const [mounted, setMounted] = useState(false);
-  useEffect(() => { setMounted(true); }, []);
-  useEffect(() => {
-    const h = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
-    window.addEventListener("keydown", h);
-    document.body.style.overflow = "hidden";
-    return () => { window.removeEventListener("keydown", h); document.body.style.overflow = ""; };
-  }, [onClose]);
 
   async function confirm() {
     setDeleting(true);
@@ -81,38 +73,22 @@ function DeleteModal({ novedad, onClose, onDeleted, onError }: {
     setDeleting(false);
   }
 
-  if (!mounted) return null;
-  return createPortal(
-    <div
-      onClick={onClose}
-      style={{ position: "fixed", inset: 0, zIndex: 9999, background: "var(--overlay)", display: "flex", alignItems: "center", justifyContent: "center", padding: 16, backdropFilter: "blur(4px)" }}
-    >
-      <div
-        onClick={(e) => e.stopPropagation()}
-        className="animate-scale-in"
-        style={{ background: "var(--surface)", borderRadius: 16, width: "100%", maxWidth: 380, padding: "24px", boxShadow: "var(--shadow-xl)", border: "1px solid var(--border)" }}
-      >
-        <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 16 }}>
-          <div style={{ width: 36, height: 36, borderRadius: 10, background: "var(--error-tint)", display: "flex", alignItems: "center", justifyContent: "center" }}>
-            <Trash2 size={16} color="var(--error)" />
-          </div>
-          <div>
-            <h3 style={{ fontSize: 15, fontWeight: 700, color: "var(--text)", margin: 0 }}>Eliminar novedad</h3>
-            <p style={{ fontSize: 12, color: "var(--muted)", margin: 0, marginTop: 2 }}>PLU {novedad.plu} · {novedad.posicion}</p>
-          </div>
-        </div>
-        <p style={{ fontSize: 13, color: "var(--muted)", lineHeight: 1.6, marginBottom: 20 }}>
-          Esta acción es permanente y no se puede deshacer.
-        </p>
-        <div style={{ display: "flex", gap: 8 }}>
-          <button className="ds-btn ds-btn-secondary" style={{ flex: 1 }} onClick={onClose}>Cancelar</button>
-          <button className="ds-btn ds-btn-danger" style={{ flex: 1 }} disabled={deleting} onClick={confirm}>
-            {deleting ? "Eliminando…" : "Eliminar"}
-          </button>
-        </div>
-      </div>
-    </div>,
-    document.body
+  return (
+    <ConfirmModal
+      open
+      onClose={onClose}
+      onConfirm={confirm}
+      title="Eliminar novedad"
+      message={
+        <>
+          Vas a eliminar la novedad de <strong>PLU {novedad.plu}</strong> · {novedad.posicion}.
+          <br />Esta acción es permanente y no se puede deshacer.
+        </>
+      }
+      confirmLabel={deleting ? "Eliminando…" : "Eliminar"}
+      tone="danger"
+      loading={deleting}
+    />
   );
 }
 
@@ -279,19 +255,15 @@ export default function MueblesPage() {
   return (
     <div className="animate-fade-in">
       {/* ── Page header ── */}
-      <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 24, flexWrap: "wrap", gap: 12 }}>
+      <div className="g-module-header g-page-head" style={{ "--mod-color": "#1D4ED8" } as React.CSSProperties}>
         <div>
-          <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 4 }}>
-            <div style={{ width: 30, height: 30, borderRadius: 8, background: "rgba(37,99,235,0.10)", display: "flex", alignItems: "center", justifyContent: "center" }}>
-              <Package size={16} color="#2563EB" />
-            </div>
-            <h1 style={{ fontSize: 22, fontWeight: 700, color: "var(--text)", letterSpacing: "-0.03em", margin: 0 }}>Novedades Inventario</h1>
-          </div>
-          <p style={{ fontSize: 13, color: "var(--muted)", margin: 0 }}>
+          <div className="g-module-kicker">Módulo Inventario</div>
+          <h1 className="g-module-title">Novedades Inventario</h1>
+          <p className="g-module-desc">
             {loading ? "Cargando…" : `${items.length} registros · ${kpis.pend + kpis.proc} sin resolver`}
           </p>
         </div>
-        <div style={{ display: "flex", gap: 8 }}>
+        <div className="g-module-actions">
           <button className={`ds-btn ${view === "analisis" ? "ds-btn-secondary" : "ds-btn-ghost"}`}
             onClick={() => { if (view !== "analisis") { setView("analisis"); loadStats(); } else setView("lista"); }}>
             <BarChart3 size={14} />{view === "analisis" ? "← Lista" : "Análisis"}
@@ -825,14 +797,6 @@ function ModalForm({ novedad, role, onClose, onSaved, onError }: {
   const [productoMaestro, setProductoMaestro] = useState<ProductoMaestro | null>(null);
   const [maestroStatus, setMaestroStatus] = useState<"idle" | "loading" | "found" | "missing">("idle");
   const [adminOverride, setAdminOverride] = useState(false);
-  const [mounted, setMounted] = useState(false);
-  useEffect(() => { setMounted(true); }, []);
-  useEffect(() => {
-    const h = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
-    window.addEventListener("keydown", h);
-    document.body.style.overflow = "hidden";
-    return () => { window.removeEventListener("keydown", h); document.body.style.overflow = ""; };
-  }, [onClose]);
 
   const isAdmin = role === "ADMIN";
   const lockMaestro = !!productoMaestro && !adminOverride;
@@ -882,16 +846,9 @@ function ModalForm({ novedad, role, onClose, onSaved, onError }: {
     } catch { onError("Error de conexión"); } finally { setSaving(false); }
   }
 
-  if (!mounted) return null;
-  return createPortal(
-    <div onClick={onClose} style={{ position: "fixed", inset: 0, zIndex: 9999, background: "var(--overlay)", display: "flex", alignItems: "center", justifyContent: "center", padding: 16, backdropFilter: "blur(4px)" }}>
-      <div onClick={(e) => e.stopPropagation()} className="animate-scale-in"
-        style={{ background: "var(--surface)", borderRadius: 16, width: "100%", maxWidth: 480, maxHeight: "90vh", overflowY: "auto", boxShadow: "var(--shadow-xl)", border: "1px solid var(--border)", padding: "24px" }}>
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20 }}>
-          <h2 style={{ fontSize: 17, fontWeight: 700, color: "var(--text)", letterSpacing: "-0.02em", margin: 0 }}>{isEdit ? "Editar novedad" : "Nueva novedad de inventario"}</h2>
-          <button onClick={onClose} style={{ background: "var(--surface2)", border: "none", borderRadius: 7, padding: 7, cursor: "pointer", color: "var(--muted)", display: "flex" }}><X size={16} /></button>
-        </div>
-        <form onSubmit={submit} style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+  return (
+    <Modal open onClose={onClose} title={isEdit ? "Editar novedad" : "Nueva novedad de inventario"} size="md">
+      <form onSubmit={submit} style={{ display: "flex", flexDirection: "column", gap: 14 }}>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
             <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
               <label style={{ fontSize: 12, fontWeight: 500, color: "var(--muted2)" }}>PLU *</label>
@@ -984,8 +941,6 @@ function ModalForm({ novedad, role, onClose, onSaved, onError }: {
             </button>
           </div>
         </form>
-      </div>
-    </div>,
-    document.body
+    </Modal>
   );
 }
