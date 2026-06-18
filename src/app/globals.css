@@ -7,26 +7,26 @@
 
 /* ── 1. TOKENS ──────────────────────────────────────────── */
 :root {
-  /* Lienzo */
-  --canvas:   #F0F4F9;
-  --bg:       #F0F4F9;
+  /* Lienzo — gris neutro premium (Vercel/Linear) */
+  --canvas:   #F7F7F8;
+  --bg:       #F7F7F8;
   --surface:  #FFFFFF;
-  --surface2: #F7FAFD;
-  --surface3: #EEF3F9;
+  --surface2: #FBFBFC;
+  --surface3: #F4F4F5;
   --surface-elevated: #FFFFFF;
   --surface-command:  #FFFFFF;
   --surface-rail:     #FFFFFF;
-  --overlay:  rgba(15, 23, 42, 0.42);
+  --overlay:  rgba(0, 0, 0, 0.40);
 
-  /* Bordes */
-  --border:        rgba(15, 23, 42, 0.09);
-  --border-strong: rgba(15, 23, 42, 0.17);
+  /* Bordes — sutiles, neutros */
+  --border:        rgba(0, 0, 0, 0.07);
+  --border-strong: rgba(0, 0, 0, 0.13);
 
-  /* Texto */
-  --text:   #0D1421;
-  --muted2: #2E3D52;
-  --muted:  #5C6E85;
-  --faint:  #9BACCB;
+  /* Texto — escala de grises neutra */
+  --text:   #1A1A1A;
+  --muted2: #3A3A3C;
+  --muted:  #6E6E73;
+  --faint:  #A1A1A6;
 
   /* Marca principal */
   --brand:        #1D4ED8;
@@ -83,13 +83,13 @@
   --module-conteo:      #047857;
   --module-admin:       #334155;
 
-  /* Sombras — 5 niveles */
-  --shadow-xs: 0 1px 2px rgba(15, 23, 42, 0.06);
-  --shadow-sm: 0 1px 3px rgba(15, 23, 42, 0.08), 0 4px 12px rgba(15, 23, 42, 0.05);
-  --shadow:    0 2px 8px rgba(15, 23, 42, 0.10), 0 8px 24px rgba(15, 23, 42, 0.06);
-  --shadow-md: 0 4px 16px rgba(15, 23, 42, 0.12), 0 12px 32px rgba(15, 23, 42, 0.08);
-  --shadow-lg: 0 8px 32px rgba(15, 23, 42, 0.15), 0 20px 48px rgba(15, 23, 42, 0.09);
-  --shadow-xl: 0 16px 52px rgba(15, 23, 42, 0.18), 0 24px 64px rgba(15, 23, 42, 0.10);
+  /* Sombras — suaves, base neutra (Vercel/Linear) */
+  --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.04);
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05), 0 2px 8px rgba(0, 0, 0, 0.04);
+  --shadow:    0 2px 4px rgba(0, 0, 0, 0.05), 0 8px 24px rgba(0, 0, 0, 0.06);
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.07), 0 12px 32px rgba(0, 0, 0, 0.07);
+  --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.10), 0 20px 48px rgba(0, 0, 0, 0.09);
+  --shadow-xl: 0 16px 40px rgba(0, 0, 0, 0.12), 0 28px 64px rgba(0, 0, 0, 0.10);
   --ring:       0 0 0 3px rgba(29, 78, 216, 0.22);
   --ring-error: 0 0 0 3px rgba(185, 28, 28, 0.18);
 
@@ -921,5 +921,48 @@ html[data-theme="dark"] .cedi-badge-danger  { background: var(--error-tint);   c
     content: attr(data-label); color: var(--muted);
     font-size: 11px; font-weight: 700;
     letter-spacing: 0.06em; text-transform: uppercase;
+  }
+}
+
+/* ── 26. MODAL ──────────────────────────────────────────── */
+.g-modal-overlay {
+  position: fixed; inset: 0; z-index: 9000;
+  display: flex; align-items: center; justify-content: center;
+  padding: 24px;
+  background: var(--overlay);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  animation: fade-in 0.15s ease both;
+}
+.g-modal {
+  width: 100%;
+  max-height: calc(100vh - 48px);
+  display: flex; flex-direction: column;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  box-shadow: var(--shadow-lg);
+  overflow: hidden;
+}
+.g-modal-head {
+  display: flex; align-items: flex-start; justify-content: space-between;
+  gap: 12px; padding: 18px 20px 14px;
+  border-bottom: 1px solid var(--border);
+}
+.g-modal-title { font-size: 16px; font-weight: 700; color: var(--text); letter-spacing: -0.01em; }
+.g-modal-sub   { font-size: 13px; color: var(--muted); margin-top: 3px; }
+.g-modal-body  { padding: 20px; overflow-y: auto; }
+.g-modal-footer {
+  display: flex; align-items: center; justify-content: flex-end; gap: 8px;
+  padding: 14px 20px;
+  border-top: 1px solid var(--border);
+  background: var(--surface2);
+}
+@media (max-width: 560px) {
+  .g-modal-overlay { padding: 0; align-items: flex-end; }
+  .g-modal {
+    max-width: none !important;
+    max-height: 92vh;
+    border-radius: var(--r-lg) var(--r-lg) 0 0;
   }
 }

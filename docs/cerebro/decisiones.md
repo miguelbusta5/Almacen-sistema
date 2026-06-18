@@ -1,5 +1,24 @@
 # Decisiones de Arquitectura y Producto
 
+## 2026-06-18 - Rediseño premium Vercel/Linear (Design System v6) — Fase 1
+
+**Decision:**
+- La paleta base migra a **gris neutro premium** (Vercel/Linear): lienzo `#F7F7F8`, superficies blancas, bordes `rgba(0,0,0,0.07)`, texto casi negro `#1A1A1A`. El azul deja de teñir el lienzo y pasa a ser **acento de marca**; los colores por módulo (`--mod-*`) se mantienen vivos.
+- Sombras suaves de base neutra (negra) en lugar de las azuladas (`rgba(15,23,42,...)`).
+- Se crean **componentes reutilizables** en `src/components/ui/`: `PageShell` (encabezado de página module-aware, `CediPage` queda como alias delgado), `Modal` + `ConfirmModal` (modal premium único), `DataTable` (tabla con sorting/empty/skeleton) y primitivas `form` (`Field`/`Input`/`Select`/`Textarea`).
+- **Estrategia de modales: híbrida** — `SlidePanel` para detalle/lectura; `Modal`/`ConfirmModal` para confirmaciones y formularios crear/editar (reemplazan los modales ad-hoc por módulo, fase a fase).
+
+**Contexto:**
+- Tras el Design System v5 la base de tokens era sólida pero la adopción despareja (≈10 páginas con miles de líneas inline). El brief pide un look empresarial premium tipo Vercel/Linear sin tocar lógica de negocio ni permisos.
+- Ejecución **por fases**: F1 fundación (esta), F2 páginas de alto tráfico + Studio (restyle), F3 resto + responsive.
+
+**Consecuencias:**
+- Cambios solo de presentación; sin tocar `permissions.ts`/`modulePermissions.ts` ni esquema Prisma.
+- Backlog Studio documentado en `pendientes.md` (autosave debounce, preview Sheets, gráficas línea/pastel).
+- Logística/rutas/GPS/Mi Ruta siguen suspendidos.
+
+**Archivos afectados:** `src/app/globals.css`, `src/components/ui/pageShell.tsx` (nuevo), `Modal.tsx` (nuevo), `DataTable.tsx` (nuevo), `form.tsx` (nuevo), `ui/cedi.tsx`, `ui/charts.tsx`.
+
 ## 2026-06-17 - Indicadores CEDI sincronizados desde Google Sheets
 
 **Decision:**

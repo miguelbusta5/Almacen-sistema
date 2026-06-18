@@ -25,7 +25,7 @@ ChartJS.register(
 // ── Paleta CEDI ──────────────────────────────────────────────────────────────
 // Ordenada de más antiguo → más reciente (índice 0 = año más viejo)
 export const CEDI_YEAR_COLORS = ["#94A3B8", "#60A5FA", "#1D4ED8", "#1E3A8A"];
-const GRID = "rgba(15,23,42,0.06)";
+const GRID = "rgba(0,0,0,0.06)";
 const TIP_BG = "#0f172a";
 const FONT = "-apple-system,'Helvetica Neue',system-ui,sans-serif";
 
@@ -284,7 +284,7 @@ export function DonutChart({
             pointerEvents: "none",
           }}
         >
-          <div style={{ fontSize: 18, fontWeight: 700, color: "var(--foreground)", fontVariantNumeric: "tabular-nums" }}>
+          <div style={{ fontSize: 18, fontWeight: 700, color: "var(--text)", fontVariantNumeric: "tabular-nums" }}>
             {typeof centerValue === "number" ? centerValue.toLocaleString("es-CO") : centerValue}
           </div>
           {centerLabel && (

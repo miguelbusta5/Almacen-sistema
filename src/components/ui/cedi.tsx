@@ -1,29 +1,11 @@
 import type { CSSProperties, ReactNode } from "react";
+import { PageShell, type PageShellProps } from "./pageShell";
 
-export function CediPage({
-  title,
-  description,
-  children,
-  actions,
-}: {
-  title: string;
-  description?: string;
-  children: ReactNode;
-  actions?: ReactNode;
-}) {
-  return (
-    <div className="cedi-page animate-fade-in">
-      <section className="cedi-hero">
-        <div>
-          <div className="cedi-kicker">Control Logístico CEDI</div>
-          <h1>{title}</h1>
-          {description && <p>{description}</p>}
-        </div>
-        {actions && <div className="cedi-actions">{actions}</div>}
-      </section>
-      {children}
-    </div>
-  );
+// CediPage se mantiene como alias delgado de PageShell para no romper
+// las páginas que ya lo usan (transporte, conteo, indicadores, studio).
+// Acepta además moduleKey/moduleColor/kicker vía PageShell.
+export function CediPage(props: PageShellProps) {
+  return <PageShell {...props} />;
 }
 
 export function CediPanel({

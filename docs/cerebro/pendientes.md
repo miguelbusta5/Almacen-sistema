@@ -6,6 +6,13 @@
 
 ## Tareas pendientes
 
+### Rediseño premium Vercel/Linear (Design System v6)
+
+- [x] **Fase 1** — Fundación: paleta gris neutra, sombras suaves, componentes reutilizables (`PageShell`, `Modal`/`ConfirmModal`, `DataTable`, `form`), `CediPage`→alias, charts sin hex muertos. (2026-06-18)
+- [ ] **Fase 2** — Restyle de páginas de alto tráfico (`home`, `tienda`, `muebles`, `inventario`, `usuarios`, `exportaciones`) + Studio premium. Patrón: `PageShell` + `DataTable` + `Modal`/`SlidePanel` + `Badge` semántico, sin tocar lógica.
+- [ ] **Fase 3** — Resto de páginas (`preoperacional`, `integracion`, `conteo/contar`, `solicitudes-transporte`, `centro-control`, `auditoria`, `mis-tareas`) + barrido responsive.
+- [ ] Backlog Studio (no incluido en restyle): autosave con debounce 2s, preview de datos al conectar Sheets, gráficas línea/pastel, validación de fórmulas, filtros por parámetros.
+
 ### Módulo Studio — Fase 2
 
 - [ ] Gráficos adicionales: Línea y Pie usando Chart.js (ya instalado)
