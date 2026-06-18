@@ -1433,7 +1433,8 @@ html[data-theme="dark"] body {
   box-shadow: 0 0 24px var(--mod-color, var(--module-color, var(--brand)));
 }
 
-.module-hero::after,
+/* Asset como fondo SOLO en headers legacy (los que no usan ModuleHero).
+   ModuleHero usa el elemento real .module-hero-media (ver más abajo). */
 .g-module-header::after,
 .op-module-header::after,
 .g-hero::after,
@@ -1441,15 +1442,15 @@ html[data-theme="dark"] body {
   content: "";
   position: absolute;
   top: 0; right: 0; bottom: 0;
-  width: min(40%, 400px);
+  width: min(38%, 360px);
   pointer-events: none;
   background-image: var(--module-hero-image);
   background-repeat: no-repeat;
   background-position: right center;
   background-size: contain;
-  opacity: 0.95;
+  opacity: 0.92;
   filter: saturate(1.06) drop-shadow(0 14px 30px rgba(0,0,0,0.42));
-  mask-image: linear-gradient(90deg, transparent 0%, black 34%, black 100%);
+  mask-image: linear-gradient(90deg, transparent 0%, black 38%, black 100%);
 }
 
 .module-hero-copy,
@@ -1554,7 +1555,47 @@ html[data-theme="dark"] body {
   letter-spacing: 0.04em;
 }
 
-.module-hero-media { display: none; }
+/* ModuleHero real layout: columna de contenido + asset controlado al lado */
+.module-hero { align-items: stretch; }
+.module-hero-main {
+  position: relative;
+  z-index: 2;
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 14px;
+}
+.module-hero-main .module-hero-actions,
+.module-hero-main .module-hero-metrics {
+  margin-left: 0;
+}
+.module-hero-media {
+  position: relative;
+  z-index: 1;
+  flex: 0 0 auto;
+  width: clamp(150px, 30%, 340px);
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+}
+.module-hero-media img {
+  width: 100%;
+  height: auto;
+  max-height: 168px;
+  object-fit: contain;
+  object-position: right center;
+  filter: drop-shadow(0 16px 34px rgba(0,0,0,0.45));
+}
+@media (max-width: 860px) {
+  .module-hero-media { width: clamp(110px, 26%, 200px); opacity: 0.85; }
+  .module-hero-media img { max-height: 120px; }
+}
+@media (max-width: 600px) {
+  .module-hero { flex-direction: column; align-items: stretch; }
+  .module-hero-media { display: none; }
+}
 
 .inventory-neon-header {
   position: relative;

@@ -44,29 +44,37 @@ export function ModuleHero({
 
   return (
     <section className={`module-hero${compact ? " module-hero-compact" : ""}${className ? ` ${className}` : ""}`} style={mergedStyle}>
-      <div className="module-hero-copy">
-        {kicker && <div className="module-hero-kicker">{kicker}</div>}
-        <h1>{title ?? theme.label}</h1>
-        {(description ?? theme.description) && <p>{description ?? theme.description}</p>}
+      <div className="module-hero-main">
+        <div className="module-hero-copy">
+          {kicker && <div className="module-hero-kicker">{kicker}</div>}
+          <h1>{title ?? theme.label}</h1>
+          {(description ?? theme.description) && <p>{description ?? theme.description}</p>}
+        </div>
+
+        {metrics && metrics.length > 0 && (
+          <div className="module-hero-metrics">
+            {metrics.map((metric) => (
+              <div
+                className="module-hero-metric"
+                key={`${metric.label}-${metric.value}`}
+                style={{ "--metric-color": TONE_VAR[metric.tone ?? "module"] } as CSSProperties}
+              >
+                <strong>{metric.value}</strong>
+                <span>{metric.label}</span>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {actions && <div className="module-hero-actions">{actions}</div>}
       </div>
 
-      {metrics && metrics.length > 0 && (
-        <div className="module-hero-metrics">
-          {metrics.map((metric) => (
-            <div
-              className="module-hero-metric"
-              key={`${metric.label}-${metric.value}`}
-              style={{ "--metric-color": TONE_VAR[metric.tone ?? "module"] } as CSSProperties}
-            >
-              <strong>{metric.value}</strong>
-              <span>{metric.label}</span>
-            </div>
-          ))}
+      {!compact && (
+        <div className="module-hero-media" aria-hidden="true">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={theme.heroImage} alt="" loading="lazy" decoding="async" />
         </div>
       )}
-
-      {actions && <div className="module-hero-actions">{actions}</div>}
-      <div className="module-hero-media" aria-hidden="true" />
     </section>
   );
 }
