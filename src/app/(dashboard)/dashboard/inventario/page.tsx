@@ -39,14 +39,6 @@ type FotoPhase =
   | { phase: "ready"; file: File; dataUrl: string; url: string }
   | { phase: "error"; file: File; dataUrl: string };
 
-// ── Estilos base para inputs grandes ─────────────────────
-const inpMobile: React.CSSProperties = {
-  width: "100%", height: 52, padding: "0 16px",
-  fontSize: 16, fontFamily: "var(--sans)",
-  background: "var(--surface2)", border: "1px solid var(--border)",
-  borderRadius: 12, color: "var(--text)", outline: "none",
-  WebkitAppearance: "none",
-};
 
 // ═══════════════════════════════════════════════════════════
 // COMPONENTES DE APOYO
@@ -404,7 +396,7 @@ function NuevaNovedadSheet({ onClose, onCreada, existingPlus, existingPosiciones
             inputMode="text"
             autoComplete="off"
             autoCapitalize="characters"
-            style={inpMobile}
+            className="ds-input ds-input-lg" style={{ WebkitAppearance: "none" }}
           />
           <AutocompleteList suggestions={pluSugg} onSelect={(s) => { setPlu(s); setPluSugg([]); posRef.current?.focus(); }} />
         </div>
@@ -423,7 +415,7 @@ function NuevaNovedadSheet({ onClose, onCreada, existingPlus, existingPosiciones
             inputMode="text"
             autoComplete="off"
             autoCapitalize="characters"
-            style={inpMobile}
+            className="ds-input ds-input-lg" style={{ WebkitAppearance: "none" }}
           />
           <AutocompleteList suggestions={posSugg} onSelect={(s) => { setPosicion(s); setPosSugg([]); }} />
         </div>
@@ -865,7 +857,7 @@ export default function InventarioMobilePage() {
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Buscar PLU, posición…"
-              style={{ ...inpMobile, flex: 1, height: 40 }}
+              className="ds-input ds-input-lg" style={{ flex: 1, height: 40, WebkitAppearance: "none" }}
             />
             <button
               onClick={() => { setSearchOpen(false); setSearch(""); }}

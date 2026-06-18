@@ -49,11 +49,6 @@ function EstadoBadge({ estado }: { estado: string }) {
   return <Badge label={estado === "DESPACHADO" ? "Despachado" : "Pendiente"} variant={estado === "DESPACHADO" ? "success" : "warning"} />;
 }
 
-const inp: React.CSSProperties = { width: "100%", height: 36, padding: "0 12px", background: "var(--surface2)", border: "1px solid transparent", borderRadius: 8, fontSize: 14, fontFamily: "var(--sans)", color: "var(--text)", outline: "none", transition: "border-color .15s, box-shadow .15s, background .15s" };
-const focusProps = {
-  onFocus: (e: React.FocusEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => { e.target.style.borderColor = "var(--brand)"; e.target.style.boxShadow = "var(--ring)"; e.target.style.background = "var(--surface)"; },
-  onBlur: (e: React.FocusEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => { e.target.style.borderColor = "transparent"; e.target.style.boxShadow = "none"; e.target.style.background = "var(--surface2)"; },
-};
 
 // ═══════════════════════════════════════════════════════════
 // PÁGINA PRINCIPAL
@@ -369,12 +364,12 @@ export default function TransportePage() {
           <div style={{ display: "flex", gap: 8, marginBottom: 14, flexWrap: "wrap" }}>
             <div style={{ position: "relative", flex: 1, minWidth: 200 }}>
               <Search size={13} style={{ position: "absolute", left: 10, top: "50%", transform: "translateY(-50%)", color: "var(--faint)" }} />
-              <input value={fq} onChange={(e) => setFq(e.target.value)} placeholder="Buscar documento o ubicación…" style={{ ...inp, paddingLeft: 32 }} {...focusProps} />
+              <input value={fq} onChange={(e) => setFq(e.target.value)} placeholder="Buscar documento o ubicación…" className="ds-input" style={{ paddingLeft: 32 }} />
             </div>
-            <select value={fEstado} onChange={(e) => setFEstado(e.target.value)} style={{ ...inp, width: "auto", minWidth: 160 }} {...focusProps}>
+            <select value={fEstado} onChange={(e) => setFEstado(e.target.value)} className="ds-input" style={{ width: "auto", minWidth: 160 }}>
               <option value="">Todos los estados</option><option value="PENDIENTE DESPACHO">Pendiente despacho</option><option value="DESPACHADO">Despachado</option>
             </select>
-            <select value={fTipo} onChange={(e) => setFTipo(e.target.value)} style={{ ...inp, width: "auto", minWidth: 130 }} {...focusProps}>
+            <select value={fTipo} onChange={(e) => setFTipo(e.target.value)} className="ds-input" style={{ width: "auto", minWidth: 130 }}>
               <option value="">Todos los tipos</option><option value="COMUN">Común</option><option value="ECOMMERCE">Ecommerce</option>
             </select>
             <button className={`ds-btn ds-btn-sm ${fAlerta ? "ds-btn-secondary" : "ds-btn-ghost"}`} onClick={() => setFAlerta(!fAlerta)} style={{ color: fAlerta ? "var(--error)" : undefined }}>
@@ -730,13 +725,13 @@ function FormContacto({ clientId, onGuardado, onCancel }: {
       <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr", gap: 8 }}>
         <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
           <label style={{ fontSize: 11, color: "var(--muted)", fontWeight: 600 }}>Tipo</label>
-          <select value={tipo} onChange={(e) => setTipo(e.target.value as TipoContacto)} style={{ ...inp, height: 32, fontSize: 12 }}>
+          <select value={tipo} onChange={(e) => setTipo(e.target.value as TipoContacto)} className="ds-input" style={{ height: 32, fontSize: 12 }}>
             {(Object.keys(TIPO_CONTACTO_LABEL) as TipoContacto[]).map((t) => <option key={t} value={t}>{TIPO_CONTACTO_LABEL[t]}</option>)}
           </select>
         </div>
         <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
           <label style={{ fontSize: 11, color: "var(--muted)", fontWeight: 600 }}>Resultado</label>
-          <select value={resultado} onChange={(e) => setResultado(e.target.value as ResultadoContacto)} style={{ ...inp, height: 32, fontSize: 12 }}>
+          <select value={resultado} onChange={(e) => setResultado(e.target.value as ResultadoContacto)} className="ds-input" style={{ height: 32, fontSize: 12 }}>
             {(Object.keys(RESULTADO_CONTACTO_LABEL) as ResultadoContacto[]).map((r) => <option key={r} value={r}>{RESULTADO_CONTACTO_LABEL[r]}</option>)}
           </select>
         </div>
@@ -744,10 +739,10 @@ function FormContacto({ clientId, onGuardado, onCancel }: {
       {resultado === "CONFIRMO_FECHA" && (
         <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
           <label style={{ fontSize: 11, color: "var(--muted)", fontWeight: 600 }}>Fecha comprometida</label>
-          <input type="date" value={fechaComp} onChange={(e) => setFechaComp(e.target.value)} style={{ ...inp, height: 32, fontSize: 12 }} />
+          <input type="date" value={fechaComp} onChange={(e) => setFechaComp(e.target.value)} className="ds-input" style={{ height: 32, fontSize: 12 }} />
         </div>
       )}
-      <input value={nota} onChange={(e) => setNota(e.target.value)} placeholder="Observaciones (opcional)…" style={{ ...inp, height: 32, fontSize: 12 }} />
+      <input value={nota} onChange={(e) => setNota(e.target.value)} placeholder="Observaciones (opcional)…" className="ds-input" style={{ height: 32, fontSize: 12 }} />
       <div style={{ display: "flex", gap: 8 }}>
         <button type="button" className="ds-btn ds-btn-ghost ds-btn-sm" onClick={onCancel} style={{ flex: 1 }}>Cancelar</button>
         <button type="submit" className="ds-btn ds-btn-primary ds-btn-sm" disabled={saving} style={{ flex: 2, background: "var(--brand)" }}>
@@ -819,7 +814,7 @@ function ModalFechaEntrega({ g, onClose, onSaved, onError }: { g: Guardado; onCl
       <form onSubmit={save} style={{ display: "flex", flexDirection: "column", gap: 16 }}>
         <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
           <label style={{ fontSize: 12, fontWeight: 500, color: "var(--muted2)" }}>Fecha comprometida</label>
-          <input type="date" value={fecha} onChange={(e) => setFecha(e.target.value)} style={inp} {...focusProps} />
+          <input type="date" value={fecha} onChange={(e) => setFecha(e.target.value)} className="ds-input" />
           {g.nota && <p style={{ fontSize: 11, color: "var(--muted)", margin: 0 }}>Nota actual: {g.nota}</p>}
         </div>
         <div style={{ display: "flex", gap: 8 }}>
@@ -870,42 +865,42 @@ function ModalGuardado({ guardado, onClose, onSaved, onError, isAdmin }: { guard
               value={fecha}
               onChange={(e) => setFecha(e.target.value)}
               disabled={isEdit && !isAdmin}
-              style={{ ...inp, opacity: isEdit && !isAdmin ? 0.5 : 1, cursor: isEdit && !isAdmin ? "not-allowed" : "auto" }}
-              {...(isEdit && !isAdmin ? {} : focusProps)}
+              className="ds-input"
+              style={{ opacity: isEdit && !isAdmin ? 0.5 : 1, cursor: isEdit && !isAdmin ? "not-allowed" : "auto" }}
             />
           </div>
           <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
             <label style={{ fontSize: 12, fontWeight: 500, color: "var(--muted2)" }}>Tipo</label>
-            <select value={tipo} onChange={(e) => setTipo(e.target.value as "COMUN" | "ECOMMERCE")} style={{ ...inp, paddingRight: 28 }} {...focusProps}>
+            <select value={tipo} onChange={(e) => setTipo(e.target.value as "COMUN" | "ECOMMERCE")} className="ds-input">
               <option value="COMUN">Común</option><option value="ECOMMERCE">Ecommerce</option>
             </select>
           </div>
         </div>
         <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
           <label style={{ fontSize: 12, fontWeight: 500, color: "var(--muted2)" }}>N° Documento *</label>
-          <input value={documento} onChange={(e) => setDoc(e.target.value)} placeholder="Factura / remisión" style={inp} {...focusProps} />
+          <input value={documento} onChange={(e) => setDoc(e.target.value)} placeholder="Factura / remisión" className="ds-input" />
         </div>
         <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
           <label style={{ fontSize: 12, fontWeight: 500, color: "var(--muted2)" }}>Ubicación *</label>
-          <input value={ubicacion} onChange={(e) => setUbic(e.target.value)} placeholder="Bodega, estante…" style={inp} {...focusProps} />
+          <input value={ubicacion} onChange={(e) => setUbic(e.target.value)} placeholder="Bodega, estante…" className="ds-input" />
         </div>
         <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr", gap: 12 }}>
           <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
             <label style={{ fontSize: 12, fontWeight: 500, color: "var(--muted2)" }}>Estado</label>
-            <select value={estado} onChange={(e) => setEstado(e.target.value as "PENDIENTE DESPACHO" | "DESPACHADO")} style={{ ...inp, paddingRight: 28 }} {...focusProps}>
+            <select value={estado} onChange={(e) => setEstado(e.target.value as "PENDIENTE DESPACHO" | "DESPACHADO")} className="ds-input">
               <option value="PENDIENTE DESPACHO">Pendiente despacho</option><option value="DESPACHADO">Despachado</option>
             </select>
           </div>
           {estado === "DESPACHADO" && (
             <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
               <label style={{ fontSize: 12, fontWeight: 500, color: "var(--muted2)" }}>Fecha despacho</label>
-              <input type="date" value={fechaDespacho} onChange={(e) => setFDesp(e.target.value)} style={inp} {...focusProps} />
+              <input type="date" value={fechaDespacho} onChange={(e) => setFDesp(e.target.value)} className="ds-input" />
             </div>
           )}
         </div>
         <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
           <label style={{ fontSize: 12, fontWeight: 500, color: "var(--muted2)" }}>Nota</label>
-          <textarea value={nota} onChange={(e) => setNota(e.target.value)} rows={2} placeholder="Incluye fecha de entrega ej. 15/06/2026" style={{ ...inp, height: "auto", padding: "10px 12px", resize: "vertical" }} {...focusProps} />
+          <textarea value={nota} onChange={(e) => setNota(e.target.value)} rows={2} placeholder="Incluye fecha de entrega ej. 15/06/2026" className="ds-input" style={{ height: "auto", padding: "10px 12px", resize: "vertical" }} />
         </div>
         <div style={{ display: "flex", gap: 8, paddingTop: 4 }}>
           <button type="button" className="ds-btn ds-btn-secondary" onClick={onClose} style={{ flex: 1 }}>Cancelar</button>

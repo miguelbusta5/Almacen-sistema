@@ -38,17 +38,6 @@ interface UserStat {
   promedioPorCajaMin: number | null;
 }
 
-const inputStyle: React.CSSProperties = {
-  width: "100%",
-  height: 38,
-  border: "1px solid var(--border)",
-  borderRadius: 8,
-  background: "var(--surface)",
-  color: "var(--foreground)",
-  padding: "0 10px",
-  fontSize: 13,
-  outline: "none",
-};
 
 function fmtTime(value: string | null) {
   if (!value) return "En curso";
@@ -260,7 +249,7 @@ export default function ExportacionesPage() {
             <strong style={{ fontSize: 13, color: COLOR }}>Registro en curso</strong>
             <span style={{ fontSize: 12, color: "var(--muted)" }}>Caja {openItem.numeroCaja} · PLU {openItem.plu} · inicio {fmtTime(openItem.horaInicio)}</span>
           </div>
-          <button onClick={finalize} disabled={finalizing} style={{ height: 34, padding: "0 14px", border: `1px solid ${COLOR}55`, borderRadius: 8, background: COLOR, color: "white", fontWeight: 700, cursor: finalizing ? "not-allowed" : "pointer", fontSize: 12, display: "flex", alignItems: "center", gap: 6, opacity: finalizing ? 0.65 : 1, whiteSpace: "nowrap", flexShrink: 0 }}>
+          <button onClick={finalize} disabled={finalizing} className="ds-btn ds-btn-sm" style={{ background: COLOR, color: "white", border: "none", flexShrink: 0, opacity: finalizing ? 0.65 : 1 }}>
             <CheckCircle2 size={14} />{finalizing ? "Finalizando..." : "Finalizar rotulación"}
           </button>
         </div>
@@ -268,18 +257,18 @@ export default function ExportacionesPage() {
 
       <form onSubmit={submit} style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr", gap: 12 }}>
         <Field label="Numero de caja">
-          <input required value={form.numeroCaja} onChange={(e) => setForm((f) => ({ ...f, numeroCaja: e.target.value }))} style={inputStyle} autoFocus />
+          <input required value={form.numeroCaja} onChange={(e) => setForm((f) => ({ ...f, numeroCaja: e.target.value }))} className="ds-input" autoFocus />
         </Field>
         <Field label="PLU">
-          <input required value={form.plu} onBlur={() => autocomplete(form.plu, "create")} onChange={(e) => setForm((f) => ({ ...f, plu: e.target.value }))} style={inputStyle} />
+          <input required value={form.plu} onBlur={() => autocomplete(form.plu, "create")} onChange={(e) => setForm((f) => ({ ...f, plu: e.target.value }))} className="ds-input" />
         </Field>
         <Field label="Descripción">
-          <input value={form.descripcion} readOnly placeholder="Se carga desde maestro" style={{ ...inputStyle, opacity: 0.85 }} />
+          <input value={form.descripcion} readOnly placeholder="Se carga desde maestro" className="ds-input" style={{ opacity: 0.85 }} />
         </Field>
         <Field label="Unidad de empaque">
-          <input required type="number" min={1} value={form.unidadEmpaque} onChange={(e) => setForm((f) => ({ ...f, unidadEmpaque: e.target.value }))} style={inputStyle} />
+          <input required type="number" min={1} value={form.unidadEmpaque} onChange={(e) => setForm((f) => ({ ...f, unidadEmpaque: e.target.value }))} className="ds-input" />
         </Field>
-        <button disabled={saving} style={{ gridColumn: isMobile ? "auto" : "1 / -1", height: 42, border: "none", borderRadius: 9, background: COLOR, color: "white", fontWeight: 800, cursor: saving ? "not-allowed" : "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
+        <button disabled={saving} className="ds-btn ds-btn-primary" style={{ gridColumn: isMobile ? "auto" : "1 / -1", background: COLOR }}>
           <CheckCircle2 size={17} /> {saving ? "Guardando..." : "Guardar y comenzar siguiente"}
         </button>
       </form>
@@ -291,10 +280,10 @@ export default function ExportacionesPage() {
     <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1.4fr 180px 180px auto", gap: 10, marginBottom: 14 }}>
       <div style={{ position: "relative" }}>
         <Search size={15} style={{ position: "absolute", left: 10, top: 11, color: "var(--muted)" }} />
-        <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Buscar caja, PLU o descripcion" style={{ ...inputStyle, paddingLeft: 32 }} />
+        <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Buscar caja, PLU o descripcion" className="ds-input" style={{ paddingLeft: 32 }} />
       </div>
-      <input type="date" value={fecha} onChange={(e) => setFecha(e.target.value)} style={inputStyle} />
-      <select value={estado} onChange={(e) => setEstado(e.target.value)} style={inputStyle}>
+      <input type="date" value={fecha} onChange={(e) => setFecha(e.target.value)} className="ds-input" />
+      <select value={estado} onChange={(e) => setEstado(e.target.value)} className="ds-input">
         <option value="">Todos</option>
         <option value="en-curso">En curso</option>
         <option value="finalizado">Finalizados</option>
@@ -319,7 +308,7 @@ export default function ExportacionesPage() {
             PLU {item.plu} · {item.descripcion}<br />
             Empaque {item.unidadEmpaque} · Inicio {fmtTime(item.horaInicio)} · Fin {fmtTime(item.horaFinalizacion)}
           </div>
-          {(canManage || item.creadoPorId === userId) && <div style={{ display: "flex", gap: 8, marginTop: 10 }}><button onClick={() => startEdit(item)} style={miniBtn}><Pencil size={14} /> Editar</button>{canManage && <button onClick={() => remove(item)} style={miniBtn}><Trash2 size={14} /> Borrar</button>}</div>}
+          {(canManage || item.creadoPorId === userId) && <div style={{ display: "flex", gap: 8, marginTop: 10 }}><button onClick={() => startEdit(item)} className="ds-btn ds-btn-ghost ds-btn-sm"><Pencil size={14} /> Editar</button>{canManage && <button onClick={() => remove(item)} className="ds-btn ds-btn-ghost ds-btn-sm" style={{ color: "var(--error)" }}><Trash2 size={14} /> Borrar</button>}</div>}
         </article>
       ))}
     </div>
@@ -336,8 +325,8 @@ export default function ExportacionesPage() {
               <tr key={item.id} style={{ borderBottom: "1px solid var(--border)" }}>
                 <td style={td}>{item.fecha}</td><td style={td}>{item.creadoPorNombre ?? "-"}</td><td style={td}>{item.numeroCaja}</td><td style={td}>{item.plu}</td><td style={td}>{item.descripcion}</td><td style={td}>{item.unidadEmpaque}</td><td style={td}>{fmtTime(item.horaInicio)}</td><td style={td}>{fmtTime(item.horaFinalizacion)}</td><td style={td}>{item.duracionMinutos ?? "-"}</td>
                 <td style={td}>
-                  {canEditItem && <button onClick={() => startEdit(item)} style={iconBtn}><Pencil size={15} /></button>}
-                  {canManage && <button onClick={() => remove(item)} style={iconBtn}><Trash2 size={15} /></button>}
+                  {canEditItem && <button onClick={() => startEdit(item)} className="ds-btn ds-btn-ghost ds-btn-sm" style={{ height: 30 }}><Pencil size={15} /></button>}
+                  {canManage && <button onClick={() => remove(item)} className="ds-btn ds-btn-ghost ds-btn-sm" style={{ height: 30, color: "var(--error)" }}><Trash2 size={15} /></button>}
                 </td>
               </tr>
             );
@@ -355,7 +344,7 @@ export default function ExportacionesPage() {
         <button
           disabled={page <= 1}
           onClick={() => { const p = page - 1; setPage(p); load(p); }}
-          style={{ ...iconBtn, opacity: page <= 1 ? 0.4 : 1, padding: "0 12px", minWidth: "auto" }}
+          className="ds-btn ds-btn-ghost ds-btn-sm" style={{ opacity: page <= 1 ? 0.4 : 1 }}
         >
           ← Anterior
         </button>
@@ -365,7 +354,7 @@ export default function ExportacionesPage() {
         <button
           disabled={page >= totalPages}
           onClick={() => { const p = page + 1; setPage(p); load(p); }}
-          style={{ ...iconBtn, opacity: page >= totalPages ? 0.4 : 1, padding: "0 12px", minWidth: "auto" }}
+          className="ds-btn ds-btn-ghost ds-btn-sm" style={{ opacity: page >= totalPages ? 0.4 : 1 }}
         >
           Siguiente →
         </button>
@@ -491,20 +480,20 @@ export default function ExportacionesPage() {
           <form onSubmit={saveEdit} className="ds-card" style={{ width: "min(620px, 100%)", padding: 18, display: "grid", gap: 12 }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
               <h3 style={{ margin: 0 }}>Editar registro</h3>
-              <button type="button" onClick={() => setEditing(null)} style={iconBtn}><X size={16} /></button>
+              <button type="button" onClick={() => setEditing(null)} className="ds-btn ds-btn-ghost ds-btn-sm"><X size={16} /></button>
             </div>
             <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr", gap: 12 }}>
-              <Field label="Numero caja"><input required value={editForm.numeroCaja} onChange={(e) => setEditForm((f) => ({ ...f, numeroCaja: e.target.value }))} style={inputStyle} /></Field>
-              <Field label="PLU"><input required value={editForm.plu} onBlur={() => autocomplete(editForm.plu, "edit")} onChange={(e) => setEditForm((f) => ({ ...f, plu: e.target.value }))} style={inputStyle} /></Field>
-              <Field label="Descripción"><input readOnly value={editForm.descripcion} style={inputStyle} /></Field>
-              <Field label="Unidad empaque"><input required type="number" min={1} value={editForm.unidadEmpaque} onChange={(e) => setEditForm((f) => ({ ...f, unidadEmpaque: e.target.value }))} style={inputStyle} /></Field>
+              <Field label="Numero caja"><input required value={editForm.numeroCaja} onChange={(e) => setEditForm((f) => ({ ...f, numeroCaja: e.target.value }))} className="ds-input" /></Field>
+              <Field label="PLU"><input required value={editForm.plu} onBlur={() => autocomplete(editForm.plu, "edit")} onChange={(e) => setEditForm((f) => ({ ...f, plu: e.target.value }))} className="ds-input" /></Field>
+              <Field label="Descripción"><input readOnly value={editForm.descripcion} className="ds-input" /></Field>
+              <Field label="Unidad empaque"><input required type="number" min={1} value={editForm.unidadEmpaque} onChange={(e) => setEditForm((f) => ({ ...f, unidadEmpaque: e.target.value }))} className="ds-input" /></Field>
               {canManage && <>
-                <Field label="Hora inicio"><input type="datetime-local" value={editForm.horaInicio} onChange={(e) => setEditForm((f) => ({ ...f, horaInicio: e.target.value }))} style={inputStyle} /></Field>
-                <Field label="Hora finalización"><input type="datetime-local" value={editForm.horaFinalizacion} onChange={(e) => setEditForm((f) => ({ ...f, horaFinalizacion: e.target.value }))} style={inputStyle} /></Field>
+                <Field label="Hora inicio"><input type="datetime-local" value={editForm.horaInicio} onChange={(e) => setEditForm((f) => ({ ...f, horaInicio: e.target.value }))} className="ds-input" /></Field>
+                <Field label="Hora finalización"><input type="datetime-local" value={editForm.horaFinalizacion} onChange={(e) => setEditForm((f) => ({ ...f, horaFinalizacion: e.target.value }))} className="ds-input" /></Field>
               </>}
             </div>
-            {canManage && <Field label="Motivo correccion"><textarea value={editForm.motivoCorreccion} onChange={(e) => setEditForm((f) => ({ ...f, motivoCorreccion: e.target.value }))} rows={3} style={{ ...inputStyle, height: "auto", padding: 10 }} /></Field>}
-            <button disabled={saving} style={{ height: 40, border: "none", borderRadius: 8, background: COLOR, color: "white", fontWeight: 800, cursor: "pointer" }}>Guardar cambios</button>
+            {canManage && <Field label="Motivo correccion"><textarea value={editForm.motivoCorreccion} onChange={(e) => setEditForm((f) => ({ ...f, motivoCorreccion: e.target.value }))} rows={3} className="ds-input" style={{ height: "auto", padding: 10 }} /></Field>}
+            <button disabled={saving} className="ds-btn ds-btn-primary" style={{ background: COLOR }}>Guardar cambios</button>
           </form>
         </div>
       )}
@@ -514,5 +503,3 @@ export default function ExportacionesPage() {
 
 const th: React.CSSProperties = { padding: "10px 8px", fontSize: 11, textTransform: "uppercase", letterSpacing: "0.04em" };
 const td: React.CSSProperties = { padding: "11px 8px", verticalAlign: "top" };
-const iconBtn: React.CSSProperties = { border: "1px solid var(--border)", background: "var(--surface)", color: "var(--foreground)", borderRadius: 8, height: 30, minWidth: 30, display: "inline-grid", placeItems: "center", cursor: "pointer", marginRight: 6 };
-const miniBtn: React.CSSProperties = { border: "1px solid var(--border)", background: "var(--surface)", color: "var(--foreground)", borderRadius: 8, height: 32, padding: "0 10px", display: "flex", alignItems: "center", gap: 6, cursor: "pointer", fontWeight: 700 };

@@ -29,17 +29,6 @@ type ProductoMaestro = {
   marca: string | null;
 };
 
-const inp: React.CSSProperties = {
-  width: "100%", height: 36, padding: "0 12px",
-  background: "var(--surface2)", border: "1px solid transparent",
-  borderRadius: 8, fontSize: 14, fontFamily: "var(--sans)",
-  color: "var(--text)", outline: "none",
-  transition: "border-color .15s, box-shadow .15s, background .15s",
-};
-const focusProps = {
-  onFocus: (e: React.FocusEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => { e.target.style.borderColor = COLOR_TIENDA; e.target.style.boxShadow = `0 0 0 2.5px ${COLOR_TIENDA}30`; e.target.style.background = "var(--surface)"; },
-  onBlur:  (e: React.FocusEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => { e.target.style.borderColor = "transparent"; e.target.style.boxShadow = "none"; e.target.style.background = "var(--surface2)"; },
-};
 const COLOR_TRANSPORTE = getModuleColor("transporte");
 const COLOR_CEDI = ESTADO_DESPACHO_COLOR.ENTREGADO_CEDI;
 
@@ -363,13 +352,13 @@ export default function TiendaPage() {
       <div style={{ display: "flex", gap: 8, marginBottom: 14, flexWrap: "wrap" }}>
         <div style={{ position: "relative", flex: 1, minWidth: 200 }}>
           <Search size={13} style={{ position: "absolute", left: 10, top: "50%", transform: "translateY(-50%)", color: "var(--faint)" }} />
-          <input value={fq} onChange={(e) => setFq(e.target.value)} placeholder="Buscar doc, cliente, consecutivo…" style={{ ...inp, paddingLeft: 32 }} {...focusProps} />
+          <input value={fq} onChange={(e) => setFq(e.target.value)} placeholder="Buscar doc, cliente, consecutivo…" className="ds-input" style={{ paddingLeft: 32 }} />
         </div>
-        <select value={fEstado} onChange={(e) => setFEstado(e.target.value)} style={{ ...inp, width: "auto", minWidth: 170 }} {...focusProps}>
+        <select value={fEstado} onChange={(e) => setFEstado(e.target.value)} className="ds-input" style={{ width: "auto", minWidth: 170 }}>
           <option value="">Todos los estados</option>
           {ESTADOS_DESPACHO.map((e) => <option key={e} value={e}>{ESTADO_DESPACHO_LABEL[e]}</option>)}
         </select>
-        <select value={fCC} onChange={(e) => setFCC(e.target.value)} style={{ ...inp, width: "auto", minWidth: 160 }} {...focusProps}>
+        <select value={fCC} onChange={(e) => setFCC(e.target.value)} className="ds-input" style={{ width: "auto", minWidth: 160 }}>
           <option value="">Todos los centros</option>
           {centrosCostos.map((cc) => <option key={cc} value={cc}>{cc}</option>)}
         </select>
@@ -756,11 +745,8 @@ function ModalRechazar({ despacho, onClose, onRechazado }: {
             rows={4}
             required
             placeholder="Ej: Los PLUs no corresponden al documento, favor corregir antes de re-enviar…"
-            style={{
-              ...inp, minHeight: 96, height: "auto", paddingTop: 10, resize: "vertical",
-              borderColor: error ? "var(--error)" : "transparent",
-            }}
-            {...focusProps}
+            className={`ds-input${error ? " ds-input-error" : ""}`}
+            style={{ minHeight: 96, height: "auto", paddingTop: 10, resize: "vertical" }}
           />
         </Field>
         {error && <p style={{ fontSize: 12, color: "var(--error)", margin: 0 }}>{error}</p>}
@@ -805,7 +791,7 @@ function ModalAsignarGuardado({ despacho, onClose, onAsignado, onError }: {
         ) : (
           <>
             <Field label="Operario transporte *">
-              <select value={userId} onChange={(e) => setUserId(e.target.value)} style={inp} {...focusProps}>
+              <select value={userId} onChange={(e) => setUserId(e.target.value)} className="ds-input">
                 <option value="">Selecciona un operario</option>
                 {usuarios.map((u) => <option key={u.id} value={u.id}>{u.name} - {u.email}</option>)}
               </select>
@@ -815,8 +801,7 @@ function ModalAsignarGuardado({ despacho, onClose, onAsignado, onError }: {
                 value={nota}
                 onChange={(e) => setNota(e.target.value)}
                 placeholder="Ubicación sugerida, instrucciones internas o contexto para el operario"
-                style={{ ...inp, minHeight: 80, height: "auto", paddingTop: 10, resize: "vertical" }}
-                {...focusProps}
+                className="ds-input" style={{ minHeight: 80, height: "auto", paddingTop: 10, resize: "vertical" }}
               />
             </Field>
             {despacho.notaEntrega && (
@@ -925,21 +910,21 @@ function ModalDespacho({ despacho, role, onClose, onSaved, onError }: {
     <ModalBase title={isEdit ? "Editar factura" : "Nueva Factura"} sub={isEdit ? `${despacho!.numeroDocumento}` : undefined} onClose={onClose}>
       <form onSubmit={submit} style={{ display: "flex", flexDirection: "column", gap: 14, maxHeight: "70vh", overflowY: "auto" }}>
         <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr", gap: 12 }}>
-          <Field label="Centro de costos *"><input value={centroCostos} onChange={(e) => setCC(e.target.value)} placeholder="CC-001" style={inp} {...focusProps} /></Field>
-          <Field label="Fecha creación *"><input type="date" value={fechaCreacion} onChange={(e) => setFecha(e.target.value)} style={inp} {...focusProps} /></Field>
+          <Field label="Centro de costos *"><input value={centroCostos} onChange={(e) => setCC(e.target.value)} placeholder="CC-001" className="ds-input" /></Field>
+          <Field label="Fecha creación *"><input type="date" value={fechaCreacion} onChange={(e) => setFecha(e.target.value)} className="ds-input" /></Field>
         </div>
         <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr", gap: 12 }}>
-          <Field label="N° Documento *"><input value={numeroDocumento} onChange={(e) => setDoc(e.target.value)} placeholder="FAC-0001" style={inp} {...focusProps} /></Field>
-          <Field label="Consecutivo *"><input value={consecutivo} onChange={(e) => setCons(e.target.value)} placeholder="001" style={inp} {...focusProps} /></Field>
+          <Field label="N° Documento *"><input value={numeroDocumento} onChange={(e) => setDoc(e.target.value)} placeholder="FAC-0001" className="ds-input" /></Field>
+          <Field label="Consecutivo *"><input value={consecutivo} onChange={(e) => setCons(e.target.value)} placeholder="001" className="ds-input" /></Field>
         </div>
-        <Field label="Nombre del cliente *"><input value={clienteNombre} onChange={(e) => setCN(e.target.value)} style={inp} {...focusProps} /></Field>
+        <Field label="Nombre del cliente *"><input value={clienteNombre} onChange={(e) => setCN(e.target.value)} className="ds-input" /></Field>
         <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr", gap: 12 }}>
-          <Field label="Documento cliente"><input value={clienteDocumento} onChange={(e) => setCD(e.target.value)} style={inp} {...focusProps} /></Field>
-          <Field label="Teléfono cliente"><input value={clienteTelefono} onChange={(e) => setCT(e.target.value)} placeholder="300..." style={inp} {...focusProps} /></Field>
+          <Field label="Documento cliente"><input value={clienteDocumento} onChange={(e) => setCD(e.target.value)} className="ds-input" /></Field>
+          <Field label="Teléfono cliente"><input value={clienteTelefono} onChange={(e) => setCT(e.target.value)} placeholder="300..." className="ds-input" /></Field>
         </div>
         <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr", gap: 12 }}>
-          <Field label="Entrega comprometida"><input type="date" value={fechaEntrega} onChange={(e) => setFEntrega(e.target.value)} style={inp} {...focusProps} /></Field>
-          <Field label="Número de cajas"><input type="number" value={numeroCajas} onChange={(e) => setNCajas(e.target.value)} min="1" placeholder="0" style={inp} {...focusProps} /></Field>
+          <Field label="Entrega comprometida"><input type="date" value={fechaEntrega} onChange={(e) => setFEntrega(e.target.value)} className="ds-input" /></Field>
+          <Field label="Número de cajas"><input type="number" value={numeroCajas} onChange={(e) => setNCajas(e.target.value)} min="1" placeholder="0" className="ds-input" /></Field>
         </div>
 
         <Field label="Nota de entrega">
@@ -947,8 +932,7 @@ function ModalDespacho({ despacho, role, onClose, onSaved, onError }: {
             value={notaEntrega}
             onChange={(e) => setNotaEntrega(e.target.value)}
             placeholder="Dirección, contacto, observaciones o instrucciones de entrega"
-            style={{ ...inp, minHeight: 88, height: "auto", paddingTop: 10, resize: "vertical" }}
-            {...focusProps}
+            className="ds-input" style={{ minHeight: 88, height: "auto", paddingTop: 10, resize: "vertical" }}
           />
         </Field>
 
@@ -963,9 +947,9 @@ function ModalDespacho({ despacho, role, onClose, onSaved, onError }: {
           {plines.map((p, i) => (
             <div key={i}>
               <div style={{ display: "grid", gridTemplateColumns: isMobile ? "70px 1fr 54px 28px" : "100px 1fr 70px 28px", gap: 6, marginBottom: 6, alignItems: "center" }}>
-                <input value={p.plu} onChange={(e) => { updatePlin(i, "plu", e.target.value); updatePlin(i, "status", "idle"); }} onBlur={() => lookupPlinMaestro(i)} placeholder="PLU" style={{ ...inp, height: 32, fontSize: 12 }} />
-                <input value={p.descripcion} onChange={(e) => updatePlin(i, "descripcion", e.target.value)} disabled={!!p.maestro && !p.override} placeholder="Descripción (opc.)" style={{ ...inp, height: 32, fontSize: 12, opacity: p.maestro && !p.override ? 0.7 : 1 }} {...focusProps} />
-                <input type="number" value={p.unidades} onChange={(e) => updatePlin(i, "unidades", e.target.value)} min="1" placeholder="Uds." style={{ ...inp, height: 32, fontSize: 12 }} {...focusProps} />
+                <input value={p.plu} onChange={(e) => { updatePlin(i, "plu", e.target.value); updatePlin(i, "status", "idle"); }} onBlur={() => lookupPlinMaestro(i)} placeholder="PLU" className="ds-input" style={{ height: 32, fontSize: 12 }} />
+                <input value={p.descripcion} onChange={(e) => updatePlin(i, "descripcion", e.target.value)} disabled={!!p.maestro && !p.override} placeholder="Descripción (opc.)" className="ds-input" style={{ height: 32, fontSize: 12, opacity: p.maestro && !p.override ? 0.7 : 1 }} />
+                <input type="number" value={p.unidades} onChange={(e) => updatePlin(i, "unidades", e.target.value)} min="1" placeholder="Uds." className="ds-input" style={{ height: 32, fontSize: 12 }} />
                 <button type="button" onClick={() => removePlin(i)} style={{ width: 28, height: 32, background: "var(--error-tint)", border: "none", borderRadius: 6, cursor: "pointer", color: "var(--error)", display: "flex", alignItems: "center", justifyContent: "center" }}>
                   <Minus size={12} />
                 </button>
