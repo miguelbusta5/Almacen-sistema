@@ -1,10 +1,10 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { createPortal } from "react-dom";
 import { useSession } from "next-auth/react";
-import { Users, Plus, Pencil, X, Shield, ShieldCheck, ShieldAlert, Truck, Car, Upload, Search, GitMerge, Package } from "lucide-react";
+import { Users, Plus, Pencil, Shield, ShieldCheck, ShieldAlert, Truck, Car, Upload, Search, GitMerge, Package } from "lucide-react";
 import { SkeletonTable, EmptyState } from "@/components/ui";
+import { Modal } from "@/components/ui/Modal";
 import { AutoRefreshIndicator } from "@/components/ui/AutoRefreshIndicator";
 import { getModuleColor } from "@/lib/moduleTheme";
 import { useAutoRefresh } from "@/hooks/useAutoRefresh";
@@ -157,10 +157,10 @@ export default function UsuariosPage() {
 
   if (role && role !== "ADMIN") {
     return (
-      <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 14, padding: "3rem 2rem", textAlign: "center" }}>
-        <ShieldAlert size={40} color="var(--error)" style={{ margin: "0 auto 1rem" }} />
-        <div style={{ fontSize: 16, fontWeight: 700, color: "var(--text)" }}>Acceso restringido</div>
-        <div style={{ fontSize: 13, color: "var(--muted)", marginTop: 6 }}>Solo los administradores pueden gestionar usuarios.</div>
+      <div className="g-panel g-empty animate-fade-in">
+        <div className="g-empty-icon" style={{ color: "var(--error)" }}><ShieldAlert size={22} /></div>
+        <h3>Acceso restringido</h3>
+        <p>Solo los administradores pueden gestionar usuarios.</p>
       </div>
     );
   }
@@ -169,35 +169,31 @@ export default function UsuariosPage() {
 
   return (
     <div className="animate-fade-in" style={{ "--module-color": COLOR, display: "grid", gap: 18 } as React.CSSProperties}>
-      <div className="g-module-header" style={{ "--mod-color": "#334155" } as React.CSSProperties}>
-        <div className="g-module-kicker">Gobierno del sistema</div>
-        <h1 className="g-module-title">Usuarios y operación base</h1>
-        <p className="g-module-desc">Administración de cuentas, roles, maestro PLU, vehículos y transportistas operativos sin convertirlo en módulo de logística.</p>
-      </div>
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 12, marginBottom: "1.5rem" }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-          <div style={{ width: 40, height: 40, borderRadius: 10, background: "#6366f115", display: "flex", alignItems: "center", justifyContent: "center" }}>
-            <Users size={20} color="#6366f1" />
-          </div>
-          <div>
-            <h1 style={{ fontSize: 22, fontWeight: 800, color: "var(--text)", letterSpacing: "-0.02em" }}>Usuarios</h1>
-            <p style={{ fontSize: 12, color: "var(--muted)" }}>{users.length} usuario{users.length !== 1 ? "s" : ""} registrado{users.length !== 1 ? "s" : ""}</p>
-          </div>
+      <div
+        className="g-module-header"
+        style={{ "--mod-color": "#334155", display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 16, flexWrap: "wrap" } as React.CSSProperties}
+      >
+        <div>
+          <div className="g-module-kicker">Gobierno del sistema</div>
+          <h1 className="g-module-title">Usuarios y operación base</h1>
+          <p className="g-module-desc">
+            {users.length} usuario{users.length !== 1 ? "s" : ""} registrado{users.length !== 1 ? "s" : ""} · cuentas, roles, maestro PLU, vehículos y transportistas operativos.
+          </p>
         </div>
-        <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", justifyContent: "flex-end" }}>
+        <div className="g-module-actions">
           <AutoRefreshIndicator
             lastUpdatedAt={autoRefresh.lastUpdatedAt}
             refreshing={autoRefresh.refreshing}
             onRefresh={autoRefresh.refreshNow}
           />
-          <button onClick={() => setShowForm(true)} style={{ display: "flex", alignItems: "center", gap: 6, padding: "0.55rem 1rem", background: "var(--brand)", color: "#fff", border: "none", borderRadius: 9, fontSize: 12, fontWeight: 700, cursor: "pointer", boxShadow: "0 8px 18px rgba(37,99,235,0.20)" }}>
+          <button onClick={() => setShowForm(true)} className="g-btn g-btn-primary">
             <Plus size={15} />Nuevo usuario
           </button>
         </div>
       </div>
 
       {loading ? (
-        <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 14, overflow: "hidden" }}>
+        <div className="g-table-wrap">
           <SkeletonTable rows={6} cols={5} />
         </div>
       ) : (
@@ -227,9 +223,9 @@ export default function UsuariosPage() {
               action={searchQ ? { label: "Limpiar búsqueda", onClick: () => setSearchQ("") } : undefined}
             />
           ) : (
-            <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 14, overflow: "hidden" }}>
+            <div className="g-table-wrap">
               <div style={{ overflowX: "auto" }}>
-                <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
+                <table className="g-table" style={{ fontSize: 13 }}>
                   <thead>
                     <tr style={{ borderBottom: "1px solid var(--border)", background: "var(--surface2)" }}>
                       <th onClick={() => toggleSort("name")} style={{ padding: "0.7rem 0.9rem", textAlign: "left", fontSize: 10, fontWeight: 700, letterSpacing: ".06em", textTransform: "uppercase", color: sortCol === "name" ? "#6366f1" : "var(--muted)", cursor: "pointer", userSelect: "none" }}>
@@ -607,7 +603,18 @@ function FormNuevo({ onClose, onSaved, onError }: { onClose: () => void; onSaved
   }
 
   return (
-    <Modal title="Nuevo usuario" onClose={onClose}>
+    <Modal
+      open
+      onClose={onClose}
+      title="Nuevo usuario"
+      size="sm"
+      footer={
+        <>
+          <button onClick={onClose} className="g-btn g-btn-secondary">Cancelar</button>
+          <button onClick={submit} disabled={saving} className="g-btn g-btn-primary">{saving ? "Creando…" : "Crear usuario"}</button>
+        </>
+      }
+    >
       <div style={{ display: "flex", flexDirection: "column", gap: "0.9rem" }}>
         <Field label="Nombre"><input value={name} onChange={e => setName(e.target.value)} style={inp} placeholder="Nombre completo" /></Field>
         <Field label="Email"><input type="email" value={email} onChange={e => setEmail(e.target.value)} style={inp} placeholder="usuario@almacen.com" /></Field>
@@ -664,10 +671,6 @@ function FormNuevo({ onClose, onSaved, onError }: { onClose: () => void; onSaved
           </div>
         )}
       </div>
-      <div style={{ display: "flex", gap: 8, marginTop: "1.25rem" }}>
-        <button onClick={onClose} style={btnSec}>Cancelar</button>
-        <button onClick={submit} disabled={saving} style={{ ...btnPri, background: "#6366f1" }}>{saving ? "Creando…" : "Crear usuario"}</button>
-      </div>
     </Modal>
   );
 }
@@ -694,7 +697,19 @@ function ModalEditar({ u, selfId, onClose, onSaved, onError }: { u: User; selfId
   }
 
   return (
-    <Modal title="Editar usuario" sub={u.email} onClose={onClose}>
+    <Modal
+      open
+      onClose={onClose}
+      title="Editar usuario"
+      subtitle={u.email}
+      size="sm"
+      footer={
+        <>
+          <button onClick={onClose} className="g-btn g-btn-secondary">Cancelar</button>
+          <button onClick={save} disabled={saving} className="g-btn g-btn-primary">{saving ? "Guardando…" : "Guardar cambios"}</button>
+        </>
+      }
+    >
       <div style={{ display: "flex", flexDirection: "column", gap: "0.9rem" }}>
         <Field label="Nombre"><input value={name} onChange={e => setName(e.target.value)} style={inp} /></Field>
         <Field label="Rol"><select value={role} onChange={e => setRole(e.target.value as Role)} disabled={isSelf} style={{ ...inp, opacity: isSelf ? 0.5 : 1 }}><optgroup label="Área Inventario">
@@ -728,10 +743,6 @@ function ModalEditar({ u, selfId, onClose, onSaved, onError }: { u: User; selfId
         </label>
         {isSelf && <p style={{ fontSize: 11, color: "var(--muted)" }}>No puedes cambiar tu propio rol ni desactivarte.</p>}
       </div>
-      <div style={{ display: "flex", gap: 8, marginTop: "1.25rem" }}>
-        <button onClick={onClose} style={btnSec}>Cancelar</button>
-        <button onClick={save} disabled={saving} style={{ ...btnPri, background: "#6366f1" }}>{saving ? "Guardando…" : "Guardar cambios"}</button>
-      </div>
     </Modal>
   );
 }
@@ -746,33 +757,5 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
   );
 }
 
-function Modal({ title, sub, children, onClose }: { title: string; sub?: string; children: React.ReactNode; onClose: () => void }) {
-  const [mounted, setMounted] = useState(false);
-  useEffect(() => { setMounted(true); }, []);
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
-    window.addEventListener("keydown", onKey);
-    document.body.style.overflow = "hidden";
-    return () => { window.removeEventListener("keydown", onKey); document.body.style.overflow = ""; };
-  }, [onClose]);
-  if (!mounted) return null;
-  return createPortal(
-    <div onClick={onClose} style={{ position: "fixed", inset: 0, background: "#0f172a80", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 9999, padding: "1rem" }}>
-      <div onClick={e => e.stopPropagation()} style={{ background: "var(--surface)", borderRadius: 16, padding: "1.5rem", width: "100%", maxWidth: 420, boxShadow: "0 20px 60px #0f172a40" }}>
-        <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: "1.25rem" }}>
-          <div>
-            <h3 style={{ fontSize: 17, fontWeight: 800, color: "var(--text)" }}>{title}</h3>
-            {sub && <p style={{ fontSize: 12, color: "var(--muted)", marginTop: 2, fontFamily: "var(--mono)" }}>{sub}</p>}
-          </div>
-          <button onClick={onClose} aria-label="Cerrar" style={{ background: "var(--surface2)", border: "1px solid var(--border)", borderRadius: 8, padding: 6, cursor: "pointer", color: "var(--muted2)", display: "flex" }}><X size={18} /></button>
-        </div>
-        {children}
-      </div>
-    </div>,
-    document.body
-  );
-}
-
-const inp: React.CSSProperties = { border: "1px solid var(--border)", borderRadius: 8, padding: "0.6rem 0.85rem", fontSize: 13, fontFamily: "var(--mono)", outline: "none", background: "var(--bg)", width: "100%", boxSizing: "border-box" };
-const btnSec: React.CSSProperties = { flex: 1, padding: "0.65rem", background: "var(--surface2)", color: "var(--muted2)", border: "1px solid var(--border)", borderRadius: 9, fontSize: 13, fontWeight: 700, cursor: "pointer" };
-const btnPri: React.CSSProperties = { flex: 1, padding: "0.65rem", color: "#fff", border: "none", borderRadius: 9, fontSize: 13, fontWeight: 700, cursor: "pointer" };
+const inp: React.CSSProperties = { border: "1px solid var(--border-strong)", borderRadius: "var(--r)", padding: "0 12px", height: 36, fontSize: 13, fontFamily: "var(--sans)", outline: "none", background: "var(--surface)", color: "var(--text)", width: "100%", boxSizing: "border-box" };
+const btnPri: React.CSSProperties = { flex: 1, padding: "0.65rem", background: "var(--brand)", color: "#fff", border: "none", borderRadius: 9, fontSize: 13, fontWeight: 700, cursor: "pointer" };
