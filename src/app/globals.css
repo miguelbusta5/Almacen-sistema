@@ -1231,22 +1231,24 @@ html[data-theme="dark"] .op-module-header {
   --purple: var(--brand);
   --orange: var(--brand);
 
-  --shadow-xs: 0 1px 2px rgba(15, 23, 42, 0.045);
-  --shadow-sm: 0 1px 2px rgba(15, 23, 42, 0.055), 0 8px 24px rgba(15, 23, 42, 0.035);
-  --shadow: 0 14px 34px rgba(15, 23, 42, 0.070), 0 1px 2px rgba(15, 23, 42, 0.045);
-  --shadow-md: 0 18px 42px rgba(15, 23, 42, 0.095), 0 3px 10px rgba(15, 23, 42, 0.055);
-  --shadow-lg: 0 28px 64px rgba(15, 23, 42, 0.130), 0 8px 20px rgba(15, 23, 42, 0.075);
+  --shadow-xs: 0 1px 2px rgba(15, 23, 42, 0.06);
+  --shadow-sm: 0 1px 3px rgba(15, 23, 42, 0.08), 0 6px 16px rgba(15, 23, 42, 0.05);
+  --shadow: 0 4px 16px rgba(15, 23, 42, 0.10), 0 1px 3px rgba(15, 23, 42, 0.06);
+  --shadow-md: 0 8px 28px rgba(15, 23, 42, 0.13), 0 3px 8px rgba(15, 23, 42, 0.07);
+  --shadow-lg: 0 20px 48px rgba(15, 23, 42, 0.16), 0 6px 16px rgba(15, 23, 42, 0.09);
   --ring: 0 0 0 3px rgba(29, 78, 216, 0.20);
   --ring-error: 0 0 0 3px rgba(180, 35, 24, 0.16);
 }
 
 html[data-theme="dark"] {
-  --bg: #08111F;
-  --canvas: #0A1424;
-  --surface: #101827;
-  --surface2: #152033;
-  --surface3: #1B2940;
-  --surface-elevated: #121D2F;
+  --bg: #060D17;
+  --canvas: #091422;
+  --surface: #0D1B2E;
+  --surface2: #132338;
+  --surface3: #1A2E47;
+  --surface-elevated: #0F1F33;
+  --brand-tint: rgba(59, 130, 246, 0.18);
+  --ring: 0 0 0 3px rgba(59, 130, 246, 0.30);
   --success: #34D399;
   --success-tint: rgba(52, 211, 153, 0.14);
   --warning: #FCD34D;
@@ -1728,4 +1730,88 @@ html[data-theme="dark"] .ds-stat {
     letter-spacing: 0.06em;
     text-transform: uppercase;
   }
+}
+
+/* ═══════════════════════════════════════════════════════════
+   DARK MODE — COMPONENT OVERRIDES (última capa, máx. prioridad)
+   ═══════════════════════════════════════════════════════════ */
+
+/* Badge default: fondo translúcido con borde visible */
+html[data-theme="dark"] .ds-badge {
+  background: rgba(255, 255, 255, 0.07);
+  border-color: rgba(255, 255, 255, 0.13);
+  color: var(--muted2);
+  box-shadow: none;
+}
+
+/* Inputs: borde siempre visible en dark */
+html[data-theme="dark"] .ds-input,
+html[data-theme="dark"] .ds-input-lg {
+  border: 1px solid rgba(255, 255, 255, 0.11) !important;
+}
+html[data-theme="dark"] .ds-input:focus,
+html[data-theme="dark"] .ds-input-lg:focus {
+  border-color: var(--brand-bright) !important;
+  background: var(--surface);
+}
+html[data-theme="dark"] .dash-main :where(input, select, textarea) {
+  box-shadow: none;
+  border-color: rgba(255, 255, 255, 0.10) !important;
+}
+html[data-theme="dark"] .dash-main :where(input, select, textarea):focus {
+  border-color: var(--brand-bright) !important;
+  box-shadow: var(--ring) !important;
+}
+
+/* Op module header: suavizar gradiente en dark */
+html[data-theme="dark"] .op-module-header {
+  background: linear-gradient(135deg, rgba(59, 130, 246, 0.12), rgba(9, 20, 34, 0.98));
+  border-color: rgba(59, 130, 246, 0.20);
+}
+
+/* Cedi panel */
+html[data-theme="dark"] .cedi-panel {
+  background: rgba(13, 27, 46, 0.94);
+  border-color: rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(14px);
+}
+
+/* Cedi badge default */
+html[data-theme="dark"] .cedi-badge {
+  background: rgba(255, 255, 255, 0.07);
+  border-color: rgba(255, 255, 255, 0.13);
+  color: var(--muted2);
+}
+
+/* Cedi stat */
+html[data-theme="dark"] .cedi-stat {
+  background: rgba(13, 27, 46, 0.86);
+  border-color: rgba(255, 255, 255, 0.08);
+}
+html[data-theme="dark"] .cedi-stat::before {
+  opacity: 0.80;
+}
+
+/* Cedi hero */
+html[data-theme="dark"] .cedi-hero {
+  background: linear-gradient(135deg, rgba(59, 130, 246, 0.14), rgba(9, 20, 34, 0.97));
+  border-color: rgba(59, 130, 246, 0.22);
+}
+
+/* Cedi table */
+html[data-theme="dark"] .cedi-table td {
+  border-bottom-color: rgba(255, 255, 255, 0.06);
+}
+html[data-theme="dark"] .cedi-table th {
+  background: rgba(9, 20, 34, 0.96);
+  border-bottom-color: rgba(255, 255, 255, 0.10);
+}
+html[data-theme="dark"] .cedi-table tr:hover td {
+  background: rgba(59, 130, 246, 0.08);
+}
+
+/* Cedi empty mark */
+html[data-theme="dark"] .cedi-empty-mark {
+  background: rgba(13, 27, 46, 0.86);
+  border-color: rgba(255, 255, 255, 0.10);
 }
