@@ -36,21 +36,19 @@ export default function LoginPage() {
     width: "100%",
     height: 44,
     padding: "0 14px",
-    background: "var(--surface)",
-    border: "1px solid var(--border)",
+    background: "var(--surface2)",
+    border: "1px solid var(--border-strong)",
     borderRadius: 10,
     fontSize: 15,
     fontFamily: "var(--sans)",
     color: "var(--text)",
     outline: "none",
-    boxShadow: "inset 0 1px 0 rgba(255,255,255,0.55)",
   };
 
   return (
     <div style={{
       minHeight: "100vh",
-      background:
-        "linear-gradient(135deg, rgba(37,99,235,0.10), transparent 36%), var(--bg)",
+      background: "var(--canvas)",
       display: "grid",
       placeItems: "center",
       padding: "clamp(16px, 4vw, 32px)",
@@ -59,7 +57,7 @@ export default function LoginPage() {
         <section style={{
           minHeight: 520,
           padding: "clamp(28px, 5vw, 44px)",
-          background: "linear-gradient(135deg, rgba(37,99,235,0.10), rgba(255,255,255,0.96))",
+          background: "linear-gradient(135deg, var(--brand-tint), var(--surface2) 80%)",
           color: "var(--text)",
           display: "flex",
           flexDirection: "column",
