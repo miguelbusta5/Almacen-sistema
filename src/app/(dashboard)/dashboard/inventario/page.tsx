@@ -15,6 +15,7 @@ import {
   CheckCircle2, Minus, Package, ChevronDown,
   AlertCircle, ImageOff, Loader,
 } from "lucide-react";
+import { EmptyState } from "@/components/ui";
 import {
   Novedad, EstadoNovedad, TipoNovedad,
   ESTADO_COLOR, estadoLabel, todayISO, fmtFecha,
@@ -933,19 +934,13 @@ export default function InventarioMobilePage() {
             ))}
           </div>
         ) : filtered.length === 0 ? (
-          <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: 48, gap: 16 }}>
-            <Package size={40} color="var(--faint)" />
-            <div style={{ fontSize: 15, color: "var(--muted)", textAlign: "center" }}>
-              {search || filter ? "Sin resultados para estos filtros" : "No hay novedades registradas"}
-            </div>
-            {canCreate && !search && !filter && (
-              <button
-                onClick={() => setSheet("nueva")}
-                style={{ padding: "12px 24px", background: "var(--brand)", color: "#fff", border: "none", borderRadius: 14, fontSize: 15, fontWeight: 700, cursor: "pointer" }}
-              >
-                Registrar primera novedad
-              </button>
-            )}
+          <div style={{ padding: 32 }}>
+            <EmptyState
+              icon={<Package size={36} />}
+              title={search || filter ? "Sin resultados" : "Sin novedades"}
+              description={search || filter ? "No hay registros para estos filtros." : "Registra la primera novedad del día."}
+              action={canCreate && !search && !filter ? { label: "Registrar novedad", onClick: () => setSheet("nueva") } : undefined}
+            />
           </div>
         ) : (
           <>
