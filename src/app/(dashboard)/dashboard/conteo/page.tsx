@@ -9,6 +9,7 @@ import {
   ChevronRight, Download, RefreshCw, CheckCircle2, AlertTriangle,
   Settings, Play, Calculator, Trash2, Pencil, UserPlus,
 } from "lucide-react";
+import { Badge } from "@/components/ui";
 import { CediPage } from "@/components/ui/cedi";
 import {
   CicloConteo, OperarioCiclo, LineaConteo,
@@ -28,8 +29,17 @@ const iconBtn: React.CSSProperties = {
   padding: "5px 8px", cursor: "pointer", color: "var(--muted2)", display: "inline-flex", alignItems: "center",
 };
 
-function Badge({ label, color }: { label: string; color: string }) {
-  return <span style={{ fontSize: 11, fontWeight: 700, padding: "2px 9px", borderRadius: 20, background: color + "18", color }}>{label}</span>;
+type BadgeVariant = "default" | "info" | "success" | "warning" | "error";
+function cicloVariant(estado: string): BadgeVariant {
+  if (estado === "EN_PROGRESO") return "info";
+  if (estado === "CERRADO") return "success";
+  return "default";
+}
+function lineaVariant(estado: string): BadgeVariant {
+  if (estado === "CONTADO") return "info";
+  if (estado === "OK") return "success";
+  if (estado === "NOVEDAD") return "error";
+  return "default";
 }
 
 function Kpi({ label, val, color, sub }: { label: string; val: string | number; color: string; sub?: string }) {
@@ -466,7 +476,7 @@ export default function ConteoPage() {
                   <tr key={c.id} className="hover-row" style={{ borderBottom: "1px solid var(--border)" }}>
                     <td style={{ padding: "0.65rem 0.85rem", fontWeight: 600 }}>{c.nombre}</td>
                     <td style={{ padding: "0.65rem 0.85rem", fontFamily: "var(--mono)" }}>{fmtFecha(c.fechaInicio)}</td>
-                    <td style={{ padding: "0.65rem 0.85rem" }}><Badge label={CICLO_ESTADO_LABEL[c.estado as keyof typeof CICLO_ESTADO_LABEL] ?? c.estado} color={CICLO_ESTADO_COLOR[c.estado as keyof typeof CICLO_ESTADO_COLOR] ?? "#64748b"} /></td>
+                    <td style={{ padding: "0.65rem 0.85rem" }}><Badge label={CICLO_ESTADO_LABEL[c.estado as keyof typeof CICLO_ESTADO_LABEL] ?? c.estado} variant={cicloVariant(c.estado)} dot={false} /></td>
                     <td style={{ padding: "0.65rem 0.85rem", minWidth: 160 }}>
                       <div style={{ fontSize: 11, color: "var(--muted)", marginBottom: 4 }}>{completados} / {c.totalLineas}</div>
                       <ProgBar val={completados} total={c.totalLineas} color={COLOR_CONTEO} />
@@ -547,7 +557,7 @@ export default function ConteoPage() {
                               <td style={{ padding: "0.5rem 0.85rem", fontFamily: "var(--mono)", textAlign: "right", color: dif == null ? "var(--muted)" : dif === 0 ? "var(--brand)" : "var(--error)", fontWeight: dif != null && dif !== 0 ? 700 : 400 }}>
                                 {dif == null ? "—" : dif > 0 ? `+${fmtNum(dif)}` : fmtNum(dif)}
                               </td>
-                              <td style={{ padding: "0.5rem 0.85rem" }}><Badge label={LINEA_ESTADO_LABEL[l.estado as keyof typeof LINEA_ESTADO_LABEL]} color={LINEA_ESTADO_COLOR[l.estado as keyof typeof LINEA_ESTADO_COLOR]} /></td>
+                              <td style={{ padding: "0.5rem 0.85rem" }}><Badge label={LINEA_ESTADO_LABEL[l.estado as keyof typeof LINEA_ESTADO_LABEL]} variant={lineaVariant(l.estado)} dot={false} /></td>
                             </tr>
                           );
                         })}

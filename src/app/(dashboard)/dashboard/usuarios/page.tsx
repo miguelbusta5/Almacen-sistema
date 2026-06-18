@@ -253,7 +253,7 @@ export default function UsuariosPage() {
                           <td style={{ padding: "0.7rem 0.9rem", fontWeight: 600 }}>{u.name}</td>
                           <td style={{ padding: "0.7rem 0.9rem", fontFamily: "var(--mono)", fontSize: 12, color: "var(--muted2)" }}>{u.email}</td>
                           <td style={{ padding: "0.7rem 0.9rem" }}>
-                            <span style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: 11, fontWeight: 700, padding: "3px 9px", borderRadius: 20, background: m.color + "18", color: m.color }}>
+                            <span className="ds-badge" style={{ background: m.color + "18", color: m.color, border: `1px solid ${m.color}28`, gap: 5 }}>
                               {m.icon}{m.label}
                             </span>
                           </td>

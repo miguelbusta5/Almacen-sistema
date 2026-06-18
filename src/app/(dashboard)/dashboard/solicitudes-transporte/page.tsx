@@ -6,7 +6,7 @@ import {
   AlertTriangle, CheckCircle2, Clock, FileText, Minus, Pencil,
   Plus, RefreshCw, Search, Send, Trash2, X,
 } from "lucide-react";
-import { EmptyState, SkeletonTable } from "@/components/ui";
+import { Badge, EmptyState, SkeletonTable } from "@/components/ui";
 import { AutoRefreshIndicator } from "@/components/ui/AutoRefreshIndicator";
 import { getModuleColor } from "@/lib/moduleTheme";
 import { puedeEliminarSolicitudTransporte, puedeGestionarSolicitudTransporte } from "@/lib/solicitudesTransporte";
@@ -133,27 +133,18 @@ const emptyForm = {
   plines: [emptyPlu()],
 };
 
-function estadoColor(estado: Estado) {
-  if (estado === "RECHAZADA" || estado === "CANCELADA") return "#B42318";
-  if (estado === "PROGRAMADA" || estado === "EFECTUADA") return "#1D4ED8";
-  if (estado === "REENVIADA") return "#475569";
-  return "#1D4ED8";
+type BadgeVariant = "default" | "info" | "success" | "warning" | "error";
+function estadoVariant(estado: Estado): BadgeVariant {
+  if (estado === "RECHAZADA" || estado === "CANCELADA") return "error";
+  if (estado === "EFECTUADA") return "success";
+  if (estado === "PROGRAMADA") return "info";
+  return "default";
 }
-
-function semaforoColor(semaforo: string) {
-  if (semaforo === "VENCIDO" || semaforo === "CANCELADO") return "#B42318";
-  if (semaforo === "ALERTA") return "#475569";
-  if (semaforo === "EFECTUADO" || semaforo === "NORMAL") return "#1D4ED8";
-  return "#64748B";
-}
-
-function StatusBadge({ label, color }: { label: string; color: string }) {
-  return (
-    <span style={{ display: "inline-flex", alignItems: "center", gap: 6, borderRadius: 999, padding: "4px 9px", fontSize: 11, fontWeight: 800, background: `${color}18`, color, border: `1px solid ${color}33` }}>
-      <span style={{ width: 6, height: 6, borderRadius: 999, background: color }} />
-      {label}
-    </span>
-  );
+function semaforoVariant(semaforo: string): BadgeVariant {
+  if (semaforo === "VENCIDO" || semaforo === "CANCELADO") return "error";
+  if (semaforo === "ALERTA") return "warning";
+  if (semaforo === "EFECTUADO" || semaforo === "NORMAL") return "success";
+  return "default";
 }
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
@@ -613,8 +604,8 @@ export default function SolicitudesTransportePage() {
                     <td style={{ padding: 12, color: "var(--text)", fontSize: 13 }}>{r.ciudadEntrega}</td>
                     <td style={{ padding: 12, color: "var(--text)", fontSize: 13 }}>{r.cantidadCajas ?? r.unidades ?? "N/A"}</td>
                     <td style={{ padding: 12, color: "var(--muted)", fontSize: 13 }}>{r.fechaPromesaEntrega ?? "Sin fecha"}</td>
-                    <td style={{ padding: 12 }}><StatusBadge label={r.estado} color={estadoColor(r.estado)} /></td>
-                    <td style={{ padding: 12 }}><StatusBadge label={r.semaforo} color={semaforoColor(r.semaforo)} /></td>
+                    <td style={{ padding: 12 }}><Badge label={r.estado} variant={estadoVariant(r.estado)} dot={false} /></td>
+                    <td style={{ padding: 12 }}><Badge label={r.semaforo} variant={semaforoVariant(r.semaforo)} /></td>
                     <td style={{ padding: 12, color: "var(--muted)", fontSize: 12 }}>{r.transportadora || r.gestionadoPorNombre || "Pendiente"}</td>
                   </tr>
                 ))}
@@ -636,8 +627,8 @@ export default function SolicitudesTransportePage() {
             </div>
 
             <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-              <StatusBadge label={selected.estado} color={estadoColor(selected.estado)} />
-              <StatusBadge label={selected.semaforo} color={semaforoColor(selected.semaforo)} />
+              <Badge label={selected.estado} variant={estadoVariant(selected.estado)} dot={false} />
+              <Badge label={selected.semaforo} variant={semaforoVariant(selected.semaforo)} />
               {canEditSelected(selected) && (
                 <button onClick={() => { setEditing(selected); setShowForm(true); }} style={{ height: 30, border: "1px solid var(--border)", borderRadius: 8, background: "var(--surface2)", color: "var(--text)", display: "flex", alignItems: "center", gap: 6, padding: "0 10px", cursor: "pointer" }}>
                   <Pencil size={13} /> Editar

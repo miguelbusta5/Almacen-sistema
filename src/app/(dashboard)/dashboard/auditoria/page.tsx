@@ -237,10 +237,10 @@ export default function AuditoriaPage() {
                         ) : <span style={{ color: "var(--muted)" }}>—</span>}
                       </td>
                       <td style={{ padding: "0.6rem 0.85rem" }}>
-                        <span style={{ fontSize: 11, fontWeight: 700, padding: "2px 9px", borderRadius: 20, background: am.color + "18", color: am.color }}>{am.label}</span>
+                        <span className="ds-badge" style={{ background: am.color + "18", color: am.color, border: `1px solid ${am.color}28` }}>{am.label}</span>
                       </td>
                       <td style={{ padding: "0.6rem 0.85rem" }}>
-                        <span style={{ fontSize: 11, fontWeight: 700, padding: "2px 9px", borderRadius: 20, background: mm.color + "18", color: mm.color }}>{mm.label}</span>
+                        <span className="ds-badge" style={{ background: mm.color + "18", color: mm.color, border: `1px solid ${mm.color}28` }}>{mm.label}</span>
                       </td>
                       <td style={{ padding: "0.6rem 0.85rem", fontFamily: "var(--mono)", color: "var(--muted2)" }}>{l.recordId}</td>
                       <td style={{ padding: "0.6rem 0.85rem", color: "var(--muted2)", maxWidth: 280, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={l.details || ""}>{l.details || "—"}</td>
