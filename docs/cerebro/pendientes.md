@@ -9,8 +9,8 @@
 ### Rediseño premium Vercel/Linear (Design System v6)
 
 - [x] **Fase 1** — Fundación: paleta gris neutra, sombras suaves, componentes reutilizables (`PageShell`, `Modal`/`ConfirmModal`, `DataTable`, `form`), `CediPage`→alias, charts sin hex muertos. (2026-06-18)
-- [ ] **Fase 2** — Restyle de páginas de alto tráfico (`home`, `tienda`, `muebles`, `inventario`, `usuarios`, `exportaciones`) + Studio premium. Patrón: `PageShell` + `DataTable` + `Modal`/`SlidePanel` + `Badge` semántico, sin tocar lógica.
-- [ ] **Fase 3** — Resto de páginas (`preoperacional`, `integracion`, `conteo/contar`, `solicitudes-transporte`, `centro-control`, `auditoria`, `mis-tareas`) + barrido responsive.
+- [x] **Fase 2** — Studio premium, Home (fix acentos `--module-color`), Auditoría, Usuarios, Tienda, Muebles, Exportaciones migradas; `inventario` se mantiene mobile-first (bottom-sheet) con fixes seguros. Modales CRUD ad-hoc → `Modal`/`ConfirmModal` compartido. (2026-06-18)
+- [ ] **Fase 3** — Resto de páginas (`preoperacional`, `integracion`, `conteo/contar`, `solicitudes-transporte`, `centro-control`, `mis-tareas`) + barrido responsive. (transporte/conteo/indicadores ya estaban on-system.)
 - [ ] Backlog Studio (no incluido en restyle): autosave con debounce 2s, preview de datos al conectar Sheets, gráficas línea/pastel, validación de fórmulas, filtros por parámetros.
 
 ### Módulo Studio — Fase 2

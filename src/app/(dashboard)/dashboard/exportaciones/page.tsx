@@ -2,8 +2,9 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useSession } from "next-auth/react";
-import { BarChart3, CheckCircle2, ChevronDown, ChevronUp, Clock, Pencil, RefreshCw, Search, Tags, Trash2, X } from "lucide-react";
+import { BarChart3, CheckCircle2, ChevronDown, ChevronUp, Clock, Pencil, RefreshCw, Search, Tags, Trash2 } from "lucide-react";
 import { EmptyState, SkeletonTable } from "@/components/ui";
+import { Modal } from "@/components/ui/Modal";
 import { AutoRefreshIndicator } from "@/components/ui/AutoRefreshIndicator";
 import { getModuleColor } from "@/lib/moduleTheme";
 import { puedeGestionarExportaciones, puedeUsarExportaciones } from "@/lib/exportaciones";
@@ -476,12 +477,8 @@ export default function ExportacionesPage() {
       </section>
 
       {editing && (canManage || editing.creadoPorId === userId) && (
-        <div style={{ position: "fixed", inset: 0, zIndex: 80, background: "rgba(0,0,0,.35)", display: "grid", placeItems: "center", padding: 16 }}>
-          <form onSubmit={saveEdit} className="ds-card" style={{ width: "min(620px, 100%)", padding: 18, display: "grid", gap: 12 }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-              <h3 style={{ margin: 0 }}>Editar registro</h3>
-              <button type="button" onClick={() => setEditing(null)} className="ds-btn ds-btn-ghost ds-btn-sm"><X size={16} /></button>
-            </div>
+        <Modal open onClose={() => setEditing(null)} title="Editar registro" subtitle={`Caja ${editing.numeroCaja} · PLU ${editing.plu}`} size="lg">
+          <form onSubmit={saveEdit} style={{ display: "grid", gap: 12 }}>
             <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr", gap: 12 }}>
               <Field label="Numero caja"><input required value={editForm.numeroCaja} onChange={(e) => setEditForm((f) => ({ ...f, numeroCaja: e.target.value }))} className="ds-input" /></Field>
               <Field label="PLU"><input required value={editForm.plu} onBlur={() => autocomplete(editForm.plu, "edit")} onChange={(e) => setEditForm((f) => ({ ...f, plu: e.target.value }))} className="ds-input" /></Field>
@@ -495,7 +492,7 @@ export default function ExportacionesPage() {
             {canManage && <Field label="Motivo correccion"><textarea value={editForm.motivoCorreccion} onChange={(e) => setEditForm((f) => ({ ...f, motivoCorreccion: e.target.value }))} rows={3} className="ds-input" style={{ height: "auto", padding: 10 }} /></Field>}
             <button disabled={saving} className="ds-btn ds-btn-primary" style={{ background: COLOR }}>Guardar cambios</button>
           </form>
-        </div>
+        </Modal>
       )}
     </div>
   );

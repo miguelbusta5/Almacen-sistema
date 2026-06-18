@@ -200,7 +200,7 @@ function BottomSheet({ onClose, children, title }: {
         onClick={close}
         style={{
           position: "absolute", inset: 0,
-          background: "rgba(0,0,0,0.5)",
+          background: "var(--overlay)",
           backdropFilter: "blur(2px)",
           opacity: visible ? 1 : 0,
           transition: "opacity .25s",
@@ -1018,7 +1018,7 @@ export default function InventarioMobilePage() {
           fontSize: 15, fontWeight: 600,
           display: "flex", alignItems: "center", gap: 10,
           boxShadow: "0 8px 32px rgba(0,0,0,0.3)",
-          animation: "fadeUp .2s ease",
+          animation: "fade-up .2s ease",
         }}>
           {toast.ok && <CheckCircle2 size={16} />}
           {!toast.ok && <AlertCircle size={16} />}
