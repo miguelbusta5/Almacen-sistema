@@ -96,6 +96,7 @@
 - [x] Restaurar colores semánticos: --success=verde, --warning=ambar en :root y dark mode; corregir overrides ds-badge y cedi-badge que los pisaban con azul/gris — 2026-06-17
 - [x] Exportaciones: panel de productividad por operario con cajas, PLUs, finalizadas, tiempo total y promedio min/caja; endpoint GET /api/exportaciones/stats — 2026-06-17
 - [x] Auditoría visual completa + refactor inline styles (Fases 0–5): quitar reguero UI, tokens semánticos, componentes base (Alert, Badge, ds-input/ds-input-lg/ds-btn), Sidebar/Header, páginas operativas clave (exportaciones, tienda, transporte, inventario), EmptyState unificado — 2026-06-17
+- [x] Auditoría v2 profunda + rediseño: dark mode fix (tokens texto/borde, badges, inputs, cedi-* overrides), paleta superficies más diferenciadas, sombras más pronunciadas, inicio rediseñado (hero ds-card + KPIs inline, ModuleCard con color del módulo + borderLeft), badges consistentes en 4 módulos legacy, sidebar activo más visible, header search prominente — 2026-06-17
 
 - [x] Revision predeploy Lovable/Base44: Lovable como referencia visual, Base44 como checklist comparativo, pulido azul/gris en Integracion, Mis Tareas y Centro de Control - 2026-06-16
 - [x] Capa CEDI Harmony: fondo operativo sutil, semantica contenida y limpieza de colores rojo/verde/ambar/violeta/teal hardcodeados - 2026-06-16
