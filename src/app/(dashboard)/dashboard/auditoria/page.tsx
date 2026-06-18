@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useSession } from "next-auth/react";
-import { ScrollText, ShieldAlert, ChevronLeft, ChevronRight, RefreshCw, Download } from "lucide-react";
+import { ShieldAlert, ChevronLeft, ChevronRight, RefreshCw, Download } from "lucide-react";
 import { useIsMobile } from "@/lib/useIsMobile";
 import { SkeletonTable } from "@/components/ui";
 
@@ -139,10 +139,10 @@ export default function AuditoriaPage() {
 
   if (role && role !== "ADMIN") {
     return (
-      <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 14, padding: "3rem 2rem", textAlign: "center" }}>
-        <ShieldAlert size={40} color="var(--error)" style={{ margin: "0 auto 1rem" }} />
-        <div style={{ fontSize: 16, fontWeight: 700, color: "var(--text)" }}>Acceso restringido</div>
-        <div style={{ fontSize: 13, color: "var(--muted)", marginTop: 6 }}>Solo los administradores pueden ver la auditoría.</div>
+      <div className="g-panel g-empty animate-fade-in">
+        <div className="g-empty-icon" style={{ color: "var(--error)" }}><ShieldAlert size={22} /></div>
+        <h3>Acceso restringido</h3>
+        <p>Solo los administradores pueden ver la auditoría.</p>
       </div>
     );
   }
@@ -151,33 +151,29 @@ export default function AuditoriaPage() {
 
   return (
     <div className="animate-fade-in">
-      <div className="g-module-header" style={{ "--mod-color": "#334155" } as React.CSSProperties}>
-        <div className="g-module-kicker">Gobierno del sistema</div>
-        <h1 className="g-module-title">Auditoría</h1>
-        <p className="g-module-desc">Registro completo de acciones por usuario, módulo y fecha con exportación CSV.</p>
-      </div>
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 12, marginBottom: "1.5rem" }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-          <div style={{ width: 40, height: 40, borderRadius: 10, background: "#6366f115", display: "flex", alignItems: "center", justifyContent: "center" }}>
-            <ScrollText size={20} color="#6366f1" />
-          </div>
-          <div>
-            <h1 style={{ fontSize: 22, fontWeight: 800, color: "var(--text)", letterSpacing: "-0.02em" }}>Auditoría</h1>
-            <p style={{ fontSize: 12, color: "var(--muted)" }}>{total} evento{total !== 1 ? "s" : ""} registrado{total !== 1 ? "s" : ""}</p>
-          </div>
+      <div
+        className="g-module-header"
+        style={{ "--mod-color": "#334155", display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 16, flexWrap: "wrap", marginBottom: "1.25rem" } as React.CSSProperties}
+      >
+        <div>
+          <div className="g-module-kicker">Gobierno del sistema</div>
+          <h1 className="g-module-title">Auditoría</h1>
+          <p className="g-module-desc">
+            {total} evento{total !== 1 ? "s" : ""} registrado{total !== 1 ? "s" : ""} · acciones por usuario, módulo y fecha.
+          </p>
         </div>
-        <div style={{ display: "flex", gap: 8 }}>
-          <button onClick={doExportCsv} style={{ display: "flex", alignItems: "center", gap: 6, padding: "0.5rem 0.9rem", background: "#2563eb15", color: "#2563eb", border: "1px solid #2563eb40", borderRadius: 9, fontSize: 12, fontWeight: 700, cursor: "pointer" }}>
+        <div className="g-module-actions">
+          <button onClick={doExportCsv} className="g-btn g-btn-secondary">
             <Download size={14} />Exportar CSV
           </button>
-          <button onClick={() => load(page)} style={{ display: "flex", alignItems: "center", gap: 6, padding: "0.5rem 0.9rem", background: "var(--surface2)", color: "var(--muted2)", border: "1px solid var(--border)", borderRadius: 9, fontSize: 12, fontWeight: 700, cursor: "pointer" }}>
+          <button onClick={() => load(page)} className="g-btn g-btn-ghost">
             <RefreshCw size={14} />Actualizar
           </button>
         </div>
       </div>
 
       {/* Filtros */}
-      <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center", background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 12, padding: "0.75rem 1rem", marginBottom: "1rem" }}>
+      <div className="g-panel" style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center", padding: "0.75rem 1rem", marginBottom: "1rem" }}>
         <input value={fq} onChange={e => setFq(e.target.value)} placeholder="Buscar en detalle o registro…" style={{ ...inp, flex: 1, minWidth: isMobile ? 120 : 180, width: isMobile ? "100%" : undefined }} />
         <select value={fModule} onChange={e => setFModule(e.target.value)} style={inp}>
           <option value="">Todos los módulos</option>
@@ -202,17 +198,18 @@ export default function AuditoriaPage() {
 
       {/* Tabla */}
       {loading ? (
-        <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 14, overflow: "hidden" }}>
+        <div className="g-table-wrap">
           <SkeletonTable rows={8} cols={6} />
         </div>
       ) : logs.length === 0 ? (
-        <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 14, padding: "3rem 2rem", textAlign: "center", color: "var(--muted)" }}>
-          Sin eventos que coincidan con los filtros.
+        <div className="g-panel g-empty">
+          <h3>Sin eventos</h3>
+          <p>No hay eventos que coincidan con los filtros aplicados.</p>
         </div>
       ) : (
-        <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 14, overflow: "hidden" }}>
+        <div className="g-table-wrap">
           <div style={{ overflowX: "auto" }}>
-            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
+            <table className="g-table" style={{ fontSize: 12 }}>
               <thead>
                 <tr style={{ borderBottom: "1px solid var(--border)", background: "var(--surface2)" }}>
                   <th onClick={() => toggleLogSort("createdAt")} style={{ padding: "0.6rem 0.85rem", textAlign: "left", fontSize: 10, fontWeight: 700, letterSpacing: ".06em", textTransform: "uppercase", color: logSortCol === "createdAt" ? "#6366f1" : "var(--muted)", whiteSpace: "nowrap", cursor: "pointer", userSelect: "none" }}>
@@ -263,7 +260,7 @@ export default function AuditoriaPage() {
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: "1rem", fontSize: 12, color: "var(--muted)" }}>
           <span>Página {page} de {pages}</span>
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-            <button disabled={page <= 1} onClick={() => load(page - 1)} style={{ display: "flex", alignItems: "center", gap: 4, padding: "0.4rem 0.8rem", background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: page <= 1 ? "not-allowed" : "pointer", opacity: page <= 1 ? 0.5 : 1, color: "var(--muted2)" }}><ChevronLeft size={14} />Anterior</button>
+            <button disabled={page <= 1} onClick={() => load(page - 1)} className="g-btn g-btn-secondary g-btn-sm"><ChevronLeft size={14} />Anterior</button>
             <input
               type="number" min={1} max={pages}
               value={jumpInput !== "" ? jumpInput : page}
@@ -279,7 +276,7 @@ export default function AuditoriaPage() {
               title={`Ir a página (1–${pages})`}
               style={{ width: 52, textAlign: "center", border: "1px solid var(--border)", borderRadius: 8, padding: "0.35rem 0.5rem", fontSize: 12, fontFamily: "var(--mono)", background: "var(--surface)", color: "var(--text)", outline: "none" }}
             />
-            <button disabled={page >= pages} onClick={() => load(page + 1)} style={{ display: "flex", alignItems: "center", gap: 4, padding: "0.4rem 0.8rem", background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: page >= pages ? "not-allowed" : "pointer", opacity: page >= pages ? 0.5 : 1, color: "var(--muted2)" }}>Siguiente<ChevronRight size={14} /></button>
+            <button disabled={page >= pages} onClick={() => load(page + 1)} className="g-btn g-btn-secondary g-btn-sm">Siguiente<ChevronRight size={14} /></button>
           </div>
         </div>
       )}

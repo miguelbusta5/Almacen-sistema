@@ -332,12 +332,12 @@ html[data-theme="dark"] .skeleton::after {
 .g-nav-item:hover { background: var(--surface2); color: var(--text); }
 .g-nav-item.active {
   font-weight: 600;
-  border-left-color: var(--mod-color, var(--brand));
-  color: var(--mod-color, var(--brand));
-  background: color-mix(in srgb, var(--mod-color, var(--brand)) 10%, transparent);
+  border-left-color: var(--mod-color, var(--module-color, var(--brand)));
+  color: var(--mod-color, var(--module-color, var(--brand)));
+  background: color-mix(in srgb, var(--mod-color, var(--module-color, var(--brand))) 10%, transparent);
 }
 .g-nav-icon { display: flex; flex-shrink: 0; color: var(--faint); }
-.g-nav-item.active .g-nav-icon { color: var(--mod-color, var(--brand)); }
+.g-nav-item.active .g-nav-icon { color: var(--mod-color, var(--module-color, var(--brand))); }
 
 /* ── 8. ENCABEZADO DE MÓDULO ─────────────────────────────── */
 /* Nueva clase g- */
@@ -345,7 +345,7 @@ html[data-theme="dark"] .skeleton::after {
   padding: 22px 24px 20px;
   background: var(--surface);
   border: 1px solid var(--border);
-  border-left: 3px solid var(--mod-color, var(--brand));
+  border-left: 3px solid var(--mod-color, var(--module-color, var(--brand)));
   border-radius: var(--r-lg);
   box-shadow: var(--shadow-sm);
 }
@@ -354,7 +354,7 @@ html[data-theme="dark"] .skeleton::after {
   padding: 22px 24px 20px;
   background: var(--surface);
   border: 1px solid var(--border);
-  border-left: 3px solid var(--mod-color, var(--brand));
+  border-left: 3px solid var(--mod-color, var(--module-color, var(--brand)));
   border-radius: var(--r-lg);
   box-shadow: var(--shadow-sm);
   color: var(--text);
@@ -367,7 +367,7 @@ html[data-theme="dark"] .op-module-header {
 .g-module-kicker, .op-module-kicker, .cedi-kicker {
   font-size: 11px; font-weight: 700;
   letter-spacing: 0.09em; text-transform: uppercase;
-  color: var(--mod-color, var(--brand));
+  color: var(--mod-color, var(--module-color, var(--brand)));
   margin-bottom: 6px;
 }
 
@@ -442,7 +442,7 @@ html[data-theme="dark"] .cedi-panel {
   padding: 22px;
   background: var(--surface);
   border: 1px solid var(--border);
-  border-left: 3px solid var(--mod-color, var(--brand));
+  border-left: 3px solid var(--mod-color, var(--module-color, var(--brand)));
   border-radius: var(--r-lg);
   box-shadow: var(--shadow-sm);
 }
@@ -471,7 +471,7 @@ html[data-theme="dark"] .cedi-hero {
 .g-stat::before, .ds-stat::before, .op-kpi::before, .cedi-stat::before {
   content: ""; position: absolute;
   inset: 0 auto 0 0; width: 2px;
-  background: var(--stat-color, var(--mod-color, var(--brand)));
+  background: var(--stat-color, var(--mod-color, var(--module-color, var(--brand))));
   opacity: 0.65;
 }
 
@@ -489,7 +489,7 @@ html[data-theme="dark"] .cedi-stat {
 .g-stat-value, .ds-stat-value, .cedi-stat-value {
   font-size: 28px; font-weight: 800; line-height: 1;
   letter-spacing: -0.04em;
-  color: var(--stat-color, var(--mod-color, var(--text)));
+  color: var(--stat-color, var(--mod-color, var(--module-color, var(--text))));
   font-variant-numeric: tabular-nums;
 }
 .g-stat-value.lg, .ds-stat-value.lg { font-size: 38px; }
@@ -547,7 +547,7 @@ html[data-theme="dark"] .cedi-stat {
 .ds-table tbody tr:hover td,
 .cedi-table tbody tr:hover td,
 .cedi-table tr:hover td {
-  background: color-mix(in srgb, var(--mod-color, var(--brand)) 5%, var(--surface));
+  background: color-mix(in srgb, var(--mod-color, var(--module-color, var(--brand))) 5%, var(--surface));
 }
 
 .ds-row-actions, .g-row-actions {
@@ -738,7 +738,7 @@ html[data-theme="dark"] .dash-main :where(input, select, textarea):focus {
   border-color: var(--brand) !important; box-shadow: var(--ring) !important;
 }
 
-input, select, textarea { accent-color: var(--mod-color, var(--brand)); }
+input, select, textarea { accent-color: var(--mod-color, var(--module-color, var(--brand))); }
 
 /* ── 15. ALERTAS ────────────────────────────────────────── */
 .g-alert, .ds-alert {
@@ -820,22 +820,22 @@ html[data-theme="dark"] .glass {
 /* ── 20. OP COMPONENTS (heredados) ──────────────────────── */
 .op-record-card {
   border: 1px solid var(--border);
-  border-left: 3px solid var(--mod-color, var(--brand));
+  border-left: 3px solid var(--mod-color, var(--module-color, var(--brand)));
   background: var(--surface); border-radius: var(--r-md);
   box-shadow: var(--shadow-xs);
   transition: box-shadow 0.14s ease, border-color 0.14s ease, transform 0.14s ease;
 }
 .op-record-card:hover {
   box-shadow: var(--shadow-sm); transform: translateY(-1px);
-  border-color: color-mix(in srgb, var(--mod-color, var(--brand)) 30%, var(--border));
+  border-color: color-mix(in srgb, var(--mod-color, var(--module-color, var(--brand))) 30%, var(--border));
 }
 
 .op-status-band {
   display: flex; align-items: center; gap: 10px;
   min-height: 40px; padding: 9px 12px;
-  border: 1px solid color-mix(in srgb, var(--mod-color, var(--brand)) 28%, transparent);
+  border: 1px solid color-mix(in srgb, var(--mod-color, var(--module-color, var(--brand))) 28%, transparent);
   border-radius: var(--r);
-  background: color-mix(in srgb, var(--mod-color, var(--brand)) 8%, transparent);
+  background: color-mix(in srgb, var(--mod-color, var(--module-color, var(--brand))) 8%, transparent);
 }
 
 .op-command-surface {
@@ -893,7 +893,7 @@ html[data-theme="dark"] .cedi-badge-danger  { background: var(--error-tint);   c
 .dash-main table { font-variant-numeric: tabular-nums; }
 .dash-main :where(table thead tr) { box-shadow: inset 0 -1px 0 var(--border); }
 .dash-main :where(table tbody tr:hover) {
-  background: color-mix(in srgb, var(--mod-color, var(--brand)) 5%, var(--surface)) !important;
+  background: color-mix(in srgb, var(--mod-color, var(--module-color, var(--brand))) 5%, var(--surface)) !important;
 }
 
 /* ── 25. MOBILE ─────────────────────────────────────────── */
