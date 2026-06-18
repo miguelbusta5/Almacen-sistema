@@ -966,3 +966,411 @@ html[data-theme="dark"] .cedi-badge-danger  { background: var(--error-tint);   c
     border-radius: var(--r-lg) var(--r-lg) 0 0;
   }
 }
+
+/* ── 27. COLORIDO COMPLETO ENTERPRISE (2026-06-18) ───────────────────── */
+:root {
+  --canvas: #F4F6FB;
+  --bg: #F4F6FB;
+  --surface: #FFFFFF;
+  --surface2: #F8FAFF;
+  --surface3: #EEF2FF;
+  --surface-elevated: #FFFFFF;
+  --surface-command: rgba(255,255,255,0.92);
+  --surface-rail: #0B1220;
+  --border: rgba(15,23,42,0.08);
+  --border-strong: rgba(15,23,42,0.16);
+  --text: #111827;
+  --muted2: #334155;
+  --muted: #64748B;
+  --faint: #9CA3AF;
+  --brand: #7C3AED;
+  --brand-600: #6D28D9;
+  --brand-700: #5B21B6;
+  --brand-grad: linear-gradient(135deg,#5B21B6 0%,#7C3AED 54%,#A78BFA 100%);
+  --brand-tint: rgba(124,58,237,0.13);
+  --brand-ring: rgba(124,58,237,0.24);
+  --mod-inventario: #4F46E5;
+  --mod-inventario-tint: rgba(79,70,229,0.13);
+  --mod-tienda: #7C3AED;
+  --mod-tienda-tint: rgba(124,58,237,0.14);
+  --mod-transporte: #0891B2;
+  --mod-transporte-tint: rgba(8,145,178,0.14);
+  --mod-conteo: #059669;
+  --mod-conteo-tint: rgba(5,150,105,0.13);
+  --mod-preoperacional: #D97706;
+  --mod-preoperacional-tint: rgba(217,119,6,0.14);
+  --mod-integracion: #8B5CF6;
+  --mod-integracion-tint: rgba(139,92,246,0.14);
+  --mod-exportaciones: #E11D48;
+  --mod-exportaciones-tint: rgba(225,29,72,0.13);
+  --mod-indicadores: #2563EB;
+  --mod-indicadores-tint: rgba(37,99,235,0.13);
+  --mod-admin: #475569;
+  --mod-admin-tint: rgba(71,85,105,0.12);
+  --state-created: #7C3AED;
+  --state-picked: #0891B2;
+  --state-cedi: #16A34A;
+  --state-sent: #2563EB;
+  --state-rejected: #DC2626;
+  --state-alert: #D97706;
+  --shadow-xs: 0 1px 2px rgba(15,23,42,0.05);
+  --shadow-sm: 0 2px 8px rgba(15,23,42,0.07), 0 1px 2px rgba(15,23,42,0.05);
+  --shadow: 0 10px 28px rgba(15,23,42,0.09), 0 1px 2px rgba(15,23,42,0.05);
+  --shadow-md: 0 16px 40px rgba(15,23,42,0.12), 0 2px 6px rgba(15,23,42,0.06);
+  --shadow-lg: 0 24px 64px rgba(15,23,42,0.18), 0 4px 12px rgba(15,23,42,0.10);
+  --shadow-xl: 0 34px 90px rgba(15,23,42,0.24), 0 8px 24px rgba(15,23,42,0.12);
+}
+
+html[data-theme="dark"] {
+  --canvas: #07111F;
+  --bg: #07111F;
+  --surface: #0D1B2D;
+  --surface2: #10223A;
+  --surface3: #142B49;
+  --surface-elevated: #0F2137;
+  --surface-command: rgba(7,17,31,0.86);
+  --surface-rail: #050B14;
+  --overlay: rgba(2,6,23,0.72);
+  --border: rgba(148,163,184,0.14);
+  --border-strong: rgba(148,163,184,0.24);
+  --text: #F8FAFC;
+  --muted2: #CBD5E1;
+  --muted: #94A3B8;
+  --faint: #64748B;
+  --brand: #A78BFA;
+  --brand-600: #8B5CF6;
+  --brand-700: #7C3AED;
+  --brand-grad: linear-gradient(135deg,#6D28D9 0%,#8B5CF6 54%,#C4B5FD 100%);
+  --brand-tint: rgba(167,139,250,0.18);
+  --brand-ring: rgba(167,139,250,0.28);
+  --mod-inventario: #818CF8;
+  --mod-inventario-tint: rgba(129,140,248,0.17);
+  --mod-tienda: #A78BFA;
+  --mod-tienda-tint: rgba(167,139,250,0.18);
+  --mod-transporte: #22D3EE;
+  --mod-transporte-tint: rgba(34,211,238,0.17);
+  --mod-conteo: #34D399;
+  --mod-conteo-tint: rgba(52,211,153,0.16);
+  --mod-preoperacional: #FBBF24;
+  --mod-preoperacional-tint: rgba(251,191,36,0.17);
+  --mod-integracion: #C4B5FD;
+  --mod-integracion-tint: rgba(196,181,253,0.18);
+  --mod-exportaciones: #FB7185;
+  --mod-exportaciones-tint: rgba(251,113,133,0.16);
+  --mod-indicadores: #60A5FA;
+  --mod-indicadores-tint: rgba(96,165,250,0.16);
+  --mod-admin: #CBD5E1;
+  --mod-admin-tint: rgba(203,213,225,0.14);
+  --state-created: #A78BFA;
+  --state-picked: #22D3EE;
+  --state-cedi: #34D399;
+  --state-sent: #60A5FA;
+  --state-rejected: #FB7185;
+  --state-alert: #FBBF24;
+}
+
+body {
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--mod-color, var(--brand)) 5%, var(--canvas)) 0%, var(--canvas) 32%),
+    var(--canvas);
+}
+
+html[data-theme="dark"] body {
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--mod-color, var(--brand)) 12%, var(--canvas)) 0%, var(--canvas) 38%),
+    var(--canvas);
+}
+
+.g-sidebar {
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--brand) 16%, #07111F) 0%, #091423 44%, #07111F 100%);
+  color: #E5EDF7;
+  border-right: 1px solid rgba(148,163,184,0.16);
+  box-shadow: 12px 0 34px rgba(15,23,42,0.10);
+}
+.g-sidebar-brand,
+.g-sidebar-footer,
+.g-nav-group + .g-nav-group {
+  border-color: rgba(148,163,184,0.14);
+}
+.g-sidebar .g-nav-item {
+  min-height: 42px;
+  color: rgba(226,232,240,0.78);
+  border: 1px solid rgba(148,163,184,0.08);
+  border-left: 3px solid transparent;
+  background: rgba(255,255,255,0.035);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.035);
+}
+.g-sidebar .g-nav-item:hover {
+  color: #fff;
+  background: color-mix(in srgb, var(--mod-color, var(--module-color, var(--brand))) 18%, rgba(255,255,255,0.055));
+  border-color: color-mix(in srgb, var(--mod-color, var(--module-color, var(--brand))) 38%, rgba(255,255,255,0.08));
+  transform: translateX(2px);
+}
+.g-sidebar .g-nav-item.active {
+  color: #fff;
+  background:
+    linear-gradient(135deg,
+      color-mix(in srgb, var(--mod-color, var(--module-color, var(--brand))) 70%, rgba(255,255,255,0.08)),
+      color-mix(in srgb, var(--mod-color, var(--module-color, var(--brand))) 42%, rgba(15,23,42,0.18)));
+  border-color: color-mix(in srgb, var(--mod-color, var(--module-color, var(--brand))) 72%, transparent);
+  border-left-color: color-mix(in srgb, var(--mod-color, var(--module-color, var(--brand))) 100%, #fff);
+  box-shadow: 0 10px 24px color-mix(in srgb, var(--mod-color, var(--module-color, var(--brand))) 28%, transparent);
+}
+.g-sidebar .g-nav-icon {
+  color: currentColor;
+  width: 28px;
+  height: 28px;
+  border-radius: 9px;
+  display: grid;
+  place-items: center;
+  background: color-mix(in srgb, var(--mod-color, var(--module-color, var(--brand))) 22%, rgba(255,255,255,0.06));
+}
+
+.glass {
+  background: color-mix(in srgb, var(--surface-command) 88%, transparent);
+  border-bottom-color: var(--border);
+  box-shadow: 0 12px 30px rgba(15,23,42,0.08);
+}
+
+.g-module-header,
+.op-module-header,
+.g-hero,
+.cedi-hero {
+  overflow: hidden;
+  position: relative;
+  border: 1px solid color-mix(in srgb, var(--mod-color, var(--module-color, var(--brand))) 26%, var(--border));
+  border-left: 0;
+  background:
+    linear-gradient(135deg,
+      color-mix(in srgb, var(--mod-color, var(--module-color, var(--brand))) 18%, var(--surface)) 0%,
+      var(--surface) 44%,
+      color-mix(in srgb, var(--mod-color, var(--module-color, var(--brand))) 10%, var(--surface)) 100%);
+  box-shadow: var(--shadow);
+}
+.g-module-header::before,
+.op-module-header::before,
+.g-hero::before,
+.cedi-hero::before {
+  content: "";
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 6px;
+  background: var(--mod-gradient, var(--module-gradient, var(--brand-grad)));
+}
+.g-module-header::after,
+.op-module-header::after,
+.g-hero::after,
+.cedi-hero::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    linear-gradient(90deg, transparent 0%, color-mix(in srgb, var(--mod-color, var(--module-color, var(--brand))) 9%, transparent) 100%);
+  opacity: 0.75;
+}
+.g-module-header > *,
+.op-module-header > *,
+.g-hero > *,
+.cedi-hero > * {
+  position: relative;
+  z-index: 1;
+}
+.g-module-kicker,
+.op-module-kicker,
+.cedi-kicker {
+  color: var(--mod-color, var(--module-color, var(--brand)));
+}
+
+.ds-card,
+.ds-panel,
+.g-panel,
+.op-panel,
+.op-workbench,
+.op-table-wrap,
+.cedi-panel,
+.g-table-wrap {
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--mod-color, var(--module-color, var(--brand))) 4%, var(--surface)) 0%, var(--surface) 100%);
+  border-color: color-mix(in srgb, var(--mod-color, var(--module-color, var(--brand))) 16%, var(--border));
+  box-shadow: var(--shadow-sm);
+}
+
+.ds-stat,
+.g-stat,
+.op-kpi,
+.cedi-stat {
+  background:
+    linear-gradient(135deg,
+      color-mix(in srgb, var(--stat-color, var(--mod-color, var(--module-color, var(--brand)))) 17%, var(--surface)) 0%,
+      var(--surface) 72%);
+  border-color: color-mix(in srgb, var(--stat-color, var(--mod-color, var(--module-color, var(--brand)))) 28%, var(--border));
+  box-shadow: var(--shadow-sm);
+}
+.ds-stat:hover,
+.g-stat:hover,
+.op-kpi:hover,
+.cedi-stat:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
+}
+.ds-stat-value,
+.cedi-stat-value {
+  color: var(--stat-color, var(--mod-color, var(--module-color, var(--text)))) !important;
+}
+
+.ds-table,
+.g-table,
+.cedi-table {
+  color: var(--text);
+}
+.ds-table thead tr,
+.g-table thead tr,
+.cedi-table thead tr {
+  background:
+    linear-gradient(90deg,
+      color-mix(in srgb, var(--mod-color, var(--module-color, var(--brand))) 12%, var(--surface2)),
+      var(--surface2));
+}
+.ds-table tbody tr,
+.g-table tbody tr,
+.cedi-table tbody tr {
+  position: relative;
+  transition: background 0.14s ease, box-shadow 0.14s ease, transform 0.14s ease;
+}
+.ds-table tbody tr::before,
+.g-table tbody tr::before,
+.cedi-table tbody tr::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 7px;
+  bottom: 7px;
+  width: 3px;
+  border-radius: 999px;
+  background: var(--row-color, var(--mod-color, var(--module-color, transparent)));
+  opacity: 0.75;
+}
+.ds-table tbody tr:hover,
+.g-table tbody tr:hover,
+.cedi-table tbody tr:hover {
+  background: color-mix(in srgb, var(--row-color, var(--mod-color, var(--module-color, var(--brand)))) 9%, var(--surface)) !important;
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--row-color, var(--mod-color, var(--module-color, var(--brand)))) 18%, transparent);
+}
+.ds-table tbody tr.is-selected,
+.g-table tbody tr.is-selected,
+.cedi-table tbody tr.is-selected {
+  background: color-mix(in srgb, var(--row-color, var(--mod-color, var(--module-color, var(--brand)))) 13%, var(--surface)) !important;
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--row-color, var(--mod-color, var(--module-color, var(--brand)))) 32%, transparent);
+}
+
+.op-record-card {
+  background:
+    linear-gradient(135deg,
+      color-mix(in srgb, var(--mod-color, var(--module-color, var(--brand))) 13%, var(--surface)),
+      var(--surface));
+  border-color: color-mix(in srgb, var(--mod-color, var(--module-color, var(--brand))) 26%, var(--border));
+  box-shadow: var(--shadow-sm);
+}
+.op-record-card:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
+}
+.op-status-band,
+.status-tab {
+  border-color: color-mix(in srgb, var(--state-color, var(--mod-color, var(--module-color, var(--brand)))) 36%, transparent);
+  background:
+    linear-gradient(135deg,
+      color-mix(in srgb, var(--state-color, var(--mod-color, var(--module-color, var(--brand)))) 16%, var(--surface)),
+      var(--surface));
+  color: var(--state-color, var(--mod-color, var(--module-color, var(--brand))));
+}
+
+.ds-badge {
+  font-weight: 800;
+  letter-spacing: 0.01em;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.20);
+}
+.ds-badge-default,
+.g-badge-default,
+.cedi-badge {
+  background: color-mix(in srgb, var(--mod-color, var(--module-color, var(--brand))) 9%, var(--surface3));
+  color: var(--mod-color, var(--module-color, var(--muted2)));
+  border-color: color-mix(in srgb, var(--mod-color, var(--module-color, var(--brand))) 22%, var(--border));
+}
+.ds-badge-purple,
+.g-badge-brand {
+  background: rgba(124,58,237,0.14);
+  color: #7C3AED;
+  border-color: rgba(124,58,237,0.28);
+}
+.ds-badge-teal {
+  background: rgba(8,145,178,0.14);
+  color: #0891B2;
+  border-color: rgba(8,145,178,0.28);
+}
+
+.g-btn-primary,
+.ds-btn-primary {
+  background: var(--mod-gradient, var(--module-gradient, var(--brand-grad)));
+  box-shadow: 0 10px 24px color-mix(in srgb, var(--mod-color, var(--module-color, var(--brand))) 28%, transparent);
+}
+.g-btn-primary:hover:not(:disabled),
+.ds-btn-primary:hover:not(:disabled) {
+  background: var(--mod-gradient, var(--module-gradient, var(--brand-grad)));
+  filter: saturate(1.08) brightness(1.02);
+}
+
+.slide-panel {
+  background:
+    linear-gradient(180deg,
+      color-mix(in srgb, var(--panel-color, var(--mod-color, var(--brand))) 10%, var(--surface)) 0%,
+      var(--surface) 26%) !important;
+  border-left-color: color-mix(in srgb, var(--panel-color, var(--mod-color, var(--brand))) 34%, var(--border)) !important;
+}
+.slide-panel .detail-section,
+.detail-section {
+  border: 1px solid color-mix(in srgb, var(--section-color, var(--panel-color, var(--mod-color, var(--brand)))) 20%, var(--border));
+  border-left: 4px solid var(--section-color, var(--panel-color, var(--mod-color, var(--brand))));
+  border-radius: var(--r-md);
+  background:
+    linear-gradient(135deg,
+      color-mix(in srgb, var(--section-color, var(--panel-color, var(--mod-color, var(--brand)))) 10%, var(--surface)),
+      var(--surface));
+  padding: 14px;
+  box-shadow: var(--shadow-xs);
+}
+
+html[data-theme="dark"] .g-sidebar {
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--brand) 20%, #050B14) 0%, #07111F 55%, #050B14 100%);
+}
+html[data-theme="dark"] .g-module-header,
+html[data-theme="dark"] .op-module-header,
+html[data-theme="dark"] .g-hero,
+html[data-theme="dark"] .cedi-hero,
+html[data-theme="dark"] .ds-card,
+html[data-theme="dark"] .ds-panel,
+html[data-theme="dark"] .g-panel,
+html[data-theme="dark"] .op-panel,
+html[data-theme="dark"] .op-workbench,
+html[data-theme="dark"] .op-table-wrap,
+html[data-theme="dark"] .cedi-panel {
+  background:
+    linear-gradient(135deg,
+      color-mix(in srgb, var(--mod-color, var(--module-color, var(--brand))) 18%, var(--surface)) 0%,
+      var(--surface) 70%);
+  border-color: color-mix(in srgb, var(--mod-color, var(--module-color, var(--brand))) 24%, var(--border));
+}
+html[data-theme="dark"] .ds-badge-purple,
+html[data-theme="dark"] .g-badge-brand {
+  background: rgba(167,139,250,0.18);
+  color: #C4B5FD;
+  border-color: rgba(196,181,253,0.28);
+}
+html[data-theme="dark"] .ds-badge-teal {
+  background: rgba(34,211,238,0.16);
+  color: #67E8F9;
+  border-color: rgba(103,232,249,0.28);
+}

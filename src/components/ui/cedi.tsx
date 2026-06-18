@@ -41,13 +41,15 @@ export function CediStat({
   label,
   value,
   hint,
+  color,
 }: {
   label: string;
   value: ReactNode;
   hint?: string;
+  color?: string;
 }) {
   return (
-    <div className="cedi-stat">
+    <div className="cedi-stat" style={{ "--stat-color": color } as CSSProperties}>
       <div className="cedi-stat-label">{label}</div>
       <div className="cedi-stat-value">{value}</div>
       {hint && <div className="cedi-stat-hint">{hint}</div>}

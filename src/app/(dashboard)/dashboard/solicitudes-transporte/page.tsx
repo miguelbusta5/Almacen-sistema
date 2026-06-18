@@ -8,7 +8,7 @@ import {
 } from "lucide-react";
 import { Badge, EmptyState, SkeletonTable } from "@/components/ui";
 import { AutoRefreshIndicator } from "@/components/ui/AutoRefreshIndicator";
-import { getModuleColor } from "@/lib/moduleTheme";
+import { getModuleColor, getModuleCssVars } from "@/lib/moduleTheme";
 import { puedeEliminarSolicitudTransporte, puedeGestionarSolicitudTransporte } from "@/lib/solicitudesTransporte";
 import { useAutoRefresh } from "@/hooks/useAutoRefresh";
 
@@ -86,6 +86,22 @@ interface Catalogos {
 }
 
 const COLOR = getModuleColor("solicitudes-transporte");
+const ESTADO_COLOR: Record<Estado, string> = {
+  PENDIENTE: "#7C3AED",
+  REENVIADA: "#0891B2",
+  PROGRAMADA: "#2563EB",
+  EFECTUADA: "#16A34A",
+  RECHAZADA: "#DC2626",
+  CANCELADA: "#64748B",
+};
+const SEMAFORO_COLOR: Record<string, string> = {
+  VENCIDO: "#DC2626",
+  ALERTA: "#D97706",
+  NORMAL: "#16A34A",
+  EFECTUADO: "#16A34A",
+  CANCELADO: "#64748B",
+  SIN_FECHA: "#7C3AED",
+};
 const inputStyle: React.CSSProperties = {
   width: "100%",
   height: 36,
@@ -164,9 +180,9 @@ function SelectField({ value, onChange, options, required = true }: { value: str
   );
 }
 
-function DetailSection({ title, children }: { title: string; children: React.ReactNode }) {
+function DetailSection({ title, children, color = COLOR }: { title: string; children: React.ReactNode; color?: string }) {
   return (
-    <section style={{ borderTop: "1px solid var(--border)", paddingTop: 14, display: "grid", gap: 9 }}>
+    <section className="detail-section" style={{ display: "grid", gap: 9, "--section-color": color } as React.CSSProperties}>
       <strong style={{ color: "var(--text)", fontSize: 14 }}>{title}</strong>
       <div style={{ display: "grid", gap: 7, fontSize: 13, color: "var(--text)" }}>{children}</div>
     </section>
@@ -512,8 +528,8 @@ export default function SolicitudesTransportePage() {
   }
 
   return (
-    <div className="animate-fade-in" style={{ "--module-color": COLOR, display: "grid", gap: 18 } as React.CSSProperties}>
-      <div className="g-module-header" style={{ "--mod-color": "#0369A1" } as React.CSSProperties}>
+    <div className="animate-fade-in" style={{ ...getModuleCssVars("solicitudes-transporte"), display: "grid", gap: 18 } as React.CSSProperties}>
+      <div className="g-module-header">
         <div className="g-module-kicker">Control transporte</div>
         <h1 className="g-module-title">Solicitudes de Transporte</h1>
         <p className="g-module-desc">Bandeja interna para crear, programar, rechazar y cerrar servicios de transporte con prioridad y semáforo operativo.</p>
@@ -533,7 +549,7 @@ export default function SolicitudesTransportePage() {
             refreshing={autoRefresh.refreshing}
             onRefresh={autoRefresh.refreshNow}
           />
-          <button onClick={() => { setEditing(null); setShowForm(true); }} style={{ height: 40, border: "none", borderRadius: 10, background: COLOR, color: "#fff", padding: "0 16px", fontWeight: 800, display: "flex", alignItems: "center", gap: 8, cursor: "pointer" }}>
+          <button onClick={() => { setEditing(null); setShowForm(true); }} className="ds-btn ds-btn-primary" style={{ height: 40 }}>
             <Plus size={16} /> Nueva solicitud
           </button>
         </div>
@@ -541,12 +557,12 @@ export default function SolicitudesTransportePage() {
 
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(160px,1fr))", gap: 10 }}>
         {[
-          ["Pendientes", kpis.pendientes, <Clock key="i" size={16} />, COLOR],
-          ["Programadas", kpis.programadas, <Send key="i" size={16} />, "#2563EB"],
-          ["Rechazadas", kpis.rechazadas, <AlertTriangle key="i" size={16} />, "#B42318"],
-          ["Alertas", kpis.alerta, <AlertTriangle key="i" size={16} />, "#475569"],
+          ["Pendientes", kpis.pendientes, <Clock key="i" size={16} />, ESTADO_COLOR.PENDIENTE],
+          ["Programadas", kpis.programadas, <Send key="i" size={16} />, ESTADO_COLOR.PROGRAMADA],
+          ["Rechazadas", kpis.rechazadas, <AlertTriangle key="i" size={16} />, ESTADO_COLOR.RECHAZADA],
+          ["Alertas", kpis.alerta, <AlertTriangle key="i" size={16} />, SEMAFORO_COLOR.ALERTA],
         ].map(([label, value, icon, color]) => (
-          <div key={String(label)} style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 10, padding: 14 }}>
+          <div key={String(label)} className="ds-stat" style={{ "--stat-color": color as string } as React.CSSProperties}>
             <div style={{ display: "flex", justifyContent: "space-between", color: color as string }}>{icon}</div>
             <div style={{ fontSize: 24, fontWeight: 800, color: "var(--text)", marginTop: 8 }}>{value as number}</div>
             <div style={{ fontSize: 12, color: "var(--muted)" }}>{label as string}</div>
@@ -587,7 +603,7 @@ export default function SolicitudesTransportePage() {
           <EmptyState icon={<FileText size={28} />} title="Sin solicitudes" description="Crea la primera solicitud de transporte interna." />
         ) : (
           <div style={{ overflowX: "auto" }}>
-            <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 980 }}>
+            <table className="ds-table" style={{ width: "100%", borderCollapse: "collapse", minWidth: 980 }}>
               <thead>
                 <tr style={{ background: "var(--surface2)", textAlign: "left", color: "var(--muted)", fontSize: 11, textTransform: "uppercase", letterSpacing: ".06em" }}>
                   {["Solicitud", "Origen", "Destino", "Cajas", "Promesa", "Estado", "Semáforo", "Gestión"].map((h) => <th key={h} style={{ padding: "11px 12px" }}>{h}</th>)}
@@ -595,7 +611,15 @@ export default function SolicitudesTransportePage() {
               </thead>
               <tbody>
                 {rows.map((r) => (
-                  <tr key={r.id} onClick={() => setSelected(r)} style={{ borderTop: "1px solid var(--border)", cursor: "pointer" }}>
+                  <tr
+                    key={r.id}
+                    onClick={() => setSelected(r)}
+                    style={{
+                      borderTop: "1px solid var(--border)",
+                      cursor: "pointer",
+                      "--row-color": ESTADO_COLOR[r.estado],
+                    } as React.CSSProperties}
+                  >
                     <td style={{ padding: 12 }}>
                       <div style={{ fontWeight: 700, color: "var(--text)", fontSize: 13 }}>{r.numeroPedido || "Sin pedido"}</div>
                       <div style={{ color: "var(--muted)", fontSize: 12 }}>{r.solicitanteNombre} - {r.areaSolicitante}</div>
@@ -604,8 +628,8 @@ export default function SolicitudesTransportePage() {
                     <td style={{ padding: 12, color: "var(--text)", fontSize: 13 }}>{r.ciudadEntrega}</td>
                     <td style={{ padding: 12, color: "var(--text)", fontSize: 13 }}>{r.cantidadCajas ?? r.unidades ?? "N/A"}</td>
                     <td style={{ padding: 12, color: "var(--muted)", fontSize: 13 }}>{r.fechaPromesaEntrega ?? "Sin fecha"}</td>
-                    <td style={{ padding: 12 }}><Badge label={r.estado} variant={estadoVariant(r.estado)} dot={false} /></td>
-                    <td style={{ padding: 12 }}><Badge label={r.semaforo} variant={semaforoVariant(r.semaforo)} /></td>
+                    <td style={{ padding: 12 }}><Badge label={r.estado} variant={estadoVariant(r.estado)} dot={false} color={ESTADO_COLOR[r.estado]} /></td>
+                    <td style={{ padding: 12 }}><Badge label={r.semaforo} variant={semaforoVariant(r.semaforo)} color={SEMAFORO_COLOR[r.semaforo] ?? COLOR} /></td>
                     <td style={{ padding: 12, color: "var(--muted)", fontSize: 12 }}>{r.transportadora || r.gestionadoPorNombre || "Pendiente"}</td>
                   </tr>
                 ))}
@@ -617,7 +641,7 @@ export default function SolicitudesTransportePage() {
 
       {selected && (
         <div style={{ position: "fixed", inset: 0, zIndex: 8500, background: "rgba(0,0,0,.35)", display: "flex", justifyContent: "flex-end" }} onClick={() => setSelected(null)}>
-          <aside onClick={(e) => e.stopPropagation()} style={{ width: "min(640px,100vw)", height: "100%", background: "var(--surface)", borderLeft: "1px solid var(--border)", padding: 20, overflowY: "auto", display: "grid", gap: 16, alignContent: "start" }}>
+          <aside onClick={(e) => e.stopPropagation()} className="slide-panel" style={{ width: "min(640px,100vw)", height: "100%", background: "var(--surface)", borderLeft: "1px solid var(--border)", padding: 20, overflowY: "auto", display: "grid", gap: 16, alignContent: "start", "--panel-color": ESTADO_COLOR[selected.estado] } as React.CSSProperties}>
             <div style={{ display: "flex", justifyContent: "space-between", gap: 12 }}>
               <div>
                 <h2 style={{ margin: 0, fontSize: 18, color: "var(--text)" }}>{selected.numeroPedido || "Solicitud transporte"}</h2>
@@ -627,8 +651,8 @@ export default function SolicitudesTransportePage() {
             </div>
 
             <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-              <Badge label={selected.estado} variant={estadoVariant(selected.estado)} dot={false} />
-              <Badge label={selected.semaforo} variant={semaforoVariant(selected.semaforo)} />
+              <Badge label={selected.estado} variant={estadoVariant(selected.estado)} dot={false} color={ESTADO_COLOR[selected.estado]} />
+              <Badge label={selected.semaforo} variant={semaforoVariant(selected.semaforo)} color={SEMAFORO_COLOR[selected.semaforo] ?? COLOR} />
               {canEditSelected(selected) && (
                 <button onClick={() => { setEditing(selected); setShowForm(true); }} style={{ height: 30, border: "1px solid var(--border)", borderRadius: 8, background: "var(--surface2)", color: "var(--text)", display: "flex", alignItems: "center", gap: 6, padding: "0 10px", cursor: "pointer" }}>
                   <Pencil size={13} /> Editar
@@ -647,7 +671,7 @@ export default function SolicitudesTransportePage() {
               </div>
             )}
 
-            <DetailSection title="Información general">
+            <DetailSection title="Información general" color={COLOR}>
               <DetailLine label="Fecha solicitud" value={selected.fechaSolicitud} />
               <DetailLine label="Area" value={selected.areaSolicitante === "Otro" ? selected.areaOtro : selected.areaSolicitante} />
               <DetailLine label="Solicitante" value={selected.solicitanteNombre} />
@@ -655,7 +679,7 @@ export default function SolicitudesTransportePage() {
               <DetailLine label="Contacto" value={selected.solicitanteTelefono} />
             </DetailSection>
 
-            <DetailSection title="Pedido y mercancía">
+            <DetailSection title="Pedido y mercancía" color={ESTADO_COLOR.PENDIENTE}>
               <DetailLine label="Tipo venta" value={selected.tipoVenta} />
               <DetailLine label="Pedido / orden" value={selected.numeroPedido} />
               <DetailLine label="Factura integracion" value={selected.facturaIntegracion} />
@@ -665,7 +689,7 @@ export default function SolicitudesTransportePage() {
               <DetailLine label="Flete" value={selected.cobroFlete ? `Si - $${selected.valorFlete ?? 0}` : "No"} />
             </DetailSection>
 
-            <DetailSection title="PLUs">
+            <DetailSection title="PLUs" color={ESTADO_COLOR.REENVIADA}>
               {selected.plines?.length ? selected.plines.map((p, i) => (
                 <div key={p.id ?? i} style={{ display: "grid", gridTemplateColumns: "90px 1fr 70px", gap: 8, padding: "8px 10px", borderRadius: 8, background: "var(--surface2)" }}>
                   <strong>{p.plu}</strong>
@@ -675,7 +699,7 @@ export default function SolicitudesTransportePage() {
               )) : <span style={{ color: "var(--muted)" }}>Sin PLUs registrados</span>}
             </DetailSection>
 
-            <DetailSection title="Origen y destino">
+            <DetailSection title="Origen y destino" color={COLOR}>
               <DetailLine label="Ciudad origen" value={selected.ciudadOrigen} />
               <DetailLine label="Zona recogida" value={selected.zonaRecogida} />
               <DetailLine label="Direccion recogida" value={selected.direccionRecogida} />
@@ -685,7 +709,7 @@ export default function SolicitudesTransportePage() {
               <DetailLine label="Zona entrega" value={selected.zonaEntrega} />
             </DetailSection>
 
-            <DetailSection title="Programacion y servicio">
+            <DetailSection title="Programacion y servicio" color={SEMAFORO_COLOR.ALERTA}>
               <DetailLine label="Fecha promesa" value={selected.fechaPromesaEntrega} />
               <DetailLine label="Ventana" value={selected.ventanaEntrega} />
               <DetailLine label="Restriccion" value={selected.restriccionHoraria ? selected.descripcionRestriccion : "No"} />
@@ -701,7 +725,7 @@ export default function SolicitudesTransportePage() {
             )}
 
             {isGestor && (
-              <DetailSection title="Gestión transporte">
+              <DetailSection title="Gestión transporte" color={ESTADO_COLOR.PROGRAMADA}>
                 <Field label="Stella / estado gestion">
                   <select value={gestion.stellaEstado} onChange={(e) => setGestion((g) => ({ ...g, stellaEstado: e.target.value }))} style={inputStyle}>
                     {["PENDIENTE", "PROGRAMADO", "EFECTUADO", "CANCELADO"].map((e) => <option key={e}>{e}</option>)}

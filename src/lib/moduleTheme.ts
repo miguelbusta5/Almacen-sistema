@@ -10,20 +10,29 @@ export interface ModuleTheme {
   description: string;
   color: string;
   tint: string;
+  gradient: string;
+  darkColor: string;
+  darkTint: string;
 }
 
-const BLUE       = "#1D4ED8";
-const BLUE_TINT  = "rgba(29,78,216,0.10)";
-const SLATE      = "#334155";
-const SLATE_TINT = "rgba(51,65,85,0.10)";
-const VIOLET     = "#7C3AED";
-const VIOLET_TINT = "rgba(124,58,237,0.10)";
-const TEAL       = "#0E7490";
-const TEAL_TINT  = "rgba(14,116,144,0.10)";
-const SKY        = "#0369A1";
-const SKY_TINT   = "rgba(3,105,161,0.10)";
-const GREEN      = "#16A34A";
-const GREEN_TINT = "rgba(22,163,74,0.10)";
+function theme(
+  color: string,
+  tint: string,
+  gradient: string,
+  darkColor: string,
+  darkTint: string,
+) {
+  return { color, tint, gradient, darkColor, darkTint };
+}
+
+const BLUE = theme("#2563EB", "rgba(37,99,235,0.12)", "linear-gradient(135deg,#1D4ED8 0%,#2563EB 55%,#60A5FA 100%)", "#60A5FA", "rgba(96,165,250,0.16)");
+const SLATE = theme("#475569", "rgba(71,85,105,0.12)", "linear-gradient(135deg,#334155 0%,#64748B 100%)", "#CBD5E1", "rgba(203,213,225,0.14)");
+const VIOLET = theme("#7C3AED", "rgba(124,58,237,0.13)", "linear-gradient(135deg,#5B21B6 0%,#7C3AED 52%,#A78BFA 100%)", "#A78BFA", "rgba(167,139,250,0.18)");
+const TEAL = theme("#0891B2", "rgba(8,145,178,0.13)", "linear-gradient(135deg,#0E7490 0%,#0891B2 55%,#22D3EE 100%)", "#22D3EE", "rgba(34,211,238,0.17)");
+const EMERALD = theme("#059669", "rgba(5,150,105,0.13)", "linear-gradient(135deg,#047857 0%,#059669 55%,#34D399 100%)", "#34D399", "rgba(52,211,153,0.16)");
+const AMBER = theme("#D97706", "rgba(217,119,6,0.14)", "linear-gradient(135deg,#B45309 0%,#D97706 55%,#FBBF24 100%)", "#FBBF24", "rgba(251,191,36,0.17)");
+const ROSE = theme("#E11D48", "rgba(225,29,72,0.13)", "linear-gradient(135deg,#BE123C 0%,#E11D48 56%,#FB7185 100%)", "#FB7185", "rgba(251,113,133,0.16)");
+const INDIGO = theme("#4F46E5", "rgba(79,70,229,0.13)", "linear-gradient(135deg,#4338CA 0%,#4F46E5 55%,#818CF8 100%)", "#818CF8", "rgba(129,140,248,0.17)");
 
 export const MODULE_THEME: Record<ModuleThemeKey, ModuleTheme> = {
   home: {
@@ -31,128 +40,112 @@ export const MODULE_THEME: Record<ModuleThemeKey, ModuleTheme> = {
     label: PRODUCT.displayName,
     shortLabel: PRODUCT.shortName,
     description: PRODUCT.tagline,
-    color: BLUE,
-    tint: BLUE_TINT,
+    ...BLUE,
   },
   inventario: {
     key: "inventario",
     label: "Novedades Inventario",
     shortLabel: "Inventario",
     description: "PLUs, posiciones y novedades del CEDI",
-    color: VIOLET,
-    tint: VIOLET_TINT,
+    ...INDIGO,
   },
   transporte: {
     key: "transporte",
     label: "Guardados Transporte",
     shortLabel: "Transporte",
     description: "Custodia, guardados y pendientes operativos",
-    color: TEAL,
-    tint: TEAL_TINT,
+    ...TEAL,
   },
   preoperacional: {
     key: "preoperacional",
     label: "Preoperacional",
     shortLabel: "Preop",
     description: "Inspeccion diaria de vehiculos",
-    color: GREEN,
-    tint: GREEN_TINT,
+    ...AMBER,
   },
   conteo: {
     key: "conteo",
     label: "Conteo Ciclico",
     shortLabel: "Conteo",
     description: "Control activo de inventario",
-    color: VIOLET,
-    tint: VIOLET_TINT,
+    ...EMERALD,
   },
   "conteo-contar": {
     key: "conteo-contar",
     label: "Contar",
     shortLabel: "Contar",
     description: "Captura operativa de conteo",
-    color: VIOLET,
-    tint: VIOLET_TINT,
+    ...EMERALD,
   },
   tienda: {
     key: "tienda",
     label: "Facturas Contado",
     shortLabel: "Facturas",
     description: "Facturas contado desde tienda hacia el flujo CEDI",
-    color: SKY,
-    tint: SKY_TINT,
+    ...VIOLET,
   },
   "solicitudes-transporte": {
     key: "solicitudes-transporte",
     label: "Solicitudes Transporte",
     shortLabel: "Solicitudes",
     description: "Solicitudes internas que gestiona el lider de transporte",
-    color: TEAL,
-    tint: TEAL_TINT,
+    ...TEAL,
   },
   exportaciones: {
     key: "exportaciones",
     label: "Exportaciones",
     shortLabel: "Export",
     description: "Etiquetado operativo de cajas de exportacion",
-    color: "#DC2626",
-    tint: "rgba(220,38,38,0.10)",
+    ...ROSE,
   },
   "mis-tareas": {
     key: "mis-tareas",
     label: "Mis Tareas",
     shortLabel: "Tareas",
     description: "Pendientes del dia por usuario",
-    color: VIOLET,
-    tint: VIOLET_TINT,
+    ...INDIGO,
   },
   usuarios: {
     key: "usuarios",
     label: "Usuarios",
     shortLabel: "Usuarios",
     description: "Cuentas, roles y operacion base",
-    color: SLATE,
-    tint: SLATE_TINT,
+    ...SLATE,
   },
   auditoria: {
     key: "auditoria",
     label: "Auditoria",
     shortLabel: "Auditoria",
     description: "Historial de acciones del sistema",
-    color: SLATE,
-    tint: SLATE_TINT,
+    ...SLATE,
   },
   "centro-control": {
     key: "centro-control",
     label: "Centro de Control",
     shortLabel: "Control",
     description: "Inteligencia operacional y KPIs",
-    color: SLATE,
-    tint: SLATE_TINT,
+    ...BLUE,
   },
   indicadores: {
     key: "indicadores",
     label: "Indicadores CEDI",
     shortLabel: "Indicadores",
     description: "KPIs sincronizados desde Google Sheets",
-    color: BLUE,
-    tint: BLUE_TINT,
+    ...BLUE,
   },
   integracion: {
     key: "integracion",
     label: "Integracion Pedidos",
     shortLabel: "Integracion",
     description: "Picking OVDM/TSDM entre areas",
-    color: SKY,
-    tint: SKY_TINT,
+    ...VIOLET,
   },
   studio: {
     key: "studio",
     label: "Studio",
     shortLabel: "Studio",
     description: "Dashboards conectados a Google Sheets",
-    color: TEAL,
-    tint: TEAL_TINT,
+    ...TEAL,
   },
 };
 
@@ -163,6 +156,20 @@ export function getModuleTheme(key: ModuleThemeKey | string | null | undefined):
 
 export function getModuleColor(key: ModuleThemeKey | string | null | undefined): string {
   return getModuleTheme(key).color;
+}
+
+export function getModuleCssVars(key: ModuleThemeKey | string | null | undefined) {
+  const theme = getModuleTheme(key);
+  return {
+    "--mod-color": theme.color,
+    "--module-color": theme.color,
+    "--mod-tint": theme.tint,
+    "--module-tint": theme.tint,
+    "--mod-gradient": theme.gradient,
+    "--module-gradient": theme.gradient,
+    "--mod-dark-color": theme.darkColor,
+    "--mod-dark-tint": theme.darkTint,
+  };
 }
 
 export function getModuleIconBg(hexColor: string, opacity = 0.12): string {

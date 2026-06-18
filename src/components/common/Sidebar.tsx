@@ -25,7 +25,7 @@ import {
 import { useIsMobile } from "@/lib/useIsMobile";
 import Logo from "./Logo";
 import { canSeeModule, type ModuleKey } from "@/lib/modulePermissions";
-import { getModuleTheme } from "@/lib/moduleTheme";
+import { getModuleCssVars } from "@/lib/moduleTheme";
 import { PRODUCT } from "@/config/product";
 
 interface SidebarProps {
@@ -91,13 +91,12 @@ export default function Sidebar({ role }: SidebarProps) {
 
   const Item = ({ item, onNav }: { item: NavItem; onNav?: () => void }) => {
     const active = isActive(item.href);
-    const theme = getModuleTheme(item.moduleKey ?? "home");
     return (
       <Link
         href={item.href}
         onClick={onNav}
         className={`g-nav-item${active ? " active" : ""}`}
-        style={{ "--mod-color": theme.color } as React.CSSProperties}
+        style={getModuleCssVars(item.moduleKey ?? "home") as React.CSSProperties}
       >
         <span className="g-nav-icon">{item.icon}</span>
         <span style={{ flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>

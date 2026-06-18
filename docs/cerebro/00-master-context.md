@@ -74,18 +74,16 @@ git push origin master  # Deploy a producción (CI/CD automático)
 
 ## Identidad visual
 
-> Vigente desde 2026-06-16: **Claro Ejecutivo Azul/Gris**. Usar azul CEDI (`#2563EB`), blanco y grises frios. Rojo/ambar/verde solo para estados semanticos. No usar paletas multicolor por modulo.
+> Vigente desde 2026-06-18: **Colorido Completo Enterprise**. Usar color por modulo y color por estado con base clara/oscura premium. El azul ya no limita toda la interfaz.
 
 - **Marca:** Grupo Ambiente
 - **Nombre operativo UI:** Control Logistico CEDI
-- **Paleta:** Azules intensos — sin pasteles
-  - Muebles/Inventario: `#2563EB`
-  - Transporte: `#0E7490`
-  - Tienda / Facturas Contado: `#D97706`
-  - Integración de Pedidos: `#7C3AED`
-  - Verde/Rojo/Ámbar: solo para significado semántico (éxito/error/alerta)
+- **Dirección:** interfaz enterprise viva tipo Vercel/Linear/Supabase/Notion, con identidad operativa CEDI
 - **Tema modular:** `src/lib/moduleTheme.ts`
-- **Componentes visuales nuevos:** `src/components/ui/cedi.tsx`
+  - Cada módulo define `color`, `tint`, `gradient`, `darkColor`, `darkTint` y contraste
+  - El color se aplica a navegación, encabezados, KPIs, tabs, rails de tabla, drawers y acciones principales
+- **Estados operativos:** rechazado, pendiente, recogido, entregado, enviado, efectuado y bloqueado tienen color propio independiente del módulo
+- **Componentes visuales nuevos:** `src/components/ui/cedi.tsx`, `src/components/ui/pageShell.tsx`, `src/components/ui/DataTable.tsx`, `src/components/ui/SlidePanel.tsx`
 - **Indicadores externos:** Google Sheets se sincroniza a PostgreSQL; no se consulta desde el cliente.
 - **Logo:** `public/logo.png` — se invierte a blanco en modo oscuro
 - **Tipografía:** Variable CSS `--sans` (sistema) y `--mono` (código)

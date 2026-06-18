@@ -13,6 +13,7 @@ import { Badge, EmptyState } from "@/components/ui";
 import { AutoRefreshIndicator } from "@/components/ui/AutoRefreshIndicator";
 import { useAutoRefresh } from "@/hooks/useAutoRefresh";
 import Link from "next/link";
+import { getModuleCssVars } from "@/lib/moduleTheme";
 
 interface MisTareas {
   novedades: any[];
@@ -117,7 +118,7 @@ export default function MisTareasPage() {
   const saludo = hora < 12 ? "Buenos dias" : hora < 18 ? "Buenas tardes" : "Buenas noches";
 
   return (
-    <div className="animate-fade-in" style={{ maxWidth: 720 }}>
+    <div className="animate-fade-in" style={{ ...getModuleCssVars("mis-tareas"), maxWidth: 720 } as React.CSSProperties}>
       {/* ── Header ── */}
       <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 24 }}>
         <div>

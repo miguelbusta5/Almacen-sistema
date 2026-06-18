@@ -9,8 +9,9 @@ import { SlidePanel, DetailSection, DetailGrid } from "@/components/ui/SlidePane
 import { AutoRefreshIndicator } from "@/components/ui/AutoRefreshIndicator";
 import { useAutoRefresh } from "@/hooks/useAutoRefresh";
 import { useIsMobile } from "@/lib/useIsMobile";
+import { getModuleColor, getModuleCssVars } from "@/lib/moduleTheme";
 
-const COLOR = "var(--brand)";
+const COLOR = getModuleColor("integracion");
 const TIPO_DOC_OPTIONS = ["OVDM", "TSDM"] as const;
 const AREA_OPTIONS = ["MUEBLES", "GOURMET"] as const;
 
@@ -524,7 +525,7 @@ export default function IntegracionPage() {
   }
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 20, padding: isMobile ? "0 0 24px" : "0 0 32px" }}>
+    <div style={{ ...getModuleCssVars("integracion"), display: "flex", flexDirection: "column", gap: 20, padding: isMobile ? "0 0 24px" : "0 0 32px" } as React.CSSProperties}>
 
       {/* Header */}
       <div style={{ display: "flex", alignItems: isMobile ? "flex-start" : "center", justifyContent: "space-between", flexDirection: isMobile ? "column" : "row", gap: isMobile ? 12 : 0 }}>
@@ -669,6 +670,7 @@ export default function IntegracionPage() {
         onClose={() => setSelected(null)}
         title={selected ? `${selected.tipoDocumento} ${selected.numeroDocumento}` : ""}
         badge={selected ? <Badge variant={estadoVariant(selected.estado)} label={ESTADO_LABEL[selected.estado]} /> : undefined}
+        moduleColor={COLOR}
         primaryAction={
           selected && canCompleteArea2(selected) ? (
             <button onClick={() => { setCompletarItem(selected); setSelected(null); }}

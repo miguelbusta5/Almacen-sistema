@@ -11,7 +11,7 @@ import { AutoRefreshIndicator } from "@/components/ui/AutoRefreshIndicator";
 import { SlidePanel, DetailSection, DetailGrid } from "@/components/ui/SlidePanel";
 import { useIsMobile } from "@/lib/useIsMobile";
 import type { ResultadoInspeccion } from "@/lib/preoperacional";
-import { getModuleColor } from "@/lib/moduleTheme";
+import { getModuleColor, getModuleCssVars } from "@/lib/moduleTheme";
 import { useAutoRefresh } from "@/hooks/useAutoRefresh";
 
 // ─── tipos ──────────────────────────────────────────────────────────────────
@@ -249,7 +249,7 @@ function ConductorView() {
 
   if (!data?.transportista || !data.vehiculo) {
     return (
-      <div className="animate-fade-in" style={{ maxWidth: 720 }}>
+      <div className="animate-fade-in" style={{ ...getModuleCssVars("preoperacional"), maxWidth: 720 } as React.CSSProperties}>
         <EmptyState
           icon={<Truck size={24} />}
           title="Sin vehículo asignado"
@@ -260,7 +260,7 @@ function ConductorView() {
   }
 
   return (
-    <div className="animate-fade-in" style={{ maxWidth: 980 }}>
+    <div className="animate-fade-in" style={{ ...getModuleCssVars("preoperacional"), maxWidth: 980 } as React.CSSProperties}>
       {/* Header */}
       <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12, marginBottom: 24, flexWrap: "wrap" }}>
         <div>
@@ -520,7 +520,7 @@ function SupervisorView({ role }: { role: string }) {
     e === "APROBADA" ? "success" : e === "BLOQUEADA" ? "error" : "warning";
 
   return (
-    <div className="animate-fade-in">
+    <div className="animate-fade-in" style={getModuleCssVars("preoperacional") as React.CSSProperties}>
       {/* Header */}
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 12, marginBottom: "1.5rem" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
@@ -655,7 +655,8 @@ function SupervisorView({ role }: { role: string }) {
         open={!!selected}
         onClose={() => { setSelected(null); setDetail(null); setDeletingId(null); }}
         title={selected ? `${selected.conductor?.nombre ?? "Inspector"} — ${selected.fecha}` : ""}
-        badge={selected ? <Badge label={ESTADO_LABEL[selected.estado]} variant={estadoBadge(selected.estado)} dot={false} /> : undefined}
+        badge={selected ? <Badge label={ESTADO_LABEL[selected.estado]} variant={estadoBadge(selected.estado)} dot={false} color={ESTADO_COLOR[selected.estado]} /> : undefined}
+        moduleColor={selected ? ESTADO_COLOR[selected.estado] : PREOP_COLOR}
       >
         {selected && (
           <>

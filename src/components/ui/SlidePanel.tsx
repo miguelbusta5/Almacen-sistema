@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, type CSSProperties } from "react";
 import { X } from "lucide-react";
 import type { IntelInsight } from "@/lib/inteligencia";
 
@@ -89,12 +89,13 @@ interface SlidePanelProps {
   children: React.ReactNode;
   width?: number;
   insights?: IntelInsight[];
+  moduleColor?: string;
 }
 
 export function SlidePanel({
   open, onClose, title, subtitle, badge,
   primaryAction, secondaryActions,
-  children, width = 420, insights = [],
+  children, width = 420, insights = [], moduleColor,
 }: SlidePanelProps) {
   const panelRef = useRef<HTMLDivElement>(null);
 
@@ -132,13 +133,14 @@ export function SlidePanel({
           width, height: "100vh",
           background: "var(--surface)",
           borderLeft: "1px solid var(--border)",
+          "--panel-color": moduleColor,
           boxShadow: open ? "var(--shadow-xl)" : "none",
           zIndex: 500,
           display: "flex", flexDirection: "column",
           transform: open ? "translateX(0)" : `translateX(${width + 20}px)`,
           transition: "transform .28s cubic-bezier(.16,1,.3,1), box-shadow .28s ease",
           willChange: "transform",
-        }}
+        } as CSSProperties}
       >
         {/* ── Header del panel ── */}
         <div style={{
@@ -227,9 +229,17 @@ export function SlidePanel({
 }
 
 // ── DetailSection: sección del panel con título ───────────
-export function DetailSection({ title, children }: { title: string; children: React.ReactNode }) {
+export function DetailSection({
+  title,
+  children,
+  color,
+}: {
+  title: string;
+  children: React.ReactNode;
+  color?: string;
+}) {
   return (
-    <div style={{ marginBottom: 20 }}>
+    <div className="detail-section" style={{ marginBottom: 14, "--section-color": color } as CSSProperties}>
       <div style={{ fontSize: 11, fontWeight: 600, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 10 }}>
         {title}
       </div>

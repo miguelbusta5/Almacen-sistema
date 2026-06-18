@@ -1,5 +1,28 @@
 # Decisiones de Arquitectura y Producto
 
+## 2026-06-18 - Colorido Completo Enterprise para Control Logistico CEDI
+
+**Decision:**
+- La direccion visual vigente pasa a **Colorido Completo Enterprise** en claro y oscuro.
+- Se abandona la restriccion **Claro Ejecutivo Azul/Gris**: el azul ya no limita toda la interfaz.
+- `src/lib/moduleTheme.ts` vuelve a ser la fuente de verdad para color por modulo, incluyendo `color`, `tint`, `gradient`, `darkColor`, `darkTint` y contraste.
+- Los estados operativos recuperan color propio independiente del modulo: creado, pendiente, rechazado, recogido, entregado, enviado, efectuado y bloqueado.
+- Los componentes compartidos (`PageShell`, `DataTable`, `SlidePanel`, `Badge`, `Stat`, `CediStat`) aceptan variables/tokens para aplicar color sin crear estilos inline nuevos por pantalla.
+
+**Contexto:**
+- El usuario reporto que la version azul/gris dejo la aplicacion plana y sin la energia visual que tenian pantallas como Facturas Contado.
+- Se aprobaron referencias visuales claras y oscuras con navegacion viva, KPIs coloreados, tabs de estado, rails en tabla y drawers con secciones por color.
+
+**Consecuencias:**
+- Se reorienta la Fase 3 visual hacia las pantallas pendientes: Solicitudes Transporte, Preoperacional, Integracion, Conteo/Contar, Centro de Control y Mis Tareas.
+- Facturas Contado queda reforzada como pantalla patron de detalle vivo: KPIs coloreados, tabs por estado, tabla con rail y drawer con secciones coloreadas.
+- No hay cambios de base de datos, APIs, permisos ni reglas de negocio.
+- Logistica, rutas, GPS y Mi Ruta siguen suspendidos.
+
+**Archivos afectados:** `src/app/globals.css`, `src/lib/moduleTheme.ts`, `src/components/ui/*`, `src/components/common/Sidebar.tsx`, pantallas Fase 3 y `docs/cerebro/*`.
+
+---
+
 ## 2026-06-18 - Rediseño premium Vercel/Linear (Design System v6) — Fase 1
 
 **Decision:**

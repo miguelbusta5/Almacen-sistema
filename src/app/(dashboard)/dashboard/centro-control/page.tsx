@@ -14,7 +14,7 @@ import { useIsMobile } from "@/lib/useIsMobile";
 import { calcAlmacenaje } from "@/lib/almacenaje";
 import { scoreGuardado, urgencia } from "@/lib/transporte";
 import { horasDesde } from "@/lib/tienda";
-import { getModuleColor } from "@/lib/moduleTheme";
+import { getModuleColor, getModuleCssVars } from "@/lib/moduleTheme";
 import type { DespachoTienda } from "@/lib/tienda";
 import type { Novedad } from "@/lib/muebles";
 import type { Guardado } from "@/lib/transporte";
@@ -352,7 +352,7 @@ export default function CentroControlPage() {
   // ── Loading skeleton ──────────────────────────────────────
   if (loading) {
     return (
-      <div className="animate-fade-in">
+      <div className="animate-fade-in" style={getModuleCssVars("centro-control") as React.CSSProperties}>
         <div style={{ marginBottom: 28 }}>
           <div className="skeleton" style={{ height: 28, width: 320, borderRadius: 6, marginBottom: 8 }} />
           <div className="skeleton" style={{ height: 14, width: 200, borderRadius: 4 }} />
@@ -374,7 +374,7 @@ export default function CentroControlPage() {
   const hasExcepctions = alertas.totalCritical > 0 || alertas.totalWarning > 0;
 
   return (
-    <div className="animate-fade-in">
+    <div className="animate-fade-in" style={getModuleCssVars("centro-control") as React.CSSProperties}>
       {/* ── Header ── */}
       <div style={{ marginBottom: 24 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 6 }}>

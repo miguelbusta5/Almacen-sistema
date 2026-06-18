@@ -6,6 +6,7 @@ import {
   ClipboardList, CheckCircle2, RotateCcw, X, ChevronDown, ChevronUp, Search,
 } from "lucide-react";
 import { LineaConteo, OperarioCiclo, CicloConteo, LINEA_ESTADO_COLOR, COLOR_CONTEO, fmtNum } from "@/lib/conteo";
+import { getModuleCssVars } from "@/lib/moduleTheme";
 
 const inp: React.CSSProperties = {
   border: "1px solid var(--border)", borderRadius: 10, padding: "0.7rem 0.9rem",
@@ -214,7 +215,7 @@ export default function ContarPage() {
   // Pantalla de selección de operario
   if (!operario) {
     return (
-      <div className="animate-fade-in" style={{ maxWidth: 480, margin: "0 auto" }}>
+      <div className="animate-fade-in" style={{ ...getModuleCssVars("conteo-contar"), maxWidth: 480, margin: "0 auto" } as React.CSSProperties}>
         <div style={{ textAlign: "center", marginBottom: "2rem" }}>
           <div style={{ width: 56, height: 56, borderRadius: 14, background: COLOR_CONTEO + "15", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 1rem" }}>
             <ClipboardList size={28} color={COLOR_CONTEO} />
@@ -240,7 +241,7 @@ export default function ContarPage() {
   }
 
   return (
-    <div className="animate-fade-in">
+    <div className="animate-fade-in" style={getModuleCssVars("conteo-contar") as React.CSSProperties}>
       {/* Header */}
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 10, marginBottom: "1rem" }}>
         <div>

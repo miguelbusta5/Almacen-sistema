@@ -10,7 +10,7 @@
 
 - [x] **Fase 1** — Fundación: paleta gris neutra, sombras suaves, componentes reutilizables (`PageShell`, `Modal`/`ConfirmModal`, `DataTable`, `form`), `CediPage`→alias, charts sin hex muertos. (2026-06-18)
 - [x] **Fase 2** — Studio premium, Home (fix acentos `--module-color`), Auditoría, Usuarios, Tienda, Muebles, Exportaciones migradas; `inventario` se mantiene mobile-first (bottom-sheet) con fixes seguros. Modales CRUD ad-hoc → `Modal`/`ConfirmModal` compartido. (2026-06-18)
-- [ ] **Fase 3** — Resto de páginas (`preoperacional`, `integracion`, `conteo/contar`, `solicitudes-transporte`, `centro-control`, `mis-tareas`) + barrido responsive. (transporte/conteo/indicadores ya estaban on-system.)
+- [x] **Fase 3** — Reorientada a Colorido Completo Enterprise: `preoperacional`, `integracion`, `conteo/contar`, `solicitudes-transporte`, `centro-control`, `mis-tareas`, rails de estado, superficies por módulo y barrido responsive base. (2026-06-18)
 - [ ] Backlog Studio (no incluido en restyle): autosave con debounce 2s, preview de datos al conectar Sheets, gráficas línea/pastel, validación de fórmulas, filtros por parámetros.
 
 ### Módulo Studio — Fase 2
@@ -48,9 +48,9 @@
 - [x] Adaptar Indicadores CEDI a estructura real del Sheet (Base general + Rotacion PLU) — 2026-06-17
 - [x] Indicadores CEDI con graficas ejecutivas: BarGroupedChart, LineTrendChart, DonutChart, HBarChart via `src/components/ui/charts.tsx` — 2026-06-17
 - [x] Fase 2 UI: CediPage aplicado a Transporte (Guardados) y Conteo — Inventario excluido por diseno fullscreen movil intencional — 2026-06-17
-- [ ] QA visual con sesion real de la capa CEDI Harmony en desktop, tablet y movil
+- [ ] QA visual con sesion real de Colorido Completo Enterprise en claro/oscuro, desktop, tablet y movil
 - [ ] Revisar y corregir mojibake visible en Cerebro y pantallas legacy
-- [ ] QA visual desktop/mobile con sesion real para el rediseño Claro Ejecutivo Azul/Gris
+- [ ] QA visual con sesion real por rol para Dashboard, Facturas Contado, Solicitudes Transporte, Exportaciones, Indicadores, Preoperacional, Integracion, Conteo/Contar, Centro de Control y Mis Tareas
 - [ ] Extender datos en vivo a pantallas secundarias que aun usan carga manual si la operacion lo requiere
 - [ ] QA visual desktop/mobile con sesion real por rol de Login, Dashboard, Usuarios, Tienda, Conteo y Preoperacional
 - [ ] Fase plataforma 2: extender componentes `op-*` a Tienda, Transporte, Inventario, Conteo, Preoperacional, Integracion, Auditoria y Mis Tareas con QA visual por rol
@@ -69,6 +69,7 @@
 
 ## Completadas
 
+- [x] Redirección visual vigente: abandonar azul/gris como restricción y adoptar Colorido Completo Enterprise module-aware/state-aware - 2026-06-18
 - [x] Implementar modulo Integracion de Pedidos (OVDM/TSDM) - 2026-06-09
 - [x] Anadir roles OPERACIONES_MUEBLES y OPERACIONES_GOURMET - 2026-06-09
 - [x] Exponer nuevos roles en la UI de gestion de usuarios - 2026-06-10

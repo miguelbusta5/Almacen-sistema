@@ -1,5 +1,5 @@
 "use client";
-import { useMemo, useState, type ReactNode } from "react";
+import { useMemo, useState, type CSSProperties, type ReactNode } from "react";
 import { ChevronDown, ChevronUp } from "lucide-react";
 import { EmptyState, SkeletonRow } from "./index";
 
@@ -25,6 +25,8 @@ export interface DataTableProps<T> {
   getRowKey: (row: T, index: number) => string;
   loading?: boolean;
   onRowClick?: (row: T) => void;
+  getRowColor?: (row: T) => string | undefined;
+  isRowSelected?: (row: T) => boolean;
   empty?: { icon?: ReactNode; title: string; description?: string };
 }
 
@@ -34,6 +36,8 @@ export function DataTable<T>({
   getRowKey,
   loading,
   onRowClick,
+  getRowColor,
+  isRowSelected,
   empty,
 }: DataTableProps<T>) {
   const [sort, setSort] = useState<{ key: string; dir: "asc" | "desc" } | null>(null);
@@ -98,7 +102,11 @@ export function DataTable<T>({
               <tr
                 key={getRowKey(row, i)}
                 onClick={onRowClick ? () => onRowClick(row) : undefined}
-                style={{ cursor: onRowClick ? "pointer" : "default" }}
+                className={isRowSelected?.(row) ? "is-selected" : undefined}
+                style={{
+                  cursor: onRowClick ? "pointer" : "default",
+                  "--row-color": getRowColor?.(row),
+                } as CSSProperties}
               >
                 {columns.map((c) => (
                   <td key={c.key} style={{ textAlign: c.align }}>

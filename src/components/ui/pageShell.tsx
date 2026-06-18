@@ -1,5 +1,5 @@
 import type { CSSProperties, ReactNode } from "react";
-import { getModuleColor, type ModuleThemeKey } from "@/lib/moduleTheme";
+import { getModuleCssVars, type ModuleThemeKey } from "@/lib/moduleTheme";
 
 // ═══════════════════════════════════════════════════════════
 // PAGE SHELL — encabezado de página module-aware (Vercel/Linear)
@@ -27,11 +27,15 @@ export function PageShell({
   actions,
   children,
 }: PageShellProps) {
-  const color = moduleColor ?? (moduleKey ? getModuleColor(moduleKey) : undefined);
+  const vars = moduleKey ? getModuleCssVars(moduleKey) : undefined;
+  const style = moduleColor
+    ? ({ ...(vars ?? {}), "--mod-color": moduleColor, "--module-color": moduleColor } as CSSProperties)
+    : (vars as CSSProperties | undefined);
+
   return (
     <div
       className="cedi-page animate-fade-in"
-      style={color ? ({ "--mod-color": color } as CSSProperties) : undefined}
+      style={style}
     >
       <section className="cedi-hero">
         <div>

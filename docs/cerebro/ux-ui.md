@@ -4,57 +4,60 @@
 
 ---
 
-## Direccion vigente 2026-06-16: Claro Ejecutivo Azul/Gris
+## Direccion vigente 2026-06-18: Colorido Completo Enterprise
 
-- La interfaz adopta una identidad **claro ejecutivo**: blanco, grises frios y azul CEDI como acento principal.
-- Se abandona la direccion visual **Operativo Premium** multicolor porque genero una experiencia demasiado cargada y aun generica.
-- La app debe sentirse como herramienta interna profesional de Control Logistico CEDI: clara, rapida, densa y escalable.
-- Los colores por modulo dejan de ser protagonistas. El azul identifica accion y navegacion; rojo, ambar y verde quedan solo para significado semantico.
+- La interfaz adopta una identidad **Colorido Completo Enterprise**: base premium clara/oscura, modulos con color propio y estados operativos con color semantico real.
+- Se abandona la restriccion **Claro Ejecutivo Azul/Gris**. El azul sigue siendo importante, pero ya no limita toda la interfaz.
+- La app debe sentirse cercana a una herramienta enterprise tipo Vercel/Linear/Supabase/Notion, pero con identidad CEDI: viva, densa, funcional y escalable.
+- El color debe tener funcion: modulo, estado, prioridad, foco o accion. No usar decoracion gratuita.
 - Logistica, rutas, GPS y Mi Ruta siguen suspendidos indefinidamente.
+
+## Referencias aprobadas
+
+- Claro: `C:\Users\USUARIO\.codex\generated_images\019e979a-7c0c-74d3-8494-63a1cbf080a6\ig_0d5909cbba99bf9e016a33ea9eb9cc81919bbc4dc1ac9d191d.png`
+- Oscuro: `C:\Users\USUARIO\.codex\generated_images\019e979a-7c0c-74d3-8494-63a1cbf080a6\ig_0d5909cbba99bf9e016a33eb9b00488191af1ea9c41d3efa52.png`
 
 ## Principios visuales
 
-- **Paleta contenida:** azul, blanco y grises. No usar acentos naranja, violeta, verde o cian para diferenciar modulos.
-- **Jerarquia operativa:** encabezado de modulo, filtros, KPIs, tabla/lista y acciones deben leerse rapido.
-- **Profundidad sobria:** sombras bajas, bordes suaves y hover/press sutil en botones.
-- **Iconografia consistente:** Lucide con tamano y trazo uniformes; iconos dentro de botones o contenedores simples.
-- **Datos en vivo:** las bandejas deben actualizar datos en segundo plano sin recargar toda la pagina ni perder formularios.
-- **Mobile funcional:** en celular se prioriza captura, lectura compacta y acciones claras.
+- **Modulo-aware:** cada modulo define `color`, `tint`, `gradient`, `darkColor`, `darkTint` y contraste desde `src/lib/moduleTheme.ts`.
+- **State-aware:** los estados operativos no dependen del modulo; rechazado, pendiente, recogido, entregado, enviado, efectuado y bloqueado tienen senales propias.
+- **Claro y oscuro nativos:** el modo oscuro usa superficies navy/graphite y colores luminosos; no es una inversion automatica del modo claro.
+- **Jerarquia operativa:** encabezado de modulo, KPIs, tabs, filtros, tabla/lista, detalle y acciones deben leerse rapido.
+- **Profundidad enterprise:** sombras, bordes, rails de estado y hover tintado deben dar vida sin perder densidad.
+- **Mobile funcional:** en celular se prioriza captura, lectura compacta y acciones principales visibles.
 
 ## Tokens y clases vigentes
 
-Definidos en `src/app/globals.css`:
+Definidos principalmente en `src/app/globals.css` y `src/lib/moduleTheme.ts`:
 
 ```css
---bg
---surface
---surface2
---surface3
---brand
---brand-tint
---border
---text
---muted
---success
---warning
---error
+--mod-color
+--module-color
+--mod-tint
+--module-tint
+--mod-gradient
+--module-gradient
+--state-success
+--state-warning
+--state-danger
+--state-info
 ```
 
 Clases de plataforma:
 
 ```css
-.op-shell
-.op-module-header
-.op-workbench
-.op-panel
-.op-record-card
-.op-status-band
-.op-table-wrap
-.op-action
+.module-surface
+.module-gradient
+.state-rail
+.colored-kpi
+.detail-section
+.status-tab
 .ds-btn
 .ds-card
 .ds-panel
 .ds-stat
+.ds-table
+.slide-panel
 ```
 
 ## Datos en vivo
@@ -69,52 +72,29 @@ Clases de plataforma:
 
 - No reactivar Logistica, rutas, GPS ni Mi Ruta.
 - No convertir el dashboard en landing page.
-- No introducir paletas multicolor por modulo.
 - No sacrificar velocidad de captura por decoracion.
 - Mantener permisos con doble validacion: server + UI.
+- Evitar nuevos estilos inline para color; preferir `moduleTheme`, `getModuleCssVars`, `Badge`, `Stat`, `DataTable` y `SlidePanel`.
 
 ## QA visual
 
-Revisar en desktop, tablet y movil:
+Revisar en claro y oscuro, desktop, tablet y movil:
 
-- Login
 - Dashboard
-- Exportaciones
-- Solicitudes Transporte
-- Usuarios
 - Facturas Contado
-- Inventario
-- Conteo / Contar
-- Guardados
+- Solicitudes Transporte
+- Exportaciones
+- Indicadores
 - Preoperacional
 - Integracion
-- Auditoria
+- Conteo / Contar
+- Centro de Control
 - Mis Tareas
+- Login
 
-## Revision predeploy Lovable/Base44 - 2026-06-16
+## Historial visual resumido
 
-- Lovable se uso como referencia visual, no como reemplazo del codigo Next.js.
-- Proyecto de referencia: https://lovable.dev/projects/4d6b97cb-f3a2-4767-8980-571366817628
-- La comparacion se enfoca en Login, Dashboard, Solicitudes Transporte, Exportaciones, Usuarios y Preoperacional.
-- Base44 no expuso herramienta callable en esta sesion; se documenta como checklist comparativo: navegacion, densidad, jerarquia, estados, formularios, responsive y operacion por rol.
-- Antes de deploy se pulieron rastros multicolor restantes en Integracion, Mis Tareas, Centro de Control y tokens globales.
-- Integracion, Mis Tareas y Centro de Control ahora usan indicador consistente de datos en vivo.
-
-## Capa Harmony - 2026-06-16
-
-- Se agrega una capa visual **CEDI Harmony** para resolver la falta de armonia reportada en comite.
-- La aplicacion debe sentirse satisfactoria de mirar: fondo claro con textura sutil tipo plano operativo, superficies blancas profundas y azul como unico acento protagonista.
-- Los estados dejan de colorear superficies completas. Verde y ambar desaparecen como colores de sistema; quedan reemplazados por azul/gris.
-- Rojo queda reservado para errores, rechazos o bloqueos reales, siempre en tintes suaves salvo confirmaciones destructivas.
-- Las constantes antiguas de Inventario, Conteo, Tienda y Transporte se alinean a azul/gris para evitar que modulos secundarios vuelvan a verse multicolor.
-- Notificaciones, estados OK, finalizados y activos usan azul o gris, no verde.
-- Base44 no esta configurado en el repo (`base44/config.jsonc` no existe); se usa solo como referencia conceptual/checklist, no como destino de deploy.
-
-## CEDI Clean Platform - 2026-06-17
-
-- La nueva evolucion visual debe consolidar, no superponer: los componentes nuevos viven en `src/components/ui/cedi.tsx`.
-- Las pantallas nuevas deben usar `CediPage`, `CediPanel`, `CediStat`, `CediBadge` y tablas `.cedi-table` antes de crear estilos inline.
-- La base visual se mantiene blanco/gris/azul con sombras sobrias, botones con microinteraccion y layout mobile-first.
-- El primer modulo creado sobre esta base es **Indicadores CEDI**.
-- En mobile, las tablas deben transformarse en tarjetas con `data-label` para conservar lectura tipo iOS/Android.
-- Queda pendiente migrar pantallas legacy a estos componentes por fases, sin romper flujos operativos.
+- 2026-06-11: identidad modular inicial y Control Logistico CEDI.
+- 2026-06-16: Operativo Premium, luego Claro Ejecutivo Azul/Gris y CEDI Harmony.
+- 2026-06-17: CEDI Clean Platform para componentes reutilizables.
+- 2026-06-18: se adopta **Colorido Completo Enterprise** como direccion vigente y se abandona azul/gris como restriccion.

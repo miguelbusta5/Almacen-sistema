@@ -19,7 +19,7 @@ import { SlidePanel, IntelBanner, DetailSection, DetailGrid, MiniHistory } from 
 import { insightsTienda, insightsPorDespacho } from "@/lib/inteligencia";
 import { useIsMobile } from "@/lib/useIsMobile";
 import { useAutoRefresh } from "@/hooks/useAutoRefresh";
-import { getModuleColor } from "@/lib/moduleTheme";
+import { getModuleColor, getModuleCssVars } from "@/lib/moduleTheme";
 
 type ProductoMaestro = {
   plu: string;
@@ -195,9 +195,9 @@ export default function TiendaPage() {
   }));
 
   return (
-    <div className="animate-fade-in">
+    <div className="animate-fade-in" style={getModuleCssVars("tienda") as React.CSSProperties}>
       {/* ── Header ── */}
-      <div className="g-module-header g-page-head" style={{ "--mod-color": COLOR_TIENDA } as React.CSSProperties}>
+      <div className="g-module-header g-page-head">
         <div>
           <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 4 }}>
             <div style={{ width: 30, height: 30, borderRadius: 8, background: COLOR_TIENDA + "26", display: "flex", alignItems: "center", justifyContent: "center" }}>
@@ -215,7 +215,7 @@ export default function TiendaPage() {
             refreshing={autoRefresh.refreshing}
             onRefresh={autoRefresh.refreshNow}
           />
-          <button className="ds-btn ds-btn-primary" style={{ background: COLOR_TIENDA, boxShadow: `0 2px 12px ${COLOR_TIENDA}28` }} onClick={() => setCreando(true)}>
+          <button className="ds-btn ds-btn-primary" onClick={() => setCreando(true)}>
             <Plus size={14} />Nueva Factura
           </button>
         </div>
@@ -226,16 +226,16 @@ export default function TiendaPage() {
         {loading ? <><SkeletonStat /><SkeletonStat /><SkeletonStat /><SkeletonStat /></> : (
           <>
             <Stat value={kpis.pendientesRecogida} label="Creados en tienda"
-              color={kpis.pendientesRecogida > 0 ? "var(--warning)" : "var(--success)"}
+              color={ESTADO_DESPACHO_COLOR.CREADO_TIENDA}
               onClick={() => setFEstado("CREADO_TIENDA")} />
             <Stat value={kpis.recogidoTienda + kpis.entregadoCedi} label="En proceso CEDI"
-              color="var(--info)"
+              color={ESTADO_DESPACHO_COLOR.RECOGIDO_TIENDA}
               onClick={() => setFEstado("RECOGIDO_TIENDA")} />
             <Stat value={kpis.enviadoCliente} label="Enviados al cliente"
-              color="var(--success)"
+              color={ESTADO_DESPACHO_COLOR.ENVIADO_CLIENTE}
               onClick={() => setFEstado("ENVIADO_CLIENTE")} />
             <Stat value={kpis.novedades} label="Con novedad"
-              color={kpis.novedades > 0 ? "var(--error)" : "var(--muted)"}
+              color={kpis.novedades > 0 ? ESTADO_DESPACHO_COLOR.CON_NOVEDAD : "var(--muted)"}
               onClick={() => setFEstado("CON_NOVEDAD")} />
           </>
         )}
@@ -252,12 +252,14 @@ export default function TiendaPage() {
               <button
                 key={estado}
                 onClick={() => setFEstado(active ? "" : estado)}
+                className="status-tab"
                 style={{
+                  "--state-color": color,
                   flex: 1, minWidth: 100, display: "flex", flexDirection: "column", alignItems: "center",
-                  gap: 4, padding: "8px 6px", background: active ? color + "18" : "var(--surface2)",
-                  border: `1px solid ${active ? color + "55" : "var(--border)"}`, borderRadius: 10,
+                  gap: 4, padding: "8px 6px", borderRadius: 10,
                   cursor: "pointer", transition: "all .15s", position: "relative",
-                }}
+                  boxShadow: active ? `0 8px 20px ${color}22` : undefined,
+                } as React.CSSProperties}
               >
                 <span style={{ fontSize: 18, fontWeight: 700, color: count > 0 ? color : "var(--faint)", fontFamily: "var(--mono)" }}>{count}</span>
                 <span style={{ fontSize: 10, fontWeight: 600, color: count > 0 ? color : "var(--faint)", textAlign: "center", lineHeight: 1.2 }}>{ESTADO_DESPACHO_LABEL[estado]}</span>
@@ -377,7 +379,15 @@ export default function TiendaPage() {
                   const horas = d.estado === "CREADO_TIENDA" ? horasDesde(d.createdAt) : 0;
                   const critico = horas >= 24;
                   return (
-                    <tr key={d.id} className="ds-row" onClick={() => abrirPanel(d)} style={{ background: panelItem?.id === d.id ? "var(--surface2)" : undefined }}>
+                    <tr
+                      key={d.id}
+                      className="ds-row"
+                      onClick={() => abrirPanel(d)}
+                      style={{
+                        background: panelItem?.id === d.id ? "color-mix(in srgb, var(--row-color) 11%, var(--surface))" : undefined,
+                        "--row-color": ESTADO_DESPACHO_COLOR[d.estado],
+                      } as React.CSSProperties}
+                    >
                       <td style={{ padding: "0 4px 0 12px" }}>
                         {critico && <span title="Creado hace >24h sin recogida" style={{ fontSize: 12, color: "var(--error)" }}>⚠</span>}
                       </td>
@@ -391,7 +401,7 @@ export default function TiendaPage() {
                         <div style={{ fontSize: 13, fontWeight: 500 }}>{d.clienteNombre}</div>
                         {d.clienteTelefono && <div style={{ fontSize: 11, color: "var(--muted)", fontFamily: "var(--mono)" }}>{d.clienteTelefono}</div>}
                       </td>
-                      <td><Badge label={ESTADO_DESPACHO_LABEL[d.estado]} variant={estadoDespachoVariant(d.estado)} /></td>
+                      <td><Badge label={ESTADO_DESPACHO_LABEL[d.estado]} variant={estadoDespachoVariant(d.estado)} color={ESTADO_DESPACHO_COLOR[d.estado]} /></td>
                       <td>
                         <div className="ds-row-actions">
                           {d.estado === "CREADO_TIENDA" && canChangeOperationalState &&
@@ -442,7 +452,8 @@ export default function TiendaPage() {
         title={panelItem?.numeroDocumento ?? ""}
         subtitle={`${panelItem?.centroCostos} · #${panelItem?.consecutivo}`}
         insights={panelInsights}
-        badge={panelItem && <Badge label={ESTADO_DESPACHO_LABEL[panelItem.estado]} variant={estadoDespachoVariant(panelItem.estado)} />}
+        moduleColor={panelItem ? ESTADO_DESPACHO_COLOR[panelItem.estado] : COLOR_TIENDA}
+        badge={panelItem && <Badge label={ESTADO_DESPACHO_LABEL[panelItem.estado]} variant={estadoDespachoVariant(panelItem.estado)} color={ESTADO_DESPACHO_COLOR[panelItem.estado]} />}
         primaryAction={
           panelItem && canChangeOperationalState && panelItem.estado === "CREADO_TIENDA" ? (
             <button className="ds-btn ds-btn-primary" style={{ width: "100%", background: "var(--info)" }} onClick={() => cambiarEstado(panelItem, "RECOGIDO_TIENDA")}>
@@ -492,7 +503,7 @@ export default function TiendaPage() {
         {panelItem && (
           <>
             {/* ── Timeline de flujo logístico ── */}
-            <DetailSection title="Flujo logístico">
+            <DetailSection title="Flujo logístico" color={panelItem.estado === "RECHAZADO" ? ESTADO_DESPACHO_COLOR.RECHAZADO : COLOR_TIENDA}>
               <div style={{ display: "flex", gap: 0, overflowX: "auto", paddingBottom: 4 }}>
                 {FLUJO_ESTADOS.map((estado, i) => {
                   const color = ESTADO_DESPACHO_COLOR[estado];
@@ -531,7 +542,7 @@ export default function TiendaPage() {
               )}
             </DetailSection>
 
-            <DetailSection title="Datos de la factura">
+            <DetailSection title="Datos de la factura" color={COLOR_TIENDA}>
               <DetailGrid items={[
                 { label: "Centro de costos",         value: <span style={{ fontWeight: 700 }}>{panelItem.centroCostos}</span> },
                 { label: "Fecha creación",           value: fmtFechaTienda(panelItem.fechaCreacion) },
@@ -569,7 +580,7 @@ export default function TiendaPage() {
             </DetailSection>
 
             {panelItem.plines && panelItem.plines.length > 0 && (
-              <DetailSection title={`PLUs de la factura (${panelItem.plines.length})`}>
+              <DetailSection title={`PLUs de la factura (${panelItem.plines.length})`} color={COLOR_TIENDA}>
                 <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
                   {panelItem.plines.map((p: PlinDespacho) => (
                     <div key={p.id} style={{ display: "flex", alignItems: "center", gap: 10, padding: "6px 10px", background: "var(--surface2)", borderRadius: 8 }}>
@@ -583,7 +594,7 @@ export default function TiendaPage() {
               </DetailSection>
             )}
 
-            <DetailSection title="Cliente">
+            <DetailSection title="Cliente" color={ESTADO_DESPACHO_COLOR.RECOGIDO_TIENDA}>
               <DetailGrid items={[
                 { label: "Nombre",    value: panelItem.clienteNombre },
                 { label: "Documento", value: panelItem.clienteDocumento ?? undefined },
@@ -592,7 +603,7 @@ export default function TiendaPage() {
             </DetailSection>
 
             {panelItem.notaEntrega && (
-              <DetailSection title="Nota de entrega">
+              <DetailSection title="Nota de entrega" color={ESTADO_DESPACHO_COLOR.ENTREGADO_CEDI}>
                 <div style={{ background: "var(--surface2)", borderRadius: 8, padding: "10px 12px", fontSize: 13, color: "var(--muted)", whiteSpace: "pre-wrap", lineHeight: 1.5 }}>
                   {panelItem.notaEntrega}
                 </div>
@@ -600,7 +611,7 @@ export default function TiendaPage() {
             )}
 
             {panelItem.guardadoPendiente && (
-              <DetailSection title="Guardado transporte">
+              <DetailSection title="Guardado transporte" color={COLOR_TRANSPORTE}>
                 <DetailGrid items={[
                   { label: "Estado", value: panelItem.guardadoPendiente.estado },
                   { label: "Operario", value: panelItem.guardadoPendiente.asignadoANombre ?? panelItem.guardadoPendiente.asignadoAId },
@@ -610,7 +621,7 @@ export default function TiendaPage() {
             )}
 
             {panelItem.motivoRechazo && (
-              <DetailSection title="Motivo de rechazo">
+              <DetailSection title="Motivo de rechazo" color={ESTADO_DESPACHO_COLOR.RECHAZADO}>
                 <div style={{ background: "rgba(239,68,68,0.06)", borderRadius: 8, padding: "10px 12px", fontSize: 13, color: "var(--error)", display: "flex", gap: 8, borderLeft: "3px solid var(--error)" }}>
                   <AlertTriangle size={14} style={{ flexShrink: 0, marginTop: 1 }} />
                   {panelItem.motivoRechazo}
@@ -619,7 +630,7 @@ export default function TiendaPage() {
             )}
 
             {panelItem.novedad && (
-              <DetailSection title="Novedad registrada">
+              <DetailSection title="Novedad registrada" color={ESTADO_DESPACHO_COLOR.CON_NOVEDAD}>
                 <div style={{ background: "var(--error-tint)", borderRadius: 8, padding: "10px 12px", fontSize: 13, color: "var(--error)", display: "flex", gap: 8 }}>
                   <AlertTriangle size={14} style={{ flexShrink: 0, marginTop: 1 }} />
                   {panelItem.novedad}
@@ -628,7 +639,7 @@ export default function TiendaPage() {
             )}
 
             {historialItems.length > 0 && (
-              <DetailSection title="Timeline de cambios">
+              <DetailSection title="Timeline de cambios" color={COLOR_TIENDA}>
                 <MiniHistory items={historialItems} />
               </DetailSection>
             )}

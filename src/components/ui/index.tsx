@@ -12,11 +12,19 @@ interface BadgeProps {
   variant?: BadgeVariant;
   dot?: boolean;
   className?: string;
+  color?: string;
 }
 
-export function Badge({ label, variant = "default", dot = true }: BadgeProps) {
+export function Badge({ label, variant = "default", dot = true, color }: BadgeProps) {
   return (
-    <span className={`ds-badge ds-badge-${variant}`}>
+    <span
+      className={`ds-badge ds-badge-${variant}`}
+      style={color ? ({
+        color,
+        background: `color-mix(in srgb, ${color} 13%, var(--surface))`,
+        borderColor: `color-mix(in srgb, ${color} 32%, transparent)`,
+      } as React.CSSProperties) : undefined}
+    >
       {dot && <span className="ds-badge-dot" style={{ background: "currentColor" }} />}
       {label}
     </span>
@@ -68,7 +76,11 @@ export function Stat({ value, label, trend, trendUp, size = "md", color, onClick
     <div
       className="ds-stat"
       onClick={onClick}
-      style={{ cursor: onClick ? "pointer" : "default", borderLeft: color ? `3px solid ${color}` : undefined }}
+      style={{
+        cursor: onClick ? "pointer" : "default",
+        borderLeft: color ? `3px solid ${color}` : undefined,
+        "--stat-color": color,
+      } as React.CSSProperties}
     >
       <div
         className={`ds-stat-value ${sizeClass}`}
