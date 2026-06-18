@@ -87,64 +87,66 @@
   --radius-xl: 20px;
 }
 
-/* Dark mode operativo */
+/* Dark mode — negro verdadero, referencia WealthOS */
 html[data-theme="dark"] {
-  --bg:        #07111E;
-  --surface:   #0D1726;
-  --surface2:  #132033;
-  --surface3:  #1B2A40;
-  --surface-elevated: #101C2D;
-  --surface-command: #07111E;
-  --surface-rail: #0A1628;
-  --overlay:   rgba(0,0,0,0.55);
+  --bg:               #0C0C12;
+  --canvas:           #0F0F18;
+  --surface:          #161622;
+  --surface2:         #1D1D2E;
+  --surface3:         #252540;
+  --surface-elevated: #1A1A28;
+  --surface-command:  #0F0F18;
+  --surface-rail:     #0C0C12;
+  --overlay:          rgba(0,0,0,0.64);
 
-  --border:        rgba(255,255,255,0.10);
-  --border-strong: rgba(255,255,255,0.20);
+  --border:           rgba(255,255,255,0.08);
+  --border-strong:    rgba(255,255,255,0.15);
 
-  --text:   #FAFAFA;
-  --muted2: #B4B4BB;
-  --muted:  #8E8E93;
-  --faint:  #52525B;
+  --text:   #F0F0F5;
+  --muted2: #9B9BB0;
+  --muted:  #6B6B85;
+  --faint:  #45455A;
 
   --brand:       #3B82F6;
   --brand-600:   #60A5FA;
   --brand-700:   #2563EB;
   --brand-bright:#60A5FA;
   --brand-grad:  linear-gradient(135deg, #1E3A8A 0%, #2563EB 60%, #3B82F6 100%);
-  --brand-tint:  rgba(59,130,246,0.12);
+  --brand-tint:  rgba(59,130,246,0.14);
 
-  --module-inventario: #3B82F6;
-  --module-transporte: #60A5FA;
+  --module-inventario: #A78BFA;
+  --module-transporte: #22D3EE;
   --module-tienda: #60A5FA;
   --module-integracion: #60A5FA;
-  --module-conteo: #60A5FA;
+  --module-conteo: #34D399;
   --module-admin: #94A3B8;
 
   --success:       #34D399;
-  --success-tint:  rgba(52,211,153,0.16);
-  --warning:       #FCD34D;
-  --warning-tint:  rgba(252,211,77,0.16);
-  --error:         #FCA5A5;
-  --error-tint:    rgba(248,113,113,0.16);
-  --info:          #60A5FA;
-  --info-tint:     rgba(96,165,250,0.16);
+  --success-tint:  rgba(52,211,153,0.14);
+  --warning:       #FBBF24;
+  --warning-tint:  rgba(251,191,36,0.14);
+  --error:         #F87171;
+  --error-tint:    rgba(248,113,113,0.12);
+  --info:          #38BDF8;
+  --info-tint:     rgba(56,189,248,0.14);
 
   --blue:         #3B82F6;
-  --blue-light:   rgba(59,130,246,0.12);
-  --orange:       #60A5FA;
-  --orange-light: rgba(96,165,250,0.12);
+  --blue-light:   rgba(59,130,246,0.14);
+  --orange:       #FBBF24;
+  --orange-light: rgba(251,191,36,0.14);
   --green:        #34D399;
-  --red:          #FCA5A5;
-  --amber:        #FCD34D;
-  --purple:       #60A5FA;
+  --red:          #F87171;
+  --amber:        #FBBF24;
+  --purple:       #A78BFA;
 
-  --shadow-xs: 0 1px 2px rgba(0,0,0,0.40);
-  --shadow-sm: 0 1px 3px rgba(0,0,0,0.50);
-  --shadow:    0 2px 8px rgba(0,0,0,0.55);
-  --shadow-md: 0 4px 16px rgba(0,0,0,0.60);
-  --shadow-lg: 0 8px 32px rgba(0,0,0,0.65);
-  --shadow-xl: 0 16px 48px rgba(0,0,0,0.70);
-  --ring:      0 0 0 2.5px rgba(96,165,250,0.35);
+  --shadow-xs: 0 1px 2px rgba(0,0,0,0.50);
+  --shadow-sm: 0 1px 3px rgba(0,0,0,0.60);
+  --shadow:    0 2px 10px rgba(0,0,0,0.65);
+  --shadow-md: 0 4px 20px rgba(0,0,0,0.70);
+  --shadow-lg: 0 8px 36px rgba(0,0,0,0.75);
+  --shadow-xl: 0 16px 52px rgba(0,0,0,0.80);
+  --ring:      0 0 0 3px rgba(59,130,246,0.28);
+  --ring-error:0 0 0 3px rgba(248,113,113,0.28);
 }
 
 /* ── Transición de tema ───────────────────────────────────── */
@@ -157,9 +159,7 @@ html { transition: background .2s ease; }
 * { box-sizing: border-box; margin: 0; padding: 0; }
 
 body {
-  background:
-    linear-gradient(180deg, rgba(8,17,31,0.045), transparent 260px),
-    var(--bg);
+  background: var(--canvas);
   color: var(--text);
   font-family: var(--sans);
   font-size: 14px;
@@ -1240,44 +1240,31 @@ html[data-theme="dark"] .op-module-header {
   --ring-error: 0 0 0 3px rgba(180, 35, 24, 0.16);
 }
 
+/* Dark mode — Harmony layer override (same palette as above) */
 html[data-theme="dark"] {
-  --bg: #060D17;
-  --canvas: #091422;
-  --surface: #0D1B2E;
-  --surface2: #132338;
-  --surface3: #1A2E47;
-  --surface-elevated: #0F1F33;
-  --brand-tint: rgba(59, 130, 246, 0.18);
-  --ring: 0 0 0 3px rgba(59, 130, 246, 0.30);
+  --bg:               #0C0C12;
+  --canvas:           #0F0F18;
+  --surface:          #161622;
+  --surface2:         #1D1D2E;
+  --surface3:         #252540;
+  --surface-elevated: #1A1A28;
+  --brand-tint:       rgba(59, 130, 246, 0.14);
+  --ring:             0 0 0 3px rgba(59, 130, 246, 0.28);
   --success: #34D399;
   --success-tint: rgba(52, 211, 153, 0.14);
-  --warning: #FCD34D;
-  --warning-tint: rgba(252, 211, 77, 0.14);
-  --error: #FCA5A5;
-  --error-tint: rgba(252, 165, 165, 0.10);
+  --warning: #FBBF24;
+  --warning-tint: rgba(251, 191, 36, 0.14);
+  --error: #F87171;
+  --error-tint: rgba(248, 113, 113, 0.12);
   --info: #38BDF8;
   --info-tint: rgba(56, 189, 248, 0.14);
   --green: var(--success);
   --amber: var(--warning);
 }
 
-body {
-  background-color: var(--canvas);
-  background-image:
-    radial-gradient(circle at 18% -8%, rgba(29, 78, 216, 0.12), transparent 34%),
-    linear-gradient(180deg, rgba(255, 255, 255, 0.82), rgba(237, 243, 250, 0.72) 34%, rgba(237, 243, 250, 0.96)),
-    repeating-linear-gradient(90deg, rgba(30, 64, 175, 0.035) 0 1px, transparent 1px 84px),
-    repeating-linear-gradient(0deg, rgba(30, 64, 175, 0.026) 0 1px, transparent 1px 84px);
-  background-attachment: fixed;
-}
-
-html[data-theme="dark"] body {
-  background-image:
-    radial-gradient(circle at 18% -8%, rgba(96, 165, 250, 0.16), transparent 34%),
-    linear-gradient(180deg, rgba(8, 17, 31, 0.94), rgba(10, 20, 36, 0.98)),
-    repeating-linear-gradient(90deg, rgba(96, 165, 250, 0.040) 0 1px, transparent 1px 84px),
-    repeating-linear-gradient(0deg, rgba(96, 165, 250, 0.030) 0 1px, transparent 1px 84px);
-}
+/* Body limpio — sin cuadrícula ni gradientes complejos */
+body { background: var(--canvas); }
+html[data-theme="dark"] body { background: var(--canvas); }
 
 .op-shell {
   background: transparent;
@@ -1287,23 +1274,18 @@ html[data-theme="dark"] body {
   position: relative;
 }
 
-.dash-main::before {
-  content: "";
-  position: fixed;
-  inset: 0;
-  pointer-events: none;
-  background:
-    radial-gradient(circle at 82% 8%, rgba(29, 78, 216, 0.075), transparent 26%),
-    linear-gradient(135deg, transparent 0 54%, rgba(255, 255, 255, 0.32) 54% 56%, transparent 56%);
-  opacity: 0.78;
-  z-index: -1;
+.glass {
+  background: rgba(255, 255, 255, 0.82);
+  border-color: rgba(148, 163, 184, 0.20);
+  backdrop-filter: blur(16px) saturate(140%);
+  -webkit-backdrop-filter: blur(16px) saturate(140%);
 }
 
-.glass {
-  background: rgba(255, 255, 255, 0.78);
-  border-color: rgba(148, 163, 184, 0.24);
-  backdrop-filter: blur(22px) saturate(160%);
-  -webkit-backdrop-filter: blur(22px) saturate(160%);
+html[data-theme="dark"] .glass {
+  background: rgba(22, 22, 34, 0.90);
+  border-color: rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(16px) saturate(120%);
+  -webkit-backdrop-filter: blur(16px) saturate(120%);
 }
 
 .op-workbench,
@@ -1747,46 +1729,48 @@ html[data-theme="dark"] .ds-badge {
 /* Inputs: borde siempre visible en dark */
 html[data-theme="dark"] .ds-input,
 html[data-theme="dark"] .ds-input-lg {
-  border: 1px solid rgba(255, 255, 255, 0.11) !important;
+  border: 1px solid rgba(255, 255, 255, 0.10) !important;
+  background: var(--surface2) !important;
 }
 html[data-theme="dark"] .ds-input:focus,
 html[data-theme="dark"] .ds-input-lg:focus {
   border-color: var(--brand-bright) !important;
-  background: var(--surface);
+  background: var(--surface) !important;
 }
 html[data-theme="dark"] .dash-main :where(input, select, textarea) {
   box-shadow: none;
-  border-color: rgba(255, 255, 255, 0.10) !important;
+  border-color: rgba(255, 255, 255, 0.09) !important;
+  background: var(--surface2);
 }
 html[data-theme="dark"] .dash-main :where(input, select, textarea):focus {
   border-color: var(--brand-bright) !important;
   box-shadow: var(--ring) !important;
 }
 
-/* Op module header: suavizar gradiente en dark */
+/* Op module header en dark */
 html[data-theme="dark"] .op-module-header {
-  background: linear-gradient(135deg, rgba(59, 130, 246, 0.12), rgba(9, 20, 34, 0.98));
-  border-color: rgba(59, 130, 246, 0.20);
+  background: linear-gradient(135deg, rgba(59, 130, 246, 0.10), rgba(15, 15, 24, 0.98));
+  border-color: rgba(59, 130, 246, 0.16);
 }
 
 /* Cedi panel */
 html[data-theme="dark"] .cedi-panel {
-  background: rgba(13, 27, 46, 0.94);
-  border-color: rgba(255, 255, 255, 0.08);
+  background: rgba(22, 22, 34, 0.96);
+  border-color: rgba(255, 255, 255, 0.07);
   backdrop-filter: blur(14px);
 }
 
 /* Cedi badge default */
 html[data-theme="dark"] .cedi-badge {
-  background: rgba(255, 255, 255, 0.07);
-  border-color: rgba(255, 255, 255, 0.13);
+  background: rgba(255, 255, 255, 0.06);
+  border-color: rgba(255, 255, 255, 0.11);
   color: var(--muted2);
 }
 
 /* Cedi stat */
 html[data-theme="dark"] .cedi-stat {
-  background: rgba(13, 27, 46, 0.86);
-  border-color: rgba(255, 255, 255, 0.08);
+  background: rgba(22, 22, 34, 0.90);
+  border-color: rgba(255, 255, 255, 0.07);
 }
 html[data-theme="dark"] .cedi-stat::before {
   opacity: 0.80;
@@ -1794,24 +1778,24 @@ html[data-theme="dark"] .cedi-stat::before {
 
 /* Cedi hero */
 html[data-theme="dark"] .cedi-hero {
-  background: linear-gradient(135deg, rgba(59, 130, 246, 0.14), rgba(9, 20, 34, 0.97));
-  border-color: rgba(59, 130, 246, 0.22);
+  background: linear-gradient(135deg, rgba(59, 130, 246, 0.12), rgba(15, 15, 24, 0.98));
+  border-color: rgba(59, 130, 246, 0.18);
 }
 
 /* Cedi table */
 html[data-theme="dark"] .cedi-table td {
-  border-bottom-color: rgba(255, 255, 255, 0.06);
+  border-bottom-color: rgba(255, 255, 255, 0.05);
 }
 html[data-theme="dark"] .cedi-table th {
-  background: rgba(9, 20, 34, 0.96);
-  border-bottom-color: rgba(255, 255, 255, 0.10);
+  background: rgba(15, 15, 24, 0.98);
+  border-bottom-color: rgba(255, 255, 255, 0.08);
 }
 html[data-theme="dark"] .cedi-table tr:hover td {
-  background: rgba(59, 130, 246, 0.08);
+  background: rgba(59, 130, 246, 0.07);
 }
 
 /* Cedi empty mark */
 html[data-theme="dark"] .cedi-empty-mark {
-  background: rgba(13, 27, 46, 0.86);
-  border-color: rgba(255, 255, 255, 0.10);
+  background: rgba(22, 22, 34, 0.90);
+  border-color: rgba(255, 255, 255, 0.08);
 }
