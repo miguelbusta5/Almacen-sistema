@@ -48,16 +48,17 @@ export function StudioKPI({ data, estilo, metrica, agregacion }: Props) {
         borderRadius: estilo.bordeRadius ?? 10,
       }}
     >
-      <div style={{ fontSize: 12, fontWeight: 600, color: "var(--muted2)", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 8 }}>
+      <div style={{ fontSize: 11, fontWeight: 700, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.07em", marginBottom: 8 }}>
         {titulo}
       </div>
       <div
         style={{
-          fontSize: estilo.tamanoTexto ?? 36,
+          fontSize: estilo.tamanoTexto ?? 38,
           fontWeight: 800,
           color,
-          lineHeight: 1.1,
-          letterSpacing: "-0.02em",
+          lineHeight: 1.05,
+          letterSpacing: "-0.04em",
+          fontVariantNumeric: "tabular-nums",
         }}
       >
         {formatValue(displayValue, estilo.formatoNumero)}

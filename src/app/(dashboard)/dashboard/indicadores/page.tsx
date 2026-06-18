@@ -570,7 +570,7 @@ export default function IndicadoresPage() {
             <>
               {/* Selector de año */}
               <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
-                <span style={{ fontWeight: 600, fontSize: 13, color: "var(--foreground)" }}>Año:</span>
+                <span style={{ fontWeight: 600, fontSize: 13, color: "var(--text)" }}>Año:</span>
                 {pluYears.map((y) => (
                   <button
                     key={y}

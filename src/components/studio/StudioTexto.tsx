@@ -22,7 +22,7 @@ export function StudioTexto({ estilo, contenido }: Props) {
         style={{
           fontSize: estilo.tamanoTexto ?? 16,
           fontWeight: 600,
-          color: estilo.color ?? "var(--foreground)",
+          color: estilo.color ?? "var(--text)",
           textAlign: estilo.alineacion ?? "left",
           width: "100%",
         }}

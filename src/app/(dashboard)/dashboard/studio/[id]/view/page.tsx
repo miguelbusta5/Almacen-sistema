@@ -65,7 +65,7 @@ export default function StudioViewPage() {
             ← Studio
           </button>
         </Link>
-        <h1 style={{ margin: 0, fontSize: 15, fontWeight: 700, color: "var(--foreground)", flex: 1 }}>
+        <h1 style={{ margin: 0, fontSize: 15, fontWeight: 700, color: "var(--text)", flex: 1 }}>
           {dashboard.nombre}
         </h1>
         <span style={{

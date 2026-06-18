@@ -72,7 +72,7 @@ export function StudioPropertiesPanel({ component, fuentes, onUpdate, onDelete }
     border: "1px solid var(--border)",
     borderRadius: 6,
     background: "var(--surface)",
-    color: "var(--foreground)",
+    color: "var(--text)",
   };
   const labelStyle: React.CSSProperties = {
     fontSize: 11,

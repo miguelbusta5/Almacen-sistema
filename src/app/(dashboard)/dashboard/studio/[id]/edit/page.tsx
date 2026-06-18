@@ -225,12 +225,12 @@ export default function StudioEditorPage() {
             onChange={(e) => setNombre(e.target.value)}
             onBlur={() => { setEditingName(false); save(undefined, undefined, undefined, nombre); }}
             onKeyDown={(e) => { if (e.key === "Enter") { setEditingName(false); save(undefined, undefined, undefined, nombre); } }}
-            style={{ fontSize: 15, fontWeight: 700, border: "none", outline: "1px solid var(--brand)", borderRadius: 4, padding: "3px 7px", background: "var(--surface2)", color: "var(--foreground)" }}
+            style={{ fontSize: 15, fontWeight: 700, border: "none", outline: "1px solid var(--brand)", borderRadius: 4, padding: "3px 7px", background: "var(--surface2)", color: "var(--text)" }}
           />
         ) : (
           <h1
             onClick={() => setEditingName(true)}
-            style={{ margin: 0, fontSize: 15, fontWeight: 700, cursor: "text", color: "var(--foreground)" }}
+            style={{ margin: 0, fontSize: 15, fontWeight: 700, cursor: "text", color: "var(--text)" }}
             title="Clic para editar el nombre"
           >
             {nombre}
@@ -240,7 +240,7 @@ export default function StudioEditorPage() {
         <div style={{ flex: 1 }} />
 
         <Link href={`/dashboard/studio/${id}/view`} style={{ textDecoration: "none" }}>
-          <button style={{ padding: "6px 14px", fontSize: 12, border: "1px solid var(--border)", borderRadius: 6, cursor: "pointer", background: "transparent", color: "var(--foreground)" }}>
+          <button style={{ padding: "6px 14px", fontSize: 12, border: "1px solid var(--border)", borderRadius: 6, cursor: "pointer", background: "transparent", color: "var(--text)" }}>
             Vista previa
           </button>
         </Link>

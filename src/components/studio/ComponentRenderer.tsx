@@ -67,7 +67,7 @@ export function ComponentRenderer({ component, isSelected, onSelect, readOnly }:
     }
     if (error) {
       return (
-        <div style={{ height: "100%", display: "flex", alignItems: "center", justifyContent: "center", color: "#EF4444", fontSize: 12, padding: 12 }}>
+        <div style={{ height: "100%", display: "flex", alignItems: "center", justifyContent: "center", color: "var(--error)", fontSize: 12, padding: 12 }}>
           {error}
         </div>
       );

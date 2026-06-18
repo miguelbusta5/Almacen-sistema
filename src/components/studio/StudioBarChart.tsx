@@ -50,28 +50,32 @@ export function StudioBarChart({ data, estilo }: Props) {
     maintainAspectRatio: false,
     plugins: {
       legend: { display: estilo.mostrarLeyenda ?? false },
-      title: {
-        display: !!titulo,
-        text: titulo ?? "",
-        font: { size: 12, weight: "bold" as const },
-        color: "var(--foreground)",
-      },
+      title: { display: false },
     },
     scales: {
       x: {
-        ticks: { font: { size: 10 }, color: "#64748B" },
+        ticks: { font: { size: 10 }, color: "#8A8A8E" },
         grid: { display: false },
+        border: { display: false },
       },
       y: {
-        ticks: { font: { size: 10 }, color: "#64748B" },
-        grid: { color: "#F1F5F9" },
+        ticks: { font: { size: 10 }, color: "#8A8A8E" },
+        grid: { color: "rgba(0,0,0,0.06)" },
+        border: { display: false },
       },
     },
   };
 
   return (
-    <div style={{ height: "100%", padding: "8px 12px" }}>
-      <Bar data={chartData} options={options} />
+    <div style={{ height: "100%", display: "flex", flexDirection: "column", padding: "10px 12px" }}>
+      {titulo && (
+        <div style={{ fontSize: 11, fontWeight: 700, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.07em", marginBottom: 8 }}>
+          {titulo}
+        </div>
+      )}
+      <div style={{ flex: 1, minHeight: 0 }}>
+        <Bar data={chartData} options={options} />
+      </div>
     </div>
   );
 }

@@ -77,25 +77,15 @@ export function StudioTabla({ rawData, aggregated, columnas, estilo }: Props) {
         </div>
       )}
       <div style={{ flex: 1, overflow: "auto" }}>
-        <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
+        <table className="g-table" style={{ fontSize: 12 }}>
           <thead>
-            <tr style={{ borderBottom: "1px solid var(--border)" }}>
+            <tr>
               {cols.map((c) => (
                 <th
                   key={c}
+                  className="sortable"
                   onClick={() => handleSort(c)}
-                  style={{
-                    padding: "7px 10px",
-                    textAlign: "left",
-                    fontWeight: 700,
-                    color: "var(--muted2)",
-                    cursor: "pointer",
-                    userSelect: "none",
-                    whiteSpace: "nowrap",
-                    background: "var(--surface)",
-                    position: "sticky",
-                    top: 0,
-                  }}
+                  style={{ position: "sticky", top: 0, zIndex: 1 }}
                 >
                   {c} {sortCol === c ? (sortDir === "asc" ? "↑" : "↓") : ""}
                 </th>
@@ -104,9 +94,9 @@ export function StudioTabla({ rawData, aggregated, columnas, estilo }: Props) {
           </thead>
           <tbody>
             {pageRows.map((row, i) => (
-              <tr key={i} style={{ borderBottom: "1px solid var(--border)" }}>
+              <tr key={i}>
                 {cols.map((c) => (
-                  <td key={c} style={{ padding: "6px 10px", color: "var(--foreground)" }}>
+                  <td key={c} style={{ height: 38 }}>
                     {String(row[c] ?? "")}
                   </td>
                 ))}
@@ -116,19 +106,21 @@ export function StudioTabla({ rawData, aggregated, columnas, estilo }: Props) {
         </table>
       </div>
       {totalPages > 1 && (
-        <div style={{ display: "flex", justifyContent: "center", gap: 8, padding: "6px", borderTop: "1px solid var(--border)", fontSize: 11 }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, padding: "8px", borderTop: "1px solid var(--border)" }}>
           <button
+            className="g-btn g-btn-ghost g-btn-sm"
             onClick={() => setPage((p) => Math.max(0, p - 1))}
             disabled={page === 0}
-            style={{ padding: "2px 8px", border: "1px solid var(--border)", borderRadius: 4, cursor: page === 0 ? "default" : "pointer", background: "transparent", color: "var(--foreground)" }}
           >
             ‹
           </button>
-          <span style={{ color: "var(--muted)", alignSelf: "center" }}>{page + 1} / {totalPages}</span>
+          <span style={{ color: "var(--muted)", fontSize: 11, fontVariantNumeric: "tabular-nums" }}>
+            {page + 1} / {totalPages}
+          </span>
           <button
+            className="g-btn g-btn-ghost g-btn-sm"
             onClick={() => setPage((p) => Math.min(totalPages - 1, p + 1))}
             disabled={page === totalPages - 1}
-            style={{ padding: "2px 8px", border: "1px solid var(--border)", borderRadius: 4, cursor: page === totalPages - 1 ? "default" : "pointer", background: "transparent", color: "var(--foreground)" }}
           >
             ›
           </button>

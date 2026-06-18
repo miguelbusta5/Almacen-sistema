@@ -113,7 +113,7 @@ export function StudioLeftPanel({
                   fontSize: 12,
                 }}
               >
-                <div style={{ fontWeight: 700, color: "var(--foreground)" }}>{f.nombre}</div>
+                <div style={{ fontWeight: 700, color: "var(--text)" }}>{f.nombre}</div>
                 <div style={{ color: "var(--muted)", fontSize: 11, marginTop: 2 }}>
                   {f.campos.length} campo{f.campos.length !== 1 ? "s" : ""}
                   {f.hojaActiva ? ` · ${f.hojaActiva}` : ""}
@@ -342,7 +342,7 @@ export function StudioLeftPanel({
                   cursor: "pointer",
                   fontSize: 12,
                   fontWeight: 600,
-                  color: "var(--foreground)",
+                  color: "var(--text)",
                   transition: "border-color .14s",
                 }}
               >
