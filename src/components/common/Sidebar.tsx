@@ -111,8 +111,8 @@ export default function Sidebar({ role }: SidebarProps) {
             fontSize: 13,
             fontWeight: active ? 700 : 500,
             color: accentColor,
-            background: active ? theme.tint : "transparent",
-            boxShadow: active ? `inset 0 0 0 1px ${theme.color}28` : "none",
+            background: active ? theme.color + "1E" : "transparent",
+            boxShadow: active ? `inset 0 0 0 1px ${theme.color}44` : "none",
             transition: "background .14s ease, color .14s ease",
             position: "relative",
           }}

@@ -117,17 +117,20 @@ export default function Header({ user }: HeaderProps) {
               display: "flex",
               alignItems: "center",
               gap: 9,
-              height: 36,
-              padding: "0 12px",
+              height: 34,
+              padding: "0 14px",
               cursor: "pointer",
               color: "var(--muted2)",
               fontSize: 12,
               fontFamily: "var(--sans)",
+              minWidth: 200,
+              border: "1px solid var(--border-strong)",
+              borderRadius: 9,
             }}
           >
-            <Search size={14} />
-            <span>{PRODUCT.commandLabel}</span>
-            <kbd style={{ background: "var(--surface2)", border: "1px solid var(--border)", borderRadius: 5, padding: "1px 6px", fontSize: 10, fontFamily: "var(--mono)", color: "var(--muted)" }}>Ctrl K</kbd>
+            <Search size={13} style={{ flexShrink: 0 }} />
+            <span style={{ flex: 1, textAlign: "left" }}>{PRODUCT.commandLabel}</span>
+            <kbd style={{ background: "var(--surface2)", border: "1px solid var(--border)", borderRadius: 5, padding: "1px 6px", fontSize: 10, fontFamily: "var(--mono)", color: "var(--muted)", flexShrink: 0 }}>⌘K</kbd>
           </button>
         )}
         {isMobile && (
