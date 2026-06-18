@@ -11,7 +11,10 @@
 - [x] Coherencia claro/oscuro: quitar el forzado dark `!important` global; acotar superficies neón a `html[data-theme="dark"]`. `body` coherente por tema.
 - [x] Glow controlado (KPI/hero) + asset 3D del hero `cover`→`contain` (sin recorte).
 - [x] Exportaciones: filtro de productividad por operario (cliente, sin cambio de API).
-- [ ] **Consolidar los 3 bloques `:root` apilados** en `globals.css` en una sola fuente de verdad (migrar radii/tipografía/layout del primer `:root`). Riesgo medio.
+- [x] **ModuleHero patrón real**: asset 3D como elemento `<img>` controlado (`.module-hero-media`), no `::after`; layout desktop texto+asset, tablet reducido, móvil oculto. Headers legacy conservan `::after` hasta migrarse.
+- [x] Mojibake reparado en `src/lib/netsuite.ts` (comentarios). Cadenas de UI ya estaban correctas.
+- [ ] **Consolidar los 3 bloques `:root` apilados** en `globals.css` en una sola fuente de verdad (criterio: cero cambio de valor computado; migrar radii/tipografía/layout/semánticos del primer `:root` y eliminar las eras v5/Colorido duplicadas). Riesgo medio — requiere diff cuidadoso, hacerlo como paso dedicado.
+- [ ] Migrar headers legacy restantes (`.g-module-header`/`.cedi-hero`) a `ModuleHero`/`PageShell` para que todos usen el asset como elemento real.
 - [ ] **QA visual con capturas** en 1440px / 768px / 390px, claro y oscuro, en las 12 pantallas; comparar contra referencias aprobadas. Requiere app levantada.
 - [ ] Verificar en vivo: TRANSPORTISTA solo Preoperacional · ETIQUETADO solo Exportaciones · Logística/Rutas/GPS/Mi Ruta ausentes.
 
