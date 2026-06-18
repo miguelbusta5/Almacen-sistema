@@ -151,6 +151,11 @@ export default function AuditoriaPage() {
 
   return (
     <div className="animate-fade-in">
+      <div className="g-module-header" style={{ "--mod-color": "#334155" } as React.CSSProperties}>
+        <div className="g-module-kicker">Gobierno del sistema</div>
+        <h1 className="g-module-title">Auditoría</h1>
+        <p className="g-module-desc">Registro completo de acciones por usuario, módulo y fecha con exportación CSV.</p>
+      </div>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 12, marginBottom: "1.5rem" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
           <div style={{ width: 40, height: 40, borderRadius: 10, background: "#6366f115", display: "flex", alignItems: "center", justifyContent: "center" }}>

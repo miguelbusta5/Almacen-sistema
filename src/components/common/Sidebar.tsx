@@ -93,68 +93,37 @@ export default function Sidebar({ role }: SidebarProps) {
     const active = isActive(item.href);
     const theme = getModuleTheme(item.moduleKey ?? "home");
     return (
-      <Link href={item.href} onClick={onNav} style={{ textDecoration: "none", display: "block", padding: "1px 8px" }}>
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: 10,
-            padding: "8px 10px",
-            borderRadius: 8,
-            fontSize: 13,
-            fontWeight: active ? 650 : 450,
-            color: active ? theme.color : "var(--muted2)",
-            background: active ? theme.color + "14" : "transparent",
-            borderLeft: active ? `2px solid ${theme.color}` : "2px solid transparent",
-            transition: "background .12s ease, color .12s ease",
-            cursor: "pointer",
-          }}
-          onMouseEnter={(e) => {
-            if (!active) {
-              e.currentTarget.style.background = "var(--surface2)";
-              e.currentTarget.style.color = "var(--text)";
-            }
-          }}
-          onMouseLeave={(e) => {
-            if (!active) {
-              e.currentTarget.style.background = "transparent";
-              e.currentTarget.style.color = "var(--muted2)";
-            }
-          }}
-        >
-          <span style={{ color: active ? theme.color : "var(--faint)", display: "flex", flexShrink: 0 }}>
-            {item.icon}
-          </span>
-          <span style={{ flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-            {item.label}
-          </span>
-        </div>
+      <Link
+        href={item.href}
+        onClick={onNav}
+        className={`g-nav-item${active ? " active" : ""}`}
+        style={{ "--mod-color": theme.color } as React.CSSProperties}
+      >
+        <span className="g-nav-icon">{item.icon}</span>
+        <span style={{ flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+          {item.label}
+        </span>
       </Link>
     );
   };
 
   const NavContent = ({ onNav }: { onNav?: () => void }) => (
     <>
-      <nav style={{ flex: 1, padding: "8px 0", overflowY: "auto" }}>
+      <nav className="g-sidebar-nav">
         {GROUPS.map((group, gi) => {
           const groupItems = group
             .map((href) => visibleItems.find((i) => i.href === href))
             .filter(Boolean) as NavItem[];
           if (groupItems.length === 0) return null;
           return (
-            <div key={gi}>
-              {gi > 0 && (
-                <div style={{ height: 1, background: "var(--border)", margin: "6px 16px" }} />
-              )}
-              <div style={{ paddingTop: 4, paddingBottom: 4 }}>
-                {groupItems.map((item) => <Item key={item.href} item={item} onNav={onNav} />)}
-              </div>
+            <div key={gi} className="g-nav-group">
+              {groupItems.map((item) => <Item key={item.href} item={item} onNav={onNav} />)}
             </div>
           );
         })}
       </nav>
 
-      <div style={{ padding: "10px 16px 14px", borderTop: "1px solid var(--border)" }}>
+      <div className="g-sidebar-footer">
         <div style={{ fontSize: 11, color: "var(--faint)", fontFamily: "var(--mono)" }}>
           {PRODUCT.version} · {PRODUCT.environmentLabel}
         </div>
@@ -163,10 +132,10 @@ export default function Sidebar({ role }: SidebarProps) {
   );
 
   const Brand = () => (
-    <div style={{ padding: "18px 16px 14px", borderBottom: "1px solid var(--border)" }}>
+    <div className="g-sidebar-brand">
       <Logo variant="auto" height={18} tagline />
-      <div style={{ marginTop: 10, fontSize: 11, color: "var(--faint)", letterSpacing: "0.03em" }}>
-        Control logistico CEDI
+      <div style={{ marginTop: 8, fontSize: 11, color: "var(--faint)", letterSpacing: "0.03em" }}>
+        Control logístico CEDI
       </div>
     </div>
   );
@@ -179,7 +148,7 @@ export default function Sidebar({ role }: SidebarProps) {
           aria-label="Abrir menu"
           style={{
             position: "fixed", top: 10, left: 12, zIndex: 300,
-            width: 36, height: 36, borderRadius: 10,
+            width: 36, height: 36, borderRadius: "var(--r)",
             border: "1px solid var(--border)", background: "var(--surface)",
             color: "var(--brand)", display: "flex", alignItems: "center",
             justifyContent: "center", cursor: "pointer", boxShadow: "var(--shadow-sm)",
@@ -190,22 +159,23 @@ export default function Sidebar({ role }: SidebarProps) {
         {open && (
           <div
             onClick={() => setOpen(false)}
-            style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.48)", zIndex: 400, backdropFilter: "blur(3px)" }}
+            style={{ position: "fixed", inset: 0, background: "var(--overlay)", zIndex: 400, backdropFilter: "blur(4px)" }}
           />
         )}
-        <aside style={{
-          position: "fixed", top: 0, left: 0, height: "100vh", width: W,
-          background: "var(--surface)", borderRight: "1px solid var(--border)",
-          display: "flex", flexDirection: "column", zIndex: 401,
-          transform: open ? "translateX(0)" : "translateX(-110%)",
-          transition: "transform .26s cubic-bezier(.16,1,.3,1)",
-          boxShadow: open ? "4px 0 32px rgba(0,0,0,0.28)" : "none",
-        }}>
+        <aside
+          className="g-sidebar"
+          style={{
+            position: "fixed", top: 0, left: 0, zIndex: 401,
+            transform: open ? "translateX(0)" : "translateX(-110%)",
+            transition: "transform .26s cubic-bezier(.16,1,.3,1)",
+            boxShadow: open ? "var(--shadow-lg)" : "none",
+          }}
+        >
           <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between" }}>
             <div style={{ flex: 1 }}><Brand /></div>
             <button
               onClick={() => setOpen(false)}
-              style={{ background: "none", border: "none", color: "var(--muted)", cursor: "pointer", padding: "16px 12px 0" }}
+              style={{ background: "none", border: "none", color: "var(--muted)", cursor: "pointer", padding: "18px 14px 0", flexShrink: 0 }}
             >
               <X size={18} />
             </button>
@@ -217,11 +187,7 @@ export default function Sidebar({ role }: SidebarProps) {
   }
 
   return (
-    <aside style={{
-      width: W, background: "var(--surface)", borderRight: "1px solid var(--border)",
-      display: "flex", flexDirection: "column", position: "sticky",
-      top: 0, height: "100vh", flexShrink: 0,
-    }}>
+    <aside className="g-sidebar">
       <Brand />
       <NavContent />
     </aside>

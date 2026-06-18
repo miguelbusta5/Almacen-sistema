@@ -214,19 +214,19 @@ export default function TiendaPage() {
   return (
     <div className="animate-fade-in">
       {/* ── Header ── */}
-      <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 24, flexWrap: "wrap", gap: 12 }}>
+      <div className="g-module-header g-page-head" style={{ "--mod-color": COLOR_TIENDA } as React.CSSProperties}>
         <div>
           <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 4 }}>
             <div style={{ width: 30, height: 30, borderRadius: 8, background: COLOR_TIENDA + "26", display: "flex", alignItems: "center", justifyContent: "center" }}>
               <Store size={16} color={COLOR_TIENDA} />
             </div>
-            <h1 style={{ fontSize: 22, fontWeight: 700, color: "var(--text)", letterSpacing: "-0.03em", margin: 0 }}>Facturas Contado</h1>
+            <h1 className="g-module-title">Facturas Contado</h1>
           </div>
-          <p style={{ fontSize: 13, color: "var(--muted)", margin: 0 }}>
+          <p className="g-module-desc">
             {loading ? "Cargando…" : `${items.length} registros · ${kpis.pendientesRecogida} creados en tienda`}
           </p>
         </div>
-        <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", justifyContent: "flex-end" }}>
+        <div className="g-module-actions" style={{ justifyContent: "flex-end" }}>
           <AutoRefreshIndicator
             lastUpdatedAt={autoRefresh.lastUpdatedAt}
             refreshing={autoRefresh.refreshing}

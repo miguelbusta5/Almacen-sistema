@@ -513,11 +513,11 @@ export default function SolicitudesTransportePage() {
 
   return (
     <div className="animate-fade-in" style={{ "--module-color": COLOR, display: "grid", gap: 18 } as React.CSSProperties}>
-      <section className="op-module-header" style={{ "--module-color": COLOR } as React.CSSProperties}>
-        <div className="op-module-kicker">Control transporte</div>
-        <h1 className="op-module-title">Solicitudes de Transporte</h1>
-        <p className="op-module-copy">Bandeja interna para crear, programar, rechazar y cerrar servicios de transporte con prioridad y semáforo operativo.</p>
-      </section>
+      <div className="g-module-header" style={{ "--mod-color": "#0369A1" } as React.CSSProperties}>
+        <div className="g-module-kicker">Control transporte</div>
+        <h1 className="g-module-title">Solicitudes de Transporte</h1>
+        <p className="g-module-desc">Bandeja interna para crear, programar, rechazar y cerrar servicios de transporte con prioridad y semáforo operativo.</p>
+      </div>
       <div style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "flex-start", flexWrap: "wrap" }}>
         <div>
           <div style={{ display: "flex", alignItems: "center", gap: 10, color: COLOR, marginBottom: 8 }}>

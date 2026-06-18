@@ -364,11 +364,11 @@ export default function ExportacionesPage() {
 
   return (
     <div className="animate-fade-in" style={{ "--module-color": COLOR, display: "grid", gap: 16, maxWidth: 1180 } as React.CSSProperties}>
-      <section className="op-module-header" style={{ "--module-color": COLOR } as React.CSSProperties}>
-        <div className="op-module-kicker">Operación de etiquetado</div>
-        <h1 className="op-module-title">Exportaciones</h1>
-        <p className="op-module-copy">Captura consecutiva por caja, PLU maestro, unidad de empaque y tiempos automáticos de inicio/finalización.</p>
-      </section>
+      <div className="g-module-header" style={{ "--mod-color": "#0891B2" } as React.CSSProperties}>
+        <div className="g-module-kicker">Operación de etiquetado</div>
+        <h1 className="g-module-title">Exportaciones</h1>
+        <p className="g-module-desc">Captura consecutiva por caja, PLU maestro, unidad de empaque y tiempos automáticos de inicio/finalización.</p>
+      </div>
       {captureCard}
 
       {canManage && (
