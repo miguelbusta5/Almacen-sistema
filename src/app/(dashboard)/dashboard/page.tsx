@@ -103,20 +103,20 @@ function ModuleCard({ href, icon, label, color, value, sub, alert }: {
     <Link href={href} style={{ textDecoration: "none" }}>
       <div
         className="lift"
-        style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 12, padding: "20px", cursor: "pointer", transition: "border-color .15s" }}
-        onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.borderColor = color + "55"; }}
-        onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.borderColor = "var(--border)"; }}
+        style={{ background: "var(--surface)", border: "1px solid var(--border)", borderLeft: `3px solid ${color}`, borderRadius: 12, padding: "20px", cursor: "pointer", transition: "border-color .15s, box-shadow .15s" }}
+        onMouseEnter={(e) => { const el = e.currentTarget as HTMLElement; el.style.borderColor = color + "55"; el.style.boxShadow = `0 8px 24px ${color}22`; }}
+        onMouseLeave={(e) => { const el = e.currentTarget as HTMLElement; el.style.borderColor = "var(--border)"; el.style.boxShadow = "none"; }}
       >
         <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 16 }}>
-          <div style={{ width: 34, height: 34, borderRadius: 9, background: color + "14", display: "flex", alignItems: "center", justifyContent: "center", color }}>
+          <div style={{ width: 34, height: 34, borderRadius: 9, background: color + "18", border: `1px solid ${color}28`, display: "flex", alignItems: "center", justifyContent: "center", color }}>
             {icon}
           </div>
-          {alert && <span style={{ width: 8, height: 8, borderRadius: "50%", background: "var(--error)" }} />}
+          {alert && <span style={{ width: 8, height: 8, borderRadius: "50%", background: "var(--error)", boxShadow: "0 0 0 3px var(--error-tint)" }} />}
         </div>
-        <div style={{ fontSize: 28, fontWeight: 700, letterSpacing: "-0.04em", color: "var(--text)", lineHeight: 1, marginBottom: 4 }}>{value ?? "—"}</div>
+        <div style={{ fontSize: 28, fontWeight: 800, letterSpacing: "-0.04em", color: color, lineHeight: 1, marginBottom: 4 }}>{value ?? "—"}</div>
         <div style={{ fontSize: 13, fontWeight: 600, color: "var(--text)", marginBottom: 2 }}>{label}</div>
         {sub && <div style={{ fontSize: 12, color: "var(--muted)" }}>{sub}</div>}
-        <div style={{ display: "flex", alignItems: "center", gap: 4, marginTop: 14, fontSize: 12, color, fontWeight: 500 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 4, marginTop: 14, fontSize: 12, color, fontWeight: 600 }}>
           Abrir <ArrowRight size={12} />
         </div>
       </div>
@@ -312,13 +312,25 @@ function AdminDashboard({ nombre }: { nombre: string }) {
 
   return (
     <div className="animate-fade-in" style={{ maxWidth: 900 }}>
-      <div style={{ marginBottom: 32 }}>
-        <h1 style={{ fontSize: 28, fontWeight: 700, color: "var(--text)", letterSpacing: "-0.03em", lineHeight: 1.2 }}>
-          {saludo}{nombre ? `, ${nombre}` : ""}.
-        </h1>
-        <p style={{ fontSize: 14, color: "var(--muted)", marginTop: 6 }}>
-          {new Date().toLocaleDateString("es-CO", { weekday: "long", day: "numeric", month: "long", year: "numeric" })}
-        </p>
+      <div className="ds-card" style={{ marginBottom: 28, padding: isMobile ? "20px" : "24px 28px", background: "linear-gradient(135deg, var(--brand-tint), transparent 70%)", borderLeft: "3px solid var(--brand)" }}>
+        <div style={{ display: "flex", flexWrap: "wrap", alignItems: "flex-start", justifyContent: "space-between", gap: 16 }}>
+          <div>
+            <p style={{ fontSize: 11, fontWeight: 800, letterSpacing: "0.10em", textTransform: "uppercase", color: "var(--brand)", marginBottom: 6 }}>{PRODUCT.displayName}</p>
+            <h1 style={{ fontSize: "clamp(20px, 2.5vw, 26px)", fontWeight: 800, color: "var(--text)", letterSpacing: "-0.03em", lineHeight: 1.2 }}>
+              {saludo}{nombre ? `, ${nombre}` : ""}.
+            </h1>
+            <p style={{ fontSize: 14, color: "var(--muted)", marginTop: 6 }}>
+              {new Date().toLocaleDateString("es-CO", { weekday: "long", day: "numeric", month: "long", year: "numeric" })}
+            </p>
+          </div>
+          {!loading && (
+            <div style={{ display: "flex", gap: isMobile ? 12 : 20, flexWrap: "wrap" }}>
+              <Stat value={stats?.novedades.pendientes ?? 0} label="Sin resolver" size="sm" color={(stats?.novedades.pendientes ?? 0) > 0 ? "var(--error)" : "var(--success)"} />
+              <Stat value={stats?.transporte.total ?? 0} label="Guardados" size="sm" color={getModuleColor("transporte")} />
+              <Stat value={stats?.transporte.alertas ?? 0} label="Alertas" size="sm" color={(stats?.transporte.alertas ?? 0) > 0 ? "var(--warning)" : "var(--success)"} />
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Inteligencia operacional */}

@@ -39,12 +39,12 @@ export function ControlHero({ nombre, resumen, isMobile }: {
     <section className="op-module-header" style={{ "--module-color": accent, padding: isMobile ? 18 : 26, marginBottom: 18 } as React.CSSProperties}>
       <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 18, flexWrap: "wrap", position: "relative", zIndex: 1 }}>
         <div style={{ maxWidth: 720 }}>
-          <div className="op-module-kicker">{PRODUCT.displayName}</div>
-          <h1 className="op-module-title">
+          <div className="op-module-kicker" style={{ fontWeight: 800 }}>{PRODUCT.displayName}</div>
+          <h1 className="op-module-title" style={{ fontSize: "clamp(22px, 2.8vw, 32px)", fontWeight: 800, letterSpacing: "-0.03em", marginTop: 6 }}>
             {saludo}{nombre ? `, ${nombre}` : ""}.
           </h1>
-          <p className="op-module-copy">
-            Consola operativa por rol: prioridades, flujo CEDI, senales criticas y acciones recomendadas.
+          <p className="op-module-copy" style={{ marginTop: 8, fontSize: 14 }}>
+            Consola operativa · prioridades, flujo CEDI y señales críticas.
           </p>
         </div>
 
@@ -54,7 +54,7 @@ export function ControlHero({ nombre, resumen, isMobile }: {
             { label: "Pendientes", value: resumen.headline.pending, color: "var(--brand)" },
             { label: "Cerrados", value: resumen.headline.completedToday, color: "var(--success)" },
           ].map((kpi) => (
-            <div key={kpi.label} style={{ border: "1px solid var(--border)", background: "var(--surface)", borderRadius: 12, padding: 12, boxShadow: "var(--shadow-xs)" }}>
+            <div key={kpi.label} style={{ border: "1px solid var(--border)", borderLeft: `3px solid ${kpi.color}`, background: "var(--surface)", borderRadius: 12, padding: 12, boxShadow: "var(--shadow-sm)" }}>
               <div style={{ fontSize: 26, fontWeight: 900, color: kpi.color, lineHeight: 1, fontVariantNumeric: "tabular-nums" }}>{kpi.value}</div>
               <div style={{ fontSize: 11, color: "var(--muted)", fontWeight: 800, marginTop: 4 }}>{kpi.label}</div>
             </div>
@@ -76,11 +76,11 @@ export function ModuleSignalGrid({ modules, isMobile }: { modules: ControlModule
             <Link key={m.key} href={m.href} style={{ textDecoration: "none" }}>
               <div className="op-record-card" style={{ "--module-color": color, padding: 14, minHeight: 112, display: "flex", flexDirection: "column", justifyContent: "space-between" } as React.CSSProperties}>
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
-                  <div style={{ fontSize: 13, fontWeight: 850, color: "var(--text)" }}>{m.label}</div>
+                  <div style={{ fontSize: 13, fontWeight: 700, color: "var(--text)" }}>{m.label}</div>
                   <span style={{ width: 8, height: 8, borderRadius: "50%", background: controlStatusColor(m.status), boxShadow: `0 0 0 3px ${controlStatusColor(m.status)}22` }} />
                 </div>
                 <div>
-                  <div style={{ fontSize: 24, fontWeight: 900, color: "var(--brand)", lineHeight: 1 }}>{m.count ?? "Activo"}</div>
+                  <div style={{ fontSize: 24, fontWeight: 900, color: color, lineHeight: 1 }}>{m.count ?? "Activo"}</div>
                   <div style={{ fontSize: 11, color: "var(--muted)", marginTop: 5 }}>{m.description}</div>
                 </div>
               </div>
