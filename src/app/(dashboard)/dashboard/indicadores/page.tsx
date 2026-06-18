@@ -337,6 +337,7 @@ export default function IndicadoresPage() {
 
   return (
     <CediPage
+      moduleKey="indicadores"
       title="Indicadores CEDI"
       description="Operaciones y rotación sincronizadas desde Google Sheets."
       actions={

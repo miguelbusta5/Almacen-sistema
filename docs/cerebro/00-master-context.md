@@ -74,13 +74,13 @@ git push origin master  # Deploy a producción (CI/CD automático)
 
 ## Identidad visual
 
-> Vigente desde 2026-06-18: **Colorido Completo Enterprise**. Usar color por modulo y color por estado con base clara/oscura premium. El azul ya no limita toda la interfaz.
+> Vigente desde 2026-06-18: **Colorido Neon Enterprise con assets**. Usar color por modulo, color por estado, headers dark/neon con renders 3D y base clara/oscura premium. El azul ya no limita toda la interfaz.
 
 - **Marca:** Grupo Ambiente
 - **Nombre operativo UI:** Control Logistico CEDI
-- **Dirección:** interfaz enterprise viva tipo Vercel/Linear/Supabase/Notion, con identidad operativa CEDI
+- **Dirección:** interfaz enterprise viva tipo Vercel/Linear/Supabase/Notion, con identidad operativa CEDI, heroes neon y assets por modulo
 - **Tema modular:** `src/lib/moduleTheme.ts`
-  - Cada módulo define `color`, `tint`, `gradient`, `darkColor`, `darkTint` y contraste
+  - Cada módulo define `color`, `tint`, `gradient`, `darkColor`, `darkTint`, `heroImage`, `heroGradient`, `glow` y contraste
   - El color se aplica a navegación, encabezados, KPIs, tabs, rails de tabla, drawers y acciones principales
 - **Estados operativos:** rechazado, pendiente, recogido, entregado, enviado, efectuado y bloqueado tienen color propio independiente del módulo
 - **Componentes visuales nuevos:** `src/components/ui/cedi.tsx`, `src/components/ui/pageShell.tsx`, `src/components/ui/DataTable.tsx`, `src/components/ui/SlidePanel.tsx`

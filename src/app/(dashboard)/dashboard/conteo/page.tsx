@@ -387,6 +387,7 @@ export default function ConteoPage() {
 
   return (
     <CediPage
+      moduleKey="conteo"
       title="Conteo Cíclico"
       description={`${ciclos.length} ciclo${ciclos.length !== 1 ? "s" : ""} · ${activo ? `1 activo (${CICLO_ESTADO_LABEL[activo.estado as keyof typeof CICLO_ESTADO_LABEL]})` : "Sin ciclo activo"}`}
       actions={

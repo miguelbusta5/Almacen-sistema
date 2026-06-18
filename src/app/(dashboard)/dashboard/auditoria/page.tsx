@@ -5,6 +5,7 @@ import { useSession } from "next-auth/react";
 import { ShieldAlert, ChevronLeft, ChevronRight, RefreshCw, Download } from "lucide-react";
 import { useIsMobile } from "@/lib/useIsMobile";
 import { SkeletonTable } from "@/components/ui";
+import { getModuleCssVars } from "@/lib/moduleTheme";
 
 type Role = "ADMIN" | "GERENTE" | "OPERADOR";
 
@@ -150,7 +151,7 @@ export default function AuditoriaPage() {
   const hasFilters = fModule || fAction || fUser || fFrom || fTo || fq;
 
   return (
-    <div className="animate-fade-in">
+    <div className="animate-fade-in" style={getModuleCssVars("auditoria") as React.CSSProperties}>
       <div
         className="g-module-header"
         style={{ "--mod-color": "#334155", display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 16, flexWrap: "wrap", marginBottom: "1.25rem" } as React.CSSProperties}

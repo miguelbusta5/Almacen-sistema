@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState, useCallback } from "react";
 import { createPortal } from "react-dom";
 import { useSession } from "next-auth/react";
 import { GitMerge, Plus, Search, X, Minus, CheckCircle2, Trash2 } from "lucide-react";
-import { Badge, EmptyState, SkeletonTable } from "@/components/ui";
+import { Badge, EmptyState, ModuleHero, SkeletonTable } from "@/components/ui";
 import { SlidePanel, DetailSection, DetailGrid } from "@/components/ui/SlidePanel";
 import { AutoRefreshIndicator } from "@/components/ui/AutoRefreshIndicator";
 import { useAutoRefresh } from "@/hooks/useAutoRefresh";
@@ -527,32 +527,26 @@ export default function IntegracionPage() {
   return (
     <div style={{ ...getModuleCssVars("integracion"), display: "flex", flexDirection: "column", gap: 20, padding: isMobile ? "0 0 24px" : "0 0 32px" } as React.CSSProperties}>
 
-      {/* Header */}
-      <div style={{ display: "flex", alignItems: isMobile ? "flex-start" : "center", justifyContent: "space-between", flexDirection: isMobile ? "column" : "row", gap: isMobile ? 12 : 0 }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-          <div style={{ width: 36, height: 36, borderRadius: 10, background: `${COLOR}26`, display: "flex", alignItems: "center", justifyContent: "center", color: COLOR }}>
-            <GitMerge size={18} />
-          </div>
-          <div>
-            <h1 style={{ fontSize: 22, fontWeight: 700, color: "var(--text)", letterSpacing: "-0.03em", margin: 0 }}>Integración de Pedidos</h1>
-            <p style={{ fontSize: 13, color: "var(--muted)", margin: "2px 0 0" }}>
-              {loading ? "Cargando…" : `${total} integración${total !== 1 ? "es" : ""}`}
-            </p>
-          </div>
-        </div>
-        <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+      <ModuleHero
+        moduleKey="integracion"
+        kicker="OVDM + TSDM"
+        title="Integracion de Pedidos"
+        description={loading ? "Cargando..." : `${total} integracion${total !== 1 ? "es" : ""}`}
+        actions={(
+        <>
           <AutoRefreshIndicator
             lastUpdatedAt={autoRefresh.lastUpdatedAt}
             refreshing={autoRefresh.refreshing}
             onRefresh={autoRefresh.refreshNow}
           />
           {canCreate && (
-            <button onClick={() => setShowNueva(true)} className="ds-btn ds-btn-primary" style={{ background: COLOR, border: "none", display: "flex", alignItems: "center", gap: 7, fontSize: 14 }}>
+            <button onClick={() => setShowNueva(true)} className="ds-btn ds-btn-primary" style={{ display: "flex", alignItems: "center", gap: 7, fontSize: 14 }}>
               <Plus size={15} /> Nueva integración
             </button>
           )}
-        </div>
-      </div>
+        </>
+        )}
+      />
 
       {/* Filtros */}
       <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>

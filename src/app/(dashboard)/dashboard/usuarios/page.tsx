@@ -6,7 +6,7 @@ import { Users, Plus, Pencil, Shield, ShieldCheck, ShieldAlert, Truck, Car, Uplo
 import { SkeletonTable, EmptyState } from "@/components/ui";
 import { Modal } from "@/components/ui/Modal";
 import { AutoRefreshIndicator } from "@/components/ui/AutoRefreshIndicator";
-import { getModuleColor } from "@/lib/moduleTheme";
+import { getModuleColor, getModuleCssVars } from "@/lib/moduleTheme";
 import { useAutoRefresh } from "@/hooks/useAutoRefresh";
 
 type Role = "ADMIN" | "GERENTE" | "OPERADOR" | "TRANSPORTISTA" | "INVENTARIO" | "TRANSPORTE" | "SUPERVISOR_INVENTARIO" | "SUPERVISOR_TRANSPORTE" | "TIENDA" | "SUPERVISOR_TIENDA" | "OPERACIONES_MUEBLES" | "OPERACIONES_GOURMET" | "ETIQUETADO" | "SUPERVISOR_ALMACENAMIENTO";
@@ -168,7 +168,7 @@ export default function UsuariosPage() {
   const COLOR = getModuleColor("usuarios");
 
   return (
-    <div className="animate-fade-in" style={{ "--module-color": COLOR, display: "grid", gap: 18 } as React.CSSProperties}>
+    <div className="animate-fade-in" style={{ ...getModuleCssVars("usuarios"), "--module-color": COLOR, display: "grid", gap: 18 } as React.CSSProperties}>
       <div
         className="g-module-header"
         style={{ "--mod-color": "#334155", display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 16, flexWrap: "wrap" } as React.CSSProperties}

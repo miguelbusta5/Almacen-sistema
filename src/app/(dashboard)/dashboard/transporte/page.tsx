@@ -273,6 +273,7 @@ export default function TransportePage() {
 
   return (
     <CediPage
+      moduleKey="transporte"
       title="Guardados Transporte"
       description={loading ? "Cargando…" : `${guardados.length} registros · ${kpis.pend} pendientes despacho`}
       actions={

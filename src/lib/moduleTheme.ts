@@ -13,6 +13,10 @@ export interface ModuleTheme {
   gradient: string;
   darkColor: string;
   darkTint: string;
+  heroImage: string;
+  heroGradient: string;
+  glow: string;
+  surface: string;
 }
 
 function theme(
@@ -21,18 +25,24 @@ function theme(
   gradient: string,
   darkColor: string,
   darkTint: string,
+  heroImage: string,
+  heroGradient: string,
+  glow: string,
+  surface: string,
 ) {
-  return { color, tint, gradient, darkColor, darkTint };
+  return { color, tint, gradient, darkColor, darkTint, heroImage, heroGradient, glow, surface };
 }
 
-const BLUE = theme("#2563EB", "rgba(37,99,235,0.12)", "linear-gradient(135deg,#1D4ED8 0%,#2563EB 55%,#60A5FA 100%)", "#60A5FA", "rgba(96,165,250,0.16)");
-const SLATE = theme("#475569", "rgba(71,85,105,0.12)", "linear-gradient(135deg,#334155 0%,#64748B 100%)", "#CBD5E1", "rgba(203,213,225,0.14)");
-const VIOLET = theme("#7C3AED", "rgba(124,58,237,0.13)", "linear-gradient(135deg,#5B21B6 0%,#7C3AED 52%,#A78BFA 100%)", "#A78BFA", "rgba(167,139,250,0.18)");
-const TEAL = theme("#0891B2", "rgba(8,145,178,0.13)", "linear-gradient(135deg,#0E7490 0%,#0891B2 55%,#22D3EE 100%)", "#22D3EE", "rgba(34,211,238,0.17)");
-const EMERALD = theme("#059669", "rgba(5,150,105,0.13)", "linear-gradient(135deg,#047857 0%,#059669 55%,#34D399 100%)", "#34D399", "rgba(52,211,153,0.16)");
-const AMBER = theme("#D97706", "rgba(217,119,6,0.14)", "linear-gradient(135deg,#B45309 0%,#D97706 55%,#FBBF24 100%)", "#FBBF24", "rgba(251,191,36,0.17)");
-const ROSE = theme("#E11D48", "rgba(225,29,72,0.13)", "linear-gradient(135deg,#BE123C 0%,#E11D48 56%,#FB7185 100%)", "#FB7185", "rgba(251,113,133,0.16)");
-const INDIGO = theme("#4F46E5", "rgba(79,70,229,0.13)", "linear-gradient(135deg,#4338CA 0%,#4F46E5 55%,#818CF8 100%)", "#818CF8", "rgba(129,140,248,0.17)");
+const HERO = "/ui/module-heroes/";
+
+const BLUE = theme("#2563EB", "rgba(37,99,235,0.12)", "linear-gradient(135deg,#1D4ED8 0%,#2563EB 55%,#60A5FA 100%)", "#60A5FA", "rgba(96,165,250,0.16)", `${HERO}indicadores.webp`, "linear-gradient(135deg,#07172F 0%,#102B68 48%,#07111F 100%)", "rgba(37,99,235,0.52)", "rgba(37,99,235,0.16)");
+const SLATE = theme("#64748B", "rgba(100,116,139,0.12)", "linear-gradient(135deg,#334155 0%,#64748B 100%)", "#CBD5E1", "rgba(203,213,225,0.14)", `${HERO}usuarios.webp`, "linear-gradient(135deg,#07111F 0%,#1E293B 52%,#0B1020 100%)", "rgba(148,163,184,0.36)", "rgba(100,116,139,0.16)");
+const VIOLET = theme("#7C3AED", "rgba(124,58,237,0.13)", "linear-gradient(135deg,#5B21B6 0%,#7C3AED 52%,#A78BFA 100%)", "#A78BFA", "rgba(167,139,250,0.18)", `${HERO}facturas-contado.webp`, "linear-gradient(135deg,#120B2E 0%,#25105E 50%,#090F1D 100%)", "rgba(124,58,237,0.58)", "rgba(124,58,237,0.18)");
+const TEAL = theme("#0891B2", "rgba(8,145,178,0.13)", "linear-gradient(135deg,#0E7490 0%,#0891B2 55%,#22D3EE 100%)", "#22D3EE", "rgba(34,211,238,0.17)", `${HERO}transporte.webp`, "linear-gradient(135deg,#051827 0%,#06465A 52%,#07111F 100%)", "rgba(8,145,178,0.52)", "rgba(8,145,178,0.16)");
+const EMERALD = theme("#059669", "rgba(5,150,105,0.13)", "linear-gradient(135deg,#047857 0%,#059669 55%,#34D399 100%)", "#34D399", "rgba(52,211,153,0.16)", `${HERO}conteo.webp`, "linear-gradient(135deg,#041C18 0%,#064E3B 52%,#07111F 100%)", "rgba(5,150,105,0.48)", "rgba(5,150,105,0.16)");
+const AMBER = theme("#D97706", "rgba(217,119,6,0.14)", "linear-gradient(135deg,#B45309 0%,#D97706 55%,#FBBF24 100%)", "#FBBF24", "rgba(251,191,36,0.17)", `${HERO}preoperacional.webp`, "linear-gradient(135deg,#211203 0%,#78350F 52%,#07111F 100%)", "rgba(217,119,6,0.50)", "rgba(217,119,6,0.17)");
+const ROSE = theme("#E11D48", "rgba(225,29,72,0.13)", "linear-gradient(135deg,#BE123C 0%,#E11D48 56%,#FB7185 100%)", "#FB7185", "rgba(251,113,133,0.16)", `${HERO}exportaciones.webp`, "linear-gradient(135deg,#270714 0%,#701A35 52%,#07111F 100%)", "rgba(225,29,72,0.50)", "rgba(225,29,72,0.16)");
+const INDIGO = theme("#4F46E5", "rgba(79,70,229,0.13)", "linear-gradient(135deg,#4338CA 0%,#4F46E5 55%,#818CF8 100%)", "#818CF8", "rgba(129,140,248,0.17)", `${HERO}inventario.webp`, "linear-gradient(135deg,#0A102F 0%,#312E81 52%,#07111F 100%)", "rgba(79,70,229,0.52)", "rgba(79,70,229,0.17)");
 
 export const MODULE_THEME: Record<ModuleThemeKey, ModuleTheme> = {
   home: {
@@ -90,6 +100,7 @@ export const MODULE_THEME: Record<ModuleThemeKey, ModuleTheme> = {
     shortLabel: "Solicitudes",
     description: "Solicitudes internas que gestiona el lider de transporte",
     ...TEAL,
+    heroImage: `${HERO}solicitudes-transporte.webp`,
   },
   exportaciones: {
     key: "exportaciones",
@@ -139,6 +150,7 @@ export const MODULE_THEME: Record<ModuleThemeKey, ModuleTheme> = {
     shortLabel: "Integracion",
     description: "Picking OVDM/TSDM entre areas",
     ...VIOLET,
+    heroImage: `${HERO}integracion.webp`,
   },
   studio: {
     key: "studio",
@@ -169,6 +181,10 @@ export function getModuleCssVars(key: ModuleThemeKey | string | null | undefined
     "--module-gradient": theme.gradient,
     "--mod-dark-color": theme.darkColor,
     "--mod-dark-tint": theme.darkTint,
+    "--module-hero-image": `url(${theme.heroImage})`,
+    "--module-hero-gradient": theme.heroGradient,
+    "--module-glow": theme.glow,
+    "--module-surface": theme.surface,
   };
 }
 

@@ -1,6 +1,7 @@
 "use client";
 import React from "react";
 import { getModuleIconBg } from "@/lib/moduleTheme";
+export { ModuleHero } from "./ModuleHero";
 
 // ═══════════════════════════════════════════════════════════
 // BADGE — estado inteligente con dot semántico

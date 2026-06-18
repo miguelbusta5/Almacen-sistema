@@ -9,7 +9,7 @@ import {
 import { SlaEstado, SLA_COLOR, SLA_LABEL, calcSla, diasRestantesSla } from "@/lib/sla";
 import { urgencia } from "@/lib/transporte";
 import { horasDesde } from "@/lib/tienda";
-import { Badge, EmptyState } from "@/components/ui";
+import { Badge, EmptyState, ModuleHero } from "@/components/ui";
 import { AutoRefreshIndicator } from "@/components/ui/AutoRefreshIndicator";
 import { useAutoRefresh } from "@/hooks/useAutoRefresh";
 import Link from "next/link";
@@ -119,25 +119,19 @@ export default function MisTareasPage() {
 
   return (
     <div className="animate-fade-in" style={{ ...getModuleCssVars("mis-tareas"), maxWidth: 720 } as React.CSSProperties}>
-      {/* ── Header ── */}
-      <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 24 }}>
-        <div>
-          <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 4 }}>
-            <div style={{ width: 30, height: 30, borderRadius: 8, background: "var(--brand-tint)", display: "flex", alignItems: "center", justifyContent: "center" }}>
-              <CheckSquare size={16} color="var(--brand)" />
-            </div>
-            <h1 style={{ fontSize: 22, fontWeight: 700, color: "var(--text)", letterSpacing: "-0.03em", margin: 0 }}>Mis Tareas</h1>
-          </div>
-          <p style={{ fontSize: 13, color: "var(--muted)", margin: 0 }}>
-            {saludo}{userName ? `, ${userName}` : ""} / {new Date().toLocaleDateString("es-CO", { weekday: "long", day: "numeric", month: "long" })}
-          </p>
-        </div>
-        <AutoRefreshIndicator
-          lastUpdatedAt={autoRefresh.lastUpdatedAt}
-          refreshing={autoRefresh.refreshing || loading}
-          onRefresh={autoRefresh.refreshNow}
-        />
-      </div>
+      <ModuleHero
+        moduleKey="mis-tareas"
+        kicker="Bandeja personal"
+        title="Mis Tareas"
+        description={`${saludo}${userName ? `, ${userName}` : ""} / ${new Date().toLocaleDateString("es-CO", { weekday: "long", day: "numeric", month: "long" })}`}
+        actions={(
+          <AutoRefreshIndicator
+            lastUpdatedAt={autoRefresh.lastUpdatedAt}
+            refreshing={autoRefresh.refreshing || loading}
+            onRefresh={autoRefresh.refreshNow}
+          />
+        )}
+      />
 
       {/* ── KPIs flotantes ── */}
       {!loading && data && (

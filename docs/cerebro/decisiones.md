@@ -1,5 +1,27 @@
 # Decisiones de Arquitectura y Producto
 
+## 2026-06-18 - Rediseño Colorido Neon con assets por modulo
+
+**Decision:**
+- La direccion visual vigente se corrige a **Colorido Neon Enterprise con assets**.
+- Se crea `ModuleHero` como encabezado unico para modulos y se agregan renders por modulo en `public/ui/module-heroes/`.
+- `src/lib/moduleTheme.ts` ahora incluye `heroImage`, `heroGradient`, `glow` y `surface` ademas de los colores base del modulo.
+- Los encabezados legacy `g-module-header`, `op-module-header` y `cedi-hero` consumen las mismas variables para evitar pantallas planas mientras se completa la migracion.
+- KPIs, tablas y drawers reciben profundidad neon: glow, rails de estado, hover tintado y superficies dark enterprise.
+
+**Contexto:**
+- El despliegue anterior solo impactaba claramente el menu lateral y algunos tintes; las pantallas principales seguian viendose blancas/pastel y sin imagenes en titulos.
+- La referencia aprobada es `ig_0988ec5b4e4ea755016a33f9e3f8d881918d437124ace42cbb.png`, con hero dark/neon, asset 3D, KPIs vivos, tabs de estado, tabla densa y drawer coloreado.
+
+**Consecuencias:**
+- No hay cambios de base de datos, APIs, permisos ni reglas de negocio.
+- Facturas Contado, Guardados, Solicitudes Transporte, Exportaciones, Preoperacional, Inventario, Integracion, Conteo, Indicadores, Usuarios y Auditoria quedan conectados al sistema de heroes/assets.
+- Logistica, rutas, GPS y Mi Ruta siguen suspendidos.
+
+**Archivos afectados:** `src/lib/moduleTheme.ts`, `src/components/ui/ModuleHero.tsx`, `src/components/ui/pageShell.tsx`, `src/app/globals.css`, `public/ui/module-heroes/*`, pantallas operativas y `docs/cerebro/ux-ui.md`.
+
+---
+
 ## 2026-06-18 - Colorido Completo Enterprise para Control Logistico CEDI
 
 **Decision:**

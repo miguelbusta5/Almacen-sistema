@@ -4,22 +4,26 @@
 
 ---
 
-## Direccion vigente 2026-06-18: Colorido Completo Enterprise
+## Direccion vigente 2026-06-18: Colorido Neon Enterprise con assets
 
-- La interfaz adopta una identidad **Colorido Completo Enterprise**: base premium clara/oscura, modulos con color propio y estados operativos con color semantico real.
+- La interfaz adopta una identidad **Colorido Neon Enterprise**: base premium navy/neon, modulos con color propio, estados operativos con color semantico real y encabezados con renders 3D.
 - Se abandona la restriccion **Claro Ejecutivo Azul/Gris**. El azul sigue siendo importante, pero ya no limita toda la interfaz.
 - La app debe sentirse cercana a una herramienta enterprise tipo Vercel/Linear/Supabase/Notion, pero con identidad CEDI: viva, densa, funcional y escalable.
 - El color debe tener funcion: modulo, estado, prioridad, foco o accion. No usar decoracion gratuita.
+- Los encabezados de modulo deben usar `ModuleHero` o clases compatibles con variables de `moduleTheme`; cada modulo define `heroImage`, `heroGradient`, `glow` y `surface`.
+- Los assets visuales versionados viven en `public/ui/module-heroes/`; nunca se referencian desde `.codex`.
 - Logistica, rutas, GPS y Mi Ruta siguen suspendidos indefinidamente.
 
 ## Referencias aprobadas
 
 - Claro: `C:\Users\USUARIO\.codex\generated_images\019e979a-7c0c-74d3-8494-63a1cbf080a6\ig_0d5909cbba99bf9e016a33ea9eb9cc81919bbc4dc1ac9d191d.png`
 - Oscuro: `C:\Users\USUARIO\.codex\generated_images\019e979a-7c0c-74d3-8494-63a1cbf080a6\ig_0d5909cbba99bf9e016a33eb9b00488191af1ea9c41d3efa52.png`
+- Neon con detalle: `C:\Users\USUARIO\.codex\generated_images\019e979a-7c0c-74d3-8494-63a1cbf080a6\ig_0988ec5b4e4ea755016a33f9e3f8d881918d437124ace42cbb.png`
 
 ## Principios visuales
 
 - **Modulo-aware:** cada modulo define `color`, `tint`, `gradient`, `darkColor`, `darkTint` y contraste desde `src/lib/moduleTheme.ts`.
+- **Hero con asset:** cada modulo define imagen/render lateral en `public/ui/module-heroes/` para evitar headers planos.
 - **State-aware:** los estados operativos no dependen del modulo; rechazado, pendiente, recogido, entregado, enviado, efectuado y bloqueado tienen senales propias.
 - **Claro y oscuro nativos:** el modo oscuro usa superficies navy/graphite y colores luminosos; no es una inversion automatica del modo claro.
 - **Jerarquia operativa:** encabezado de modulo, KPIs, tabs, filtros, tabla/lista, detalle y acciones deben leerse rapido.
@@ -37,6 +41,10 @@ Definidos principalmente en `src/app/globals.css` y `src/lib/moduleTheme.ts`:
 --module-tint
 --mod-gradient
 --module-gradient
+--module-hero-image
+--module-hero-gradient
+--module-glow
+--module-surface
 --state-success
 --state-warning
 --state-danger
@@ -58,6 +66,7 @@ Clases de plataforma:
 .ds-stat
 .ds-table
 .slide-panel
+.module-hero
 ```
 
 ## Datos en vivo
@@ -98,3 +107,4 @@ Revisar en claro y oscuro, desktop, tablet y movil:
 - 2026-06-16: Operativo Premium, luego Claro Ejecutivo Azul/Gris y CEDI Harmony.
 - 2026-06-17: CEDI Clean Platform para componentes reutilizables.
 - 2026-06-18: se adopta **Colorido Completo Enterprise** como direccion vigente y se abandona azul/gris como restriccion.
+- 2026-06-18: se corrige la direccion hacia **Colorido Neon Enterprise con assets**, usando `ModuleHero`, renders por modulo, KPIs con glow y tablas con rails.

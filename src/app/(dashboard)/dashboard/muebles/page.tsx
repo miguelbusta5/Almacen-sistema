@@ -20,6 +20,7 @@ import { insightsNovedades, insightsPorNovedad } from "@/lib/inteligencia";
 import { Stat, SkeletonStat, Badge, EmptyState, SkeletonTable } from "@/components/ui";
 import { Modal, ConfirmModal } from "@/components/ui/Modal";
 import { SlidePanel, IntelBanner, IntelAlert, DetailSection, DetailGrid, MiniHistory } from "@/components/ui/SlidePanel";
+import { getModuleCssVars } from "@/lib/moduleTheme";
 
 ChartJS.register(ArcElement, BarElement, CategoryScale, LinearScale, PointElement, LineElement, Tooltip, Legend);
 
@@ -253,7 +254,7 @@ export default function MueblesPage() {
   }, [panelItem, items]);
 
   return (
-    <div className="animate-fade-in">
+    <div className="animate-fade-in" style={getModuleCssVars("inventario") as React.CSSProperties}>
       {/* ── Page header ── */}
       <div className="g-module-header g-page-head" style={{ "--mod-color": "#1D4ED8" } as React.CSSProperties}>
         <div>

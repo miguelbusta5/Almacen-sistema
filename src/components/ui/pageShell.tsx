@@ -1,5 +1,6 @@
 import type { CSSProperties, ReactNode } from "react";
 import { getModuleCssVars, type ModuleThemeKey } from "@/lib/moduleTheme";
+import { ModuleHero } from "./ModuleHero";
 
 // ═══════════════════════════════════════════════════════════
 // PAGE SHELL — encabezado de página module-aware (Vercel/Linear)
@@ -16,6 +17,7 @@ export interface PageShellProps {
   moduleColor?: string;
   actions?: ReactNode;
   children: ReactNode;
+  metrics?: Array<{ label: string; value: string | number; tone?: "module" | "info" | "success" | "warning" | "danger" }>;
 }
 
 export function PageShell({
@@ -25,6 +27,7 @@ export function PageShell({
   moduleKey,
   moduleColor,
   actions,
+  metrics,
   children,
 }: PageShellProps) {
   const vars = moduleKey ? getModuleCssVars(moduleKey) : undefined;
@@ -37,14 +40,15 @@ export function PageShell({
       className="cedi-page animate-fade-in"
       style={style}
     >
-      <section className="cedi-hero">
-        <div>
-          <div className="cedi-kicker">{kicker}</div>
-          <h1>{title}</h1>
-          {description && <p>{description}</p>}
-        </div>
-        {actions && <div className="cedi-actions">{actions}</div>}
-      </section>
+      <ModuleHero
+        moduleKey={moduleKey ?? "home"}
+        title={title}
+        description={description}
+        kicker={kicker}
+        actions={actions}
+        metrics={metrics}
+        style={moduleColor ? ({ "--mod-color": moduleColor, "--module-color": moduleColor } as CSSProperties) : undefined}
+      />
       {children}
     </div>
   );

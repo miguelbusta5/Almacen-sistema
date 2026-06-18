@@ -4,7 +4,7 @@ import Link from "next/link";
 import { ArrowRight, CheckCircle2, Gauge, RadioTower } from "lucide-react";
 import { Badge, SectionHeader } from "@/components/ui";
 import { PRODUCT } from "@/config/product";
-import { getModuleColor } from "@/lib/moduleTheme";
+import { getModuleColor, getModuleCssVars } from "@/lib/moduleTheme";
 import type {
   ControlAction,
   ControlLogisticoResumen,
@@ -36,7 +36,7 @@ export function ControlHero({ nombre, resumen, isMobile }: {
   const accent = controlStatusColor(resumen.headline.status);
 
   return (
-    <section className="op-module-header" style={{ "--module-color": accent, padding: isMobile ? 18 : 26, marginBottom: 18 } as React.CSSProperties}>
+    <section className="op-module-header" style={{ ...getModuleCssVars("centro-control"), "--module-color": accent, padding: isMobile ? 18 : 26, marginBottom: 18 } as React.CSSProperties}>
       <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 18, flexWrap: "wrap", position: "relative", zIndex: 1 }}>
         <div style={{ maxWidth: 720 }}>
           <div className="op-module-kicker" style={{ fontWeight: 800 }}>{PRODUCT.displayName}</div>

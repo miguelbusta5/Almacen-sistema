@@ -20,6 +20,7 @@ import {
   Novedad, EstadoNovedad, TipoNovedad,
   ESTADO_COLOR, estadoLabel, todayISO, fmtFecha,
 } from "@/lib/muebles";
+import { getModuleCssVars } from "@/lib/moduleTheme";
 
 // ── Paleta de tipos de novedad (compacta para chips) ─────
 const CHIP_TIPOS: Array<{ id: TipoNovedad; label: string; color: string }> = [
@@ -838,18 +839,19 @@ export default function InventarioMobilePage() {
 
   return (
     <div style={{
+      ...getModuleCssVars("inventario"),
       display: "flex", flexDirection: "column",
       height: "100dvh", // dynamic viewport height (Android-friendly)
       overflow: "hidden",
       background: "var(--bg)",
       position: "relative",
-    }}>
+    } as React.CSSProperties}>
       {/* ── Header ─────────────────────────────────────────── */}
-      <div style={{
+      <div className="inventory-neon-header" style={{
         flexShrink: 0,
-        padding: "12px 16px 0",
-        background: "var(--surface)",
-        borderBottom: "1px solid var(--border)",
+        padding: "16px 16px 0",
+        background: "var(--module-hero-gradient)",
+        borderBottom: "1px solid color-mix(in srgb, var(--module-color) 34%, transparent)",
       }}>
         {searchOpen ? (
           <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 12 }}>
@@ -870,10 +872,10 @@ export default function InventarioMobilePage() {
         ) : (
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
             <div>
-              <h1 style={{ fontSize: 20, fontWeight: 800, color: "var(--text)", margin: 0, letterSpacing: "-0.03em" }}>
+              <h1 style={{ fontSize: 22, fontWeight: 900, color: "#F8FBFF", margin: 0, letterSpacing: "-0.03em" }}>
                 Inventario
               </h1>
-              <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 2 }}>
+              <div style={{ fontSize: 12, color: "rgba(226,232,240,0.76)", marginTop: 2 }}>
                 {loading ? "Cargando…" : `${filtered.length} novedad${filtered.length !== 1 ? "es" : ""}`}
               </div>
             </div>

@@ -6,7 +6,7 @@ import {
   AlertTriangle, Camera, CheckCircle2, ChevronLeft, ChevronRight,
   Download, RefreshCw, Save, ShieldCheck, Trash2, Truck, XCircle,
 } from "lucide-react";
-import { Badge, EmptyState, SkeletonTable, Stat } from "@/components/ui";
+import { Badge, EmptyState, ModuleHero, SkeletonTable, Stat } from "@/components/ui";
 import { AutoRefreshIndicator } from "@/components/ui/AutoRefreshIndicator";
 import { SlidePanel, DetailSection, DetailGrid } from "@/components/ui/SlidePanel";
 import { useIsMobile } from "@/lib/useIsMobile";
@@ -99,7 +99,6 @@ const RESULTADO_LABEL: Record<ResultadoInspeccion, string> = {
 
 const SUPERVISOR_ROLES = ["ADMIN", "GERENTE", "SUPERVISOR_TRANSPORTE"];
 const PREOP_COLOR = getModuleColor("preoperacional");
-const PREOP_TINT = `${PREOP_COLOR}14`;
 
 function estadoEstimado(items: FormItem[]): EstadoInspeccion {
   if (items.some((i) => i.esCritico && i.resultado === "NO_CONFORME")) return "BLOQUEADA";
@@ -261,25 +260,19 @@ function ConductorView() {
 
   return (
     <div className="animate-fade-in" style={{ ...getModuleCssVars("preoperacional"), maxWidth: 980 } as React.CSSProperties}>
-      {/* Header */}
-      <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12, marginBottom: 24, flexWrap: "wrap" }}>
-        <div>
-          <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 4 }}>
-            <div style={{ width: 30, height: 30, borderRadius: 8, background: PREOP_TINT, display: "flex", alignItems: "center", justifyContent: "center" }}>
-              <ShieldCheck size={16} color={PREOP_COLOR} />
-            </div>
-            <h1 style={{ fontSize: 22, fontWeight: 700, color: "var(--text)", letterSpacing: "-0.03em", margin: 0 }}>Preoperacional</h1>
-          </div>
-          <p style={{ fontSize: 13, color: "var(--muted)", margin: 0 }}>
-            {data.transportista.nombre} — {data.vehiculo.placa} — {data.vehiculo.tipo}
-          </p>
-        </div>
-        <AutoRefreshIndicator
-          lastUpdatedAt={autoRefresh.lastUpdatedAt}
-          refreshing={autoRefresh.refreshing}
-          onRefresh={autoRefresh.refreshNow}
-        />
-      </div>
+      <ModuleHero
+        moduleKey="preoperacional"
+        kicker="Checklist vehicular"
+        title="Preoperacional"
+        description={`${data.transportista.nombre} - ${data.vehiculo.placa} - ${data.vehiculo.tipo}`}
+        actions={(
+          <AutoRefreshIndicator
+            lastUpdatedAt={autoRefresh.lastUpdatedAt}
+            refreshing={autoRefresh.refreshing}
+            onRefresh={autoRefresh.refreshNow}
+          />
+        )}
+      />
 
       {/* Stats */}
       <div style={{ display: "grid", gridTemplateColumns: isMobile ? "repeat(2,1fr)" : "repeat(auto-fit,minmax(150px,1fr))", gap: 18, marginBottom: 22 }}>
@@ -521,31 +514,27 @@ function SupervisorView({ role }: { role: string }) {
 
   return (
     <div className="animate-fade-in" style={getModuleCssVars("preoperacional") as React.CSSProperties}>
-      {/* Header */}
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 12, marginBottom: "1.5rem" }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-          <div style={{ width: 40, height: 40, borderRadius: 10, background: PREOP_TINT, display: "flex", alignItems: "center", justifyContent: "center" }}>
-            <ShieldCheck size={20} color={PREOP_COLOR} />
-          </div>
-          <div>
-            <h1 style={{ fontSize: 22, fontWeight: 800, color: "var(--text)", letterSpacing: "-0.02em", margin: 0 }}>Preoperacional</h1>
-            <p style={{ fontSize: 12, color: "var(--muted)", margin: 0 }}>{total} inspeccion{total !== 1 ? "es" : ""} registrada{total !== 1 ? "s" : ""}</p>
-          </div>
-        </div>
-        <div style={{ display: "flex", gap: 8, flexWrap: "wrap", justifyContent: "flex-end" }}>
+      <ModuleHero
+        moduleKey="preoperacional"
+        kicker="Control de flota"
+        title="Preoperacional"
+        description={`${total} inspeccion${total !== 1 ? "es" : ""} registrada${total !== 1 ? "s" : ""}`}
+        actions={(
+        <>
           <AutoRefreshIndicator
             lastUpdatedAt={autoRefresh.lastUpdatedAt}
             refreshing={autoRefresh.refreshing}
             onRefresh={autoRefresh.refreshNow}
           />
-          <button onClick={exportar} disabled={exporting} style={{ display: "flex", alignItems: "center", gap: 6, padding: "0.55rem 1rem", background: PREOP_COLOR, color: "#fff", border: "none", borderRadius: 9, fontSize: 12, fontWeight: 700, cursor: "pointer", opacity: exporting ? 0.7 : 1 }}>
+          <button onClick={exportar} disabled={exporting} className="ds-btn ds-btn-primary" style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, opacity: exporting ? 0.7 : 1 }}>
             <Download size={14} />{exporting ? "Exportando..." : "Exportar Excel"}
           </button>
           <button onClick={() => load(page)} className="ds-btn ds-btn-ghost" style={{ fontSize: 12 }}>
             <RefreshCw size={14} />Actualizar
           </button>
-        </div>
-      </div>
+        </>
+        )}
+      />
 
       {/* Filtros */}
       <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: "1rem", alignItems: "center" }}>

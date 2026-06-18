@@ -43,6 +43,7 @@
 
 ### UI / UX Control Logistico CEDI
 
+- [x] Rediseño Colorido Neon con assets por modulo: `ModuleHero`, renders en `public/ui/module-heroes`, headers dark/neon en claro/oscuro, KPIs con glow y tablas con rails - 2026-06-18
 - [ ] Migrar pantallas legacy clave a componentes `CediPage/CediPanel/CediStat` por fases
 - [ ] QA visual real de Indicadores CEDI en desktop, tablet y movil con datos sincronizados
 - [x] Adaptar Indicadores CEDI a estructura real del Sheet (Base general + Rotacion PLU) — 2026-06-17

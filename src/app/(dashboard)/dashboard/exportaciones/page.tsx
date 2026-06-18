@@ -3,10 +3,10 @@
 import { useEffect, useMemo, useState } from "react";
 import { useSession } from "next-auth/react";
 import { BarChart3, CheckCircle2, ChevronDown, ChevronUp, Clock, Pencil, RefreshCw, Search, Tags, Trash2 } from "lucide-react";
-import { EmptyState, SkeletonTable } from "@/components/ui";
+import { EmptyState, ModuleHero, SkeletonTable } from "@/components/ui";
 import { Modal } from "@/components/ui/Modal";
 import { AutoRefreshIndicator } from "@/components/ui/AutoRefreshIndicator";
-import { getModuleColor } from "@/lib/moduleTheme";
+import { getModuleColor, getModuleCssVars } from "@/lib/moduleTheme";
 import { puedeGestionarExportaciones, puedeUsarExportaciones } from "@/lib/exportaciones";
 import { useIsMobile } from "@/lib/useIsMobile";
 import { useAutoRefresh } from "@/hooks/useAutoRefresh";
@@ -364,12 +364,13 @@ export default function ExportacionesPage() {
   ) : null;
 
   return (
-    <div className="animate-fade-in" style={{ "--module-color": COLOR, display: "grid", gap: 16, maxWidth: 1180 } as React.CSSProperties}>
-      <div className="g-module-header" style={{ "--mod-color": "#0891B2" } as React.CSSProperties}>
-        <div className="g-module-kicker">Operación de etiquetado</div>
-        <h1 className="g-module-title">Exportaciones</h1>
-        <p className="g-module-desc">Captura consecutiva por caja, PLU maestro, unidad de empaque y tiempos automáticos de inicio/finalización.</p>
-      </div>
+    <div className="animate-fade-in" style={{ ...getModuleCssVars("exportaciones"), "--module-color": COLOR, display: "grid", gap: 16, maxWidth: 1180 } as React.CSSProperties}>
+      <ModuleHero
+        moduleKey="exportaciones"
+        kicker="Operacion de etiquetado"
+        title="Exportaciones"
+        description="Captura consecutiva por caja, PLU maestro, unidad de empaque y tiempos automaticos de inicio/finalizacion."
+      />
       {captureCard}
 
       {canManage && (
