@@ -61,8 +61,7 @@ node prisma/seed.js       # Crear usuario admin inicial
 - `historialSolicitudesTransporte` → HistorialSolicitudTransporte[]
 - `exportacionesEtiquetado` → EtiquetadoExportacion[]
 - `exportacionesActualizadas` → EtiquetadoExportacion[]
-- `indicadoresSync` → IndicadorFuente[]
-- `ciclosConteo`, `guardadosPendientes`, `novedadesAsign`, `contactosGuard`
+- `guardadosPendientes`, `novedadesAsign`, `contactosGuard`
 
 ### Módulo Tienda
 
@@ -117,20 +116,6 @@ node prisma/seed.js       # Crear usuario admin inicial
 - `horaInicio` se crea automaticamente; `horaFinalizacion` se cierra cuando el usuario crea la siguiente caja.
 - `deletedAt` implementa borrado logico.
 
-### Módulo Indicadores CEDI
-
-| Modelo | Tabla | Propósito |
-|---|---|---|
-| `IndicadorFuente` | `indicadores_fuentes` | Fuente/rango de Google Sheets y estado de sincronizacion |
-| `IndicadorCedi` | `indicadores_cedi` | Snapshot cacheado de KPIs por proceso, indicador y periodo |
-
-**Reglas de datos:**
-- La UI consulta PostgreSQL; nunca consulta Google Sheets directamente.
-- `rowKey` identifica la fila fuente y evita duplicados.
-- `rowHash` permite detectar cambios de contenido en una fila sincronizada.
-- `rawRow` conserva la fila normalizada para trazabilidad sin acoplar toda la UI a columnas del Sheet.
-- El cron en Vercel Hobby corre diario a las 06:00 UTC (`0 6 * * *`); si se sube a un plan con mayor frecuencia permitida puede ajustarse a cada 15 minutos.
-
 ### Módulo Integración (Sprint 8)
 
 | Modelo | Tabla | Propósito |
@@ -152,16 +137,12 @@ node prisma/seed.js       # Crear usuario admin inicial
 
 Checklist fuente: `src/lib/preoperacional.ts` con 58 ítems reales en 15 categorías. Hay 26 ítems críticos; cualquier `NO_CONFORME` crítico bloquea el vehículo.
 
-### Módulo Inventario / Conteo
+### Módulo Inventario
 
 | Modelo | Tabla | Propósito |
 |---|---|---|
 | `Novedad` | `novedades` | Diferencias de inventario |
 | `ProductoMaestro` | `productos_maestro` | Catálogo de PLUs |
-| `CicloConteo` | `ciclos_conteo` | Ciclo de conteo cíclico |
-| `LineaConteo` | `lineas_conteo` | PLU individual a contar |
-| `OperarioCiclo` | `operarios_ciclo` | Asignación de operarios |
-| `ImportacionTeorico` | `importaciones_teorico` | Importación de datos WMS |
 
 ### Módulo Logística (suspendido)
 

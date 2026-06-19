@@ -1,5 +1,26 @@
 # Decisiones de Arquitectura y Producto
 
+## 2026-06-19 - D10: borrado de tablas Prisma de los modulos eliminados (destructivo, confirmado)
+
+**Decision:**
+- Se cierra EPIC D borrando del `schema.prisma` los 10 modelos de los modulos ya eliminados en UI/API/tipos:
+  - Conteo: `CicloConteo` (`ciclos_conteo`), `LineaConteo` (`lineas_conteo`), `OperarioCiclo` (`operarios_ciclo`), `ImportacionTeorico` (`importaciones_teorico`).
+  - Indicadores: `IndicadorFuente` (`indicadores_fuentes`), `IndicadorResumenMes` (`indicador_resumen_mes`), `IndicadorTipoOrden` (`indicador_tipo_orden`), `IndicadorPLU` (`indicador_plu`).
+  - Studio: `StudioDashboard` (`studio_dashboards`), `StudioFuente` (`studio_fuentes`).
+- Se quitaron las 3 back-relations huerfanas en `User`: `ciclosConteo`, `indicadoresSync`, `studiosDashboards`.
+- Se aplico a Railway con `npx prisma db push --accept-data-loss` (este proyecto no usa migrations).
+
+**Contexto:**
+- El usuario eligio "Backup y luego push". Antes de tocar la base se verifico con grep que ningun modelo superviviente ni el codigo en `src/` referenciara esos modelos (las unicas referencias vivas eran el schema y el cerebro; el resto eran worktrees stale en `.claude/`).
+- Se previsualizo el SQL con `prisma migrate diff --from-config-datasource --to-schema`: confirmo solo 6 `DROP CONSTRAINT` + 10 `DROP TABLE`, sin tocar tablas supervivientes.
+
+**Consecuencias:**
+- **Perdida de datos (respaldada):** `indicador_plu` 12.024 filas, `indicador_resumen_mes` 120, `indicador_tipo_orden` 93, `indicadores_fuentes` 1, `studio_dashboards` 2; las 4 tablas de conteo y `studio_fuentes` estaban vacias. Backup JSON lossless (3.6 MB) en `Desktop/d10-backup/` (fuera de git). Los datos de indicadores son re-sincronizables desde Google Sheets.
+- Base en sync con el schema (`migrate diff --exit-code` = 0, "No difference detected").
+- Validado antes del push: `prisma validate`, `prisma generate`, `tsc`, 271 tests y `build` verdes.
+
+**Archivos afectados:** `prisma/schema.prisma`, `docs/cerebro/{base-datos,decisiones,pendientes}.md`.
+
 ## 2026-06-19 - Eliminacion de modulos sin uso: Conteo, Contar, Studio, Indicadores (EPIC D)
 
 **Decision:**
