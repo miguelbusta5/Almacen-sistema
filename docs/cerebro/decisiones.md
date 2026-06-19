@@ -1,5 +1,24 @@
 # Decisiones de Arquitectura y Producto
 
+## 2026-06-19 - A5 + A1: componentes compartidos Toast/NetSuiteChip y header de muebles a ModuleHero
+
+**Decision (A5):**
+- Se crean en `src/components/ui/index.tsx` dos componentes compartidos y se eliminan sus copias inline:
+  - `<Toast message error>` — aviso flotante abajo-derecha. Reemplaza el markup duplicado en `tienda`, `transporte`, `muebles` y `preoperacional` (×2). bg tokenizado (`var(--surface)` / `var(--error)`), `maxWidth` responsivo. De paso corrige el 2º toast de `preoperacional` que usaba `var(--text)` (legado del tema claro → blanco-sobre-claro en dark).
+  - `<NetSuiteChip id>` — chip de id NetSuite. Reemplaza el span inline en `tienda`, `transporte`, `muebles`; migra el hex `#34D9F0`+alphas a `var(--info)` + `color-mix`.
+- **Fuera de alcance (a propósito):** el toast de `inventario` (mobile-first bottom-sheet, diseño intencional) y el de `usuarios` (no listado en auditoria; comparte el bug `var(--text)` — pendiente 🟡).
+
+**Decision (A1):**
+- El encabezado legacy `g-module-header g-page-head` de `muebles` (con `--mod-color:#14DBA0` hardcodeado) se migra a `<ModuleHero moduleKey="inventario" …>` con `kicker`/`title`/`description` dinámica y los toggles de vista en `actions`.
+
+**Contexto:** TAREA 2 del handoff (quick wins de [[auditoria-ui]] A5 y A1). Una por iteración.
+
+**Consecuencias:**
+- `CheckCircle2` sigue importado/usado en los 4 archivos (no quedan imports muertos). Validado: `tsc` + 271 tests + `build` verdes.
+- Pendiente 🟡: migrar el toast de `usuarios` al compartido (arregla el mismo bug `var(--text)`).
+
+**Archivos afectados:** `src/components/ui/index.tsx`, `src/app/(dashboard)/dashboard/{tienda,transporte,muebles,preoperacional}/page.tsx`, `docs/cerebro/{decisiones,pendientes,auditoria-ui}.md`.
+
 ## 2026-06-19 - A6: mapas de color de estado a paleta Dark Elegant (quick win auditoria)
 
 **Decision:**

@@ -6,7 +6,7 @@ import {
   AlertTriangle, Camera, CheckCircle2, ChevronLeft, ChevronRight,
   Download, RefreshCw, Save, ShieldCheck, Trash2, Truck, XCircle,
 } from "lucide-react";
-import { Badge, EmptyState, ModuleHero, SkeletonTable, Stat } from "@/components/ui";
+import { Badge, EmptyState, ModuleHero, SkeletonTable, Stat, Toast } from "@/components/ui";
 import { AutoRefreshIndicator } from "@/components/ui/AutoRefreshIndicator";
 import { SlidePanel, DetailSection, DetailGrid } from "@/components/ui/SlidePanel";
 import { useIsMobile } from "@/lib/useIsMobile";
@@ -386,11 +386,7 @@ function ConductorView() {
       </div>
 
       {/* Toast */}
-      {toast && (
-        <div className="animate-fade-up" style={{ position: "fixed", bottom: 24, right: isMobile ? 12 : 24, zIndex: 10000, background: toast.err ? "var(--error)" : "#0F0F10", color: "#fff", padding: "10px 16px", borderRadius: 10, fontSize: 13, fontWeight: 500, boxShadow: "var(--shadow-xl)", ...(isMobile && { maxWidth: "calc(100vw - 24px)" }) }}>
-          {toast.msg}
-        </div>
-      )}
+      {toast && <Toast message={toast.msg} error={toast.err} />}
     </div>
   );
 }
@@ -738,11 +734,7 @@ function SupervisorView({ role }: { role: string }) {
       </SlidePanel>
 
       {/* Toast */}
-      {toast && (
-        <div style={{ position: "fixed", bottom: 24, right: 24, zIndex: 10001, background: toast.err ? "var(--error)" : "var(--text)", color: "#fff", padding: "0.8rem 1.2rem", borderRadius: 10, fontSize: 13, fontWeight: 600, boxShadow: "var(--shadow-xl)" }}>
-          {toast.msg}
-        </div>
-      )}
+      {toast && <Toast message={toast.msg} error={toast.err} />}
     </div>
   );
 }

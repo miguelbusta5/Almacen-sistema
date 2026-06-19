@@ -17,7 +17,7 @@ import {
 import { calcAlmacenaje, TARIFA_ALM } from "@/lib/almacenaje";
 import { insightsGuardados, insightsPorGuardado } from "@/lib/inteligencia";
 import { CediPage } from "@/components/ui/cedi";
-import { Stat, SkeletonStat, Badge, EmptyState, SkeletonTable } from "@/components/ui";
+import { Stat, SkeletonStat, Badge, EmptyState, SkeletonTable, Toast, NetSuiteChip } from "@/components/ui";
 import { AutoRefreshIndicator } from "@/components/ui/AutoRefreshIndicator";
 import { SlidePanel, IntelBanner, DetailSection, DetailGrid, MiniHistory } from "@/components/ui/SlidePanel";
 import { useIsMobile } from "@/lib/useIsMobile";
@@ -567,7 +567,7 @@ export default function TransportePage() {
                   value: (
                     <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
                       {panelItem.netsuiteId
-                        ? <span style={{ fontFamily: "var(--mono)", fontSize: 12, fontWeight: 700, color: "#34D9F0", background: "#34D9F00d", padding: "2px 8px", borderRadius: 6, border: "1px solid #34D9F025" }}>NS:{panelItem.netsuiteId}</span>
+                        ? <NetSuiteChip id={panelItem.netsuiteId} />
                         : <span style={{ fontSize: 12, color: "var(--faint)" }}>Sin vincular</span>
                       }
                       {canEdit && (
@@ -685,11 +685,7 @@ export default function TransportePage() {
         />
       )}
 
-      {toast && (
-        <div className="animate-fade-up" style={{ position: "fixed", bottom: 24, right: 24, zIndex: 10000, background: toast.err ? "var(--error)" : "#0F0F10", color: "#fff", padding: "10px 16px", borderRadius: 10, fontSize: 13, fontWeight: 500, boxShadow: "var(--shadow-xl)", display: "flex", alignItems: "center", gap: 8 }}>
-          {!toast.err && <CheckCircle2 size={14} />}{toast.msg}
-        </div>
-      )}
+      {toast && <Toast message={toast.msg} error={toast.err} />}
     </CediPage>
   );
 }

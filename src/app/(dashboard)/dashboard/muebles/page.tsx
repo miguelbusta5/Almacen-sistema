@@ -17,7 +17,7 @@ import {
   TIPOS_NOVEDAD, TIPO_NOVEDAD_LABEL, TIPO_NOVEDAD_COLOR, CAUSAS_RAIZ, CAUSA_RAIZ_LABEL, TURNOS,
 } from "@/lib/muebles";
 import { insightsNovedades, insightsPorNovedad } from "@/lib/inteligencia";
-import { Stat, SkeletonStat, Badge, EmptyState, SkeletonTable } from "@/components/ui";
+import { Stat, SkeletonStat, Badge, EmptyState, SkeletonTable, Toast, NetSuiteChip, ModuleHero } from "@/components/ui";
 import { Modal, ConfirmModal } from "@/components/ui/Modal";
 import { SlidePanel, IntelBanner, IntelAlert, DetailSection, DetailGrid, MiniHistory } from "@/components/ui/SlidePanel";
 import { getModuleCssVars } from "@/lib/moduleTheme";
@@ -256,28 +256,27 @@ export default function MueblesPage() {
   return (
     <div className="animate-fade-in" style={getModuleCssVars("inventario") as React.CSSProperties}>
       {/* ── Page header ── */}
-      <div className="g-module-header g-page-head" style={{ "--mod-color": "#14DBA0" } as React.CSSProperties}>
-        <div>
-          <div className="g-module-kicker">Módulo Inventario</div>
-          <h1 className="g-module-title">Novedades Inventario</h1>
-          <p className="g-module-desc">
-            {loading ? "Cargando…" : `${items.length} registros · ${kpis.pend + kpis.proc} sin resolver`}
-          </p>
-        </div>
-        <div className="g-module-actions">
-          <button className={`ds-btn ${view === "analisis" ? "ds-btn-secondary" : "ds-btn-ghost"}`}
-            onClick={() => { if (view !== "analisis") { setView("analisis"); loadStats(); } else setView("lista"); }}>
-            <BarChart3 size={14} />{view === "analisis" ? "← Lista" : "Análisis"}
-          </button>
-          <button className={`ds-btn ${view === "graficos" ? "ds-btn-secondary" : "ds-btn-ghost"}`}
-            onClick={() => setView(view === "graficos" ? "lista" : "graficos")}>
-            {view === "graficos" ? <><List size={14} />Lista</> : <>Gráficos</>}
-          </button>
-          <button className="ds-btn ds-btn-primary" onClick={() => setCreando(true)}>
-            <Plus size={14} />Nueva novedad de inventario
-          </button>
-        </div>
-      </div>
+      <ModuleHero
+        moduleKey="inventario"
+        kicker="Módulo Inventario"
+        title="Novedades Inventario"
+        description={loading ? "Cargando…" : `${items.length} registros · ${kpis.pend + kpis.proc} sin resolver`}
+        actions={
+          <>
+            <button className={`ds-btn ${view === "analisis" ? "ds-btn-secondary" : "ds-btn-ghost"}`}
+              onClick={() => { if (view !== "analisis") { setView("analisis"); loadStats(); } else setView("lista"); }}>
+              <BarChart3 size={14} />{view === "analisis" ? "← Lista" : "Análisis"}
+            </button>
+            <button className={`ds-btn ${view === "graficos" ? "ds-btn-secondary" : "ds-btn-ghost"}`}
+              onClick={() => setView(view === "graficos" ? "lista" : "graficos")}>
+              {view === "graficos" ? <><List size={14} />Lista</> : <>Gráficos</>}
+            </button>
+            <button className="ds-btn ds-btn-primary" onClick={() => setCreando(true)}>
+              <Plus size={14} />Nueva novedad de inventario
+            </button>
+          </>
+        }
+      />
 
       {/* ── KPIs ── */}
       <div style={{ display: "grid", gridTemplateColumns: "repeat(5,1fr)", gap: 28, marginBottom: 28, padding: "0 2px" }}>
@@ -625,9 +624,7 @@ export default function MueblesPage() {
                 {/* ID de trazabilidad NetSuite */}
                 <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 4 }}>
                   {panelItem.netsuiteId ? (
-                    <span style={{ fontFamily: "var(--mono)", fontSize: 12, fontWeight: 700, color: "#34D9F0", background: "#34D9F00d", padding: "2px 8px", borderRadius: 6, border: "1px solid #34D9F025" }}>
-                      NS:{panelItem.netsuiteId}
-                    </span>
+                    <NetSuiteChip id={panelItem.netsuiteId} />
                   ) : (
                     <span style={{ fontSize: 12, color: "var(--faint)" }}>Sin ID NetSuite</span>
                   )}
@@ -762,14 +759,7 @@ export default function MueblesPage() {
       )}
 
       {/* ── Toast ── */}
-      {toast && (
-        <div
-          className="animate-fade-up"
-          style={{ position: "fixed", bottom: 24, right: 24, zIndex: 10000, background: toast.err ? "var(--error)" : "#0F0F10", color: "#fff", padding: "10px 16px", borderRadius: 10, fontSize: 13, fontWeight: 500, boxShadow: "var(--shadow-xl)", display: "flex", alignItems: "center", gap: 8 }}
-        >
-          {!toast.err && <CheckCircle2 size={14} />}{toast.msg}
-        </div>
-      )}
+      {toast && <Toast message={toast.msg} error={toast.err} />}
     </div>
   );
 }

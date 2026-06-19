@@ -1,5 +1,6 @@
 "use client";
 import React from "react";
+import { CheckCircle2 } from "lucide-react";
 import { getModuleIconBg } from "@/lib/moduleTheme";
 export { ModuleHero } from "./ModuleHero";
 
@@ -211,5 +212,60 @@ export function TimelineItem({ title, meta, time, dot = "default", module, modul
         </div>
       </div>
     </div>
+  );
+}
+
+// ═══════════════════════════════════════════════════════════
+// TOAST — aviso flotante (éxito/error) abajo-derecha
+// ═══════════════════════════════════════════════════════════
+export function Toast({ message, error = false }: { message: string; error?: boolean }) {
+  return (
+    <div
+      className="animate-fade-up"
+      role="status"
+      aria-live="polite"
+      style={{
+        position: "fixed",
+        bottom: 24,
+        right: 24,
+        zIndex: 10000,
+        maxWidth: "min(calc(100vw - 32px), 440px)",
+        background: error ? "var(--error)" : "var(--surface)",
+        color: "#fff",
+        padding: "10px 16px",
+        borderRadius: 10,
+        fontSize: 13,
+        fontWeight: 500,
+        boxShadow: "var(--shadow-xl)",
+        display: "flex",
+        alignItems: "center",
+        gap: 8,
+      }}
+    >
+      {!error && <CheckCircle2 size={14} style={{ flexShrink: 0 }} />}
+      {message}
+    </div>
+  );
+}
+
+// ═══════════════════════════════════════════════════════════
+// NETSUITE CHIP — id de trazabilidad NetSuite (token --info)
+// ═══════════════════════════════════════════════════════════
+export function NetSuiteChip({ id }: { id: string | number }) {
+  return (
+    <span
+      style={{
+        fontFamily: "var(--mono)",
+        fontSize: 12,
+        fontWeight: 700,
+        color: "var(--info)",
+        background: "color-mix(in srgb, var(--info) 6%, transparent)",
+        padding: "2px 8px",
+        borderRadius: 6,
+        border: "1px solid color-mix(in srgb, var(--info) 16%, transparent)",
+      }}
+    >
+      NS:{id}
+    </span>
   );
 }

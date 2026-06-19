@@ -43,7 +43,7 @@ desviaciones del sistema de diseño (`src/components/ui/*` + `globals.css`). Com
 
 | Módulo | Tipo | Sev | Archivo:línea | Propuesta |
 |---|---|---|---|---|
-| muebles | Usa header legacy `g-module-header g-page-head` con `--mod-color:#14DBA0` hardcodeado | 🔴 | `muebles/page.tsx:259-262` | Migrar a `ModuleHero` (tipográfico). Quitar el `--mod-color` literal. |
+| muebles | ~~header legacy `g-module-header` con `--mod-color:#14DBA0`~~ | ✅ RESUELTO 2026-06-19 | `muebles/page.tsx` | A1: migrado a `<ModuleHero moduleKey="inventario">` con acciones. |
 | dashboard (home) | Encabezados `<h1>` inline a medida (3 variantes de tamaño) | 🟡 | `dashboard/page.tsx:349,557,741` | Home no es módulo; aceptable, pero unificar tamaños vía token display. |
 | inventario | Hero a medida: `<h1>` con `color:#F8FBFF` literal + panel `--module-hero-gradient` | 🟡 | `inventario/page.tsx:853,875` | Es mobile-first intencional; al menos `#F8FBFF`→`var(--text)`. Evaluar `ModuleHero compact`. |
 | centro-control | `<h1>` inline ad-hoc en vez de `ModuleHero` | 🟡 | `centro-control/page.tsx:384` | Migrar a `ModuleHero`. |
@@ -82,8 +82,8 @@ estilos** de tabla con densidades, rails y hover distintos.
 
 | Tipo | Sev | Archivo:línea | Propuesta |
 |---|---|---|---|
-| **Toast duplicado** ~6 veces con estilos inline idénticos; color de fondo deriva (`#0F0F10` vs `#0f172a` en conteo) | 🟡 | `tienda/page.tsx:514` · `transporte/page.tsx:689` · `muebles/page.tsx:768` · `preoperacional/page.tsx:390` · `conteo/page.tsx:590` | Crear `<Toast>` compartido en `src/components/ui`. |
-| **Chip NetSuite** inline repetido (`color:#34D9F0; background:#34D9F00d…`) | 🟡 | `tienda/page.tsx:382` · `transporte/page.tsx:570` · `muebles/page.tsx:628` | Extraer componente; usar `var(--info)`/`--info-tint`. |
+| ~~**Toast duplicado** ~6 veces~~ | ✅ RESUELTO 2026-06-19 | `tienda` · `transporte` · `muebles` · `preoperacional` (×2) | A5: `<Toast>` compartido en `src/components/ui`. Falta 🟡 `usuarios` (mismo bug `var(--text)`); `inventario` queda fuera (mobile-first). |
+| ~~**Chip NetSuite** inline repetido~~ | ✅ RESUELTO 2026-06-19 | `tienda` · `transporte` · `muebles` | A5: `<NetSuiteChip>` con `var(--info)` + `color-mix`. |
 | **Sort `<th>` inline** con color activo literal | 🟡 | `usuarios/page.tsx:227,231,234` · `auditoria/page.tsx:212,215` | Usar sort de `<DataTable>` o tokens. |
 | Tamaños de fuente de `<h1>` fuera de token (`22/24/26/28/30`, `clamp` ad-hoc) | 🟢 | `centro-control/page.tsx:384` · `solicitudes-transporte/page.tsx:556` · `inventario/page.tsx:875` | Tokenizar tamaños display. |
 
@@ -107,11 +107,11 @@ tokens `--state-*`. Además hay paletas mezcladas (vieja vs nueva).
 **🔴 Alta (rompe identidad Dark Elegant / coherencia):**
 1. ~~Mapas de estado con hex viejo fuera de paleta → migrar a `--state-*`~~ ✅ **A6 resuelto** (2026-06-19): `tienda`/`transporte` con tokens, `muebles` con hex on-palette (Chart.js), `sla` ya estaba. Falta 🟡 tokenizar `muebles`.
 2. Fragmentación de tablas (5 estilos, nadie usa `<DataTable>`) → converger a `.ds-table`/`<DataTable>`. Prioridad: tienda `.facturaTable` (EPIC C) y `<table>` inline.
-3. `muebles` con encabezado legacy `g-module-header` → `ModuleHero`.
+3. ~~`muebles` con encabezado legacy `g-module-header` → `ModuleHero`~~ ✅ **A1 resuelto** (2026-06-19).
 
 **🟡 Media (consistencia / mantenibilidad):**
 4. KPIs no unificados (`.kpiCard`, `<Kpi>`, tarjetas a medida) → estandarizar en `<Stat>`.
-5. Toast y chip NetSuite duplicados inline → componentes compartidos.
+5. ~~Toast y chip NetSuite duplicados inline → componentes compartidos~~ ✅ **A5 resuelto** (2026-06-19). Falta 🟡 toast de `usuarios`.
 6. Encabezados ad-hoc en `home`/`inventario`/`centro-control`.
 7. Colores correctos pero hardcodeados (esmeralda y paleta nueva como literales) → tokens.
 
