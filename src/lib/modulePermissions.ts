@@ -9,8 +9,6 @@ export type ModuleKey =
   | "inventario"
   | "transporte"
   | "preoperacional"
-  | "conteo"
-  | "conteo-contar"
   | "tienda"
   | "solicitudes-transporte"
   | "exportaciones"
@@ -18,16 +16,12 @@ export type ModuleKey =
   | "usuarios"
   | "auditoria"
   | "centro-control"
-  | "indicadores"
-  | "integracion"
-  | "studio";
+  | "integracion";
 
 export const MODULE_ACCESS: Record<ModuleKey, AppRole[]> = {
   inventario: ["INVENTARIO", "SUPERVISOR_INVENTARIO", "GERENTE", "ADMIN", "OPERADOR"],
   transporte: ["TRANSPORTE", "SUPERVISOR_TRANSPORTE", "GERENTE", "ADMIN", "OPERADOR"],
   preoperacional: ["TRANSPORTISTA", "ADMIN", "GERENTE", "SUPERVISOR_TRANSPORTE"],
-  conteo: ["INVENTARIO", "SUPERVISOR_INVENTARIO", "GERENTE", "ADMIN"],
-  "conteo-contar": ["INVENTARIO", "SUPERVISOR_INVENTARIO", "GERENTE", "ADMIN", "OPERADOR"],
   "mis-tareas": [
     "ADMIN",
     "GERENTE",
@@ -64,14 +58,6 @@ export const MODULE_ACCESS: Record<ModuleKey, AppRole[]> = {
     "SUPERVISOR_TIENDA",
     "SUPERVISOR_ALMACENAMIENTO",
   ],
-  indicadores: [
-    "GERENTE",
-    "ADMIN",
-    "SUPERVISOR_INVENTARIO",
-    "SUPERVISOR_TRANSPORTE",
-    "SUPERVISOR_TIENDA",
-    "SUPERVISOR_ALMACENAMIENTO",
-  ],
   integracion: [
     "OPERACIONES_MUEBLES",
     "OPERACIONES_GOURMET",
@@ -79,14 +65,6 @@ export const MODULE_ACCESS: Record<ModuleKey, AppRole[]> = {
     "GERENTE",
     "SUPERVISOR_TRANSPORTE",
     "TRANSPORTE",
-  ],
-  studio: [
-    "ADMIN",
-    "GERENTE",
-    "SUPERVISOR_INVENTARIO",
-    "SUPERVISOR_TRANSPORTE",
-    "SUPERVISOR_TIENDA",
-    "SUPERVISOR_ALMACENAMIENTO",
   ],
 };
 
@@ -122,7 +100,7 @@ export const ROLE_DESCRIPTION: Record<AppRole, string> = {
   GERENTE: "Ve todo. Sin acceso a configuracion de sistema.",
   OPERADOR: "Acceso general a inventario y transporte.",
   TRANSPORTISTA: "Solo ve el modulo Preoperacional.",
-  INVENTARIO: "Solo ve modulos de inventario y conteo.",
+  INVENTARIO: "Solo ve el modulo de inventario.",
   TRANSPORTE: "Solo ve guardados y pendientes asignados.",
   SUPERVISOR_INVENTARIO: "Inventario + analisis operacional.",
   SUPERVISOR_TRANSPORTE: "Facturas Contado + guardados + centro de control.",

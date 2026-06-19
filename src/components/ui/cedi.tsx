@@ -2,7 +2,7 @@ import type { CSSProperties, ReactNode } from "react";
 import { PageShell, type PageShellProps } from "./pageShell";
 
 // CediPage se mantiene como alias delgado de PageShell para no romper
-// las páginas que ya lo usan (transporte, conteo, indicadores, studio).
+// las páginas que ya lo usan (transporte).
 // Acepta además moduleKey/moduleColor/kicker vía PageShell.
 export function CediPage(props: PageShellProps) {
   return <PageShell {...props} />;

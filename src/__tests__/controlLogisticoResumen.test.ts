@@ -80,7 +80,7 @@ describe("buildControlLogisticoResumen", () => {
     expect(mocks.transporteCount).not.toHaveBeenCalled();
   });
 
-  it("SUPERVISOR_TRANSPORTE combina tienda, transporte, indicadores, centro-control e integracion permitida", async () => {
+  it("SUPERVISOR_TRANSPORTE combina tienda, transporte, centro-control e integracion permitida", async () => {
     mocks.transporteCount.mockResolvedValueOnce(6);
     mocks.despachoCount
       .mockResolvedValueOnce(2)
@@ -95,14 +95,13 @@ describe("buildControlLogisticoResumen", () => {
     const resumen = await buildControlLogisticoResumen(actor("SUPERVISOR_TRANSPORTE"));
     const moduleKeys = resumen.modules.map((m) => m.key);
 
-    expect(resumen.visibleModules).toEqual(["transporte", "preoperacional", "mis-tareas", "tienda", "solicitudes-transporte", "centro-control", "indicadores", "integracion", "studio"]);
+    expect(resumen.visibleModules).toEqual(["transporte", "preoperacional", "mis-tareas", "tienda", "solicitudes-transporte", "centro-control", "integracion"]);
     expect(moduleKeys).toContain("tienda");
     expect(moduleKeys).toContain("transporte");
     expect(moduleKeys).toContain("preoperacional");
     expect(moduleKeys).toContain("integracion");
     expect(moduleKeys).toContain("solicitudes-transporte");
     expect(moduleKeys).toContain("centro-control");
-    expect(moduleKeys).toContain("indicadores");
     expect(moduleKeys).not.toContain("usuarios");
     expect(resumen.flow.map((f) => f.key)).toEqual(["tienda", "cedi", "guardados", "cliente"]);
     expect(resumen.priorities.map((p) => p.id)).toContain("guardado-tienda");

@@ -8,6 +8,8 @@
 
 ### Reescritura frontend Dark Elegant (2026-06-19)
 
+- [x] **EPIC D — Eliminar módulos sin uso** (Conteo, Contar, Studio, Indicadores): borrados de UI/API/tipos/tests (37 archivos) + limpieza de referencias en `modulePermissions`, `moduleTheme`, `permissions` (acciones huérfanas), `Sidebar`, `homeActions`, `CommandPalette`, `controlLogistico/resumen`, home y `login`; `vercel.json` cron vaciado; `vitest.config` excluye worktrees. `tsc`+271 tests+`build` verdes. Ver [[decisiones]]. — 2026-06-19
+  - [ ] **D10 (destructivo, requiere confirmación):** borrar modelos Prisma de conteo/studio/indicadores en `schema.prisma` → `npx prisma db push` + `generate`. Por ahora las tablas quedan intactas.
 - [x] **EPIC A — Auditoría UI** (solo lectura): catalogadas inconsistencias de encabezados, KPIs, tablas, drawer, estilos inline y estados/colores en [[auditoria-ui]], con severidad y archivo:línea. Hallazgos clave: **nadie usa `<DataTable>`** (5 estilos de tabla coexisten), mapas de estado con **hex viejo fuera de `--state-*`** (`lib/tienda.ts`, `lib/muebles.ts`, `lib/transporte.ts`, `lib/sla.ts`), y `muebles` con encabezado legacy `g-module-header`. Insumo para EPIC C. — 2026-06-19
 - [x] **Reescritura total a Dark Elegant (Obsidiana + Esmeralda)**: solo modo oscuro, acento unico esmeralda, estados con color propio, encabezados sin imagenes, fuentes Inter+Sora. Backend intacto. `tsc` + `build` + 1176 tests verdes. Ver [[decisiones]] y [[ux-ui]].
 - [x] Eliminado tema claro, `ThemeToggle` y script de init de tema; `moduleTheme.ts` colapsado a esmeralda sin `heroImage`; `tienda.module.css` reescrito dark; charts y studio re-tematizados.

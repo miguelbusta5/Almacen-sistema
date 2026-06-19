@@ -49,8 +49,6 @@ export const MODULE_THEME: Record<ModuleThemeKey, ModuleTheme> = {
   inventario: mod("inventario", "Novedades Inventario", "Inventario", "PLUs, posiciones y novedades del CEDI"),
   transporte: mod("transporte", "Guardados Transporte", "Transporte", "Custodia, guardados y pendientes operativos"),
   preoperacional: mod("preoperacional", "Preoperacional", "Preop", "Inspeccion diaria de vehiculos"),
-  conteo: mod("conteo", "Conteo Ciclico", "Conteo", "Control activo de inventario"),
-  "conteo-contar": mod("conteo-contar", "Contar", "Contar", "Captura operativa de conteo"),
   tienda: mod("tienda", "Facturas Contado", "Facturas", "Facturas contado desde tienda hacia el flujo CEDI"),
   "solicitudes-transporte": mod("solicitudes-transporte", "Solicitudes Transporte", "Solicitudes", "Solicitudes internas que gestiona el lider de transporte"),
   exportaciones: mod("exportaciones", "Exportaciones", "Export", "Etiquetado operativo de cajas de exportacion"),
@@ -58,9 +56,7 @@ export const MODULE_THEME: Record<ModuleThemeKey, ModuleTheme> = {
   usuarios: mod("usuarios", "Usuarios", "Usuarios", "Cuentas, roles y operacion base"),
   auditoria: mod("auditoria", "Auditoria", "Auditoria", "Historial de acciones del sistema"),
   "centro-control": mod("centro-control", "Centro de Control", "Control", "Inteligencia operacional y KPIs"),
-  indicadores: mod("indicadores", "Indicadores CEDI", "Indicadores", "KPIs sincronizados desde Google Sheets"),
   integracion: mod("integracion", "Integracion Pedidos", "Integracion", "Picking OVDM/TSDM entre areas"),
-  studio: mod("studio", "Studio", "Studio", "Dashboards conectados a Google Sheets"),
 };
 
 export function getModuleTheme(key: ModuleThemeKey | string | null | undefined): ModuleTheme {

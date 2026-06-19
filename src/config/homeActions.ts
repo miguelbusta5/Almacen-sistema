@@ -35,17 +35,6 @@ export const HOME_ACTIONS: HomeAction[] = [
     roles: ["INVENTARIO", "SUPERVISOR_INVENTARIO", "OPERADOR", "GERENTE", "ADMIN"],
     priority: 1,
   },
-  {
-    id: "ir-conteo",
-    title: "Ir a conteo cíclico",
-    description: "Continuar con los PLUs asignados para hoy",
-    href: "/dashboard/conteo/contar",
-    icon: "ClipboardList",
-    color: getModuleColor("conteo"),
-    moduleKey: "conteo-contar",
-    roles: ["INVENTARIO", "SUPERVISOR_INVENTARIO", "OPERADOR", "GERENTE", "ADMIN"],
-    priority: 2,
-  },
   // ── Transporte ──────────────────────────────────────────
   {
     id: "nueva-solicitud-transporte",
@@ -154,33 +143,6 @@ export const HOME_ACTIONS: HomeAction[] = [
       "SUPERVISOR_INVENTARIO", "SUPERVISOR_TRANSPORTE", "SUPERVISOR_TIENDA",
     ],
     priority: 1,
-  },
-  {
-    id: "indicadores-cedi",
-    title: "Indicadores CEDI",
-    description: "Ver KPIs sincronizados desde Google Sheets",
-    href: "/dashboard/indicadores",
-    icon: "Gauge",
-    color: getModuleColor("indicadores"),
-    moduleKey: "indicadores",
-    roles: [
-      "ADMIN", "GERENTE",
-      "SUPERVISOR_INVENTARIO", "SUPERVISOR_TRANSPORTE", "SUPERVISOR_TIENDA",
-      "SUPERVISOR_ALMACENAMIENTO",
-    ],
-    priority: 2,
-  },
-  // ── Studio ──────────────────────────────────────────────
-  {
-    id: "studio",
-    title: "Studio",
-    description: "Crea y visualiza dashboards conectados a Google Sheets",
-    href: "/dashboard/studio",
-    icon: "LayoutDashboard",
-    color: getModuleColor("studio"),
-    moduleKey: "studio",
-    roles: ["ADMIN", "GERENTE"],
-    priority: 3,
   },
   // ── Administración ──────────────────────────────────────
   {

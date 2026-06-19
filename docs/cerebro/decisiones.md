@@ -1,5 +1,23 @@
 # Decisiones de Arquitectura y Producto
 
+## 2026-06-19 - Eliminacion de modulos sin uso: Conteo, Contar, Studio, Indicadores (EPIC D)
+
+**Decision:**
+- Se eliminan por completo de **UI, API, tipos y tests** los modulos `conteo`, `conteo/contar`, `studio` e `indicadores` (incluye `cron/indicadores-sync`).
+- Se borran: paginas `dashboard/{conteo,studio,indicadores}`, `src/components/studio/*`, API `api/{conteo,studio,indicadores}` + `api/cron/indicadores-sync`, libs `lib/{conteo,studio-formula,studio-sheets,indicadores}.ts`, `types/studio.ts`, `__tests__/indicadores.test.ts` (36+1 archivos).
+- Se limpian referencias en compartidos: `modulePermissions.ts` (ModuleKey + MODULE_ACCESS), `moduleTheme.ts` (MODULE_THEME), `permissions.ts` (acciones huerfanas `manageConteo`/`manageStudio`), `Sidebar.tsx`, `homeActions.ts`, `CommandPalette.tsx`, `controlLogistico/resumen.ts` (señales conteo/indicadores), home `dashboard/page.tsx`, `login/page.tsx`, y `vercel.json` (cron de indicadores-sync vaciado).
+- **`src/components/ui/cedi.tsx` se conserva** — lo sigue usando `transporte`.
+
+**Contexto:**
+- Peticion explicita del usuario: ya no se necesitan esos 4 modulos. Orden de trabajo del handoff: EPIC D tras B (fix drawer) y A (auditoria).
+
+**Consecuencias:**
+- **Tablas Prisma NO se tocaron (D10 pendiente de confirmacion explicita del usuario):** los modelos de ciclos/lineas/operarios de conteo, dashboards de studio e indicadores siguen en `schema.prisma`. Si se confirma: quitar modelos -> `npx prisma db push` + `generate`.
+- Se agrego `exclude: ["**/.claude/**"]` a `vitest.config.ts`: las copias de tests dentro de worktrees del agente inflaban el conteo (de ahi el viejo "1176"); **la suite real son 271 tests**. CI (checkout limpio) nunca vio los worktrees.
+- Validado: `tsc` + 271 tests + `build` verdes. Sidebar/home/command palette sin esos items.
+
+**Archivos afectados:** ver lista arriba + `docs/cerebro/{decisiones,pendientes,auditoria-ui}.md`.
+
 ## 2026-06-19 - Reescritura total del frontend a Dark Elegant (Obsidiana + Esmeralda)
 
 **Decision:**

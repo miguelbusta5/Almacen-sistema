@@ -6,7 +6,7 @@ import { USER_ROLE_VALUES } from "@/lib/roles";
 export type Action =
   | "create" | "edit" | "delete"
   | "manageUsers" | "viewAudit"
-  | "manageLogistica" | "manageConteo" | "manageStudio";
+  | "manageLogistica";
 
 // Roles que pueden crear registros
 const CREADORES: UserRole[] = [
@@ -25,8 +25,6 @@ const MATRIX: Record<Action, UserRole[]> = {
   manageUsers:      ["ADMIN"],
   viewAudit:        ["ADMIN"],          // visibilidad del módulo → modulePermissions.ts
   manageLogistica:  [],
-  manageConteo:     ["ADMIN", "SUPERVISOR_INVENTARIO"],
-  manageStudio:     ["ADMIN", "GERENTE"],
 };
 
 /** ¿El rol puede ejecutar la acción? */

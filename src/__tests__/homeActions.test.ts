@@ -34,7 +34,6 @@ describe("getHomeActionsByRole", () => {
   // ── INVENTARIO ───────────────────────────────────────
   describe("INVENTARIO", () => {
     it("ve nueva-novedad", () => expect(hasAction("INVENTARIO", "nueva-novedad")).toBe(true));
-    it("ve ir-conteo", () => expect(hasAction("INVENTARIO", "ir-conteo")).toBe(true));
     it("ve ver-mis-tareas", () => expect(hasAction("INVENTARIO", "ver-mis-tareas")).toBe(true));
     it("NO ve nuevo-guardado", () => expect(hasAction("INVENTARIO", "nuevo-guardado")).toBe(false));
     it("NO ve nuevo-despacho-tienda", () => expect(hasAction("INVENTARIO", "nuevo-despacho-tienda")).toBe(false));
@@ -50,9 +49,7 @@ describe("getHomeActionsByRole", () => {
   // ── SUPERVISOR_INVENTARIO ────────────────────────────
   describe("SUPERVISOR_INVENTARIO", () => {
     it("ve nueva-novedad", () => expect(hasAction("SUPERVISOR_INVENTARIO", "nueva-novedad")).toBe(true));
-    it("ve ir-conteo", () => expect(hasAction("SUPERVISOR_INVENTARIO", "ir-conteo")).toBe(true));
     it("ve centro-control", () => expect(hasAction("SUPERVISOR_INVENTARIO", "centro-control")).toBe(true));
-    it("ve indicadores-cedi", () => expect(hasAction("SUPERVISOR_INVENTARIO", "indicadores-cedi")).toBe(true));
     it("NO ve nuevo-guardado", () => expect(hasAction("SUPERVISOR_INVENTARIO", "nuevo-guardado")).toBe(false));
     it("NO ve gestionar-usuarios", () => expect(hasAction("SUPERVISOR_INVENTARIO", "gestionar-usuarios")).toBe(false));
   });
@@ -77,7 +74,6 @@ describe("getHomeActionsByRole", () => {
     it("ve nuevo-guardado", () => expect(hasAction("SUPERVISOR_TRANSPORTE", "nuevo-guardado")).toBe(true));
     it("ve nuevo-despacho-tienda", () => expect(hasAction("SUPERVISOR_TRANSPORTE", "nuevo-despacho-tienda")).toBe(true));
     it("ve centro-control", () => expect(hasAction("SUPERVISOR_TRANSPORTE", "centro-control")).toBe(true));
-    it("ve indicadores-cedi", () => expect(hasAction("SUPERVISOR_TRANSPORTE", "indicadores-cedi")).toBe(true));
     it("NO ve nueva-novedad", () => expect(hasAction("SUPERVISOR_TRANSPORTE", "nueva-novedad")).toBe(false));
     it("NO ve gestionar-usuarios", () => expect(hasAction("SUPERVISOR_TRANSPORTE", "gestionar-usuarios")).toBe(false));
   });
@@ -101,7 +97,6 @@ describe("getHomeActionsByRole", () => {
   describe("SUPERVISOR_TIENDA", () => {
     it("ve nuevo-despacho-tienda", () => expect(hasAction("SUPERVISOR_TIENDA", "nuevo-despacho-tienda")).toBe(true));
     it("ve centro-control", () => expect(hasAction("SUPERVISOR_TIENDA", "centro-control")).toBe(true));
-    it("ve indicadores-cedi", () => expect(hasAction("SUPERVISOR_TIENDA", "indicadores-cedi")).toBe(true));
     it("ve ver-mis-tareas", () => expect(hasAction("SUPERVISOR_TIENDA", "ver-mis-tareas")).toBe(true));
     it("NO ve nueva-novedad", () => expect(hasAction("SUPERVISOR_TIENDA", "nueva-novedad")).toBe(false));
     it("NO ve gestionar-usuarios", () => expect(hasAction("SUPERVISOR_TIENDA", "gestionar-usuarios")).toBe(false));
@@ -137,7 +132,6 @@ describe("getHomeActionsByRole", () => {
   describe("OPERADOR", () => {
     it("ve nueva-novedad", () => expect(hasAction("OPERADOR", "nueva-novedad")).toBe(true));
     it("ve nuevo-guardado", () => expect(hasAction("OPERADOR", "nuevo-guardado")).toBe(true));
-    it("ve ir-conteo", () => expect(hasAction("OPERADOR", "ir-conteo")).toBe(true));
     it("ve ver-mis-tareas", () => expect(hasAction("OPERADOR", "ver-mis-tareas")).toBe(true));
     it("NO ve gestionar-usuarios", () => expect(hasAction("OPERADOR", "gestionar-usuarios")).toBe(false));
     it("NO ve centro-control", () => expect(hasAction("OPERADOR", "centro-control")).toBe(false));
@@ -155,7 +149,6 @@ describe("getHomeActionsByRole", () => {
     it("ve nueva-novedad", () => expect(hasAction("GERENTE", "nueva-novedad")).toBe(true));
     it("ve nuevo-guardado", () => expect(hasAction("GERENTE", "nuevo-guardado")).toBe(true));
     it("ve centro-control", () => expect(hasAction("GERENTE", "centro-control")).toBe(true));
-    it("ve indicadores-cedi", () => expect(hasAction("GERENTE", "indicadores-cedi")).toBe(true));
     it("ve ver-auditoria", () => expect(hasAction("GERENTE", "ver-auditoria")).toBe(true));
     it("NO ve gestionar-usuarios", () => expect(hasAction("GERENTE", "gestionar-usuarios")).toBe(false));
   });
@@ -164,7 +157,6 @@ describe("getHomeActionsByRole", () => {
   describe("ADMIN", () => {
     it("ve gestionar-usuarios", () => expect(hasAction("ADMIN", "gestionar-usuarios")).toBe(true));
     it("ve centro-control", () => expect(hasAction("ADMIN", "centro-control")).toBe(true));
-    it("ve indicadores-cedi", () => expect(hasAction("ADMIN", "indicadores-cedi")).toBe(true));
     it("ve ver-auditoria", () => expect(hasAction("ADMIN", "ver-auditoria")).toBe(true));
     it("ve nueva-novedad", () => expect(hasAction("ADMIN", "nueva-novedad")).toBe(true));
     it("ve nuevo-guardado", () => expect(hasAction("ADMIN", "nuevo-guardado")).toBe(true));
@@ -183,7 +175,6 @@ describe("getHomeActionsByRole", () => {
     it("TIENDA no ve acciones de inventario", () => {
       const actions = getHomeActionsByRole("TIENDA", 99);
       expect(actions.every((a) => a.moduleKey !== "inventario")).toBe(true);
-      expect(actions.every((a) => a.moduleKey !== "conteo-contar")).toBe(true);
     });
 
     it("INVENTARIO no ve acciones de transporte", () => {
@@ -194,7 +185,6 @@ describe("getHomeActionsByRole", () => {
     it("TRANSPORTE no ve acciones de inventario puras", () => {
       const actions = getHomeActionsByRole("TRANSPORTE", 99);
       expect(actions.every((a) => a.moduleKey !== "inventario")).toBe(true);
-      expect(actions.every((a) => a.moduleKey !== "conteo-contar")).toBe(true);
       expect(actions.every((a) => a.moduleKey !== "tienda")).toBe(true);
     });
   });

@@ -41,7 +41,6 @@ function timeAgo(iso: string) {
 function moduleColor(mod: string) {
   if (mod === "muebles" || mod === "inventario" || mod === "novedades") return getModuleColor("inventario");
   if (mod === "transporte") return getModuleColor("transporte");
-  if (mod === "conteo") return getModuleColor("conteo");
   if (mod === "tienda") return getModuleColor("tienda");
   if (mod === "integracion") return getModuleColor("integracion");
   if (mod === "exportaciones") return getModuleColor("exportaciones");
@@ -53,7 +52,6 @@ function moduleLabel(mod: string) {
     muebles: getModuleTheme("inventario").shortLabel,
     inventario: getModuleTheme("inventario").shortLabel,
     transporte: getModuleTheme("transporte").shortLabel,
-    conteo: getModuleTheme("conteo").shortLabel,
     tienda: getModuleTheme("tienda").shortLabel,
     integracion: getModuleTheme("integracion").shortLabel,
     exportaciones: getModuleTheme("exportaciones").shortLabel,
@@ -332,7 +330,6 @@ function AdminDashboard({ nombre }: { nombre: string }) {
     { key: "inventario", label: "Inventario", value: stats?.novedades.pendientes ?? 0, sub: "novedades abiertas", href: "/dashboard/inventario", color: getModuleColor("inventario"), alert: (stats?.novedades.pendientes ?? 0) > 0 },
     { key: "tienda", label: "Tienda", value: tiendaCreados.length, sub: "solicitudes creadas", href: "/dashboard/tienda", color: getModuleColor("tienda"), alert: tiendaRechazados.length > 0 },
     { key: "cedi", label: "CEDI", value: tiendaCedi.length, sub: "en llegada/guardado", href: "/dashboard/tienda", color: getModuleColor("transporte"), alert: pendientesGuardado.length > 0 },
-    { key: "conteo", label: "Conteo", value: "Activo", sub: "control cíclico", href: "/dashboard/conteo", color: getModuleColor("conteo") },
   ];
   const hora = new Date().getHours();
   const saludo = hora < 12 ? "Buenos días" : hora < 18 ? "Buenas tardes" : "Buenas noches";
@@ -401,7 +398,6 @@ function AdminDashboard({ nombre }: { nombre: string }) {
             <ModuleCard href="/dashboard/inventario" icon={<Package size={17} />} label={getModuleTheme("inventario").label} color={getModuleColor("inventario")} value={stats?.novedades.total} sub={`${stats?.novedades.pendientes ?? 0} sin resolver`} alert={(stats?.novedades.pendientes ?? 0) > 0} />
             <ModuleCard href="/dashboard/tienda" icon={<Store size={17} />} label={getModuleTheme("tienda").label} color={getModuleColor("tienda")} value={tiendaDespachos.length} sub={`${tiendaRechazados.length} rechazados`} alert={tiendaRechazados.length > 0 || tiendaNovedad.length > 0} />
             <ModuleCard href="/dashboard/transporte" icon={<Truck size={17} />} label={getModuleTheme("transporte").label} color={getModuleColor("transporte")} value={stats?.transporte.total} sub={`${stats?.transporte.pendientes ?? 0} pendientes`} alert={(stats?.transporte.alertas ?? 0) > 0} />
-            <ModuleCard href="/dashboard/conteo" icon={<ClipboardList size={17} />} label={getModuleTheme("conteo").label} color={getModuleColor("conteo")} sub="Conteos de inventario" />
             <ModuleCard href="/dashboard/integracion" icon={<GitMerge size={17} />} label={getModuleTheme("integracion").label} color={getModuleColor("integracion")} value={integraciones.length} sub="movimientos recientes" />
             <ModuleCard href="/dashboard/preoperacional" icon={<ShieldCheck size={17} />} label={getModuleTheme("preoperacional").label} color={getModuleColor("preoperacional")} sub="inspecciones diarias" />
           </div>
@@ -528,7 +524,6 @@ function OperadorDashboard({ nombre, role }: { nombre: string; role: string }) {
   const flowStages = [
     ...(needsNovedades ? [
       { key: "inventario", label: "Inventario", value: pendientesNov.length, sub: "novedades pendientes", href: "/dashboard/inventario", color: getModuleColor("inventario"), alert: pendientesNov.length > 0 },
-      { key: "conteo", label: "Conteo", value: enProcesoNov.length, sub: "en proceso", href: "/dashboard/conteo/contar", color: getModuleColor("conteo") },
     ] : []),
     ...(needsTienda ? [
       { key: "creados", label: "Creados", value: tiendaCreados.length, sub: "esperan transporte", href: "/dashboard/tienda", color: getModuleColor("tienda"), alert: tiendaRechazados.length > 0 },

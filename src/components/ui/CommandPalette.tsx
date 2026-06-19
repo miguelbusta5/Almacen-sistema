@@ -7,9 +7,9 @@ import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import {
-  Search, Home, Package, Truck, ClipboardList,
+  Search, Home, Package, Truck,
   Users, ScrollText, Plus, ArrowRight, X,
-  BarChart3, FileText, Store, ShieldCheck, GitMerge, CheckSquare, Tags, Gauge,
+  BarChart3, FileText, Store, ShieldCheck, GitMerge, CheckSquare, Tags,
 } from "lucide-react";
 import { useCommandPalette } from "@/contexts/CommandPaletteContext";
 import { canSeeModule } from "@/lib/modulePermissions";
@@ -101,7 +101,6 @@ export default function CommandPalette() {
       ...(see("preoperacional") ? [{ id: "a-preop", group: "actions" as ResultGroup, icon: <ShieldCheck size={14} />, label: "Registrar preoperacional", description: "Inspección diaria del vehículo", color: getModuleColor("preoperacional"), action: () => go("/dashboard/preoperacional") }] : []),
       ...(see("integracion") ? [{ id: "a-integracion", group: "actions" as ResultGroup, icon: <GitMerge size={14} />, label: "Nueva integración de pedido", description: "Coordinar OVDM/TSDM entre áreas", color: getModuleColor("integracion"), action: () => go("/dashboard/integracion") }] : []),
       ...(see("mis-tareas") ? [{ id: "a-tareas", group: "actions" as ResultGroup, icon: <CheckSquare size={14} />, label: "Revisar mis tareas", description: "Abrir pendientes del día", color: getModuleColor("mis-tareas"), action: () => go("/dashboard/mis-tareas") }] : []),
-      ...(see("indicadores") ? [{ id: "a-indicadores", group: "actions" as ResultGroup, icon: <Gauge size={14} />, label: "Abrir indicadores CEDI", description: "KPIs sincronizados desde Google Sheets", color: getModuleColor("indicadores"), action: () => go("/dashboard/indicadores") }] : []),
       ...(see("centro-control") ? [{ id: "a-control", group: "actions" as ResultGroup, icon: <BarChart3 size={14} />, label: "Abrir centro de control", description: "KPIs y señales operativas", color: getModuleColor("centro-control"), action: () => go("/dashboard/centro-control") }] : []),
       ...(see("usuarios") ? [{ id: "a-usuarios", group: "admin" as ResultGroup, icon: <Users size={14} />, label: "Gestionar usuarios", description: "Roles, vehículos y transportistas", color: getModuleColor("usuarios"), action: () => go("/dashboard/usuarios") }] : []),
     ];
@@ -116,9 +115,6 @@ export default function CommandPalette() {
       ...(see("transporte")    ? [{ id: "n-transporte",  group: "navigate" as ResultGroup, icon: <Truck size={14} />,          label: "Guardados Transporte",    action: () => go("/dashboard/transporte") }] : []),
       ...(see("preoperacional")? [{ id: "n-preop",       group: "navigate" as ResultGroup, icon: <ShieldCheck size={14} />,    label: "Preoperacional",          action: () => go("/dashboard/preoperacional") }] : []),
       ...(see("integracion")   ? [{ id: "n-integracion", group: "navigate" as ResultGroup, icon: <GitMerge size={14} />,       label: "Integración Pedidos",     action: () => go("/dashboard/integracion") }] : []),
-      ...(see("conteo-contar") ? [{ id: "n-contar",      group: "navigate" as ResultGroup, icon: <ClipboardList size={14} />,  label: "Conteo",                  action: () => go("/dashboard/conteo/contar") }] : []),
-      ...(see("conteo")        ? [{ id: "n-conteo",      group: "navigate" as ResultGroup, icon: <BarChart3 size={14} />,      label: "Gestión de Conteo",       action: () => go("/dashboard/conteo") }] : []),
-      ...(see("indicadores")   ? [{ id: "n-indicadores", group: "navigate" as ResultGroup, icon: <Gauge size={14} />,          label: "Indicadores CEDI",        action: () => go("/dashboard/indicadores") }] : []),
       ...(see("centro-control")? [{ id: "n-control",     group: "navigate" as ResultGroup, icon: <BarChart3 size={14} />,      label: "Centro de Control",       action: () => go("/dashboard/centro-control") }] : []),
       ...(see("usuarios")      ? [{ id: "n-usuarios",    group: "navigate" as ResultGroup, icon: <Users size={14} />,          label: "Usuarios",                action: () => go("/dashboard/usuarios") }] : []),
       ...(see("auditoria")     ? [{ id: "n-auditoria",   group: "navigate" as ResultGroup, icon: <ScrollText size={14} />,     label: "Auditoría",               action: () => go("/dashboard/auditoria") }] : []),
