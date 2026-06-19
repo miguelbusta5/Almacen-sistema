@@ -421,7 +421,7 @@ export function FacturasTable({
                           </>
                         )}
                         {d.estado === "RECOGIDO_TIENDA" && canChangeOperationalState && (
-                          <button type="button" className="ds-btn ds-btn-sm" style={{ background: `${ESTADO_DESPACHO_COLOR.ENTREGADO_CEDI}14`, color: ESTADO_DESPACHO_COLOR.ENTREGADO_CEDI }} onClick={(e) => { e.stopPropagation(); onEstado(d, "ENTREGADO_CEDI"); }}>
+                          <button type="button" className="ds-btn ds-btn-sm" style={{ background: `color-mix(in srgb, ${ESTADO_DESPACHO_COLOR.ENTREGADO_CEDI} 8%, transparent)`, color: ESTADO_DESPACHO_COLOR.ENTREGADO_CEDI }} onClick={(e) => { e.stopPropagation(); onEstado(d, "ENTREGADO_CEDI"); }}>
                             <PackageCheck size={12} />CEDI
                           </button>
                         )}

@@ -423,7 +423,7 @@ export default function TransportePage() {
                               const color = ALERTA_TIER_COLOR[tier];
                               return (
                                 <span title={`Urgencia: ${score}/100 · ${ALERTA_TIER_LABEL[tier]}`}
-                                  style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: 22, height: 22, borderRadius: "50%", background: color + "20", fontSize: 10, fontWeight: 800, color, fontFamily: "var(--mono)", cursor: "help" }}>
+                                  style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: 22, height: 22, borderRadius: "50%", background: `color-mix(in srgb, ${color} 13%, transparent)`, fontSize: 10, fontWeight: 800, color, fontFamily: "var(--mono)", cursor: "help" }}>
                                   {score}
                                 </span>
                               );

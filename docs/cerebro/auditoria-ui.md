@@ -94,7 +94,7 @@ tokens `--state-*`. Además hay paletas mezcladas (vieja vs nueva).
 
 | Caso | Sev | Archivo:línea | Detalle / Propuesta |
 |---|---|---|---|
-| **Mapas de estado con hex VIEJO (fuera de paleta Dark Elegant)** | 🔴 | `lib/tienda.ts:117-124` (violeta `#7C3AED`, azul `#2563EB`, verde `#16A34A`, teal `#0891B2`, rojo `#DC2626`, ámbar `#D97706`) · `lib/muebles.ts:31-37,115-117` · `lib/transporte.ts:113-117` · `lib/sla.ts:113-117` (slates `#475569`, azules `#1D4ED8`, rojos `#B42318`) | Remapear a tokens `--state-*` (`created/picked/cedi/sent/rejected/alert`) y semánticos. Es lo más visible sobre fondo oscuro. |
+| **Mapas de estado con hex VIEJO (fuera de paleta Dark Elegant)** | ✅ RESUELTO 2026-06-19 | `lib/tienda.ts` · `lib/transporte.ts` → tokens `var(--state-*)`; `lib/muebles.ts` → hex on-palette (Chart.js); `lib/sla.ts` ya tokenizado | Ver [[decisiones]] A6. Queda 🟡 tokenizar `muebles` (refactor color charts). |
 | **Mapa de estado con hex NUEVO pero literal** (no token) | 🟡 | `solicitudes-transporte/page.tsx:90-103` (`#FFC53D/#34D9F0/#5B9DFF/#2EE6A6/#FF6B6B/#8B9398`) | Colores correctos, mecanismo incorrecto: reemplazar literales por `var(--state-*)`/`var(--warning)` etc. |
 | **Acento esmeralda hardcodeado** `#14DBA0` como literal | 🟡 | `usuarios/page.tsx:227,231,234,424,431` · `mis-tareas/page.tsx:164` · `muebles/page.tsx:259` · varios charts | Usar `var(--accent)`. |
 | **Grises/fallbacks fuera de token** (`#64748b`, `#94a3b8`, `#6b7280`, `#6B7280`, `#f97316`) | 🟡 | `usuarios/page.tsx:53-57` · `auditoria/page.tsx:30,225-226` · `centro-control/page.tsx:164` · `dashboard/page.tsx:49` · `conteo/page.tsx:432` | Usar `var(--muted)`/`var(--faint)`/`--state-*`. |
@@ -105,7 +105,7 @@ tokens `--state-*`. Además hay paletas mezcladas (vieja vs nueva).
 ## Resumen priorizado
 
 **🔴 Alta (rompe identidad Dark Elegant / coherencia):**
-1. Mapas de estado con hex viejo fuera de paleta → migrar a `--state-*` (`lib/tienda.ts`, `lib/muebles.ts`, `lib/transporte.ts`, `lib/sla.ts`).
+1. ~~Mapas de estado con hex viejo fuera de paleta → migrar a `--state-*`~~ ✅ **A6 resuelto** (2026-06-19): `tienda`/`transporte` con tokens, `muebles` con hex on-palette (Chart.js), `sla` ya estaba. Falta 🟡 tokenizar `muebles`.
 2. Fragmentación de tablas (5 estilos, nadie usa `<DataTable>`) → converger a `.ds-table`/`<DataTable>`. Prioridad: tienda `.facturaTable` (EPIC C) y `<table>` inline.
 3. `muebles` con encabezado legacy `g-module-header` → `ModuleHero`.
 

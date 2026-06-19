@@ -27,14 +27,16 @@ export const TIPO_NOVEDAD_LABEL: Record<TipoNovedad, string> = {
   ERROR_DESPACHO:   "Error de despacho",
 };
 
+// Hex on-palette (valor literal del token espejo) — se consume en Chart.js,
+// donde var(--token) no resuelve. Mantener sincronizado con globals.css.
 export const TIPO_NOVEDAD_COLOR: Record<TipoNovedad, string> = {
-  SOBRANTE:        "#1D4ED8",
-  FALTANTE:        "#B42318",
-  DAÑADO:          "#475569",
-  MAL_UBICADO:     "#475569",
-  ERROR_SISTEMA:   "#1D4ED8",
-  ERROR_PROVEEDOR: "#6366f1",
-  ERROR_DESPACHO:  "#B42318",
+  SOBRANTE:        "#5B9DFF", // --state-sent
+  FALTANTE:        "#FF6B6B", // --error
+  DAÑADO:          "#8B9398", // --muted
+  MAL_UBICADO:     "#8B9398", // --muted
+  ERROR_SISTEMA:   "#34D9F0", // --info
+  ERROR_PROVEEDOR: "#5B9DFF", // --state-sent
+  ERROR_DESPACHO:  "#FF6B6B", // --error
 };
 
 // ── Causa raíz ───────────────────────────────────────────
@@ -111,10 +113,12 @@ export function todayISO(): string {
   return new Date().toISOString().slice(0, 10);
 }
 
+// Hex on-palette (valor literal del token espejo) — alimenta el donut de Chart.js
+// (muebles/page.tsx) y tints por concatenación; var(--token) no resuelve en canvas.
 export const ESTADO_COLOR: Record<EstadoNovedad, string> = {
-  "PENDIENTE": "#B42318",
-  "EN PROCESO": "#475569",
-  "SOLUCIONADO": "#1D4ED8",
+  "PENDIENTE": "#FF6B6B",    // --error
+  "EN PROCESO": "#34D9F0",   // --info
+  "SOLUCIONADO": "#2EE6A6",  // --success
 };
 
 export function estadoLabel(e: EstadoNovedad): string {

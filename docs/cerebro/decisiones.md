@@ -1,5 +1,25 @@
 # Decisiones de Arquitectura y Producto
 
+## 2026-06-19 - A6: mapas de color de estado a paleta Dark Elegant (quick win auditoria)
+
+**Decision:**
+- Se remapean los mapas de color de estado que usaban hex VIEJO fuera de paleta ([[auditoria-ui]] A6 🔴).
+- **Criterio por consumidor** (no uniforme, a proposito):
+  - `lib/tienda.ts` `ESTADO_DESPACHO_COLOR` y `lib/transporte.ts` `ALERTA_TIER_COLOR` → **tokens `var(--state-*)`/semanticos**, porque solo fluyen a CSS/inline-styles. Se corrigio la unica concatenacion hex+alpha de cada uno (`tienda/_components.tsx` y `transporte/page.tsx`) a `color-mix(in srgb, … %, transparent)`.
+  - `lib/muebles.ts` `ESTADO_COLOR` y `TIPO_NOVEDAD_COLOR` → **hex on-palette** (valor literal del token espejo, anotado con comentario), porque `ESTADO_COLOR` alimenta un donut de **Chart.js** (canvas) donde `var(--token)` no resuelve, y se concatena con alpha en inventario.
+- `lib/sla.ts` ya usaba `var(--success/--warning/--error/--muted)`: **sin cambios** (la linea citada en la auditoria estaba stale).
+
+**Contexto:**
+- TAREA 2 del handoff (quick wins de auditoria, alto impacto / bajo riesgo). Una por iteracion.
+- Mapeo tienda 1:1 con los tokens disenados para esos estados (created/picked/cedi/sent/rejected/alert).
+
+**Consecuencias:**
+- Pendiente 🟡 (documentado): los hex de `muebles.ts` son literales, no tokens; tokenizarlos requiere refactor del color de Chart.js (resolver `getComputedStyle` o pasar colores resueltos). Diferido.
+- Tambien se corrigio el fallback gris off-palette `?? "#6b7280"` → `#8B9398` (`--muted`) en `muebles/page.tsx`.
+- Validado: `tsc` + 271 tests + `build` verdes. Verificacion visual autenticada la hace el usuario (preview headless no loguea).
+
+**Archivos afectados:** `src/lib/{tienda,transporte,muebles}.ts`, `src/app/(dashboard)/dashboard/{tienda/_components,transporte/page,muebles/page}.tsx`, `docs/cerebro/{decisiones,pendientes,auditoria-ui}.md`.
+
 ## 2026-06-19 - D10: borrado de tablas Prisma de los modulos eliminados (destructivo, confirmado)
 
 **Decision:**

@@ -371,7 +371,7 @@ export default function MueblesPage() {
                     .map(([tipo, count]) => {
                       const total = Object.values((stats.byTipo as Record<string, number>) ?? {}).reduce((a, b) => a + b, 0);
                       const pct = total > 0 ? Math.round((count as number) / total * 100) : 0;
-                      const color = TIPO_NOVEDAD_COLOR[tipo as keyof typeof TIPO_NOVEDAD_COLOR] ?? "#6b7280";
+                      const color = TIPO_NOVEDAD_COLOR[tipo as keyof typeof TIPO_NOVEDAD_COLOR] ?? "#8B9398";
                       return (
                         <div key={tipo} style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}>
                           <span style={{ width: 8, height: 8, borderRadius: "50%", background: color, flexShrink: 0 }} />

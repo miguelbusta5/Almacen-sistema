@@ -115,12 +115,12 @@ export const ESTADO_DESPACHO_LABEL: Record<EstadoDespacho, string> = {
 };
 
 export const ESTADO_DESPACHO_COLOR: Record<EstadoDespacho, string> = {
-  CREADO_TIENDA:      "#7C3AED",
-  RECHAZADO:          "#DC2626",
-  RECOGIDO_TIENDA:    "#0891B2",
-  ENTREGADO_CEDI:     "#16A34A",
-  ENVIADO_CLIENTE:    "#2563EB",
-  CON_NOVEDAD:        "#D97706",
+  CREADO_TIENDA:      "var(--state-created)",
+  RECHAZADO:          "var(--state-rejected)",
+  RECOGIDO_TIENDA:    "var(--state-picked)",
+  ENTREGADO_CEDI:     "var(--state-cedi)",
+  ENVIADO_CLIENTE:    "var(--state-sent)",
+  CON_NOVEDAD:        "var(--state-alert)",
 };
 
 // Color del módulo tienda

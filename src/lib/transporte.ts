@@ -110,11 +110,11 @@ export const ALERTA_TIER_LABEL: Record<AlertaTier, string> = {
 };
 
 export const ALERTA_TIER_COLOR: Record<AlertaTier, string> = {
-  ok:        "#1D4ED8",
-  aviso:     "#475569",
-  alerta:    "#B42318",
-  critico:   "#B42318",
-  emergencia:"#7f1d1d",
+  ok:        "var(--success)",
+  aviso:     "var(--info)",
+  alerta:    "var(--warning)",
+  critico:   "var(--error)",
+  emergencia:"var(--error)",
 };
 
 // ── Tipos para log de contacto ───────────────────────────
