@@ -11,6 +11,7 @@
 - [x] Coherencia claro/oscuro: quitar el forzado dark `!important` global; acotar superficies neón a `html[data-theme="dark"]`. `body` coherente por tema.
 - [x] Glow controlado (KPI/hero) + asset 3D del hero `cover`→`contain` (sin recorte).
 - [x] Exportaciones: filtro de productividad por operario (cliente, sin cambio de API).
+- [x] Exportaciones: KPI de productividad por operario **acumulado y filtrable por rango de días** (`desde`/`hasta` + atajos Hoy/7/30 días, default últimos 7 días); endpoint `GET /api/exportaciones/stats` acepta rango. — 2026-06-18
 - [x] **ModuleHero patrón real**: asset 3D como elemento `<img>` controlado (`.module-hero-media`), no `::after`; layout desktop texto+asset, tablet reducido, móvil oculto. Headers legacy conservan `::after` hasta migrarse.
 - [x] Mojibake reparado en `src/lib/netsuite.ts` (comentarios). Cadenas de UI ya estaban correctas.
 - [x] **Consolidar los 3 bloques `:root` apilados** en `globals.css` en una sola fuente de verdad (criterio: cero cambio de valor computado; migrar radii/tipografía/layout/semánticos del primer `:root` y eliminar las eras v5/Colorido duplicadas). Riesgo medio — requiere diff cuidadoso, hacerlo como paso dedicado.

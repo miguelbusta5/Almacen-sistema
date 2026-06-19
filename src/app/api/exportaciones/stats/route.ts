@@ -11,11 +11,21 @@ export async function GET(req: NextRequest) {
   }
 
   const { searchParams } = new URL(req.url);
+  const parseDay = (value: string | null): Date | null => {
+    if (!value) return null;
+    const d = new Date(`${value}T00:00:00.000Z`);
+    return Number.isNaN(d.getTime()) ? null : d;
+  };
+
+  // Rango acumulado: `desde`/`hasta`. Compatibilidad: `fecha` = un solo día.
   const fechaParam = searchParams.get("fecha");
-  const fecha = fechaParam ? new Date(`${fechaParam}T00:00:00.000Z`) : todayBogota();
+  const today = todayBogota();
+  let desde = parseDay(searchParams.get("desde")) ?? parseDay(fechaParam) ?? today;
+  let hasta = parseDay(searchParams.get("hasta")) ?? parseDay(fechaParam) ?? today;
+  if (desde.getTime() > hasta.getTime()) [desde, hasta] = [hasta, desde];
 
   const registros = await prisma.etiquetadoExportacion.findMany({
-    where: { fecha, deletedAt: null },
+    where: { fecha: { gte: desde, lte: hasta }, deletedAt: null },
     select: {
       plu: true,
       unidadEmpaque: true,
@@ -73,5 +83,10 @@ export async function GET(req: NextRequest) {
     }))
     .sort((a, b) => b.cajas - a.cajas);
 
-  return NextResponse.json({ success: true, data });
+  const rango = {
+    desde: desde.toISOString().slice(0, 10),
+    hasta: hasta.toISOString().slice(0, 10),
+  };
+
+  return NextResponse.json({ success: true, data, rango });
 }

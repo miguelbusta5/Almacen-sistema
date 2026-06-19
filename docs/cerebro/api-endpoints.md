@@ -94,6 +94,7 @@ await prisma.notificacion.createMany({
 | POST | `/api/exportaciones` | Crea captura con caja, PLU y unidad; autocompleta descripcion desde maestro y cierra el registro anterior abierto del usuario | ETIQUETADO, SUPERVISOR_ALMACENAMIENTO, GERENTE, ADMIN |
 | PATCH | `/api/exportaciones/[id]` | Corrige caja, PLU, unidad y horas; cambiar horas exige motivo | SUPERVISOR_ALMACENAMIENTO, GERENTE, ADMIN |
 | DELETE | `/api/exportaciones/[id]` | Borrado logico auditado | SUPERVISOR_ALMACENAMIENTO, GERENTE, ADMIN |
+| GET | `/api/exportaciones/stats` | Productividad por operario **acumulada** en un rango `desde`/`hasta` (YYYY-MM-DD); compat: `fecha` = un solo dia. Agrega cajas, PLUs distintos, unidades, finalizadas, tiempo total y promedio min/caja. Devuelve `rango` aplicado | SUPERVISOR_ALMACENAMIENTO, GERENTE, ADMIN |
 
 ### Indicadores CEDI
 | Metodo | Ruta | Descripcion | Auth |

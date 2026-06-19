@@ -27,6 +27,7 @@
   - Glow controlado en KPI/hero; asset 3D del hero pasa de `cover` a `contain` (ya no se recorta).
   - `ModuleHero` permanece como banda neón oscura en ambos temas (intencional, igual a la referencia aprobada).
 - Exportaciones: filtro de productividad **por operario** (cliente) sobre los datos ya cargados, combinable con el filtro por fecha existente. Sin cambios de API/BD/permisos.
+- Exportaciones: KPI de productividad **acumulado por rango de días** (2026-06-18). El endpoint `GET /api/exportaciones/stats` pasa de consultar un solo día a un rango `desde`/`hasta` (compat con `fecha`); como la agregación ya sumaba todos los registros del `where`, ampliar el rango la vuelve acumulada sin tocar el cálculo. El panel tiene controles propios (Desde/Hasta + atajos Hoy/7/30 días, default últimos 7 días) **independientes** del filtro de la lista. Fechas en zona `America/Bogota`. Sin cambios de BD/permisos.
 
 **Contexto:**
 - Las referencias aprobadas viven en `.codex` (solo referencia); los assets versionados están en `public/ui/module-heroes/`.

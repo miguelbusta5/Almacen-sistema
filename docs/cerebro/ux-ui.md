@@ -124,3 +124,4 @@ Revisar en claro y oscuro, desktop, tablet y movil:
   - El `ModuleHero` sigue siendo banda neon oscura en ambos temas (intencional, como la referencia).
   - **Pendiente:** consolidar los tres bloques `:root` apilados en una sola fuente de verdad (riesgo medio, requiere migrar radii/tipografia/layout del primer `:root`).
   - **Exportaciones:** filtro de **productividad por operario** (cliente, sobre datos ya cargados) ademas del filtro por fecha existente; sin cambios de API.
+  - **Exportaciones — KPI productividad acumulado:** el panel "Productividad por operario" tiene controles propios de **rango de dias** (Desde/Hasta + atajos Hoy/7/30 dias, default ultimos 7 dias), independientes del filtro de la lista; el endpoint `/api/exportaciones/stats` agrega el rango de forma **acumulada**.

@@ -45,6 +45,22 @@ function fmtTime(value: string | null) {
   return new Date(value).toLocaleTimeString("es-CO", { hour: "2-digit", minute: "2-digit" });
 }
 
+function hoyBogota(): string {
+  return new Intl.DateTimeFormat("en-CA", { timeZone: "America/Bogota", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date());
+}
+
+function sumarDias(ymd: string, dias: number): string {
+  const d = new Date(`${ymd}T00:00:00.000Z`);
+  d.setUTCDate(d.getUTCDate() + dias);
+  return d.toISOString().slice(0, 10);
+}
+
+function fmtRango(desde: string, hasta: string): string {
+  if (!desde || !hasta) return "Hoy";
+  if (desde === hasta) return desde;
+  return `${desde} → ${hasta}`;
+}
+
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <label style={{ display: "grid", gap: 6, fontSize: 11, fontWeight: 700, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.04em" }}>
@@ -79,6 +95,8 @@ export default function ExportacionesPage() {
   const [loadingStats, setLoadingStats] = useState(false);
   const [showStats, setShowStats] = useState(true);
   const [statsOperario, setStatsOperario] = useState("");
+  const [statsDesde, setStatsDesde] = useState("");
+  const [statsHasta, setStatsHasta] = useState("");
   const [query, setQuery] = useState("");
   const [fecha, setFecha] = useState("");
   const [estado, setEstado] = useState("");
@@ -116,19 +134,33 @@ export default function ExportacionesPage() {
     setLoading(false);
   }
 
-  async function loadStats() {
+  async function loadStats(desde = statsDesde, hasta = statsHasta) {
     if (!canManage) return;
     setLoadingStats(true);
     const params = new URLSearchParams();
-    if (fecha) params.set("fecha", fecha);
+    if (desde) params.set("desde", desde);
+    if (hasta) params.set("hasta", hasta);
     const res = await fetch(`/api/exportaciones/stats?${params.toString()}`);
     const json = await res.json().catch(() => ({}));
     if (res.ok && json.success) setStats(json.data ?? []);
     setLoadingStats(false);
   }
 
+  function aplicarRangoStats(desde: string, hasta: string) {
+    setStatsDesde(desde);
+    setStatsHasta(hasta);
+    loadStats(desde, hasta);
+  }
+
   useEffect(() => { if (canUse) load(1); }, [canUse]); // eslint-disable-line react-hooks/exhaustive-deps
-  useEffect(() => { if (canManage) loadStats(); }, [canManage]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    if (!canManage) return;
+    const hasta = hoyBogota();
+    const desde = sumarDias(hasta, -6); // acumulado de los últimos 7 días por defecto
+    setStatsDesde(desde);
+    setStatsHasta(hasta);
+    loadStats(desde, hasta);
+  }, [canManage]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const autoRefresh = useAutoRefresh({
     enabled: canUse,
@@ -294,7 +326,7 @@ export default function ExportacionesPage() {
         <option value="en-curso">En curso</option>
         <option value="finalizado">Finalizados</option>
       </select>
-      <button onClick={() => { setPage(1); load(1); loadStats(); }} style={{ height: 38, border: `1px solid ${COLOR}55`, color: COLOR, background: `${COLOR}10`, borderRadius: 8, fontWeight: 800, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 7 }}>
+      <button onClick={() => { setPage(1); load(1); }} style={{ height: 38, border: `1px solid ${COLOR}55`, color: COLOR, background: `${COLOR}10`, borderRadius: 8, fontWeight: 800, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 7 }}>
         <RefreshCw size={15} /> Filtrar
       </button>
     </div>
@@ -368,6 +400,42 @@ export default function ExportacionesPage() {
     </div>
   ) : null;
 
+  const hoy = hoyBogota();
+  const statsPresets = [
+    { label: "Hoy", desde: hoy, hasta: hoy },
+    { label: "7 días", desde: sumarDias(hoy, -6), hasta: hoy },
+    { label: "30 días", desde: sumarDias(hoy, -29), hasta: hoy },
+  ];
+  const statsControls = (
+    <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", marginBottom: 14, paddingBottom: 12, borderBottom: "1px solid var(--border)" }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+        <span style={{ fontSize: 11, fontWeight: 700, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.04em" }}>Desde</span>
+        <input type="date" value={statsDesde} max={statsHasta || undefined} onChange={(e) => setStatsDesde(e.target.value)} className="ds-input" style={{ height: 32, width: "auto", fontSize: 12 }} />
+      </div>
+      <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+        <span style={{ fontSize: 11, fontWeight: 700, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.04em" }}>Hasta</span>
+        <input type="date" value={statsHasta} min={statsDesde || undefined} onChange={(e) => setStatsHasta(e.target.value)} className="ds-input" style={{ height: 32, width: "auto", fontSize: 12 }} />
+      </div>
+      <button onClick={() => loadStats()} className="ds-btn ds-btn-sm" style={{ height: 32, background: COLOR, color: "white", border: "none" }}>
+        <RefreshCw size={13} /> Aplicar
+      </button>
+      <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+        {statsPresets.map((p) => {
+          const active = statsDesde === p.desde && statsHasta === p.hasta;
+          return (
+            <button
+              key={p.label}
+              onClick={() => aplicarRangoStats(p.desde, p.hasta)}
+              style={{ height: 32, padding: "0 12px", borderRadius: 8, fontSize: 12, fontWeight: 700, cursor: "pointer", border: `1px solid ${active ? COLOR : "var(--border)"}`, background: active ? `${COLOR}18` : "transparent", color: active ? COLOR : "var(--muted2)" }}
+            >
+              {p.label}
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+
   return (
     <div className="animate-fade-in" style={{ ...getModuleCssVars("exportaciones"), "--module-color": COLOR, display: "grid", gap: 16, maxWidth: 1180 } as React.CSSProperties}>
       <ModuleHero
@@ -387,7 +455,7 @@ export default function ExportacionesPage() {
               </span>
               <div>
                 <h2 style={{ margin: 0, fontSize: 15, fontWeight: 700 }}>Productividad por operario</h2>
-                <p style={{ margin: 0, fontSize: 12, color: "var(--muted)" }}>{fecha || "Hoy"} · promedio minutos por caja finalizada</p>
+                <p style={{ margin: 0, fontSize: 12, color: "var(--muted)" }}>{fmtRango(statsDesde, statsHasta)} · acumulado · promedio minutos por caja finalizada</p>
               </div>
             </div>
             <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
@@ -412,11 +480,13 @@ export default function ExportacionesPage() {
             </div>
           </div>
           {showStats && (
-            loadingStats ? (
+            <>
+            {statsControls}
+            {loadingStats ? (
               <div style={{ height: 60, display: "flex", alignItems: "center", justifyContent: "center", color: "var(--muted)", fontSize: 13 }}>Cargando estadísticas…</div>
             ) : statsFiltrados.length === 0 ? (
               <div style={{ height: 60, display: "flex", alignItems: "center", justifyContent: "center", color: "var(--muted)", fontSize: 13 }}>
-                {statsOperario ? "Sin registros del operario seleccionado en esta fecha" : "Sin registros para esta fecha"}
+                {statsOperario ? "Sin registros del operario seleccionado en este rango" : "Sin registros para este rango"}
               </div>
             ) : (
               <div style={{ overflowX: "auto" }}>
@@ -473,7 +543,8 @@ export default function ExportacionesPage() {
                   </tbody>
                 </table>
               </div>
-            )
+            )}
+            </>
           )}
         </section>
       )}
