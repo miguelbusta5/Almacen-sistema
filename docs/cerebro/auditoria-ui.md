@@ -1,0 +1,122 @@
+# Auditoría UI — inconsistencias visuales entre módulos (EPIC A)
+
+> Links: [[ux-ui]] · [[decisiones]] · [[pendientes]] · [[bugs]]
+>
+> **Fecha:** 2026-06-19 · **Alcance:** solo lectura. Cataloga diferencias contra la identidad
+> **Dark Elegant (Obsidiana + Esmeralda)** ([[ux-ui]]). **No** se cambió UI todavía.
+> Severidad: 🔴 alta · 🟡 media · 🟢 baja.
+
+## Metodología
+
+Se barrieron las páginas en `src/app/(dashboard)/dashboard/*` y los `src/lib/*` de color, buscando
+desviaciones del sistema de diseño (`src/components/ui/*` + `globals.css`). Componentes canónicos:
+`ModuleHero` (encabezado), `<Stat>`/`.ds-stat` (KPIs), `<DataTable>`/`.ds-table` (tablas),
+`SlidePanel`+`DetailSection` (detalle), `Badge` + tokens `--state-*` (estados).
+
+> ⚠️ **Módulos marcados 🗑️ se eliminan en EPIC D** (conteo, conteo/contar, studio, indicadores).
+> **No migrar** su UI; se listan solo para completitud.
+
+## Matriz de patrones por página
+
+| Página | Encabezado | KPIs | Tabla | Detalle |
+|---|---|---|---|---|
+| dashboard (home) | `<h1>` inline ad-hoc | `<Stat>` ✓ | — | SlidePanel ✓ |
+| inventario | `<h1>` + hero-gradient ad-hoc | propio | — (bottom-sheet móvil) | propio |
+| tienda | `ModuleHero` ✓ | `.kpiCard` propio | `.facturaTable` propio | SlidePanel ✓ |
+| transporte | `<h1>` ad-hoc | tarjetas/charts propias | `<table>` | SlidePanel ✓ |
+| solicitudes-transporte | `ModuleHero` ✓ (+`<h1>` suelto) | hex propios | `.ds-table` ✓ | SlidePanel ✓ |
+| exportaciones | `ModuleHero` ✓ (+`<h1>` suelto) | propio | `<table>` inline | Modal |
+| integracion | `ModuleHero` ✓ | propio | `<table>` inline ×3 | SlidePanel ✓ |
+| preoperacional | `ModuleHero` ✓ | `<Stat>` ✓ | `<table>` inline | SlidePanel ✓ |
+| mis-tareas | `ModuleHero` ✓ | `<Seccion>` propio | — | — |
+| usuarios | `ModuleHero` ✓ | — | `.g-table` + `<table>` inline | Modal |
+| auditoria | `ModuleHero` ✓ | — | `.g-table` | Modal |
+| muebles | `.g-module-header` **legacy** | charts propios | `<table>` | SlidePanel ✓ |
+| centro-control | `<h1>` inline ad-hoc | tarjetas propias | — | propio |
+| 🗑️ conteo / contar | `<h1>` ad-hoc | `<Kpi>` propio | `<table>` inline | — |
+| 🗑️ indicadores | `cedi-hero` | hex propios | `.cedi-table` ×5 | — |
+| 🗑️ studio | propio | propio | propio | propio |
+
+---
+
+## A1 — Encabezados
+
+| Módulo | Tipo | Sev | Archivo:línea | Propuesta |
+|---|---|---|---|---|
+| muebles | Usa header legacy `g-module-header g-page-head` con `--mod-color:#14DBA0` hardcodeado | 🔴 | `muebles/page.tsx:259-262` | Migrar a `ModuleHero` (tipográfico). Quitar el `--mod-color` literal. |
+| dashboard (home) | Encabezados `<h1>` inline a medida (3 variantes de tamaño) | 🟡 | `dashboard/page.tsx:349,557,741` | Home no es módulo; aceptable, pero unificar tamaños vía token display. |
+| inventario | Hero a medida: `<h1>` con `color:#F8FBFF` literal + panel `--module-hero-gradient` | 🟡 | `inventario/page.tsx:853,875` | Es mobile-first intencional; al menos `#F8FBFF`→`var(--text)`. Evaluar `ModuleHero compact`. |
+| centro-control | `<h1>` inline ad-hoc en vez de `ModuleHero` | 🟡 | `centro-control/page.tsx:384` | Migrar a `ModuleHero`. |
+| solicitudes / exportaciones | Tienen `ModuleHero` **y además** un `<h1>` suelto de sección | 🟢 | `solicitudes-transporte/page.tsx:556` · `exportaciones/page.tsx:287` | Verificar que sea subtítulo de sección, no segundo encabezado de módulo. |
+
+## A2 — KPIs / Stats
+
+| Módulo | Tipo | Sev | Archivo:línea | Propuesta |
+|---|---|---|---|---|
+| tienda | KPIs con `.kpiCard` propio (módulo CSS) en vez de `<Stat>`/`.ds-stat` | 🟡 | `tienda/_components.tsx:49-142` (`.kpiCard` en `tienda.module.css`) | EPIC C: migrar a `<Stat>` con color por estado, o promover `.kpiCard` al DS. |
+| varios | Cada módulo arma sus KPIs distinto: `<Stat>` (home, preoperacional), `<Kpi>` propio (🗑️conteo), tarjetas/charts a medida (centro-control, muebles, transporte), `<Seccion>` (mis-tareas) | 🟡 | `dashboard/page.tsx:358…`, `preoperacional/page.tsx:279-282`, `conteo/page.tsx:432`, `mis-tareas/page.tsx:164` | Estandarizar en `<Stat>` (tamaño/glow/tipografía). Mantener color por estado vía prop `color`. |
+| referencia OK | `<Stat>` bien usado (color por token/estado) | ✅ | `dashboard/page.tsx`, `preoperacional/page.tsx` | Patrón a replicar. |
+
+## A3 — Tablas
+
+**Hallazgo central:** **ninguna** página usa el componente compartido `<DataTable>`. Coexisten **5
+estilos** de tabla con densidades, rails y hover distintos.
+
+| Estilo | Módulos | Sev | Archivo:línea | Propuesta |
+|---|---|---|---|---|
+| `.facturaTable` (módulo CSS propio) | tienda | 🔴 | `tienda/_components.tsx:370` | EPIC C: migrar a `<DataTable>` con `getRowColor` por estado, o alinear con `.ds-table`. |
+| `<table>` inline (sin clase, `borderCollapse` a mano) | exportaciones, integracion, preoperacional, transporte, usuarios(2ª) | 🔴 | `exportaciones/page.tsx:372,510` · `integracion/page.tsx:326,589,713` · `preoperacional/page.tsx:566` · `usuarios/page.tsx:487` | Migrar a `<DataTable>`/`.ds-table`. |
+| `.g-table` (legacy) | usuarios, auditoria | 🟡 | `usuarios/page.tsx:224` · `auditoria/page.tsx:209` | Unificar a `.ds-table`. Sort: hoy `<th>` con estilos inline y color activo literal (`#14DBA0`/`#5B9DFF`). |
+| `.ds-table` ✓ | solicitudes-transporte | 🟢 | `solicitudes-transporte/page.tsx:609` | Patrón más cercano al DS; tomar como referencia. |
+| `.cedi-table` 🗑️ | indicadores | — | `indicadores/page.tsx:118…` | No migrar (EPIC D). |
+
+## A4 — Detalle / Drawer
+
+| Módulo | Tipo | Sev | Archivo:línea | Propuesta |
+|---|---|---|---|---|
+| tienda, transporte, solicitudes, preoperacional, integracion, muebles, home | `SlidePanel`+`DetailSection`/`DetailGrid` ✓ | ✅ | — | Patrón consistente; mantener. |
+| usuarios, auditoria, exportaciones | Detalle/edición vía `Modal` (no drawer) | 🟢 | — | Aceptable por naturaleza (CRUD/formulario), no forzar drawer. |
+| centro-control, inventario | Detalle a medida (no SlidePanel ni Modal del DS) | 🟡 | `centro-control/page.tsx` · `inventario/page.tsx` | Evaluar `SlidePanel` para coherencia. |
+
+## A5 — Espaciado / tipografía / botones / inline
+
+| Tipo | Sev | Archivo:línea | Propuesta |
+|---|---|---|---|
+| **Toast duplicado** ~6 veces con estilos inline idénticos; color de fondo deriva (`#0F0F10` vs `#0f172a` en conteo) | 🟡 | `tienda/page.tsx:514` · `transporte/page.tsx:689` · `muebles/page.tsx:768` · `preoperacional/page.tsx:390` · `conteo/page.tsx:590` | Crear `<Toast>` compartido en `src/components/ui`. |
+| **Chip NetSuite** inline repetido (`color:#34D9F0; background:#34D9F00d…`) | 🟡 | `tienda/page.tsx:382` · `transporte/page.tsx:570` · `muebles/page.tsx:628` | Extraer componente; usar `var(--info)`/`--info-tint`. |
+| **Sort `<th>` inline** con color activo literal | 🟡 | `usuarios/page.tsx:227,231,234` · `auditoria/page.tsx:212,215` | Usar sort de `<DataTable>` o tokens. |
+| Tamaños de fuente de `<h1>` fuera de token (`22/24/26/28/30`, `clamp` ad-hoc) | 🟢 | `centro-control/page.tsx:384` · `solicitudes-transporte/page.tsx:556` · `inventario/page.tsx:875` | Tokenizar tamaños display. |
+
+## A6 — Estados / badges / colores hardcodeados
+
+**Hallazgo central:** los estados se definen de **3 formas** distintas; ningún módulo usa los
+tokens `--state-*`. Además hay paletas mezcladas (vieja vs nueva).
+
+| Caso | Sev | Archivo:línea | Detalle / Propuesta |
+|---|---|---|---|
+| **Mapas de estado con hex VIEJO (fuera de paleta Dark Elegant)** | 🔴 | `lib/tienda.ts:117-124` (violeta `#7C3AED`, azul `#2563EB`, verde `#16A34A`, teal `#0891B2`, rojo `#DC2626`, ámbar `#D97706`) · `lib/muebles.ts:31-37,115-117` · `lib/transporte.ts:113-117` · `lib/sla.ts:113-117` (slates `#475569`, azules `#1D4ED8`, rojos `#B42318`) | Remapear a tokens `--state-*` (`created/picked/cedi/sent/rejected/alert`) y semánticos. Es lo más visible sobre fondo oscuro. |
+| **Mapa de estado con hex NUEVO pero literal** (no token) | 🟡 | `solicitudes-transporte/page.tsx:90-103` (`#FFC53D/#34D9F0/#5B9DFF/#2EE6A6/#FF6B6B/#8B9398`) | Colores correctos, mecanismo incorrecto: reemplazar literales por `var(--state-*)`/`var(--warning)` etc. |
+| **Acento esmeralda hardcodeado** `#14DBA0` como literal | 🟡 | `usuarios/page.tsx:227,231,234,424,431` · `mis-tareas/page.tsx:164` · `muebles/page.tsx:259` · varios charts | Usar `var(--accent)`. |
+| **Grises/fallbacks fuera de token** (`#64748b`, `#94a3b8`, `#6b7280`, `#6B7280`, `#f97316`) | 🟡 | `usuarios/page.tsx:53-57` · `auditoria/page.tsx:30,225-226` · `centro-control/page.tsx:164` · `dashboard/page.tsx:49` · `conteo/page.tsx:432` | Usar `var(--muted)`/`var(--faint)`/`--state-*`. |
+| **`tienda.module.css` define `--factura-*` propios** duplicando state tokens | 🟢 | `tienda/tienda.module.css:5-7` (`--factura-cyan/blue/green`) | EPIC C: reemplazar por `--state-picked/sent/cedi`. |
+
+---
+
+## Resumen priorizado
+
+**🔴 Alta (rompe identidad Dark Elegant / coherencia):**
+1. Mapas de estado con hex viejo fuera de paleta → migrar a `--state-*` (`lib/tienda.ts`, `lib/muebles.ts`, `lib/transporte.ts`, `lib/sla.ts`).
+2. Fragmentación de tablas (5 estilos, nadie usa `<DataTable>`) → converger a `.ds-table`/`<DataTable>`. Prioridad: tienda `.facturaTable` (EPIC C) y `<table>` inline.
+3. `muebles` con encabezado legacy `g-module-header` → `ModuleHero`.
+
+**🟡 Media (consistencia / mantenibilidad):**
+4. KPIs no unificados (`.kpiCard`, `<Kpi>`, tarjetas a medida) → estandarizar en `<Stat>`.
+5. Toast y chip NetSuite duplicados inline → componentes compartidos.
+6. Encabezados ad-hoc en `home`/`inventario`/`centro-control`.
+7. Colores correctos pero hardcodeados (esmeralda y paleta nueva como literales) → tokens.
+
+**🟢 Baja:**
+8. `<h1>` con tamaños fuera de token; `--factura-*` duplicados; grises/fallbacks sueltos.
+
+**Dependencias:** A informa **EPIC C** (tienda: A2 `.kpiCard`, A3 `.facturaTable`, A6 `--factura-*`).
+Los hallazgos en módulos 🗑️ (conteo/indicadores/studio) se resuelven por borrado en **EPIC D**, no por migración.

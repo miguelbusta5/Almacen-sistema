@@ -8,6 +8,7 @@
 
 ### Reescritura frontend Dark Elegant (2026-06-19)
 
+- [x] **EPIC A — Auditoría UI** (solo lectura): catalogadas inconsistencias de encabezados, KPIs, tablas, drawer, estilos inline y estados/colores en [[auditoria-ui]], con severidad y archivo:línea. Hallazgos clave: **nadie usa `<DataTable>`** (5 estilos de tabla coexisten), mapas de estado con **hex viejo fuera de `--state-*`** (`lib/tienda.ts`, `lib/muebles.ts`, `lib/transporte.ts`, `lib/sla.ts`), y `muebles` con encabezado legacy `g-module-header`. Insumo para EPIC C. — 2026-06-19
 - [x] **Reescritura total a Dark Elegant (Obsidiana + Esmeralda)**: solo modo oscuro, acento unico esmeralda, estados con color propio, encabezados sin imagenes, fuentes Inter+Sora. Backend intacto. `tsc` + `build` + 1176 tests verdes. Ver [[decisiones]] y [[ux-ui]].
 - [x] Eliminado tema claro, `ThemeToggle` y script de init de tema; `moduleTheme.ts` colapsado a esmeralda sin `heroImage`; `tienda.module.css` reescrito dark; charts y studio re-tematizados.
 - [x] Limpieza de colores hardcodeados (violeta/azul/fondos claros) en todas las paginas hacia tokens/esmeralda.
