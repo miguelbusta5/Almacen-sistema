@@ -6,7 +6,7 @@ import {
   AlertTriangle, CheckCircle2, Clock, FileText, Minus, Pencil,
   Plus, RefreshCw, Search, Send, Trash2, X,
 } from "lucide-react";
-import { Badge, EmptyState, SkeletonTable } from "@/components/ui";
+import { Badge, EmptyState, SkeletonTable, ModuleHero } from "@/components/ui";
 import { AutoRefreshIndicator } from "@/components/ui/AutoRefreshIndicator";
 import { getModuleColor, getModuleCssVars } from "@/lib/moduleTheme";
 import { puedeEliminarSolicitudTransporte, puedeGestionarSolicitudTransporte } from "@/lib/solicitudesTransporte";
@@ -529,11 +529,24 @@ export default function SolicitudesTransportePage() {
 
   return (
     <div className="animate-fade-in" style={{ ...getModuleCssVars("solicitudes-transporte"), display: "grid", gap: 18 } as React.CSSProperties}>
-      <div className="g-module-header">
-        <div className="g-module-kicker">Control transporte</div>
-        <h1 className="g-module-title">Solicitudes de Transporte</h1>
-        <p className="g-module-desc">Bandeja interna para crear, programar, rechazar y cerrar servicios de transporte con prioridad y semáforo operativo.</p>
-      </div>
+      <ModuleHero
+        moduleKey="solicitudes-transporte"
+        kicker="Control transporte"
+        title="Solicitudes de Transporte"
+        description="Bandeja interna para crear, programar, rechazar y cerrar servicios de transporte con prioridad y semáforo operativo."
+        actions={
+          <>
+            <AutoRefreshIndicator
+              lastUpdatedAt={autoRefresh.lastUpdatedAt}
+              refreshing={autoRefresh.refreshing}
+              onRefresh={autoRefresh.refreshNow}
+            />
+            <button onClick={() => { setEditing(null); setShowForm(true); }} className="ds-btn ds-btn-primary" style={{ height: 40 }}>
+              <Plus size={16} /> Nueva solicitud
+            </button>
+          </>
+        }
+      />
       <div style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "flex-start", flexWrap: "wrap" }}>
         <div>
           <div style={{ display: "flex", alignItems: "center", gap: 10, color: COLOR, marginBottom: 8 }}>
@@ -542,16 +555,6 @@ export default function SolicitudesTransportePage() {
           </div>
           <h1 style={{ margin: 0, color: "var(--text)", fontSize: 28 }}>Bandeja operativa</h1>
           <p style={{ margin: "5px 0 0", color: "var(--muted)", fontSize: 14 }}>Servicio interno para entregas, recolecciones, traslados e inversa.</p>
-        </div>
-        <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", justifyContent: "flex-end" }}>
-          <AutoRefreshIndicator
-            lastUpdatedAt={autoRefresh.lastUpdatedAt}
-            refreshing={autoRefresh.refreshing}
-            onRefresh={autoRefresh.refreshNow}
-          />
-          <button onClick={() => { setEditing(null); setShowForm(true); }} className="ds-btn ds-btn-primary" style={{ height: 40 }}>
-            <Plus size={16} /> Nueva solicitud
-          </button>
         </div>
       </div>
 

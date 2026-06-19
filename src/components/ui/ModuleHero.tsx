@@ -1,3 +1,4 @@
+import Image from "next/image";
 import type { CSSProperties, ReactNode } from "react";
 import { getModuleCssVars, getModuleTheme, type ModuleThemeKey } from "@/lib/moduleTheme";
 
@@ -71,8 +72,14 @@ export function ModuleHero({
 
       {!compact && (
         <div className="module-hero-media" aria-hidden="true">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={theme.heroImage} alt="" loading="lazy" decoding="async" />
+          <Image
+            src={theme.heroImage}
+            alt=""
+            width={420}
+            height={240}
+            priority
+            sizes="(max-width: 760px) 0px, 34vw"
+          />
         </div>
       )}
     </section>

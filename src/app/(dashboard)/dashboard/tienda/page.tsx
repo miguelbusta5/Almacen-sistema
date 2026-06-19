@@ -12,7 +12,7 @@ import {
   ESTADO_DESPACHO_COLOR, COLOR_TIENDA, estadoDespachoVariant,
   fmtFechaTienda, todayISO, horasDesde, FLUJO_ESTADOS, ESTADOS_ACTIVOS,
 } from "@/lib/tienda";
-import { Stat, SkeletonStat, Badge, EmptyState, SkeletonTable, TimelineItem } from "@/components/ui";
+import { Stat, SkeletonStat, Badge, EmptyState, SkeletonTable, TimelineItem, ModuleHero } from "@/components/ui";
 import { Modal } from "@/components/ui/Modal";
 import { AutoRefreshIndicator } from "@/components/ui/AutoRefreshIndicator";
 import { SlidePanel, IntelBanner, DetailSection, DetailGrid, MiniHistory } from "@/components/ui/SlidePanel";
@@ -196,30 +196,24 @@ export default function TiendaPage() {
 
   return (
     <div className="animate-fade-in" style={getModuleCssVars("tienda") as React.CSSProperties}>
-      {/* ── Header ── */}
-      <div className="g-module-header g-page-head">
-        <div>
-          <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 4 }}>
-            <div style={{ width: 30, height: 30, borderRadius: 8, background: COLOR_TIENDA + "26", display: "flex", alignItems: "center", justifyContent: "center" }}>
-              <Store size={16} color={COLOR_TIENDA} />
-            </div>
-            <h1 className="g-module-title">Facturas Contado</h1>
-          </div>
-          <p className="g-module-desc">
-            {loading ? "Cargando…" : `${items.length} registros · ${kpis.pendientesRecogida} creados en tienda`}
-          </p>
-        </div>
-        <div className="g-module-actions" style={{ justifyContent: "flex-end" }}>
-          <AutoRefreshIndicator
-            lastUpdatedAt={autoRefresh.lastUpdatedAt}
-            refreshing={autoRefresh.refreshing}
-            onRefresh={autoRefresh.refreshNow}
-          />
-          <button className="ds-btn ds-btn-primary" onClick={() => setCreando(true)}>
-            <Plus size={14} />Nueva Factura
-          </button>
-        </div>
-      </div>
+      <ModuleHero
+        moduleKey="tienda"
+        kicker="Flujo tienda CEDI"
+        title="Facturas Contado"
+        description={loading ? "Cargando..." : `${items.length} registros · ${kpis.pendientesRecogida} creados en tienda`}
+        actions={
+          <>
+            <AutoRefreshIndicator
+              lastUpdatedAt={autoRefresh.lastUpdatedAt}
+              refreshing={autoRefresh.refreshing}
+              onRefresh={autoRefresh.refreshNow}
+            />
+            <button className="ds-btn ds-btn-primary" onClick={() => setCreando(true)}>
+              <Plus size={14} />Nueva Factura
+            </button>
+          </>
+        }
+      />
 
       {/* ── KPIs flotantes ── */}
       <div style={{ display: "grid", gridTemplateColumns: isMobile ? "repeat(2,1fr)" : "repeat(4,1fr)", gap: isMobile ? 14 : 20, marginBottom: 28, padding: "0 2px" }}>

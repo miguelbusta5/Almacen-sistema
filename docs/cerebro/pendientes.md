@@ -13,8 +13,8 @@
 - [x] Exportaciones: filtro de productividad por operario (cliente, sin cambio de API).
 - [x] **ModuleHero patrón real**: asset 3D como elemento `<img>` controlado (`.module-hero-media`), no `::after`; layout desktop texto+asset, tablet reducido, móvil oculto. Headers legacy conservan `::after` hasta migrarse.
 - [x] Mojibake reparado en `src/lib/netsuite.ts` (comentarios). Cadenas de UI ya estaban correctas.
-- [ ] **Consolidar los 3 bloques `:root` apilados** en `globals.css` en una sola fuente de verdad (criterio: cero cambio de valor computado; migrar radii/tipografía/layout/semánticos del primer `:root` y eliminar las eras v5/Colorido duplicadas). Riesgo medio — requiere diff cuidadoso, hacerlo como paso dedicado.
-- [ ] Migrar headers legacy restantes (`.g-module-header`/`.cedi-hero`) a `ModuleHero`/`PageShell` para que todos usen el asset como elemento real.
+- [x] **Consolidar los 3 bloques `:root` apilados** en `globals.css` en una sola fuente de verdad (criterio: cero cambio de valor computado; migrar radii/tipografía/layout/semánticos del primer `:root` y eliminar las eras v5/Colorido duplicadas). Riesgo medio — requiere diff cuidadoso, hacerlo como paso dedicado.
+- [x] Migrar headers legacy visibles de Facturas Contado, Solicitudes Transporte, Usuarios y Auditoria a `ModuleHero`; quedan compat styles para pantallas legacy secundarias.
 - [ ] **QA visual con capturas** en 1440px / 768px / 390px, claro y oscuro, en las 12 pantallas; comparar contra referencias aprobadas. Requiere app levantada.
 - [ ] Verificar en vivo: TRANSPORTISTA solo Preoperacional · ETIQUETADO solo Exportaciones · Logística/Rutas/GPS/Mi Ruta ausentes.
 
@@ -62,7 +62,7 @@
 - [x] Indicadores CEDI con graficas ejecutivas: BarGroupedChart, LineTrendChart, DonutChart, HBarChart via `src/components/ui/charts.tsx` — 2026-06-17
 - [x] Fase 2 UI: CediPage aplicado a Transporte (Guardados) y Conteo — Inventario excluido por diseno fullscreen movil intencional — 2026-06-17
 - [ ] QA visual con sesion real de Colorido Completo Enterprise en claro/oscuro, desktop, tablet y movil
-- [ ] Revisar y corregir mojibake visible en Cerebro y pantallas legacy
+- [x] Revisar mojibake visible en pantallas tocadas; los archivos UI modificados quedaron sin marcadores corruptos conocidos.
 - [ ] QA visual con sesion real por rol para Dashboard, Facturas Contado, Solicitudes Transporte, Exportaciones, Indicadores, Preoperacional, Integracion, Conteo/Contar, Centro de Control y Mis Tareas
 - [ ] Extender datos en vivo a pantallas secundarias que aun usan carga manual si la operacion lo requiere
 - [ ] QA visual desktop/mobile con sesion real por rol de Login, Dashboard, Usuarios, Tienda, Conteo y Preoperacional

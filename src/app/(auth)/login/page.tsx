@@ -46,15 +46,15 @@ export default function LoginPage() {
   };
 
   return (
-    <div style={{
+    <div className="login-page" style={{
       minHeight: "100vh",
       background: "var(--canvas)",
       display: "grid",
       placeItems: "center",
       padding: "clamp(16px, 4vw, 32px)",
     }}>
-      <main style={{ width: "min(980px, 100%)", display: "grid", gridTemplateColumns: "minmax(0, 1fr) minmax(340px, .78fr)", borderRadius: 18, overflow: "hidden", boxShadow: "var(--shadow-xl)", border: "1px solid var(--border)", background: "var(--surface)" }}>
-        <section style={{
+      <main className="login-card">
+        <section className="login-brand-panel" style={{
           minHeight: 520,
           padding: "clamp(28px, 5vw, 44px)",
           background: "linear-gradient(135deg, var(--brand-tint), var(--surface2) 80%)",
@@ -88,7 +88,7 @@ export default function LoginPage() {
           </div>
         </section>
 
-        <section style={{ background: "var(--surface)", padding: "clamp(24px, 5vw, 40px)", display: "flex", flexDirection: "column", justifyContent: "center" }}>
+        <section className="login-form-panel" style={{ background: "var(--surface)", padding: "clamp(24px, 5vw, 40px)", display: "flex", flexDirection: "column", justifyContent: "center" }}>
           <div style={{ marginBottom: 26 }}>
             <div style={{ width: 42, height: 42, borderRadius: 12, display: "grid", placeItems: "center", background: "var(--brand-tint)", color: "var(--brand)", marginBottom: 16 }}>
               <ShieldCheck size={22} />
@@ -155,16 +155,6 @@ export default function LoginPage() {
         </section>
       </main>
 
-      <style jsx>{`
-        @media (max-width: 820px) {
-          main {
-            grid-template-columns: 1fr !important;
-          }
-          main > section:first-child {
-            min-height: 330px !important;
-          }
-        }
-      `}</style>
     </div>
   );
 }

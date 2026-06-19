@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useSession } from "next-auth/react";
 import { ShieldAlert, ChevronLeft, ChevronRight, RefreshCw, Download } from "lucide-react";
 import { useIsMobile } from "@/lib/useIsMobile";
-import { SkeletonTable } from "@/components/ui";
+import { SkeletonTable, ModuleHero } from "@/components/ui";
 import { getModuleCssVars } from "@/lib/moduleTheme";
 
 type Role = "ADMIN" | "GERENTE" | "OPERADOR";
@@ -152,26 +152,22 @@ export default function AuditoriaPage() {
 
   return (
     <div className="animate-fade-in" style={getModuleCssVars("auditoria") as React.CSSProperties}>
-      <div
-        className="g-module-header"
-        style={{ "--mod-color": "#334155", display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 16, flexWrap: "wrap", marginBottom: "1.25rem" } as React.CSSProperties}
-      >
-        <div>
-          <div className="g-module-kicker">Gobierno del sistema</div>
-          <h1 className="g-module-title">Auditoría</h1>
-          <p className="g-module-desc">
-            {total} evento{total !== 1 ? "s" : ""} registrado{total !== 1 ? "s" : ""} · acciones por usuario, módulo y fecha.
-          </p>
-        </div>
-        <div className="g-module-actions">
-          <button onClick={doExportCsv} className="g-btn g-btn-secondary">
-            <Download size={14} />Exportar CSV
-          </button>
-          <button onClick={() => load(page)} className="g-btn g-btn-ghost">
-            <RefreshCw size={14} />Actualizar
-          </button>
-        </div>
-      </div>
+      <ModuleHero
+        moduleKey="auditoria"
+        kicker="Gobierno del sistema"
+        title="Auditoría"
+        description={`${total} evento${total !== 1 ? "s" : ""} registrado${total !== 1 ? "s" : ""} · acciones por usuario, módulo y fecha.`}
+        actions={
+          <>
+            <button onClick={doExportCsv} className="g-btn g-btn-secondary">
+              <Download size={14} />Exportar CSV
+            </button>
+            <button onClick={() => load(page)} className="g-btn g-btn-ghost">
+              <RefreshCw size={14} />Actualizar
+            </button>
+          </>
+        }
+      />
 
       {/* Filtros */}
       <div className="g-panel" style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center", padding: "0.75rem 1rem", marginBottom: "1rem" }}>

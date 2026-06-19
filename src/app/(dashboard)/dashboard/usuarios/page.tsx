@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useSession } from "next-auth/react";
 import { Users, Plus, Pencil, Shield, ShieldCheck, ShieldAlert, Truck, Car, Upload, Search, GitMerge, Package } from "lucide-react";
-import { SkeletonTable, EmptyState } from "@/components/ui";
+import { SkeletonTable, EmptyState, ModuleHero } from "@/components/ui";
 import { Modal } from "@/components/ui/Modal";
 import { AutoRefreshIndicator } from "@/components/ui/AutoRefreshIndicator";
 import { getModuleColor, getModuleCssVars } from "@/lib/moduleTheme";
@@ -169,28 +169,24 @@ export default function UsuariosPage() {
 
   return (
     <div className="animate-fade-in" style={{ ...getModuleCssVars("usuarios"), "--module-color": COLOR, display: "grid", gap: 18 } as React.CSSProperties}>
-      <div
-        className="g-module-header"
-        style={{ "--mod-color": "#334155", display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 16, flexWrap: "wrap" } as React.CSSProperties}
-      >
-        <div>
-          <div className="g-module-kicker">Gobierno del sistema</div>
-          <h1 className="g-module-title">Usuarios y operación base</h1>
-          <p className="g-module-desc">
-            {users.length} usuario{users.length !== 1 ? "s" : ""} registrado{users.length !== 1 ? "s" : ""} · cuentas, roles, maestro PLU, vehículos y transportistas operativos.
-          </p>
-        </div>
-        <div className="g-module-actions">
-          <AutoRefreshIndicator
-            lastUpdatedAt={autoRefresh.lastUpdatedAt}
-            refreshing={autoRefresh.refreshing}
-            onRefresh={autoRefresh.refreshNow}
-          />
-          <button onClick={() => setShowForm(true)} className="g-btn g-btn-primary">
-            <Plus size={15} />Nuevo usuario
-          </button>
-        </div>
-      </div>
+      <ModuleHero
+        moduleKey="usuarios"
+        kicker="Gobierno del sistema"
+        title="Usuarios y operación base"
+        description={`${users.length} usuario${users.length !== 1 ? "s" : ""} registrado${users.length !== 1 ? "s" : ""} · cuentas, roles, maestro PLU, vehículos y transportistas operativos.`}
+        actions={
+          <>
+            <AutoRefreshIndicator
+              lastUpdatedAt={autoRefresh.lastUpdatedAt}
+              refreshing={autoRefresh.refreshing}
+              onRefresh={autoRefresh.refreshNow}
+            />
+            <button onClick={() => setShowForm(true)} className="g-btn g-btn-primary">
+              <Plus size={15} />Nuevo usuario
+            </button>
+          </>
+        }
+      />
 
       {loading ? (
         <div className="g-table-wrap">

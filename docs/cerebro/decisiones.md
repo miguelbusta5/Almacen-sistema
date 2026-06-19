@@ -1,5 +1,24 @@
 # Decisiones de Arquitectura y Producto
 
+## 2026-06-18 - Correccion estructural del rediseño Neon
+
+**Decision:**
+- El rediseño Neon deja de ser una capa acumulada de CSS. `globals.css` queda consolidado en una fuente principal de tokens para claro/oscuro, modulos, estados, superficies, tablas, KPIs y drawers.
+- `ModuleHero` pasa a ser el patron real de encabezado: renderiza el asset del modulo como elemento visual controlado con `next/image`, no como pseudo-elemento del contenedor.
+- Pantallas que seguian con `g-module-header` en flujos visibles se migran a `ModuleHero`: Facturas Contado, Solicitudes Transporte, Usuarios y Auditoria.
+- Las acciones principales del modulo viven dentro del hero cuando corresponde, para acercar la composicion a la referencia dark/neon aprobada.
+
+**Contexto:**
+- El rediseño desplegado se veia distinto a la referencia porque varias paginas seguian usando headers legacy y el asset se aplicaba como fondo decorativo, no como parte controlada del layout.
+- La referencia vigente sigue siendo `ig_0988ec5b4e4ea755016a33f9e3f8d881918d437124ace42cbb.png`.
+
+**Consecuencias:**
+- No hay cambios de base de datos, APIs, permisos ni reglas de negocio.
+- Logistica, rutas, GPS y Mi Ruta siguen suspendidos.
+- El QA visual debe comparar desktop/tablet/mobile en claro y oscuro contra las referencias aprobadas.
+
+**Archivos afectados:** `src/app/globals.css`, `src/components/ui/ModuleHero.tsx`, pantallas de Facturas Contado, Solicitudes Transporte, Usuarios y Auditoria.
+
 ## 2026-06-18 - Fix del rediseño Neon (coherencia claro/oscuro)
 
 **Decisión:**

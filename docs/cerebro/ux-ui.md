@@ -20,6 +20,14 @@
 - Oscuro: `C:\Users\USUARIO\.codex\generated_images\019e979a-7c0c-74d3-8494-63a1cbf080a6\ig_0d5909cbba99bf9e016a33eb9b00488191af1ea9c41d3efa52.png`
 - Neon con detalle: `C:\Users\USUARIO\.codex\generated_images\019e979a-7c0c-74d3-8494-63a1cbf080a6\ig_0988ec5b4e4ea755016a33f9e3f8d881918d437124ace42cbb.png`
 
+
+## Cierre estructural 2026-06-18
+
+- `globals.css` queda como fuente consolidada: un `:root` para claro y un bloque `html[data-theme="dark"]` para oscuro. No agregar nuevas eras visuales al final del archivo.
+- `ModuleHero` es el encabezado obligatorio para pantallas nuevas y para migraciones de pantallas principales. El asset del modulo debe renderizarse como elemento real controlado, no como pseudo-elemento que pueda tapar texto o acciones.
+- Los headers legacy `.g-module-header`/`.op-module-header` solo quedan como compatibilidad temporal para pantallas secundarias; no deben usarse en nuevas pantallas.
+- Facturas Contado, Solicitudes Transporte, Usuarios y Auditoria ya usan `ModuleHero` como parte del cierre de fidelidad neon.
+
 ## Principios visuales
 
 - **Modulo-aware:** cada modulo define `color`, `tint`, `gradient`, `darkColor`, `darkTint` y contraste desde `src/lib/moduleTheme.ts`.
