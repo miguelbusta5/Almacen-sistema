@@ -12,7 +12,7 @@ import {
   ESTADO_DESPACHO_COLOR, COLOR_TIENDA, estadoDespachoVariant,
   fmtFechaTienda, todayISO, ESTADOS_ACTIVOS,
 } from "@/lib/tienda";
-import { Badge, ModuleHero } from "@/components/ui";
+import { Badge, ModuleHero, SkeletonLine } from "@/components/ui";
 import { Modal } from "@/components/ui/Modal";
 import { AutoRefreshIndicator } from "@/components/ui/AutoRefreshIndicator";
 import { SlidePanel, DetailSection, DetailGrid, MiniHistory } from "@/components/ui/SlidePanel";
@@ -78,6 +78,7 @@ export default function TiendaPage() {
 
   const [panelItem, setPanelItem] = useState<DespachoTienda | null>(null);
   const [panelHistorial, setPanelHistorial] = useState<any[]>([]);
+  const [panelLoading, setPanelLoading] = useState(false);
   const [creando, setCreando] = useState(false);
   const [editing, setEditing] = useState<DespachoTienda | null>(null);
   const [deleting, setDeleting] = useState<DespachoTienda | null>(null);
@@ -103,10 +104,26 @@ export default function TiendaPage() {
   function showToast(msg: string, err = false) { setToast({ msg, err }); setTimeout(() => setToast(null), 3000); }
 
   async function abrirPanel(d: DespachoTienda) {
-    setPanelItem(d); setPanelHistorial([]);
-    const res = await fetch(`/api/tienda/${d.id}`);
-    const json = await res.json();
-    if (json.success) { setPanelItem(json.data); setPanelHistorial(json.historial ?? []); }
+    // d (fila de lista) ya trae el encabezado → el panel nunca arranca vacío.
+    setPanelItem(d);
+    setPanelHistorial([]);
+    setPanelLoading(true);
+    try {
+      const res = await fetch(`/api/tienda/${d.id}`);
+      const json = await res.json();
+      if (res.ok && json.success && json.data) {
+        // Mergea el detalle sobre d (nunca reemplaza por algo más pobre) y
+        // protege contra carreras si el usuario abrió otra factura entretanto.
+        setPanelItem((prev) => (prev?.id === d.id ? { ...d, ...json.data } : prev));
+        setPanelHistorial(json.historial ?? []);
+      } else {
+        showToast(json.error || "No se pudo cargar el detalle", true); // se conserva d
+      }
+    } catch {
+      showToast("No se pudo cargar el detalle completo", true);        // se conserva d
+    } finally {
+      setPanelLoading(false);
+    }
   }
 
   async function cambiarEstado(d: DespachoTienda, estado: EstadoDespacho, extra?: Record<string, unknown>) {
@@ -284,8 +301,8 @@ export default function TiendaPage() {
       <SlidePanel
         open={!!panelItem}
         onClose={() => setPanelItem(null)}
-        title={panelItem?.numeroDocumento ?? ""}
-        subtitle={`${panelItem?.centroCostos ?? ""} · #${panelItem?.consecutivo ?? ""}`}
+        title={panelItem ? (panelItem.numeroDocumento || "Factura sin número") : ""}
+        subtitle={panelItem ? ([panelItem.centroCostos, panelItem.consecutivo && `#${panelItem.consecutivo}`].filter(Boolean).join(" · ") || undefined) : undefined}
         insights={panelInsights}
         width={460}
         moduleColor={panelItem ? ESTADO_DESPACHO_COLOR[panelItem.estado] : COLOR_TIENDA}
@@ -434,9 +451,17 @@ export default function TiendaPage() {
               </DetailSection>
             )}
 
-            {historialItems.length > 0 && (
+            {(historialItems.length > 0 || panelLoading) && (
               <DetailSection title="Timeline de cambios" color={COLOR_TIENDA}>
-                <MiniHistory items={historialItems} />
+                {panelLoading && historialItems.length === 0 ? (
+                  <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                    <SkeletonLine width="80%" />
+                    <SkeletonLine width="60%" />
+                    <SkeletonLine width="70%" />
+                  </div>
+                ) : (
+                  <MiniHistory items={historialItems} />
+                )}
               </DetailSection>
             )}
           </>

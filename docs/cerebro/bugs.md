@@ -12,7 +12,35 @@
 
 ## Bugs resueltos
 
-*(Ninguno registrado aún)*
+## [BUG-001] Drawer de detalle vacío en Facturas Contado
+
+- **Fecha detectado:** 2026-06-19
+- **Módulo:** tienda
+- **Severidad:** 🟡 Media
+- **Reportado por:** Handoff EPIC B
+- **Descripción:**
+  Al abrir el detalle de una factura en `/dashboard/tienda`, el `SlidePanel` aparecía con título
+  vacío, subtítulo literal `· #` y cuerpo sin pintar (sin `DetailSection`s).
+- **Comportamiento esperado:**
+  El panel abre con el encabezado y secciones de datos de la factura; el historial carga aparte.
+- **Comportamiento actual (antes del fix):**
+  Panel en blanco.
+- **Archivo(s) afectado(s):**
+  - `src/app/(dashboard)/dashboard/tienda/page.tsx` (`abrirPanel`, `<SlidePanel>` title/subtitle, sección Timeline)
+- **Causa raíz:**
+  Caché obsoleto de Turbopack/`.next` servido por un **dev server de larga vida en :3100**
+  (confirmado: PID node.exe corriendo `next start-server.js` ocupando 3100). El código vigente
+  ya pinta el encabezado desde la fila completa de la lista (`d`) antes del `fetch`, así que en un
+  build limpio no queda vacío. No reproducible en preview headless por el muro de login
+  (Auth.js `MissingSecret`: el secreto vive en el shell del usuario, no en un `.env` autoloaded).
+- **Estado:** ✅ Resuelto
+- **Solución aplicada:**
+  Endurecido `abrirPanel` (renderiza desde `d`, **mergea** el detalle sobre `d`, no blanquea ante
+  fallo, guarda contra carreras), guardas de título/subtítulo (elimina el `· #`), y skeleton de
+  carga en la sección de historial. Build limpio: borrar `.next/` + reiniciar `npm run dev`.
+  Defensa: el panel ya **no puede** quedar totalmente vacío sea cual sea la causa.
+  Validado: `tsc` + 1176 tests + `npm run build` verdes.
+- **Fecha resolución:** 2026-06-19
 
 ---
 
