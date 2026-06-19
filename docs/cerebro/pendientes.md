@@ -39,6 +39,8 @@
 
 ### Modulo Tienda / Facturas Contado
 
+- [x] Redisenio visual modular de Facturas Contado como pantalla patron: componentes locales, CSS module, hero neon, KPIs, pipeline, filtros, tabla premium y drawer de detalle - 2026-06-19
+- [ ] QA visual con sesion real de Facturas Contado en desktop/tablet/mobile y claro/oscuro; la captura headless local llego a login por falta de sesion compartida.
 - [ ] Verificar en produccion que el sidebar no muestra Logistica, Rutas, GPS ni Mi Ruta
 - [ ] Smoke test de flujo Tienda: CREADO_TIENDA -> RECOGIDO_TIENDA -> ENTREGADO_CEDI -> ENVIADO_CLIENTE
 - [ ] Smoke test de rechazo: SUPERVISOR_TRANSPORTE rechaza → TIENDA ve cajón → edita datos → re-envía → vuelve a CREADO_TIENDA

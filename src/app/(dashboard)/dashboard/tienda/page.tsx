@@ -4,22 +4,34 @@ import { useEffect, useMemo, useState } from "react";
 import { useSession } from "next-auth/react";
 import { can } from "@/lib/permissions";
 import {
-  Store, Plus, Search, X, CheckCircle2, Truck, AlertTriangle,
-  Pencil, Trash2, Package, Minus, PackageCheck, UserPlus,
+  Store, Plus, CheckCircle2, Truck, AlertTriangle,
+  Pencil, Package, Minus, PackageCheck, UserPlus,
 } from "lucide-react";
 import {
-  DespachoTienda, PlinDespacho, EstadoDespacho, ESTADOS_DESPACHO, ESTADO_DESPACHO_LABEL,
+  DespachoTienda, EstadoDespacho, ESTADO_DESPACHO_LABEL,
   ESTADO_DESPACHO_COLOR, COLOR_TIENDA, estadoDespachoVariant,
-  fmtFechaTienda, todayISO, horasDesde, FLUJO_ESTADOS, ESTADOS_ACTIVOS,
+  fmtFechaTienda, todayISO, ESTADOS_ACTIVOS,
 } from "@/lib/tienda";
-import { Stat, SkeletonStat, Badge, EmptyState, SkeletonTable, TimelineItem, ModuleHero } from "@/components/ui";
+import { Badge, ModuleHero } from "@/components/ui";
 import { Modal } from "@/components/ui/Modal";
 import { AutoRefreshIndicator } from "@/components/ui/AutoRefreshIndicator";
-import { SlidePanel, IntelBanner, DetailSection, DetailGrid, MiniHistory } from "@/components/ui/SlidePanel";
+import { SlidePanel, DetailSection, DetailGrid, MiniHistory } from "@/components/ui/SlidePanel";
 import { insightsTienda, insightsPorDespacho } from "@/lib/inteligencia";
-import { useIsMobile } from "@/lib/useIsMobile";
 import { useAutoRefresh } from "@/hooks/useAutoRefresh";
 import { getModuleColor, getModuleCssVars } from "@/lib/moduleTheme";
+import {
+  DetailFlow,
+  EstadoPipeline,
+  FacturaFilterBar,
+  FacturaIntelBanner,
+  FacturaKpiGrid,
+  FacturasTable,
+  Field,
+  FormSection,
+  PluList,
+  RejectedQueue,
+} from "./_components";
+import styles from "./tienda.module.css";
 
 type ProductoMaestro = {
   plu: string;
@@ -32,7 +44,7 @@ type ProductoMaestro = {
 const COLOR_TRANSPORTE = getModuleColor("transporte");
 const COLOR_CEDI = ESTADO_DESPACHO_COLOR.ENTREGADO_CEDI;
 
-// ── Modal base (adaptador del Modal premium compartido) ───
+// Modal base: adaptador del Modal premium compartido.
 // Mantiene la firma { title, sub, children, onClose } usada por los
 // modales de esta página; delega chrome (portal, blur, Esc, scroll-lock,
 // animación) al Modal único del design system.
@@ -44,18 +56,11 @@ function ModalBase({ title, sub, children, onClose }: { title: string; sub?: str
   );
 }
 
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
-  return <div style={{ display: "flex", flexDirection: "column", gap: 5 }}><label style={{ fontSize: 12, fontWeight: 500, color: "var(--muted2)" }}>{label}</label>{children}</div>;
-}
-
-// ═══════════════════════════════════════════════════════════
-// PÁGINA PRINCIPAL
-// ═══════════════════════════════════════════════════════════
+// Pagina principal.
 export default function TiendaPage() {
   const { data: session } = useSession();
   const role = (session?.user as { role?: string } | undefined)?.role;
   const canEdit   = can(role, "edit");
-  const isMobile  = useIsMobile();
   const canDelete = can(role, "delete");
   const canEditBasic = ["TIENDA", "SUPERVISOR_TIENDA", "SUPERVISOR_TRANSPORTE", "GERENTE", "ADMIN"].includes(role ?? "");
   const canChangeOperationalState = ["SUPERVISOR_TRANSPORTE", "GERENTE", "ADMIN"].includes(role ?? "");
@@ -181,12 +186,7 @@ export default function TiendaPage() {
     });
   }, [items, fq, fEstado, fCC, sortCol, sortDir]);
 
-  const Th = ({ col, label }: { col: string; label: string }) => {
-    const active = sortCol === col;
-    return <th className="sortable" onClick={() => toggleSort(col)} style={{ color: active ? COLOR_TIENDA : undefined }}>{label}{active ? (sortDir === "asc" ? " ↑" : " ↓") : " ↕"}</th>;
-  };
-
-  // ── Historial timeline del panel ─────────────────────────
+  // Historial timeline del panel
   const historialItems = panelHistorial.map((h: any) => ({
     label: h.details ?? h.action,
     meta: h.userName ?? "Sistema",
@@ -195,257 +195,99 @@ export default function TiendaPage() {
   }));
 
   return (
-    <div className="animate-fade-in" style={getModuleCssVars("tienda") as React.CSSProperties}>
+    <div className={`animate-fade-in ${styles.page}`} style={getModuleCssVars("tienda") as React.CSSProperties}>
       <ModuleHero
         moduleKey="tienda"
         kicker="Flujo tienda CEDI"
         title="Facturas Contado"
         description={loading ? "Cargando..." : `${items.length} registros · ${kpis.pendientesRecogida} creados en tienda`}
         actions={
-          <>
+          <div className={styles.heroActions}>
             <AutoRefreshIndicator
               lastUpdatedAt={autoRefresh.lastUpdatedAt}
               refreshing={autoRefresh.refreshing}
               onRefresh={autoRefresh.refreshNow}
             />
-            <button className="ds-btn ds-btn-primary" onClick={() => setCreando(true)}>
+            <button className={`ds-btn ds-btn-primary ${styles.heroPrimary}`} onClick={() => setCreando(true)}>
               <Plus size={14} />Nueva Factura
             </button>
-          </>
+          </div>
         }
       />
 
-      {/* ── KPIs flotantes ── */}
-      <div style={{ display: "grid", gridTemplateColumns: isMobile ? "repeat(2,1fr)" : "repeat(4,1fr)", gap: isMobile ? 14 : 20, marginBottom: 28, padding: "0 2px" }}>
-        {loading ? <><SkeletonStat /><SkeletonStat /><SkeletonStat /><SkeletonStat /></> : (
-          <>
-            <Stat value={kpis.pendientesRecogida} label="Creados en tienda"
-              color={ESTADO_DESPACHO_COLOR.CREADO_TIENDA}
-              onClick={() => setFEstado("CREADO_TIENDA")} />
-            <Stat value={kpis.recogidoTienda + kpis.entregadoCedi} label="En proceso CEDI"
-              color={ESTADO_DESPACHO_COLOR.RECOGIDO_TIENDA}
-              onClick={() => setFEstado("RECOGIDO_TIENDA")} />
-            <Stat value={kpis.enviadoCliente} label="Enviados al cliente"
-              color={ESTADO_DESPACHO_COLOR.ENVIADO_CLIENTE}
-              onClick={() => setFEstado("ENVIADO_CLIENTE")} />
-            <Stat value={kpis.novedades} label="Con novedad"
-              color={kpis.novedades > 0 ? ESTADO_DESPACHO_COLOR.CON_NOVEDAD : "var(--muted)"}
-              onClick={() => setFEstado("CON_NOVEDAD")} />
-          </>
-        )}
-      </div>
+      <FacturaKpiGrid loading={loading} kpis={kpis} onEstado={setFEstado} />
 
-      {/* ── Pipeline visual de estados ── */}
       {!loading && (
-        <div style={{ display: "flex", gap: 4, marginBottom: 20, overflowX: "auto", padding: "4px 2px" }}>
-          {FLUJO_ESTADOS.map((estado, i) => {
-            const count = items.filter((d) => d.estado === estado).length;
-            const color = ESTADO_DESPACHO_COLOR[estado];
-            const active = fEstado === estado;
-            return (
-              <button
-                key={estado}
-                onClick={() => setFEstado(active ? "" : estado)}
-                className="status-tab"
-                style={{
-                  "--state-color": color,
-                  flex: 1, minWidth: 100, display: "flex", flexDirection: "column", alignItems: "center",
-                  gap: 4, padding: "8px 6px", borderRadius: 10,
-                  cursor: "pointer", transition: "all .15s", position: "relative",
-                  boxShadow: active ? `0 8px 20px ${color}22` : undefined,
-                } as React.CSSProperties}
-              >
-                <span style={{ fontSize: 18, fontWeight: 700, color: count > 0 ? color : "var(--faint)", fontFamily: "var(--mono)" }}>{count}</span>
-                <span style={{ fontSize: 10, fontWeight: 600, color: count > 0 ? color : "var(--faint)", textAlign: "center", lineHeight: 1.2 }}>{ESTADO_DESPACHO_LABEL[estado]}</span>
-                {i < FLUJO_ESTADOS.length - 1 && (
-                  <span style={{ position: "absolute", right: -10, top: "50%", transform: "translateY(-50%)", color: "var(--faint)", fontSize: 12, zIndex: 1 }}>›</span>
-                )}
-              </button>
-            );
-          })}
-        </div>
+        <EstadoPipeline
+          items={items}
+          activeEstado={fEstado}
+          onToggle={(estado) => setFEstado(fEstado === estado ? "" : estado)}
+        />
       )}
 
-      {/* ── Inteligencia ── */}
-      {!loading && globalInsights.length > 0 && (
-        <IntelBanner insights={globalInsights} title="Inteligencia operacional" />
+      {!loading && (
+        <FacturaIntelBanner
+          insights={globalInsights}
+          onOpenFirst={() => {
+            const target = globalInsights[0]?.recordId
+              ? items.find((d) => d.id === globalInsights[0].recordId)
+              : undefined;
+            if (target) abrirPanel(target);
+          }}
+        />
       )}
 
-      {/* ── Cajón de rechazados (solo visible para el área que crea los despachos) ── */}
-      {!loading && canCreate && rechazados.length > 0 && (
-        <div style={{ marginBottom: 20 }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
-            <AlertTriangle size={16} color="var(--error)" />
-            <span style={{ fontSize: 14, fontWeight: 700, color: "var(--error)" }}>
-              {rechazados.length} solicitud{rechazados.length > 1 ? "es" : ""} rechazada{rechazados.length > 1 ? "s" : ""} — requiere{rechazados.length > 1 ? "n" : ""} corrección
-            </span>
-          </div>
-          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-            {rechazados.map((d) => (
-              <div key={d.id} style={{
-                border: "1.5px solid var(--error)", borderRadius: 12, padding: "14px 16px",
-                background: "rgba(239,68,68,0.04)",
-                display: "flex", alignItems: "flex-start", justifyContent: "space-between",
-                gap: 16, flexWrap: "wrap",
-              }}>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
-                    <span style={{ fontFamily: "var(--mono)", fontSize: 13, fontWeight: 700 }}>{d.numeroDocumento}</span>
-                    <Badge label="Rechazado" variant="error" />
-                  </div>
-                  <div style={{ fontSize: 12, color: "var(--muted)", marginBottom: 6 }}>
-                    {d.clienteNombre} · {d.centroCostos}
-                    {d.numeroCajas != null && ` · ${d.numeroCajas} caja${d.numeroCajas !== 1 ? "s" : ""}`}
-                  </div>
-                  {d.motivoRechazo && (
-                    <div style={{
-                      fontSize: 13, color: "var(--text)", background: "rgba(239,68,68,0.08)",
-                      padding: "8px 10px", borderRadius: 7, borderLeft: "3px solid var(--error)",
-                    }}>
-                      <span style={{ fontSize: 11, fontWeight: 700, color: "var(--error)", display: "block", marginBottom: 3 }}>
-                        Motivo del rechazo:
-                      </span>
-                      {d.motivoRechazo}
-                    </div>
-                  )}
-                </div>
-                <div style={{ display: "flex", flexDirection: "column", gap: 6, flexShrink: 0 }}>
-                  <button onClick={() => abrirPanel(d)} className="ds-btn ds-btn-ghost" style={{ fontSize: 12 }}>
-                    Ver detalle
-                  </button>
-                  <button onClick={() => setEditing(d)} className="ds-btn ds-btn-ghost" style={{ fontSize: 12 }}>
-                    <Pencil size={12} />Editar
-                  </button>
-                  <button onClick={() => reenviarDespacho(d.id)}
-                    className="ds-btn ds-btn-primary" style={{ fontSize: 12, background: COLOR_TIENDA, border: "none" }}>
-                    <CheckCircle2 size={12} />Re-enviar
-                  </button>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
+      {!loading && canCreate && (
+        <RejectedQueue
+          rejected={rechazados}
+          onOpen={abrirPanel}
+          onEdit={setEditing}
+          onResend={reenviarDespacho}
+        />
       )}
 
-      {/* ── Filtros ── */}
-      <div style={{ display: "flex", gap: 8, marginBottom: 14, flexWrap: "wrap" }}>
-        <div style={{ position: "relative", flex: 1, minWidth: 200 }}>
-          <Search size={13} style={{ position: "absolute", left: 10, top: "50%", transform: "translateY(-50%)", color: "var(--faint)" }} />
-          <input value={fq} onChange={(e) => setFq(e.target.value)} placeholder="Buscar doc, cliente, consecutivo…" className="ds-input" style={{ paddingLeft: 32 }} />
-        </div>
-        <select value={fEstado} onChange={(e) => setFEstado(e.target.value)} className="ds-input" style={{ width: "auto", minWidth: 170 }}>
-          <option value="">Todos los estados</option>
-          {ESTADOS_DESPACHO.map((e) => <option key={e} value={e}>{ESTADO_DESPACHO_LABEL[e]}</option>)}
-        </select>
-        <select value={fCC} onChange={(e) => setFCC(e.target.value)} className="ds-input" style={{ width: "auto", minWidth: 160 }}>
-          <option value="">Todos los centros</option>
-          {centrosCostos.map((cc) => <option key={cc} value={cc}>{cc}</option>)}
-        </select>
-        {(fq || fEstado || fCC) && <button className="ds-btn ds-btn-ghost ds-btn-sm" onClick={() => { setFq(""); setFEstado(""); setFCC(""); }}><X size={12} />Limpiar</button>}
-        <span style={{ alignSelf: "center", fontSize: 12, color: "var(--muted)", fontFamily: "var(--mono)" }}>{filtered.length} de {items.length}</span>
-      </div>
+      <FacturaFilterBar
+        query={fq}
+        estado={fEstado}
+        centro={fCC}
+        centros={centrosCostos}
+        count={filtered.length}
+        total={items.length}
+        onQuery={setFq}
+        onEstado={setFEstado}
+        onCentro={setFCC}
+        onClear={() => { setFq(""); setFEstado(""); setFCC(""); }}
+      />
 
-      {/* ── Tabla ── */}
-      <div className="ds-panel" style={{ border: "1px solid var(--border)" }}>
-        {loading ? <SkeletonTable rows={8} cols={7} /> : filtered.length === 0 ? (
-          <EmptyState
-            icon={<Store size={22} />}
-            title="Sin facturas"
-            description={(fq || fEstado || fCC) ? "No hay resultados para estos filtros." : "Las facturas contado aparecerán aquí."}
-            action={(fq || fEstado || fCC) ? { label: "Limpiar filtros", onClick: () => { setFq(""); setFEstado(""); setFCC(""); } } : { label: "Nueva Factura", onClick: () => setCreando(true) }}
-          />
-        ) : (
-          <div style={{ overflowX: "auto" }}>
-            <table className="ds-table">
-              <thead>
-                <tr>
-                  <th style={{ width: 20 }} />
-                  <Th col="fechaCreacion" label="Fecha" />
-                  <Th col="centroCostos"  label="Centro Costos" />
-                  <th>Doc. / Consecutivo</th>
-                  <Th col="clienteNombre" label="Cliente" />
-                  <Th col="estado"        label="Estado" />
-                  <th />
-                </tr>
-              </thead>
-              <tbody>
-                {filtered.map((d) => {
-                  const horas = d.estado === "CREADO_TIENDA" ? horasDesde(d.createdAt) : 0;
-                  const critico = horas >= 24;
-                  return (
-                    <tr
-                      key={d.id}
-                      className="ds-row"
-                      onClick={() => abrirPanel(d)}
-                      style={{
-                        background: panelItem?.id === d.id ? "color-mix(in srgb, var(--row-color) 11%, var(--surface))" : undefined,
-                        "--row-color": ESTADO_DESPACHO_COLOR[d.estado],
-                      } as React.CSSProperties}
-                    >
-                      <td style={{ padding: "0 4px 0 12px" }}>
-                        {critico && <span title="Creado hace >24h sin recogida" style={{ fontSize: 12, color: "var(--error)" }}>⚠</span>}
-                      </td>
-                      <td style={{ fontFamily: "var(--mono)", fontSize: 12, color: "var(--muted)", whiteSpace: "nowrap" }}>{fmtFechaTienda(d.fechaCreacion)}</td>
-                      <td style={{ fontWeight: 600, fontSize: 13 }}>{d.centroCostos}</td>
-                      <td>
-                        <div style={{ fontFamily: "var(--mono)", fontWeight: 600, fontSize: 13 }}>{d.numeroDocumento}</div>
-                        <div style={{ fontSize: 11, color: "var(--muted)", fontFamily: "var(--mono)" }}>#{d.consecutivo}</div>
-                      </td>
-                      <td>
-                        <div style={{ fontSize: 13, fontWeight: 500 }}>{d.clienteNombre}</div>
-                        {d.clienteTelefono && <div style={{ fontSize: 11, color: "var(--muted)", fontFamily: "var(--mono)" }}>{d.clienteTelefono}</div>}
-                      </td>
-                      <td><Badge label={ESTADO_DESPACHO_LABEL[d.estado]} variant={estadoDespachoVariant(d.estado)} color={ESTADO_DESPACHO_COLOR[d.estado]} /></td>
-                      <td>
-                        <div className="ds-row-actions">
-                          {d.estado === "CREADO_TIENDA" && canChangeOperationalState &&
-                            <button className="ds-btn ds-btn-sm" style={{ background: "var(--info-tint)", color: "var(--info)", height: 26, fontSize: 11 }}
-                              onClick={(e) => { e.stopPropagation(); cambiarEstado(d, "RECOGIDO_TIENDA"); }} title="Marcar recogido en tienda">
-                              <Truck size={12} />Recogido
-                            </button>}
-                          {d.estado === "CREADO_TIENDA" && canChangeOperationalState &&
-                            <button className="ds-btn ds-btn-sm" style={{ background: "rgba(239,68,68,0.08)", color: "var(--error)", height: 26, fontSize: 11, border: "1px solid rgba(239,68,68,0.25)" }}
-                              onClick={(e) => { e.stopPropagation(); setRechazarItem(d); }} title="Rechazar solicitud">
-                              Rechazar
-                            </button>}
-                          {d.estado === "RECOGIDO_TIENDA" && canChangeOperationalState &&
-                            <button className="ds-btn ds-btn-sm" style={{ background: `${COLOR_CEDI}14`, color: COLOR_CEDI, height: 26, fontSize: 11 }}
-                              onClick={(e) => { e.stopPropagation(); cambiarEstado(d, "ENTREGADO_CEDI"); }} title="Entregado en CEDI">
-                              <PackageCheck size={12} />CEDI
-                            </button>}
-                          {d.estado === "ENTREGADO_CEDI" && canChangeOperationalState &&
-                            <>
-                            {!d.guardadoPendiente && (
-                              <button className="ds-btn ds-btn-sm" style={{ background: `${COLOR_TRANSPORTE}14`, color: COLOR_TRANSPORTE, height: 26, fontSize: 11 }}
-                                onClick={(e) => { e.stopPropagation(); setAsignandoGuardado(d); }} title="Asignar a operario transporte para guardado">
-                                <UserPlus size={12} />Guardado
-                              </button>
-                            )}
-                            <button className="ds-btn ds-btn-sm" style={{ background: "var(--success-tint)", color: "var(--success)", height: 26, fontSize: 11 }}
-                              onClick={(e) => { e.stopPropagation(); cambiarEstado(d, "ENVIADO_CLIENTE"); }} title="Marcar enviado al cliente">
-                              <CheckCircle2 size={12} />Enviado
-                            </button>
-                            </>}
-                          {canEditBasic && (d.estado === "RECHAZADO" || (d.estado === "CREADO_TIENDA" && role !== "TIENDA") || canEdit) && <button className="ds-btn ds-btn-sm ds-btn-ghost" style={{ height: 26 }} onClick={(e) => { e.stopPropagation(); setEditing(d); }} title="Editar"><Pencil size={12} /></button>}
-                          {canDelete && <button className="ds-btn ds-btn-sm ds-btn-ghost" style={{ height: 26, color: "var(--error)" }} onClick={(e) => { e.stopPropagation(); setDeleting(d); }} title="Eliminar"><Trash2 size={12} /></button>}
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </div>
+      <FacturasTable
+        loading={loading}
+        items={filtered}
+        allCount={items.length}
+        selectedId={panelItem?.id}
+        sortCol={sortCol}
+        sortDir={sortDir}
+        canChangeOperationalState={canChangeOperationalState}
+        canEditBasic={canEditBasic}
+        canEdit={canEdit}
+        canDelete={canDelete}
+        role={role}
+        onSort={toggleSort}
+        onOpen={abrirPanel}
+        onEstado={cambiarEstado}
+        onReject={setRechazarItem}
+        onGuardado={setAsignandoGuardado}
+        onEdit={setEditing}
+        onDelete={setDeleting}
+        onClearFilters={() => { setFq(""); setFEstado(""); setFCC(""); }}
+      />
 
-      {/* ── SlidePanel detalle ── */}
       <SlidePanel
         open={!!panelItem}
         onClose={() => setPanelItem(null)}
         title={panelItem?.numeroDocumento ?? ""}
-        subtitle={`${panelItem?.centroCostos} · #${panelItem?.consecutivo}`}
+        subtitle={`${panelItem?.centroCostos ?? ""} · #${panelItem?.consecutivo ?? ""}`}
         insights={panelInsights}
+        width={460}
         moduleColor={panelItem ? ESTADO_DESPACHO_COLOR[panelItem.estado] : COLOR_TIENDA}
         badge={panelItem && <Badge label={ESTADO_DESPACHO_LABEL[panelItem.estado]} variant={estadoDespachoVariant(panelItem.estado)} color={ESTADO_DESPACHO_COLOR[panelItem.estado]} />}
         primaryAction={
@@ -496,39 +338,8 @@ export default function TiendaPage() {
       >
         {panelItem && (
           <>
-            {/* ── Timeline de flujo logístico ── */}
             <DetailSection title="Flujo logístico" color={panelItem.estado === "RECHAZADO" ? ESTADO_DESPACHO_COLOR.RECHAZADO : COLOR_TIENDA}>
-              <div style={{ display: "flex", gap: 0, overflowX: "auto", paddingBottom: 4 }}>
-                {FLUJO_ESTADOS.map((estado, i) => {
-                  const color = ESTADO_DESPACHO_COLOR[estado];
-                  const isPast = FLUJO_ESTADOS.indexOf(panelItem.estado) > i;
-                  const isCurrent = panelItem.estado === estado;
-                  const isNovedad = panelItem.estado === "CON_NOVEDAD";
-                  const active = isPast || isCurrent;
-                  return (
-                    <div key={estado} style={{ display: "flex", alignItems: "center", flex: 1, minWidth: 0 }}>
-                      <div style={{ display: "flex", flexDirection: "column", alignItems: "center", flex: 1, minWidth: 0 }}>
-                        <div style={{
-                          width: 28, height: 28, borderRadius: "50%", flexShrink: 0,
-                          background: isNovedad && isCurrent ? "var(--error)" : active ? color : "var(--surface2)",
-                          border: `2px solid ${active ? color : "var(--border)"}`,
-                          display: "flex", alignItems: "center", justifyContent: "center",
-                          transition: "all .2s",
-                        }}>
-                          {isPast && <CheckCircle2 size={13} color="#fff" />}
-                          {isCurrent && !isNovedad && <span style={{ width: 8, height: 8, borderRadius: "50%", background: "#fff" }} />}
-                        </div>
-                        <span style={{ fontSize: 9, color: active ? color : "var(--faint)", fontWeight: 600, textAlign: "center", marginTop: 4, lineHeight: 1.2, maxWidth: 56, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                          {ESTADO_DESPACHO_LABEL[estado].split(" ")[0]}
-                        </span>
-                      </div>
-                      {i < FLUJO_ESTADOS.length - 1 && (
-                        <div style={{ flex: "0 0 16px", height: 2, background: isPast ? color : "var(--border)", transition: "background .2s" }} />
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
+              <DetailFlow estado={panelItem.estado} />
               {panelItem.estado === "CON_NOVEDAD" && (
                 <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 8, padding: "6px 10px", background: "var(--error-tint)", borderRadius: 8, fontSize: 12, color: "var(--error)", fontWeight: 600 }}>
                   <AlertTriangle size={13} />Flujo interrumpido por novedad
@@ -575,16 +386,7 @@ export default function TiendaPage() {
 
             {panelItem.plines && panelItem.plines.length > 0 && (
               <DetailSection title={`PLUs de la factura (${panelItem.plines.length})`} color={COLOR_TIENDA}>
-                <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-                  {panelItem.plines.map((p: PlinDespacho) => (
-                    <div key={p.id} style={{ display: "flex", alignItems: "center", gap: 10, padding: "6px 10px", background: "var(--surface2)", borderRadius: 8 }}>
-                      <Package size={13} color="var(--muted)" style={{ flexShrink: 0 }} />
-                      <span style={{ fontFamily: "var(--mono)", fontWeight: 700, fontSize: 12 }}>{p.plu}</span>
-                      {p.descripcion && <span style={{ fontSize: 12, color: "var(--muted)", flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{p.descripcion}</span>}
-                      <span style={{ fontFamily: "var(--mono)", fontSize: 12, fontWeight: 700, color: COLOR_TIENDA, flexShrink: 0 }}>{p.unidades} u.</span>
-                    </div>
-                  ))}
-                </div>
+                <PluList plines={panelItem.plines} />
               </DetailSection>
             )}
 
@@ -641,7 +443,7 @@ export default function TiendaPage() {
         )}
       </SlidePanel>
 
-      {/* ── Modales ── */}
+      {/* Modales */}
       {(creando || editing) && (
         <ModalDespacho
           despacho={editing ?? undefined}
@@ -692,7 +494,7 @@ export default function TiendaPage() {
   );
 }
 
-// ── Modal rechazar despacho ───────────────────────────────
+// Modal rechazar despacho
 function ModalRechazar({ despacho, onClose, onRechazado }: {
   despacho: DespachoTienda;
   onClose: () => void;
@@ -732,7 +534,7 @@ function ModalRechazar({ despacho, onClose, onRechazado }: {
             onChange={(e) => { setMotivo(e.target.value); setError(""); }}
             rows={4}
             required
-            placeholder="Ej: Los PLUs no corresponden al documento, favor corregir antes de re-enviar…"
+            placeholder="Ej: Los PLUs no corresponden al documento, favor corregir antes de re-enviar..."
             className={`ds-input${error ? " ds-input-error" : ""}`}
             style={{ minHeight: 96, height: "auto", paddingTop: 10, resize: "vertical" }}
           />
@@ -742,7 +544,7 @@ function ModalRechazar({ despacho, onClose, onRechazado }: {
           <button type="button" onClick={onClose} className="ds-btn ds-btn-secondary" style={{ flex: 1 }}>Cancelar</button>
           <button type="submit" disabled={saving} className="ds-btn"
             style={{ flex: 2, background: "var(--error)", color: "#fff", border: "none" }}>
-            {saving ? "Rechazando…" : "Confirmar rechazo"}
+            {saving ? "Rechazando..." : "Confirmar rechazo"}
           </button>
         </div>
       </form>
@@ -750,7 +552,7 @@ function ModalRechazar({ despacho, onClose, onRechazado }: {
   );
 }
 
-// ── Modal crear/editar ────────────────────────────────────
+// Modal crear/editar
 function ModalAsignarGuardado({ despacho, onClose, onAsignado, onError }: {
   despacho: DespachoTienda;
   onClose: () => void;
@@ -823,7 +625,6 @@ function ModalAsignarGuardado({ despacho, onClose, onAsignado, onError }: {
 function ModalDespacho({ despacho, role, onClose, onSaved, onError }: {
   despacho?: DespachoTienda; role?: string; onClose: () => void; onSaved: () => void; onError: (m: string) => void;
 }) {
-  const isMobile = useIsMobile();
   const isEdit = !!despacho;
   const [centroCostos,            setCC]     = useState(despacho?.centroCostos ?? "");
   const [numeroDocumento,         setDoc]    = useState(despacho?.numeroDocumento ?? "");
@@ -896,59 +697,63 @@ function ModalDespacho({ despacho, role, onClose, onSaved, onError }: {
 
   return (
     <ModalBase title={isEdit ? "Editar factura" : "Nueva Factura"} sub={isEdit ? `${despacho!.numeroDocumento}` : undefined} onClose={onClose}>
-      <form onSubmit={submit} style={{ display: "flex", flexDirection: "column", gap: 14, maxHeight: "70vh", overflowY: "auto" }}>
-        <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr", gap: 12 }}>
-          <Field label="Centro de costos *"><input value={centroCostos} onChange={(e) => setCC(e.target.value)} placeholder="CC-001" className="ds-input" /></Field>
-          <Field label="Fecha creación *"><input type="date" value={fechaCreacion} onChange={(e) => setFecha(e.target.value)} className="ds-input" /></Field>
-        </div>
-        <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr", gap: 12 }}>
-          <Field label="N° Documento *"><input value={numeroDocumento} onChange={(e) => setDoc(e.target.value)} placeholder="FAC-0001" className="ds-input" /></Field>
-          <Field label="Consecutivo *"><input value={consecutivo} onChange={(e) => setCons(e.target.value)} placeholder="001" className="ds-input" /></Field>
-        </div>
-        <Field label="Nombre del cliente *"><input value={clienteNombre} onChange={(e) => setCN(e.target.value)} className="ds-input" /></Field>
-        <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr", gap: 12 }}>
-          <Field label="Documento cliente"><input value={clienteDocumento} onChange={(e) => setCD(e.target.value)} className="ds-input" /></Field>
-          <Field label="Teléfono cliente"><input value={clienteTelefono} onChange={(e) => setCT(e.target.value)} placeholder="300..." className="ds-input" /></Field>
-        </div>
-        <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr", gap: 12 }}>
-          <Field label="Entrega comprometida"><input type="date" value={fechaEntrega} onChange={(e) => setFEntrega(e.target.value)} className="ds-input" /></Field>
-          <Field label="Número de cajas"><input type="number" value={numeroCajas} onChange={(e) => setNCajas(e.target.value)} min="1" placeholder="0" className="ds-input" /></Field>
-        </div>
-
-        <Field label="Nota de entrega">
-          <textarea
-            value={notaEntrega}
-            onChange={(e) => setNotaEntrega(e.target.value)}
-            placeholder="Dirección, contacto, observaciones o instrucciones de entrega"
-            className="ds-input" style={{ minHeight: 88, height: "auto", paddingTop: 10, resize: "vertical" }}
-          />
-        </Field>
-
-        {/* PLUs del despacho */}
-        <div style={{ borderTop: "1px solid var(--border)", paddingTop: 12 }}>
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
-            <span style={{ fontSize: 12, fontWeight: 600, color: "var(--muted2)" }}>PLUs de la factura ({plines.length})</span>
-            <button type="button" className="ds-btn ds-btn-sm" style={{ background: COLOR_TIENDA + "14", color: COLOR_TIENDA, height: 28, fontSize: 11 }} onClick={addPlin}>
-              <Plus size={12} />Agregar PLU
-            </button>
+      <form onSubmit={submit} className={styles.form}>
+        <FormSection title="Información de la factura" icon={<Store size={14} />}>
+          <div className={styles.grid2}>
+            <Field label="Centro de costos *"><input value={centroCostos} onChange={(e) => setCC(e.target.value)} placeholder="CC-001" className="ds-input" /></Field>
+            <Field label="Fecha creación *"><input type="date" value={fechaCreacion} onChange={(e) => setFecha(e.target.value)} className="ds-input" /></Field>
           </div>
+          <div className={styles.gridDoc}>
+            <Field label="N° Documento *"><input value={numeroDocumento} onChange={(e) => setDoc(e.target.value)} placeholder="FAC-0001" className="ds-input" /></Field>
+            <Field label="Consecutivo *"><input value={consecutivo} onChange={(e) => setCons(e.target.value)} placeholder="001" className="ds-input" /></Field>
+          </div>
+        </FormSection>
+
+        <FormSection title="Cliente y entrega" icon={<Truck size={14} />}>
+          <Field label="Nombre del cliente *"><input value={clienteNombre} onChange={(e) => setCN(e.target.value)} className="ds-input" /></Field>
+          <div className={styles.grid2}>
+            <Field label="Documento cliente"><input value={clienteDocumento} onChange={(e) => setCD(e.target.value)} className="ds-input" /></Field>
+            <Field label="Teléfono cliente"><input value={clienteTelefono} onChange={(e) => setCT(e.target.value)} placeholder="300..." className="ds-input" /></Field>
+          </div>
+          <div className={styles.grid2}>
+            <Field label="Entrega comprometida"><input type="date" value={fechaEntrega} onChange={(e) => setFEntrega(e.target.value)} className="ds-input" /></Field>
+            <Field label="Número de cajas"><input type="number" value={numeroCajas} onChange={(e) => setNCajas(e.target.value)} min="1" placeholder="0" className="ds-input" /></Field>
+          </div>
+          <Field label="Nota de entrega">
+            <textarea
+              value={notaEntrega}
+              onChange={(e) => setNotaEntrega(e.target.value)}
+              placeholder="Dirección, contacto, observaciones o instrucciones de entrega"
+              className="ds-input" style={{ minHeight: 96, height: "auto", paddingTop: 10, resize: "vertical" }}
+            />
+          </Field>
+        </FormSection>
+
+        <FormSection title={`PLUs de la factura (${plines.length})`} icon={<Package size={14} />}>
+          <div className={styles.pluEditor}>
+            <div className={styles.pluEditorHead}>
+              <span style={{ color: "var(--muted)", fontSize: 12 }}>Autocompleta descripción desde maestro cuando exista el PLU.</span>
+              <button type="button" className="ds-btn ds-btn-sm ds-btn-secondary" onClick={addPlin}>
+                <Plus size={12} />Agregar PLU
+              </button>
+            </div>
           {plines.map((p, i) => (
             <div key={i}>
-              <div style={{ display: "grid", gridTemplateColumns: isMobile ? "70px 1fr 54px 28px" : "100px 1fr 70px 28px", gap: 6, marginBottom: 6, alignItems: "center" }}>
-                <input value={p.plu} onChange={(e) => { updatePlin(i, "plu", e.target.value); updatePlin(i, "status", "idle"); }} onBlur={() => lookupPlinMaestro(i)} placeholder="PLU" className="ds-input" style={{ height: 32, fontSize: 12 }} />
-                <input value={p.descripcion} onChange={(e) => updatePlin(i, "descripcion", e.target.value)} disabled={!!p.maestro && !p.override} placeholder="Descripción (opc.)" className="ds-input" style={{ height: 32, fontSize: 12, opacity: p.maestro && !p.override ? 0.7 : 1 }} />
-                <input type="number" value={p.unidades} onChange={(e) => updatePlin(i, "unidades", e.target.value)} min="1" placeholder="Uds." className="ds-input" style={{ height: 32, fontSize: 12 }} />
-                <button type="button" onClick={() => removePlin(i)} style={{ width: 28, height: 32, background: "var(--error-tint)", border: "none", borderRadius: 6, cursor: "pointer", color: "var(--error)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+              <div className={styles.pluRow}>
+                <input value={p.plu} onChange={(e) => { updatePlin(i, "plu", e.target.value); updatePlin(i, "status", "idle"); }} onBlur={() => lookupPlinMaestro(i)} placeholder="PLU" className="ds-input" />
+                <input value={p.descripcion} onChange={(e) => updatePlin(i, "descripcion", e.target.value)} disabled={!!p.maestro && !p.override} placeholder="Descripción (opc.)" className="ds-input" style={{ opacity: p.maestro && !p.override ? 0.7 : 1 }} />
+                <input type="number" value={p.unidades} onChange={(e) => updatePlin(i, "unidades", e.target.value)} min="1" placeholder="Uds." className="ds-input" />
+                <button type="button" className="ds-btn ds-btn-danger ds-btn-sm" onClick={() => removePlin(i)} style={{ width: 34, padding: 0, justifyContent: "center" }}>
                   <Minus size={12} />
                 </button>
               </div>
               {p.status && p.status !== "idle" && (
-                <div style={{ margin: "-2px 0 8px", fontSize: 11, color: p.status === "found" ? "var(--brand)" : p.status === "missing" ? "var(--muted2)" : "var(--muted)", fontWeight: 700 }}>
+                <div className={`${styles.pluStatus} ${p.status === "found" ? styles.pluStatusFound : ""} ${p.status === "missing" ? styles.pluStatusMissing : ""}`}>
                   {p.status === "loading" && "Buscando PLU en maestro..."}
                   {p.status === "found" && "Datos cargados desde maestro"}
                   {p.status === "missing" && "PLU no encontrado en maestro"}
                   {p.status === "found" && isAdmin && !p.override && (
-                    <button type="button" onClick={() => setPlines((prev) => prev.map((x, j) => j === i ? { ...x, override: true } : x))} style={{ marginLeft: 8, border: "none", background: "transparent", color: "inherit", textDecoration: "underline", cursor: "pointer", fontWeight: 800 }}>
+                    <button type="button" onClick={() => setPlines((prev) => prev.map((x, j) => j === i ? { ...x, override: true } : x))} className={styles.manualButton}>
                       Editar manualmente
                     </button>
                   )}
@@ -956,16 +761,18 @@ function ModalDespacho({ despacho, role, onClose, onSaved, onError }: {
               )}
             </div>
           ))}
-          {plines.length === 0 && <p style={{ fontSize: 11, color: "var(--faint)", textAlign: "center" }}>Sin PLUs — opcional</p>}
-        </div>
+          {plines.length === 0 && <p style={{ fontSize: 12, color: "var(--faint)", textAlign: "center", margin: "10px 0 0" }}>Sin PLUs - opcional</p>}
+          </div>
+        </FormSection>
 
-        <div style={{ display: "flex", gap: 8, paddingTop: 4 }}>
-          <button type="button" className="ds-btn ds-btn-secondary" onClick={onClose} style={{ flex: 1 }}>Cancelar</button>
-          <button type="submit" className="ds-btn ds-btn-primary" disabled={saving} style={{ flex: 2, background: COLOR_TIENDA }}>
-            {saving ? "Guardando…" : isEdit ? "Guardar cambios" : "Registrar Factura"}
+        <div className={styles.modalActions}>
+          <button type="button" className="ds-btn ds-btn-secondary" onClick={onClose}>Cancelar</button>
+          <button type="submit" className="ds-btn ds-btn-primary" disabled={saving} style={{ background: COLOR_TIENDA }}>
+            {saving ? "Guardando..." : isEdit ? "Guardar cambios" : "Registrar Factura"}
           </button>
         </div>
       </form>
     </ModalBase>
   );
 }
+

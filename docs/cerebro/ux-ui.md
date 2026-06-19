@@ -19,6 +19,15 @@
 - Claro: `C:\Users\USUARIO\.codex\generated_images\019e979a-7c0c-74d3-8494-63a1cbf080a6\ig_0d5909cbba99bf9e016a33ea9eb9cc81919bbc4dc1ac9d191d.png`
 - Oscuro: `C:\Users\USUARIO\.codex\generated_images\019e979a-7c0c-74d3-8494-63a1cbf080a6\ig_0d5909cbba99bf9e016a33eb9b00488191af1ea9c41d3efa52.png`
 - Neon con detalle: `C:\Users\USUARIO\.codex\generated_images\019e979a-7c0c-74d3-8494-63a1cbf080a6\ig_0988ec5b4e4ea755016a33f9e3f8d881918d437124ace42cbb.png`
+- Facturas Contado patron modular: `C:\Users\USUARIO\.codex\generated_images\019e979a-7c0c-74d3-8494-63a1cbf080a6\ig_018dff774d8ac89f016a348d415dec819187bf6a366faf02b6.png`
+
+## Fase modular 2026-06-19: Facturas Contado como patron
+
+- El redisenio visual deja de hacerse sobre toda la app al tiempo. Cada modulo se corrige por separado hasta quedar estable.
+- Facturas Contado (`/dashboard/tienda`) queda como primer modulo patron: hero dark/neon, KPI cards ejecutivas, pipeline de estados, inteligencia operacional, filtros compactos, tabla con rails de estado y drawer de detalle.
+- La presentacion especifica del modulo vive en componentes locales y CSS module: `src/app/(dashboard)/dashboard/tienda/_components.tsx` y `src/app/(dashboard)/dashboard/tienda/tienda.module.css`.
+- `page.tsx` conserva datos, permisos, handlers y reglas de negocio. No se cambian APIs, base de datos, rutas ni permisos.
+- Los siguientes modulos deben copiar el patron por componentes locales primero, y solo promover piezas al design system cuando se repitan con claridad.
 
 
 ## Cierre estructural 2026-06-18

@@ -1,5 +1,24 @@
 # Decisiones de Arquitectura y Producto
 
+## 2026-06-19 - Redisenio modular de Facturas Contado
+
+**Decision:**
+- El redisenio visual se retoma por modulos, no como cambio global simultaneo.
+- Facturas Contado (`/dashboard/tienda`) se convierte en el primer modulo patron para el sistema Colorido Neon Enterprise.
+- La capa visual del modulo se encapsula en componentes locales (`_components.tsx`) y CSS module (`tienda.module.css`) para evitar otra capa agresiva en `globals.css`.
+- `page.tsx` mantiene la propiedad de datos, permisos, handlers y flujo existente.
+
+**Contexto:**
+- La referencia visual aprobada para esta fase es `ig_018dff774d8ac89f016a348d415dec819187bf6a366faf02b6.png`.
+- El objetivo es dejar una pantalla terminada antes de usarla como referencia para otros modulos.
+
+**Consecuencias:**
+- No hay cambios de base de datos, APIs, permisos ni rutas.
+- Logistica, rutas, GPS y Mi Ruta siguen suspendidos.
+- La migracion visual futura debe hacerse modulo por modulo y con QA visual por breakpoint.
+
+**Archivos afectados:** `src/app/(dashboard)/dashboard/tienda/page.tsx`, `src/app/(dashboard)/dashboard/tienda/_components.tsx`, `src/app/(dashboard)/dashboard/tienda/tienda.module.css`, `docs/cerebro/ux-ui.md`, `docs/cerebro/pendientes.md`.
+
 ## 2026-06-18 - Correccion estructural del rediseño Neon
 
 **Decision:**
