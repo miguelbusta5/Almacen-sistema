@@ -435,8 +435,8 @@ export default function IndicadoresPage() {
               <ChartCard title="OVDM vs TSDM" hint="Proporción de tipos de movimiento" height={240}>
                 <DonutChart
                   segments={[
-                    { label: "OVDM", value: kpiCedi.ovdm.ordenes, color: "#1D4ED8" },
-                    { label: "TSDM", value: kpiCedi.tsdm.ordenes, color: "#60A5FA" },
+                    { label: "OVDM", value: kpiCedi.ovdm.ordenes, color: "#14DBA0" },
+                    { label: "TSDM", value: kpiCedi.tsdm.ordenes, color: "#34D9F0" },
                   ]}
                   centerValue={kpiCedi.total.ordenes}
                   centerLabel="Órdenes"
@@ -486,8 +486,8 @@ export default function IndicadoresPage() {
               <ChartCard title="OVDM vs TSDM — AG" height={240}>
                 <DonutChart
                   segments={[
-                    { label: "OVDM", value: kpiAG.ovdm.ordenes, color: "#1D4ED8" },
-                    { label: "TSDM", value: kpiAG.tsdm.ordenes, color: "#60A5FA" },
+                    { label: "OVDM", value: kpiAG.ovdm.ordenes, color: "#14DBA0" },
+                    { label: "TSDM", value: kpiAG.tsdm.ordenes, color: "#34D9F0" },
                   ]}
                   centerValue={kpiAG.total.ordenes}
                   centerLabel="Órdenes AG"
@@ -534,8 +534,8 @@ export default function IndicadoresPage() {
               <ChartCard title="OVDM vs TSDM — Muebles" height={240}>
                 <DonutChart
                   segments={[
-                    { label: "OVDM", value: kpiMue.ovdm.ordenes, color: "#1D4ED8" },
-                    { label: "TSDM", value: kpiMue.tsdm.ordenes, color: "#60A5FA" },
+                    { label: "OVDM", value: kpiMue.ovdm.ordenes, color: "#14DBA0" },
+                    { label: "TSDM", value: kpiMue.tsdm.ordenes, color: "#34D9F0" },
                   ]}
                   centerValue={kpiMue.total.ordenes}
                   centerLabel="Órdenes Muebles"
@@ -588,12 +588,12 @@ export default function IndicadoresPage() {
               <div style={{ display: "flex", gap: 16, flexWrap: "wrap" }}>
                 <div style={{ flex: "1 1 300px", minWidth: 0 }}>
                   <ChartCard title={`Top 10 PLU — Envíos ${displayPluYear}`} height={280}>
-                    <HBarChart items={topEnvios} label="Envíos" color="#1D4ED8" />
+                    <HBarChart items={topEnvios} label="Envíos" color="#14DBA0" />
                   </ChartCard>
                 </div>
                 <div style={{ flex: "1 1 300px", minWidth: 0 }}>
                   <ChartCard title={`Top 10 PLU — Unidades ${displayPluYear}`} height={280}>
-                    <HBarChart items={topUnidades} label="Unidades" color="#60A5FA" />
+                    <HBarChart items={topUnidades} label="Unidades" color="#34D9F0" />
                   </ChartCard>
                 </div>
               </div>

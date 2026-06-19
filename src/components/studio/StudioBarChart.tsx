@@ -21,7 +21,7 @@ interface Props {
 
 export function StudioBarChart({ data, estilo }: Props) {
   const titulo = estilo.titulo;
-  const color = estilo.color ?? "#1D4ED8";
+  const color = estilo.color ?? "#14DBA0";
 
   if (data.length === 0) {
     return (
@@ -60,7 +60,7 @@ export function StudioBarChart({ data, estilo }: Props) {
       },
       y: {
         ticks: { font: { size: 10 }, color: "#8A8A8E" },
-        grid: { color: "rgba(0,0,0,0.06)" },
+        grid: { color: "rgba(255,255,255,0.07)" },
         border: { display: false },
       },
     },

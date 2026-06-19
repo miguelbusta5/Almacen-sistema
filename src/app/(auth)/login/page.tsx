@@ -46,54 +46,119 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="login-page" style={{
-      minHeight: "100vh",
-      background: "var(--canvas)",
-      display: "grid",
-      placeItems: "center",
-      padding: "clamp(16px, 4vw, 32px)",
-    }}>
+    <div
+      className="login-page"
+      style={{
+        minHeight: "100vh",
+        background:
+          "radial-gradient(900px 500px at 18% -10%, rgba(20,219,160,0.10), transparent 60%), linear-gradient(180deg, #0B0E11 0%, #08090B 100%)",
+        display: "grid",
+        placeItems: "center",
+        padding: "clamp(16px, 4vw, 32px)",
+      }}
+    >
       <main className="login-card">
-        <section className="login-brand-panel" style={{
-          minHeight: 520,
-          padding: "clamp(28px, 5vw, 44px)",
-          background: "linear-gradient(135deg, var(--brand-tint), var(--surface2) 80%)",
-          color: "var(--text)",
-          display: "flex",
-          flexDirection: "column",
-          justifyContent: "space-between",
-          borderRight: "1px solid var(--border)",
-        }}>
-          <Logo variant="auto" height={22} tagline />
+        <section
+          className="login-brand-panel"
+          style={{
+            minHeight: 520,
+            padding: "clamp(28px, 5vw, 44px)",
+            background:
+              "radial-gradient(600px 360px at 80% 110%, rgba(20,219,160,0.12), transparent 70%), linear-gradient(160deg, #11151A 0%, #0A0C0E 100%)",
+            color: "var(--text)",
+            display: "flex",
+            flexDirection: "column",
+            justifyContent: "space-between",
+            borderRight: "1px solid var(--border)",
+          }}
+        >
+          <Logo variant="dark" height={22} tagline />
 
           <div>
-            <div style={{ display: "inline-flex", alignItems: "center", gap: 8, border: "1px solid rgba(37,99,235,0.18)", background: "var(--brand-tint)", borderRadius: 999, padding: "6px 10px", color: "var(--brand)", fontSize: 12, fontWeight: 800, marginBottom: 18 }}>
+            <div
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 8,
+                border: "1px solid color-mix(in srgb, var(--accent) 32%, transparent)",
+                background: "var(--accent-tint)",
+                borderRadius: 999,
+                padding: "6px 12px",
+                color: "var(--accent)",
+                fontSize: 12,
+                fontWeight: 700,
+                marginBottom: 18,
+              }}
+            >
               <Wifi size={14} /> {PRODUCT.statusLabel}
             </div>
-            <h1 style={{ fontSize: "clamp(32px, 5vw, 52px)", lineHeight: 1, fontWeight: 900, color: "var(--text)", margin: 0 }}>
+            <h1
+              style={{
+                fontFamily: "var(--display)",
+                fontSize: "clamp(30px, 5vw, 48px)",
+                lineHeight: 1.04,
+                fontWeight: 800,
+                letterSpacing: "-0.03em",
+                color: "var(--text)",
+                margin: 0,
+              }}
+            >
               {PRODUCT.displayName}
             </h1>
             <p style={{ color: "var(--muted)", fontSize: 15, lineHeight: 1.65, maxWidth: 560, marginTop: 16 }}>
-              Portal interno para controlar inventario, facturas contado, transporte, conteo, preoperacional y exportaciones con trazabilidad por rol.
+              Portal interno para controlar inventario, facturas contado, transporte, conteo,
+              preoperacional y exportaciones con trazabilidad por rol.
             </p>
           </div>
 
           <div style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", gap: 10 }}>
             {["Inventario", "Transporte", "CEDI"].map((label) => (
-              <div key={label} style={{ border: "1px solid var(--border)", background: "var(--surface)", borderRadius: 12, padding: 12, boxShadow: "var(--shadow-xs)" }}>
-                <div style={{ color: "var(--muted)", fontSize: 10, textTransform: "uppercase", letterSpacing: "0.10em", fontWeight: 800 }}>Modulo</div>
-                <div style={{ color: "var(--text)", fontSize: 13, fontWeight: 800, marginTop: 5 }}>{label}</div>
+              <div
+                key={label}
+                style={{
+                  border: "1px solid var(--border)",
+                  background: "var(--surface)",
+                  borderRadius: 12,
+                  padding: 12,
+                  boxShadow: "var(--shadow-xs)",
+                }}
+              >
+                <div style={{ color: "var(--muted)", fontSize: 10, textTransform: "uppercase", letterSpacing: "0.10em", fontWeight: 700 }}>
+                  Modulo
+                </div>
+                <div style={{ color: "var(--text)", fontSize: 13, fontWeight: 700, marginTop: 5 }}>{label}</div>
               </div>
             ))}
           </div>
         </section>
 
-        <section className="login-form-panel" style={{ background: "var(--surface)", padding: "clamp(24px, 5vw, 40px)", display: "flex", flexDirection: "column", justifyContent: "center" }}>
+        <section
+          className="login-form-panel"
+          style={{
+            background: "var(--surface)",
+            padding: "clamp(24px, 5vw, 40px)",
+            display: "flex",
+            flexDirection: "column",
+            justifyContent: "center",
+          }}
+        >
           <div style={{ marginBottom: 26 }}>
-            <div style={{ width: 42, height: 42, borderRadius: 12, display: "grid", placeItems: "center", background: "var(--brand-tint)", color: "var(--brand)", marginBottom: 16 }}>
+            <div
+              style={{
+                width: 42,
+                height: 42,
+                borderRadius: 12,
+                display: "grid",
+                placeItems: "center",
+                background: "var(--accent-tint)",
+                color: "var(--accent)",
+                border: "1px solid color-mix(in srgb, var(--accent) 26%, transparent)",
+                marginBottom: 16,
+              }}
+            >
               <ShieldCheck size={22} />
             </div>
-            <h2 style={{ fontSize: 26, fontWeight: 850, color: "var(--text)", margin: 0 }}>
+            <h2 style={{ fontFamily: "var(--display)", fontSize: 26, fontWeight: 700, letterSpacing: "-0.02em", color: "var(--text)", margin: 0 }}>
               Iniciar sesion
             </h2>
             <p style={{ fontSize: 14, color: "var(--muted)", marginTop: 6 }}>
@@ -102,7 +167,7 @@ export default function LoginPage() {
           </div>
 
           <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-            <label style={{ display: "grid", gap: 6, fontSize: 12, fontWeight: 800, color: "var(--muted2)" }}>
+            <label style={{ display: "grid", gap: 6, fontSize: 12, fontWeight: 700, color: "var(--muted2)" }}>
               Correo electronico
               <input
                 type="email"
@@ -115,7 +180,7 @@ export default function LoginPage() {
               />
             </label>
 
-            <label style={{ display: "grid", gap: 6, fontSize: 12, fontWeight: 800, color: "var(--muted2)" }}>
+            <label style={{ display: "grid", gap: 6, fontSize: 12, fontWeight: 700, color: "var(--muted2)" }}>
               Contrasena
               <span style={{ position: "relative" }}>
                 <input
@@ -139,7 +204,7 @@ export default function LoginPage() {
             </label>
 
             {error && (
-              <div style={{ background: "var(--error-tint)", border: "1px solid rgba(220,38,38,0.20)", borderRadius: 10, padding: "10px 12px", fontSize: 13, color: "var(--error)", fontWeight: 700 }}>
+              <div style={{ background: "var(--error-tint)", border: "1px solid color-mix(in srgb, var(--error) 26%, transparent)", borderRadius: 10, padding: "10px 12px", fontSize: 13, color: "var(--error)", fontWeight: 600 }}>
                 {error}
               </div>
             )}
@@ -154,7 +219,6 @@ export default function LoginPage() {
           </p>
         </section>
       </main>
-
     </div>
   );
 }

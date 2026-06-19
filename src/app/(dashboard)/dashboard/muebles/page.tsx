@@ -231,7 +231,7 @@ export default function MueblesPage() {
       byFab[n.fabricante] = (byFab[n.fabricante] || 0) + Math.abs(n.costoIncidencia || 0);
     }
     const top = Object.entries(byFab).sort((a, b) => b[1] - a[1]).slice(0, 8);
-    return { labels: top.map(([f]) => f), datasets: [{ label: "Impacto", data: top.map(([, v]) => v), backgroundColor: "#2563eb", borderRadius: 4 }] };
+    return { labels: top.map(([f]) => f), datasets: [{ label: "Impacto", data: top.map(([, v]) => v), backgroundColor: "#14DBA0", borderRadius: 4 }] };
   }, [items]);
 
   const lineData = useMemo(() => {
@@ -240,7 +240,7 @@ export default function MueblesPage() {
     const keys = Object.keys(byDate).sort().slice(-14);
     return {
       labels: keys.map((k) => fmtFecha(k).slice(0, 5)),
-      datasets: [{ label: "Novedades", data: keys.map((k) => byDate[k]), borderColor: "#2563eb", backgroundColor: "#2563eb18", fill: true, tension: 0.3, pointRadius: 3 }],
+      datasets: [{ label: "Novedades", data: keys.map((k) => byDate[k]), borderColor: "#14DBA0", backgroundColor: "#14DBA018", fill: true, tension: 0.3, pointRadius: 3 }],
     };
   }, [items]);
 
@@ -256,7 +256,7 @@ export default function MueblesPage() {
   return (
     <div className="animate-fade-in" style={getModuleCssVars("inventario") as React.CSSProperties}>
       {/* ── Page header ── */}
-      <div className="g-module-header g-page-head" style={{ "--mod-color": "#1D4ED8" } as React.CSSProperties}>
+      <div className="g-module-header g-page-head" style={{ "--mod-color": "#14DBA0" } as React.CSSProperties}>
         <div>
           <div className="g-module-kicker">Módulo Inventario</div>
           <h1 className="g-module-title">Novedades Inventario</h1>
@@ -625,7 +625,7 @@ export default function MueblesPage() {
                 {/* ID de trazabilidad NetSuite */}
                 <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 4 }}>
                   {panelItem.netsuiteId ? (
-                    <span style={{ fontFamily: "var(--mono)", fontSize: 12, fontWeight: 700, color: "#2563EB", background: "#2563EB0d", padding: "2px 8px", borderRadius: 6, border: "1px solid #2563EB25" }}>
+                    <span style={{ fontFamily: "var(--mono)", fontSize: 12, fontWeight: 700, color: "#34D9F0", background: "#34D9F00d", padding: "2px 8px", borderRadius: 6, border: "1px solid #34D9F025" }}>
                       NS:{panelItem.netsuiteId}
                     </span>
                   ) : (

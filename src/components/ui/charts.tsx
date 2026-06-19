@@ -24,10 +24,10 @@ ChartJS.register(
 
 // ── Paleta CEDI ──────────────────────────────────────────────────────────────
 // Ordenada de más antiguo → más reciente (índice 0 = año más viejo)
-export const CEDI_YEAR_COLORS = ["#94A3B8", "#60A5FA", "#1D4ED8", "#1E3A8A"];
-const GRID = "rgba(0,0,0,0.06)";
-const TIP_BG = "#0f172a";
-const FONT = "-apple-system,'Helvetica Neue',system-ui,sans-serif";
+export const CEDI_YEAR_COLORS = ["#5C636A", "#34D9F0", "#14DBA0", "#5BF5C7"];
+const GRID = "rgba(255,255,255,0.07)";
+const TIP_BG = "#161A1F";
+const FONT = "'Inter',-apple-system,system-ui,sans-serif";
 
 function cFont(size = 11) {
   return { family: FONT, size } as const;
@@ -35,9 +35,10 @@ function cFont(size = 11) {
 
 const BASE_TOOLTIP = {
   backgroundColor: TIP_BG,
-  titleColor: "#f8fafc",
-  bodyColor: "#cbd5e1",
-  borderWidth: 0,
+  titleColor: "#ECEFF1",
+  bodyColor: "#C2C8CE",
+  borderColor: "rgba(255,255,255,0.10)",
+  borderWidth: 1,
   cornerRadius: 8,
   padding: 10,
   titleFont: cFont(12),
@@ -47,18 +48,18 @@ const BASE_TOOLTIP = {
 const BASE_LEGEND = {
   position: "top" as const,
   align: "end" as const,
-  labels: { color: "#64748b", font: cFont(11), boxWidth: 10, boxHeight: 8, padding: 16 },
+  labels: { color: "#8B9398", font: cFont(11), boxWidth: 10, boxHeight: 8, padding: 16 },
 };
 
 const BASE_SCALES_XY = {
   x: {
     grid: { color: GRID, lineWidth: 1 },
-    ticks: { color: "#94A3B8", font: cFont(11) },
+    ticks: { color: "#8B9398", font: cFont(11) },
     border: { display: false },
   },
   y: {
     grid: { color: GRID, lineWidth: 1 },
-    ticks: { color: "#94A3B8", font: cFont(11), maxTicksLimit: 6 },
+    ticks: { color: "#8B9398", font: cFont(11), maxTicksLimit: 6 },
     border: { display: false },
   },
 };
@@ -245,7 +246,7 @@ export function DonutChart({
     plugins: {
       legend: {
         position: "bottom",
-        labels: { color: "#64748b", font: cFont(11), boxWidth: 10, boxHeight: 8, padding: 12 },
+        labels: { color: "#8B9398", font: cFont(11), boxWidth: 10, boxHeight: 8, padding: 12 },
       },
       tooltip: {
         ...BASE_TOOLTIP,
@@ -306,7 +307,7 @@ export interface HBarItem {
 export function HBarChart({
   items,
   label = "Valor",
-  color = "#1D4ED8",
+  color = "#14DBA0",
 }: {
   items: HBarItem[];
   label?: string;
@@ -341,12 +342,12 @@ export function HBarChart({
     scales: {
       x: {
         grid: { color: GRID },
-        ticks: { color: "#94A3B8", font: cFont(10), maxTicksLimit: 5 },
+        ticks: { color: "#8B9398", font: cFont(10), maxTicksLimit: 5 },
         border: { display: false },
       },
       y: {
         grid: { display: false },
-        ticks: { color: "#475569", font: cFont(11) },
+        ticks: { color: "#8B9398", font: cFont(11) },
         border: { display: false },
       },
     },

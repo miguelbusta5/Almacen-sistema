@@ -253,13 +253,13 @@ export default function TransportePage() {
   };
 
   // Gráficos
-  const donutData = useMemo(() => ({ labels: ["Pendiente", "Despachado"], datasets: [{ data: [kpis.pend, kpis.desp], backgroundColor: ["#CBD5E1", "#1D4ED8"], borderWidth: 0 }] }), [kpis]);
+  const donutData = useMemo(() => ({ labels: ["Pendiente", "Despachado"], datasets: [{ data: [kpis.pend, kpis.desp], backgroundColor: ["#5C636A", "#14DBA0"], borderWidth: 0 }] }), [kpis]);
   const barData = useMemo(() => {
     const meses: Record<string, number> = {};
     for (const g of guardados) { const mes = g.fecha.slice(0, 7); meses[mes] = (meses[mes] || 0) + 1; }
     const keys = Object.keys(meses).sort().slice(-6);
     const M = ["Ene","Feb","Mar","Abr","May","Jun","Jul","Ago","Sep","Oct","Nov","Dic"];
-    return { labels: keys.map((k) => { const [y, m] = k.split("-"); return M[+m - 1] + " " + y.slice(2); }), datasets: [{ data: keys.map((k) => meses[k]), backgroundColor: "#1D4ED8", borderRadius: 4 }] };
+    return { labels: keys.map((k) => { const [y, m] = k.split("-"); return M[+m - 1] + " " + y.slice(2); }), datasets: [{ data: keys.map((k) => meses[k]), backgroundColor: "#14DBA0", borderRadius: 4 }] };
   }, [guardados]);
 
   // Panel: detalle de almacenaje
@@ -567,7 +567,7 @@ export default function TransportePage() {
                   value: (
                     <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
                       {panelItem.netsuiteId
-                        ? <span style={{ fontFamily: "var(--mono)", fontSize: 12, fontWeight: 700, color: "#2563EB", background: "#2563EB0d", padding: "2px 8px", borderRadius: 6, border: "1px solid #2563EB25" }}>NS:{panelItem.netsuiteId}</span>
+                        ? <span style={{ fontFamily: "var(--mono)", fontSize: 12, fontWeight: 700, color: "#34D9F0", background: "#34D9F00d", padding: "2px 8px", borderRadius: 6, border: "1px solid #34D9F025" }}>NS:{panelItem.netsuiteId}</span>
                         : <span style={{ fontSize: 12, color: "var(--faint)" }}>Sin vincular</span>
                       }
                       {canEdit && (

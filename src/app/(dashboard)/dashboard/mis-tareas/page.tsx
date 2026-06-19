@@ -161,7 +161,7 @@ export default function MisTareasPage() {
         <>
           {/* ── INVENTARIO: Novedades ──────────────────────── */}
           {data.novedades.length > 0 && (
-            <Seccion icon={<Package size={15} />} title="Novedades asignadas" count={data.novedades.length} color="#2563EB">
+            <Seccion icon={<Package size={15} />} title="Novedades asignadas" count={data.novedades.length} color="#14DBA0">
               {data.novedades.slice(0, 10).map((n: any) => {
                 const sla = calcSla(n.fechaCompromiso);
                 const dias = diasRestantesSla(n.fechaCompromiso);

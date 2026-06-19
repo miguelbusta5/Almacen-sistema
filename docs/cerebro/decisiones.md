@@ -1,5 +1,26 @@
 # Decisiones de Arquitectura y Producto
 
+## 2026-06-19 - Reescritura total del frontend a Dark Elegant (Obsidiana + Esmeralda)
+
+**Decision:**
+- Se reescribe por completo la capa de presentacion hacia una identidad **Dark Elegant**: base obsidiana casi negra + **unico acento esmeralda** (`#14DBA0`, vivo con punto neon).
+- **Solo modo oscuro.** Se elimina el tema claro, el componente `ThemeToggle` y el script de init de tema en `layout.tsx`. `:root` pasa a ser el tema oscuro; `<html data-theme="dark">` queda como salvaguarda de selectores legacy.
+- **Acento unico:** se abandona el color por modulo. `src/lib/moduleTheme.ts` resuelve todos los modulos a esmeralda y **elimina `heroImage`**. Los modulos se diferencian por icono y tipografia.
+- **Estados con color propio:** los estados operativos siguen diferenciados y vivos via tokens `--state-*` y variantes de `Badge`/`DataTable`.
+- **Encabezados sin imagenes:** `ModuleHero` queda puramente tipografico (sin slot de asset). `public/ui/module-heroes/` deja de referenciarse.
+- **Tipografia:** `Inter` (UI) + `Sora` (display) + `JetBrains Mono`, via `<link>` en `layout.tsx` (reemplaza Archivo).
+
+**Contexto:**
+- Peticion explicita del usuario: "borrar el frontend y reconstruirlo dark elegant". Se leyo el cerebro como contexto pero se descarto la identidad previa (azules/neon, claro+oscuro, color por modulo) por instruccion directa.
+- Se ejecuto en olas: (1) `globals.css` + `moduleTheme.ts` + `layout.tsx` + shell + libreria UI + charts + `tienda.module.css`; (2) limpieza de colores hardcodeados (violetas/azules/fondos claros) en todas las paginas hacia tokens/esmeralda.
+
+**Consecuencias:**
+- **Backend intacto:** sin cambios en `src/app/api/*`, `src/lib/{authz,permissions,modulePermissions,auth}`, `middleware.ts`, `types`, `prisma` ni contratos de API. Validado con `tsc`, `npm run build` y 1176 tests verdes.
+- Logistica, rutas, GPS y Mi Ruta siguen suspendidos.
+- No reintroducir modo claro, color por modulo ni imagenes en encabezados.
+
+**Archivos afectados:** `src/app/globals.css`, `src/app/layout.tsx`, `src/lib/moduleTheme.ts`, `src/components/ui/*`, `src/components/common/{Header,Logo}.tsx` (se elimino `ThemeToggle.tsx`), `src/app/(auth)/login/page.tsx`, `src/app/(dashboard)/dashboard/tienda/tienda.module.css`, todas las `dashboard/*/page.tsx` (limpieza de color), y `docs/cerebro/{ux-ui,00-master-context,pendientes,decisiones}.md`.
+
 ## 2026-06-19 - Redisenio modular de Facturas Contado
 
 **Decision:**

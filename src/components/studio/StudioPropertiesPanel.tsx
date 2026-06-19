@@ -244,8 +244,8 @@ export function StudioPropertiesPanel({ component, fuentes, onUpdate, onDelete }
             <div>
               <label style={labelStyle}>Color principal</label>
               <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
-                <input type="color" value={component.estilo.color ?? "#1D4ED8"} onChange={(e) => updateEstilo({ color: e.target.value })} style={{ width: 32, height: 32, border: "none", cursor: "pointer", borderRadius: 4 }} />
-                <input style={{ ...fieldStyle, flex: 1 }} value={component.estilo.color ?? "#1D4ED8"} onChange={(e) => updateEstilo({ color: e.target.value })} />
+                <input type="color" value={component.estilo.color ?? "#14DBA0"} onChange={(e) => updateEstilo({ color: e.target.value })} style={{ width: 32, height: 32, border: "none", cursor: "pointer", borderRadius: 4 }} />
+                <input style={{ ...fieldStyle, flex: 1 }} value={component.estilo.color ?? "#14DBA0"} onChange={(e) => updateEstilo({ color: e.target.value })} />
               </div>
             </div>
             {component.tipo === "kpi" && (

@@ -70,8 +70,8 @@ export default function StudioViewPage() {
         </h1>
         <span style={{
           fontSize: 10, fontWeight: 700, padding: "3px 7px", borderRadius: 4,
-          background: dashboard.estado === "PUBLICADO" ? "#DCFCE7" : "#FEF3C7",
-          color: dashboard.estado === "PUBLICADO" ? "#16A34A" : "#D97706",
+          background: dashboard.estado === "PUBLICADO" ? "var(--success-tint)" : "var(--warning-tint)",
+          color: dashboard.estado === "PUBLICADO" ? "var(--success)" : "var(--warning)",
           letterSpacing: "0.06em", textTransform: "uppercase",
         }}>
           {dashboard.estado}

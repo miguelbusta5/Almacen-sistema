@@ -75,9 +75,9 @@ function ModalConteo({ linea, tipo, operario, onClose, onGuardado }: {
               <strong style={{ fontFamily: "var(--mono)" }}>{fmtNum(linea.teorico)}</strong>
             </div>
             {tipo === "reconteo" && linea.cantidadContada != null && (
-              <div style={{ background: "#fef3c7", borderRadius: 8, padding: "0.4rem 0.8rem", fontSize: 12 }}>
-                <span style={{ color: "#92400e" }}>1er conteo: </span>
-                <strong style={{ fontFamily: "var(--mono)", color: "#92400e" }}>{fmtNum(linea.cantidadContada)}</strong>
+              <div style={{ background: "var(--warning-tint)", borderRadius: 8, padding: "0.4rem 0.8rem", fontSize: 12 }}>
+                <span style={{ color: "var(--warning)" }}>1er conteo: </span>
+                <strong style={{ fontFamily: "var(--mono)", color: "var(--warning)" }}>{fmtNum(linea.cantidadContada)}</strong>
               </div>
             )}
           </div>

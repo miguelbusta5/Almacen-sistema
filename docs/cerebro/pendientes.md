@@ -6,6 +6,15 @@
 
 ## Tareas pendientes
 
+### Reescritura frontend Dark Elegant (2026-06-19)
+
+- [x] **Reescritura total a Dark Elegant (Obsidiana + Esmeralda)**: solo modo oscuro, acento unico esmeralda, estados con color propio, encabezados sin imagenes, fuentes Inter+Sora. Backend intacto. `tsc` + `build` + 1176 tests verdes. Ver [[decisiones]] y [[ux-ui]].
+- [x] Eliminado tema claro, `ThemeToggle` y script de init de tema; `moduleTheme.ts` colapsado a esmeralda sin `heroImage`; `tienda.module.css` reescrito dark; charts y studio re-tematizados.
+- [x] Limpieza de colores hardcodeados (violeta/azul/fondos claros) en todas las paginas hacia tokens/esmeralda.
+- [ ] **QA visual con capturas** en oscuro a 1440px / 768px / 390px en las 14 pantallas (requiere app levantada; reiniciar `npm run dev` para limpiar cache de Turbopack).
+- [ ] Verificar en vivo: TRANSPORTISTA solo Preoperacional · ETIQUETADO solo Exportaciones · Logística/Rutas/GPS/Mi Ruta ausentes.
+- [ ] (Opcional) Borrar assets ya no usados en `public/ui/module-heroes/`.
+
 ### Fix rediseño Neon (2026-06-18)
 
 - [x] Coherencia claro/oscuro: quitar el forzado dark `!important` global; acotar superficies neón a `html[data-theme="dark"]`. `body` coherente por tema.

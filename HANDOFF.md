@@ -70,10 +70,9 @@ src/
 │     └─ stats/               # KPIs del panel principal
 ├─ components/common/
 │  ├─ Logo.tsx                # Wordmark; invierte a blanco en fondos oscuros (CSS)  ← NUEVO
-│  ├─ Sidebar.tsx             # Sidebar (logo, iconos lucide, activo con acento azul)
-│  ├─ Header.tsx              # Header + tema + logout
-│  ├─ ThemeToggle.tsx         # Claro/oscuro
-│  └─ Providers.tsx           # SessionProvider de Auth.js
+│  ├─ Sidebar.tsx             # Sidebar (logo, iconos lucide, activo con acento esmeralda)
+│  ├─ Header.tsx              # Header + logout (dark-only, sin toggle de tema)
+│  └─ Providers.tsx           # SessionProvider de Auth.js + CommandPalette
 ├─ lib/
 │  ├─ prisma.ts               # Cliente Prisma singleton (adapter-pg + Pool SSL)
 │  ├─ auth.ts                 # Config Auth.js v5 (credenciales, JWT, roles)
@@ -246,11 +245,11 @@ El sidebar filtra automáticamente según el rol. Acceso por URL directa tambié
 - ✅ **Color del módulo**: violeta `#7c3aed`, familia fría distinta de azul (Muebles) y cian (Transporte).
 - ✅ **Integración sidebar**: enlaces "Logística" y "Mi ruta" visibles según rol.
 
-### UX / Diseño — Identidad Grupo Ambiente  ← NUEVO
-- ✅ Paleta de **azules intensos** + base tinta (tokens en `globals.css`), dark mode afinado, focus-ring y sombras de marca.
-- ✅ **Logo real** (`/logo.png`) con inversión a blanco por CSS en fondos oscuros; fuente Archivo para el wordmark.
-- ✅ Login con panel de marca; sidebar con iconos lucide y acento azul; dashboard con saludo + KPIs vivos + cards de módulo.
-- ✅ Módulos recoloreados: **Muebles azul**, **Transporte cian** (familia azul); semánticos (verde/rojo/ámbar) intactos.
+### UX / Diseño — Dark Elegant (Obsidiana + Esmeralda)  ← 2026-06-19
+- ✅ Identidad **Dark Elegant**: base obsidiana casi negra + **único acento esmeralda** (`#14DBA0`). **Solo modo oscuro** (eliminado tema claro, `ThemeToggle` y script de init). Tokens en `globals.css`.
+- ✅ **Logo real** (`/logo.png`) con inversión a blanco por CSS; fuentes **Inter** (UI) + **Sora** (display) + JetBrains Mono.
+- ✅ **Acento único**: los módulos no se diferencian por color (icono + tipografía). `moduleTheme.ts` resuelve todo a esmeralda y elimina `heroImage`. `ModuleHero` sin imágenes (tipográfico).
+- ✅ **Estados con color propio** (`--state-*`): creado=esmeralda, recogido=cian, CEDI=verde, enviado=azul, rechazado=rojo, alerta=ámbar.
 - ✅ Microinteracciones: `lift` (hover elevado), `skeleton` (shimmer), `stagger`/`fade-up`, respeto a `prefers-reduced-motion`.
 
 ### Módulo Preoperacional (Sprint 8)

@@ -4,94 +4,52 @@
 
 ---
 
-## Direccion vigente 2026-06-18: Colorido Neon Enterprise con assets
+## Direccion vigente 2026-06-19: Dark Elegant (Obsidiana + Esmeralda)
 
-- La interfaz adopta una identidad **Colorido Neon Enterprise**: base premium navy/neon, modulos con color propio, estados operativos con color semantico real y encabezados con renders 3D.
-- Se abandona la restriccion **Claro Ejecutivo Azul/Gris**. El azul sigue siendo importante, pero ya no limita toda la interfaz.
-- La app debe sentirse cercana a una herramienta enterprise tipo Vercel/Linear/Supabase/Notion, pero con identidad CEDI: viva, densa, funcional y escalable.
-- El color debe tener funcion: modulo, estado, prioridad, foco o accion. No usar decoracion gratuita.
-- Los encabezados de modulo deben usar `ModuleHero` o clases compatibles con variables de `moduleTheme`; cada modulo define `heroImage`, `heroGradient`, `glow` y `surface`.
-- Los assets visuales versionados viven en `public/ui/module-heroes/`; nunca se referencian desde `.codex`.
+- La interfaz adopta una identidad **Dark Elegant**: base casi negra neutra (obsidiana) con un **unico acento esmeralda** (vivo, con punto neon) reservado a accion, foco y estado activo.
+- **Solo modo oscuro.** Se elimino el tema claro, el toggle (`ThemeToggle`) y el script de init de tema. `:root` es el tema oscuro; `<html data-theme="dark">` se fija como salvaguarda de selectores legacy.
+- **Acento unico de marca:** los modulos ya **no** se diferencian por color. Se distinguen por icono, kicker y tipografia. `moduleTheme.ts` resuelve todos los modulos a esmeralda.
+- **Los estados SI conservan color** y son diferenciados/vivos: creado (esmeralda), recogido (cian), CEDI (verde), enviado (azul), rechazado (rojo), alerta (ambar). Viven en los tokens `--state-*` y en las variantes de `Badge`/`DataTable` (rail por fila), no en el tema de modulo.
+- **Sin imagenes en los encabezados.** Se elimino `heroImage` y el slot de asset; `ModuleHero` es puramente tipografico (kicker + titulo + descripcion + acciones + metricas, con rail/hairline esmeralda). Los assets de `public/ui/module-heroes/` ya no se referencian.
+- **Tipografia:** `Inter` (UI) + `Sora` (display/titulos/logo) + mono (`JetBrains Mono`), cargadas por `<link>` en `layout.tsx`. Tokens `--sans`, `--display`/`--logo`, `--mono`.
+- Estilo: superficies planas con **hairline** sutil, jerarquia por tipografia y espacio (no por cajas de color), glow esmeralda solo en foco/activo, micro-animaciones discretas.
 - Logistica, rutas, GPS y Mi Ruta siguen suspendidos indefinidamente.
-
-## Referencias aprobadas
-
-- Claro: `C:\Users\USUARIO\.codex\generated_images\019e979a-7c0c-74d3-8494-63a1cbf080a6\ig_0d5909cbba99bf9e016a33ea9eb9cc81919bbc4dc1ac9d191d.png`
-- Oscuro: `C:\Users\USUARIO\.codex\generated_images\019e979a-7c0c-74d3-8494-63a1cbf080a6\ig_0d5909cbba99bf9e016a33eb9b00488191af1ea9c41d3efa52.png`
-- Neon con detalle: `C:\Users\USUARIO\.codex\generated_images\019e979a-7c0c-74d3-8494-63a1cbf080a6\ig_0988ec5b4e4ea755016a33f9e3f8d881918d437124ace42cbb.png`
-- Facturas Contado patron modular: `C:\Users\USUARIO\.codex\generated_images\019e979a-7c0c-74d3-8494-63a1cbf080a6\ig_018dff774d8ac89f016a348d415dec819187bf6a366faf02b6.png`
-
-## Fase modular 2026-06-19: Facturas Contado como patron
-
-- El redisenio visual deja de hacerse sobre toda la app al tiempo. Cada modulo se corrige por separado hasta quedar estable.
-- Facturas Contado (`/dashboard/tienda`) queda como primer modulo patron: hero dark/neon, KPI cards ejecutivas, pipeline de estados, inteligencia operacional, filtros compactos, tabla con rails de estado y drawer de detalle.
-- La presentacion especifica del modulo vive en componentes locales y CSS module: `src/app/(dashboard)/dashboard/tienda/_components.tsx` y `src/app/(dashboard)/dashboard/tienda/tienda.module.css`.
-- `page.tsx` conserva datos, permisos, handlers y reglas de negocio. No se cambian APIs, base de datos, rutas ni permisos.
-- Los siguientes modulos deben copiar el patron por componentes locales primero, y solo promover piezas al design system cuando se repitan con claridad.
-
-
-## Cierre estructural 2026-06-18
-
-- `globals.css` queda como fuente consolidada: un `:root` para claro y un bloque `html[data-theme="dark"]` para oscuro. No agregar nuevas eras visuales al final del archivo.
-- `ModuleHero` es el encabezado obligatorio para pantallas nuevas y para migraciones de pantallas principales. El asset del modulo debe renderizarse como elemento real controlado, no como pseudo-elemento que pueda tapar texto o acciones.
-- Los headers legacy `.g-module-header`/`.op-module-header` solo quedan como compatibilidad temporal para pantallas secundarias; no deben usarse en nuevas pantallas.
-- Facturas Contado, Solicitudes Transporte, Usuarios y Auditoria ya usan `ModuleHero` como parte del cierre de fidelidad neon.
 
 ## Principios visuales
 
-- **Modulo-aware:** cada modulo define `color`, `tint`, `gradient`, `darkColor`, `darkTint` y contraste desde `src/lib/moduleTheme.ts`.
-- **Hero con asset:** cada modulo define imagen/render lateral en `public/ui/module-heroes/` para evitar headers planos.
-- **State-aware:** los estados operativos no dependen del modulo; rechazado, pendiente, recogido, entregado, enviado, efectuado y bloqueado tienen senales propias.
-- **Claro y oscuro nativos:** el modo oscuro usa superficies navy/graphite y colores luminosos; no es una inversion automatica del modo claro.
+- **Acento unico:** un solo esmeralda en toda la app; diferenciacion por icono/copy, no por color de modulo.
+- **State-aware:** los estados operativos tienen color propio y vivo, independiente del modulo.
+- **Dark-only nativo:** superficies obsidiana (`--canvas #0A0C0E`, `--surface #121519`), texto claro, bordes `rgba(255,255,255,.08)`.
+- **Sin imagenes en heros:** encabezados tipograficos; nada de renders 3D ni assets laterales.
 - **Jerarquia operativa:** encabezado de modulo, KPIs, tabs, filtros, tabla/lista, detalle y acciones deben leerse rapido.
-- **Profundidad enterprise:** sombras, bordes, rails de estado y hover tintado deben dar vida sin perder densidad.
 - **Mobile funcional:** en celular se prioriza captura, lectura compacta y acciones principales visibles.
 
-## Tokens y clases vigentes
+## Paleta (tokens en `src/app/globals.css`)
 
-Definidos principalmente en `src/app/globals.css` y `src/lib/moduleTheme.ts`:
-
-```css
---mod-color
---module-color
---mod-tint
---module-tint
---mod-gradient
---module-gradient
---module-hero-image
---module-hero-gradient
---module-glow
---module-surface
---state-success
---state-warning
---state-danger
---state-info
+```
+--canvas/--bg #0A0C0E   --surface #121519   --surface2 #171B20   --surface3 #1E232A
+--surface-elevated #161A1F   --surface-rail #08090B
+--border rgba(255,255,255,.08)   --border-strong rgba(255,255,255,.16)
+--text #ECEFF1   --muted2 #C2C8CE   --muted #8B9398   --faint #5C636A
+--accent #14DBA0   --accent-bright #5BF5C7   --accent-deep #0E9C76
+success #2EE6A6 · warning #FFC53D · error #FF6B6B · info(cian) #34D9F0
+--state-created #14DBA0 · --state-picked #34D9F0 · --state-cedi #2EE6A6
+--state-sent #5B9DFF · --state-rejected #FF6B6B · --state-alert #FFC53D
 ```
 
-Clases de plataforma:
+`--mod-color`/`--module-color`/`--mod-gradient` se mantienen por compatibilidad pero **siempre resuelven a esmeralda** (acento unico). Para color de fila/estado, pasar `--row-color`/`--stat-color`/`--flow-color` por elemento.
 
-```css
-.module-surface
-.module-gradient
-.state-rail
-.colored-kpi
-.detail-section
-.status-tab
-.ds-btn
-.ds-card
-.ds-panel
-.ds-stat
-.ds-table
-.slide-panel
-.module-hero
+## Clases de plataforma vigentes
+
+```
+.module-hero  .ds-btn  .ds-card  .ds-panel  .ds-stat  .ds-table  .ds-badge*
+.slide-panel  .detail-section  .status-tab  .colored-kpi  .g-nav-item  .g-modal*
 ```
 
 ## Datos en vivo
 
-- Hook base: `src/hooks/useAutoRefresh.ts`.
-- Indicador visual: `src/components/ui/AutoRefreshIndicator.tsx`.
-- Intervalo recomendado: 60 segundos.
-- Pausar cuando la pestana esta oculta, hay modal abierto, captura en curso o edicion sin guardar.
+- Hook base: `src/hooks/useAutoRefresh.ts`. Indicador: `src/components/ui/AutoRefreshIndicator.tsx`.
+- Intervalo recomendado: 60 s. Pausar con pestana oculta, modal abierto, captura o edicion sin guardar.
 - No usar reload completo del navegador como comportamiento por defecto.
 
 ## Reglas no negociables
@@ -100,37 +58,18 @@ Clases de plataforma:
 - No convertir el dashboard en landing page.
 - No sacrificar velocidad de captura por decoracion.
 - Mantener permisos con doble validacion: server + UI.
-- Evitar nuevos estilos inline para color; preferir `moduleTheme`, `getModuleCssVars`, `Badge`, `Stat`, `DataTable` y `SlidePanel`.
+- No reintroducir modo claro, color por modulo ni imagenes en encabezados.
+- Evitar nuevos estilos inline para color; preferir tokens, `Badge`, `Stat`, `DataTable` y `SlidePanel`.
 
 ## QA visual
 
-Revisar en claro y oscuro, desktop, tablet y movil:
+Revisar en **oscuro** (unico tema), desktop (1440px), tablet (768px) y movil (390px):
 
-- Dashboard
-- Facturas Contado
-- Solicitudes Transporte
-- Exportaciones
-- Indicadores
-- Preoperacional
-- Integracion
-- Conteo / Contar
-- Centro de Control
-- Mis Tareas
-- Login
+- Dashboard / Login / Facturas Contado / Solicitudes Transporte / Exportaciones
+- Indicadores / Preoperacional / Integracion / Conteo / Contar / Centro de Control / Mis Tareas / Usuarios / Auditoria
 
 ## Historial visual resumido
 
 - 2026-06-11: identidad modular inicial y Control Logistico CEDI.
-- 2026-06-16: Operativo Premium, luego Claro Ejecutivo Azul/Gris y CEDI Harmony.
-- 2026-06-17: CEDI Clean Platform para componentes reutilizables.
-- 2026-06-18: se adopta **Colorido Completo Enterprise** como direccion vigente y se abandona azul/gris como restriccion.
-- 2026-06-18: se corrige la direccion hacia **Colorido Neon Enterprise con assets**, usando `ModuleHero`, renders por modulo, KPIs con glow y tablas con rails.
-- 2026-06-18 (fix neon): el rediseno neon forzaba apariencia oscura con `!important` en `body`, cards, tablas, stats, status-band, slide-panel y detail-section **en ambos temas**, rompiendo el modo claro (todo salia navy) y dando exceso de glow. Correccion con criterio (sin agregar otra capa nueva):
-  - `body` vuelve a ser **coherente por tema** (claro = `--canvas` claro con halo sutil de modulo; oscuro = navy neon). Sin `!important`.
-  - Las superficies de contenido neon-oscuras se **acotan a `html[data-theme="dark"]`**; en claro caen a las superficies claras de la capa Colorido Enterprise.
-  - **Glow controlado:** halos de KPI (`opacity .16`, 118px), hero (sombra/borde menos saturados, radiales mas suaves), titulo del hero a `clamp(26-34px)` peso 850.
-  - **Asset 3D del hero:** de `cover` (recortaba/agrandaba) a `contain`, ancho `min(40%,400px)`, mascara para no tapar texto/acciones.
-  - El `ModuleHero` sigue siendo banda neon oscura en ambos temas (intencional, como la referencia).
-  - **Pendiente:** consolidar los tres bloques `:root` apilados en una sola fuente de verdad (riesgo medio, requiere migrar radii/tipografia/layout del primer `:root`).
-  - **Exportaciones:** filtro de **productividad por operario** (cliente, sobre datos ya cargados) ademas del filtro por fecha existente; sin cambios de API.
-  - **Exportaciones — KPI productividad acumulado:** el panel "Productividad por operario" tiene controles propios de **rango de dias** (Desde/Hasta + atajos Hoy/7/30 dias, default ultimos 7 dias), independientes del filtro de la lista; el endpoint `/api/exportaciones/stats` agrega el rango de forma **acumulada**.
+- 2026-06-16 / 17 / 18: iteraciones Operativo Premium → Claro Ejecutivo → CEDI Clean → Colorido Enterprise → Colorido Neon Enterprise con assets (claro+oscuro, color por modulo, heroes con render 3D).
+- 2026-06-19: **reescritura total del frontend a Dark Elegant (Obsidiana + Esmeralda)**: solo modo oscuro, acento unico esmeralda, estados con color propio, encabezados sin imagenes, fuentes Inter+Sora. Se elimina el tema claro, `ThemeToggle`, el color por modulo y `heroImage`.

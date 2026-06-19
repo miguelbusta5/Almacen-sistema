@@ -22,13 +22,13 @@ interface LogItem {
 
 const ACTION_META: Record<string, { label: string; color: string }> = {
   CREATE: { label: "Creó", color: "var(--brand)" },
-  UPDATE: { label: "Editó", color: "#0ea5e9" },
+  UPDATE: { label: "Editó", color: "#34D9F0" },
   DELETE: { label: "Eliminó", color: "var(--error)" },
 };
 const MODULE_META: Record<string, { label: string; color: string }> = {
-  muebles: { label: "Muebles", color: "#0ea5e9" },
+  muebles: { label: "Muebles", color: "#34D9F0" },
   transporte: { label: "Transporte", color: "#f97316" },
-  users: { label: "Usuarios", color: "#6366f1" },
+  users: { label: "Usuarios", color: "#5B9DFF" },
 };
 
 const inp: React.CSSProperties = {
@@ -209,10 +209,10 @@ export default function AuditoriaPage() {
             <table className="g-table" style={{ fontSize: 12 }}>
               <thead>
                 <tr style={{ borderBottom: "1px solid var(--border)", background: "var(--surface2)" }}>
-                  <th onClick={() => toggleLogSort("createdAt")} style={{ padding: "0.6rem 0.85rem", textAlign: "left", fontSize: 10, fontWeight: 700, letterSpacing: ".06em", textTransform: "uppercase", color: logSortCol === "createdAt" ? "#6366f1" : "var(--muted)", whiteSpace: "nowrap", cursor: "pointer", userSelect: "none" }}>
+                  <th onClick={() => toggleLogSort("createdAt")} style={{ padding: "0.6rem 0.85rem", textAlign: "left", fontSize: 10, fontWeight: 700, letterSpacing: ".06em", textTransform: "uppercase", color: logSortCol === "createdAt" ? "#5B9DFF" : "var(--muted)", whiteSpace: "nowrap", cursor: "pointer", userSelect: "none" }}>
                     Fecha y hora{logSortCol === "createdAt" ? (logSortDir === "asc" ? " ↑" : " ↓") : " ↕"}
                   </th>
-                  <th onClick={() => toggleLogSort("userName")} style={{ padding: "0.6rem 0.85rem", textAlign: "left", fontSize: 10, fontWeight: 700, letterSpacing: ".06em", textTransform: "uppercase", color: logSortCol === "userName" ? "#6366f1" : "var(--muted)", whiteSpace: "nowrap", cursor: "pointer", userSelect: "none" }}>
+                  <th onClick={() => toggleLogSort("userName")} style={{ padding: "0.6rem 0.85rem", textAlign: "left", fontSize: 10, fontWeight: 700, letterSpacing: ".06em", textTransform: "uppercase", color: logSortCol === "userName" ? "#5B9DFF" : "var(--muted)", whiteSpace: "nowrap", cursor: "pointer", userSelect: "none" }}>
                     Usuario{logSortCol === "userName" ? (logSortDir === "asc" ? " ↑" : " ↓") : " ↕"}
                   </th>
                   {["Acción", "Módulo", "Registro", "Detalle"].map(h => (

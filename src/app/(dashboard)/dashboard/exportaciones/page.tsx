@@ -100,6 +100,8 @@ export default function ExportacionesPage() {
   const [query, setQuery] = useState("");
   const [fecha, setFecha] = useState("");
   const [estado, setEstado] = useState("");
+  const [operarioFiltro, setOperarioFiltro] = useState("");
+  const [operarios, setOperarios] = useState<{ id: string; nombre: string }[]>([]);
   const [page, setPage] = useState(1);
   const [totalItems, setTotalItems] = useState(0);
   const PAGE_SIZE = 40;
@@ -121,6 +123,7 @@ export default function ExportacionesPage() {
     if (query.trim()) params.set("q", query.trim());
     if (fecha) params.set("fecha", fecha);
     if (estado) params.set("estado", estado);
+    if (operarioFiltro) params.set("usuarioId", operarioFiltro);
     params.set("page", String(targetPage));
     params.set("pageSize", String(PAGE_SIZE));
     const res = await fetch(`/api/exportaciones?${params.toString()}`);
@@ -146,6 +149,13 @@ export default function ExportacionesPage() {
     setLoadingStats(false);
   }
 
+  async function loadOperarios() {
+    if (!canManage) return;
+    const res = await fetch("/api/exportaciones/operarios");
+    const json = await res.json().catch(() => ({}));
+    if (res.ok && json.success) setOperarios(json.data ?? []);
+  }
+
   function aplicarRangoStats(desde: string, hasta: string) {
     setStatsDesde(desde);
     setStatsHasta(hasta);
@@ -155,6 +165,7 @@ export default function ExportacionesPage() {
   useEffect(() => { if (canUse) load(1); }, [canUse]); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => {
     if (!canManage) return;
+    loadOperarios();
     const hasta = hoyBogota();
     const desde = sumarDias(hasta, -6); // acumulado de los últimos 7 días por defecto
     setStatsDesde(desde);
@@ -315,7 +326,7 @@ export default function ExportacionesPage() {
   );
 
   const filters = (
-    <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1.4fr 180px 180px auto", gap: 10, marginBottom: 14 }}>
+    <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : (canManage ? "1.4fr 150px 150px 170px auto" : "1.4fr 180px 180px auto"), gap: 10, marginBottom: 14 }}>
       <div style={{ position: "relative" }}>
         <Search size={15} style={{ position: "absolute", left: 10, top: 11, color: "var(--muted)" }} />
         <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Buscar caja, PLU o descripcion" className="ds-input" style={{ paddingLeft: 32 }} />
@@ -326,6 +337,12 @@ export default function ExportacionesPage() {
         <option value="en-curso">En curso</option>
         <option value="finalizado">Finalizados</option>
       </select>
+      {canManage && (
+        <select value={operarioFiltro} onChange={(e) => setOperarioFiltro(e.target.value)} className="ds-input" aria-label="Filtrar por operario">
+          <option value="">Todos los operarios</option>
+          {operarios.map((o) => <option key={o.id} value={o.id}>{o.nombre}</option>)}
+        </select>
+      )}
       <button onClick={() => { setPage(1); load(1); }} style={{ height: 38, border: `1px solid ${COLOR}55`, color: COLOR, background: `${COLOR}10`, borderRadius: 8, fontWeight: 800, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 7 }}>
         <RefreshCw size={15} /> Filtrar
       </button>

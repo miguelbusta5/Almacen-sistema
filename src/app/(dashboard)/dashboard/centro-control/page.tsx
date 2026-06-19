@@ -475,7 +475,7 @@ export default function CentroControlPage() {
             <div>
               <div style={{
                 fontSize: 10, fontWeight: 700, letterSpacing: ".08em",
-                textTransform: "uppercase", color: "#3b82f6", marginBottom: 8,
+                textTransform: "uppercase", color: "#34D9F0", marginBottom: 8,
               }}>
                 INFORMACIÓN
               </div>
@@ -485,15 +485,15 @@ export default function CentroControlPage() {
                     <div
                       style={{
                         padding: "10px 12px", borderRadius: 10,
-                        background: "#3b82f60d", border: "1px solid #3b82f625",
+                        background: "#34D9F00d", border: "1px solid #34D9F025",
                         cursor: "pointer", transition: "opacity .12s",
                       }}
                       onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.opacity = ".8"; }}
                       onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.opacity = "1"; }}
                     >
                       <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 4 }}>
-                        <TrendingUp size={12} color="#3b82f6" />
-                        <span style={{ fontSize: 12, fontWeight: 700, color: "#3b82f6" }}>{item.title}</span>
+                        <TrendingUp size={12} color="#34D9F0" />
+                        <span style={{ fontSize: 12, fontWeight: 700, color: "#34D9F0" }}>{item.title}</span>
                       </div>
                       {item.context && (
                         <div style={{

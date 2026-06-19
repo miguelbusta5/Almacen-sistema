@@ -4,7 +4,6 @@ import Link from "next/link";
 import { signOut } from "next-auth/react";
 import { Bell, ChevronDown, Clock3, LogOut, Search, ShieldCheck, Wifi } from "lucide-react";
 import { useEffect, useState } from "react";
-import ThemeToggle from "./ThemeToggle";
 import Logo from "./Logo";
 import { useIsMobile } from "@/lib/useIsMobile";
 import { useCommandPalette } from "@/contexts/CommandPaletteContext";
@@ -32,9 +31,9 @@ function UserInitials({ name }: { name: string }) {
       justifyContent: "center",
       fontSize: 11,
       fontWeight: 800,
-      color: "#fff",
+      color: "#04130D",
       flexShrink: 0,
-      boxShadow: "0 8px 18px rgba(37,99,235,0.20)",
+      boxShadow: "0 6px 16px rgba(20,219,160,0.24)",
     }}>
       {initials}
     </div>
@@ -84,7 +83,7 @@ export default function Header({ user }: HeaderProps) {
         top: 0,
         zIndex: 100,
         flexShrink: 0,
-        boxShadow: "0 8px 22px rgba(15,23,42,0.055)",
+        boxShadow: "0 6px 20px rgba(0,0,0,0.30)",
       }}
     >
       {isMobile ? (
@@ -144,12 +143,11 @@ export default function Header({ user }: HeaderProps) {
             <Bell size={15} />
           </button>
           {notifCount > 0 && (
-            <span style={{ position: "absolute", top: -4, right: -4, background: "var(--brand)", color: "#fff", fontSize: 9, fontWeight: 800, width: 16, height: 16, borderRadius: 999, display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "var(--mono)", boxShadow: "0 0 0 3px var(--brand-tint)" }}>
+            <span style={{ position: "absolute", top: -4, right: -4, background: "var(--brand)", color: "#04130D", fontSize: 9, fontWeight: 800, width: 16, height: 16, borderRadius: 999, display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "var(--mono)", boxShadow: "0 0 0 3px var(--brand-tint)" }}>
               {notifCount > 9 ? "9+" : notifCount}
             </span>
           )}
         </Link>
-        <ThemeToggle />
 
         <div style={{ position: "relative" }}>
           <button

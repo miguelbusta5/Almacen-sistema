@@ -1,4 +1,3 @@
-import Image from "next/image";
 import type { CSSProperties, ReactNode } from "react";
 import { getModuleCssVars, getModuleTheme, type ModuleThemeKey } from "@/lib/moduleTheme";
 
@@ -10,10 +9,10 @@ type ModuleHeroMetric = {
 
 const TONE_VAR: Record<NonNullable<ModuleHeroMetric["tone"]>, string> = {
   module: "var(--mod-color)",
-  info: "var(--state-info, #38BDF8)",
-  success: "var(--state-success, #34D399)",
-  warning: "var(--state-warning, #FBBF24)",
-  danger: "var(--state-danger, #FB7185)",
+  info: "var(--state-info, #34D9F0)",
+  success: "var(--state-success, #2EE6A6)",
+  warning: "var(--state-warning, #FFC53D)",
+  danger: "var(--state-danger, #FF6B6B)",
 };
 
 export interface ModuleHeroProps {
@@ -28,6 +27,7 @@ export interface ModuleHeroProps {
   style?: CSSProperties;
 }
 
+// Encabezado de módulo — puramente tipográfico (sin imágenes), rail esmeralda.
 export function ModuleHero({
   moduleKey,
   title,
@@ -44,7 +44,10 @@ export function ModuleHero({
   const mergedStyle = { ...vars, ...style } as CSSProperties;
 
   return (
-    <section className={`module-hero${compact ? " module-hero-compact" : ""}${className ? ` ${className}` : ""}`} style={mergedStyle}>
+    <section
+      className={`module-hero${compact ? " module-hero-compact" : ""}${className ? ` ${className}` : ""}`}
+      style={mergedStyle}
+    >
       <div className="module-hero-main">
         <div className="module-hero-copy">
           {kicker && <div className="module-hero-kicker">{kicker}</div>}
@@ -69,19 +72,6 @@ export function ModuleHero({
 
         {actions && <div className="module-hero-actions">{actions}</div>}
       </div>
-
-      {!compact && (
-        <div className="module-hero-media" aria-hidden="true">
-          <Image
-            src={theme.heroImage}
-            alt=""
-            width={420}
-            height={240}
-            priority
-            sizes="(max-width: 760px) 0px, 34vw"
-          />
-        </div>
-      )}
     </section>
   );
 }

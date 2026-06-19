@@ -11,7 +11,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
   if (!session) redirect("/login");
 
   return (
-    <div className="g-shell" style={{ background: "var(--bg, #f5f7fa)" }}>
+    <div className="g-shell" style={{ background: "var(--bg)" }}>
       <Sidebar role={(session.user as any)?.role} />
       <div style={{ flex: 1, display: "flex", flexDirection: "column", minWidth: 0 }}>
         <Header user={session.user} />

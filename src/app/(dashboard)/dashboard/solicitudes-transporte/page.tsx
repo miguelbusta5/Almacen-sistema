@@ -87,20 +87,20 @@ interface Catalogos {
 
 const COLOR = getModuleColor("solicitudes-transporte");
 const ESTADO_COLOR: Record<Estado, string> = {
-  PENDIENTE: "#7C3AED",
-  REENVIADA: "#0891B2",
-  PROGRAMADA: "#2563EB",
-  EFECTUADA: "#16A34A",
-  RECHAZADA: "#DC2626",
-  CANCELADA: "#64748B",
+  PENDIENTE: "#FFC53D",
+  REENVIADA: "#34D9F0",
+  PROGRAMADA: "#5B9DFF",
+  EFECTUADA: "#2EE6A6",
+  RECHAZADA: "#FF6B6B",
+  CANCELADA: "#8B9398",
 };
 const SEMAFORO_COLOR: Record<string, string> = {
-  VENCIDO: "#DC2626",
-  ALERTA: "#D97706",
-  NORMAL: "#16A34A",
-  EFECTUADO: "#16A34A",
-  CANCELADO: "#64748B",
-  SIN_FECHA: "#7C3AED",
+  VENCIDO: "#FF6B6B",
+  ALERTA: "#FFC53D",
+  NORMAL: "#2EE6A6",
+  EFECTUADO: "#2EE6A6",
+  CANCELADO: "#8B9398",
+  SIN_FECHA: "#34D9F0",
 };
 const inputStyle: React.CSSProperties = {
   width: "100%",

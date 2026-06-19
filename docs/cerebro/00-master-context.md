@@ -74,19 +74,19 @@ git push origin master  # Deploy a producción (CI/CD automático)
 
 ## Identidad visual
 
-> Vigente desde 2026-06-18: **Colorido Neon Enterprise con assets**. Usar color por modulo, color por estado, headers dark/neon con renders 3D y base clara/oscura premium. El azul ya no limita toda la interfaz.
+> Vigente desde 2026-06-19: **Dark Elegant (Obsidiana + Esmeralda)**. Solo modo oscuro, un unico acento esmeralda, estados con color propio, encabezados sin imagenes. Ver [[ux-ui]] para la paleta completa.
 
 - **Marca:** Grupo Ambiente
 - **Nombre operativo UI:** Control Logistico CEDI
-- **Dirección:** interfaz enterprise viva tipo Vercel/Linear/Supabase/Notion, con identidad operativa CEDI, heroes neon y assets por modulo
-- **Tema modular:** `src/lib/moduleTheme.ts`
-  - Cada módulo define `color`, `tint`, `gradient`, `darkColor`, `darkTint`, `heroImage`, `heroGradient`, `glow` y contraste
-  - El color se aplica a navegación, encabezados, KPIs, tabs, rails de tabla, drawers y acciones principales
-- **Estados operativos:** rechazado, pendiente, recogido, entregado, enviado, efectuado y bloqueado tienen color propio independiente del módulo
-- **Componentes visuales nuevos:** `src/components/ui/cedi.tsx`, `src/components/ui/pageShell.tsx`, `src/components/ui/DataTable.tsx`, `src/components/ui/SlidePanel.tsx`
+- **Dirección:** dark elegant sobrio (obsidiana casi negra) con un solo acento esmeralda vivo reservado a accion/foco/estado activo
+- **Solo oscuro:** se elimino el tema claro, el `ThemeToggle` y el script de init de tema. `:root` es el tema oscuro y `<html data-theme="dark">` se fija como salvaguarda.
+- **Acento unico:** los modulos NO se diferencian por color (se distinguen por icono y tipografia). `src/lib/moduleTheme.ts` resuelve todos los modulos a esmeralda; ya no usa `heroImage`.
+- **Estados operativos** (rechazado, pendiente, recogido, entregado, enviado, efectuado, bloqueado) **si tienen color propio** y vivo, via tokens `--state-*` y variantes de `Badge`/`DataTable`.
+- **Sin imagenes en encabezados:** `ModuleHero` es puramente tipografico (sin asset). `public/ui/module-heroes/` ya no se referencia.
+- **Componentes visuales:** `src/components/ui/cedi.tsx`, `pageShell.tsx`, `DataTable.tsx`, `SlidePanel.tsx`, `ModuleHero.tsx`, `charts.tsx`.
 - **Indicadores externos:** Google Sheets se sincroniza a PostgreSQL; no se consulta desde el cliente.
-- **Logo:** `public/logo.png` — se invierte a blanco en modo oscuro
-- **Tipografía:** Variable CSS `--sans` (sistema) y `--mono` (código)
+- **Logo:** `public/logo.png` — se invierte a blanco sobre fondo oscuro
+- **Tipografía:** `Inter` (UI) + `Sora` (display, `--display`/`--logo`) + `JetBrains Mono` (`--mono`), via `<link>` en `layout.tsx`
 
 ---
 

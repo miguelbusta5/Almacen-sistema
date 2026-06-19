@@ -224,14 +224,14 @@ export default function UsuariosPage() {
                 <table className="g-table" style={{ fontSize: 13 }}>
                   <thead>
                     <tr style={{ borderBottom: "1px solid var(--border)", background: "var(--surface2)" }}>
-                      <th onClick={() => toggleSort("name")} style={{ padding: "0.7rem 0.9rem", textAlign: "left", fontSize: 10, fontWeight: 700, letterSpacing: ".06em", textTransform: "uppercase", color: sortCol === "name" ? "#6366f1" : "var(--muted)", cursor: "pointer", userSelect: "none" }}>
+                      <th onClick={() => toggleSort("name")} style={{ padding: "0.7rem 0.9rem", textAlign: "left", fontSize: 10, fontWeight: 700, letterSpacing: ".06em", textTransform: "uppercase", color: sortCol === "name" ? "#14DBA0" : "var(--muted)", cursor: "pointer", userSelect: "none" }}>
                         Nombre{sortCol === "name" ? (sortDir === "asc" ? " ↑" : " ↓") : " ↕"}
                       </th>
                       <th style={{ padding: "0.7rem 0.9rem", textAlign: "left", fontSize: 10, fontWeight: 700, letterSpacing: ".06em", textTransform: "uppercase", color: "var(--muted)" }}>Email</th>
-                      <th onClick={() => toggleSort("role")} style={{ padding: "0.7rem 0.9rem", textAlign: "left", fontSize: 10, fontWeight: 700, letterSpacing: ".06em", textTransform: "uppercase", color: sortCol === "role" ? "#6366f1" : "var(--muted)", cursor: "pointer", userSelect: "none" }}>
+                      <th onClick={() => toggleSort("role")} style={{ padding: "0.7rem 0.9rem", textAlign: "left", fontSize: 10, fontWeight: 700, letterSpacing: ".06em", textTransform: "uppercase", color: sortCol === "role" ? "#14DBA0" : "var(--muted)", cursor: "pointer", userSelect: "none" }}>
                         Rol{sortCol === "role" ? (sortDir === "asc" ? " ↑" : " ↓") : " ↕"}
                       </th>
-                      <th onClick={() => toggleSort("active")} style={{ padding: "0.7rem 0.9rem", textAlign: "left", fontSize: 10, fontWeight: 700, letterSpacing: ".06em", textTransform: "uppercase", color: sortCol === "active" ? "#6366f1" : "var(--muted)", cursor: "pointer", userSelect: "none" }}>
+                      <th onClick={() => toggleSort("active")} style={{ padding: "0.7rem 0.9rem", textAlign: "left", fontSize: 10, fontWeight: 700, letterSpacing: ".06em", textTransform: "uppercase", color: sortCol === "active" ? "#14DBA0" : "var(--muted)", cursor: "pointer", userSelect: "none" }}>
                         Estado{sortCol === "active" ? (sortDir === "asc" ? " ↑" : " ↓") : " ↕"}
                       </th>
                       <th style={{ padding: "0.7rem 0.9rem" }} />
@@ -421,14 +421,14 @@ function CatalogosPreoperacional({
     <section style={{ marginTop: "1.5rem", display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: 16 }}>
       <div style={{ gridColumn: "1/-1", background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 14, padding: "1rem", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          <Upload size={18} color="#6366f1" />
+          <Upload size={18} color="#14DBA0" />
           <div>
             <h2 style={{ fontSize: 15, fontWeight: 800, color: "var(--text)" }}>Maestro PLU</h2>
             <p style={{ fontSize: 12, color: "var(--muted)", marginTop: 2 }}>Importa MAESTRO.xlsx para autollenar descripción, fabricante, marca y precio.</p>
             {resultadoMaestro && <p style={{ fontSize: 12, color: "var(--brand)", marginTop: 4, fontWeight: 800 }}>{resultadoMaestro}</p>}
           </div>
         </div>
-        <label style={{ ...btnPri, flex: "0 0 auto", background: "#6366f1", minWidth: 160, textAlign: "center", opacity: importandoMaestro ? 0.7 : 1 }}>
+        <label style={{ ...btnPri, flex: "0 0 auto", background: "#14DBA0", minWidth: 160, textAlign: "center", opacity: importandoMaestro ? 0.7 : 1 }}>
           {importandoMaestro ? "Importando..." : "Importar Excel"}
           <input type="file" accept=".xlsx" disabled={importandoMaestro} onChange={(e) => importarMaestro(e.target.files?.[0] ?? null)} style={{ display: "none" }} />
         </label>

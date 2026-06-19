@@ -167,9 +167,9 @@ function ModalImportar({ ciclo, onClose, onImportado }: { ciclo: CicloConteo; on
         )}
         {error && <div style={{ color: "var(--error)", fontSize: 12 }}>{error}</div>}
         {resultado && (
-          <div style={{ background: "#f0fdf4", border: "1px solid #bbf7d0", borderRadius: 10, padding: "0.85rem 1rem" }}>
-            <div style={{ fontSize: 14, fontWeight: 700, color: "#15803d", marginBottom: 6 }}>✓ Importación exitosa</div>
-            <div style={{ fontSize: 13, color: "#166534" }}>Total: {resultado.totalLineas} líneas · Físicas: {resultado.fisicas} · Auto-fill: {resultado.autoFill}</div>
+          <div style={{ background: "var(--success-tint)", border: "1px solid color-mix(in srgb, var(--success) 28%, transparent)", borderRadius: 10, padding: "0.85rem 1rem" }}>
+            <div style={{ fontSize: 14, fontWeight: 700, color: "var(--success)", marginBottom: 6 }}>✓ Importación exitosa</div>
+            <div style={{ fontSize: 13, color: "var(--success)" }}>Total: {resultado.totalLineas} líneas · Físicas: {resultado.fisicas} · Auto-fill: {resultado.autoFill}</div>
           </div>
         )}
         <button onClick={upload} disabled={!file || uploading} style={{ padding: "0.65rem", background: (!file || uploading) ? "#94a3b8" : COLOR_CONTEO, color: "#fff", border: "none", borderRadius: 9, fontSize: 13, fontWeight: 700, cursor: "pointer" }}>
@@ -430,7 +430,7 @@ export default function ConteoPage() {
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(130px,1fr))", gap: "0.75rem", marginBottom: "0.75rem" }}>
             <Kpi label="Total líneas" val={activo.totalLineas} color={COLOR_CONTEO} />
             <Kpi label="Pendientes" val={activo.pendientes ?? 0} color="#94a3b8" />
-            <Kpi label="Contados" val={activo.contados ?? 0} color="#3b82f6" />
+            <Kpi label="Contados" val={activo.contados ?? 0} color="#34D9F0" />
             <Kpi label="En reconteo" val={activo.enReconteo ?? 0} color="var(--muted2)" />
             <Kpi label="OK" val={activo.ok ?? 0} color="var(--brand)" />
             <Kpi label="Novedades" val={activo.novedades ?? 0} color="var(--error)" />
