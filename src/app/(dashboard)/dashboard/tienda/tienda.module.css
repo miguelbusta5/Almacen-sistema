@@ -1,11 +1,6 @@
 /* Facturas Contado — estilos de página (dark elegant · obsidiana + esmeralda).
    Mismos nombres de clase que consume page.tsx; sin modo claro, sin violeta. */
 .page {
-  --factura-purple: var(--accent);
-  --factura-cyan: #34D9F0;
-  --factura-blue: #5B9DFF;
-  --factura-green: #2EE6A6;
-  --factura-line: var(--border);
   display: grid;
   gap: 18px;
   min-width: 0;
@@ -562,31 +557,6 @@
   background: linear-gradient(180deg, transparent, var(--surface) 35%);
 }
 
-/* ── Toast ─────────────────────────────────────────────────────────────── */
-.toast {
-  position: fixed;
-  right: 24px;
-  bottom: 24px;
-  z-index: 10000;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  border-radius: var(--r-md);
-  padding: 12px 16px;
-  color: var(--text);
-  background: var(--surface-elevated);
-  border: 1px solid var(--border-strong);
-  box-shadow: var(--shadow-xl);
-  font-size: 13px;
-  font-weight: 700;
-}
-
-.toastError {
-  background: var(--error);
-  color: #1A0606;
-  border-color: var(--error);
-}
-
 /* ── Responsive ────────────────────────────────────────────────────────── */
 @media (max-width: 1180px) {
   .kpiGrid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
@@ -611,5 +581,4 @@
   .rejectedActions button { flex: 1; }
   .pluRow { grid-template-columns: 1fr; }
   .modalActions { grid-template-columns: 1fr; }
-  .toast { left: 16px; right: 16px; bottom: 16px; }
 }

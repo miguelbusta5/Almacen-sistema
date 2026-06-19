@@ -15,6 +15,12 @@
   - [x] **A5 (quick win):** extraídos `<Toast>` y `<NetSuiteChip>` compartidos a `src/components/ui/`; migrados tienda/transporte/muebles/preoperacional (×2). Tokens en vez de hex (`var(--surface)`, `var(--info)`+`color-mix`). Fuera de alcance: inventario (mobile-first) y usuarios (🟡 pendiente, mismo bug `var(--text)`). `tsc`+271 tests+`build` verdes. Ver [[decisiones]]. — 2026-06-19
   - [x] **A1 (quick win):** header legacy `g-module-header` de muebles → `ModuleHero` (sin `--mod-color` hardcodeado). — 2026-06-19
   - [x] Limpiados los 3 worktrees stale (`git worktree remove --force` ×3 + prune). — 2026-06-19
+- [ ] **EPIC C — alinear Facturas Contado (tienda) al DS** (ver [[decisiones]], dirección: converger → compartido):
+  - [x] **Decisión de dirección** registrada: converger tienda→DS, incremental con QA visual del usuario. — 2026-06-19
+  - [x] **C1** Hero ya es `ModuleHero` · **C5** detalle ya usa `SlidePanel` · **C6** `tienda.module.css` limpio (`--factura-*` muertos fuera, `--factura-cyan`→`var(--info)`, `.toast` huérfano fuera). — 2026-06-19
+  - [ ] **C2** `.kpiCard` → `<Stat>` (decidir: enriquecer `<Stat>` con icono o promover `.kpiCard`). **Requiere QA visual.**
+  - [ ] **C3** pipeline de estados → promover al DS o simplificar con tokens (ya tokenizado vía A6). **QA visual.**
+  - [ ] **C4** `.facturaTable` → `<DataTable>` (`getRowColor` por estado; `DataTable` ya soporta render/sort/selección). **QA visual — es la pantalla insignia.**
 - [x] **Reescritura total a Dark Elegant (Obsidiana + Esmeralda)**: solo modo oscuro, acento unico esmeralda, estados con color propio, encabezados sin imagenes, fuentes Inter+Sora. Backend intacto. `tsc` + `build` + 1176 tests verdes. Ver [[decisiones]] y [[ux-ui]].
 - [x] Eliminado tema claro, `ThemeToggle` y script de init de tema; `moduleTheme.ts` colapsado a esmeralda sin `heroImage`; `tienda.module.css` reescrito dark; charts y studio re-tematizados.
 - [x] Limpieza de colores hardcodeados (violeta/azul/fondos claros) en todas las paginas hacia tokens/esmeralda.

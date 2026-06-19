@@ -428,7 +428,7 @@ export function FacturasTable({
                         {d.estado === "ENTREGADO_CEDI" && canChangeOperationalState && (
                           <>
                             {!d.guardadoPendiente && (
-                              <button type="button" className="ds-btn ds-btn-sm" style={{ background: "color-mix(in srgb, var(--factura-cyan, #06b6d4) 13%, transparent)", color: "var(--info)" }} onClick={(e) => { e.stopPropagation(); onGuardado(d); }}>
+                              <button type="button" className="ds-btn ds-btn-sm" style={{ background: "color-mix(in srgb, var(--info) 13%, transparent)", color: "var(--info)" }} onClick={(e) => { e.stopPropagation(); onGuardado(d); }}>
                                 <UserPlus size={12} />Guardado
                               </button>
                             )}

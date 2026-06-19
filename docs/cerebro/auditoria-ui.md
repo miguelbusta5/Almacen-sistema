@@ -98,7 +98,7 @@ tokens `--state-*`. Además hay paletas mezcladas (vieja vs nueva).
 | **Mapa de estado con hex NUEVO pero literal** (no token) | 🟡 | `solicitudes-transporte/page.tsx:90-103` (`#FFC53D/#34D9F0/#5B9DFF/#2EE6A6/#FF6B6B/#8B9398`) | Colores correctos, mecanismo incorrecto: reemplazar literales por `var(--state-*)`/`var(--warning)` etc. |
 | **Acento esmeralda hardcodeado** `#14DBA0` como literal | 🟡 | `usuarios/page.tsx:227,231,234,424,431` · `mis-tareas/page.tsx:164` · `muebles/page.tsx:259` · varios charts | Usar `var(--accent)`. |
 | **Grises/fallbacks fuera de token** (`#64748b`, `#94a3b8`, `#6b7280`, `#6B7280`, `#f97316`) | 🟡 | `usuarios/page.tsx:53-57` · `auditoria/page.tsx:30,225-226` · `centro-control/page.tsx:164` · `dashboard/page.tsx:49` · `conteo/page.tsx:432` | Usar `var(--muted)`/`var(--faint)`/`--state-*`. |
-| **`tienda.module.css` define `--factura-*` propios** duplicando state tokens | 🟢 | `tienda/tienda.module.css:5-7` (`--factura-cyan/blue/green`) | EPIC C: reemplazar por `--state-picked/sent/cedi`. |
+| ~~**`tienda.module.css` define `--factura-*` propios**~~ | ✅ RESUELTO 2026-06-19 | `tienda.module.css` | C6: `--factura-*` muertos eliminados; `--factura-cyan`→`var(--info)`. |
 
 ---
 

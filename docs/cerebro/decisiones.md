@@ -1,5 +1,29 @@
 # Decisiones de Arquitectura y Producto
 
+## 2026-06-19 - EPIC C: dirección de alineación de Facturas Contado (tienda) al design system
+
+**Decisión de dirección (la que pedía el handoff registrar al inicio):**
+- **Converger `tienda` → componentes compartidos del DS** (no promover las piezas de tienda al DS).
+  Motivo: el resto del sistema ya usa `ModuleHero`/`<Stat>`/`<DataTable>`/`SlidePanel`; promover
+  `.kpiCard`/`.facturaTable`/`pipeline` obligaría a tocar todos los módulos. Converger es más contenido.
+- **Excepción:** donde el componente compartido sea más pobre que la pieza de tienda (p. ej. `<Stat>`
+  no tiene icono, y `.kpiCard` sí), **enriquecer el componente del DS** en vez de mantener CSS a medida.
+- **Ejecución incremental con QA visual del usuario entre subtareas.** Es la pantalla insignia y va
+  directo a producción; la verificación headless no autentica (Auth.js `MissingSecret`), así que cada
+  subtarea visual la valida el usuario en su :3100 antes de avanzar.
+
+**Estado de subtareas:**
+- **C1 (Hero → ModuleHero):** ✅ ya estaba (`tienda/page.tsx:216`, `moduleKey="tienda"` + acciones). Las métricas viven en el KPI grid de abajo (no se duplican en el hero).
+- **C5 (Detalle → SlidePanel/DetailSection):** ✅ ya estaba.
+- **C6 (limpiar `tienda.module.css`):** ✅ hecho ahora — eliminados `--factura-purple/cyan/blue/green/line` (muertos salvo `--factura-cyan`, que se reemplazó por `var(--info)` en `_components.tsx:431`) y las clases `.toast`/`.toastError` huérfanas (el toast ya usa el `<Toast>` compartido de A5). Sin cambio de render.
+- **C2 (`.kpiCard` → `<Stat>`), C3 (pipeline al DS o tokens), C4 (`.facturaTable` → `<DataTable>`):** ⏳ **pendientes** — son los cambios visuales sobre la pantalla insignia; se dejan para la sesión con QA visual. `DataTable` (`src/components/ui/DataTable.tsx`) ya soporta `columns` con `render`, `getRowColor`, sort, `isRowSelected` y empty/skeleton, así que C4 es viable. Para C2, decidir entre enriquecer `<Stat>` con icono o promover `.kpiCard`.
+
+**Consecuencias:**
+- Validado C6: `tsc` + 271 tests + `build` verdes.
+- `--state-*` ya cubre los colores de estado de tienda desde A6 (los `--factura-*` eran duplicados).
+
+**Archivos afectados:** `src/app/(dashboard)/dashboard/tienda/{_components.tsx,tienda.module.css}`, `docs/cerebro/{decisiones,pendientes,auditoria-ui}.md`.
+
 ## 2026-06-19 - A5 + A1: componentes compartidos Toast/NetSuiteChip y header de muebles a ModuleHero
 
 **Decision (A5):**
