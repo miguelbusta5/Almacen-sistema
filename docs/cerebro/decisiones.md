@@ -2,10 +2,10 @@
 
 ## 2026-06-20 - Fix global: el SlidePanel cerrado generaba scroll horizontal (recuadro vacío)
 
-**Decisión:**
-- Se añade `overflow-x: clip` a `html` y `body` (`globals.css`) para que el `SlidePanel` cerrado —que **no se desmonta** y vive fuera de pantalla con `transform: translateX(width+20px)`— no genere scroll horizontal de página.
-- Se usa `clip` (no `hidden`) a propósito: `hidden` convertiría al body en scroll-container y forzaría `overflow-y: auto`, rompiendo el sidebar `position: sticky`; `clip` recorta sin crear scroll-container (no coacciona el eje y).
-- El `SlidePanel` cerrado pasa además a `pointer-events: none` + `inert` (el panel invisible no captura foco ni clicks).
+**Decisión (fix real):**
+- Se envuelve el `SlidePanel` en un **clip-host** `position: fixed; inset: 0; overflow: hidden; transform: translateZ(0); pointer-events: none` (`SlidePanel.tsx`). El `transform` hace al host bloque contenedor de descendientes `position: fixed`, por lo que su `overflow: hidden` **sí** recorta el panel cerrado off-screen → sin scroll horizontal de página ni "recuadro vacío"; también recorta el bottom-sheet móvil.
+- **Por qué no bastó el primer intento** (`overflow-x: clip` en `html`/`body`): un `position: fixed` tiene como bloque contenedor el **viewport**, no `body`/`html`, así que el overflow del root no lo recorta. Ese `clip` se **conserva** como red de seguridad para overflow de elementos no-fixed (con `clip`, no `hidden`, para no romper el sidebar `sticky`).
+- El `SlidePanel` cerrado pasa además a `pointer-events: none` + `inert` (no captura foco ni clicks).
 
 **Contexto:**
 - QA visual del usuario en **producción**: el "recuadro vacío" (BUG-001) y la tabla "cortada" eran el **mismo** síntoma: la página se podía desplazar a la derecha hasta el panel cerrado vacío, recortando de paso la columna Acciones. Afecta a **todos** los módulos con `SlidePanel`. Ver [[bugs]] BUG-001 (actualización 2026-06-20).

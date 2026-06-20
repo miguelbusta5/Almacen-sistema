@@ -106,9 +106,22 @@ export function SlidePanel({
     return () => window.removeEventListener("keydown", h);
   }, [open, onClose]);
 
-  // No unmount — solo transform para mantener la animación fluida
+  // No unmount — solo transform para mantener la animación fluida.
+  // Clip-host fixed: como un elemento `position: fixed` tiene al viewport como bloque
+  // contenedor, `overflow` en body/html NO lo recorta. Este host fixed con `transform`
+  // SÍ es bloque contenedor de descendientes fixed, y su `overflow: hidden` recorta el
+  // panel cuando está cerrado y fuera de pantalla → no genera scroll de página (ni el
+  // "recuadro vacío"). `pointer-events: none` deja pasar los clics a la página.
   return (
     <>
+      <div
+        aria-hidden={open ? undefined : true}
+        style={{
+          position: "fixed", inset: 0, zIndex: 500,
+          overflow: "hidden", transform: "translateZ(0)",
+          pointerEvents: "none",
+        }}
+      >
       {/* Overlay mobile */}
       {open && (
         <div
@@ -118,6 +131,7 @@ export function SlidePanel({
             background: "rgba(0,0,0,0.25)",
             backdropFilter: "blur(2px)",
             display: "none", // oculto en desktop, visible en mobile via media query
+            pointerEvents: "auto",
           }}
           className="slide-panel-overlay"
         />
@@ -207,6 +221,7 @@ export function SlidePanel({
             {primaryAction && <div style={{ flex: 1 }}>{primaryAction}</div>}
           </div>
         )}
+      </div>
       </div>
 
       {/* CSS para mobile bottom sheet */}

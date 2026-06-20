@@ -72,6 +72,22 @@
   patrón sticky-en-celda + collapse **solo** estaba en tienda; las demás tablas (`.ds-table`/`.cedi-table`)
   usan collapse pero sin celdas sticky. La tabla volvió a su layout original (alineado).
 
+### Corrección 2026-06-20 (fix real del recuadro: clip-host, no clip en body)
+
+- El `overflow-x: clip` en `html`/`body` **no recortaba** el panel: un elemento `position: fixed`
+  tiene como **bloque contenedor el viewport**, no `body`/`html`, así que el `overflow` del root no
+  lo afecta. El usuario seguía viendo el recuadro vacío al desplazar.
+- **Fix real:** se envuelve el `SlidePanel` en un **clip-host** `position: fixed; inset: 0;
+  overflow: hidden; transform: translateZ(0); pointer-events: none`. El `transform` lo convierte en
+  bloque contenedor de descendientes `fixed`, así que su `overflow: hidden` **sí** recorta el panel
+  cerrado off-screen → sin scroll horizontal de página ni "recuadro vacío". También recorta el caso
+  móvil (bottom-sheet `translateY(100%)`). `pointer-events: none` deja pasar los clics; overlay y panel
+  los reactivan. El `overflow-x: clip` de `html`/`body` se conserva como red de seguridad para overflow
+  de elementos no-fixed.
+- Una vez sin scroll de página, la tabla (~1180px) cabe en el cap de 1400px y muestra Acciones completa.
+- **Validado:** `tsc` + 271 tests + `build` verdes. QA visual del usuario pendiente.
+- **Archivos:** `src/components/ui/SlidePanel.tsx`.
+
 ---
 
 ## Plantilla para registrar un bug
