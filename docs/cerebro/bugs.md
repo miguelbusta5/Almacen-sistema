@@ -87,11 +87,16 @@
 - Una vez sin scroll de página, la tabla seguía cortando la columna Acciones por su ancho (~290px de
   botones). **Resuelto aparte (2026-06-20):** se quitó la columna Acciones inline y las acciones pasaron
   al `SlidePanel` de detalle (+Eliminar en el panel). Ver [[decisiones]].
-- **Corrimiento de columnas (encabezado vs dato), resuelto 2026-06-20:** el CSS bespoke `.facturaTable`
-  desincronizaba el ancho de columnas entre `thead`/`tbody` (cada encabezado sobre el dato anterior;
-  `thead` más angosto que `tbody`). Quitar la columna vacía del ícono de alerta **no bastó**. Fix
-  definitivo: la tabla pasó a las clases **probadas `.ds-table`** (patrón de `solicitudes-transporte`,
-  que alinea bien). Se borró el CSS bespoke `.facturaTable`/`.row`/`.tableScroll`/`.sortable`.
+- **Corrimiento de columnas (encabezado vs dato):** el cuerpo aparecía corrido ~1 columna a la derecha
+  del encabezado (`thead` más angosto que `tbody`). Intentos que **no** lo cerraron: quitar la columna
+  Acciones, quitar la columna vacía del ícono de alerta, y migrar a `.ds-table`. Estructura verificada
+  correcta (5 `th` = 5 `td`, sin `colSpan`); sin regla global que rompa el layout; `.ds-table` alinea en
+  otros módulos. Era un desincronizado de `table-layout: auto` no atribuible a una regla concreta.
+- **Fix definitivo (2026-06-20):** layout **determinista** — `table-layout: fixed` + `<colgroup>` con
+  anchos explícitos (Fecha 13% / Centro 18% / Doc 15% / Cliente 34% / Estado 20%) en la tabla de
+  `tienda/_components.tsx`. Con `table-layout: fixed` los anchos los fija solo el `colgroup`, idénticos
+  para `thead` y `tbody`, así que el desincronizado es **estructuralmente imposible**. Se agregó
+  `overflow-wrap: anywhere` en Doc/Cliente para que contenido largo envuelva sin desbordar la columna.
 - **Validado:** `tsc` + 271 tests + `build` verdes. QA visual del usuario pendiente.
 - **Archivos:** `src/components/ui/SlidePanel.tsx`; `tienda/{_components.tsx,page.tsx,tienda.module.css}`.
 

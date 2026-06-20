@@ -341,7 +341,14 @@ export function FacturasTable({
         </div>
       ) : (
         <div style={{ overflowX: "auto" }}>
-          <table className="ds-table" style={{ width: "100%", borderCollapse: "collapse", minWidth: 820 }}>
+          <table className="ds-table" style={{ width: "100%", borderCollapse: "collapse", tableLayout: "fixed", minWidth: 760 }}>
+            <colgroup>
+              <col style={{ width: "13%" }} />
+              <col style={{ width: "18%" }} />
+              <col style={{ width: "15%" }} />
+              <col style={{ width: "34%" }} />
+              <col style={{ width: "20%" }} />
+            </colgroup>
             <thead>
               <tr>
                 <Th col="fechaCreacion" label="Fecha" />
@@ -371,11 +378,11 @@ export function FacturasTable({
                       </span>
                     </td>
                     <td style={{ fontWeight: 800 }}>{d.centroCostos}</td>
-                    <td>
+                    <td style={{ overflowWrap: "anywhere" }}>
                       <div className={styles.docCode}>{d.numeroDocumento}</div>
                       <div className={styles.mutedLine}>#{d.consecutivo}</div>
                     </td>
-                    <td>
+                    <td style={{ overflowWrap: "anywhere" }}>
                       <div className={styles.clientName}>{d.clienteNombre}</div>
                       {d.clienteTelefono && <div className={styles.mutedLine}>{d.clienteTelefono}</div>}
                     </td>
