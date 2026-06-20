@@ -42,6 +42,27 @@
   Validado: `tsc` + 1176 tests + `npm run build` verdes.
 - **Fecha resolución:** 2026-06-19
 
+### Actualización 2026-06-20 — causa raíz real (QA del usuario en producción)
+
+- **Reaparición:** el usuario reportó el "recuadro vacío" **en producción** (matec-cedi.vercel.app),
+  donde no hay caché de Turbopack → el diagnóstico previo era incompleto.
+- **Causa raíz real:** el `SlidePanel` **nunca se desmonta** (`SlidePanel.tsx:109`, "No unmount — solo
+  transform"). Cerrado, queda montado y se empuja fuera de pantalla con `transform: translateX(width+20px)`
+  (`SlidePanel.tsx:140`). Un elemento `position: fixed` desplazado más allá del borde derecho **genera
+  scroll horizontal de página**; al desplazar a la derecha aparecía el panel cerrado, **vacío** (porque
+  `panelItem` es `null` → sin `children`, `title=""`). El mismo overflow horizontal recortaba la columna
+  Acciones de la tabla (la página entera se podía correr a la derecha). **Afectaba a todos los módulos
+  con `SlidePanel`** (tienda, transporte, solicitudes, preoperacional, integracion, muebles, home).
+- **Solución (global):** `overflow-x: clip` en `html`+`body` (`globals.css`) — `clip` y no `hidden` para
+  no convertir el body en scroll-container ni romper el sidebar `sticky`. Además el `SlidePanel` cerrado
+  pasa a `pointer-events: none` + `inert` (no foco/click del panel invisible).
+- **Solución (tienda, tabla):** columna Acciones `position: sticky; right: 0` con fondo opaco (+ override
+  de hover) en `tienda.module.css`, para que los botones queden visibles aunque la tabla tenga scroll
+  interno en pantallas angostas.
+- **Validado:** `tsc` + 271 tests + `build` verdes. QA visual del usuario en :3100 pendiente de confirmar.
+- **Archivos:** `src/app/globals.css`, `src/components/ui/SlidePanel.tsx`,
+  `src/app/(dashboard)/dashboard/tienda/tienda.module.css`.
+
 ---
 
 ## Plantilla para registrar un bug

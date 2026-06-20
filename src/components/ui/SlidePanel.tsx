@@ -127,6 +127,7 @@ export function SlidePanel({
       <div
         ref={panelRef}
         className="slide-panel"
+        inert={open ? undefined : true}
         style={{
           position: "fixed",
           top: 0, right: 0,
@@ -140,6 +141,7 @@ export function SlidePanel({
           transform: open ? "translateX(0)" : `translateX(${width + 20}px)`,
           transition: "transform .28s cubic-bezier(.16,1,.3,1), box-shadow .28s ease",
           willChange: "transform",
+          pointerEvents: open ? "auto" : "none",
         } as CSSProperties}
       >
         {/* ── Header del panel ── */}

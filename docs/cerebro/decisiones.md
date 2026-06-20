@@ -1,5 +1,23 @@
 # Decisiones de Arquitectura y Producto
 
+## 2026-06-20 - Fix global: el SlidePanel cerrado generaba scroll horizontal (recuadro vacío)
+
+**Decisión:**
+- Se añade `overflow-x: clip` a `html` y `body` (`globals.css`) para que el `SlidePanel` cerrado —que **no se desmonta** y vive fuera de pantalla con `transform: translateX(width+20px)`— no genere scroll horizontal de página.
+- Se usa `clip` (no `hidden`) a propósito: `hidden` convertiría al body en scroll-container y forzaría `overflow-y: auto`, rompiendo el sidebar `position: sticky`; `clip` recorta sin crear scroll-container (no coacciona el eje y).
+- El `SlidePanel` cerrado pasa además a `pointer-events: none` + `inert` (el panel invisible no captura foco ni clicks).
+
+**Contexto:**
+- QA visual del usuario en **producción**: el "recuadro vacío" (BUG-001) y la tabla "cortada" eran el **mismo** síntoma: la página se podía desplazar a la derecha hasta el panel cerrado vacío, recortando de paso la columna Acciones. Afecta a **todos** los módulos con `SlidePanel`. Ver [[bugs]] BUG-001 (actualización 2026-06-20).
+- El diagnóstico previo de BUG-001 (caché de Turbopack) era incompleto: en prod no hay Turbopack.
+
+**Consecuencias:**
+- Arreglo transversal sin tocar cada página. Riesgo bajo: `clip` no rompe `sticky`; el scroll interno de tablas (`.tableScroll`) es independiente.
+- Tienda además: columna Acciones `sticky right` (ver `tienda.module.css`) para que los botones queden visibles con scroll interno en pantallas angostas.
+- Validado: `tsc` + 271 tests + `build` verdes. QA visual del usuario pendiente.
+
+**Archivos afectados:** `src/app/globals.css`, `src/components/ui/SlidePanel.tsx`, `src/app/(dashboard)/dashboard/tienda/tienda.module.css`, `docs/cerebro/{bugs,decisiones,pendientes}.md`.
+
 ## 2026-06-20 - EPIC C / C2: KPIs de tienda migrados a `<Stat>` (DS enriquecido con `icon`)
 
 **Decisión:**

@@ -62,6 +62,7 @@
 ### Modulo Tienda / Facturas Contado
 
 - [x] **EPIC B — Fix drawer de detalle vacio** ([[bugs]] BUG-001): `abrirPanel` endurecido (render desde la fila, merge del detalle, sin blanqueo ante fallo, guarda de carrera), guardas de titulo/subtitulo (quita el `· #`) y skeleton de historial. Causa raiz: cache viejo de Turbopack de un dev server de larga vida en :3100. `tsc`+1176 tests+`build` verdes. - 2026-06-19
+- [x] **BUG-001 causa raíz real (prod, 2026-06-20):** el `SlidePanel` cerrado (no se desmonta, vive off-screen con `translateX`) generaba **scroll horizontal de página** → recuadro vacío + tabla recortada, en **todos** los módulos con drawer. Fix global `overflow-x: clip` en `html`/`body` + `SlidePanel` cerrado `inert`/`pointer-events:none`; tienda: columna Acciones `sticky right`. `tsc`+271 tests+`build` verdes. **QA visual del usuario pendiente.** Ver [[bugs]] y [[decisiones]]. — 2026-06-20
 - [x] Redisenio visual modular de Facturas Contado como pantalla patron: componentes locales, CSS module, hero neon, KPIs, pipeline, filtros, tabla premium y drawer de detalle - 2026-06-19
 - [ ] QA visual con sesion real de Facturas Contado en desktop/tablet/mobile y claro/oscuro; la captura headless local llego a login por falta de sesion compartida.
 - [ ] Verificar en produccion que el sidebar no muestra Logistica, Rutas, GPS ni Mi Ruta

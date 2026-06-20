@@ -227,6 +227,29 @@
   vertical-align: middle;
 }
 
+/* Acciones siempre visibles: columna fija a la derecha aunque la tabla scrollee */
+.facturaTable th:last-child,
+.facturaTable td:last-child {
+  position: sticky;
+  right: 0;
+  border-left: 1px solid var(--border);
+}
+
+.facturaTable th:last-child {
+  z-index: 2;
+  background: var(--surface2);
+}
+
+.facturaTable td:last-child {
+  z-index: 1;
+  background: var(--surface);
+}
+
+.row:hover td:last-child,
+.rowSelected td:last-child {
+  background: color-mix(in srgb, var(--row-color) 10%, var(--surface));
+}
+
 .row {
   --row-color: var(--mod-color);
   position: relative;
