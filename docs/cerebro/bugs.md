@@ -86,8 +86,12 @@
   de elementos no-fixed.
 - Una vez sin scroll de página, la tabla seguía cortando la columna Acciones por su ancho (~290px de
   botones). **Resuelto aparte (2026-06-20):** se quitó la columna Acciones inline y las acciones pasaron
-  al `SlidePanel` de detalle (+Eliminar en el panel); la tabla (6 columnas, ~960px) cabe y no se corta.
-  Ver [[decisiones]].
+  al `SlidePanel` de detalle (+Eliminar en el panel). Ver [[decisiones]].
+- **Corrimiento de columnas (encabezado vs dato), resuelto 2026-06-20:** el CSS bespoke `.facturaTable`
+  desincronizaba el ancho de columnas entre `thead`/`tbody` (cada encabezado sobre el dato anterior;
+  `thead` más angosto que `tbody`). Quitar la columna vacía del ícono de alerta **no bastó**. Fix
+  definitivo: la tabla pasó a las clases **probadas `.ds-table`** (patrón de `solicitudes-transporte`,
+  que alinea bien). Se borró el CSS bespoke `.facturaTable`/`.row`/`.tableScroll`/`.sortable`.
 - **Validado:** `tsc` + 271 tests + `build` verdes. QA visual del usuario pendiente.
 - **Archivos:** `src/components/ui/SlidePanel.tsx`; `tienda/{_components.tsx,page.tsx,tienda.module.css}`.
 

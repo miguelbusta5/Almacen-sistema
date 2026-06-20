@@ -64,7 +64,7 @@ estilos** de tabla con densidades, rails y hover distintos.
 
 | Estilo | Módulos | Sev | Archivo:línea | Propuesta |
 |---|---|---|---|---|
-| `.facturaTable` (módulo CSS propio) | tienda | 🟡 (parcial 2026-06-20) | `tienda/_components.tsx` | Se quitó la columna Acciones inline (acciones → `SlidePanel`), así la tabla cabe y deja de cortarse. Falta C4: migrar a `<DataTable>` con `getRowColor` por estado. |
+| ~~`.facturaTable` (módulo CSS propio)~~ → `.ds-table` | tienda | ✅ RESUELTO 2026-06-20 | `tienda/_components.tsx` | La tabla pasó a las clases probadas `.ds-table` (CSS bespoke desincronizaba columnas thead/tbody). Acciones → `SlidePanel`. Opcional C4: migrar al componente `<DataTable>`. |
 | `<table>` inline (sin clase, `borderCollapse` a mano) | exportaciones, integracion, preoperacional, transporte, usuarios(2ª) | 🔴 | `exportaciones/page.tsx:372,510` · `integracion/page.tsx:326,589,713` · `preoperacional/page.tsx:566` · `usuarios/page.tsx:487` | Migrar a `<DataTable>`/`.ds-table`. |
 | `.g-table` (legacy) | usuarios, auditoria | 🟡 | `usuarios/page.tsx:224` · `auditoria/page.tsx:209` | Unificar a `.ds-table`. Sort: hoy `<th>` con estilos inline y color activo literal (`#14DBA0`/`#5B9DFF`). |
 | `.ds-table` ✓ | solicitudes-transporte | 🟢 | `solicitudes-transporte/page.tsx:609` | Patrón más cercano al DS; tomar como referencia. |

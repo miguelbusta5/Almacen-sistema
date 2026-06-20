@@ -320,7 +320,7 @@ export function FacturasTable({
   const Th = ({ col, label }: { col: string; label: string }) => {
     const active = sortCol === col;
     return (
-      <th className={styles.sortable} onClick={() => onSort(col)}>
+      <th className="sortable" onClick={() => onSort(col)}>
         {label} {active ? (sortDir === "asc" ? "↑" : "↓") : "↕"}
       </th>
     );
@@ -340,8 +340,8 @@ export function FacturasTable({
           />
         </div>
       ) : (
-        <div className={styles.tableScroll}>
-          <table className={styles.facturaTable}>
+        <div style={{ overflowX: "auto" }}>
+          <table className="ds-table" style={{ width: "100%", borderCollapse: "collapse", minWidth: 820 }}>
             <thead>
               <tr>
                 <Th col="fechaCreacion" label="Fecha" />
@@ -358,7 +358,7 @@ export function FacturasTable({
                 return (
                   <tr
                     key={d.id}
-                    className={`${styles.row} ${selectedId === d.id ? styles.rowSelected : ""}`}
+                    className={selectedId === d.id ? "is-selected" : undefined}
                     style={{ "--row-color": ESTADO_DESPACHO_COLOR[d.estado] } as CSSProperties}
                     onClick={() => onOpen(d)}
                   >
