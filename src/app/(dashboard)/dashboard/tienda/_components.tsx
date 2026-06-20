@@ -342,6 +342,7 @@ export function FacturasTable({
   selectedId,
   onOpen,
   onClearFilters,
+  debug = false,
 }: {
   loading: boolean;
   items: DespachoTienda[];
@@ -349,6 +350,7 @@ export function FacturasTable({
   selectedId?: string | null;
   onOpen: (d: DespachoTienda) => void;
   onClearFilters: () => void;
+  debug?: boolean;
 }) {
   // Columnas según el contrato de tabla del SOT §9:
   // FECHA · CENTRO COSTOS · DOC/CONSECUTIVO · CLIENTE · ESTADO (badge por fila).
@@ -359,6 +361,8 @@ export function FacturasTable({
       sortable: true,
       sortValue: (d) => d.fechaCreacion,
       width: "13%",
+      testId: "fecha-cell",
+      debugLabel: "Fecha",
       render: (d) => {
         const critico = d.estado === "CREADO_TIENDA" && horasDesde(d.createdAt) >= 24;
         return (
@@ -381,6 +385,8 @@ export function FacturasTable({
       sortable: true,
       sortValue: (d) => d.centroCostos,
       width: "16%",
+      testId: "centro-cell",
+      debugLabel: "Centro",
       render: (d) => (
         <span className={styles.cellTruncate} style={{ display: "block", fontWeight: 600 }} title={d.centroCostos}>
           {d.centroCostos}
@@ -391,6 +397,8 @@ export function FacturasTable({
       key: "documento",
       header: "Doc. / consecutivo",
       width: "21%",
+      testId: "doc-cell",
+      debugLabel: "Doc",
       render: (d) => (
         <>
           <div className={`${styles.docCode} ${styles.cellTruncate}`} title={d.numeroDocumento}>{d.numeroDocumento}</div>
@@ -404,6 +412,8 @@ export function FacturasTable({
       sortable: true,
       sortValue: (d) => d.clienteNombre,
       width: "30%",
+      testId: "cliente-cell",
+      debugLabel: "Cliente",
       render: (d) => {
         const sub = [d.clienteDocumento, d.clienteTelefono].filter(Boolean).join(" · ");
         return (
@@ -420,6 +430,8 @@ export function FacturasTable({
       sortable: true,
       sortValue: (d) => ESTADO_DESPACHO_LABEL[d.estado] ?? "Sin estado",
       width: "20%",
+      testId: "estado-cell",
+      debugLabel: "Estado",
       render: (d) => <EstadoBadge estado={d.estado} />,
     },
   ];
@@ -439,6 +451,7 @@ export function FacturasTable({
         minWidth={760}
         skeletonRows={8}
         ariaLabel="Facturas contado"
+        debug={debug}
         defaultSort={{ key: "fechaCreacion", dir: "desc" }}
         legend={<StateLegend items={items} />}
         empty={{

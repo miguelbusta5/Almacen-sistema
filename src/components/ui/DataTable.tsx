@@ -21,6 +21,10 @@ export interface Column<T> {
   width?: number | string;
   /** Trunca el contenido en una línea (ellipsis + title). Solo aplica a celdas sin `render`. */
   truncate?: boolean;
+  /** data-testid permanente en cada `<td>` de esta columna (para tests de render/QA). */
+  testId?: string;
+  /** Etiqueta que muestra el modo debug dentro de la celda (default = `key`). */
+  debugLabel?: string;
 }
 
 type SortState = { key: string; dir: "asc" | "desc" };
@@ -50,6 +54,8 @@ export interface DataTableProps<T> {
   /** Ayuda secundaria bajo la tabla (p. ej. leyenda de estados). Nunca sustituye el badge por fila. */
   legend?: ReactNode;
   ariaLabel?: string;
+  /** Modo debug: cada celda antepone el nombre de su columna (diagnóstico de mapeo/corrimiento). */
+  debug?: boolean;
 }
 
 export function DataTable<T>({
@@ -68,6 +74,7 @@ export function DataTable<T>({
   defaultSort,
   legend,
   ariaLabel,
+  debug,
 }: DataTableProps<T>) {
   const [sort, setSort] = useState<SortState | null>(defaultSort ?? null);
 
@@ -172,7 +179,14 @@ export function DataTable<T>({
                         raw
                       );
                     return (
-                      <td key={c.key} style={{ textAlign: c.align }}>
+                      <td key={c.key} data-testid={c.testId} style={{ textAlign: c.align }}>
+                        {debug && (
+                          <span
+                            style={{ color: "var(--warning)", fontFamily: "var(--mono)", fontSize: 10, fontWeight: 800, marginRight: 4 }}
+                          >
+                            {(c.debugLabel ?? c.key).toUpperCase()}:
+                          </span>
+                        )}
                         {content}
                       </td>
                     );

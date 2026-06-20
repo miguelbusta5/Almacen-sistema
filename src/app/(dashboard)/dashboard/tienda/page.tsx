@@ -73,6 +73,7 @@ export default function TiendaPage() {
   const [fq, setFq] = useState("");
   const [fEstado, setFEstado] = useState("");
   const [fCC, setFCC] = useState("");
+  const [debugTable, setDebugTable] = useState(false);
 
   const [panelItem, setPanelItem] = useState<DespachoTienda | null>(null);
   const [panelHistorial, setPanelHistorial] = useState<any[]>([]);
@@ -93,6 +94,8 @@ export default function TiendaPage() {
     finally { setLoading(false); }
   }
   useEffect(() => { load(); }, []);
+  // Modo debug de tabla: /dashboard/tienda?debugTable=1 (diagnóstico de mapeo de columnas).
+  useEffect(() => { setDebugTable(new URLSearchParams(window.location.search).get("debugTable") === "1"); }, []);
 
   const autoRefresh = useAutoRefresh({
     pause: Boolean(creando || editing || panelItem || rechazarItem || deleting || asignandoGuardado),
@@ -268,6 +271,7 @@ export default function TiendaPage() {
         selectedId={panelItem?.id}
         onOpen={abrirPanel}
         onClearFilters={() => { setFq(""); setFEstado(""); setFCC(""); }}
+        debug={debugTable}
       />
 
       <SlidePanel
