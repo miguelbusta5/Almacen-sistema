@@ -296,6 +296,50 @@ export function FacturaFilterBar({
   );
 }
 
+// Badge de estado robusto: usa los estados reales del dominio y, si llegara
+// un valor desconocido/ausente desde la API, degrada a "Sin estado" en vez de
+// romper o mostrar texto de otra columna.
+function EstadoBadge({ estado }: { estado: EstadoDespacho | null | undefined }) {
+  const known = !!estado && estado in ESTADO_DESPACHO_LABEL;
+  if (!known) {
+    return <Badge label="Sin estado" variant="muted" color="var(--muted)" />;
+  }
+  const e = estado as EstadoDespacho;
+  return (
+    <Badge
+      label={ESTADO_DESPACHO_LABEL[e]}
+      variant={estadoDespachoVariant(e)}
+      color={ESTADO_DESPACHO_COLOR[e]}
+    />
+  );
+}
+
+// Leyenda de colores: explica el rail lateral y el ícono de alerta. Solo
+// muestra los estados realmente presentes en la bandeja visible.
+function StateLegend({ items }: { items: DespachoTienda[] }) {
+  if (items.length === 0) return null;
+  const presentes = ESTADOS_DESPACHO.filter((e) => items.some((d) => d.estado === e));
+  const hayCritico = items.some((d) => d.estado === "CREADO_TIENDA" && horasDesde(d.createdAt) >= 24);
+  if (presentes.length === 0 && !hayCritico) return null;
+  return (
+    <div className={styles.legend} aria-label="Leyenda de estados">
+      <span className={styles.legendTitle}>Estados</span>
+      {presentes.map((e) => (
+        <span key={e} className={styles.legendItem}>
+          <span className={styles.legendDot} style={{ background: ESTADO_DESPACHO_COLOR[e] }} />
+          {ESTADO_DESPACHO_LABEL[e]}
+        </span>
+      ))}
+      {hayCritico && (
+        <span className={styles.legendItem}>
+          <AlertTriangle size={12} color="var(--error)" />
+          +24 h sin recogida
+        </span>
+      )}
+    </div>
+  );
+}
+
 export function FacturasTable({
   loading,
   items,
@@ -340,65 +384,76 @@ export function FacturasTable({
           />
         </div>
       ) : (
-        <div style={{ overflowX: "auto" }}>
-          <table className="ds-table" style={{ width: "100%", borderCollapse: "collapse", tableLayout: "fixed", minWidth: 760 }}>
-            <colgroup>
-              <col style={{ width: "13%" }} />
-              <col style={{ width: "18%" }} />
-              <col style={{ width: "15%" }} />
-              <col style={{ width: "34%" }} />
-              <col style={{ width: "20%" }} />
-            </colgroup>
-            <thead>
-              <tr>
-                <Th col="fechaCreacion" label="Fecha" />
-                <Th col="centroCostos" label="Centro costos" />
-                <th>Doc. / consecutivo</th>
-                <Th col="clienteNombre" label="Cliente" />
-                <Th col="estado" label="Estado" />
-              </tr>
-            </thead>
-            <tbody>
-              {items.map((d) => {
-                const horas = d.estado === "CREADO_TIENDA" ? horasDesde(d.createdAt) : 0;
-                const critico = horas >= 24;
-                return (
-                  <tr
-                    key={d.id}
-                    className={selectedId === d.id ? "is-selected" : undefined}
-                    style={{ "--row-color": ESTADO_DESPACHO_COLOR[d.estado] } as CSSProperties}
-                    onClick={() => onOpen(d)}
-                  >
-                    <td className={styles.monoText}>
-                      <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
-                        <span style={{ width: 15, flexShrink: 0, display: "inline-flex" }}>
-                          {critico && <AlertTriangle size={15} color="var(--error)" aria-label="Creado hace más de 24 horas sin recogida" />}
+        <>
+          <div className={styles.facturasTableWrap}>
+            <table className={`ds-table ${styles.facturasTable}`} style={{ width: "100%", borderCollapse: "collapse", tableLayout: "fixed", minWidth: 760 }}>
+              <colgroup>
+                <col style={{ width: "13%" }} />
+                <col style={{ width: "16%" }} />
+                <col style={{ width: "21%" }} />
+                <col style={{ width: "30%" }} />
+                <col style={{ width: "20%" }} />
+              </colgroup>
+              <thead>
+                <tr>
+                  <Th col="fechaCreacion" label="Fecha" />
+                  <Th col="centroCostos" label="Centro costos" />
+                  <th>Doc. / consecutivo</th>
+                  <Th col="clienteNombre" label="Cliente" />
+                  <Th col="estado" label="Estado" />
+                </tr>
+              </thead>
+              <tbody>
+                {items.map((d) => {
+                  const horas = d.estado === "CREADO_TIENDA" ? horasDesde(d.createdAt) : 0;
+                  const critico = horas >= 24;
+                  const clienteSub = [d.clienteDocumento, d.clienteTelefono].filter(Boolean).join(" · ");
+                  return (
+                    <tr
+                      key={d.id}
+                      className={selectedId === d.id ? "is-selected" : undefined}
+                      style={{ "--row-color": ESTADO_DESPACHO_COLOR[d.estado] } as CSSProperties}
+                      onClick={() => onOpen(d)}
+                    >
+                      <td className={styles.monoText}>
+                        <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
+                          <span style={{ width: 14, flexShrink: 0, display: "inline-flex" }}>
+                            {critico && (
+                              <AlertTriangle
+                                size={14}
+                                color="var(--error)"
+                                aria-label="Creado hace más de 24 horas sin recogida"
+                                role="img"
+                              >
+                                <title>Creado hace más de 24 horas sin recogida</title>
+                              </AlertTriangle>
+                            )}
+                          </span>
+                          {fmtFechaTienda(d.fechaCreacion)}
                         </span>
-                        {fmtFechaTienda(d.fechaCreacion)}
-                      </span>
-                    </td>
-                    <td style={{ fontWeight: 800 }}>{d.centroCostos}</td>
-                    <td style={{ overflowWrap: "anywhere" }}>
-                      <div className={styles.docCode}>{d.numeroDocumento}</div>
-                      <div className={styles.mutedLine}>#{d.consecutivo}</div>
-                    </td>
-                    <td style={{ overflowWrap: "anywhere" }}>
-                      <div className={styles.clientName}>{d.clienteNombre}</div>
-                      {d.clienteTelefono && <div className={styles.mutedLine}>{d.clienteTelefono}</div>}
-                    </td>
-                    <td>
-                      <Badge
-                        label={ESTADO_DESPACHO_LABEL[d.estado]}
-                        variant={estadoDespachoVariant(d.estado)}
-                        color={ESTADO_DESPACHO_COLOR[d.estado]}
-                      />
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
+                      </td>
+                      <td className={styles.cellTruncate} style={{ fontWeight: 600 }} title={d.centroCostos}>
+                        {d.centroCostos}
+                      </td>
+                      <td>
+                        <div className={`${styles.docCode} ${styles.cellTruncate}`} title={d.numeroDocumento}>{d.numeroDocumento}</div>
+                        <div className={`${styles.mutedLine} ${styles.cellTruncate}`}>#{d.consecutivo}</div>
+                      </td>
+                      <td>
+                        <div className={styles.clientName} title={d.clienteNombre}>{d.clienteNombre}</div>
+                        {clienteSub && <div className={`${styles.mutedLine} ${styles.cellTruncate}`} title={clienteSub}>{clienteSub}</div>}
+                      </td>
+                      <td>
+                        <EstadoBadge estado={d.estado} />
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+          <StateLegend items={items} />
+        </>
       )}
     </section>
   );

@@ -100,6 +100,27 @@
 - **Validado:** `tsc` + 271 tests + `build` verdes. QA visual del usuario pendiente.
 - **Archivos:** `src/components/ui/SlidePanel.tsx`; `tienda/{_components.tsx,page.tsx,tienda.module.css}`.
 
+### Rediseño visual de la tabla 2026-06-20 (densidad, jerarquía, leyenda)
+
+- **Contexto:** tras cerrar el corrimiento, el usuario reportó que la tabla aún se veía pesada (tipografía
+  grande, mucho alto de fila), el nombre de cliente rompía la lectura, el ícono de alerta no tenía contexto
+  y los colores del rail lateral no se explicaban. El mapeo de datos ya era correcto (Estado = `<Badge>`,
+  no cliente); el corrimiento histórico fue lo que daba la falsa impresión de "Estado mostrando clientes".
+- **Cambios (solo UI, sin backend ni endpoints):**
+  - Densidad compacta **scoped** vía `.facturasTableWrap :global(.ds-table)` (font 12.5px, th 10.5px, td
+    height 42px) → especificidad (0,2,1) > `.ds-table td` (0,1,1), así **no afecta** otros módulos.
+  - Cliente: nombre truncado (`ellipsis` + `title`) + 2ª línea `documento · teléfono` (antes solo teléfono).
+  - Doc/Centro: truncado con `title`. Centro bajó de `font-weight 800` a `600`.
+  - Badge de estado robusto: helper `EstadoBadge` con fallback **"Sin estado"** (variant `muted`) si llega
+    estado nulo/desconocido desde la API.
+  - Ícono de alerta: `<title>` SVG nativo (tooltip al hover) + entrada en la leyenda.
+  - **Leyenda** `StateLegend` al pie de la tabla: dot de color + label por cada estado presente + "+24 h sin
+    recogida" → explica el rail lateral y el ícono.
+  - Anchos `colgroup` rebalanceados (Cliente 34%→30%, Doc 15%→21%) para que el nombre no domine.
+- **Sin tocar:** orden de columnas, `onSort`/`sortCol`, `is-selected`, filtros/búsqueda, `abrirPanel`.
+- **Validado:** `tsc` + 271 tests + `build` verdes. QA visual del usuario pendiente.
+- **Archivos:** `tienda/{_components.tsx,tienda.module.css}`.
+
 ---
 
 ## Plantilla para registrar un bug

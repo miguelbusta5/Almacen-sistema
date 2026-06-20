@@ -194,17 +194,90 @@
 }
 
 .mutedLine {
-  margin-top: 4px;
+  margin-top: 3px;
   color: var(--muted);
   font-family: var(--mono);
   font-size: 11px;
 }
 
 .clientName {
-  max-width: 260px;
+  max-width: 100%;
+  overflow: hidden;
   color: var(--text);
-  font-weight: 700;
+  font-weight: 600;
+  font-size: 13px;
   line-height: 1.25;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Trunca cualquier celda en una sola línea (usar junto a title="..."). */
+.cellTruncate {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ── Tabla compacta (scope local; NO afecta .ds-table de otros módulos) ── */
+.facturasTableWrap {
+  overflow-x: auto;
+}
+
+.facturasTableWrap :global(.ds-table) {
+  font-size: 12.5px;
+}
+
+.facturasTableWrap :global(.ds-table) th {
+  padding: 8px 12px;
+  font-size: 10.5px;
+  letter-spacing: 0.04em;
+}
+
+.facturasTableWrap :global(.ds-table) td {
+  height: 42px;
+  padding: 5px 12px;
+}
+
+/* En modo compacto la segunda línea va más pegada. */
+.facturasTableWrap .mutedLine {
+  margin-top: 1px;
+}
+
+/* ── Leyenda de estados ────────────────────────────────────────────────── */
+.legend {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 7px 16px;
+  padding: 10px 14px;
+  border-top: 1px solid var(--border);
+  background: color-mix(in srgb, var(--surface2) 50%, var(--surface));
+}
+
+.legendTitle {
+  color: var(--muted2);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+}
+
+.legendItem {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.legendDot {
+  width: 9px;
+  height: 9px;
+  border-radius: 999px;
+  flex-shrink: 0;
 }
 
 .emptyWrap {
