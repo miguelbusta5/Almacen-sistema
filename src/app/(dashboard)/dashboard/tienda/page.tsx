@@ -73,8 +73,6 @@ export default function TiendaPage() {
   const [fq, setFq] = useState("");
   const [fEstado, setFEstado] = useState("");
   const [fCC, setFCC] = useState("");
-  const [sortCol, setSortCol] = useState("fechaCreacion");
-  const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
 
   const [panelItem, setPanelItem] = useState<DespachoTienda | null>(null);
   const [panelHistorial, setPanelHistorial] = useState<any[]>([]);
@@ -164,11 +162,6 @@ export default function TiendaPage() {
     else { showToast("Error al re-enviar", true); }
   }
 
-  function toggleSort(col: string) {
-    if (sortCol === col) setSortDir((d) => d === "asc" ? "desc" : "asc");
-    else { setSortCol(col); setSortDir("asc"); }
-  }
-
   const globalInsights = useMemo(() => insightsTienda(items), [items]);
   const panelInsights  = useMemo(() => panelItem ? insightsPorDespacho(panelItem, items) : [], [panelItem, items]);
 
@@ -184,24 +177,16 @@ export default function TiendaPage() {
 
   const centrosCostos = useMemo(() => [...new Set(items.map((d) => d.centroCostos))].sort(), [items]);
 
+  // Solo filtra; el ordenamiento interactivo lo gestiona <DataTable> (DS).
   const filtered = useMemo(() => {
     const q = fq.toLowerCase();
-    return [...items].filter((d) => {
+    return items.filter((d) => {
       if (fEstado && d.estado !== fEstado) return false;
       if (fCC && d.centroCostos !== fCC) return false;
       if (q && !d.numeroDocumento.toLowerCase().includes(q) && !d.clienteNombre.toLowerCase().includes(q) && !d.consecutivo.toLowerCase().includes(q)) return false;
       return true;
-    }).sort((a, b) => {
-      const dir = sortDir === "asc" ? 1 : -1;
-      switch (sortCol) {
-        case "fechaCreacion": return dir * a.fechaCreacion.localeCompare(b.fechaCreacion);
-        case "centroCostos":  return dir * a.centroCostos.localeCompare(b.centroCostos);
-        case "clienteNombre": return dir * a.clienteNombre.localeCompare(b.clienteNombre);
-        case "estado":        return dir * a.estado.localeCompare(b.estado);
-        default: return 0;
-      }
     });
-  }, [items, fq, fEstado, fCC, sortCol, sortDir]);
+  }, [items, fq, fEstado, fCC]);
 
   // Historial timeline del panel
   const historialItems = panelHistorial.map((h: any) => ({
@@ -281,9 +266,6 @@ export default function TiendaPage() {
         items={filtered}
         allCount={items.length}
         selectedId={panelItem?.id}
-        sortCol={sortCol}
-        sortDir={sortDir}
-        onSort={toggleSort}
         onOpen={abrirPanel}
         onClearFilters={() => { setFq(""); setFEstado(""); setFCC(""); }}
       />

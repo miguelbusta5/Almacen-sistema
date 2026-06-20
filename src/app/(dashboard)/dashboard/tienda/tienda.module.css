@@ -194,7 +194,7 @@
 }
 
 .mutedLine {
-  margin-top: 3px;
+  margin-top: 2px;
   color: var(--muted);
   font-family: var(--mono);
   font-size: 11px;
@@ -219,32 +219,9 @@
   white-space: nowrap;
 }
 
-/* ── Tabla compacta (scope local; NO afecta .ds-table de otros módulos) ── */
-.facturasTableWrap {
-  overflow-x: auto;
-}
+/* Densidad/anchos/sort/empty los aporta <DataTable> (DS, `ds-table--compact`). */
 
-.facturasTableWrap :global(.ds-table) {
-  font-size: 12.5px;
-}
-
-.facturasTableWrap :global(.ds-table) th {
-  padding: 8px 12px;
-  font-size: 10.5px;
-  letter-spacing: 0.04em;
-}
-
-.facturasTableWrap :global(.ds-table) td {
-  height: 42px;
-  padding: 5px 12px;
-}
-
-/* En modo compacto la segunda línea va más pegada. */
-.facturasTableWrap .mutedLine {
-  margin-top: 1px;
-}
-
-/* ── Leyenda de estados ────────────────────────────────────────────────── */
+/* ── Leyenda de estados (ayuda secundaria; el estado real va por fila) ──── */
 .legend {
   display: flex;
   flex-wrap: wrap;
@@ -278,10 +255,6 @@
   height: 9px;
   border-radius: 999px;
   flex-shrink: 0;
-}
-
-.emptyWrap {
-  padding: 42px 20px;
 }
 
 /* ── Detalle / flujo ───────────────────────────────────────────────────── */

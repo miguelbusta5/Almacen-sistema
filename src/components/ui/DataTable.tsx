@@ -4,9 +4,11 @@ import { ChevronDown, ChevronUp } from "lucide-react";
 import { EmptyState, SkeletonRow } from "./index";
 
 // ═══════════════════════════════════════════════════════════
-// DATA TABLE — tabla reutilizable sobre .g-table
-// Sorting client-side, empty state, skeleton de carga y
-// acciones de fila (render libre por columna).
+// DATA TABLE — tabla reutilizable CANÓNICA del design system.
+// Contrato SOT §9: layout determinista (table-layout:fixed + <colgroup>),
+// ESTADO por fila (render → <Badge>), densidad compacta opcional,
+// truncado + title, rail de color por fila, selección, sort, empty y skeleton.
+// Base `.ds-table` (clase estándar; comparte estilos con `.g-table` en globals.css).
 // ═══════════════════════════════════════════════════════════
 export interface Column<T> {
   key: string;
@@ -17,7 +19,11 @@ export interface Column<T> {
   sortValue?: (row: T) => string | number;
   align?: "left" | "right" | "center";
   width?: number | string;
+  /** Trunca el contenido en una línea (ellipsis + title). Solo aplica a celdas sin `render`. */
+  truncate?: boolean;
 }
+
+type SortState = { key: string; dir: "asc" | "desc" };
 
 export interface DataTableProps<T> {
   columns: Column<T>[];
@@ -27,7 +33,23 @@ export interface DataTableProps<T> {
   onRowClick?: (row: T) => void;
   getRowColor?: (row: T) => string | undefined;
   isRowSelected?: (row: T) => boolean;
-  empty?: { icon?: ReactNode; title: string; description?: string };
+  empty?: {
+    icon?: ReactNode;
+    title: string;
+    description?: string;
+    action?: { label: string; onClick: () => void };
+  };
+  /** Densidad de fila. `compact` = filas más bajas y tipografía menor (default `comfortable`). */
+  density?: "comfortable" | "compact";
+  /** `fixed` + `<colgroup>` = anchos deterministas (evita el corrimiento thead/tbody). */
+  tableLayout?: "auto" | "fixed";
+  minWidth?: number | string;
+  skeletonRows?: number;
+  /** Orden inicial. */
+  defaultSort?: SortState;
+  /** Ayuda secundaria bajo la tabla (p. ej. leyenda de estados). Nunca sustituye el badge por fila. */
+  legend?: ReactNode;
+  ariaLabel?: string;
 }
 
 export function DataTable<T>({
@@ -39,8 +61,15 @@ export function DataTable<T>({
   getRowColor,
   isRowSelected,
   empty,
+  density = "comfortable",
+  tableLayout = "auto",
+  minWidth,
+  skeletonRows = 6,
+  defaultSort,
+  legend,
+  ariaLabel,
 }: DataTableProps<T>) {
-  const [sort, setSort] = useState<{ key: string; dir: "asc" | "desc" } | null>(null);
+  const [sort, setSort] = useState<SortState | null>(defaultSort ?? null);
 
   const sorted = useMemo(() => {
     if (!sort) return rows;
@@ -63,63 +92,98 @@ export function DataTable<T>({
     );
   }
 
+  const hasWidths = columns.some((c) => c.width != null);
+  const tableClass = `ds-table${density === "compact" ? " ds-table--compact" : ""}`;
+
   return (
-    <div className="g-table-wrap">
-      <table className="g-table">
-        <thead>
-          <tr>
-            {columns.map((c) => (
-              <th
-                key={c.key}
-                className={c.sortable ? "sortable" : undefined}
-                style={{ textAlign: c.align, width: c.width }}
-                onClick={c.sortable ? () => toggleSort(c.key) : undefined}
-              >
-                <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>
-                  {c.header}
-                  {sort?.key === c.key &&
-                    (sort.dir === "asc" ? <ChevronUp size={12} /> : <ChevronDown size={12} />)}
-                </span>
-              </th>
-            ))}
-          </tr>
-        </thead>
-        <tbody>
-          {loading ? (
-            Array.from({ length: 6 }).map((_, i) => <SkeletonRow key={i} cols={columns.length} />)
-          ) : sorted.length === 0 ? (
-            <tr>
-              <td colSpan={columns.length} style={{ height: "auto", padding: 0 }}>
-                <EmptyState
-                  icon={empty?.icon ?? null}
-                  title={empty?.title ?? "Sin datos"}
-                  description={empty?.description}
-                />
-              </td>
-            </tr>
-          ) : (
-            sorted.map((row, i) => (
-              <tr
-                key={getRowKey(row, i)}
-                onClick={onRowClick ? () => onRowClick(row) : undefined}
-                className={isRowSelected?.(row) ? "is-selected" : undefined}
-                style={{
-                  cursor: onRowClick ? "pointer" : "default",
-                  "--row-color": getRowColor?.(row),
-                } as CSSProperties}
-              >
-                {columns.map((c) => (
-                  <td key={c.key} style={{ textAlign: c.align }}>
-                    {c.render
-                      ? c.render(row)
-                      : String((row as Record<string, unknown>)[c.key] ?? "")}
-                  </td>
-                ))}
-              </tr>
-            ))
+    <>
+      <div className="ds-table-wrap" style={{ overflowX: "auto" }}>
+        <table className={tableClass} style={{ tableLayout, minWidth }} aria-label={ariaLabel}>
+          {hasWidths && (
+            <colgroup>
+              {columns.map((c) => (
+                <col key={c.key} style={{ width: c.width }} />
+              ))}
+            </colgroup>
           )}
-        </tbody>
-      </table>
-    </div>
+          <thead>
+            <tr>
+              {columns.map((c) => (
+                <th
+                  key={c.key}
+                  className={c.sortable ? "sortable" : undefined}
+                  style={{ textAlign: c.align }}
+                  onClick={c.sortable ? () => toggleSort(c.key) : undefined}
+                >
+                  <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>
+                    {c.header}
+                    {sort?.key === c.key &&
+                      (sort.dir === "asc" ? <ChevronUp size={12} /> : <ChevronDown size={12} />)}
+                  </span>
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {loading ? (
+              Array.from({ length: skeletonRows }).map((_, i) => (
+                <SkeletonRow key={i} cols={columns.length} />
+              ))
+            ) : sorted.length === 0 ? (
+              <tr>
+                <td colSpan={columns.length} style={{ height: "auto", padding: 0 }}>
+                  <EmptyState
+                    icon={empty?.icon ?? null}
+                    title={empty?.title ?? "Sin datos"}
+                    description={empty?.description}
+                    action={empty?.action}
+                  />
+                </td>
+              </tr>
+            ) : (
+              sorted.map((row, i) => (
+                <tr
+                  key={getRowKey(row, i)}
+                  onClick={onRowClick ? () => onRowClick(row) : undefined}
+                  className={isRowSelected?.(row) ? "is-selected" : undefined}
+                  style={{
+                    cursor: onRowClick ? "pointer" : "default",
+                    "--row-color": getRowColor?.(row),
+                  } as CSSProperties}
+                >
+                  {columns.map((c) => {
+                    const raw = c.render
+                      ? c.render(row)
+                      : String((row as Record<string, unknown>)[c.key] ?? "");
+                    const content =
+                      c.truncate && !c.render ? (
+                        <span
+                          style={{
+                            display: "block",
+                            overflow: "hidden",
+                            textOverflow: "ellipsis",
+                            whiteSpace: "nowrap",
+                          }}
+                          title={String((row as Record<string, unknown>)[c.key] ?? "")}
+                        >
+                          {raw}
+                        </span>
+                      ) : (
+                        raw
+                      );
+                    return (
+                      <td key={c.key} style={{ textAlign: c.align }}>
+                        {content}
+                      </td>
+                    );
+                  })}
+                </tr>
+              ))
+            )}
+          </tbody>
+        </table>
+      </div>
+      {legend}
+    </>
   );
 }

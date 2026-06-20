@@ -1,5 +1,32 @@
 # Decisiones de Arquitectura y Producto
 
+## 2026-06-20 - EPIC C / C4: Facturas Contado migra a `<DataTable>` (módulo piloto del SOT)
+
+**Decisión:**
+- Se cierra **C4**: `FacturasTable` (`tienda/_components.tsx`) deja la tabla bespoke `.ds-table` y usa el
+  componente compartido **`<DataTable>`** (`src/components/ui/DataTable.tsx`) con columnas declarativas.
+- Se **enriquece `<DataTable>`** (criterio EPIC C / SOT §15: enriquecer el DS, no mantener CSS a medida)
+  con: `tableLayout: "fixed"` + `<colgroup>` por anchos (evita el corrimiento histórico thead/tbody),
+  `density: "compact"` (clase `ds-table--compact` en `globals.css`), `truncate` por columna (ellipsis+title),
+  `defaultSort`, `legend` (ayuda secundaria), `empty` con `action`, `skeletonRows` y `ariaLabel`. Base
+  `.ds-table` (canónica; comparte estilos con `.g-table`). **0 consumidores previos → cambio sin riesgo.**
+- `page.tsx` deja de gestionar el sort manual (`sortCol`/`sortDir`/`toggleSort` eliminados); el sort
+  interactivo lo posee `<DataTable>`. `filtered` ahora solo filtra.
+
+**Contexto:**
+- Reconstrucción controlada del **módulo piloto** recomendado en la auditoría. Objetivo: dejar Facturas
+  Contado como **patrón oficial** de tabla operativa replicable al resto (contrato SOT §9). Sin tocar
+  backend, endpoints, permisos ni reglas de negocio. Mapeo de datos ya era correcto (Estado=badge por fila).
+
+**Consecuencias:**
+- `tienda.module.css`: eliminados `.facturasTableWrap`/`.facturasTable` y `.emptyWrap` (densidad ahora en el DS).
+- Patrón replicable: `columns: Column<T>[]` + `<DataTable density="compact" tableLayout="fixed">` con
+  `EstadoBadge` por fila + `StateLegend` como leyenda secundaria.
+- Validado: `tsc` + 271 tests + `build` verdes. **QA visual del usuario pendiente** (pantalla insignia, va a prod).
+
+**Archivos afectados:** `src/components/ui/DataTable.tsx`, `src/app/globals.css`,
+`src/app/(dashboard)/dashboard/tienda/{_components.tsx,page.tsx,tienda.module.css}`, `docs/cerebro/{decisiones,pendientes,auditoria-ui}.md`.
+
 ## 2026-06-20 - Tienda: acciones de fila movidas al panel de detalle (tabla deja de cortarse)
 
 **Decisión:**

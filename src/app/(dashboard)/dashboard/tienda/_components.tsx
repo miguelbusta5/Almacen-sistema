@@ -11,13 +11,8 @@ import {
   Store,
   Truck,
 } from "lucide-react";
-import {
-  Badge,
-  EmptyState,
-  SkeletonStat,
-  SkeletonTable,
-  Stat,
-} from "@/components/ui";
+import { Badge, SkeletonStat, Stat } from "@/components/ui";
+import { DataTable, type Column } from "@/components/ui/DataTable";
 import {
   DespachoTienda,
   EstadoDespacho,
@@ -345,9 +340,6 @@ export function FacturasTable({
   items,
   allCount,
   selectedId,
-  sortCol,
-  sortDir,
-  onSort,
   onOpen,
   onClearFilters,
 }: {
@@ -355,106 +347,107 @@ export function FacturasTable({
   items: DespachoTienda[];
   allCount: number;
   selectedId?: string | null;
-  sortCol: string;
-  sortDir: "asc" | "desc";
-  onSort: (col: string) => void;
   onOpen: (d: DespachoTienda) => void;
   onClearFilters: () => void;
 }) {
-  const Th = ({ col, label }: { col: string; label: string }) => {
-    const active = sortCol === col;
-    return (
-      <th className="sortable" onClick={() => onSort(col)}>
-        {label} {active ? (sortDir === "asc" ? "↑" : "↓") : "↕"}
-      </th>
-    );
-  };
+  // Columnas según el contrato de tabla del SOT §9:
+  // FECHA · CENTRO COSTOS · DOC/CONSECUTIVO · CLIENTE · ESTADO (badge por fila).
+  const columns: Column<DespachoTienda>[] = [
+    {
+      key: "fechaCreacion",
+      header: "Fecha",
+      sortable: true,
+      sortValue: (d) => d.fechaCreacion,
+      width: "13%",
+      render: (d) => {
+        const critico = d.estado === "CREADO_TIENDA" && horasDesde(d.createdAt) >= 24;
+        return (
+          <span className={styles.monoText} style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
+            <span style={{ width: 14, flexShrink: 0, display: "inline-flex" }}>
+              {critico && (
+                <AlertTriangle size={14} color="var(--error)" role="img" aria-label="Creado hace más de 24 horas sin recogida">
+                  <title>Creado hace más de 24 horas sin recogida</title>
+                </AlertTriangle>
+              )}
+            </span>
+            {fmtFechaTienda(d.fechaCreacion)}
+          </span>
+        );
+      },
+    },
+    {
+      key: "centroCostos",
+      header: "Centro costos",
+      sortable: true,
+      sortValue: (d) => d.centroCostos,
+      width: "16%",
+      render: (d) => (
+        <span className={styles.cellTruncate} style={{ display: "block", fontWeight: 600 }} title={d.centroCostos}>
+          {d.centroCostos}
+        </span>
+      ),
+    },
+    {
+      key: "documento",
+      header: "Doc. / consecutivo",
+      width: "21%",
+      render: (d) => (
+        <>
+          <div className={`${styles.docCode} ${styles.cellTruncate}`} title={d.numeroDocumento}>{d.numeroDocumento}</div>
+          <div className={`${styles.mutedLine} ${styles.cellTruncate}`}>#{d.consecutivo}</div>
+        </>
+      ),
+    },
+    {
+      key: "clienteNombre",
+      header: "Cliente",
+      sortable: true,
+      sortValue: (d) => d.clienteNombre,
+      width: "30%",
+      render: (d) => {
+        const sub = [d.clienteDocumento, d.clienteTelefono].filter(Boolean).join(" · ");
+        return (
+          <>
+            <div className={styles.clientName} title={d.clienteNombre}>{d.clienteNombre}</div>
+            {sub && <div className={`${styles.mutedLine} ${styles.cellTruncate}`} title={sub}>{sub}</div>}
+          </>
+        );
+      },
+    },
+    {
+      key: "estado",
+      header: "Estado",
+      sortable: true,
+      sortValue: (d) => ESTADO_DESPACHO_LABEL[d.estado] ?? "Sin estado",
+      width: "20%",
+      render: (d) => <EstadoBadge estado={d.estado} />,
+    },
+  ];
 
   return (
     <section className={styles.tablePanel}>
-      {loading ? (
-        <SkeletonTable rows={8} cols={5} />
-      ) : items.length === 0 ? (
-        <div className={styles.emptyWrap}>
-          <EmptyState
-            icon={<Store size={22} />}
-            title="Sin facturas"
-            description={allCount > 0 ? "No hay resultados para estos filtros." : "Las facturas contado aparecerán aquí."}
-            action={allCount > 0 ? { label: "Limpiar filtros", onClick: onClearFilters } : undefined}
-          />
-        </div>
-      ) : (
-        <>
-          <div className={styles.facturasTableWrap}>
-            <table className={`ds-table ${styles.facturasTable}`} style={{ width: "100%", borderCollapse: "collapse", tableLayout: "fixed", minWidth: 760 }}>
-              <colgroup>
-                <col style={{ width: "13%" }} />
-                <col style={{ width: "16%" }} />
-                <col style={{ width: "21%" }} />
-                <col style={{ width: "30%" }} />
-                <col style={{ width: "20%" }} />
-              </colgroup>
-              <thead>
-                <tr>
-                  <Th col="fechaCreacion" label="Fecha" />
-                  <Th col="centroCostos" label="Centro costos" />
-                  <th>Doc. / consecutivo</th>
-                  <Th col="clienteNombre" label="Cliente" />
-                  <Th col="estado" label="Estado" />
-                </tr>
-              </thead>
-              <tbody>
-                {items.map((d) => {
-                  const horas = d.estado === "CREADO_TIENDA" ? horasDesde(d.createdAt) : 0;
-                  const critico = horas >= 24;
-                  const clienteSub = [d.clienteDocumento, d.clienteTelefono].filter(Boolean).join(" · ");
-                  return (
-                    <tr
-                      key={d.id}
-                      className={selectedId === d.id ? "is-selected" : undefined}
-                      style={{ "--row-color": ESTADO_DESPACHO_COLOR[d.estado] } as CSSProperties}
-                      onClick={() => onOpen(d)}
-                    >
-                      <td className={styles.monoText}>
-                        <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
-                          <span style={{ width: 14, flexShrink: 0, display: "inline-flex" }}>
-                            {critico && (
-                              <AlertTriangle
-                                size={14}
-                                color="var(--error)"
-                                aria-label="Creado hace más de 24 horas sin recogida"
-                                role="img"
-                              >
-                                <title>Creado hace más de 24 horas sin recogida</title>
-                              </AlertTriangle>
-                            )}
-                          </span>
-                          {fmtFechaTienda(d.fechaCreacion)}
-                        </span>
-                      </td>
-                      <td className={styles.cellTruncate} style={{ fontWeight: 600 }} title={d.centroCostos}>
-                        {d.centroCostos}
-                      </td>
-                      <td>
-                        <div className={`${styles.docCode} ${styles.cellTruncate}`} title={d.numeroDocumento}>{d.numeroDocumento}</div>
-                        <div className={`${styles.mutedLine} ${styles.cellTruncate}`}>#{d.consecutivo}</div>
-                      </td>
-                      <td>
-                        <div className={styles.clientName} title={d.clienteNombre}>{d.clienteNombre}</div>
-                        {clienteSub && <div className={`${styles.mutedLine} ${styles.cellTruncate}`} title={clienteSub}>{clienteSub}</div>}
-                      </td>
-                      <td>
-                        <EstadoBadge estado={d.estado} />
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-          <StateLegend items={items} />
-        </>
-      )}
+      <DataTable<DespachoTienda>
+        columns={columns}
+        rows={items}
+        getRowKey={(d) => d.id}
+        loading={loading}
+        onRowClick={onOpen}
+        getRowColor={(d) => ESTADO_DESPACHO_COLOR[d.estado]}
+        isRowSelected={(d) => !!selectedId && d.id === selectedId}
+        density="compact"
+        tableLayout="fixed"
+        minWidth={760}
+        skeletonRows={8}
+        ariaLabel="Facturas contado"
+        defaultSort={{ key: "fechaCreacion", dir: "desc" }}
+        legend={<StateLegend items={items} />}
+        empty={{
+          icon: <Store size={22} />,
+          title: "Sin facturas",
+          description: allCount > 0 ? "No hay resultados para estos filtros." : "Las facturas contado aparecerán aquí.",
+          action: allCount > 0 ? { label: "Limpiar filtros", onClick: onClearFilters } : undefined,
+        }}
+      />
     </section>
   );
 }
