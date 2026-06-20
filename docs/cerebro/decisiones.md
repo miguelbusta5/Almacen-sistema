@@ -1,5 +1,22 @@
 # Decisiones de Arquitectura y Producto
 
+## 2026-06-20 - Tienda: acciones de fila movidas al panel de detalle (tabla deja de cortarse)
+
+**Decisión:**
+- `FacturasTable` (`tienda/_components.tsx`) **elimina la columna Acciones inline**. Las acciones pasan a vivir solo en el `SlidePanel` de detalle (patrón de `solicitudes-transporte`). Las filas siguen siendo clicables → abren el panel.
+- Se añadió **Eliminar** al `SlidePanel` (`page.tsx`, `secondaryActions`, condicionado a `canDelete`) — era la única acción que solo existía inline. Recogido/CEDI/Enviado/Re-enviar/Novedad/Rechazar/Enviar a guardado/Editar ya estaban en el panel. Al borrar se cierra el panel (`setPanelItem(null)`).
+
+**Contexto:**
+- La columna Acciones (Recogido + Rechazar + editar + eliminar ≈ 290px) hacía que el ancho preferido de la tabla (~1450px) superara el contenedor (cap 1400px de `.dash-main`), generando scroll horizontal y recortando Acciones. El usuario eligió «acciones solo en el detalle». Intentos previos (sticky, `overflow-x: clip`) no resolvían el corte de la tabla.
+
+**Consecuencias:**
+- Sin la columna, la tabla (~960px, 6 columnas) cabe de sobra y **no se corta**. Se bajó `.facturaTable min-width` 1040→820px (respaldo de scroll solo en pantallas muy angostas); se borraron `.actions`/`.ghostIcon` muertos.
+- Doble validación intacta: `canDelete`/`canChangeOperationalState`/`canEditBasic` se siguen evaluando en `page.tsx` para el panel; sin cambios de API/permisos.
+- Facilita **C4** (migrar a `<DataTable>`): el mapeo de columnas queda directo al no haber columna de acciones compleja. C4 sigue pendiente.
+- Validado: `tsc` + 271 tests + `build` verdes. QA visual del usuario pendiente.
+
+**Archivos afectados:** `src/app/(dashboard)/dashboard/tienda/{_components.tsx,page.tsx,tienda.module.css}`, `docs/cerebro/{auditoria-ui,bugs,pendientes,decisiones}.md`.
+
 ## 2026-06-20 - Fix global: el SlidePanel cerrado generaba scroll horizontal (recuadro vacío)
 
 **Decisión (fix real):**

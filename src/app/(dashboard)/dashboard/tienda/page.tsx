@@ -5,7 +5,7 @@ import { useSession } from "next-auth/react";
 import { can } from "@/lib/permissions";
 import {
   Store, Plus, CheckCircle2, Truck, AlertTriangle,
-  Pencil, Package, Minus, PackageCheck, UserPlus,
+  Pencil, Package, Minus, PackageCheck, UserPlus, Trash2,
 } from "lucide-react";
 import {
   DespachoTienda, EstadoDespacho, ESTADO_DESPACHO_LABEL,
@@ -283,18 +283,8 @@ export default function TiendaPage() {
         selectedId={panelItem?.id}
         sortCol={sortCol}
         sortDir={sortDir}
-        canChangeOperationalState={canChangeOperationalState}
-        canEditBasic={canEditBasic}
-        canEdit={canEdit}
-        canDelete={canDelete}
-        role={role}
         onSort={toggleSort}
         onOpen={abrirPanel}
-        onEstado={cambiarEstado}
-        onReject={setRechazarItem}
-        onGuardado={setAsignandoGuardado}
-        onEdit={setEditing}
-        onDelete={setDeleting}
         onClearFilters={() => { setFq(""); setFEstado(""); setFCC(""); }}
       />
 
@@ -350,6 +340,11 @@ export default function TiendaPage() {
               </button>
             )}
             {canEditBasic && panelItem && (panelItem.estado === "RECHAZADO" || (panelItem.estado === "CREADO_TIENDA" && role !== "TIENDA") || canEdit) && <button className="ds-btn ds-btn-sm ds-btn-secondary" onClick={() => setEditing(panelItem)}><Pencil size={13} /></button>}
+            {panelItem && canDelete && (
+              <button className="ds-btn ds-btn-sm ds-btn-secondary" style={{ color: "var(--error)" }} onClick={() => setDeleting(panelItem)} title="Eliminar">
+                <Trash2 size={13} />
+              </button>
+            )}
           </div>
         }
       >
@@ -486,7 +481,7 @@ export default function TiendaPage() {
             <button className="ds-btn ds-btn-secondary" style={{ flex: 1 }} onClick={() => setDeleting(null)}>Cancelar</button>
             <button className="ds-btn ds-btn-danger" style={{ flex: 1 }} onClick={async () => {
               const res = await fetch(`/api/tienda/${deleting.id}`, { method: "DELETE" });
-              if (res.ok) { setDeleting(null); load(); showToast("Eliminado"); }
+              if (res.ok) { setDeleting(null); setPanelItem(null); load(); showToast("Eliminado"); }
               else showToast("Error", true);
             }}>Eliminar</button>
           </div>

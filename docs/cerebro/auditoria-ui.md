@@ -64,7 +64,7 @@ estilos** de tabla con densidades, rails y hover distintos.
 
 | Estilo | Módulos | Sev | Archivo:línea | Propuesta |
 |---|---|---|---|---|
-| `.facturaTable` (módulo CSS propio) | tienda | 🔴 | `tienda/_components.tsx:370` | EPIC C: migrar a `<DataTable>` con `getRowColor` por estado, o alinear con `.ds-table`. |
+| `.facturaTable` (módulo CSS propio) | tienda | 🟡 (parcial 2026-06-20) | `tienda/_components.tsx` | Se quitó la columna Acciones inline (acciones → `SlidePanel`), así la tabla cabe y deja de cortarse. Falta C4: migrar a `<DataTable>` con `getRowColor` por estado. |
 | `<table>` inline (sin clase, `borderCollapse` a mano) | exportaciones, integracion, preoperacional, transporte, usuarios(2ª) | 🔴 | `exportaciones/page.tsx:372,510` · `integracion/page.tsx:326,589,713` · `preoperacional/page.tsx:566` · `usuarios/page.tsx:487` | Migrar a `<DataTable>`/`.ds-table`. |
 | `.g-table` (legacy) | usuarios, auditoria | 🟡 | `usuarios/page.tsx:224` · `auditoria/page.tsx:209` | Unificar a `.ds-table`. Sort: hoy `<th>` con estilos inline y color activo literal (`#14DBA0`/`#5B9DFF`). |
 | `.ds-table` ✓ | solicitudes-transporte | 🟢 | `solicitudes-transporte/page.tsx:609` | Patrón más cercano al DS; tomar como referencia. |

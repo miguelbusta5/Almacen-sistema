@@ -84,9 +84,12 @@
   móvil (bottom-sheet `translateY(100%)`). `pointer-events: none` deja pasar los clics; overlay y panel
   los reactivan. El `overflow-x: clip` de `html`/`body` se conserva como red de seguridad para overflow
   de elementos no-fixed.
-- Una vez sin scroll de página, la tabla (~1180px) cabe en el cap de 1400px y muestra Acciones completa.
+- Una vez sin scroll de página, la tabla seguía cortando la columna Acciones por su ancho (~290px de
+  botones). **Resuelto aparte (2026-06-20):** se quitó la columna Acciones inline y las acciones pasaron
+  al `SlidePanel` de detalle (+Eliminar en el panel); la tabla (6 columnas, ~960px) cabe y no se corta.
+  Ver [[decisiones]].
 - **Validado:** `tsc` + 271 tests + `build` verdes. QA visual del usuario pendiente.
-- **Archivos:** `src/components/ui/SlidePanel.tsx`.
+- **Archivos:** `src/components/ui/SlidePanel.tsx`; `tienda/{_components.tsx,page.tsx,tienda.module.css}`.
 
 ---
 

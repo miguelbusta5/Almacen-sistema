@@ -194,7 +194,7 @@
 
 .facturaTable {
   width: 100%;
-  min-width: 1040px;
+  min-width: 820px;
   border-collapse: collapse;
 }
 
@@ -269,20 +269,6 @@
   color: var(--text);
   font-weight: 700;
   line-height: 1.25;
-}
-
-.actions {
-  display: flex;
-  justify-content: flex-end;
-  gap: 7px;
-  flex-wrap: wrap;
-  min-width: 230px;
-}
-
-.ghostIcon {
-  width: 30px;
-  padding: 0;
-  justify-content: center;
 }
 
 .emptyWrap {

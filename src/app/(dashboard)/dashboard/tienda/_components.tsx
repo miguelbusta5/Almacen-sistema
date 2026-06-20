@@ -5,15 +5,11 @@ import {
   AlertTriangle,
   CheckCircle2,
   ChevronDown,
-  Minus,
   Package,
-  PackageCheck,
   Pencil,
   Search,
   Store,
-  Trash2,
   Truck,
-  UserPlus,
 } from "lucide-react";
 import {
   Badge,
@@ -307,18 +303,8 @@ export function FacturasTable({
   selectedId,
   sortCol,
   sortDir,
-  canChangeOperationalState,
-  canEditBasic,
-  canEdit,
-  canDelete,
-  role,
   onSort,
   onOpen,
-  onEstado,
-  onReject,
-  onGuardado,
-  onEdit,
-  onDelete,
   onClearFilters,
 }: {
   loading: boolean;
@@ -327,18 +313,8 @@ export function FacturasTable({
   selectedId?: string | null;
   sortCol: string;
   sortDir: "asc" | "desc";
-  canChangeOperationalState: boolean;
-  canEditBasic: boolean;
-  canEdit: boolean;
-  canDelete: boolean;
-  role?: string;
   onSort: (col: string) => void;
   onOpen: (d: DespachoTienda) => void;
-  onEstado: (d: DespachoTienda, estado: EstadoDespacho) => void;
-  onReject: (d: DespachoTienda) => void;
-  onGuardado: (d: DespachoTienda) => void;
-  onEdit: (d: DespachoTienda) => void;
-  onDelete: (d: DespachoTienda) => void;
   onClearFilters: () => void;
 }) {
   const Th = ({ col, label }: { col: string; label: string }) => {
@@ -353,7 +329,7 @@ export function FacturasTable({
   return (
     <section className={styles.tablePanel}>
       {loading ? (
-        <SkeletonTable rows={8} cols={7} />
+        <SkeletonTable rows={8} cols={6} />
       ) : items.length === 0 ? (
         <div className={styles.emptyWrap}>
           <EmptyState
@@ -374,7 +350,6 @@ export function FacturasTable({
                 <th>Doc. / consecutivo</th>
                 <Th col="clienteNombre" label="Cliente" />
                 <Th col="estado" label="Estado" />
-                <th>Acciones</th>
               </tr>
             </thead>
             <tbody>
@@ -405,47 +380,6 @@ export function FacturasTable({
                         variant={estadoDespachoVariant(d.estado)}
                         color={ESTADO_DESPACHO_COLOR[d.estado]}
                       />
-                    </td>
-                    <td>
-                      <div className={styles.actions}>
-                        {d.estado === "CREADO_TIENDA" && canChangeOperationalState && (
-                          <>
-                            <button type="button" className="ds-btn ds-btn-sm" style={{ background: "var(--info-tint)", color: "var(--info)" }} onClick={(e) => { e.stopPropagation(); onEstado(d, "RECOGIDO_TIENDA"); }}>
-                              <Truck size={12} />Recogido
-                            </button>
-                            <button type="button" className="ds-btn ds-btn-sm ds-btn-danger" onClick={(e) => { e.stopPropagation(); onReject(d); }}>
-                              Rechazar
-                            </button>
-                          </>
-                        )}
-                        {d.estado === "RECOGIDO_TIENDA" && canChangeOperationalState && (
-                          <button type="button" className="ds-btn ds-btn-sm" style={{ background: `color-mix(in srgb, ${ESTADO_DESPACHO_COLOR.ENTREGADO_CEDI} 8%, transparent)`, color: ESTADO_DESPACHO_COLOR.ENTREGADO_CEDI }} onClick={(e) => { e.stopPropagation(); onEstado(d, "ENTREGADO_CEDI"); }}>
-                            <PackageCheck size={12} />CEDI
-                          </button>
-                        )}
-                        {d.estado === "ENTREGADO_CEDI" && canChangeOperationalState && (
-                          <>
-                            {!d.guardadoPendiente && (
-                              <button type="button" className="ds-btn ds-btn-sm" style={{ background: "color-mix(in srgb, var(--info) 13%, transparent)", color: "var(--info)" }} onClick={(e) => { e.stopPropagation(); onGuardado(d); }}>
-                                <UserPlus size={12} />Guardado
-                              </button>
-                            )}
-                            <button type="button" className="ds-btn ds-btn-sm ds-btn-success" onClick={(e) => { e.stopPropagation(); onEstado(d, "ENVIADO_CLIENTE"); }}>
-                              <CheckCircle2 size={12} />Enviado
-                            </button>
-                          </>
-                        )}
-                        {canEditBasic && (d.estado === "RECHAZADO" || (d.estado === "CREADO_TIENDA" && role !== "TIENDA") || canEdit) && (
-                          <button type="button" className={`ds-btn ds-btn-sm ds-btn-ghost ${styles.ghostIcon}`} onClick={(e) => { e.stopPropagation(); onEdit(d); }} title="Editar">
-                            <Pencil size={13} />
-                          </button>
-                        )}
-                        {canDelete && (
-                          <button type="button" className={`ds-btn ds-btn-sm ds-btn-ghost ${styles.ghostIcon}`} style={{ color: "var(--error)" }} onClick={(e) => { e.stopPropagation(); onDelete(d); }} title="Eliminar">
-                            <Trash2 size={13} />
-                          </button>
-                        )}
-                      </div>
                     </td>
                   </tr>
                 );
