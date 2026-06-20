@@ -1,3 +1,11 @@
+> # 🚫 DOCUMENTO OBSOLETO — solo referencia histórica
+> **No uses este archivo como instrucción.** La fuente de verdad es **`PROJECT_SOURCE_OF_TRUTH.md`** (raíz).
+> Este HANDOFF está desactualizado (2026-06-09) y contradice la dirección actual en varios puntos:
+> describe **Logística/GPS/Mi Ruta como activos** (están suspendidos/eliminados), **10 roles** (hoy son **14**),
+> estados de Tienda viejos (`ASIGNADO_RECOGIDA`/`EN_RECOGIDA`…; hoy: `CREADO_TIENDA → RECOGIDO_TIENDA →
+> ENTREGADO_CEDI → ENVIADO_CLIENTE` + `RECHAZADO`/`CON_NOVEDAD`), fuentes Archivo/Syne (hoy Inter+Sora) y
+> tema claro/`ThemeToggle` (hoy solo dark). Se conserva únicamente como historia. **No borrar sin autorización.**
+
 # 📦 HANDOFF — Sistema de Gestión de Almacén (Grupo Ambiente)
 
 > Documento de traspaso técnico. Última actualización: 2026-06-09 (Sprint 8).

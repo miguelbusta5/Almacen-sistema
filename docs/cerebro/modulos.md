@@ -1,5 +1,10 @@
 # Módulos del Sistema
 
+> ⚠️ **CORRECCIÓN (2026-06-20):** este archivo aún lista `conteo`, `conteo-contar` e `indicadores` como
+> módulos activos, pero **fueron eliminados** (EPIC D, 2026-06-19; tablas dropeadas en D10). Igual,
+> Logística/Rutas/GPS están suspendidos. La lista real son **11 módulos** — ver
+> **`PROJECT_SOURCE_OF_TRUTH.md` §4** y `src/lib/modulePermissions.ts`, que mandan sobre este archivo.
+
 > Links: [[00-master-context]] · [[roles-permisos]] · [[flujo-despachos]] · [[pendientes]]
 
 ---

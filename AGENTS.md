@@ -1,3 +1,9 @@
+# ⭐ FUENTE DE VERDAD: `PROJECT_SOURCE_OF_TRUTH.md` (raíz)
+
+**Lee `PROJECT_SOURCE_OF_TRUTH.md` primero.** Es el documento maestro y tiene **prioridad sobre este
+archivo, `HANDOFF.md`, `README.md` y cualquier `.md` del cerebro** que lo contradiga. Ante conflicto,
+manda el SOT; ante conflicto SOT vs código, manda el código.
+
 <!-- BEGIN:nextjs-agent-rules -->
 # This is NOT the Next.js you know
 

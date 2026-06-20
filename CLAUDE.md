@@ -1,3 +1,9 @@
+> # ⭐ FUENTE DE VERDAD: `PROJECT_SOURCE_OF_TRUTH.md` (raíz)
+> **Lee `PROJECT_SOURCE_OF_TRUTH.md` primero.** Es el documento maestro del proyecto y tiene
+> **prioridad sobre este archivo** y sobre cualquier `.md` antiguo. Ante conflicto entre este
+> `CLAUDE.md` y el SOT, **manda el SOT**. (Nota: la lista real son **14 roles** y **11 módulos**;
+> ver el SOT y el código — `src/lib/{roles,permissions,modulePermissions}.ts` — como verdad.)
+
 ## Cerebro del proyecto
 
 > **Antes de modificar cualquier código**, lee estos archivos en orden:
