@@ -1,5 +1,40 @@
 # Decisiones de Arquitectura y Producto
 
+## 2026-06-20 - EPIC C / C2: KPIs de tienda migrados a `<Stat>` (DS enriquecido con `icon`)
+
+**Decisión:**
+- `FacturaKpiGrid` (`tienda/_components.tsx:49`) deja de usar `.kpiCard` propio y renderiza el `<Stat>` compartido (`src/components/ui/index.tsx`).
+- Se **enriquece `<Stat>`** con prop opcional `icon?: ReactNode` (regla EPIC C: cuando el componente del DS es más pobre, enriquecer el DS en vez de mantener CSS a medida). Nueva clase `.ds-stat-icon` en `globals.css` (cuadro 34×34 tintado con `--stat-color`, igual al `.kpiIcon` anterior).
+
+**Contexto:**
+- `.ds-stat` ya era casi idéntico a `.kpiCard` (borde, glow `::after`, rail izquierdo por `--stat-color`, hover, label uppercase, `hint`→`trend`). Lo único que le faltaba era el icono.
+- El `hint` («33% del total» / «Bandeja visible») mapea a `trend` con `trendUp` indefinido → texto muted sin flecha, sin cambio semántico.
+
+**Consecuencias:**
+- Tienda queda alineada con los KPIs del resto (home/preoperacional/transporte/muebles ya usan `<Stat>`). Cambio aditivo: los `<Stat>` sin `icon` no se ven afectados.
+- Se eliminó el CSS muerto `.kpiCard/.kpiIcon/.kpiValue/.kpiLabel/.kpiHint` (+ regla responsive) de `tienda.module.css`; se conserva `.kpiGrid` como layout.
+- **Cambio de render** (los KPIs adoptan la altura/tipografía estándar del DS, antes `min-height:132px` + valor `clamp(30–40px)`) → **requiere QA visual del usuario en :3100**.
+- Validado: `tsc` + 271 tests + `build` verdes.
+
+**Archivos afectados:** `src/components/ui/index.tsx`, `src/app/globals.css`, `src/app/(dashboard)/dashboard/tienda/{_components.tsx,tienda.module.css}`, `docs/cerebro/{decisiones,pendientes,auditoria-ui}.md`.
+
+## 2026-06-20 - EPIC C / C3: `EstadoPipeline` se mantiene como composición local (no se promueve al DS)
+
+**Decisión:**
+- `EstadoPipeline` (`tienda/_components.tsx:145`; clases `.pipeline`/`.pipelineStep` en `tienda.module.css`) **se mantiene como composición local del módulo tienda**. No se promueve a `src/components/ui/`.
+
+**Contexto:**
+- C3 del handoff: «promover al DS o dejar el CSS module (ya tokenizado vía `--step-color` = `var(--state-*)`)». Bajo impacto.
+- Es el **único consumidor** de este patrón (segmented control de filtro por estado con conteos). Ningún otro módulo usa una «tubería de estados»: transporte usa tarjetas/charts, solicitudes usa `.ds-table`, el resto `<Stat>`/`<table>`.
+- Ya quedó tokenizado en A6: `--step-color` recibe `ESTADO_DESPACHO_COLOR[estado]` = `var(--state-*)` (`lib/tienda.ts:117`), on-palette Dark Elegant. No hay hex fuera de paleta ni inconsistencia visual que corregir.
+
+**Consecuencias:**
+- **Sin cambio de código ni de render** → no requiere QA visual ni `tsc`/test/build (solo se tocó documentación). Promover un componente de un solo consumidor sería abstracción prematura y contradice la razón de EPIC C (converger porque promover obliga a tocar todos los módulos; aquí no hay segundo consumidor que se beneficie).
+- Disparador de reevaluación: si un segundo módulo necesita el mismo control filtro-por-estado, entonces sí promoverlo al DS (con ≥2 consumidores reales).
+- C2 (`.kpiCard`→`<Stat>`) y C4 (`.facturaTable`→`<DataTable>`) siguen pendientes y requieren QA visual.
+
+**Archivos afectados:** `docs/cerebro/{decisiones,pendientes}.md` (solo documentación; `tienda` intacto).
+
 ## 2026-06-19 - EPIC C: dirección de alineación de Facturas Contado (tienda) al design system
 
 **Decisión de dirección (la que pedía el handoff registrar al inicio):**

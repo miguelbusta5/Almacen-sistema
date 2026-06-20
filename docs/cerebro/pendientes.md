@@ -18,8 +18,8 @@
 - [ ] **EPIC C — alinear Facturas Contado (tienda) al DS** (ver [[decisiones]], dirección: converger → compartido):
   - [x] **Decisión de dirección** registrada: converger tienda→DS, incremental con QA visual del usuario. — 2026-06-19
   - [x] **C1** Hero ya es `ModuleHero` · **C5** detalle ya usa `SlidePanel` · **C6** `tienda.module.css` limpio (`--factura-*` muertos fuera, `--factura-cyan`→`var(--info)`, `.toast` huérfano fuera). — 2026-06-19
-  - [ ] **C2** `.kpiCard` → `<Stat>` (decidir: enriquecer `<Stat>` con icono o promover `.kpiCard`). **Requiere QA visual.**
-  - [ ] **C3** pipeline de estados → promover al DS o simplificar con tokens (ya tokenizado vía A6). **QA visual.**
+  - [x] **C2** `.kpiCard` → `<Stat>`: se enriqueció `<Stat>` con prop `icon` (+ `.ds-stat-icon` en `globals.css`); `FacturaKpiGrid` ahora usa `<Stat>`; CSS muerto `.kpiCard*` eliminado (se conserva `.kpiGrid`). `tsc`+271 tests+`build` verdes. **Pendiente QA visual del usuario en :3100** (cambia altura/tipografía de los KPIs). Ver [[decisiones]]. — 2026-06-20
+  - [x] **C3** pipeline de estados: **se mantiene local** (no se promueve al DS) — único consumidor (`tienda/page.tsx:238`), ya tokenizado vía A6 (`var(--state-*)`). Sin cambio de render → sin QA ni build. Ver [[decisiones]]. — 2026-06-20
   - [ ] **C4** `.facturaTable` → `<DataTable>` (`getRowColor` por estado; `DataTable` ya soporta render/sort/selección). **QA visual — es la pantalla insignia.**
 - [x] **Reescritura total a Dark Elegant (Obsidiana + Esmeralda)**: solo modo oscuro, acento unico esmeralda, estados con color propio, encabezados sin imagenes, fuentes Inter+Sora. Backend intacto. `tsc` + `build` + 1176 tests verdes. Ver [[decisiones]] y [[ux-ui]].
 - [x] Eliminado tema claro, `ThemeToggle` y script de init de tema; `moduleTheme.ts` colapsado a esmeralda sin `heroImage`; `tienda.module.css` reescrito dark; charts y studio re-tematizados.

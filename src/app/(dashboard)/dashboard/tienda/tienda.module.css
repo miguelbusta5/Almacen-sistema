@@ -28,86 +28,7 @@
   margin-top: 0;
 }
 
-.kpiCard {
-  position: relative;
-  overflow: hidden;
-  min-height: 132px;
-  padding: 20px 20px 18px;
-  border: 1px solid var(--border);
-  border-left: 3px solid var(--kpi-color, var(--accent));
-  border-radius: var(--r-md);
-  background: var(--surface);
-  box-shadow: var(--shadow-sm);
-  text-align: left;
-  cursor: pointer;
-  transition: transform 160ms ease, box-shadow 160ms ease, border-color 160ms ease;
-}
-
-.kpiCard::after {
-  content: "";
-  position: absolute;
-  inset: -44px -40px auto auto;
-  width: 120px;
-  height: 120px;
-  border-radius: 999px;
-  pointer-events: none;
-  background: radial-gradient(circle, color-mix(in srgb, var(--kpi-color, var(--accent)) 60%, transparent), transparent 68%);
-  opacity: 0.12;
-}
-
-.kpiCard:hover {
-  transform: translateY(-2px);
-  border-color: color-mix(in srgb, var(--kpi-color, var(--accent)) 36%, var(--border));
-  box-shadow: var(--shadow-md);
-}
-
-.kpiIcon {
-  position: relative;
-  z-index: 1;
-  display: inline-flex;
-  width: 34px;
-  height: 34px;
-  align-items: center;
-  justify-content: center;
-  border-radius: 12px;
-  color: var(--kpi-color, var(--accent));
-  background: color-mix(in srgb, var(--kpi-color, var(--accent)) 16%, transparent);
-  margin-bottom: 14px;
-}
-
-.kpiValue {
-  position: relative;
-  z-index: 1;
-  display: block;
-  color: var(--kpi-color, var(--text));
-  font-family: var(--display);
-  font-size: clamp(30px, 3vw, 40px);
-  line-height: 1;
-  font-weight: 800;
-  letter-spacing: -0.04em;
-  font-variant-numeric: tabular-nums;
-}
-
-.kpiLabel {
-  position: relative;
-  z-index: 1;
-  display: block;
-  margin-top: 10px;
-  color: var(--muted2);
-  font-size: 11px;
-  font-weight: 800;
-  letter-spacing: 0.065em;
-  text-transform: uppercase;
-}
-
-.kpiHint {
-  position: relative;
-  z-index: 1;
-  display: block;
-  margin-top: 7px;
-  color: var(--muted);
-  font-size: 13px;
-}
+/* KPIs migrados a <Stat> compartido (C2). El grid sigue siendo el layout. */
 
 /* ── Pipeline ──────────────────────────────────────────────────────────── */
 .pipeline {
@@ -572,7 +493,6 @@
 @media (max-width: 760px) {
   .page { gap: 14px; }
   .kpiGrid, .pipeline, .toolbar, .grid2, .gridDoc { grid-template-columns: 1fr; }
-  .kpiCard { min-height: 116px; }
   .pipeline { overflow: visible; }
   .pipelineStep { border-right: 0; border-bottom: 1px solid var(--border); }
   .pipelineStep:last-child { border-bottom: 0; }

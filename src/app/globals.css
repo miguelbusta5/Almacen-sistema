@@ -444,6 +444,14 @@ body {
 .g-stat-value.lg, .ds-stat-value.lg { font-size: 38px; }
 .g-stat-value.sm, .ds-stat-value.sm { font-size: 22px; }
 .g-stat-hint, .ds-stat-trend, .cedi-stat-hint { font-size: 12px; color: var(--muted); margin-top: 2px; }
+.ds-stat-icon {
+  position: relative; z-index: 1;
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 34px; height: 34px; margin-bottom: 4px;
+  border-radius: 12px;
+  color: var(--stat-color, var(--accent));
+  background: color-mix(in srgb, var(--stat-color, var(--accent)) 16%, transparent);
+}
 
 /* ── 11. TABLAS (densas, rail de estado por fila, hover legible) ─────────── */
 .g-table-wrap, .op-table-wrap { overflow: hidden; }

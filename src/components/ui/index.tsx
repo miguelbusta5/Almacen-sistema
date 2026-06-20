@@ -69,10 +69,11 @@ interface StatProps {
   trendUp?: boolean;
   size?: "sm" | "md" | "lg";
   color?: string;
+  icon?: React.ReactNode;
   onClick?: () => void;
 }
 
-export function Stat({ value, label, trend, trendUp, size = "md", color, onClick }: StatProps) {
+export function Stat({ value, label, trend, trendUp, size = "md", color, icon, onClick }: StatProps) {
   const sizeClass = size === "lg" ? "lg" : size === "sm" ? "sm" : "";
   return (
     <div
@@ -84,6 +85,7 @@ export function Stat({ value, label, trend, trendUp, size = "md", color, onClick
         "--stat-color": color,
       } as React.CSSProperties}
     >
+      {icon && <span className="ds-stat-icon">{icon}</span>}
       <div
         className={`ds-stat-value ${sizeClass}`}
         style={{ color: color ?? "var(--text)" }}

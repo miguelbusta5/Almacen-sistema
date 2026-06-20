@@ -53,7 +53,7 @@ desviaciones del sistema de diseño (`src/components/ui/*` + `globals.css`). Com
 
 | Módulo | Tipo | Sev | Archivo:línea | Propuesta |
 |---|---|---|---|---|
-| tienda | KPIs con `.kpiCard` propio (módulo CSS) en vez de `<Stat>`/`.ds-stat` | 🟡 | `tienda/_components.tsx:49-142` (`.kpiCard` en `tienda.module.css`) | EPIC C: migrar a `<Stat>` con color por estado, o promover `.kpiCard` al DS. |
+| tienda | ~~KPIs con `.kpiCard` propio~~ | ✅ RESUELTO 2026-06-19→20 | `tienda/_components.tsx:49` | C2: migrado a `<Stat>` (DS enriquecido con prop `icon` + `.ds-stat-icon`); `.kpiCard*` eliminado. Ver [[decisiones]]. |
 | varios | Cada módulo arma sus KPIs distinto: `<Stat>` (home, preoperacional), `<Kpi>` propio (🗑️conteo), tarjetas/charts a medida (centro-control, muebles, transporte), `<Seccion>` (mis-tareas) | 🟡 | `dashboard/page.tsx:358…`, `preoperacional/page.tsx:279-282`, `conteo/page.tsx:432`, `mis-tareas/page.tsx:164` | Estandarizar en `<Stat>` (tamaño/glow/tipografía). Mantener color por estado vía prop `color`. |
 | referencia OK | `<Stat>` bien usado (color por token/estado) | ✅ | `dashboard/page.tsx`, `preoperacional/page.tsx` | Patrón a replicar. |
 

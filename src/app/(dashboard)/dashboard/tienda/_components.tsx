@@ -20,6 +20,7 @@ import {
   EmptyState,
   SkeletonStat,
   SkeletonTable,
+  Stat,
 } from "@/components/ui";
 import {
   DespachoTienda,
@@ -125,18 +126,15 @@ export function FacturaKpiGrid({
   return (
     <div className={styles.kpiGrid}>
       {items.map((item) => (
-        <button
+        <Stat
           key={item.key}
-          type="button"
-          className={styles.kpiCard}
+          icon={item.icon}
+          value={item.value}
+          label={item.label}
+          trend={item.hint}
+          color={item.color}
           onClick={item.onClick}
-          style={{ "--kpi-color": item.color } as CSSProperties}
-        >
-          <span className={styles.kpiIcon}>{item.icon}</span>
-          <span className={styles.kpiValue}>{item.value}</span>
-          <span className={styles.kpiLabel}>{item.label}</span>
-          <span className={styles.kpiHint}>{item.hint}</span>
-        </button>
+        />
       ))}
     </div>
   );
