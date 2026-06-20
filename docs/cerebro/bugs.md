@@ -56,12 +56,21 @@
 - **Solución (global):** `overflow-x: clip` en `html`+`body` (`globals.css`) — `clip` y no `hidden` para
   no convertir el body en scroll-container ni romper el sidebar `sticky`. Además el `SlidePanel` cerrado
   pasa a `pointer-events: none` + `inert` (no foco/click del panel invisible).
-- **Solución (tienda, tabla):** columna Acciones `position: sticky; right: 0` con fondo opaco (+ override
-  de hover) en `tienda.module.css`, para que los botones queden visibles aunque la tabla tenga scroll
-  interno en pantallas angostas.
+- **Solución (tienda, tabla):** la "tabla cortada" era el mismo overflow horizontal de página → lo
+  resuelve el `overflow-x: clip` global. El ancho natural de `.facturaTable` (~1180px) cabe en el cap de
+  1400px de `.dash-main`, así que en pantallas normales se ve completa; en muy angostas queda el scroll
+  interno contenido de `.tableScroll` (aceptable; el responsive fino se aborda en C4 con `<DataTable>`).
 - **Validado:** `tsc` + 271 tests + `build` verdes. QA visual del usuario en :3100 pendiente de confirmar.
-- **Archivos:** `src/app/globals.css`, `src/components/ui/SlidePanel.tsx`,
-  `src/app/(dashboard)/dashboard/tienda/tienda.module.css`.
+- **Archivos:** `src/app/globals.css`, `src/components/ui/SlidePanel.tsx`.
+
+### Corrección 2026-06-20 (intento sticky revertido)
+
+- Un primer intento fijó la columna Acciones con `position: sticky; right: 0` en `tienda.module.css`.
+  **Se revirtió:** `position: sticky` en celdas `td`/`th` sobre una tabla con `border-collapse: collapse`
+  es buggy en Chrome y **desincroniza el ancho de columnas entre `thead` y `tbody`** → cada encabezado
+  mostraba el dato de la columna anterior (corrimiento de 1) y ESTADO quedaba recortado. Auditado: el
+  patrón sticky-en-celda + collapse **solo** estaba en tienda; las demás tablas (`.ds-table`/`.cedi-table`)
+  usan collapse pero sin celdas sticky. La tabla volvió a su layout original (alineado).
 
 ---
 

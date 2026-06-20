@@ -13,10 +13,11 @@
 
 **Consecuencias:**
 - Arreglo transversal sin tocar cada página. Riesgo bajo: `clip` no rompe `sticky`; el scroll interno de tablas (`.tableScroll`) es independiente.
-- Tienda además: columna Acciones `sticky right` (ver `tienda.module.css`) para que los botones queden visibles con scroll interno en pantallas angostas.
+- La "tabla cortada" de tienda era el **mismo** overflow horizontal de página → la resuelve el `clip`. El ancho natural de `.facturaTable` (~1180px) cabe en el cap de 1400px de `.dash-main`.
+- **Intento descartado:** se probó columna Acciones `sticky right` en `tienda.module.css` y se revirtió — `position: sticky` en celdas + `border-collapse: collapse` desincroniza columnas `thead`/`tbody` en Chrome (corrimiento de 1 columna). El responsive fino de la tabla se aborda en C4 con `<DataTable>`. Ver [[bugs]].
 - Validado: `tsc` + 271 tests + `build` verdes. QA visual del usuario pendiente.
 
-**Archivos afectados:** `src/app/globals.css`, `src/components/ui/SlidePanel.tsx`, `src/app/(dashboard)/dashboard/tienda/tienda.module.css`, `docs/cerebro/{bugs,decisiones,pendientes}.md`.
+**Archivos afectados:** `src/app/globals.css`, `src/components/ui/SlidePanel.tsx`, `docs/cerebro/{bugs,decisiones,pendientes}.md`.
 
 ## 2026-06-20 - EPIC C / C2: KPIs de tienda migrados a `<Stat>` (DS enriquecido con `icon`)
 
