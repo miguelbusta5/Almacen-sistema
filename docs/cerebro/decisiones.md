@@ -10,7 +10,8 @@
 - La columna Acciones (Recogido + Rechazar + editar + eliminar ≈ 290px) hacía que el ancho preferido de la tabla (~1450px) superara el contenedor (cap 1400px de `.dash-main`), generando scroll horizontal y recortando Acciones. El usuario eligió «acciones solo en el detalle». Intentos previos (sticky, `overflow-x: clip`) no resolvían el corte de la tabla.
 
 **Consecuencias:**
-- Sin la columna, la tabla (~960px, 6 columnas) cabe de sobra y **no se corta**. Se bajó `.facturaTable min-width` 1040→820px (respaldo de scroll solo en pantallas muy angostas); se borraron `.actions`/`.ghostIcon` muertos.
+- Sin la columna, la tabla cabe de sobra y **no se corta**. Se bajó `.facturaTable min-width` 1040→820px (respaldo de scroll solo en pantallas muy angostas); se borraron `.actions`/`.ghostIcon` muertos.
+- **Corrimiento de columnas (encabezado vs dato) corregido:** se eliminó también la primera columna *vacía* del ícono de alerta (`<th style={{width:24}} />`). Una celda de encabezado vacía sobre `border-collapse: collapse` desincronizaba el ancho de columnas entre `thead` y `tbody` en Chrome (cada encabezado quedaba sobre el dato de la columna anterior). El ícono de alerta (>24h sin recoger) se movió **dentro de la celda Fecha** con un hueco reservado de 15px para no desalinear las fechas. Tabla final: 5 columnas, sin celdas vacías.
 - Doble validación intacta: `canDelete`/`canChangeOperationalState`/`canEditBasic` se siguen evaluando en `page.tsx` para el panel; sin cambios de API/permisos.
 - Facilita **C4** (migrar a `<DataTable>`): el mapeo de columnas queda directo al no haber columna de acciones compleja. C4 sigue pendiente.
 - Validado: `tsc` + 271 tests + `build` verdes. QA visual del usuario pendiente.

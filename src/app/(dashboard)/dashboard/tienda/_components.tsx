@@ -329,7 +329,7 @@ export function FacturasTable({
   return (
     <section className={styles.tablePanel}>
       {loading ? (
-        <SkeletonTable rows={8} cols={6} />
+        <SkeletonTable rows={8} cols={5} />
       ) : items.length === 0 ? (
         <div className={styles.emptyWrap}>
           <EmptyState
@@ -344,7 +344,6 @@ export function FacturasTable({
           <table className={styles.facturaTable}>
             <thead>
               <tr>
-                <th style={{ width: 24 }} />
                 <Th col="fechaCreacion" label="Fecha" />
                 <Th col="centroCostos" label="Centro costos" />
                 <th>Doc. / consecutivo</th>
@@ -363,8 +362,14 @@ export function FacturasTable({
                     style={{ "--row-color": ESTADO_DESPACHO_COLOR[d.estado] } as CSSProperties}
                     onClick={() => onOpen(d)}
                   >
-                    <td>{critico && <AlertTriangle size={15} color="var(--error)" aria-label="Creado hace más de 24 horas sin recogida" />}</td>
-                    <td className={styles.monoText}>{fmtFechaTienda(d.fechaCreacion)}</td>
+                    <td className={styles.monoText}>
+                      <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
+                        <span style={{ width: 15, flexShrink: 0, display: "inline-flex" }}>
+                          {critico && <AlertTriangle size={15} color="var(--error)" aria-label="Creado hace más de 24 horas sin recogida" />}
+                        </span>
+                        {fmtFechaTienda(d.fechaCreacion)}
+                      </span>
+                    </td>
                     <td style={{ fontWeight: 800 }}>{d.centroCostos}</td>
                     <td>
                       <div className={styles.docCode}>{d.numeroDocumento}</div>
