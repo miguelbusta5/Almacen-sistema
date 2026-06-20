@@ -3,7 +3,7 @@ export const PRODUCT = {
   displayName: "Control Logistico CEDI",
   shortName: "Control CEDI",
   brand: "Grupo Ambiente",
-  version: "v3.1",
+  version: "v3.2",
   environmentLabel: "Produccion",
   tagline: "Centro operativo de inventario, tienda y transporte",
   commandLabel: "Comando CEDI",
