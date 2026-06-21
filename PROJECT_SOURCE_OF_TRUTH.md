@@ -177,6 +177,27 @@ verdad en base de datos; acceso desde móvil y escritorio.
    es una opción **abierta** que requiere decisión explícita del dueño antes de implementarse. Mientras no
    se decida, las filas son clicables y abren el panel.
 
+### 9.1 Regla crítica para tablas con rail lateral (NO NEGOCIABLE)
+
+> **Bug histórico (2026-06-20):** `.ds-table tbody tr::before` con `tr { position: relative }` dibujaba el
+> rail de estado. En Chrome, un **pseudo-elemento sobre un `<tr>` (`display: table-row`) se materializa
+> como una CELDA DE TABLA ANÓNIMA** que ocupa la primera columna y **corre todas las columnas una posición
+> a la derecha** (el DOM queda 5/5/5, pero el *layout* se desplaza → "ESTADO mostraba clientes"). Afectaba a
+> Facturas Contado y Guardados. Fix: rail por `box-shadow` en `td:first-child`.
+
+- ⛔ **Prohibido** usar `tr::before` / `tr::after` (ni `tbody tr::before`, `.ds-row::before`, ni cualquier
+  pseudo-elemento sobre una **fila** de tabla) para rails, badges o decoración.
+- ✅ El rail de estado debe ser **paint-only sobre `td:first-child`**:
+  `box-shadow: inset 3px 0 0 0 var(--row-color, transparent)` o `border-left`.
+- ⛔ **Prohibido** agregar un `<td>` de rail si `thead`/`colgroup` no tienen esa columna. Si el rail/alerta
+  es una **columna real**, debe existir en **`thead` + `tbody` + `colgroup`** con el mismo conteo.
+- ✅ Invariante estructural: **`th.length === td.length === col.length`**. Los elementos decorativos
+  (rails, alertas, colores) **no pueden crear columnas visuales**.
+- ✅ Toda tabla crítica debe tener **test estructural** (`th === td === col` + orden de celdas). Una tabla
+  **no** se declara validada solo con test de **contenido**: hay que validar **estructura** y **render visual**
+  (el render estático no detecta pseudo-elementos; son layout del navegador). Guard global:
+  `src/__tests__/cssTableGuard.test.ts` falla si reaparece `tr::before`.
+
 ## 10. Reglas de estados
 
 - Fuente de los estados de despacho: `src/lib/tienda.ts`.
