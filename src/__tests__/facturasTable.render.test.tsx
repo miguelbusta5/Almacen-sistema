@@ -37,6 +37,40 @@ function cellHtml(testId: string): string {
 const text = (testId: string) => cellHtml(testId).replace(/<[^>]*>/g, "").trim();
 
 describe("FacturasTable — mapeo real de columnas (render)", () => {
+  // ── ESTRUCTURA (alineación), no solo contenido ──────────────────────────
+  const thead = html.split("</thead>")[0] ?? "";
+  const tbody = html.split("<tbody>")[1]?.split("</tbody>")[0] ?? "";
+  const firstRow = tbody.split("</tr>")[0] ?? "";
+  const thCount = (thead.match(/<th[ >]/g) ?? []).length;
+  const tdCount = (firstRow.match(/<td[ >]/g) ?? []).length;
+  const colCount = (html.match(/<col[ />]/g) ?? []).length;
+
+  it("ESTRUCTURA: th === td === col === 5 (no hay celda extra del rail)", () => {
+    expect(thCount).toBe(5);
+    expect(tdCount).toBe(5);
+    expect(colCount).toBe(5);
+    expect(thCount).toBe(tdCount);
+    expect(colCount).toBe(thCount);
+  });
+
+  it("ESTRUCTURA: las celdas van en el mismo orden que los headers (fecha→estado)", () => {
+    const ids = ["fecha-cell", "centro-cell", "doc-cell", "cliente-cell", "estado-cell"];
+    const positions = ids.map((id) => firstRow.indexOf(`data-testid="${id}"`));
+    expect(positions.every((p) => p >= 0)).toBe(true);
+    expect(positions).toEqual([...positions].sort((a, b) => a - b));
+    // estado-cell es la ÚLTIMA celda (debajo del header ESTADO).
+    expect(positions[4]).toBe(Math.max(...positions));
+  });
+
+  it("ESTRUCTURA: la primera celda del body es fecha-cell (no una celda de rail)", () => {
+    expect(firstRow.indexOf('data-testid="fecha-cell"')).toBeLessThan(
+      firstRow.indexOf('data-testid="centro-cell"'),
+    );
+    // El rail NO es una celda: antes de la primera <td> no hay otra <td>.
+    const beforeFirstTd = firstRow.slice(0, firstRow.indexOf("<td"));
+    expect(beforeFirstTd).not.toContain("<td");
+  });
+
   it("mapeo completo de celdas (regresión: cada columna muestra su campo)", () => {
     expect(text("centro-cell")).toBe("138-LIVING TESORO");
     expect(text("doc-cell")).toBe("36008#0");

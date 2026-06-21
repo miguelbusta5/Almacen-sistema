@@ -119,7 +119,7 @@ export function DataTable<T>({
                 <th
                   key={c.key}
                   className={c.sortable ? "sortable" : undefined}
-                  style={{ textAlign: c.align }}
+                  style={{ textAlign: c.align, width: c.width, outline: debug ? "1px solid var(--info)" : undefined }}
                   onClick={c.sortable ? () => toggleSort(c.key) : undefined}
                 >
                   <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>
@@ -179,7 +179,11 @@ export function DataTable<T>({
                         raw
                       );
                     return (
-                      <td key={c.key} data-testid={c.testId} style={{ textAlign: c.align }}>
+                      <td
+                        key={c.key}
+                        data-testid={c.testId}
+                        style={{ textAlign: c.align, width: c.width, outline: debug ? "1px dashed var(--warning)" : undefined }}
+                      >
                         {debug && (
                           <span
                             style={{ color: "var(--warning)", fontFamily: "var(--mono)", fontSize: 10, fontWeight: 800, marginRight: 4 }}

@@ -476,13 +476,19 @@ body {
 .g-table tr:last-child td, .ds-table tr:last-child td, .cedi-table tr:last-child td { border-bottom: none; }
 
 .g-table tbody tr, .ds-table tbody tr, .cedi-table tbody tr, .ds-row {
-  position: relative; cursor: pointer;
+  cursor: pointer;
   transition: background 0.12s ease, box-shadow 0.12s ease;
 }
-/* rail de estado por fila (DataTable pasa --row-color por estado) */
-.g-table tbody tr::before, .ds-table tbody tr::before, .cedi-table tbody tr::before {
-  content: ""; position: absolute; left: 0; top: 7px; bottom: 7px; width: 3px; border-radius: 999px;
-  background: var(--row-color, transparent); opacity: 0.85;
+/* Rail de estado por fila vía box-shadow en la 1ª celda (DataTable pasa --row-color por estado).
+   ⚠ NO usar `position: relative` + `::before` en el <tr>: un pseudo-elemento sobre un
+   display:table-row genera una CELDA DE TABLA ANÓNIMA en Chrome que ocupa la primera columna
+   y CORRE todas las columnas una posición a la derecha (el DOM queda 5/5/5 pero el layout se
+   desplaza). El box-shadow es paint-only y no altera la estructura de columnas. */
+.g-table tbody tr > td:first-child,
+.ds-table tbody tr > td:first-child,
+.cedi-table tbody tr > td:first-child,
+.ds-row > td:first-child {
+  box-shadow: inset 3px 0 0 0 var(--row-color, transparent);
 }
 .g-table tbody tr:hover, .ds-table tbody tr:hover, .cedi-table tbody tr:hover, .ds-table .ds-row:hover {
   background: color-mix(in srgb, var(--row-color, var(--accent)) 9%, var(--surface));
