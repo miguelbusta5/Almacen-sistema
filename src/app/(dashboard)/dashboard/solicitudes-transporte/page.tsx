@@ -3,16 +3,16 @@
 import { useEffect, useMemo, useState } from "react";
 import { useSession } from "next-auth/react";
 import {
-  AlertTriangle, CheckCircle2, Clock, FileText, Minus, Pencil,
-  Plus, RefreshCw, Search, Send, Trash2, X,
+  AlertTriangle, Clock, FileText, Minus,
+  Plus, RefreshCw, Search, Send, X,
 } from "lucide-react";
-import { Badge, ModuleHero } from "@/components/ui";
+import { ModuleHero } from "@/components/ui";
 import { AutoRefreshIndicator } from "@/components/ui/AutoRefreshIndicator";
 import { getModuleColor, getModuleCssVars } from "@/lib/moduleTheme";
 import { puedeEliminarSolicitudTransporte, puedeGestionarSolicitudTransporte } from "@/lib/solicitudesTransporte";
 import { useAutoRefresh } from "@/hooks/useAutoRefresh";
 import {
-  SolicitudesTable, ESTADO_COLOR, SEMAFORO_COLOR, estadoVariant, semaforoVariant,
+  SolicitudesTable, SolicitudDetailPanel, Field, inputStyle, ESTADO_COLOR, SEMAFORO_COLOR,
   type Solicitud, type Estado, type PluLinea,
 } from "./_components";
 
@@ -30,17 +30,6 @@ interface Catalogos {
 }
 
 const COLOR = getModuleColor("solicitudes-transporte");
-const inputStyle: React.CSSProperties = {
-  width: "100%",
-  height: 36,
-  border: "1px solid var(--border)",
-  borderRadius: 8,
-  background: "var(--surface2)",
-  color: "var(--text)",
-  padding: "0 10px",
-  fontSize: 13,
-  outline: "none",
-};
 
 const emptyPlu = (): PluLinea => ({ plu: "", descripcion: "", unidades: 1 });
 
@@ -77,38 +66,11 @@ const emptyForm = {
   plines: [emptyPlu()],
 };
 
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
-  return (
-    <label style={{ display: "grid", gap: 5, fontSize: 12, fontWeight: 700, color: "var(--muted2)" }}>
-      {label}
-      {children}
-    </label>
-  );
-}
-
 function SelectField({ value, onChange, options, required = true }: { value: string; onChange: (v: string) => void; options: string[]; required?: boolean }) {
   return (
     <select required={required} value={value} onChange={(e) => onChange(e.target.value)} style={inputStyle}>
       {options.map((option) => <option key={option} value={option}>{option}</option>)}
     </select>
-  );
-}
-
-function DetailSection({ title, children, color = COLOR }: { title: string; children: React.ReactNode; color?: string }) {
-  return (
-    <section className="detail-section" style={{ display: "grid", gap: 9, "--section-color": color } as React.CSSProperties}>
-      <strong style={{ color: "var(--text)", fontSize: 14 }}>{title}</strong>
-      <div style={{ display: "grid", gap: 7, fontSize: 13, color: "var(--text)" }}>{children}</div>
-    </section>
-  );
-}
-
-function DetailLine({ label, value }: { label: string; value: React.ReactNode }) {
-  return (
-    <div style={{ display: "grid", gridTemplateColumns: "150px 1fr", gap: 10 }}>
-      <span style={{ color: "var(--muted)" }}>{label}</span>
-      <span>{value || "N/A"}</span>
-    </div>
   );
 }
 
@@ -526,127 +488,24 @@ export default function SolicitudesTransportePage() {
         debug={debugTable}
       />
 
-      {selected && (
-        <div style={{ position: "fixed", inset: 0, zIndex: 8500, background: "rgba(0,0,0,.35)", display: "flex", justifyContent: "flex-end" }} onClick={() => setSelected(null)}>
-          <aside onClick={(e) => e.stopPropagation()} className="slide-panel" style={{ width: "min(640px,100vw)", height: "100%", background: "var(--surface)", borderLeft: "1px solid var(--border)", padding: 20, overflowY: "auto", display: "grid", gap: 16, alignContent: "start", "--panel-color": ESTADO_COLOR[selected.estado] } as React.CSSProperties}>
-            <div style={{ display: "flex", justifyContent: "space-between", gap: 12 }}>
-              <div>
-                <h2 style={{ margin: 0, fontSize: 18, color: "var(--text)" }}>{selected.numeroPedido || "Solicitud transporte"}</h2>
-                <p style={{ margin: "4px 0 0", fontSize: 13, color: "var(--muted)" }}>{selected.ciudadOrigen} {"->"} {selected.ciudadEntrega}</p>
-              </div>
-              <button onClick={() => setSelected(null)} style={{ border: "none", background: "transparent", color: "var(--muted)", cursor: "pointer" }}><X size={18} /></button>
-            </div>
-
-            <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-              <Badge label={selected.estado} variant={estadoVariant(selected.estado)} dot={false} color={ESTADO_COLOR[selected.estado]} />
-              <Badge label={selected.semaforo} variant={semaforoVariant(selected.semaforo)} color={SEMAFORO_COLOR[selected.semaforo] ?? COLOR} />
-              {canEditSelected(selected) && (
-                <button onClick={() => { setEditing(selected); setShowForm(true); }} style={{ height: 30, border: "1px solid var(--border)", borderRadius: 8, background: "var(--surface2)", color: "var(--text)", display: "flex", alignItems: "center", gap: 6, padding: "0 10px", cursor: "pointer" }}>
-                  <Pencil size={13} /> Editar
-                </button>
-              )}
-              {canDelete && (
-                <button onClick={() => borrarSolicitud(selected)} style={{ height: 30, border: "1px solid rgba(220,38,38,.35)", borderRadius: 8, background: "var(--error-tint)", color: "var(--error)", display: "flex", alignItems: "center", gap: 6, padding: "0 10px", cursor: "pointer" }}>
-                  <Trash2 size={13} /> Borrar
-                </button>
-              )}
-            </div>
-
-            {selected.motivoRechazo && (
-              <div style={{ padding: 12, borderRadius: 10, background: "var(--error-tint)", color: "var(--error)", fontSize: 13 }}>
-                <strong>Motivo de rechazo:</strong> {selected.motivoRechazo}
-              </div>
-            )}
-
-            <DetailSection title="Información general" color={COLOR}>
-              <DetailLine label="Fecha solicitud" value={selected.fechaSolicitud} />
-              <DetailLine label="Area" value={selected.areaSolicitante === "Otro" ? selected.areaOtro : selected.areaSolicitante} />
-              <DetailLine label="Solicitante" value={selected.solicitanteNombre} />
-              <DetailLine label="Correo" value={selected.solicitanteCorreo} />
-              <DetailLine label="Contacto" value={selected.solicitanteTelefono} />
-            </DetailSection>
-
-            <DetailSection title="Pedido y mercancía" color={ESTADO_COLOR.PENDIENTE}>
-              <DetailLine label="Tipo venta" value={selected.tipoVenta} />
-              <DetailLine label="Pedido / orden" value={selected.numeroPedido} />
-              <DetailLine label="Factura integracion" value={selected.facturaIntegracion} />
-              <DetailLine label="Cantidad cajas" value={selected.cantidadCajas ?? selected.unidades} />
-              <DetailLine label="Volumen" value={selected.volumenEstimado} />
-              <DetailLine label="Tipo mercancía" value={selected.tipoMercancia} />
-              <DetailLine label="Flete" value={selected.cobroFlete ? `Si - $${selected.valorFlete ?? 0}` : "No"} />
-            </DetailSection>
-
-            <DetailSection title="PLUs" color={ESTADO_COLOR.REENVIADA}>
-              {selected.plines?.length ? selected.plines.map((p, i) => (
-                <div key={p.id ?? i} style={{ display: "grid", gridTemplateColumns: "90px 1fr 70px", gap: 8, padding: "8px 10px", borderRadius: 8, background: "var(--surface2)" }}>
-                  <strong>{p.plu}</strong>
-                  <span>{p.descripcion}</span>
-                  <span>{p.unidades} und.</span>
-                </div>
-              )) : <span style={{ color: "var(--muted)" }}>Sin PLUs registrados</span>}
-            </DetailSection>
-
-            <DetailSection title="Origen y destino" color={COLOR}>
-              <DetailLine label="Ciudad origen" value={selected.ciudadOrigen} />
-              <DetailLine label="Zona recogida" value={selected.zonaRecogida} />
-              <DetailLine label="Direccion recogida" value={selected.direccionRecogida} />
-              <DetailLine label="Punto recogida" value={selected.puntoRecogida === "Otros" ? selected.puntoRecogidaOtro : selected.puntoRecogida} />
-              <DetailLine label="Ciudad entrega" value={selected.ciudadEntrega} />
-              <DetailLine label="Direccion entrega" value={selected.direccionEntrega} />
-              <DetailLine label="Zona entrega" value={selected.zonaEntrega} />
-            </DetailSection>
-
-            <DetailSection title="Programacion y servicio" color={SEMAFORO_COLOR.ALERTA}>
-              <DetailLine label="Fecha promesa" value={selected.fechaPromesaEntrega} />
-              <DetailLine label="Ventana" value={selected.ventanaEntrega} />
-              <DetailLine label="Restriccion" value={selected.restriccionHoraria ? selected.descripcionRestriccion : "No"} />
-              <DetailLine label="Tipo servicio" value={selected.tipoServicio === "Otro" ? selected.tipoServicioOtro : selected.tipoServicio} />
-              <DetailLine label="Observaciones" value={selected.observacionesSolicitante} />
-            </DetailSection>
-
-            {!isGestor && selected.estado === "RECHAZADA" && (
-              <div style={{ display: "flex", gap: 8 }}>
-                <button onClick={() => { setEditing(selected); setShowForm(true); }} style={{ flex: 1, height: 36, border: "none", borderRadius: 8, background: COLOR, color: "white", fontWeight: 700, cursor: "pointer" }}>Corregir</button>
-                <button onClick={() => reenviar(selected)} style={{ flex: 1, height: 36, border: "1px solid var(--border)", borderRadius: 8, background: "var(--surface)", color: "var(--text)", fontWeight: 700, cursor: "pointer" }}>Reenviar</button>
-              </div>
-            )}
-
-            {isGestor && (
-              <DetailSection title="Gestión transporte" color={ESTADO_COLOR.PROGRAMADA}>
-                <Field label="Stella / estado gestion">
-                  <select value={gestion.stellaEstado} onChange={(e) => setGestion((g) => ({ ...g, stellaEstado: e.target.value }))} style={inputStyle}>
-                    {["PENDIENTE", "PROGRAMADO", "EFECTUADO", "CANCELADO"].map((e) => <option key={e}>{e}</option>)}
-                  </select>
-                </Field>
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-                  <Field label="Documento NetSuite"><input value={gestion.documentoNetSuite} onChange={(e) => setGestion((g) => ({ ...g, documentoNetSuite: e.target.value }))} style={inputStyle} /></Field>
-                  <Field label="Fecha programación"><input type="date" value={gestion.fechaProgramacion} onChange={(e) => setGestion((g) => ({ ...g, fechaProgramacion: e.target.value }))} style={inputStyle} /></Field>
-                  <Field label="Transportadora">
-                    <select required value={gestion.transportadora} onChange={(e) => setGestion((g) => ({ ...g, transportadora: e.target.value }))} style={inputStyle}>
-                      <option value="">Seleccionar</option>
-                      {(catalogos?.transportadoras ?? []).map((t) => <option key={t} value={t}>{t}</option>)}
-                    </select>
-                  </Field>
-                  <Field label="Número guía"><input value={gestion.numeroGuia} onChange={(e) => setGestion((g) => ({ ...g, numeroGuia: e.target.value }))} style={inputStyle} /></Field>
-                </div>
-                <Field label="Observacion transporte">
-                  <textarea value={gestion.observacionTransporte} onChange={(e) => setGestion((g) => ({ ...g, observacionTransporte: e.target.value }))} rows={3} style={{ ...inputStyle, height: "auto", padding: 10 }} />
-                </Field>
-                <button onClick={saveGestion} style={{ height: 36, border: "none", borderRadius: 8, background: COLOR, color: "white", fontWeight: 700, cursor: "pointer", display: "flex", justifyContent: "center", alignItems: "center", gap: 7 }}><CheckCircle2 size={15} /> Guardar gestión</button>
-
-                {!["EFECTUADA", "CANCELADA"].includes(selected.estado) && (
-                  <div style={{ display: "grid", gap: 8, borderTop: "1px solid var(--border)", paddingTop: 12 }}>
-                    <Field label="Motivo rechazo">
-                      <textarea value={rejectText} onChange={(e) => setRejectText(e.target.value)} rows={2} style={{ ...inputStyle, height: "auto", padding: 10 }} />
-                    </Field>
-                    <button onClick={rechazar} style={{ height: 36, border: "1px solid rgba(220,38,38,.35)", borderRadius: 8, background: "var(--error-tint)", color: "var(--error)", fontWeight: 700, cursor: "pointer" }}>Rechazar solicitud</button>
-                  </div>
-                )}
-              </DetailSection>
-            )}
-          </aside>
-        </div>
-      )}
+      <SolicitudDetailPanel
+        selected={selected}
+        isGestor={isGestor}
+        canEdit={selected ? canEditSelected(selected) : false}
+        canDelete={canDelete}
+        gestion={gestion}
+        setGestion={setGestion}
+        rejectText={rejectText}
+        setRejectText={setRejectText}
+        transportadoras={catalogos?.transportadoras ?? []}
+        moduleColor={COLOR}
+        onClose={() => setSelected(null)}
+        onEdit={() => { if (selected) { setEditing(selected); setShowForm(true); } }}
+        onDelete={() => { if (selected) borrarSolicitud(selected); }}
+        onReenviar={() => { if (selected) reenviar(selected); }}
+        onSaveGestion={saveGestion}
+        onRechazar={rechazar}
+      />
 
       {showForm && (
         <SolicitudForm
