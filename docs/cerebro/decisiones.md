@@ -1,5 +1,33 @@
 # Decisiones de Arquitectura y Producto
 
+## 2026-06-20 - Guardados/Transporte: 2º módulo piloto al patrón canónico (DataTable)
+
+**Decisión:**
+- Se reconstruye `transporte` siguiendo el patrón validado en Facturas Contado: header `CediPage` →
+  `ModuleHero`; tabla bespoke `<table className="ds-table">` + `Th` manual → **`<DataTable<Guardado>>`**
+  con columnas declarativas (Fecha · Documento · Ubicación · Tipo · Estado · Almacenaje); `page.tsx` deja
+  de gestionar sort (lo posee el DataTable).
+- **Acciones de fila: solo en el SlidePanel** (decisión del usuario), igual que tienda. Se elimina la
+  columna de acciones inline (el panel ya tenía Marcar enviado/Fecha/Editar/Eliminar/Revertir).
+- **Urgencia: rail lateral por tier de alerta** (`getRowColor` = `ALERTA_TIER_COLOR`, solo si tier≠ok) +
+  **score 0-100 dentro de la celda Fecha** (`AlertScore` con `title`). Se elimina la columna dedicada del
+  círculo de score. Leyenda `TierLegend` explica los colores del rail (ayuda secundaria).
+- Nuevos: `transporte/_components.tsx` (`GuardadosTable`, `EstadoBadge`, `TipoBadge`, `AlertScore`,
+  `TierLegend`), `transporte/transporte.module.css`, `__tests__/guardadosTable.render.test.tsx`
+  (estructura `th===td===col===6` + orden + contenido).
+
+**Contexto:**
+- 2º módulo piloto. Sin tocar backend/DB/endpoints/reglas. Se conservan KPIs, filtros, charts (gráficos),
+  pendientes-de-tienda, export CSV, SlidePanel (almacenaje, NetSuite, log de contactos), modales, permisos
+  y todas las APIs (`/api/transporte`, `/pendientes-tienda`, `/{clientId}/contactos`, `/{clientId}/acciones`).
+
+**Consecuencias:**
+- `CediPage`/`cedi.tsx` quedan sin este consumidor (deuda: evaluar su retiro cuando ningún módulo los use).
+- Validado: `tsc` + 290 tests + `build` verdes. **QA visual del usuario pendiente** (`/dashboard/transporte`).
+
+**Archivos:** `src/app/(dashboard)/dashboard/transporte/{page.tsx,_components.tsx,transporte.module.css}`,
+`src/__tests__/guardadosTable.render.test.tsx`, `docs/cerebro/{decisiones,pendientes}.md`.
+
 ## 2026-06-20 - EPIC C / C4: Facturas Contado migra a `<DataTable>` (módulo piloto del SOT)
 
 **Decisión:**

@@ -10,14 +10,15 @@ import {
 import { Doughnut, Bar } from "react-chartjs-2";
 import { Truck, Plus, X, CheckCircle2, Calendar, Search, BarChart3, List, Clock, Pencil, Trash2, Phone, MessageCircle, RotateCcw, Download, PackageCheck } from "lucide-react";
 import {
-  Guardado, TipoGuardado, fmtCOP, fmtFecha, todayISO, urgencia, tieneAlerta, parseEntrega,
-  scoreGuardado, alertaTier, ALERTA_TIER_COLOR, ALERTA_TIER_LABEL,
+  Guardado, fmtCOP, fmtFecha, todayISO, tieneAlerta, parseEntrega,
   TipoContacto, ResultadoContacto, TIPO_CONTACTO_LABEL, RESULTADO_CONTACTO_LABEL, ContactoGuardado,
 } from "@/lib/transporte";
 import { calcAlmacenaje, TARIFA_ALM } from "@/lib/almacenaje";
 import { insightsGuardados, insightsPorGuardado } from "@/lib/inteligencia";
-import { CediPage } from "@/components/ui/cedi";
-import { Stat, SkeletonStat, Badge, EmptyState, SkeletonTable, Toast, NetSuiteChip } from "@/components/ui";
+import { Stat, SkeletonStat, Toast, NetSuiteChip, ModuleHero } from "@/components/ui";
+import { GuardadosTable, EstadoBadge, TipoBadge } from "./_components";
+import { getModuleCssVars } from "@/lib/moduleTheme";
+import styles from "./transporte.module.css";
 import { AutoRefreshIndicator } from "@/components/ui/AutoRefreshIndicator";
 import { SlidePanel, IntelBanner, DetailSection, DetailGrid, MiniHistory } from "@/components/ui/SlidePanel";
 import { useIsMobile } from "@/lib/useIsMobile";
@@ -42,14 +43,6 @@ interface PendienteTiendaGuardado {
   };
 }
 
-function TipoBadge({ tipo }: { tipo: TipoGuardado }) {
-  return <Badge label={tipo === "ECOMMERCE" ? "Ecommerce" : "Común"} variant={tipo === "ECOMMERCE" ? "info" : "default"} dot={false} />;
-}
-function EstadoBadge({ estado }: { estado: string }) {
-  return <Badge label={estado === "DESPACHADO" ? "Despachado" : "Pendiente"} variant={estado === "DESPACHADO" ? "success" : "warning"} />;
-}
-
-
 // ═══════════════════════════════════════════════════════════
 // PÁGINA PRINCIPAL
 // ═══════════════════════════════════════════════════════════
@@ -70,8 +63,7 @@ export default function TransportePage() {
   const [fEstado, setFEstado] = useState("");
   const [fTipo, setFTipo] = useState("");
   const [fAlerta, setFAlerta] = useState(false);
-  const [sortCol, setSortCol] = useState("fecha");
-  const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
+  const [debugTable, setDebugTable] = useState(false);
 
   const [panelItem, setPanelItem] = useState<Guardado | null>(null);
   const [contactos, setContactos] = useState<ContactoGuardado[]>([]);
@@ -97,6 +89,8 @@ export default function TransportePage() {
     finally { setLoading(false); }
   }
   useEffect(() => { load(); }, []);
+  // Modo debug de tabla: /dashboard/transporte?debugTable=1 (diagnóstico de mapeo de columnas).
+  useEffect(() => { setDebugTable(new URLSearchParams(window.location.search).get("debugTable") === "1"); }, []);
 
   const autoRefresh = useAutoRefresh({
     pause: Boolean(creando || editing || panelItem || deleting || mostrarFormContacto || fechaModal),
@@ -204,9 +198,6 @@ export default function TransportePage() {
   const globalInsights = useMemo(() => insightsGuardados(guardados), [guardados]);
   const panelInsights = useMemo(() => panelItem ? insightsPorGuardado(panelItem, guardados) : [], [panelItem, guardados]);
 
-  // Docs con alerta (para indicador en tabla)
-  const clientsConAlerta = useMemo(() => new Set(guardados.filter((g) => tieneAlerta(g)).map((g) => g.clientId)), [guardados]);
-
   const kpis = useMemo(() => {
     const activos = guardados.filter((g) => g.estado === "PENDIENTE DESPACHO");
     const pend = activos.length;
@@ -216,41 +207,17 @@ export default function TransportePage() {
     return { total: guardados.length, pend, desp, alertas, costoTotal };
   }, [guardados]);
 
-  function toggleSort(col: string) {
-    if (sortCol === col) setSortDir((d) => d === "asc" ? "desc" : "asc");
-    else { setSortCol(col); setSortDir("asc"); }
-  }
-
+  // Solo filtra; el ordenamiento interactivo lo gestiona <DataTable> (DS).
   const filtered = useMemo(() => {
     const q = fq.toLowerCase();
-    return [...guardados].filter((g) => {
+    return guardados.filter((g) => {
       if (q && !g.documento.toLowerCase().includes(q) && !g.ubicacion.toLowerCase().includes(q)) return false;
       if (fEstado && g.estado !== fEstado) return false;
       if (fTipo && g.tipo !== fTipo) return false;
       if (fAlerta && !tieneAlerta(g)) return false;
       return true;
-    }).sort((a, b) => {
-      const dir = sortDir === "asc" ? 1 : -1;
-      switch (sortCol) {
-        case "fecha": return dir * a.fecha.localeCompare(b.fecha);
-        case "documento": return dir * a.documento.localeCompare(b.documento);
-        case "ubicacion": return dir * a.ubicacion.localeCompare(b.ubicacion);
-        case "estado": return dir * a.estado.localeCompare(b.estado);
-        case "tipo": return dir * a.tipo.localeCompare(b.tipo);
-        case "almacenaje": {
-          const ca = calcAlmacenaje(a.fecha, a.estado === "DESPACHADO" ? a.fechaDespacho : null).costo;
-          const cb = calcAlmacenaje(b.fecha, b.estado === "DESPACHADO" ? b.fechaDespacho : null).costo;
-          return dir * (ca - cb);
-        }
-        default: return 0;
-      }
     });
-  }, [guardados, fq, fEstado, fTipo, fAlerta, sortCol, sortDir]);
-
-  const Th = ({ col, label, right }: { col: string; label: string; right?: boolean }) => {
-    const active = sortCol === col;
-    return <th className="sortable" onClick={() => toggleSort(col)} style={{ textAlign: right ? "right" : "left", color: active ? "var(--brand)" : undefined }}>{label}{active ? (sortDir === "asc" ? " ↑" : " ↓") : " ↕"}</th>;
-  };
+  }, [guardados, fq, fEstado, fTipo, fAlerta]);
 
   // Gráficos
   const donutData = useMemo(() => ({ labels: ["Pendiente", "Despachado"], datasets: [{ data: [kpis.pend, kpis.desp], backgroundColor: ["#5C636A", "#14DBA0"], borderWidth: 0 }] }), [kpis]);
@@ -272,29 +239,31 @@ export default function TransportePage() {
   const panelEntrega = useMemo(() => panelItem ? parseEntrega(panelItem.nota) : null, [panelItem]);
 
   return (
-    <CediPage
-      moduleKey="transporte"
-      title="Guardados Transporte"
-      description={loading ? "Cargando…" : `${guardados.length} registros · ${kpis.pend} pendientes despacho`}
-      actions={
-        <>
-          <AutoRefreshIndicator
-            lastUpdatedAt={autoRefresh.lastUpdatedAt}
-            refreshing={autoRefresh.refreshing}
-            onRefresh={autoRefresh.refreshNow}
-          />
-          <button className={`ds-btn ${view === "graficos" ? "ds-btn-secondary" : "ds-btn-ghost"}`} onClick={() => setView(view === "graficos" ? "lista" : "graficos")}>
-            {view === "graficos" ? <><List size={14} />Lista</> : <><BarChart3 size={14} />Gráficos</>}
-          </button>
-          <button className="ds-btn ds-btn-ghost" onClick={exportarCSV} title="Descargar Excel (CSV)">
-            <Download size={14} />Excel
-          </button>
-          <button className="ds-btn ds-btn-primary" onClick={() => setCreando(true)}>
-            <Plus size={14} />Nuevo guardado
-          </button>
-        </>
-      }
-    >
+    <div className={`animate-fade-in ${styles.page}`} style={getModuleCssVars("transporte") as React.CSSProperties}>
+      <ModuleHero
+        moduleKey="transporte"
+        kicker="Custodia y almacenaje"
+        title="Guardados Transporte"
+        description={loading ? "Cargando…" : `${guardados.length} registros · ${kpis.pend} pendientes despacho`}
+        actions={
+          <>
+            <AutoRefreshIndicator
+              lastUpdatedAt={autoRefresh.lastUpdatedAt}
+              refreshing={autoRefresh.refreshing}
+              onRefresh={autoRefresh.refreshNow}
+            />
+            <button className={`ds-btn ${view === "graficos" ? "ds-btn-secondary" : "ds-btn-ghost"}`} onClick={() => setView(view === "graficos" ? "lista" : "graficos")}>
+              {view === "graficos" ? <><List size={14} />Lista</> : <><BarChart3 size={14} />Gráficos</>}
+            </button>
+            <button className="ds-btn ds-btn-ghost" onClick={exportarCSV} title="Descargar Excel (CSV)">
+              <Download size={14} />Excel
+            </button>
+            <button className="ds-btn ds-btn-primary" onClick={() => setCreando(true)}>
+              <Plus size={14} />Nuevo guardado
+            </button>
+          </>
+        }
+      />
 
       {/* ── KPIs ── */}
       {!loading && pendientesTienda.length > 0 && (
@@ -384,114 +353,16 @@ export default function TransportePage() {
             <span style={{ alignSelf: "center", fontSize: 12, color: "var(--muted)", fontFamily: "var(--mono)" }}>{filtered.length} de {guardados.length}</span>
           </div>
 
-          <div className="ds-panel" style={{ border: "1px solid var(--border)" }}>
-            {loading ? <SkeletonTable rows={8} cols={7} /> : filtered.length === 0 ? (
-              <EmptyState
-                icon={<Truck size={22} />}
-                title="Sin guardados"
-                description={(fq || fEstado || fTipo || fAlerta) ? "No hay resultados para estos filtros." : "Los guardados de transporte aparecerán aquí."}
-                action={(fq || fEstado || fTipo || fAlerta) ? { label: "Limpiar filtros", onClick: () => { setFq(""); setFEstado(""); setFTipo(""); setFAlerta(false); } } : { label: "Nuevo guardado", onClick: () => setCreando(true) }}
-              />
-            ) : (
-              <div style={{ overflowX: "auto" }}>
-                <table className="ds-table">
-                  <thead>
-                    <tr>
-                      <th style={{ width: 20 }} />
-                      <Th col="fecha" label="Fecha" />
-                      <Th col="documento" label="Documento" />
-                      <Th col="ubicacion" label="Ubicación" />
-                      <Th col="tipo" label="Tipo" />
-                      <Th col="estado" label="Estado" />
-                      <Th col="almacenaje" label="Almacenaje" right />
-                      <th />
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {filtered.map((g) => {
-                      const esDesp = g.estado === "DESPACHADO";
-                      const alm = calcAlmacenaje(g.fecha, esDesp ? g.fechaDespacho : null);
-                      const u = urgencia(g);
-                      const hasAlert = clientsConAlerta.has(g.clientId);
-                      return (
-                        <tr key={g.clientId} className="ds-row" onClick={() => abrirPanel(g)} style={{ background: panelItem?.clientId === g.clientId ? "var(--surface2)" : undefined }}>
-                          <td style={{ padding: "0 4px 0 12px" }}>
-                            {(() => {
-                              const score = scoreGuardado(g);
-                              const tier = alertaTier(g);
-                              if (tier === "ok") return null;
-                              const color = ALERTA_TIER_COLOR[tier];
-                              return (
-                                <span title={`Urgencia: ${score}/100 · ${ALERTA_TIER_LABEL[tier]}`}
-                                  style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: 22, height: 22, borderRadius: "50%", background: `color-mix(in srgb, ${color} 13%, transparent)`, fontSize: 10, fontWeight: 800, color, fontFamily: "var(--mono)", cursor: "help" }}>
-                                  {score}
-                                </span>
-                              );
-                            })()}
-                          </td>
-                          <td style={{ fontFamily: "var(--mono)", fontSize: 12, color: "var(--muted)", whiteSpace: "nowrap" }}>{fmtFecha(g.fecha)}</td>
-                          <td style={{ fontFamily: "var(--mono)", fontWeight: 600, fontSize: 13 }}>{g.documento}</td>
-                          <td style={{ fontSize: 13, color: "var(--muted)" }}>{g.ubicacion}</td>
-                          <td><TipoBadge tipo={g.tipo} /></td>
-                          <td><EstadoBadge estado={g.estado} /></td>
-                          <td style={{ textAlign: "right", fontFamily: "var(--mono)", fontSize: 12 }}>
-                            {alm.fase === "gracia"
-                              ? <span style={{ color: "var(--success)", fontWeight: 600, fontSize: 11 }}>En gracia</span>
-                              : alm.meses === 0
-                                ? <span style={{ color: "var(--muted2)", fontWeight: 600, fontSize: 11 }}>Día {alm.diasEnPeriodo}/30</span>
-                                : <span style={{ color: "var(--brand)", fontWeight: 700 }}>{fmtCOP(alm.costo)}</span>}
-                          </td>
-                          {/* Acciones on-hover */}
-                          <td style={{ padding: "0 12px" }}>
-                            <div className="ds-row-actions">
-                              {!esDesp && (
-                                <button
-                                  className="ds-btn ds-btn-sm"
-                                  style={{ background: "var(--success-tint)", color: "var(--success)", height: 26, fontSize: 11 }}
-                                  onClick={(e) => { e.stopPropagation(); despachar(g); }}
-                                  title="Marcar como enviado"
-                                >
-                                  <CheckCircle2 size={12} />Enviado
-                                </button>
-                              )}
-                              {g.estado === "DESPACHADO" && canDelete && (
-                                <button
-                                  className="ds-btn ds-btn-sm ds-btn-ghost"
-                                  style={{ height: 26, color: "var(--warning)" }}
-                                  onClick={(e) => { e.stopPropagation(); revertirDespacho(g); }}
-                                  title="Revertir a Pendiente Despacho (solo ADMIN)"
-                                >
-                                  <RotateCcw size={12} />
-                                </button>
-                              )}
-                              <button
-                                className="ds-btn ds-btn-sm ds-btn-ghost"
-                                onClick={(e) => { e.stopPropagation(); setFechaModal(g); }}
-                                title="Editar fecha de entrega"
-                                style={{ height: 26 }}
-                              >
-                                <Calendar size={12} />
-                              </button>
-                              {canEdit && (
-                                <button className="ds-btn ds-btn-sm ds-btn-ghost" style={{ height: 26 }} onClick={(e) => { e.stopPropagation(); setEditing(g); }} title="Editar">
-                                  <Pencil size={12} />
-                                </button>
-                              )}
-                              {canDelete && (
-                                <button className="ds-btn ds-btn-sm ds-btn-ghost" style={{ height: 26, color: "var(--error)" }} onClick={(e) => { e.stopPropagation(); setDeleting(g); }} title="Eliminar">
-                                  <Trash2 size={12} />
-                                </button>
-                              )}
-                            </div>
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
-            )}
-          </div>
+          <GuardadosTable
+            loading={loading}
+            items={filtered}
+            hasFilters={Boolean(fq || fEstado || fTipo || fAlerta)}
+            selectedId={panelItem?.clientId}
+            onOpen={abrirPanel}
+            onClearFilters={() => { setFq(""); setFEstado(""); setFTipo(""); setFAlerta(false); }}
+            onNew={() => setCreando(true)}
+            debug={debugTable}
+          />
         </div>
       )}
 
@@ -686,7 +557,7 @@ export default function TransportePage() {
       )}
 
       {toast && <Toast message={toast.msg} error={toast.err} />}
-    </CediPage>
+    </div>
   );
 }
 
