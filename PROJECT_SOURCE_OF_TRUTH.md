@@ -9,7 +9,7 @@
 > `src/lib/permissions.ts`, `src/lib/modulePermissions.ts`, `src/lib/roles.ts`, `src/lib/tienda.ts`),
 > **manda el código** y este documento debe corregirse.
 >
-> **Última actualización:** 2026-06-20 · **Producto:** `Control Logistico CEDI` (`src/config/product.ts`, v3.1)
+> **Última actualización:** 2026-06-22 · **Producto:** `Control Logistico CEDI` (`src/config/product.ts`, v3.1)
 > · **Marca:** Grupo Ambiente · **Producción:** https://matec-cedi.vercel.app
 
 ---
@@ -293,8 +293,122 @@ verdad en base de datos; acceso desde móvil y escritorio.
 5. **Validar siempre antes de push:** `npx tsc --noEmit` → `npm test` (271) → `npm run build`.
 6. **Deploy = `git push origin master`** (GitHub Actions: tsc + tests + `vercel deploy --prod`).
 7. **Documentar la decisión** en `docs/cerebro/decisiones.md` y actualizar este SOT si cambia una regla.
-8. **Módulo piloto del rediseño:** Facturas Contado (`tienda`) — pantalla patrón; al cerrarla deja el
-   patrón canónico (`DataTable` + `Stat` + `SlidePanel`) para replicar al resto.
+8. **Módulos patrón del rediseño (cerrados):**
+   - **Facturas Contado (`tienda`)** — primer módulo patrón.
+   - **Guardados / Transporte (`transporte`)** — segundo módulo patrón, cerrado 2026-06-22 tras
+     confirmación visual en producción (columnas alineadas, sin desfase de rail, badges de estado
+     por fila, acciones en `SlidePanel`, funcionalidad conservada).
+
+   Patrón canónico que dejan validado ambos módulos (replicar tal cual al resto):
+   - `ModuleHero` como único encabezado de módulo (sin `heroImage`, sin segundo `<h1>`).
+   - `<DataTable>` con columnas **declarativas** (no `<table>` armada a mano por módulo).
+   - Estado **siempre** como `<Badge>` por fila (nunca solo color de rail o leyenda).
+   - Rail lateral de estado **paint-only** sobre `td:first-child` vía `box-shadow: inset 3px 0 0 0 var(--row-color)`
+     o `border-left`. **Prohibido** `tr::before`/`tr::after` (§9.1) — blindado por el guard global
+     `src/__tests__/cssTableGuard.test.ts`.
+   - Test estructural por tabla crítica (`th.length === td.length === col.length` + orden de celdas),
+     más test de render visual — ver `facturasTable.render.test.tsx` / `guardadosTable.render.test.tsx`
+     como referencia. Modo `?debugTable=1` disponible para depurar visualmente el mapeo de columnas.
+   - Acciones de fila viven en el **`SlidePanel`** de detalle (no columna ACCIONES — ver §9 punto 8).
+   - Leyenda de estado/color es **ayuda secundaria** opcional; nunca sustituye el badge por fila.
+   - Loading (`SkeletonTable`/`SkeletonRow`), empty (`EmptyState`) y responsive resueltos con
+     componentes del design system, no a medida por módulo.
+
+## 19.1 Auditoría — Solicitudes Transporte (pre-reconstrucción, 2026-06-22)
+
+> Tercer módulo candidato a convertirse en patrón. **Aún no reconstruido** — esta sección documenta
+> el estado actual antes de tocar código, siguiendo la guía de §19.
+
+- **Ruta real:** `/dashboard/solicitudes-transporte` (confirmada en código, coincide con §4).
+- **Archivo principal:** `src/app/(dashboard)/dashboard/solicitudes-transporte/page.tsx` (777 líneas,
+  monolítico: página + formulario + detalle + tabla en un solo archivo, **sin** `_components.tsx`
+  separado — a diferencia del patrón de `transporte` que ya separa `_components.tsx`).
+- **Lib de dominio:** `src/lib/solicitudesTransporte.ts` (231 líneas) — permisos
+  (`puedeGestionarSolicitudTransporte`, `puedeEliminarSolicitudTransporte`) y lógica de estado/semáforo.
+- **Endpoints usados (no tocar):** `GET/POST /api/solicitudes-transporte`,
+  `GET/PATCH/DELETE /api/solicitudes-transporte/[id]`, `POST /api/solicitudes-transporte/[id]/rechazar`,
+  `POST /api/solicitudes-transporte/[id]/reenviar`, `GET /api/solicitudes-transporte/catalogos`,
+  `GET /api/productos-maestro/[plu]` (autocompletar PLU en el formulario).
+- **Tabla actual:** `<table className="ds-table">` **armada a mano** (no usa `<DataTable>`). Columnas:
+  Solicitud · Origen · Destino · Cajas · Promesa · Estado · Semáforo · Gestión (8 columnas, sin
+  `<colgroup>`, sin `table-layout: fixed`).
+- **Rail de estado:** variable CSS `--row-color` puesta en el `<tr>` pero **no hay CSS visible en este
+  archivo que la consuma** (no usa `tr::before`, así que no dispara el guard global, pero tampoco pinta
+  nada — variable inerte; revisar si hay regla en algún `.module.css` global que la use).
+- **Estados como badge:** SÍ — columna "Estado" y columna "Semáforo" ambas usan `<Badge>` con color por
+  estado (`ESTADO_COLOR`, `SEMAFORO_COLOR` definidos localmente, **hex literales en el componente**, no
+  tokens `--state-*` — contradice §10 "nunca a hex literales").
+- **Formularios:** `SolicitudForm` (modal a media pantalla, ~280-388) con 4 secciones (Información general,
+  Pedido y mercancía, Origen y destino, Programación y servicio) + sub-lista dinámica de líneas PLU
+  (`emptyPlu`, autocompletar por PLU vía API). Usa `inputStyle`/`SelectField`/`Field` **propios del
+  módulo**, no las primitivas compartidas `src/components/ui/form.tsx` (contradice §12).
+- **Filtros existentes:** búsqueda libre (`q`) + select de estado. Sin filtro por área/ciudad/transportadora
+  en la UI (sí existen en catálogos pero no se exponen como filtro).
+- **Acciones existentes:** crear, editar, corregir (si `RECHAZADA`), reenviar, rechazar (rol gestor),
+  gestión de transporte (transportadora/guía/fecha/estado Stella), borrar (soft delete, solo `canDelete`).
+  Todas viven en el panel de detalle (`<aside>` ad-hoc, no usa el componente compartido `SlidePanel`/
+  `DetailSection`/`DetailGrid` de `src/components/ui/SlidePanel` — usa su propio `DetailSection`/`DetailLine`
+  locales duplicando ese componente).
+- **Permisos:** UI con `puedeGestionarSolicitudTransporte(role)` / `puedeEliminarSolicitudTransporte(role)`
+  (de `src/lib/solicitudesTransporte.ts`) — **no** usa la matriz central `can(role, action)` de
+  `src/lib/permissions.ts` como sí hace `transporte`. Server-side no auditado en esta pasada (no se tocó
+  ni se debe tocar `src/app/api/**`).
+- **`.ds-table` vs DataTable:** usa la clase CSS `ds-table` pero con `<table>` manual — **no** el
+  componente `<DataTable>`. Mismo riesgo histórico que tuvieron Facturas/Guardados (§9.1) si en algún
+  momento se le agrega un rail por pseudo-elemento; hoy no lo tiene, pero tampoco tiene el `colgroup`/
+  `table-layout: fixed` que exige el contrato de tablas (§9, punto 4).
+- **Riesgo de desalineación:** **medio** — 8 columnas sin `colgroup` ni anchos explícitos; funciona hoy
+  por suerte de contenido, no por contrato. Migrar a `<DataTable>` lo resuelve de raíz.
+- **Rails/badges/semáforos/alertas:** SÍ tiene semáforo (badge) y banner de alerta para solicitudes
+  rechazadas (bloque rojo con CTA "Corregir") — patrón de alerta consistente con §11, ya con texto
+  explicativo (no solo color).
+- **Problemas visuales actuales:** tabla sin `colgroup`/`fixed` (riesgo latente, no confirmado en producción
+  todavía); estilos inline `style={{...}}` por celda/fila en vez de clases del DS; hex literales de color
+  fuera de tokens.
+- **Problemas funcionales actuales:** ninguno reportado por el dueño en esta sesión; el módulo funciona,
+  el objetivo es alinearlo al patrón visual/estructural, no corregir bugs funcionales.
+- **Qué debe conservarse:** las 6 acciones (crear/editar/corregir/reenviar/rechazar/gestión/borrar), el
+  flujo de PLUs dinámico con autocompletado, los 4 grupos del formulario, los catálogos por API, las
+  validaciones obligatorias actuales, los permisos por rol (`isGestor`/`canDelete`/dueño de la solicitud).
+- **Qué debe refactorizarse (solo presentación):** tabla manual → `<DataTable>` con columnas declarativas
+  + `colgroup`; panel de detalle ad-hoc → `SlidePanel`/`DetailSection`/`DetailGrid` compartidos; hex
+  literales → tokens `--state-*`; separar `page.tsx` en `page.tsx` (datos/handlers) + `_components.tsx`
+  (render), igual que `transporte`; opcionalmente migrar `Field`/`SelectField`/inputs a
+  `src/components/ui/form.tsx`.
+- **Riesgos de modificarlo:** el formulario es el más complejo de los 3 módulos patrón (4 secciones +
+  líneas PLU dinámicas) — alto riesgo de regresión si se reescribe el formulario completo en la misma
+  pasada que la tabla. El campo `--row-color` inerte sugiere que puede haber CSS legado relacionado al
+  rail que conviene confirmar antes de tocar estilos de tabla.
+- **Qué patrón de Facturas/Guardados se puede reutilizar:** `<DataTable>` con columnas declarativas,
+  `SlidePanel`+`DetailSection`+`DetailGrid`, `Badge` con tokens `--state-*` para Estado y Semáforo,
+  estructura `_components.tsx` separada de `page.tsx`, test estructural + render visual igual a
+  `guardadosTable.render.test.tsx`, modo `?debugTable=1`.
+
+## 19.2 Propuesta de reconstrucción — Solicitudes Transporte (no ejecutada, pendiente de autorización)
+
+1. **Header:** `ModuleHero` (ya lo usa) — conservar kicker/título/descripción/acciones (AutoRefresh + botón
+   "Nueva solicitud"); eliminar el bloque `<h1>`/encabezado duplicado de las líneas ~550-559 (segundo
+   encabezado redundante, contradice §7 "prohibido un segundo `<h1>` de módulo").
+2. **Filtros:** conservar búsqueda libre + select de estado; mantener en una barra simple sobre la tabla
+   (sin cambios funcionales).
+3. **Tabla principal:** migrar a `<DataTable>` con columnas declarativas: Solicitud (pedido+solicitante) ·
+   Origen · Destino · Cajas · Promesa · Estado · Semáforo · Gestión. `colgroup` con anchos explícitos,
+   `table-layout: fixed`, truncado con `ellipsis`+`title` en celdas largas (solicitante/área).
+4. **Estados como badges:** mantener `Badge` para Estado y Semáforo; mover `ESTADO_COLOR`/`SEMAFORO_COLOR`
+   a tokens `--state-*` (extender tokens si faltan, no hex literal).
+5. **Alertas/semáforos:** conservar banner de "rechazadas por corregir" tal cual (ya cumple §11).
+6. **Acciones:** mover todas al `SlidePanel` compartido (hoy ya están ahí conceptualmente, pero en un
+   `<aside>` propio) — usar `SlidePanel`+`DetailSection`+`DetailGrid` de `src/components/ui/SlidePanel`
+   en vez de los locales.
+7. **SlidePanel/detalle:** reemplazar el `<aside>` ad-hoc por el componente compartido; conservar las 7
+   secciones de detalle (general, pedido/mercancía, PLUs, origen/destino, programación, rechazo, gestión)
+   y los 3 flujos condicionales (corregir/reenviar, gestión, rechazo).
+8. **Empty/loading/error:** ya usa `EmptyState`/`SkeletonTable`; conservar. Error banner igual.
+9. **Responsive:** validar en 1440/768/390 tras migrar a `DataTable` (hoy depende de `overflowX: auto`
+   manual); el formulario modal ya es full-width con scroll, validar en móvil tras el cambio.
+10. **Tests necesarios:** test estructural `th.length === td.length === col.length` + orden de celdas
+    (igual a `guardadosTable.render.test.tsx`), test de render con datos mock, y confirmar que el guard
+    global `cssTableGuard.test.ts` sigue en verde (no se debe introducir ningún `tr::before`).
 
 ## 19. Cómo auditar un módulo antes de tocarlo
 

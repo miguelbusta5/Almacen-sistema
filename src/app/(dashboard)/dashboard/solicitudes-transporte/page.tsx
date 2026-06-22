@@ -6,71 +6,15 @@ import {
   AlertTriangle, CheckCircle2, Clock, FileText, Minus, Pencil,
   Plus, RefreshCw, Search, Send, Trash2, X,
 } from "lucide-react";
-import { Badge, EmptyState, SkeletonTable, ModuleHero } from "@/components/ui";
+import { Badge, ModuleHero } from "@/components/ui";
 import { AutoRefreshIndicator } from "@/components/ui/AutoRefreshIndicator";
 import { getModuleColor, getModuleCssVars } from "@/lib/moduleTheme";
 import { puedeEliminarSolicitudTransporte, puedeGestionarSolicitudTransporte } from "@/lib/solicitudesTransporte";
 import { useAutoRefresh } from "@/hooks/useAutoRefresh";
-
-type Estado = "PENDIENTE" | "RECHAZADA" | "REENVIADA" | "PROGRAMADA" | "EFECTUADA" | "CANCELADA";
-type StellaEstado = "PENDIENTE" | "PROGRAMADO" | "EFECTUADO" | "CANCELADO";
-
-interface PluLinea {
-  id?: string;
-  plu: string;
-  descripcion: string;
-  unidades: number;
-}
-
-interface Solicitud {
-  id: string;
-  fechaSolicitud: string;
-  areaSolicitante: string;
-  areaOtro?: string | null;
-  solicitanteNombre: string;
-  solicitanteCorreo: string;
-  solicitanteTelefono: string;
-  tipoVenta: string;
-  numeroPedido: string;
-  facturaIntegracion: string;
-  cobroFlete: boolean;
-  valorFlete?: number | null;
-  cantidadCajas?: number | null;
-  unidades?: number | null;
-  volumenEstimado: string;
-  tipoMercancia: string;
-  ciudadOrigen: string;
-  zonaRecogida: string;
-  direccionRecogida: string;
-  puntoRecogida: string;
-  puntoRecogidaOtro?: string | null;
-  ciudadEntrega: string;
-  direccionEntrega: string;
-  zonaEntrega: string;
-  fechaPromesaEntrega: string;
-  ventanaEntrega: string;
-  restriccionHoraria: boolean;
-  descripcionRestriccion?: string | null;
-  tipoServicio: string;
-  tipoServicioOtro?: string | null;
-  observacionesSolicitante: string;
-  estado: Estado;
-  stellaEstado: StellaEstado;
-  documentoNetSuite?: string | null;
-  transportadora?: string | null;
-  numeroGuia?: string | null;
-  fechaProgramacion?: string | null;
-  observacionTransporte?: string | null;
-  prioridad?: "ALTO" | "MEDIO" | "BAJO" | null;
-  semaforo: string;
-  motivoRechazo?: string | null;
-  creadoPorId: string;
-  creadoPorNombre?: string | null;
-  gestionadoPorNombre?: string | null;
-  deletedAt?: string | null;
-  plines: PluLinea[];
-  updatedAt: string;
-}
+import {
+  SolicitudesTable, ESTADO_COLOR, SEMAFORO_COLOR, estadoVariant, semaforoVariant,
+  type Solicitud, type Estado, type PluLinea,
+} from "./_components";
 
 interface Catalogos {
   areas: string[];
@@ -86,22 +30,6 @@ interface Catalogos {
 }
 
 const COLOR = getModuleColor("solicitudes-transporte");
-const ESTADO_COLOR: Record<Estado, string> = {
-  PENDIENTE: "#FFC53D",
-  REENVIADA: "#34D9F0",
-  PROGRAMADA: "#5B9DFF",
-  EFECTUADA: "#2EE6A6",
-  RECHAZADA: "#FF6B6B",
-  CANCELADA: "#8B9398",
-};
-const SEMAFORO_COLOR: Record<string, string> = {
-  VENCIDO: "#FF6B6B",
-  ALERTA: "#FFC53D",
-  NORMAL: "#2EE6A6",
-  EFECTUADO: "#2EE6A6",
-  CANCELADO: "#8B9398",
-  SIN_FECHA: "#34D9F0",
-};
 const inputStyle: React.CSSProperties = {
   width: "100%",
   height: 36,
@@ -148,20 +76,6 @@ const emptyForm = {
   observacionesSolicitante: "",
   plines: [emptyPlu()],
 };
-
-type BadgeVariant = "default" | "info" | "success" | "warning" | "error";
-function estadoVariant(estado: Estado): BadgeVariant {
-  if (estado === "RECHAZADA" || estado === "CANCELADA") return "error";
-  if (estado === "EFECTUADA") return "success";
-  if (estado === "PROGRAMADA") return "info";
-  return "default";
-}
-function semaforoVariant(semaforo: string): BadgeVariant {
-  if (semaforo === "VENCIDO" || semaforo === "CANCELADO") return "error";
-  if (semaforo === "ALERTA") return "warning";
-  if (semaforo === "EFECTUADO" || semaforo === "NORMAL") return "success";
-  return "default";
-}
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
@@ -405,6 +319,10 @@ export default function SolicitudesTransportePage() {
   const [error, setError] = useState("");
   const [rejectText, setRejectText] = useState("");
   const [gestion, setGestion] = useState({ documentoNetSuite: "", stellaEstado: "PENDIENTE", transportadora: "", numeroGuia: "", fechaProgramacion: "", observacionTransporte: "" });
+  const [debugTable, setDebugTable] = useState(false);
+
+  // Modo debug de tabla: /dashboard/solicitudes-transporte?debugTable=1 (diagnóstico de mapeo de columnas).
+  useEffect(() => { setDebugTable(new URLSearchParams(window.location.search).get("debugTable") === "1"); }, []);
 
   const kpis = useMemo(() => ({
     pendientes: rows.filter((r) => ["PENDIENTE", "REENVIADA"].includes(r.estado)).length,
@@ -601,46 +519,12 @@ export default function SolicitudesTransportePage() {
 
       {error && <div style={{ color: "var(--error)", background: "var(--error-tint)", borderRadius: 8, padding: 10, fontSize: 13 }}>{error}</div>}
 
-      <div className="op-table-wrap" style={{ "--module-color": COLOR, overflow: "hidden" } as React.CSSProperties}>
-        {loading ? <SkeletonTable rows={6} /> : rows.length === 0 ? (
-          <EmptyState icon={<FileText size={28} />} title="Sin solicitudes" description="Crea la primera solicitud de transporte interna." />
-        ) : (
-          <div style={{ overflowX: "auto" }}>
-            <table className="ds-table" style={{ width: "100%", borderCollapse: "collapse", minWidth: 980 }}>
-              <thead>
-                <tr style={{ background: "var(--surface2)", textAlign: "left", color: "var(--muted)", fontSize: 11, textTransform: "uppercase", letterSpacing: ".06em" }}>
-                  {["Solicitud", "Origen", "Destino", "Cajas", "Promesa", "Estado", "Semáforo", "Gestión"].map((h) => <th key={h} style={{ padding: "11px 12px" }}>{h}</th>)}
-                </tr>
-              </thead>
-              <tbody>
-                {rows.map((r) => (
-                  <tr
-                    key={r.id}
-                    onClick={() => setSelected(r)}
-                    style={{
-                      borderTop: "1px solid var(--border)",
-                      cursor: "pointer",
-                      "--row-color": ESTADO_COLOR[r.estado],
-                    } as React.CSSProperties}
-                  >
-                    <td style={{ padding: 12 }}>
-                      <div style={{ fontWeight: 700, color: "var(--text)", fontSize: 13 }}>{r.numeroPedido || "Sin pedido"}</div>
-                      <div style={{ color: "var(--muted)", fontSize: 12 }}>{r.solicitanteNombre} - {r.areaSolicitante}</div>
-                    </td>
-                    <td style={{ padding: 12, color: "var(--text)", fontSize: 13 }}>{r.ciudadOrigen}</td>
-                    <td style={{ padding: 12, color: "var(--text)", fontSize: 13 }}>{r.ciudadEntrega}</td>
-                    <td style={{ padding: 12, color: "var(--text)", fontSize: 13 }}>{r.cantidadCajas ?? r.unidades ?? "N/A"}</td>
-                    <td style={{ padding: 12, color: "var(--muted)", fontSize: 13 }}>{r.fechaPromesaEntrega ?? "Sin fecha"}</td>
-                    <td style={{ padding: 12 }}><Badge label={r.estado} variant={estadoVariant(r.estado)} dot={false} color={ESTADO_COLOR[r.estado]} /></td>
-                    <td style={{ padding: 12 }}><Badge label={r.semaforo} variant={semaforoVariant(r.semaforo)} color={SEMAFORO_COLOR[r.semaforo] ?? COLOR} /></td>
-                    <td style={{ padding: 12, color: "var(--muted)", fontSize: 12 }}>{r.transportadora || r.gestionadoPorNombre || "Pendiente"}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </div>
+      <SolicitudesTable
+        loading={loading}
+        rows={rows}
+        onOpen={(r) => setSelected(r)}
+        debug={debugTable}
+      />
 
       {selected && (
         <div style={{ position: "fixed", inset: 0, zIndex: 8500, background: "rgba(0,0,0,.35)", display: "flex", justifyContent: "flex-end" }} onClick={() => setSelected(null)}>
