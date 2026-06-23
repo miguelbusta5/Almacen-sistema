@@ -10,23 +10,9 @@ import { getModuleColor, getModuleCssVars } from "@/lib/moduleTheme";
 import { puedeGestionarExportaciones, puedeUsarExportaciones } from "@/lib/exportaciones";
 import { useIsMobile } from "@/lib/useIsMobile";
 import { useAutoRefresh } from "@/hooks/useAutoRefresh";
+import { RegistrosTable, fmtTime, type Exportacion } from "./_components";
 
 const COLOR = getModuleColor("exportaciones");
-
-interface Exportacion {
-  id: string;
-  numeroCaja: string;
-  plu: string;
-  descripcion: string;
-  unidadEmpaque: number;
-  fecha: string;
-  horaInicio: string;
-  horaFinalizacion: string | null;
-  duracionMinutos: number | null;
-  motivoCorreccion?: string | null;
-  creadoPorId?: string | null;
-  creadoPorNombre?: string | null;
-}
 
 interface UserStat {
   id: string;
@@ -39,11 +25,6 @@ interface UserStat {
   promedioPorCajaMin: number | null;
 }
 
-
-function fmtTime(value: string | null) {
-  if (!value) return "En curso";
-  return new Date(value).toLocaleTimeString("es-CO", { hour: "2-digit", minute: "2-digit" });
-}
 
 function hoyBogota(): string {
   return new Intl.DateTimeFormat("en-CA", { timeZone: "America/Bogota", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date());
@@ -109,6 +90,10 @@ export default function ExportacionesPage() {
   const [form, setForm] = useState({ numeroCaja: "", plu: "", descripcion: "", unidadEmpaque: "1" });
   const [editing, setEditing] = useState<Exportacion | null>(null);
   const [editForm, setEditForm] = useState({ numeroCaja: "", plu: "", descripcion: "", unidadEmpaque: "1", horaInicio: "", horaFinalizacion: "", motivoCorreccion: "" });
+  const [debugTable, setDebugTable] = useState(false);
+
+  // Modo debug de tabla: /dashboard/exportaciones?debugTable=1 (diagnóstico de mapeo de columnas).
+  useEffect(() => { setDebugTable(new URLSearchParams(window.location.search).get("debugTable") === "1"); }, []);
 
   const openItem = useMemo(() => items.find((item) => !item.horaFinalizacion) ?? null, [items]);
   const formDirty = Boolean(form.numeroCaja.trim() || form.plu.trim() || form.descripcion.trim());
@@ -368,27 +353,15 @@ export default function ExportacionesPage() {
       ))}
     </div>
   ) : (
-    <div className="op-table-wrap" style={{ "--module-color": COLOR, overflowX: "auto" } as React.CSSProperties}>
-      <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
-        <thead><tr style={{ color: "var(--muted)", textAlign: "left", borderBottom: "1px solid var(--border)" }}>
-          <th style={th}>Fecha</th><th style={th}>Usuario</th><th style={th}>Caja</th><th style={th}>PLU</th><th style={th}>Descripción</th><th style={th}>Empaque</th><th style={th}>Inicio</th><th style={th}>Fin</th><th style={th}>Dur.</th><th style={th}>Acciones</th>
-        </tr></thead>
-        <tbody>
-          {items.map((item) => {
-            const canEditItem = canManage || item.creadoPorId === userId;
-            return (
-              <tr key={item.id} style={{ borderBottom: "1px solid var(--border)" }}>
-                <td style={td}>{item.fecha}</td><td style={td}>{item.creadoPorNombre ?? "-"}</td><td style={td}>{item.numeroCaja}</td><td style={td}>{item.plu}</td><td style={td}>{item.descripcion}</td><td style={td}>{item.unidadEmpaque}</td><td style={td}>{fmtTime(item.horaInicio)}</td><td style={td}>{fmtTime(item.horaFinalizacion)}</td><td style={td}>{item.duracionMinutos ?? "-"}</td>
-                <td style={td}>
-                  {canEditItem && <button onClick={() => startEdit(item)} className="ds-btn ds-btn-ghost ds-btn-sm" style={{ height: 30 }}><Pencil size={15} /></button>}
-                  {canManage && <button onClick={() => remove(item)} className="ds-btn ds-btn-ghost ds-btn-sm" style={{ height: 30, color: "var(--error)" }}><Trash2 size={15} /></button>}
-                </td>
-              </tr>
-            );
-          })}
-        </tbody>
-      </table>
-    </div>
+    <RegistrosTable
+      loading={false}
+      items={items}
+      canManage={canManage}
+      userId={userId}
+      onEdit={startEdit}
+      onDelete={remove}
+      debug={debugTable}
+    />
   );
 
   const totalPages = Math.max(1, Math.ceil(totalItems / PAGE_SIZE));
