@@ -10,20 +10,9 @@ import { getModuleColor, getModuleCssVars } from "@/lib/moduleTheme";
 import { puedeGestionarExportaciones, puedeUsarExportaciones } from "@/lib/exportaciones";
 import { useIsMobile } from "@/lib/useIsMobile";
 import { useAutoRefresh } from "@/hooks/useAutoRefresh";
-import { RegistrosTable, fmtTime, type Exportacion } from "./_components";
+import { RegistrosTable, ProductividadTable, fmtTime, type Exportacion, type UserStat } from "./_components";
 
 const COLOR = getModuleColor("exportaciones");
-
-interface UserStat {
-  id: string;
-  nombre: string;
-  cajas: number;
-  plusDistintos: number;
-  totalUnidades: number;
-  finalizadas: number;
-  duracionTotalMin: number;
-  promedioPorCajaMin: number | null;
-}
 
 
 function hoyBogota(): string {
@@ -479,60 +468,7 @@ export default function ExportacionesPage() {
                 {statsOperario ? "Sin registros del operario seleccionado en este rango" : "Sin registros para este rango"}
               </div>
             ) : (
-              <div style={{ overflowX: "auto" }}>
-                <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
-                  <thead>
-                    <tr style={{ color: "var(--muted)", textAlign: "left", borderBottom: "1px solid var(--border)" }}>
-                      <th style={th}>Operario</th>
-                      <th style={{ ...th, textAlign: "right" }}>Cajas</th>
-                      <th style={{ ...th, textAlign: "right" }}>PLUs</th>
-                      <th style={{ ...th, textAlign: "right" }}>Unidades</th>
-                      <th style={{ ...th, textAlign: "right" }}>Finalizadas</th>
-                      <th style={{ ...th, textAlign: "right" }}>Tiempo total</th>
-                      <th style={{ ...th, textAlign: "right" }}>Prom. min/caja</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {statsFiltrados.map((s) => (
-                      <tr key={s.id} style={{ borderBottom: "1px solid var(--border)" }}>
-                        <td style={td}><strong>{s.nombre}</strong></td>
-                        <td style={{ ...td, textAlign: "right", fontVariantNumeric: "tabular-nums" }}>{s.cajas}</td>
-                        <td style={{ ...td, textAlign: "right", fontVariantNumeric: "tabular-nums" }}>{s.plusDistintos}</td>
-                        <td style={{ ...td, textAlign: "right", fontVariantNumeric: "tabular-nums" }}>{s.totalUnidades}</td>
-                        <td style={{ ...td, textAlign: "right", fontVariantNumeric: "tabular-nums" }}>{s.finalizadas}</td>
-                        <td style={{ ...td, textAlign: "right", fontVariantNumeric: "tabular-nums", color: "var(--muted)" }}>{s.duracionTotalMin > 0 ? `${s.duracionTotalMin} min` : "–"}</td>
-                        <td style={{ ...td, textAlign: "right" }}>
-                          {s.promedioPorCajaMin != null ? (
-                            <span style={{ fontWeight: 700, color: s.promedioPorCajaMin <= 5 ? "var(--success)" : s.promedioPorCajaMin <= 10 ? "var(--warning)" : "var(--error)" }}>
-                              {s.promedioPorCajaMin} min
-                            </span>
-                          ) : <span style={{ color: "var(--muted)" }}>–</span>}
-                        </td>
-                      </tr>
-                    ))}
-                    {statsFiltrados.length > 1 && (() => {
-                      const totalCajas = statsFiltrados.reduce((a, s) => a + s.cajas, 0);
-                      const totalUnidades = statsFiltrados.reduce((a, s) => a + s.totalUnidades, 0);
-                      const totalFin = statsFiltrados.reduce((a, s) => a + s.finalizadas, 0);
-                      const totalMin = statsFiltrados.reduce((a, s) => a + s.duracionTotalMin, 0);
-                      const promTotal = totalFin > 0 ? Math.round((totalMin / totalFin) * 10) / 10 : null;
-                      return (
-                        <tr style={{ borderTop: "2px solid var(--border)", background: "var(--surface2)" }}>
-                          <td style={{ ...td, fontWeight: 700 }}>Total</td>
-                          <td style={{ ...td, textAlign: "right", fontWeight: 700, fontVariantNumeric: "tabular-nums" }}>{totalCajas}</td>
-                          <td style={{ ...td, textAlign: "right", color: "var(--muted)" }}>—</td>
-                          <td style={{ ...td, textAlign: "right", fontWeight: 700, fontVariantNumeric: "tabular-nums" }}>{totalUnidades}</td>
-                          <td style={{ ...td, textAlign: "right", fontWeight: 700, fontVariantNumeric: "tabular-nums" }}>{totalFin}</td>
-                          <td style={{ ...td, textAlign: "right", fontVariantNumeric: "tabular-nums", color: "var(--muted)" }}>{totalMin > 0 ? `${totalMin} min` : "–"}</td>
-                          <td style={{ ...td, textAlign: "right", fontWeight: 700 }}>
-                            {promTotal != null ? `${promTotal} min` : "–"}
-                          </td>
-                        </tr>
-                      );
-                    })()}
-                  </tbody>
-                </table>
-              </div>
+              <ProductividadTable stats={statsFiltrados} debug={debugTable} />
             )}
             </>
           )}
@@ -580,6 +516,3 @@ export default function ExportacionesPage() {
     </div>
   );
 }
-
-const th: React.CSSProperties = { padding: "10px 8px", fontSize: 11, textTransform: "uppercase", letterSpacing: "0.04em" };
-const td: React.CSSProperties = { padding: "11px 8px", verticalAlign: "top" };
