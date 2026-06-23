@@ -301,6 +301,11 @@ verdad en base de datos; acceso desde móvil y escritorio.
    - **Solicitudes Transporte (`solicitudes-transporte`)** — tercer módulo patrón, cerrado 2026-06-23
      tras confirmación visual en producción de tabla (Fase 1) y panel (Fase 2). **El formulario
      (`SolicitudForm`) queda excluido de este cierre por decisión técnica explícita** — ver §19.3.
+   - **Exportaciones (`exportaciones`)** — cuarto módulo patrón, cerrado 2026-06-23 tras confirmación
+     visual en producción de la tabla Registros (Fase 1a) y la tabla Productividad (Fase 1b). **El
+     formulario de captura y el modal de edición quedan excluidos de este cierre** (el modal ya cumplía
+     el patrón desde antes; el formulario de captura es el de mayor frecuencia operativa de los 4
+     módulos patrón) — ver §19.5.
 
    Patrón canónico que dejan validado los tres módulos (replicar tal cual al resto):
    - `ModuleHero` como único encabezado de módulo (sin `heroImage`, sin segundo `<h1>`).
@@ -538,6 +543,56 @@ Pendiente, sin fecha comprometida, a evaluar solo si hay necesidad visual u oper
     evaluar en una fase futura si conviene agregar uno, pero no es parte del contrato mínimo de tabla.
   - El formulario de captura y el modal de edición se dejarían fuera de la migración inicial,
     igual que se decidió con Solicitudes Transporte, salvo que el dueño pida lo contrario.
+
+## 19.5 Cierre — Exportaciones como cuarto módulo patrón oficial (2026-06-23)
+
+**Ejecutado y confirmado visualmente por el dueño en producción:**
+
+- **Fase 1a (tabla Registros):** `<table>` manual reemplazada por `<DataTable<Exportacion>>` declarativo
+  en `_components.tsx` (`RegistrosTable`), con `colgroup`+`table-layout:fixed`, 10 columnas
+  (Fecha/Usuario/Caja/PLU/Descripción/Empaque/Inicio/Fin/Dur./Acciones), `data-testid` por celda, estado
+  "En curso"/"Finalizado" convertido a `<Badge>` dentro de la columna Fin (sin agregar columna nueva),
+  modo `?debugTable=1`, test estructural `exportacionesRegistrosTable.render.test.tsx`
+  (`th===td===col===10`).
+- **Fase 1b (tabla Productividad):** `<table>` manual reemplazada por `<DataTable<ProductividadRow>>`
+  (`ProductividadTable`), 7 columnas (Operario/Cajas/PLUs/Unidades/Finalizadas/Tiempo total/Prom.
+  min/caja). La fila **Total** se conserva como fila normal del `DataTable` marcada `isTotal: true`,
+  con el cálculo extraído a la función pura `calcularTotalProductividad()` (mismo `reduce` exacto que
+  el original) y diferenciada visualmente vía `isRowSelected` (mecanismo CSS ya existente del DS, sin
+  modificar `DataTable.tsx`). Test `exportacionesProductividadTable.render.test.tsx` (9 casos, incluye
+  verificación del cálculo del Total).
+- **Validación técnica en ambas fases:** `tsc` limpio, **331/331 tests** en verde, `build` exitoso,
+  0 ocurrencias de `tr::before`/`tr::after` en código fuente; `git diff` confirma 0 cambios en
+  `src/app/api/exportaciones/**`, `src/lib/exportaciones.ts` y `prisma/schema.prisma` en toda la serie.
+- **Conservado exactamente igual:** lógica de `openItem`/captura consecutiva (`!horaFinalizacion`),
+  paginación server-side (`page`/`PAGE_SIZE`/`totalItems`), filtros (búsqueda/fecha/estado/operario),
+  presets de fecha (Hoy/7 días/30 días), vista móvil de tarjetas (`isMobile`, sin cambios), permisos
+  (`puedeUsarExportaciones`/`puedeGestionarExportaciones`).
+
+### Excluido de este cierre (decisión técnica explícita, NO bloqueante)
+
+**El formulario de captura (`captureCard`, en `page.tsx`) y el modal de edición (`Modal` compartido)
+quedan fuera del alcance de este cierre.** Motivos:
+- El **modal de edición ya usaba el componente compartido `Modal`** desde antes de esta serie de
+  fases — es el único de los 4 módulos patrón que ya cumplía ese punto sin necesidad de migración.
+- El **formulario de captura es el de mayor frecuencia operativa** de los 4 módulos (se usa caja tras
+  caja durante toda la jornada de etiquetado, con `autoFocus` y autocompletado de PLU on-blur) —
+  tocarlo sin necesidad funcional es el peor lugar para introducir riesgo de regresión en velocidad
+  de captura. No es parte del contrato de "módulo patrón" del SOT (§9/§10, centrado en tabla y estados).
+
+### Deuda visual futura controlada — Exportaciones
+
+Pendiente, sin fecha comprometida, a evaluar solo si hay necesidad visual u operativa explícita:
+
+1. Unificar `Field` local del formulario de captura/edición a las primitivas compartidas
+   `src/components/ui/form.tsx`.
+2. Revisar consistencia de clases `ds-*` en el formulario de captura (hoy usa `ds-input`/`ds-btn*`
+   ya correctamente, pero con estructura de grid a medida en vez de un layout compartido).
+3. Evaluar si la vista móvil de tarjetas (`op-record-card`) converge a `DataTable` con scroll interno
+   (consistencia con el resto de módulos) o se mantiene como patrón específico de alta frecuencia de
+   captura — **no es necesario decidirlo ahora**.
+4. **Mantener el comportamiento de captura consecutiva y autocompletado intactos** si en el futuro se
+   toca el formulario — es el punto de mayor riesgo de regresión del módulo.
 
 ## 19. Cómo auditar un módulo antes de tocarlo
 
