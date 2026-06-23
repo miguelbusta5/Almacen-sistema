@@ -3,53 +3,21 @@
 import { useEffect, useMemo, useState, useCallback } from "react";
 import { createPortal } from "react-dom";
 import { useSession } from "next-auth/react";
-import { GitMerge, Plus, Search, X, Minus, CheckCircle2, Trash2 } from "lucide-react";
-import { Badge, EmptyState, ModuleHero, SkeletonTable } from "@/components/ui";
+import { Plus, Search, X, Minus, Trash2 } from "lucide-react";
+import { Badge, ModuleHero } from "@/components/ui";
 import { SlidePanel, DetailSection, DetailGrid } from "@/components/ui/SlidePanel";
 import { AutoRefreshIndicator } from "@/components/ui/AutoRefreshIndicator";
 import { useAutoRefresh } from "@/hooks/useAutoRefresh";
 import { useIsMobile } from "@/lib/useIsMobile";
 import { getModuleColor, getModuleCssVars } from "@/lib/moduleTheme";
+import {
+  IntegracionTable, ESTADO_LABEL, estadoVariant, fmtDate,
+  type Integracion, type EstadoIntegracion, type PlinItem,
+} from "./_components";
 
 const COLOR = getModuleColor("integracion");
 const TIPO_DOC_OPTIONS = ["OVDM", "TSDM"] as const;
 const AREA_OPTIONS = ["MUEBLES", "GOURMET"] as const;
-
-type EstadoIntegracion = "PENDIENTE_AREA2" | "LISTA_TRANSPORTE" | "COMPLETADA";
-
-interface PlinItem {
-  id: string;
-  area: string;
-  plu: string;
-  descripcion: string | null;
-  unidades: number;
-}
-
-interface Integracion {
-  id: string;
-  numeroDocumento: string;
-  tipoDocumento: string;
-  fecha: string;
-  estado: EstadoIntegracion;
-  areaIniciadora: string;
-  numeroCajasArea1: number | null;
-  numeroCajasArea2: number | null;
-  creadoPorNombre: string | null;
-  completadoPorNombre: string | null;
-  creadoAt: string;
-  completadoAt: string | null;
-  entregadoATransporteAt: string | null;
-  marcadoCompletadoAt: string | null;
-  observaciones: string | null;
-  createdAt: string;
-  plines: PlinItem[];
-}
-
-const ESTADO_LABEL: Record<EstadoIntegracion, string> = {
-  PENDIENTE_AREA2:   "Pendiente Área 2",
-  LISTA_TRANSPORTE:  "Lista para Transporte",
-  COMPLETADA:        "Completada",
-};
 
 const ESTADO_COLOR: Record<EstadoIntegracion, string> = {
   PENDIENTE_AREA2:   "var(--warning)",
@@ -57,16 +25,6 @@ const ESTADO_COLOR: Record<EstadoIntegracion, string> = {
   COMPLETADA:        "var(--success)",
 };
 
-function estadoVariant(e: EstadoIntegracion): "warning" | "info" | "success" {
-  if (e === "PENDIENTE_AREA2") return "warning";
-  if (e === "LISTA_TRANSPORTE") return "info";
-  return "success";
-}
-
-function fmtDate(iso: string | null | undefined) {
-  if (!iso) return "—";
-  return new Date(iso).toLocaleDateString("es-CO", { day: "2-digit", month: "2-digit", year: "numeric" });
-}
 function fmtDateTime(iso: string | null | undefined) {
   if (!iso) return "—";
   return new Date(iso).toLocaleString("es-CO", { day: "2-digit", month: "2-digit", year: "2-digit", hour: "2-digit", minute: "2-digit" });
@@ -454,6 +412,10 @@ export default function IntegracionPage() {
   const [completarItem, setCompletarItem] = useState<Integracion | null>(null);
   const [recibidoItem, setRecibidoItem] = useState<Integracion | null>(null);
   const [deletingIntId, setDeletingIntId] = useState<string | null>(null);
+  const [debugTable, setDebugTable] = useState(false);
+
+  // Modo debug de tabla: /dashboard/integracion?debugTable=1 (diagnóstico de mapeo de columnas).
+  useEffect(() => { setDebugTable(new URLSearchParams(window.location.search).get("debugTable") === "1"); }, []);
 
   const canCreate = CREATOR_ROLES.includes(role);
   const canTransport = TRANSPORT_ROLES.includes(role);
@@ -575,87 +537,24 @@ export default function IntegracionPage() {
 
       {/* Tabla */}
       <div style={{ background: "var(--surface)", borderRadius: 14, border: "1px solid var(--border)", overflow: "hidden" }}>
-        {loading ? (
-          <SkeletonTable rows={6} cols={6} />
-        ) : filtered.length === 0 ? (
-          <EmptyState
-            icon={<GitMerge size={28} />}
-            title="Sin integraciones"
-            description={search ? "No hay resultados para tu búsqueda" : "Crea la primera integración de pedido"}
-            action={search ? { label: "Limpiar búsqueda", onClick: () => setSearch("") } : undefined}
-          />
-        ) : (
-          <div style={{ overflowX: "auto" }}>
-            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
-              <thead>
-                <tr style={{ background: "var(--surface2)" }}>
-                  {["Documento", "Tipo", "Fecha", "Área inicio", "Estado", "Cajas", ""].map((h) => (
-                    <th key={h} style={{ padding: "10px 14px", textAlign: "left", fontSize: 11, fontWeight: 600, color: "var(--muted)", letterSpacing: "0.04em", textTransform: "uppercase", whiteSpace: "nowrap" }}>{h}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {filtered.map((item) => (
-                  <tr key={item.id}
-                    onClick={() => setSelected(item)}
-                    className="dsrow"
-                    style={{ borderTop: "1px solid var(--border)", cursor: "pointer" }}>
-                    <td style={{ padding: "11px 14px", fontWeight: 600, color: "var(--text)", fontFamily: "var(--mono)", fontSize: 12 }}>{item.numeroDocumento}</td>
-                    <td style={{ padding: "11px 14px" }}>
-                      <span style={{ background: `${COLOR}14`, color: COLOR, borderRadius: 5, padding: "2px 8px", fontSize: 11, fontWeight: 600 }}>{item.tipoDocumento}</span>
-                    </td>
-                    <td style={{ padding: "11px 14px", color: "var(--muted)", whiteSpace: "nowrap" }}>{fmtDate(item.fecha)}</td>
-                    <td style={{ padding: "11px 14px" }}>
-                      <span style={{ fontSize: 12, fontWeight: 500, color: "var(--brand)" }}>{item.areaIniciadora}</span>
-                    </td>
-                    <td style={{ padding: "11px 14px" }}>
-                      <Badge variant={estadoVariant(item.estado)} label={ESTADO_LABEL[item.estado]} />
-                    </td>
-                    <td style={{ padding: "11px 14px", color: "var(--muted)", fontSize: 12 }}>
-                      {item.numeroCajasArea1 ?? "—"} + {item.numeroCajasArea2 ?? "—"}
-                    </td>
-                    <td style={{ padding: "11px 14px" }}>
-                      <div style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap" }}>
-                        {canCompleteArea2(item) && (
-                          <button onClick={(e) => { e.stopPropagation(); setCompletarItem(item); }}
-                            className="ds-btn ds-btn-ghost" style={{ fontSize: 12, padding: "4px 10px", color: COLOR, border: `1px solid ${COLOR}40` }}>
-                            Completar
-                          </button>
-                        )}
-                        {canTransport && item.estado === "LISTA_TRANSPORTE" && (
-                          <button onClick={(e) => { e.stopPropagation(); setRecibidoItem(item); }}
-                            className="ds-btn ds-btn-ghost" style={{ fontSize: 12, padding: "4px 10px", color: "var(--success)", border: "1px solid color-mix(in srgb, var(--success) 35%, transparent)" }}>
-                            <CheckCircle2 size={12} style={{ marginRight: 4 }} />Recibido
-                          </button>
-                        )}
-                        {isAdmin && (
-                          deletingIntId === item.id ? (
-                            <>
-                              <button onClick={(e) => { e.stopPropagation(); deleteIntegracion(item.id); }}
-                                className="ds-btn ds-btn-ghost" style={{ fontSize: 12, padding: "4px 10px", color: "var(--error)", border: "1px solid var(--error)" }}>
-                                Sí, eliminar
-                              </button>
-                              <button onClick={(e) => { e.stopPropagation(); setDeletingIntId(null); }}
-                                className="ds-btn ds-btn-ghost" style={{ fontSize: 12, padding: "4px 10px" }}>
-                                Cancelar
-                              </button>
-                            </>
-                          ) : (
-                            <button onClick={(e) => { e.stopPropagation(); setDeletingIntId(item.id); }}
-                              className="ds-btn ds-btn-ghost" style={{ fontSize: 12, padding: "4px 8px", color: "var(--muted2)" }}
-                              title="Eliminar integración">
-                              <Trash2 size={13} />
-                            </button>
-                          )
-                        )}
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
+        <IntegracionTable
+          items={filtered}
+          loading={loading}
+          color={COLOR}
+          canCompleteArea2={canCompleteArea2}
+          canTransport={canTransport}
+          isAdmin={isAdmin}
+          deletingIntId={deletingIntId}
+          onRowClick={(item) => setSelected(item)}
+          onCompletar={(item) => setCompletarItem(item)}
+          onRecibido={(item) => setRecibidoItem(item)}
+          onDeleteStart={(id) => setDeletingIntId(id)}
+          onDeleteConfirm={(id) => deleteIntegracion(id)}
+          onDeleteCancel={() => setDeletingIntId(null)}
+          hasSearch={Boolean(search)}
+          onClearSearch={() => setSearch("")}
+          debug={debugTable}
+        />
       </div>
 
       {/* Slide panel detalle */}
