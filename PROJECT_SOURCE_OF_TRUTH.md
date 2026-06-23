@@ -306,8 +306,13 @@ verdad en base de datos; acceso desde móvil y escritorio.
      formulario de captura y el modal de edición quedan excluidos de este cierre** (el modal ya cumplía
      el patrón desde antes; el formulario de captura es el de mayor frecuencia operativa de los 4
      módulos patrón) — ver §19.5.
+   - **Integración Pedidos (`integracion`)** — quinto módulo patrón, cerrado 2026-06-23 tras confirmación
+     visual en producción de la tabla principal (Fase 1 única — el panel ya cumplía el patrón desde
+     antes, no requirió Fase 2). **Los 3 modales propios (Nueva integración, Completar Área 2, Confirmar
+     recepción transporte) y las 2 sub-tablas de PLU dentro de esos modales quedan excluidos de este
+     cierre** — ver §19.6.
 
-   Patrón canónico que dejan validado los tres módulos (replicar tal cual al resto):
+   Patrón canónico que dejan validado los cinco módulos (replicar tal cual al resto):
    - `ModuleHero` como único encabezado de módulo (sin `heroImage`, sin segundo `<h1>`).
    - `<DataTable>` con columnas **declarativas** (no `<table>` armada a mano por módulo).
    - Estado **siempre** como `<Badge>` por fila (nunca solo color de rail o leyenda).
@@ -593,6 +598,50 @@ Pendiente, sin fecha comprometida, a evaluar solo si hay necesidad visual u oper
    captura — **no es necesario decidirlo ahora**.
 4. **Mantener el comportamiento de captura consecutiva y autocompletado intactos** si en el futuro se
    toca el formulario — es el punto de mayor riesgo de regresión del módulo.
+
+## 19.6 Cierre — Integración Pedidos como quinto módulo patrón oficial (2026-06-23)
+
+**Ejecutado y confirmado visualmente por el dueño en producción:**
+
+- **Fase 1 (única — sin Fase 2 de panel):** `<table>` manual de 7 columnas (Documento/Tipo/Fecha/Área
+  inicio/Estado/Cajas/Acciones), sin `colgroup`, reemplazada por `<DataTable<Integracion>>` declarativo
+  en `_components.tsx` (`IntegracionTable`), con `colgroup`+`table-layout:fixed`, `data-testid` por
+  celda, badge de estado por fila (componente compartido `<Badge>`, ya en uso desde antes en este
+  módulo), modo `?debugTable=1`, test estructural `integracionTable.render.test.tsx`
+  (`th===td===col===7`).
+- **Panel de detalle:** **no requirió migración** — ya usaba `SlidePanel`+`DetailSection`+`DetailGrid`+
+  `Badge` desde antes de esta serie de fases, a diferencia de los 4 módulos previos. Es el primer
+  módulo patrón cuyo cierre se logra en una sola fase de tabla.
+- **Acciones conservadas exactamente:** "Completar" (si `canCompleteArea2(item)`), "Recibido" (si
+  `canTransport && estado === "LISTA_TRANSPORTE"`), eliminar con confirmación inline de 2 pasos (solo
+  `isAdmin`) — todas con `e.stopPropagation()` para no disparar el click de fila, que sigue abriendo
+  el `SlidePanel`.
+- **Validación técnica:** `tsc` limpio, **341/341 tests** en verde, `build` exitoso, 0 ocurrencias de
+  `tr::before`/`tr::after` en código fuente; `git diff` confirma 0 cambios en `src/app/api/integracion/**`,
+  permisos (`CREATOR_ROLES`/`TRANSPORT_ROLES`/`canCompleteArea2`) y reglas de negocio.
+- **Conservado exactamente igual:** filtros (búsqueda/estado/área/tipo), `useAutoRefresh`, paginación
+  (el módulo no pagina server-side, carga todo el set filtrado — sin cambios).
+
+### Excluido de este cierre (decisión técnica explícita, NO bloqueante)
+
+**Los 3 modales propios (`ModalNuevaIntegracion`, `ModalCompletarArea2`, `ModalMarcarRecibido`) y las
+2 sub-tablas de PLU dentro de esos modales quedan fuera del alcance de este cierre.** Motivo: funcionan
+correctamente hoy, no son parte del contrato de "módulo patrón" del SOT (§9/§10, centrado en tabla
+principal y estados), y tocarlos sin necesidad operativa introduce riesgo sin beneficio claro — mismo
+criterio aplicado al formulario de Solicitudes Transporte y al formulario de captura de Exportaciones.
+
+### Deuda visual futura controlada — Integración Pedidos
+
+Pendiente, sin fecha comprometida, a evaluar solo si hay necesidad visual u operativa explícita:
+
+1. Migrar los 3 modales propios (`ModalNuevaIntegracion`, `ModalCompletarArea2`, `ModalMarcarRecibido`,
+   construidos sobre un `ModalBase` local con `createPortal`) al componente compartido `Modal`
+   (`src/components/ui/Modal.tsx`) — mismo patrón que ya usan Exportaciones/Usuarios.
+2. Evaluar si las 2 sub-tablas de PLU dentro de modales (referencia de Área 1 en "Completar Área 2",
+   y el listado de PLUs por área dentro del panel de detalle) conviene migrarlas a `DataTable` o
+   dejarlas como tablas auxiliares simples (son de bajo riesgo y bajo beneficio por su tamaño reducido).
+3. **No tocar estas partes ahora** — funcionan correctamente y no bloquean el patrón principal del
+   módulo, ya cerrado.
 
 ## 19. Cómo auditar un módulo antes de tocarlo
 
