@@ -9,7 +9,7 @@
 > `src/lib/permissions.ts`, `src/lib/modulePermissions.ts`, `src/lib/roles.ts`, `src/lib/tienda.ts`),
 > **manda el código** y este documento debe corregirse.
 >
-> **Última actualización:** 2026-06-22 · **Producto:** `Control Logistico CEDI` (`src/config/product.ts`, v3.1)
+> **Última actualización:** 2026-06-23 · **Producto:** `Control Logistico CEDI` (`src/config/product.ts`, v3.1)
 > · **Marca:** Grupo Ambiente · **Producción:** https://matec-cedi.vercel.app
 
 ---
@@ -298,8 +298,11 @@ verdad en base de datos; acceso desde móvil y escritorio.
    - **Guardados / Transporte (`transporte`)** — segundo módulo patrón, cerrado 2026-06-22 tras
      confirmación visual en producción (columnas alineadas, sin desfase de rail, badges de estado
      por fila, acciones en `SlidePanel`, funcionalidad conservada).
+   - **Solicitudes Transporte (`solicitudes-transporte`)** — tercer módulo patrón, cerrado 2026-06-23
+     tras confirmación visual en producción de tabla (Fase 1) y panel (Fase 2). **El formulario
+     (`SolicitudForm`) queda excluido de este cierre por decisión técnica explícita** — ver §19.3.
 
-   Patrón canónico que dejan validado ambos módulos (replicar tal cual al resto):
+   Patrón canónico que dejan validado los tres módulos (replicar tal cual al resto):
    - `ModuleHero` como único encabezado de módulo (sin `heroImage`, sin segundo `<h1>`).
    - `<DataTable>` con columnas **declarativas** (no `<table>` armada a mano por módulo).
    - Estado **siempre** como `<Badge>` por fila (nunca solo color de rail o leyenda).
@@ -409,6 +412,132 @@ verdad en base de datos; acceso desde móvil y escritorio.
 10. **Tests necesarios:** test estructural `th.length === td.length === col.length` + orden de celdas
     (igual a `guardadosTable.render.test.tsx`), test de render con datos mock, y confirmar que el guard
     global `cssTableGuard.test.ts` sigue en verde (no se debe introducir ningún `tr::before`).
+
+## 19.3 Cierre — Solicitudes Transporte como tercer módulo patrón oficial (2026-06-23)
+
+**Ejecutado y confirmado visualmente por el dueño en producción:**
+
+- **Fase 1 (tabla):** `<table>` manual reemplazada por `<DataTable<Solicitud>>` declarativo en
+  `_components.tsx` (`SolicitudesTable`), con `colgroup`+`table-layout:fixed`, 8 columnas
+  (Solicitud/Origen/Destino/Cajas/Promesa/Estado/Semáforo/Gestión), `data-testid` por celda, rail
+  paint-only vía `getRowColor`, modo `?debugTable=1`, test estructural
+  `solicitudesTransporteTable.render.test.tsx` (`th===td===col===8`).
+- **Fase 2 (panel):** `<aside>` ad-hoc reemplazado por `SolicitudDetailPanel` (`_components.tsx`),
+  construido sobre `SlidePanel`+`DetailSection`+`DetailGrid` compartidos. Conserva las 7 acciones
+  (crear/editar/corregir/reenviar/rechazar/gestión/borrar), las 5 secciones de detalle y los flujos
+  condicionales por estado (`RECHAZADA`) y rol (`isGestor`/`canDelete`). Test
+  `solicitudesTransportePanel.render.test.tsx` (12 casos).
+- **Estados/colores:** `ESTADO_COLOR`/`SEMAFORO_COLOR` migrados de hex literales a `var(--state-*)`/
+  tokens semánticos en `_components.tsx`.
+- **Validación técnica en ambas fases:** `tsc` limpio, **311/311 tests** en verde, `build` exitoso,
+  0 ocurrencias de `tr::before`/`tr::after` en código fuente.
+- **Backend/DB/endpoints/permisos/reglas de negocio:** no tocados en ninguna fase.
+
+### Excluido de este cierre (decisión técnica explícita, NO bloqueante)
+
+**El formulario `SolicitudForm` (en `page.tsx`, ~180 líneas) queda fuera del alcance del cierre.**
+Motivo: es funcionalmente estable, tiene alta complejidad (4 secciones, líneas PLU dinámicas con
+autocompletado, 6 campos condicionales `Otro`/`Otros`/`cobroFlete`/`restriccionHoraria`), y migrarlo
+ahora representa más riesgo de regresión que beneficio. No es parte del contrato de "módulo patrón"
+del SOT (§9/§10, centrado en tabla y estados), por lo que su exclusión no impide declarar el módulo
+cerrado.
+
+### Deuda visual futura controlada — Solicitudes Transporte
+
+Pendiente, sin fecha comprometida, a evaluar solo si hay necesidad visual u operativa explícita:
+
+1. Migrar `SolicitudForm` del overlay `position:fixed` armado a mano al componente compartido `Modal`
+   (`src/components/ui/Modal.tsx`) — mismo patrón que usa `Exportaciones` para su modal de edición.
+2. Unificar `Field`/`SelectField`/`inputStyle` locales (estilos inline) a las primitivas compartidas
+   `src/components/ui/form.tsx` (`Field`/`Input`/`Select`, clase `g-input`).
+3. Mejorar/confirmar responsive del formulario en 390px (hoy funciona pero no se ha hecho QA visual
+   dedicado tras Fase 1+2, ya que el formulario no fue tocado).
+4. Validar el flujo de líneas PLU dinámico (alta/baja de líneas + autocompletado on-blur) sigue íntegro
+   si se migra a las primitivas compartidas — es el punto de mayor riesgo de regresión.
+5. **Mantener el payload exactamente igual** al que consumen `POST/PATCH /api/solicitudes-transporte`
+   — cualquier cambio de presentación no debe alterar nombres de campo ni tipos enviados al backend.
+
+## 19.4 Auditoría — Exportaciones (pre-reconstrucción, 2026-06-23)
+
+> Candidato a cuarto módulo patrón. **Aún no reconstruido** — esta sección documenta el estado
+> actual antes de tocar código, siguiendo la guía de §19.
+
+- **Ruta real:** `/dashboard/exportaciones` (confirmada en código y en `EXPORTACIONES_PATH` de
+  `src/lib/exportaciones.ts`, coincide con §4).
+- **Archivo principal:** `src/app/(dashboard)/dashboard/exportaciones/page.tsx` (612 líneas,
+  monolítico: página + captura + filtros + tabla de registros + tabla de productividad + modal de
+  edición, todo en un solo archivo, **sin** `_components.tsx` separado).
+- **Lib de dominio:** `src/lib/exportaciones.ts` (55 líneas) — permisos (`puedeUsarExportaciones`,
+  `puedeGestionarExportaciones`), helpers de fecha/duración (`todayBogota`, `calcularDuracionMinutos`),
+  validación de captura (`validarCapturaExportacion`).
+- **Componentes usados:** `ModuleHero`, `EmptyState`, `SkeletonTable` (de `@/components/ui`),
+  **`Modal`** (de `@/components/ui/Modal` — **ya usa el componente compartido**, a diferencia de
+  Solicitudes Transporte), `AutoRefreshIndicator`. `Field` es una función **local** al archivo (no
+  importa las primitivas de `src/components/ui/form.tsx`), igual patrón de duplicación que tenían
+  Facturas/Guardados/Solicitudes antes de su migración.
+- **CSS asociado:** clases del DS vía `className` (`op-panel`, `op-table-wrap`, `op-record-card`,
+  `ds-input`, `ds-btn*`) — **no CSS module propio**; usa estilos inline `style={{...}}` para tablas y
+  layout, igual que los otros módulos antes de su migración a `DataTable`.
+- **Tablas:** **dos** `<table>` manuales (no `<DataTable>`):
+  1. Tabla "Registros" (desktop) — 10 columnas: Fecha, Usuario, Caja, PLU, Descripción, Empaque,
+     Inicio, Fin, Dur., Acciones. Sin `colgroup`, sin `table-layout:fixed`. En móvil se reemplaza por
+     tarjetas (`op-record-card`), no por la misma tabla con scroll.
+  2. Tabla "Productividad por operario" (solo visible si `canManage`) — 7 columnas con fila de
+     totales calculada inline. Tampoco usa `DataTable`.
+- **Formularios:** SÍ, dos — formulario de captura (`captureCard`, inline en la página, no modal:
+  numeroCaja/PLU/descripción autocompletada/unidadEmpaque) y formulario de edición (dentro del
+  `Modal` compartido: mismos campos + hora inicio/fin + motivo corrección si `canManage`).
+- **Panel de detalle:** **no tiene** — no hay `SlidePanel` ni vista de detalle; la única interacción
+  por registro es editar (abre `Modal`) o borrar (`window.confirm` + fetch directo).
+- **Modales:** SÍ — `Modal` compartido para edición. Es el único de los 4 módulos que ya usa el
+  modal canónico del DS para un formulario.
+- **Estados:** dos estados de negocio por registro: "En curso" (`!horaFinalizacion`) / "Finalizado"
+  (`horaFinalizacion` presente). Se muestran como texto con color condicional (`item.horaFinalizacion
+  ? "var(--muted2)" : COLOR`), **no como `<Badge>`** — contradice §9 punto 2 ("el estado nunca se
+  comunica solo con texto/color, debe ser `<Badge>` por fila").
+- **Badges:** **no usa `<Badge>` en ningún lado** del módulo (ni para estado ni para productividad).
+- **Acciones:** capturar (crear), finalizar rotulación (si hay registro abierto), editar (autor o
+  `canManage`), borrar (solo `canManage`, soft-delete con motivo). Paginación propia (40/página,
+  anterior/siguiente). Filtros: búsqueda libre, fecha, estado (select), operario (solo `canManage`).
+  Controles de productividad: rango de fechas + presets (Hoy/7 días/30 días) + filtro por operario.
+- **Permisos:** `puedeUsarExportaciones(role)` (acceso al módulo) y `puedeGestionarExportaciones(role)`
+  (ver costos/productividad, filtrar por operario, editar horas, borrar) — patrón propio del módulo
+  (no usa `can(role, action)` de `permissions.ts`, igual que Solicitudes Transporte antes de su cierre).
+- **Endpoints usados (no tocar):** `GET/POST /api/exportaciones`, `GET /api/exportaciones/stats`,
+  `GET /api/exportaciones/operarios`, `PATCH/DELETE /api/exportaciones/[id]`,
+  `POST /api/exportaciones/[id]/finalize`, `GET /api/productos-maestro/[plu]` (autocompletar PLU).
+- **Problemas visuales actuales:** 2 tablas manuales sin `colgroup`/`fixed` (mismo riesgo histórico
+  de corrimiento que tuvieron Facturas/Guardados/Solicitudes); estado sin badge (inconsistente con
+  el resto de módulos patrón); vista móvil con tarjetas en vez de la tabla — funciona, pero es un
+  patrón distinto al resto (Facturas/Guardados/Solicitudes usan `DataTable` con scroll interno en
+  los 3 breakpoints).
+- **Problemas funcionales actuales:** ninguno reportado; el módulo opera con captura consecutiva,
+  finalización automática y paginación server-side ya funcionando.
+- **Riesgos de modificarlo:** la captura consecutiva (`openItem` = registro sin `horaFinalizacion`)
+  y la paginación server-side (`page`/`PAGE_SIZE`/`totalItems`) son lógica fina que debe preservarse
+  exactamente; migrar a `DataTable` no debe tocar esa lógica, solo el render de la tabla. La tabla
+  de productividad tiene una fila de "Total" calculada con `reduce` inline — hay que preservar el
+  cálculo si se migra a columnas declarativas.
+- **Qué debe conservarse:** las 2 tablas (registros + productividad), el formulario de captura
+  inline (no modal, es flujo de alta frecuencia), el modal de edición (ya correcto), paginación,
+  filtros, presets de fecha, soft-delete con motivo, doble validación de permisos (`canUse`/`canManage`).
+- **Qué debe refactorizarse (solo presentación):** ambas tablas → `<DataTable>` con columnas
+  declarativas + `colgroup`; estado "En curso"/"Finalizado" → `<Badge>` por fila; separar `page.tsx`
+  en `page.tsx` (datos/handlers) + `_components.tsx` (render), igual que los 3 módulos patrón;
+  evaluar si la vista móvil de tarjetas se reemplaza por `DataTable` con scroll (consistencia) o se
+  conserva (es un patrón ya estable y específico de alta frecuencia de captura).
+- **Qué patrón de los módulos oficiales se puede reutilizar:** `<DataTable>` declarativo (de los 3
+  módulos patrón), `<Badge>` con tokens `--state-*` para "En curso"/"Finalizado", estructura
+  `_components.tsx` separada, tests estructurales `th===td===col` (dos veces, una por tabla), modo
+  `?debugTable=1`. El `Modal` de edición **ya cumple el patrón** — no requiere cambios.
+- **¿Conviene reconstruirlo por fases?** Sí, y con una fase adicional respecto a los 3 módulos
+  previos por tener **dos tablas**:
+  - Fase 1a: tabla de Registros → `DataTable`.
+  - Fase 1b: tabla de Productividad → `DataTable` (incluyendo la fila de Total).
+  - Fase 2: no aplica panel (`SlidePanel`) porque el módulo no tiene vista de detalle — se podría
+    evaluar en una fase futura si conviene agregar uno, pero no es parte del contrato mínimo de tabla.
+  - El formulario de captura y el modal de edición se dejarían fuera de la migración inicial,
+    igual que se decidió con Solicitudes Transporte, salvo que el dueño pida lo contrario.
 
 ## 19. Cómo auditar un módulo antes de tocarlo
 
