@@ -12,7 +12,8 @@ import {
   ESTADO_DESPACHO_COLOR, COLOR_TIENDA, estadoDespachoVariant,
   fmtFechaTienda, todayISO, ESTADOS_ACTIVOS,
 } from "@/lib/tienda";
-import { Badge, ModuleHero, SkeletonLine, Toast, NetSuiteChip } from "@/components/ui";
+import { Badge, ModuleHero, SkeletonLine, NetSuiteChip } from "@/components/ui";
+import { useToast } from "@/contexts/ToastContext";
 import { Modal } from "@/components/ui/Modal";
 import { AutoRefreshIndicator } from "@/components/ui/AutoRefreshIndicator";
 import { SlidePanel, DetailSection, DetailGrid, MiniHistory } from "@/components/ui/SlidePanel";
@@ -68,7 +69,7 @@ export default function TiendaPage() {
 
   const [items, setItems] = useState<DespachoTienda[]>([]);
   const [loading, setLoading] = useState(true);
-  const [toast, setToast] = useState<{ msg: string; err?: boolean } | null>(null);
+  const toastCtx = useToast();
 
   const [fq, setFq] = useState("");
   const [fEstado, setFEstado] = useState("");
@@ -102,7 +103,7 @@ export default function TiendaPage() {
     onRefresh: () => load(),
   });
 
-  function showToast(msg: string, err = false) { setToast({ msg, err }); setTimeout(() => setToast(null), 3000); }
+  function showToast(msg: string, err = false) { err ? toastCtx.error(msg) : toastCtx.success(msg); }
 
   async function abrirPanel(d: DespachoTienda) {
     // d (fila de lista) ya trae el encabezado → el panel nunca arranca vacío.
@@ -490,8 +491,6 @@ export default function TiendaPage() {
           onRechazado={() => { setRechazarItem(null); setPanelItem(null); load(); showToast("Factura rechazada"); }}
         />
       )}
-
-      {toast && <Toast message={toast.msg} error={toast.err} />}
     </div>
   );
 }

@@ -17,10 +17,11 @@ import {
   TIPOS_NOVEDAD, TIPO_NOVEDAD_LABEL, TIPO_NOVEDAD_COLOR, CAUSAS_RAIZ, CAUSA_RAIZ_LABEL, TURNOS,
 } from "@/lib/muebles";
 import { insightsNovedades, insightsPorNovedad } from "@/lib/inteligencia";
-import { Stat, SkeletonStat, Badge, EmptyState, SkeletonTable, Toast, NetSuiteChip, ModuleHero } from "@/components/ui";
+import { Stat, SkeletonStat, Badge, EmptyState, SkeletonTable, NetSuiteChip, ModuleHero } from "@/components/ui";
 import { Modal, ConfirmModal } from "@/components/ui/Modal";
 import { SlidePanel, IntelBanner, IntelAlert, DetailSection, DetailGrid, MiniHistory } from "@/components/ui/SlidePanel";
 import { getModuleCssVars } from "@/lib/moduleTheme";
+import { useToast } from "@/contexts/ToastContext";
 
 ChartJS.register(ArcElement, BarElement, CategoryScale, LinearScale, PointElement, LineElement, Tooltip, Legend);
 
@@ -107,7 +108,7 @@ export default function MueblesPage() {
   const [view, setView] = useState<"lista" | "graficos" | "analisis">("lista");
   const [stats, setStats] = useState<Record<string, unknown> | null>(null);
   const [loadingStats, setLoadingStats] = useState(false);
-  const [toast, setToast] = useState<{ msg: string; err?: boolean } | null>(null);
+  const toastCtx = useToast();
 
   const [fq, setFq] = useState("");
   const [fEstado, setFEstado] = useState("");
@@ -142,8 +143,7 @@ export default function MueblesPage() {
   useEffect(() => { load(); }, []);
 
   function showToast(msg: string, err = false) {
-    setToast({ msg, err });
-    setTimeout(() => setToast(null), 3000);
+    err ? toastCtx.error(msg) : toastCtx.success(msg);
   }
 
   function toggleSort(col: string) {
@@ -757,9 +757,6 @@ export default function MueblesPage() {
           onError={(m) => showToast(m, true)}
         />
       )}
-
-      {/* ── Toast ── */}
-      {toast && <Toast message={toast.msg} error={toast.err} />}
     </div>
   );
 }

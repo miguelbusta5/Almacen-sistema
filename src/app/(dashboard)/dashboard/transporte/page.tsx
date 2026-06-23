@@ -15,7 +15,7 @@ import {
 } from "@/lib/transporte";
 import { calcAlmacenaje, TARIFA_ALM } from "@/lib/almacenaje";
 import { insightsGuardados, insightsPorGuardado } from "@/lib/inteligencia";
-import { Stat, SkeletonStat, Toast, NetSuiteChip, ModuleHero } from "@/components/ui";
+import { Stat, SkeletonStat, NetSuiteChip, ModuleHero } from "@/components/ui";
 import { GuardadosTable, EstadoBadge, TipoBadge } from "./_components";
 import { getModuleCssVars } from "@/lib/moduleTheme";
 import styles from "./transporte.module.css";
@@ -23,6 +23,7 @@ import { AutoRefreshIndicator } from "@/components/ui/AutoRefreshIndicator";
 import { SlidePanel, IntelBanner, DetailSection, DetailGrid, MiniHistory } from "@/components/ui/SlidePanel";
 import { useIsMobile } from "@/lib/useIsMobile";
 import { useAutoRefresh } from "@/hooks/useAutoRefresh";
+import { useToast } from "@/contexts/ToastContext";
 
 ChartJS.register(ArcElement, BarElement, CategoryScale, LinearScale, Tooltip, Legend);
 
@@ -57,7 +58,7 @@ export default function TransportePage() {
   const [pendientesTienda, setPendientesTienda] = useState<PendienteTiendaGuardado[]>([]);
   const [loading, setLoading] = useState(true);
   const [view, setView] = useState<"lista" | "graficos">("lista");
-  const [toast, setToast] = useState<{ msg: string; err?: boolean } | null>(null);
+  const toastCtx = useToast();
 
   const [fq, setFq] = useState("");
   const [fEstado, setFEstado] = useState("");
@@ -96,7 +97,7 @@ export default function TransportePage() {
     pause: Boolean(creando || editing || panelItem || deleting || mostrarFormContacto || fechaModal),
     onRefresh: () => load(),
   });
-  function showToast(msg: string, err = false) { setToast({ msg, err }); setTimeout(() => setToast(null), 3000); }
+  function showToast(msg: string, err = false) { err ? toastCtx.error(msg) : toastCtx.success(msg); }
 
   async function abrirPanel(g: Guardado) {
     setPanelItem(g);
@@ -555,8 +556,6 @@ export default function TransportePage() {
           }}
         />
       )}
-
-      {toast && <Toast message={toast.msg} error={toast.err} />}
     </div>
   );
 }

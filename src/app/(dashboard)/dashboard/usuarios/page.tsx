@@ -8,6 +8,7 @@ import { Modal } from "@/components/ui/Modal";
 import { AutoRefreshIndicator } from "@/components/ui/AutoRefreshIndicator";
 import { getModuleColor, getModuleCssVars } from "@/lib/moduleTheme";
 import { useAutoRefresh } from "@/hooks/useAutoRefresh";
+import { useToast } from "@/contexts/ToastContext";
 
 type Role = "ADMIN" | "GERENTE" | "OPERADOR" | "TRANSPORTISTA" | "INVENTARIO" | "TRANSPORTE" | "SUPERVISOR_INVENTARIO" | "SUPERVISOR_TRANSPORTE" | "TIENDA" | "SUPERVISOR_TIENDA" | "OPERACIONES_MUEBLES" | "OPERACIONES_GOURMET" | "ETIQUETADO" | "SUPERVISOR_ALMACENAMIENTO";
 
@@ -73,14 +74,13 @@ export default function UsuariosPage() {
   const [vehiculos, setVehiculos] = useState<VehiculoOperativo[]>([]);
   const [transportistasOperativos, setTransportistasOperativos] = useState<TransportistaOperativo[]>([]);
   const [loadingCatalogos, setLoadingCatalogos] = useState(true);
-  const [toast, setToast] = useState<{ msg: string; err?: boolean } | null>(null);
+  const toastCtx = useToast();
   const [searchQ, setSearchQ] = useState("");
   const [sortCol, setSortCol] = useState<"name" | "role" | "active">("name");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
 
   function showToast(msg: string, err = false) {
-    setToast({ msg, err });
-    setTimeout(() => setToast(null), 3000);
+    err ? toastCtx.error(msg) : toastCtx.success(msg);
   }
 
   function toggleSort(col: "name" | "role" | "active") {
@@ -278,12 +278,6 @@ export default function UsuariosPage() {
 
       {showForm && <FormNuevo onClose={() => setShowForm(false)} onSaved={() => { setShowForm(false); load(); loadCatalogos(); showToast("Usuario creado ✓"); }} onError={m => showToast(m, true)} />}
       {editing && <ModalEditar u={editing} selfId={(session?.user as any)?.id} onClose={() => setEditing(null)} onSaved={() => { setEditing(null); load(); showToast("Usuario actualizado ✓"); }} onError={m => showToast(m, true)} />}
-
-      {toast && (
-        <div style={{ position: "fixed", bottom: 24, right: 24, zIndex: 10001, background: toast.err ? "var(--error)" : "var(--text)", color: "#fff", padding: "0.8rem 1.2rem", borderRadius: 10, fontSize: 13, fontWeight: 600, boxShadow: "var(--shadow-xl)" }}>
-          {toast.msg}
-        </div>
-      )}
     </div>
   );
 }

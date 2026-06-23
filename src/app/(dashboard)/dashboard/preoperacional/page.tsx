@@ -6,13 +6,14 @@ import {
   AlertTriangle, Camera, CheckCircle2, ChevronLeft, ChevronRight,
   Download, RefreshCw, Save, ShieldCheck, Trash2, Truck, XCircle,
 } from "lucide-react";
-import { Badge, EmptyState, ModuleHero, SkeletonTable, Stat, Toast } from "@/components/ui";
+import { Badge, EmptyState, ModuleHero, SkeletonTable, Stat } from "@/components/ui";
 import { AutoRefreshIndicator } from "@/components/ui/AutoRefreshIndicator";
 import { SlidePanel, DetailSection, DetailGrid } from "@/components/ui/SlidePanel";
 import { useIsMobile } from "@/lib/useIsMobile";
 import type { ResultadoInspeccion } from "@/lib/preoperacional";
 import { getModuleColor, getModuleCssVars } from "@/lib/moduleTheme";
 import { useAutoRefresh } from "@/hooks/useAutoRefresh";
+import { useToast } from "@/contexts/ToastContext";
 
 // ─── tipos ──────────────────────────────────────────────────────────────────
 
@@ -144,11 +145,10 @@ function ConductorView() {
   const [observaciones, setObservaciones] = useState("");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [toast, setToast] = useState<{ msg: string; err?: boolean } | null>(null);
+  const toastCtx = useToast();
 
   const showToast = (msg: string, err = false) => {
-    setToast({ msg, err });
-    setTimeout(() => setToast(null), 2600);
+    err ? toastCtx.error(msg) : toastCtx.success(msg);
   };
 
   async function load() {
@@ -384,9 +384,6 @@ function ConductorView() {
           </div>
         )}
       </div>
-
-      {/* Toast */}
-      {toast && <Toast message={toast.msg} error={toast.err} />}
     </div>
   );
 }
@@ -407,7 +404,7 @@ function SupervisorView({ role }: { role: string }) {
   const [selected,      setSelected]      = useState<HistorialRow | null>(null);
   const [detail,        setDetail]        = useState<InspeccionDetalle | null>(null);
   const [loadingDetail, setLoadingDetail] = useState(false);
-  const [toast, setToast]         = useState<{ msg: string; err?: boolean } | null>(null);
+  const toastCtx = useToast();
 
   const [fDesde, setFDesde]           = useState("");
   const [fHasta, setFHasta]           = useState("");
@@ -415,8 +412,7 @@ function SupervisorView({ role }: { role: string }) {
   const [fEstado, setFEstado]         = useState("");
 
   const showToast = (msg: string, err = false) => {
-    setToast({ msg, err });
-    setTimeout(() => setToast(null), 3000);
+    err ? toastCtx.error(msg) : toastCtx.success(msg);
   };
 
   const buildParams = useCallback((extra?: Record<string, string>) => {
@@ -732,9 +728,6 @@ function SupervisorView({ role }: { role: string }) {
           </>
         )}
       </SlidePanel>
-
-      {/* Toast */}
-      {toast && <Toast message={toast.msg} error={toast.err} />}
     </div>
   );
 }
