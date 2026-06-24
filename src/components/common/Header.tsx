@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { signOut } from "next-auth/react";
 import { Bell, ChevronDown, Clock3, LogOut, Search, ShieldCheck, Wifi } from "lucide-react";
 import { useEffect, useState } from "react";
@@ -9,6 +8,7 @@ import { useIsMobile } from "@/lib/useIsMobile";
 import { useCommandPalette } from "@/contexts/CommandPaletteContext";
 import { getVisibleModules, ROLE_LABEL_EXT, type AppRole } from "@/lib/modulePermissions";
 import { PRODUCT } from "@/config/product";
+import { ActivityCenterPanel, type NotificacionItem } from "./ActivityCenterPanel";
 
 interface HeaderProps {
   user?: { name?: string | null; email?: string | null; role?: string | null };
@@ -45,6 +45,9 @@ export default function Header({ user }: HeaderProps) {
   const [menuOpen, setMenuOpen] = useState(false);
   const { open: openPalette } = useCommandPalette();
   const [notifCount, setNotifCount] = useState(0);
+  const [notifications, setNotifications] = useState<NotificacionItem[]>([]);
+  const [notifLoading, setNotifLoading] = useState(true);
+  const [activityOpen, setActivityOpen] = useState(false);
 
   const userName = user?.name ?? "Usuario";
   const role = user?.role ?? undefined;
@@ -54,20 +57,35 @@ export default function Header({ user }: HeaderProps) {
     ? visibleModules.map((m) => m.replace("-", " ")).join(" / ") || "Operacion"
     : `${visibleModules.length} modulos visibles`;
 
+  // Mismo polling de siempre (60s) — ahora también guarda la lista, no solo el conteo,
+  // para alimentar el Centro de Actividad (Fase C1) sin duplicar el fetch.
   useEffect(() => {
     async function fetchNotif() {
       try {
         const res = await fetch("/api/notificaciones?unread=true");
         const json = await res.json();
-        if (json.success) setNotifCount(json.totalNoLeidas ?? 0);
+        if (json.success) {
+          setNotifCount(json.totalNoLeidas ?? 0);
+          setNotifications(json.data ?? []);
+        }
       } catch {
         // No bloquear el shell por notificaciones.
+      } finally {
+        setNotifLoading(false);
       }
     }
     fetchNotif();
     const id = setInterval(fetchNotif, 60_000);
     return () => clearInterval(id);
   }, []);
+
+  // Cierre con Escape (mismo criterio de accesibilidad que el resto del DS, p. ej. SlidePanel).
+  useEffect(() => {
+    if (!activityOpen) return;
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") setActivityOpen(false); };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [activityOpen]);
 
   return (
     <header
@@ -138,16 +156,37 @@ export default function Header({ user }: HeaderProps) {
           </button>
         )}
 
-        <Link href="/dashboard/mis-tareas" style={{ position: "relative", textDecoration: "none", display: "flex", alignItems: "center" }}>
-          <button className="op-action" style={{ width: 36, height: 36, display: "grid", placeItems: "center", cursor: "pointer", color: "var(--muted)" }} title="Mis tareas">
+        <div style={{ position: "relative" }}>
+          <button
+            onClick={() => setActivityOpen((v) => !v)}
+            className="op-action"
+            style={{ position: "relative", width: 36, height: 36, display: "grid", placeItems: "center", cursor: "pointer", color: "var(--muted)" }}
+            aria-label="Centro de actividad"
+            aria-expanded={activityOpen}
+            title="Centro de actividad"
+          >
             <Bell size={15} />
+            {notifCount > 0 && (
+              <span style={{ position: "absolute", top: -4, right: -4, background: "var(--brand)", color: "#04130D", fontSize: 9, fontWeight: 800, width: 16, height: 16, borderRadius: 999, display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "var(--mono)", boxShadow: "0 0 0 3px var(--brand-tint)" }}>
+                {notifCount > 9 ? "9+" : notifCount}
+              </span>
+            )}
           </button>
-          {notifCount > 0 && (
-            <span style={{ position: "absolute", top: -4, right: -4, background: "var(--brand)", color: "#04130D", fontSize: 9, fontWeight: 800, width: 16, height: 16, borderRadius: 999, display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "var(--mono)", boxShadow: "0 0 0 3px var(--brand-tint)" }}>
-              {notifCount > 9 ? "9+" : notifCount}
-            </span>
+
+          {activityOpen && (
+            <>
+              <div onClick={() => setActivityOpen(false)} style={{ position: "fixed", inset: 0, zIndex: 200 }} />
+              <ActivityCenterPanel
+                open={activityOpen}
+                notifications={notifications}
+                totalNoLeidas={notifCount}
+                loading={notifLoading}
+                isMobile={isMobile}
+                onNavigate={() => setActivityOpen(false)}
+              />
+            </>
           )}
-        </Link>
+        </div>
 
         <div style={{ position: "relative" }}>
           <button
