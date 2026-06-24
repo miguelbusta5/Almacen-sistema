@@ -9,7 +9,7 @@ import { AutoRefreshIndicator } from "@/components/ui/AutoRefreshIndicator";
 import { getModuleColor, getModuleCssVars } from "@/lib/moduleTheme";
 import { useAutoRefresh } from "@/hooks/useAutoRefresh";
 import { useToast } from "@/contexts/ToastContext";
-import { UsuariosTable } from "./_components";
+import { UsuariosTable, TransportistasOperativosTable } from "./_components";
 
 type Role = "ADMIN" | "GERENTE" | "OPERADOR" | "TRANSPORTISTA" | "INVENTARIO" | "TRANSPORTE" | "SUPERVISOR_INVENTARIO" | "SUPERVISOR_TRANSPORTE" | "TIENDA" | "SUPERVISOR_TIENDA" | "OPERACIONES_MUEBLES" | "OPERACIONES_GOURMET" | "ETIQUETADO" | "SUPERVISOR_ALMACENAMIENTO";
 
@@ -245,6 +245,7 @@ export default function UsuariosPage() {
         loading={loadingCatalogos}
         onReload={loadCatalogos}
         onToast={showToast}
+        debugTable={debugTable}
       />
 
       {showForm && <FormNuevo onClose={() => setShowForm(false)} onSaved={() => { setShowForm(false); load(); loadCatalogos(); showToast("Usuario creado ✓"); }} onError={m => showToast(m, true)} />}
@@ -260,12 +261,14 @@ function CatalogosPreoperacional({
   loading,
   onReload,
   onToast,
+  debugTable = false,
 }: {
   vehiculos: VehiculoOperativo[];
   transportistas: TransportistaOperativo[];
   loading: boolean;
   onReload: () => void;
   onToast: (m: string, err?: boolean) => void;
+  debugTable?: boolean;
 }) {
   const [placa, setPlaca] = useState("");
   const [tipo, setTipo] = useState("CAMION");
@@ -448,38 +451,15 @@ function CatalogosPreoperacional({
           </button>
         </div>
 
-        <div style={{ marginTop: "1rem", overflowX: "auto" }}>
-          <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
-            <thead>
-              <tr style={{ borderBottom: "1px solid var(--border)", color: "var(--muted)" }}>
-                <th style={{ textAlign: "left", padding: "0.5rem" }}>Nombre</th>
-                <th style={{ textAlign: "left", padding: "0.5rem" }}>Usuario</th>
-                <th style={{ textAlign: "left", padding: "0.5rem" }}>Vehículo</th>
-                <th style={{ textAlign: "left", padding: "0.5rem" }}>Estado</th>
-              </tr>
-            </thead>
-            <tbody>
-              {transportistas.map(t => (
-                <tr key={t.id} style={{ borderBottom: "1px solid var(--border)" }}>
-                  <td style={{ padding: "0.5rem", fontWeight: 800 }}>{t.nombre}</td>
-                  <td style={{ padding: "0.5rem", color: "var(--muted2)" }}>{t.user ? t.user.email : "Sin usuario"}</td>
-                  <td style={{ padding: "0.5rem", minWidth: 150 }}>
-                    <select
-                      value={t.vehiculo?.id || ""}
-                      onChange={e => asignarVehiculo(t.id, e.target.value)}
-                      disabled={updatingId === t.id}
-                      style={{ ...inp, padding: "0.4rem 0.55rem", fontSize: 12 }}
-                    >
-                      <option value="">Sin vehículo</option>
-                      {vehiculos.map(v => <option key={v.id} value={v.id}>{v.placa} - {v.tipo}</option>)}
-                    </select>
-                  </td>
-                  <td style={{ padding: "0.5rem", color: t.activo ? "var(--brand)" : "var(--muted)", fontWeight: 800 }}>{t.activo ? "Activo" : "Inactivo"}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-          {!loading && transportistas.length === 0 && <div style={{ color: "var(--muted)", fontSize: 12, paddingTop: 10 }}>No hay transportistas operativos. Crea uno y asígnale vehículo antes de vincular usuario.</div>}
+        <div style={{ marginTop: "1rem" }}>
+          <TransportistasOperativosTable
+            transportistas={transportistas}
+            vehiculos={vehiculos}
+            loading={loading}
+            updatingId={updatingId}
+            onAsignarVehiculo={asignarVehiculo}
+            debug={debugTable}
+          />
         </div>
       </div>
     </section>
