@@ -326,8 +326,10 @@ verdad en base de datos; acceso desde móvil y escritorio.
      Fase U2 tabla secundaria de Transportistas Operativos, ambas a `DataTable`). **`FormNuevo`,
      `ModalEditar`, Maestro PLU y toda la gestión de flota (vehículos/transportistas) quedan excluidos
      de este cierre** — ver §19.10.
+   - **Auditoría (`auditoria`)** — octavo módulo patrón, cerrado 2026-06-24 tras confirmación visual en
+     producción (Fase A1 única — módulo de solo lectura, sin formulario/modal que excluir). Ver §19.11.
 
-   Patrón canónico que dejan validado los siete módulos (replicar tal cual al resto):
+   Patrón canónico que dejan validado los ocho módulos (replicar tal cual al resto):
    - `ModuleHero` como único encabezado de módulo (sin `heroImage`, sin segundo `<h1>`).
    - `<DataTable>` con columnas **declarativas** (no `<table>` armada a mano por módulo).
    - Estado **siempre** como `<Badge>` por fila (nunca solo color de rail o leyenda).
@@ -843,6 +845,91 @@ puede quitarse su propio rol ADMIN ni desactivarse a sí mismo).
 vehículos y transportistas operativos) quedan fuera del alcance: son formularios/modales de captura,
 no tablas, y no forman parte del contrato de "módulo patrón" del SOT (§9/§10, centrado en tabla y
 estados). Usuarios **no requiere fases adicionales de código** para el patrón actual.
+
+## 19.11 Cierre — Auditoría como octavo módulo patrón oficial (2026-06-24)
+
+**Ruta:** `/dashboard/auditoria`. **Ejecutado y confirmado visualmente por el dueño en producción.**
+
+### Alcance cerrado (Fase A1, única fase de código — módulo de solo lectura)
+
+- `<table>` manual en `page.tsx` reemplazada por `<DataTable<LogItem>>` declarativo en el nuevo
+  `_components.tsx` (`AuditoriaTable`), con `tableLayout="fixed"`.
+- **Columnas fijas (6):** Fecha y hora, Usuario, Acción, Módulo, Registro, Detalle.
+- Acción y Módulo como `<Badge>` real (antes `<span className="ds-badge">` inline), usando los
+  mismos colores/labels de `ACTION_META`/`MODULE_META`.
+- Ordenamiento por header (Fecha/Usuario) preservado **desde el estado externo de `page.tsx`**
+  (`logSortCol`/`logSortDir`/`toggleLogSort`) — el header del `DataTable` solo pinta el indicador
+  visual (↑↓↕) vía un `SortableHeader` interno, sin usar el sort nativo del componente (evita una
+  segunda fuente de verdad).
+- Modo `?debugTable=1` soportado, `data-testid` por celda.
+- Tests estructurales en `auditoriaTable.render.test.tsx` (15 casos): `th===td===col===6`, orden de
+  columnas, Badge en Acción/Módulo, sin cruce entre columnas, sin celda extra, truncado con `title`,
+  fila sin usuario, modo debug, guard de archivo sin `tr::before`/`tr::after`.
+- **Validación técnica:** `tsc` limpio, **430/430 tests** en verde, `build` exitoso, 0 ocurrencias de
+  `tr::before`/`tr::after` en CSS de producción.
+
+### Confirmado intacto (verificado por `git diff` antes del cierre)
+
+Filtros (módulo, acción, usuario, rango de fechas, búsqueda), paginación server-side con salto de
+página, exportación a CSV (`doExportCsv`), el endpoint `GET /api/activity` (sin diff), `requireRole(["ADMIN"])`
+server-side y el check de acceso cliente `role !== "ADMIN"`, Prisma.
+
+### Excluido de este cierre
+
+Ninguno — es el primer módulo patrón sin formulario, modal ni sub-tabla que excluir: solo lectura,
+filtros y exportación. **Auditoría no requiere fases adicionales de código** para el patrón actual.
+
+## 19.12 Auditoría final — rutas restantes tras cerrar 8 módulos patrón (2026-06-24)
+
+Con Auditoría cerrada, **8 módulos patrón oficiales** quedan documentados: Facturas Contado (`tienda`),
+Guardados/Transporte (`transporte`), Solicitudes Transporte, Exportaciones, Integración Pedidos,
+Preoperacional, Usuarios, Auditoría. Esta sección audita (solo lectura, sin tocar código) las rutas
+restantes bajo `src/app/(dashboard)/dashboard`.
+
+### Tabla de clasificación
+
+| Ruta | Archivo | Sidebar | homeActions | modulePermissions | Clasificación |
+|---|---|---|---|---|---|
+| `/dashboard` (raíz) | `page.tsx` (871 líneas) | — (es el home) | sí (origen de accesos) | implícito | **Dashboard/agregador** — landing, sin tabla. No tocar. |
+| `/dashboard/inventario` | `inventario/page.tsx` (1032 líneas) | sí | sí | sí (`INVENTARIO, SUPERVISOR_INVENTARIO, GERENTE, ADMIN, OPERADOR`) | **Especial — mobile-first.** Sin `<table>` manual (cards), con cámara/fotos. Ya auditado (§9/§19.7): NO forzar a `DataTable`+`SlidePanel`. |
+| `/dashboard/mis-tareas` | `mis-tareas/page.tsx` (260 líneas) | sí | sí | sí | **Dashboard/agregador** — resumen de tareas, sin tabla. No requiere migración. |
+| `/dashboard/centro-control` | `centro-control/page.tsx` (592 líneas) | sí | sí | sí | **Dashboard/agregador** de KPIs, sin tabla. No requiere migración. |
+| `/dashboard/muebles` | `muebles/page.tsx` (934 líneas) | **no** | **no** | **no** | **Huérfana/legacy.** Versión desktop pre-rewrite de Inventario (mismo `@/lib/muebles`, mismos endpoints), con `<table>` manual, formularios, `SlidePanel`, gráficos Chart.js. Sustituida por `inventario/page.tsx` (mobile-first) pero el archivo sigue en el repo sin ningún enlace de navegación ni permiso de rol. |
+
+### Hallazgos clave
+
+1. **`muebles/page.tsx` es código muerto confirmado** (0 referencias en `Sidebar.tsx`, `homeActions.ts`
+   ni `modulePermissions.ts` — verificado por grep). No se elimina en esta auditoría por regla del
+   proyecto ("no borrar archivos legacy sin autorización"). Queda registrado como candidato a una
+   futura **auditoría de código muerto** dedicada (decidir: eliminar archivo + posible limpieza de
+   `@/lib/muebles` si nada más lo usa, o documentar como respaldo histórico).
+2. **No hay tablas manuales pendientes de migrar** fuera de `muebles` (huérfana). `inventario`,
+   `mis-tareas`, `centro-control` y `page.tsx` raíz no tienen `<table>` — no son candidatas al patrón
+   `DataTable` (mis-tareas/centro-control son paneles de KPIs, no listados tabulares).
+3. **Rutas que NO deben migrarse a `DataTable`:** `inventario` (mobile-first, cards — decisión ya
+   tomada en §9), `mis-tareas` y `centro-control` (paneles de resumen, no tablas), `page.tsx` raíz
+   (home).
+4. **0 ocurrencias de `tr::before`/`tr::after`** en CSS de producción en todo `src/` — las únicas
+   coincidencias son aserciones de guard dentro de archivos de test (`expect(html).not.toMatch(...)`).
+5. **Riesgo de tocar:** `inventario` y `page.tsx` raíz son alto tráfico/críticos — cualquier cambio
+   requiere su propia fase dedicada. `muebles` tiene riesgo bajo de romper nada visible (nadie navega
+   ahí), pero riesgo medio si se toca sin confirmar que ningún bookmark/enlace externo lo usa.
+
+### Recomendación de siguiente paso
+
+Con los 8 módulos patrón cerrados, el ciclo de migración a `DataTable` **queda completo** — no quedan
+tablas manuales activas por migrar. Próximos pasos posibles (ninguno ejecutado, requieren autorización
+y decisión de producto separada):
+
+- **Cerrar el ciclo actual** de "rediseño por fases" como completo (8/8 módulos patrón).
+- **Auditoría de código muerto** dedicada a `muebles/page.tsx` (y su lib asociada) — decidir eliminar
+  o documentar como respaldo.
+- **Inventario Mobile UX** — iniciativa futura, sin fecha, para evolucionar el mobile-first de
+  `inventario` (ya identificado en §19.7/§9 como excepción intencional al patrón `DataTable`).
+- **Control de Cargue QR** — requerimiento nuevo de Transporte, pospuesto, no implementar ahora.
+
+Ninguna de estas cuatro opciones se ejecuta en esta sesión — solo se deja documentado el estado para
+que el dueño decida cuál retomar primero.
 
 ## 19. Cómo auditar un módulo antes de tocarlo
 
