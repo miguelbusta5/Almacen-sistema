@@ -322,8 +322,12 @@ verdad en base de datos; acceso desde móvil y escritorio.
      visual en producción de la tabla de historial del gestor (Fase P1 única — el panel ya cumplía el
      patrón desde antes, no requirió Fase 2). **La vista de captura del conductor (`ConductorView`)
      queda excluida de este cierre** (formulario móvil, checklist, fotos) — ver §19.9.
+   - **Usuarios (`usuarios`)** — séptimo módulo patrón, cerrado 2026-06-24 (Fase U1 tabla principal +
+     Fase U2 tabla secundaria de Transportistas Operativos, ambas a `DataTable`). **`FormNuevo`,
+     `ModalEditar`, Maestro PLU y toda la gestión de flota (vehículos/transportistas) quedan excluidos
+     de este cierre** — ver §19.10.
 
-   Patrón canónico que dejan validado los seis módulos (replicar tal cual al resto):
+   Patrón canónico que dejan validado los siete módulos (replicar tal cual al resto):
    - `ModuleHero` como único encabezado de módulo (sin `heroImage`, sin segundo `<h1>`).
    - `<DataTable>` con columnas **declarativas** (no `<table>` armada a mano por módulo).
    - Estado **siempre** como `<Badge>` por fila (nunca solo color de rail o leyenda).
@@ -808,6 +812,37 @@ Pendiente, sin fecha comprometida, a evaluar solo si hay necesidad operativa exp
    automáticamente del criterio usado para la tabla del gestor.
 3. El formulario de captura no usa las primitivas compartidas `src/components/ui/form.tsx` — mismo
    patrón de deuda visual ya documentado para otros módulos, sin urgencia.
+
+## 19.10 Cierre — Usuarios como séptimo módulo patrón oficial (2026-06-24)
+
+**Ruta:** `/dashboard/usuarios`. Migración en dos fases (U1 + U2), ambas solo de presentación de tabla.
+
+### Alcance cerrado
+
+- **Fase U1** — tabla principal de usuarios (`UsuariosTable` en `_components.tsx`) migrada de `<table>`
+  manual a `<DataTable<User>>` declarativo, con `colgroup`+`table-layout:fixed`.
+- **Fase U2** — tabla secundaria de Transportistas Operativos migrada a
+  `<DataTable<TransportistaOperativo>>`, mismo patrón.
+- Rol y Estado de usuario usando `<Badge>` real (no `<span>` con color manual).
+- Estado de transportista (Activo/Inactivo) usando `<Badge variant="success"|"muted">`.
+- Modo `?debugTable=1` soportado en ambas tablas.
+- Tests estructurales para ambas tablas (`th === td === col`, sin `tr::before`/`tr::after`) —
+  ver `src/__tests__/usuariosTable.render.test.tsx`.
+
+### Confirmado intacto (verificado por `git diff` antes del cierre)
+
+`FormNuevo`, `ModalEditar` (crear/editar usuario), gestión de Maestro PLU e importación
+(`/api/productos-maestro/importar`), creación de vehículo, creación de transportista operativo, select
+de asignación de vehículo y su handler, todos los endpoints `/api/users/**`, Prisma, los checks
+server-side de rol `ADMIN` (`requireRole`/`requireCan`) y la lógica anti-autodegradación (un ADMIN no
+puede quitarse su propio rol ADMIN ni desactivarse a sí mismo).
+
+### Excluido de este cierre (decisión técnica explícita, NO bloqueante)
+
+`FormNuevo`, `ModalEditar`, el flujo de Maestro PLU/importación y la gestión de flota (creación de
+vehículos y transportistas operativos) quedan fuera del alcance: son formularios/modales de captura,
+no tablas, y no forman parte del contrato de "módulo patrón" del SOT (§9/§10, centrado en tabla y
+estados). Usuarios **no requiere fases adicionales de código** para el patrón actual.
 
 ## 19. Cómo auditar un módulo antes de tocarlo
 
