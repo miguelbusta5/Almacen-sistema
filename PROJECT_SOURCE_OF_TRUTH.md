@@ -318,8 +318,12 @@ verdad en base de datos; acceso desde móvil y escritorio.
      antes, no requirió Fase 2). **Los 3 modales propios (Nueva integración, Completar Área 2, Confirmar
      recepción transporte) y las 2 sub-tablas de PLU dentro de esos modales quedan excluidos de este
      cierre** — ver §19.6.
+   - **Preoperacional (`preoperacional`)** — sexto módulo patrón, cerrado 2026-06-24 tras confirmación
+     visual en producción de la tabla de historial del gestor (Fase P1 única — el panel ya cumplía el
+     patrón desde antes, no requirió Fase 2). **La vista de captura del conductor (`ConductorView`)
+     queda excluida de este cierre** (formulario móvil, checklist, fotos) — ver §19.9.
 
-   Patrón canónico que dejan validado los cinco módulos (replicar tal cual al resto):
+   Patrón canónico que dejan validado los seis módulos (replicar tal cual al resto):
    - `ModuleHero` como único encabezado de módulo (sin `heroImage`, sin segundo `<h1>`).
    - `<DataTable>` con columnas **declarativas** (no `<table>` armada a mano por módulo).
    - Estado **siempre** como `<Badge>` por fila (nunca solo color de rail o leyenda).
@@ -755,6 +759,55 @@ visual global, posterior a la Fase B (ToastProvider).
 - **No tocado en ninguna de las dos fases:** Prisma, base de datos, endpoints (ni creados ni
   modificados), `/dashboard/mis-tareas`, Sidebar, Command Palette, permisos, `DataTable`, `TimelineItem`
   (componente, sin cambios de contrato).
+
+## 19.9 Cierre — Preoperacional como sexto módulo patrón oficial (2026-06-24)
+
+**Ruta:** `/dashboard/preoperacional`. **Ejecutado y confirmado visualmente por el dueño en producción.**
+
+### Alcance cerrado (Fase P1, única fase de código — sin Fase 2 de panel)
+
+- `<table>` manual dentro de `SupervisorView` (rol gestor: `ADMIN`/`GERENTE`/`SUPERVISOR_TRANSPORTE`)
+  reemplazada por `<DataTable<HistorialRow>>` declarativo en `_components.tsx`
+  (`HistorialPreoperacionalTable`), con `colgroup`+`table-layout:fixed`.
+- **Columnas fijas (6):** Fecha, Conductor, Vehículo, Km, Estado, Ítems.
+- **Columna condicional (1):** Acciones — **solo si `role === "ADMIN"`** (7 columnas para ADMIN, 6 para
+  el resto de roles con acceso a la vista). Eliminar conserva la confirmación inline de 2 pasos con
+  `e.stopPropagation()` para no disparar el click de fila.
+- Estado como `<Badge>` por fila (Aprobada/Con observaciones/Bloqueada), igual que antes.
+- Modo `?debugTable=1`, `data-testid` por celda.
+- Tests estructurales en `preoperacionalTable.render.test.tsx` (17 casos): `th===td===col` validado
+  por separado para rol ADMIN (7) y no-ADMIN (6).
+- **Validación técnica:** `tsc` limpio, **388/388 tests** en verde, `build` exitoso, 0 ocurrencias de
+  `tr::before`/`tr::after`.
+
+### Confirmado intacto (verificado por `git diff` antes del cierre)
+
+`ConductorView` completa (formulario móvil, checklist, captura de fotos, historial en tarjetas del
+propio conductor), `uploadFoto()`, `submit()`, `estadoEstimado()`, `useIsMobile()`, todos los endpoints
+`/api/preoperacional/**` y `/api/uploads/foto`, roles (`requireRole`/`requireCan` server-side,
+`SUPERVISOR_ROLES.includes(role)` cliente), el `SlidePanel`+`DetailSection`+`DetailGrid` del panel de
+detalle del gestor (ya conforme desde antes de esta fase, sin cambios), filtros, exportación a Excel,
+paginación server-side.
+
+### Excluido de este cierre (decisión técnica explícita, NO bloqueante)
+
+**La vista de captura del conductor (`ConductorView`) queda completamente fuera del alcance del cierre.**
+Motivo: es el único punto de registro obligatorio antes de operar un vehículo — el de mayor sensibilidad
+operativa de todo el sistema (bloquear o degradar este flujo impacta directamente la operación de
+transporte). No tiene tabla que migrar (es un formulario + checklist + tarjetas, ya mobile-first); no
+forma parte del contrato de "módulo patrón" del SOT (§9/§10, centrado en tabla y estados).
+
+### Deuda visual futura controlada — Preoperacional
+
+Pendiente, sin fecha comprometida, a evaluar solo si hay necesidad operativa explícita:
+
+1. **No tocar `ConductorView` salvo necesidad operativa concreta** — cualquier cambio futuro a la
+   captura móvil del conductor requiere una auditoría dedicada y exclusiva (no combinada con otro
+   módulo), dado el riesgo de bloquear la operación de transporte.
+2. Cualquier mejora futura de fotos/checklist/cámara debe tener su propia auditoría — no se hereda
+   automáticamente del criterio usado para la tabla del gestor.
+3. El formulario de captura no usa las primitivas compartidas `src/components/ui/form.tsx` — mismo
+   patrón de deuda visual ya documentado para otros módulos, sin urgencia.
 
 ## 19. Cómo auditar un módulo antes de tocarlo
 
