@@ -261,7 +261,14 @@ verdad en base de datos; acceso desde móvil y escritorio.
   componente compartido es más pobre, **enriquecer el componente del DS** (no mantener CSS a medida).
 - **CSS:** tokens en `globals.css`; clases `ds-*` como estándar. `op-*`/`g-*`/`cedi-*` en deprecación.
 - **Estado:** local por página (`useState` + fetch) es aceptable a esta escala. No introducir estado global
-  sin necesidad real.
+  sin necesidad real — excepción ya resuelta: **Toast** (ver §19.7) y **Command Palette**, que sí son
+  estado global legítimo por ser transversales a toda la app.
+- **Toast/feedback inmediato:** todo módulo nuevo o tocado debe usar `useToast()` de
+  `src/contexts/ToastContext.tsx` (`toast.success/error/info/warning(message, duration?)`). **Prohibido**
+  crear un nuevo `useState` local de tipo `{ msg, err }` + `setTimeout` + render manual de `<Toast>` para
+  feedback de acciones — ese patrón quedó deprecado tras el cierre de la Fase B (§19.7). Única excepción
+  documentada: `inventario` (toast bottom-bar móvil propio, ver §19.7) — no replicar ese patrón en módulos
+  nuevos, es deuda heredada, no un ejemplo a seguir.
 
 ## 16. Reglas de escalabilidad (crecer sin desordenar)
 
@@ -642,6 +649,47 @@ Pendiente, sin fecha comprometida, a evaluar solo si hay necesidad visual u oper
    dejarlas como tablas auxiliares simples (son de bajo riesgo y bajo beneficio por su tamaño reducido).
 3. **No tocar estas partes ahora** — funcionan correctamente y no bloquean el patrón principal del
    módulo, ya cerrado.
+
+## 19.7 Cierre — Fase B: ToastProvider global (escalabilidad visual, 2026-06-24)
+
+**Ejecutado y confirmado visualmente por el dueño en producción.** Primera fase de la escalabilidad
+visual global (post-cierre de los 5 módulos patrón) que introduce estado global legítimo a la app.
+
+- **Sistema creado:** `ToastProvider` + `useToast()` en `src/contexts/ToastContext.tsx`, montado en
+  `src/components/common/Providers.tsx` (mismo nivel que `CommandPaletteProvider`, dentro de
+  `SessionProvider`) — cubre toda la app desde `src/app/layout.tsx`.
+- **API oficial:**
+  ```ts
+  toast.success(message: string, duration?: number)
+  toast.error(message: string, duration?: number)
+  toast.info(message: string, duration?: number)
+  toast.warning(message: string, duration?: number)
+  toast.show({ message, type, duration })
+  ```
+- **Componente visual reutilizado:** `Toast` (`src/components/ui/index.tsx`), extendido de forma
+  **retrocompatible** con `variant`/`onClose`/`stacked` — el uso histórico `<Toast message error />`
+  sigue renderizando idéntico a como era antes de esta fase.
+- **Estado interno:** manejado con un reducer puro y exportado (`toastReducer`), específicamente para
+  poder testear apilado/auto-dismiss/cierre manual sin jsdom (el proyecto no tiene `jsdom` instalado y
+  esta fase no instaló librerías nuevas).
+- **Módulos migrados (5):** `tienda`, `transporte`, `preoperacional` (sus 2 componentes con toast
+  independiente), `muebles`, `usuarios` — mismos mensajes y mismos puntos de disparo, solo cambió quién
+  orquesta el estado/timeout (de `useState`+`setTimeout` local a `useToast()`).
+- **Módulo NO migrado:** `inventario` — su toast es un bottom-bar móvil a medida
+  (`position:fixed, bottom:100, left:20, right:20`) diseñado para no superponerse con la barra de
+  acciones fija (`bottom:0`) del `BottomSheet` de captura. Migrarlo al stack genérico (`bottom:24`) tiene
+  riesgo real de colisión visual en el flujo móvil de mayor frecuencia de uso del sistema. **No tocar
+  hasta una fase dedicada de reconstrucción de Inventario** (módulo ya identificado como candidato de
+  alto impacto/alto riesgo en la auditoría comparativa de módulos).
+- **Regla nueva del DS** (añadida a §15): todo módulo nuevo o tocado debe usar `useToast()`; prohibido
+  crear un nuevo `useState` local de toast salvo excepción documentada como la de `inventario`.
+- **Tests agregados:** `src/__tests__/toastContext.test.tsx` (10 casos: render del provider, `useToast`
+  anidado y fuera de provider sin romper, disparo de variantes, apilado, auto-dismiss y cierre manual
+  vía el reducer puro, unicidad de ids).
+- **Validación técnica:** `tsc` limpio, **351/351 tests** en verde, `build` exitoso, 0 ocurrencias de
+  `tr::before`/`tr::after`. Conteo `<Toast` en `src/app`: 4 → 0. Conteo `setToast`: 6 → 1 (`inventario`).
+- **No tocado:** backend, API, Prisma, permisos, formularios, tablas, reglas de negocio, `cedi.tsx`,
+  `pageShell.tsx`, `form.tsx`.
 
 ## 19. Cómo auditar un módulo antes de tocarlo
 
