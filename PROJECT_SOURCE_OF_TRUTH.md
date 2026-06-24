@@ -691,6 +691,71 @@ visual global (post-cierre de los 5 módulos patrón) que introduce estado globa
 - **No tocado:** backend, API, Prisma, permisos, formularios, tablas, reglas de negocio, `cedi.tsx`,
   `pageShell.tsx`, `form.tsx`.
 
+## 19.8 Cierre — Fase C: Centro de Actividad (escalabilidad visual, 2026-06-24)
+
+**Ejecutado y confirmado visualmente por el dueño en producción.** Segunda fase de la escalabilidad
+visual global, posterior a la Fase B (ToastProvider).
+
+### Fase C1 — Panel de notificaciones (solo lectura)
+
+- La campana del Header (`src/components/common/Header.tsx`) **dejó de ser un `<Link>` directo a
+  `/dashboard/mis-tareas`** y ahora es un botón que abre/cierra un Centro de Actividad
+  (`src/components/common/ActivityCenterPanel.tsx`).
+- Consume `GET /api/notificaciones?unread=true` (endpoint ya existente, sin cambios).
+- **Reutiliza el mismo polling de 60s** que ya existía para el contador — un solo `fetch`, dos estados
+  derivados (`notifCount` y `notifications`), sin polling duplicado.
+- Renderiza notificaciones reales (no datos de ejemplo) usando el componente compartido `TimelineItem`
+  (`src/components/ui/index.tsx`).
+- Si la notificación tiene `enlace`, el item es navegable y cierra el panel al hacer clic; si no tiene,
+  no rompe.
+- Empty state con el componente compartido `EmptyState` cuando no hay notificaciones.
+- Cierre por clic afuera, `Escape`, o al navegar a una notificación con enlace.
+- Responsive: dropdown anclado en desktop, panel ancho-completo (`fixed`, sin desborde) en móvil.
+- **No tocó:** Prisma, endpoints (ninguno creado), `/dashboard/mis-tareas`, Sidebar, Command Palette,
+  permisos.
+
+### Fase C2 — Marcar todas como leídas
+
+- Botón "Marcar todas como leídas" en el footer del panel, **visible solo si hay notificaciones no
+  leídas** (`totalNoLeidas > 0`).
+- Usa únicamente `PUT /api/notificaciones/leer` (endpoint ya existente, sin cambios) — la llamada se
+  extrajo como función pura `performMarkAllRead()` (testeable sin DOM/jsdom, mismo criterio que
+  `toastReducer` de la Fase B).
+- **No implementó** marcado individual por notificación, filtros, ni paginación — fuera de alcance de
+  C2 por decisión explícita.
+- Usa `useToast()` (`toast.success`/`toast.error`) para feedback inmediato — ni un `alert()` ni un
+  toast ad-hoc nuevo.
+- La lista visible y el contador de la campana **solo se limpian si el `PUT` responde éxito**; si
+  falla, no se toca ningún estado (el usuario puede reintentar).
+- Mantiene el `EmptyState` ya existente de C1 cuando la lista queda vacía tras marcar todas.
+
+### Reglas nuevas (vigentes a partir de este cierre)
+
+- **La campana representa notificaciones reales** (tabla `notificaciones`, no datos derivados de otro
+  módulo). No reemplaza ni se mezcla con "Mis Tareas".
+- **"Mis Tareas" sigue siendo un dataset distinto** (agregador de novedades/guardados/despachos
+  pendientes, vía `/api/mis-tareas`) — **no debe mezclarse con notificaciones sin una auditoría
+  dedicada futura** que decida explícitamente si conviene unificarlos.
+- **Fase C3** (marcado individual, filtros, paginación, acciones adicionales) **queda aplazada** hasta
+  que exista una necesidad operativa concreta — no se ejecuta "porque ya se puede".
+- **Prohibido crear un sistema de notificaciones paralelo.** Cualquier notificación nueva en el futuro
+  debe usar la tabla `Notificacion`/`/api/notificaciones` existente, no una variante propia por módulo.
+- **Todo feedback inmediato debe seguir usando `ToastProvider`** (`useToast()`, ver §19.7) — la Fase C
+  no introdujo ningún mecanismo de feedback alternativo.
+
+### Tests y validación
+
+- `src/__tests__/activityCenterPanel.render.test.tsx` — 23 casos (C1: título, notificación mock,
+  empty state, contador, navegación con/sin enlace, sin tocar `/dashboard/mis-tareas`, guard
+  `tr::before/after`; C2: botón aparece/desaparece según `totalNoLeidas`, estado de carga deshabilita
+  y cambia texto, sin marcado individual, `EmptyState` tras vaciar, `performMarkAllRead` aislado con
+  éxito/fallo/excepción de red, el panel no dispara `fetch` por sí mismo).
+- **Validación técnica al cierre de C2:** `tsc` limpio, **371/371 tests** en verde, `build` exitoso,
+  0 ocurrencias de `tr::before`/`tr::after` en código fuente real.
+- **No tocado en ninguna de las dos fases:** Prisma, base de datos, endpoints (ni creados ni
+  modificados), `/dashboard/mis-tareas`, Sidebar, Command Palette, permisos, `DataTable`, `TimelineItem`
+  (componente, sin cambios de contrato).
+
 ## 19. Cómo auditar un módulo antes de tocarlo
 
 Para cada módulo, antes de cualquier cambio, documentar:
