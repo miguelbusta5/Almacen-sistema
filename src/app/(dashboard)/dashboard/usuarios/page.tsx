@@ -2,13 +2,14 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useSession } from "next-auth/react";
-import { Users, Plus, Pencil, Shield, ShieldCheck, ShieldAlert, Truck, Car, Upload, Search, GitMerge, Package } from "lucide-react";
+import { Users, Plus, Shield, ShieldCheck, ShieldAlert, Truck, Car, Upload, Search, GitMerge, Package } from "lucide-react";
 import { SkeletonTable, EmptyState, ModuleHero } from "@/components/ui";
 import { Modal } from "@/components/ui/Modal";
 import { AutoRefreshIndicator } from "@/components/ui/AutoRefreshIndicator";
 import { getModuleColor, getModuleCssVars } from "@/lib/moduleTheme";
 import { useAutoRefresh } from "@/hooks/useAutoRefresh";
 import { useToast } from "@/contexts/ToastContext";
+import { UsuariosTable } from "./_components";
 
 type Role = "ADMIN" | "GERENTE" | "OPERADOR" | "TRANSPORTISTA" | "INVENTARIO" | "TRANSPORTE" | "SUPERVISOR_INVENTARIO" | "SUPERVISOR_TRANSPORTE" | "TIENDA" | "SUPERVISOR_TIENDA" | "OPERACIONES_MUEBLES" | "OPERACIONES_GOURMET" | "ETIQUETADO" | "SUPERVISOR_ALMACENAMIENTO";
 
@@ -78,6 +79,10 @@ export default function UsuariosPage() {
   const [searchQ, setSearchQ] = useState("");
   const [sortCol, setSortCol] = useState<"name" | "role" | "active">("name");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
+  const [debugTable, setDebugTable] = useState(false);
+
+  // Modo debug de tabla: /dashboard/usuarios?debugTable=1 (diagnóstico de mapeo de columnas).
+  useEffect(() => { setDebugTable(new URLSearchParams(window.location.search).get("debugTable") === "1"); }, []);
 
   function showToast(msg: string, err = false) {
     err ? toastCtx.error(msg) : toastCtx.success(msg);
@@ -220,49 +225,15 @@ export default function UsuariosPage() {
             />
           ) : (
             <div className="g-table-wrap">
-              <div style={{ overflowX: "auto" }}>
-                <table className="g-table" style={{ fontSize: 13 }}>
-                  <thead>
-                    <tr style={{ borderBottom: "1px solid var(--border)", background: "var(--surface2)" }}>
-                      <th onClick={() => toggleSort("name")} style={{ padding: "0.7rem 0.9rem", textAlign: "left", fontSize: 10, fontWeight: 700, letterSpacing: ".06em", textTransform: "uppercase", color: sortCol === "name" ? "#14DBA0" : "var(--muted)", cursor: "pointer", userSelect: "none" }}>
-                        Nombre{sortCol === "name" ? (sortDir === "asc" ? " ↑" : " ↓") : " ↕"}
-                      </th>
-                      <th style={{ padding: "0.7rem 0.9rem", textAlign: "left", fontSize: 10, fontWeight: 700, letterSpacing: ".06em", textTransform: "uppercase", color: "var(--muted)" }}>Email</th>
-                      <th onClick={() => toggleSort("role")} style={{ padding: "0.7rem 0.9rem", textAlign: "left", fontSize: 10, fontWeight: 700, letterSpacing: ".06em", textTransform: "uppercase", color: sortCol === "role" ? "#14DBA0" : "var(--muted)", cursor: "pointer", userSelect: "none" }}>
-                        Rol{sortCol === "role" ? (sortDir === "asc" ? " ↑" : " ↓") : " ↕"}
-                      </th>
-                      <th onClick={() => toggleSort("active")} style={{ padding: "0.7rem 0.9rem", textAlign: "left", fontSize: 10, fontWeight: 700, letterSpacing: ".06em", textTransform: "uppercase", color: sortCol === "active" ? "#14DBA0" : "var(--muted)", cursor: "pointer", userSelect: "none" }}>
-                        Estado{sortCol === "active" ? (sortDir === "asc" ? " ↑" : " ↓") : " ↕"}
-                      </th>
-                      <th style={{ padding: "0.7rem 0.9rem" }} />
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {filteredUsers.map(u => {
-                      const m = ROLE_META[u.role];
-                      return (
-                        <tr key={u.id} style={{ borderBottom: "1px solid var(--border)" }}>
-                          <td style={{ padding: "0.7rem 0.9rem", fontWeight: 600 }}>{u.name}</td>
-                          <td style={{ padding: "0.7rem 0.9rem", fontFamily: "var(--mono)", fontSize: 12, color: "var(--muted2)" }}>{u.email}</td>
-                          <td style={{ padding: "0.7rem 0.9rem" }}>
-                            <span className="ds-badge" style={{ background: m.color + "18", color: m.color, border: `1px solid ${m.color}28`, gap: 5 }}>
-                              {m.icon}{m.label}
-                            </span>
-                          </td>
-                          <td style={{ padding: "0.7rem 0.9rem" }}>
-                            <span style={{ fontSize: 11, fontWeight: 700, padding: "2px 8px", borderRadius: 20, background: u.active ? "var(--brand-tint)" : "var(--surface3)", color: u.active ? "var(--brand)" : "var(--muted)" }}>
-                              {u.active ? "Activo" : "Inactivo"}
-                            </span>
-                          </td>
-                          <td style={{ padding: "0.7rem 0.9rem", textAlign: "right" }}>
-                            <button onClick={() => setEditing(u)} title="Editar" style={{ background: "var(--surface2)", border: "1px solid var(--border)", borderRadius: 7, padding: "5px 7px", cursor: "pointer", color: "var(--muted2)" }}><Pencil size={14} /></button>
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
+              <UsuariosTable
+                users={filteredUsers}
+                roleMeta={ROLE_META}
+                sortCol={sortCol}
+                sortDir={sortDir}
+                onToggleSort={toggleSort}
+                onEdit={(u) => setEditing(u)}
+                debug={debugTable}
+              />
             </div>
           )}
         </>
