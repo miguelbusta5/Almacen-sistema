@@ -14,6 +14,7 @@ import type { ResultadoInspeccion } from "@/lib/preoperacional";
 import { getModuleColor, getModuleCssVars } from "@/lib/moduleTheme";
 import { useAutoRefresh } from "@/hooks/useAutoRefresh";
 import { useToast } from "@/contexts/ToastContext";
+import { HistorialPreoperacionalTable } from "./_components";
 
 // ─── tipos ──────────────────────────────────────────────────────────────────
 
@@ -405,6 +406,10 @@ function SupervisorView({ role }: { role: string }) {
   const [detail,        setDetail]        = useState<InspeccionDetalle | null>(null);
   const [loadingDetail, setLoadingDetail] = useState(false);
   const toastCtx = useToast();
+  const [debugTable, setDebugTable] = useState(false);
+
+  // Modo debug de tabla: /dashboard/preoperacional?debugTable=1 (diagnóstico de mapeo de columnas).
+  useEffect(() => { setDebugTable(new URLSearchParams(window.location.search).get("debugTable") === "1"); }, []);
 
   const [fDesde, setFDesde]           = useState("");
   const [fHasta, setFHasta]           = useState("");
@@ -554,67 +559,17 @@ function SupervisorView({ role }: { role: string }) {
         <SkeletonTable rows={8} cols={6} />
       ) : (
         <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 14, overflow: "hidden" }}>
-          <div style={{ overflowX: "auto" }}>
-            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
-              <thead>
-                <tr style={{ borderBottom: "1px solid var(--border)", background: "var(--surface2)" }}>
-                  {["Fecha", "Conductor", "Vehículo", "Km", "Estado", "Ítems"].map((h) => (
-                    <th key={h} style={{ padding: "0.7rem 0.9rem", textAlign: "left", fontSize: 10, fontWeight: 700, letterSpacing: ".06em", textTransform: "uppercase", color: "var(--muted)", whiteSpace: "nowrap" }}>{h}</th>
-                  ))}
-                  {role === "ADMIN" && <th style={{ padding: "0.7rem 0.9rem", textAlign: "left", fontSize: 10, fontWeight: 700, letterSpacing: ".06em", textTransform: "uppercase", color: "var(--muted)" }}></th>}
-                </tr>
-              </thead>
-              <tbody>
-                {rows.length === 0 && (
-                  <tr><td colSpan={role === "ADMIN" ? 7 : 6} style={{ padding: "2rem", textAlign: "center", color: "var(--muted)", fontSize: 13 }}>Sin inspecciones para los filtros seleccionados</td></tr>
-                )}
-                {rows.map((r) => (
-                  <tr key={r.id} onClick={() => openDetail(r)} style={{ borderBottom: "1px solid var(--border)", cursor: "pointer" }}>
-                    <td style={{ padding: "0.7rem 0.9rem", fontFamily: "var(--mono)", fontSize: 12 }}>{r.fecha}</td>
-                    <td style={{ padding: "0.7rem 0.9rem", fontWeight: 600 }}>{r.conductor?.nombre ?? "—"}</td>
-                    <td style={{ padding: "0.7rem 0.9rem", fontFamily: "var(--mono)", fontSize: 12 }}>
-                      {r.vehiculo?.placa ?? "—"}
-                      <span style={{ color: "var(--muted)", marginLeft: 4 }}>{r.vehiculo?.tipo}</span>
-                    </td>
-                    <td style={{ padding: "0.7rem 0.9rem", fontSize: 12, color: "var(--muted2)" }}>{r.kilometraje != null ? r.kilometraje.toLocaleString() : "—"}</td>
-                    <td style={{ padding: "0.7rem 0.9rem" }}>
-                      <Badge label={ESTADO_LABEL[r.estado]} variant={estadoBadge(r.estado)} dot={false} />
-                    </td>
-                    <td style={{ padding: "0.7rem 0.9rem", fontSize: 12 }}>
-                      <span style={{ color: "var(--muted2)" }}>{r.itemsCount} ítems</span>
-                      {r.noConformes > 0 && (
-                        <span style={{ marginLeft: 6, color: r.criticos > 0 ? "var(--error)" : "var(--warning)", fontWeight: 700 }}>
-                          · {r.noConformes} ✗{r.criticos > 0 ? ` (${r.criticos} crít.)` : ""}
-                        </span>
-                      )}
-                    </td>
-                    {role === "ADMIN" && (
-                      <td style={{ padding: "0.7rem 0.9rem" }}>
-                        {deletingId === r.id ? (
-                          <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
-                            <button onClick={(e) => { e.stopPropagation(); deleteRow(r.id); }}
-                              style={{ fontSize: 11, padding: "3px 8px", background: "var(--error)", color: "#fff", border: "none", borderRadius: 6, cursor: "pointer" }}>
-                              Sí, eliminar
-                            </button>
-                            <button onClick={(e) => { e.stopPropagation(); setDeletingId(null); }}
-                              style={{ fontSize: 11, padding: "3px 8px", background: "none", border: "1px solid var(--border)", borderRadius: 6, cursor: "pointer", color: "var(--muted)" }}>
-                              Cancelar
-                            </button>
-                          </div>
-                        ) : (
-                          <button onClick={(e) => { e.stopPropagation(); setDeletingId(r.id); }}
-                            style={{ background: "none", border: "none", cursor: "pointer", color: "var(--muted2)", padding: 4, display: "flex", alignItems: "center" }}
-                            title="Eliminar inspección">
-                            <Trash2 size={14} />
-                          </button>
-                        )}
-                      </td>
-                    )}
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <HistorialPreoperacionalTable
+            rows={rows}
+            role={role}
+            loading={false}
+            deletingId={deletingId}
+            onRowClick={(r) => openDetail(r)}
+            onDeleteStart={(id) => setDeletingId(id)}
+            onDeleteConfirm={(id) => deleteRow(id)}
+            onDeleteCancel={() => setDeletingId(null)}
+            debug={debugTable}
+          />
 
           {/* Paginación */}
           {pages > 1 && (
