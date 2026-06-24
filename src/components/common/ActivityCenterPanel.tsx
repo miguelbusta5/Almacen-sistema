@@ -25,9 +25,26 @@ function timeAgo(iso: string): string {
 }
 
 /**
+ * Fase C2 — encapsula la llamada al único endpoint de escritura permitido
+ * (PUT /api/notificaciones/leer, marca TODAS, no hay marcado individual).
+ * Extraída como función pura (recibe `fetchImpl` inyectado) para poder
+ * testear el resultado éxito/error sin DOM ni mocks de red globales.
+ */
+export async function performMarkAllRead(fetchImpl: typeof fetch = fetch): Promise<boolean> {
+  try {
+    const res = await fetchImpl("/api/notificaciones/leer", { method: "PUT" });
+    const json = await res.json().catch(() => ({}));
+    return res.ok && json.success === true;
+  } catch {
+    return false;
+  }
+}
+
+/**
  * Dropdown anclado en desktop, panel ancho-completo en móvil (mismo umbral
- * que el resto del DS: 640px). Solo lectura — no marca como leída, no llama
- * a ningún endpoint de escritura (eso es Fase C2).
+ * que el resto del DS: 640px). Lectura + "marcar todas como leídas" (Fase C2).
+ * No hay marcado individual por notificación — solo el botón global, que
+ * llama al único endpoint de escritura existente (PUT /api/notificaciones/leer).
  */
 export function ActivityCenterPanel({
   open,
@@ -36,6 +53,8 @@ export function ActivityCenterPanel({
   loading,
   isMobile,
   onNavigate,
+  onMarkAllRead,
+  markingAllRead,
 }: {
   open: boolean;
   notifications: NotificacionItem[];
@@ -43,6 +62,8 @@ export function ActivityCenterPanel({
   loading: boolean;
   isMobile: boolean;
   onNavigate: () => void;
+  onMarkAllRead: () => void;
+  markingAllRead: boolean;
 }) {
   if (!open) return null;
 
@@ -116,6 +137,19 @@ export function ActivityCenterPanel({
           </div>
         )}
       </div>
+
+      {totalNoLeidas > 0 && (
+        <div style={{ padding: "8px 10px", borderTop: "1px solid var(--border)", flexShrink: 0 }}>
+          <button
+            onClick={onMarkAllRead}
+            disabled={markingAllRead}
+            className="ds-btn ds-btn-ghost ds-btn-sm"
+            style={{ width: "100%", justifyContent: "center", opacity: markingAllRead ? 0.6 : 1, cursor: markingAllRead ? "not-allowed" : "pointer" }}
+          >
+            {markingAllRead ? "Marcando…" : "Marcar todas como leídas"}
+          </button>
+        </div>
+      )}
     </div>
   );
 }

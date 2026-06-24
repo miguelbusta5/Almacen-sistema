@@ -8,7 +8,8 @@ import { useIsMobile } from "@/lib/useIsMobile";
 import { useCommandPalette } from "@/contexts/CommandPaletteContext";
 import { getVisibleModules, ROLE_LABEL_EXT, type AppRole } from "@/lib/modulePermissions";
 import { PRODUCT } from "@/config/product";
-import { ActivityCenterPanel, type NotificacionItem } from "./ActivityCenterPanel";
+import { useToast } from "@/contexts/ToastContext";
+import { ActivityCenterPanel, performMarkAllRead, type NotificacionItem } from "./ActivityCenterPanel";
 
 interface HeaderProps {
   user?: { name?: string | null; email?: string | null; role?: string | null };
@@ -48,6 +49,8 @@ export default function Header({ user }: HeaderProps) {
   const [notifications, setNotifications] = useState<NotificacionItem[]>([]);
   const [notifLoading, setNotifLoading] = useState(true);
   const [activityOpen, setActivityOpen] = useState(false);
+  const [markingAllRead, setMarkingAllRead] = useState(false);
+  const toast = useToast();
 
   const userName = user?.name ?? "Usuario";
   const role = user?.role ?? undefined;
@@ -86,6 +89,21 @@ export default function Header({ user }: HeaderProps) {
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [activityOpen]);
+
+  // Fase C2 — marca TODAS las no leídas (endpoint existente, sin marcado individual).
+  async function markAllRead() {
+    if (markingAllRead) return;
+    setMarkingAllRead(true);
+    const ok = await performMarkAllRead();
+    if (ok) {
+      setNotifications([]);
+      setNotifCount(0);
+      toast.success("Notificaciones marcadas como leídas");
+    } else {
+      toast.error("No se pudieron marcar las notificaciones como leídas");
+    }
+    setMarkingAllRead(false);
+  }
 
   return (
     <header
@@ -183,6 +201,8 @@ export default function Header({ user }: HeaderProps) {
                 loading={notifLoading}
                 isMobile={isMobile}
                 onNavigate={() => setActivityOpen(false)}
+                onMarkAllRead={markAllRead}
+                markingAllRead={markingAllRead}
               />
             </>
           )}
