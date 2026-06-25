@@ -75,7 +75,7 @@ describe("FacturasTable — mapeo real de columnas (render)", () => {
     expect(text("centro-cell")).toBe("138-LIVING TESORO");
     expect(text("doc-cell")).toBe("36008#0");
     expect(text("cliente-cell")).toBe("ALIMENTOS SALUDABLES FIT JUICE SAS9011218257 · 3137918413");
-    expect(text("estado-cell")).toBe("Creado en tienda");
+    expect(text("estado-cell")).toBe("Pendiente recogida");
     expect(text("fecha-cell")).toContain("19/06/2026");
   });
 
@@ -101,7 +101,7 @@ describe("FacturasTable — mapeo real de columnas (render)", () => {
 
   it("ESTADO contiene un badge de estado con la etiqueta del estado", () => {
     expect(cellHtml("estado-cell")).toContain("ds-badge");
-    expect(text("estado-cell")).toContain("Creado en tienda");
+    expect(text("estado-cell")).toContain("Pendiente recogida");
   });
 
   it("ESTADO NO contiene el nombre del cliente", () => {

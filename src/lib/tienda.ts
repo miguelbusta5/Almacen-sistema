@@ -106,20 +106,22 @@ export interface DespachoTienda {
 
 // ── Labels y colores ──────────────────────────────────────
 export const ESTADO_DESPACHO_LABEL: Record<EstadoDespacho, string> = {
-  CREADO_TIENDA:      "Creado en tienda",
+  CREADO_TIENDA:      "Pendiente recogida",
   RECHAZADO:          "Rechazado",
-  RECOGIDO_TIENDA:    "Recogido en tienda",
+  RECOGIDO_TIENDA:    "Recogido en CEDI",
   ENTREGADO_CEDI:     "Entregado en CEDI",
   ENVIADO_CLIENTE:    "Enviado al cliente",
   CON_NOVEDAD:        "Con novedad",
 };
 
+// Colores propios del módulo (hex directo, no `--state-*` compartido con
+// Solicitudes Transporte) para no afectar el color de otros módulos.
 export const ESTADO_DESPACHO_COLOR: Record<EstadoDespacho, string> = {
-  CREADO_TIENDA:      "var(--state-created)",
+  CREADO_TIENDA:      "#FF6B6B", // rojo — pendiente recogida
   RECHAZADO:          "var(--state-rejected)",
-  RECOGIDO_TIENDA:    "var(--state-picked)",
-  ENTREGADO_CEDI:     "var(--state-cedi)",
-  ENVIADO_CLIENTE:    "var(--state-sent)",
+  RECOGIDO_TIENDA:    "#F97316", // naranja — recogido en CEDI
+  ENTREGADO_CEDI:     "#FFC53D", // amarillo — entregado en CEDI
+  ENVIADO_CLIENTE:    "#2EE6A6", // verde — enviado al cliente
   CON_NOVEDAD:        "var(--state-alert)",
 };
 
@@ -131,10 +133,10 @@ export function estadoDespachoVariant(
   e: EstadoDespacho
 ): "warning" | "info" | "success" | "error" | "default" {
   switch (e) {
-    case "CREADO_TIENDA":      return "warning";
+    case "CREADO_TIENDA":      return "error";
     case "RECHAZADO":          return "error";
-    case "RECOGIDO_TIENDA":    return "info";
-    case "ENTREGADO_CEDI":     return "info";
+    case "RECOGIDO_TIENDA":    return "warning";
+    case "ENTREGADO_CEDI":     return "warning";
     case "ENVIADO_CLIENTE":    return "success";
     case "CON_NOVEDAD":        return "error";
   }
