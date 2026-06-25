@@ -60,6 +60,21 @@
 - [ ] QA visual Desktop/Mobile con sesión real (ADMIN y SUPERVISOR)
 - [ ] Imagen/logo: componente StudioImagen con URL configurable
 
+### Modulo Cargue Gourmet
+
+- [x] **G3D1 — Importación real del Maestro de Tiendas Gourmet** ([[bugs]] BUG-002): el modal
+  "Nuevo pedido Gourmet" mostraba "Sin coincidencias" al buscar el código `144` porque
+  `MaestroTiendaGourmet` no tenía datos cargados (no era bug de UI ni de endpoint). Se creó
+  script de importación CSV con dry-run (`scripts/import-maestro-tiendas-gourmet.mjs`), se
+  corrigió el parser para cabeceras case-insensitive, se validó el CSV real
+  `CENTROS DE COSTOS.csv` (999 filas leídas, 136 válidas, 863 inválidas vacías, 0 duplicados)
+  y se ejecutó `--apply` en producción: 136 creados, 0 actualizados, 0 fallidos. Verificado en
+  producción que el código `144` resuelve a `AG Viva Barranquilla`. — 2026-06-25
+- [ ] Continuar QA visual de Cargue Gourmet (G3C1–G3C7) en producción ahora que el maestro de
+  tiendas está cargado.
+- [ ] (Futuro, no bloqueante) Evaluar si el negocio necesita un módulo/admin de mantenimiento
+  del Maestro de Tiendas Gourmet en vez de cargas por script.
+
 ### Modulo Tienda / Facturas Contado
 
 - [x] **EPIC B — Fix drawer de detalle vacio** ([[bugs]] BUG-001): `abrirPanel` endurecido (render desde la fila, merge del detalle, sin blanqueo ante fallo, guarda de carrera), guardas de titulo/subtitulo (quita el `· #`) y skeleton de historial. Causa raiz: cache viejo de Turbopack de un dev server de larga vida en :3100. `tsc`+1176 tests+`build` verdes. - 2026-06-19

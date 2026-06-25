@@ -12,6 +12,45 @@
 
 ## Bugs resueltos
 
+## [BUG-002] "Sin coincidencias" al buscar tienda en Nuevo pedido Gourmet
+
+- **Fecha detectado:** 2026-06-25
+- **Módulo:** cargue-gourmet
+- **Severidad:** 🔴 Alta (bloqueaba crear pedidos Gourmet)
+- **Reportado por:** QA visual del usuario
+- **Descripción:**
+  En el modal "Nuevo pedido Gourmet", al escribir el código de tienda `144` en el
+  autocompletado, el campo mostraba "Sin coincidencias".
+- **Comportamiento esperado:**
+  Al escribir `144` debía aparecer la tienda `AG Viva Barranquilla` como sugerencia.
+- **Comportamiento actual (antes del fix):**
+  Cualquier código mostraba "Sin coincidencias", sin importar el valor escrito.
+- **Diagnóstico:**
+  - Frontend correcto.
+  - Endpoint correcto (`GET /api/cargue-gourmet/maestro-tiendas?q=144`).
+  - Backend correcto.
+  - Causa real: la tabla `MaestroTiendaGourmet` no tenía datos cargados (estaba vacía).
+- **Archivo(s) afectado(s):**
+  - `scripts/import-maestro-tiendas-gourmet.mjs` (nuevo)
+  - `scripts/lib/maestroTiendasCsv.mjs` (nuevo, con `normalizeRowKeys()`)
+  - `data/maestro-tiendas-gourmet.example.csv` (nuevo)
+  - `src/__tests__/maestroTiendasCsvImport.test.ts` (nuevo)
+- **Estado:** ✅ Resuelto
+- **Solución aplicada:**
+  Se creó un script de importación CSV con modo dry-run (solo lectura) y modo `--apply`
+  (upsert real por `codigo`). El parser se corrigió para aceptar cabeceras case-insensitive
+  (`CODIGO`, `Codigo`, `codigo` tratadas igual) vía `normalizeRowKeys()`, ya que el CSV real
+  (`CENTROS DE COSTOS.csv`) traía cabeceras en mayúsculas y con `;` como separador, distinto
+  del formato esperado `codigo,tienda,ciudad,activo`. Validado el CSV real: 999 filas leídas,
+  136 válidas, 863 inválidas (filas vacías `;;`), 0 duplicados. Ejecutado `--apply` en
+  producción: 136 creados, 0 actualizados, 0 fallidos. Verificado en producción que el
+  código `144` ahora resuelve a `AG Viva Barranquilla`.
+- **Riesgos/observaciones:**
+  - El maestro se cargó por script (one-off), no desde una UI de administración.
+  - Futuro posible: construir un módulo/admin de mantenimiento del maestro de tiendas
+    Gourmet si el negocio necesita altas/bajas recurrentes. No es bloqueante por ahora.
+- **Fecha resolución:** 2026-06-25
+
 ## [BUG-001] Drawer de detalle vacío en Facturas Contado
 
 - **Fecha detectado:** 2026-06-19
