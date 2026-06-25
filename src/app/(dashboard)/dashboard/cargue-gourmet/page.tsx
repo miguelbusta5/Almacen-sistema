@@ -17,6 +17,7 @@ import { EditarPedidoModal } from "./_components/EditarPedidoModal";
 import { AsignarUbicacionModal } from "./_components/AsignarUbicacionModal";
 import { ConfirmModal } from "@/components/ui/Modal";
 import type { ProgresoEscaneo, ResultadoEscaneo, UltimoResultadoEscaneo } from "./_components/EscaneoCajasPanel";
+import { CierreManualModal } from "./_components/CierreManualModal";
 
 const DEBOUNCE_MS = 300;
 const PAGE_SIZE = 25;
@@ -28,6 +29,9 @@ const ROLES_GOURMET = ROLES_CREAN;
 // Roles para iniciar cargue y escanear — coincide con ROLES_PERMITIDOS de
 // /iniciar-cargue y /escanear.
 const ROLES_TRANSPORTE = ["TRANSPORTE", "SUPERVISOR_TRANSPORTE", "ADMIN", "GERENTE"];
+// Roles para cierre manual — coincide con ROLES_PERMITIDOS de
+// /cierre-manual (deliberadamente sin TRANSPORTE, decisión cerrada en G3A).
+const ROLES_CIERRE_MANUAL = ["SUPERVISOR_TRANSPORTE", "ADMIN", "GERENTE"];
 
 const RESULTADO_TOAST_ERROR: Record<ResultadoEscaneo, string> = {
   VALIDO: "",
@@ -78,6 +82,8 @@ export default function CargueGourmetPage() {
 
   const [showFinalizarConfirm, setShowFinalizarConfirm] = useState(false);
   const [finalizandoCargue, setFinalizandoCargue] = useState(false);
+
+  const [showCierreManual, setShowCierreManual] = useState(false);
 
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -321,6 +327,7 @@ export default function CargueGourmetPage() {
   const puedeCrear = !!role && ROLES_CREAN.includes(role);
   const puedeGourmet = !!role && ROLES_GOURMET.includes(role);
   const puedeTransporte = !!role && ROLES_TRANSPORTE.includes(role);
+  const puedeCierreManual = !!role && ROLES_CIERRE_MANUAL.includes(role);
 
   return (
     <div className="animate-fade-in" style={getModuleCssVars("cargue-gourmet") as React.CSSProperties}>
@@ -401,6 +408,8 @@ export default function CargueGourmetPage() {
         onEscanear={handleEscanear}
         onFinalizarCargue={() => setShowFinalizarConfirm(true)}
         finalizandoCargue={finalizandoCargue}
+        puedeCierreManual={puedeCierreManual}
+        onCierreManual={() => setShowCierreManual(true)}
       />
 
       <EditarPedidoModal
@@ -448,6 +457,13 @@ export default function CargueGourmetPage() {
         confirmLabel={finalizandoCargue ? "Finalizando…" : "Finalizar cargue"}
         tone="primary"
         loading={finalizandoCargue}
+      />
+
+      <CierreManualModal
+        open={showCierreManual}
+        pedido={detalle}
+        onClose={() => setShowCierreManual(false)}
+        onClosed={refreshAfterAction}
       />
 
       {/* Paginación */}

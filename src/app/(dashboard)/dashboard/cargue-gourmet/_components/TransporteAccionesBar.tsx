@@ -6,6 +6,7 @@ import type { ProgresoEscaneo } from "./EscaneoCajasPanel";
 
 export const ESTADOS_INICIABLES_TRANSPORTE: EstadoPedidoGourmet[] = ["ENVIADO_A_TRANSPORTE"];
 export const ESTADOS_FINALIZABLES_TRANSPORTE: EstadoPedidoGourmet[] = ["EN_CARGUE"];
+export const ESTADOS_CIERRE_MANUAL: EstadoPedidoGourmet[] = ["EN_CARGUE", "CON_NOVEDAD"];
 
 export function progresoCompleto(progreso: ProgresoEscaneo | null | undefined): boolean {
   return !!progreso && progreso.esperados > 0 && progreso.escaneados === progreso.esperados;
@@ -19,6 +20,8 @@ export function TransporteAccionesBar({
   progreso = null,
   onFinalizarCargue,
   finalizando = false,
+  puedeCierreManual = false,
+  onCierreManual,
 }: {
   estado: EstadoPedidoGourmet;
   puedeTransporte: boolean;
@@ -27,13 +30,14 @@ export function TransporteAccionesBar({
   progreso?: ProgresoEscaneo | null;
   onFinalizarCargue?: () => void;
   finalizando?: boolean;
+  puedeCierreManual?: boolean;
+  onCierreManual?: () => void;
 }) {
-  if (!puedeTransporte) return null;
+  const puedeIniciar = puedeTransporte && ESTADOS_INICIABLES_TRANSPORTE.includes(estado);
+  const puedeFinalizar = puedeTransporte && ESTADOS_FINALIZABLES_TRANSPORTE.includes(estado);
+  const puedeCerrarManualmente = puedeCierreManual && ESTADOS_CIERRE_MANUAL.includes(estado);
 
-  const puedeIniciar = ESTADOS_INICIABLES_TRANSPORTE.includes(estado);
-  const puedeFinalizar = ESTADOS_FINALIZABLES_TRANSPORTE.includes(estado);
-
-  if (!puedeIniciar && !puedeFinalizar) return null;
+  if (!puedeIniciar && !puedeFinalizar && !puedeCerrarManualmente) return null;
 
   const completo = progresoCompleto(progreso);
 
@@ -69,6 +73,17 @@ export function TransporteAccionesBar({
               </p>
             )}
           </div>
+        )}
+
+        {puedeCerrarManualmente && (
+          <button
+            type="button"
+            onClick={() => onCierreManual?.()}
+            className="g-btn g-btn-secondary g-btn-sm"
+            data-testid="btn-cierre-manual"
+          >
+            Cierre manual
+          </button>
         )}
       </div>
     </DetailSection>

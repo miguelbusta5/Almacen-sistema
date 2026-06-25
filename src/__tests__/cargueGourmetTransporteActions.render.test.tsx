@@ -139,34 +139,13 @@ describe("EscaneoCajasPanel — último resultado", () => {
   }
 });
 
-describe("EscaneoCajasPanel / TransporteAccionesBar — sin cierre manual (finalizar normal llegó en G3C6)", () => {
-  it("no renderiza ningún botón de cierre manual en ningún estado", () => {
+describe("EscaneoCajasPanel / TransporteAccionesBar — sin cierre manual cuando puedeCierreManual=false (cierre manual real llegó en G3C7)", () => {
+  it("renderIniciar/renderEscaneo (sin puedeCierreManual) no muestran 'Cierre manual' en ningún estado", () => {
     for (const estado of ALL_ESTADOS) {
       const htmlIniciar = renderIniciar(estado);
       const htmlEscaneo = renderEscaneo({ estado });
       expect(htmlIniciar).not.toContain("Cierre manual");
       expect(htmlEscaneo).not.toContain("Cierre manual");
-    }
-  });
-
-  it("no hay referencias a /cierre-manual en el módulo", async () => {
-    const fs = await import("fs");
-    const path = await import("path");
-    const dir = "src/app/(dashboard)/dashboard/cargue-gourmet";
-
-    function walk(d: string): string[] {
-      const out: string[] = [];
-      for (const entry of fs.readdirSync(d, { withFileTypes: true })) {
-        const full = path.join(d, entry.name);
-        if (entry.isDirectory()) out.push(...walk(full));
-        else if (entry.name.endsWith(".tsx") || entry.name.endsWith(".ts")) out.push(full);
-      }
-      return out;
-    }
-
-    for (const file of walk(dir)) {
-      const src = fs.readFileSync(file, "utf-8");
-      expect(src).not.toMatch(/\/cierre-manual/);
     }
   });
 });

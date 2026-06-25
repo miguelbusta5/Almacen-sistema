@@ -108,31 +108,10 @@ describe("progresoCompleto — helper puro", () => {
   });
 });
 
-describe("TransporteAccionesBar — sin cierre manual", () => {
-  it("no renderiza ningún botón de cierre manual junto a Finalizar cargue", () => {
+describe("TransporteAccionesBar — sin cierre manual cuando puedeCierreManual=false (cierre manual real llegó en G3C7)", () => {
+  it("no renderiza el botón de cierre manual si puedeCierreManual no se pasa", () => {
     const html = renderBar({ estado: "EN_CARGUE", progreso: PROGRESO_COMPLETO });
-    expect(html).not.toContain("Cierre manual");
-  });
-
-  it("no hay referencias a /cierre-manual en el módulo", async () => {
-    const fs = await import("fs");
-    const path = await import("path");
-    const dir = "src/app/(dashboard)/dashboard/cargue-gourmet";
-
-    function walk(d: string): string[] {
-      const out: string[] = [];
-      for (const entry of fs.readdirSync(d, { withFileTypes: true })) {
-        const full = path.join(d, entry.name);
-        if (entry.isDirectory()) out.push(...walk(full));
-        else if (entry.name.endsWith(".tsx") || entry.name.endsWith(".ts")) out.push(full);
-      }
-      return out;
-    }
-
-    for (const file of walk(dir)) {
-      const src = fs.readFileSync(file, "utf-8");
-      expect(src).not.toMatch(/\/cierre-manual/);
-    }
+    expect(html).not.toContain('data-testid="btn-cierre-manual"');
   });
 });
 
