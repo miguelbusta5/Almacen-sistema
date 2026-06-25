@@ -13,10 +13,17 @@ import {
 } from "./_components";
 import { CrearPedidoModal } from "./_components/CrearPedidoModal";
 import { PedidoDetallePanel, type PedidoDetalle } from "./_components/PedidoDetallePanel";
+import { EditarPedidoModal } from "./_components/EditarPedidoModal";
+import { AsignarUbicacionModal } from "./_components/AsignarUbicacionModal";
+import { ConfirmModal } from "@/components/ui/Modal";
 
 const DEBOUNCE_MS = 300;
 const PAGE_SIZE = 25;
 const ROLES_CREAN = ["OPERACIONES_GOURMET", "ADMIN", "GERENTE"];
+// Mismo set de roles para todas las acciones del lado Gourmet (crear, editar,
+// asignar ubicación, enviar a Transporte) — coincide con ROLES_PERMITIDOS de
+// los endpoints PUT/[id], POST/ubicacion y POST/enviar-transporte.
+const ROLES_GOURMET = ROLES_CREAN;
 
 const inp: React.CSSProperties = {
   border: "1px solid var(--border)", borderRadius: 8, padding: "0.45rem 0.7rem",
@@ -45,6 +52,11 @@ export default function CargueGourmetPage() {
   const [detalle, setDetalle] = useState<PedidoDetalle | null>(null);
   const [detalleLoading, setDetalleLoading] = useState(false);
   const [detalleError, setDetalleError] = useState<string | null>(null);
+
+  const [showEditar, setShowEditar] = useState(false);
+  const [showUbicacion, setShowUbicacion] = useState(false);
+  const [showEnviarConfirm, setShowEnviarConfirm] = useState(false);
+  const [enviando, setEnviando] = useState(false);
 
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -132,6 +144,40 @@ export default function CargueGourmetPage() {
     setDetalleError(null);
   }
 
+  function refreshAfterAction() {
+    if (selectedId) loadDetalle(selectedId);
+    load(page);
+  }
+
+  async function confirmarEnviarTransporte() {
+    if (!detalle || enviando) return;
+    setEnviando(true);
+    try {
+      const res = await fetch(`/api/cargue-gourmet/${detalle.id}/enviar-transporte`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ updatedAt: detalle.updatedAt }),
+      });
+      const json = await res.json();
+      if (!res.ok) {
+        // 409 no siempre es optimistic lock — puede ser regla de negocio
+        // (sin estibas, transición inválida, etc.) — se muestra el mensaje
+        // real del backend y se refresca el detalle para que el usuario vea
+        // el estado actual antes de reintentar.
+        toast.error(json.error ?? "No se pudo enviar el pedido a Transporte");
+        if (res.status === 409) loadDetalle(detalle.id);
+        return;
+      }
+      toast.success("Pedido enviado a Transporte");
+      setShowEnviarConfirm(false);
+      refreshAfterAction();
+    } catch {
+      toast.error("Error de red al enviar a Transporte — verifica tu conexión");
+    } finally {
+      setEnviando(false);
+    }
+  }
+
   if (role && !canSeeModule(role, "cargue-gourmet")) {
     return (
       <div className="g-panel g-empty animate-fade-in">
@@ -144,6 +190,7 @@ export default function CargueGourmetPage() {
   const hasFilters = q || ciudad || estado || tipoOrden;
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
   const puedeCrear = !!role && ROLES_CREAN.includes(role);
+  const puedeGourmet = !!role && ROLES_GOURMET.includes(role);
 
   return (
     <div className="animate-fade-in" style={getModuleCssVars("cargue-gourmet") as React.CSSProperties}>
@@ -211,6 +258,35 @@ export default function CargueGourmetPage() {
         error={detalleError}
         pedido={detalle}
         onRetry={() => selectedId && loadDetalle(selectedId)}
+        puedeGourmet={puedeGourmet}
+        onEditar={() => setShowEditar(true)}
+        onAsignarUbicacion={() => setShowUbicacion(true)}
+        onEnviarTransporte={() => setShowEnviarConfirm(true)}
+      />
+
+      <EditarPedidoModal
+        open={showEditar}
+        pedido={detalle}
+        onClose={() => setShowEditar(false)}
+        onUpdated={refreshAfterAction}
+      />
+
+      <AsignarUbicacionModal
+        open={showUbicacion}
+        pedido={detalle}
+        onClose={() => setShowUbicacion(false)}
+        onSaved={refreshAfterAction}
+      />
+
+      <ConfirmModal
+        open={showEnviarConfirm}
+        onClose={() => { if (!enviando) setShowEnviarConfirm(false); }}
+        onConfirm={confirmarEnviarTransporte}
+        title="Enviar a Transporte"
+        message="¿Confirmas enviar este pedido a Transporte? Después de enviarlo ya no podrás editarlo desde Gourmet."
+        confirmLabel={enviando ? "Enviando…" : "Enviar a Transporte"}
+        tone="primary"
+        loading={enviando}
       />
 
       {/* Paginación */}

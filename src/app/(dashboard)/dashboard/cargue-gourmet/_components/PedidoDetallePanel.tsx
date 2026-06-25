@@ -4,6 +4,7 @@ import { Badge, EmptyState, TimelineItem } from "@/components/ui";
 import { SlidePanel, DetailSection, DetailGrid } from "@/components/ui/SlidePanel";
 import { PackageSearch } from "lucide-react";
 import { ESTADO_COLOR, ESTADO_LABEL, estadoVariant, fmtFechaHora, type EstadoPedidoGourmet } from "../_components";
+import { GourmetAccionesBar } from "./GourmetAccionesBar";
 
 export interface EstibaDetalle {
   id: string;
@@ -97,6 +98,10 @@ export function PedidoDetallePanel({
   error,
   pedido,
   onRetry,
+  puedeGourmet = false,
+  onEditar,
+  onAsignarUbicacion,
+  onEnviarTransporte,
 }: {
   open: boolean;
   onClose: () => void;
@@ -104,6 +109,10 @@ export function PedidoDetallePanel({
   error: string | null;
   pedido: PedidoDetalle | null;
   onRetry: () => void;
+  puedeGourmet?: boolean;
+  onEditar?: () => void;
+  onAsignarUbicacion?: () => void;
+  onEnviarTransporte?: () => void;
 }) {
   const badge = pedido ? (
     <Badge label={ESTADO_LABEL[pedido.estado]} variant={estadoVariant(pedido.estado)} color={ESTADO_COLOR[pedido.estado]} />
@@ -137,6 +146,14 @@ export function PedidoDetallePanel({
 
       {!loading && !error && pedido && (
         <>
+          <GourmetAccionesBar
+            estado={pedido.estado}
+            puedeGourmet={puedeGourmet}
+            onEditar={() => onEditar?.()}
+            onAsignarUbicacion={() => onAsignarUbicacion?.()}
+            onEnviarTransporte={() => onEnviarTransporte?.()}
+          />
+
           <DetailSection title="Resumen del pedido">
             <DetailGrid
               items={[
