@@ -139,19 +139,17 @@ describe("EscaneoCajasPanel — último resultado", () => {
   }
 });
 
-describe("EscaneoCajasPanel / TransporteAccionesBar — sin acciones de finalizar/cierre manual", () => {
-  it("no renderiza botones de finalizar ni cierre manual en ningún estado", () => {
+describe("EscaneoCajasPanel / TransporteAccionesBar — sin cierre manual (finalizar normal llegó en G3C6)", () => {
+  it("no renderiza ningún botón de cierre manual en ningún estado", () => {
     for (const estado of ALL_ESTADOS) {
       const htmlIniciar = renderIniciar(estado);
       const htmlEscaneo = renderEscaneo({ estado });
-      for (const prohibido of ["Finalizar", "Cierre manual"]) {
-        expect(htmlIniciar).not.toContain(prohibido);
-        expect(htmlEscaneo).not.toContain(prohibido);
-      }
+      expect(htmlIniciar).not.toContain("Cierre manual");
+      expect(htmlEscaneo).not.toContain("Cierre manual");
     }
   });
 
-  it("no hay referencias a /finalizar ni /cierre-manual en el módulo", async () => {
+  it("no hay referencias a /cierre-manual en el módulo", async () => {
     const fs = await import("fs");
     const path = await import("path");
     const dir = "src/app/(dashboard)/dashboard/cargue-gourmet";
@@ -168,7 +166,6 @@ describe("EscaneoCajasPanel / TransporteAccionesBar — sin acciones de finaliza
 
     for (const file of walk(dir)) {
       const src = fs.readFileSync(file, "utf-8");
-      expect(src).not.toMatch(/\/finalizar/);
       expect(src).not.toMatch(/\/cierre-manual/);
     }
   });

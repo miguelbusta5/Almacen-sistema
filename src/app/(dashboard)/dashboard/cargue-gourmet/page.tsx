@@ -76,6 +76,9 @@ export default function CargueGourmetPage() {
   const [ultimoResultadoEscaneo, setUltimoResultadoEscaneo] = useState<UltimoResultadoEscaneo | null>(null);
   const [enviandoEscaneo, setEnviandoEscaneo] = useState(false);
 
+  const [showFinalizarConfirm, setShowFinalizarConfirm] = useState(false);
+  const [finalizandoCargue, setFinalizandoCargue] = useState(false);
+
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Modo debug de tabla: /dashboard/cargue-gourmet?debugTable=1
@@ -275,6 +278,35 @@ export default function CargueGourmetPage() {
     }
   }
 
+  async function confirmarFinalizarCargue() {
+    if (!detalle || finalizandoCargue) return;
+    setFinalizandoCargue(true);
+    try {
+      const res = await fetch(`/api/cargue-gourmet/${detalle.id}/finalizar`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ updatedAt: detalle.updatedAt }),
+      });
+      const json = await res.json();
+      if (!res.ok) {
+        // 409 aquí puede ser: cantidad no coincide, novedades abiertas,
+        // el pedido ya no está EN_CARGUE, o updatedAt desactualizado — no se
+        // asume cuál; se muestra siempre el mensaje real del backend y se
+        // refresca el detalle para que el usuario vea el estado actual.
+        toast.error(json.error ?? "No se pudo finalizar el cargue");
+        if (res.status === 409) loadDetalle(detalle.id);
+        return;
+      }
+      toast.success("Cargue finalizado");
+      setShowFinalizarConfirm(false);
+      refreshAfterAction();
+    } catch {
+      toast.error("Error de red al finalizar el cargue — verifica tu conexión");
+    } finally {
+      setFinalizandoCargue(false);
+    }
+  }
+
   if (role && !canSeeModule(role, "cargue-gourmet")) {
     return (
       <div className="g-panel g-empty animate-fade-in">
@@ -367,6 +399,8 @@ export default function CargueGourmetPage() {
         ultimoResultadoEscaneo={ultimoResultadoEscaneo}
         enviandoEscaneo={enviandoEscaneo}
         onEscanear={handleEscanear}
+        onFinalizarCargue={() => setShowFinalizarConfirm(true)}
+        finalizandoCargue={finalizandoCargue}
       />
 
       <EditarPedidoModal
@@ -403,6 +437,17 @@ export default function CargueGourmetPage() {
         confirmLabel={iniciandoCargue ? "Iniciando…" : "Iniciar cargue"}
         tone="primary"
         loading={iniciandoCargue}
+      />
+
+      <ConfirmModal
+        open={showFinalizarConfirm}
+        onClose={() => { if (!finalizandoCargue) setShowFinalizarConfirm(false); }}
+        onConfirm={confirmarFinalizarCargue}
+        title="Finalizar cargue"
+        message="¿Confirmas finalizar este cargue? Solo debe hacerse cuando todas las cajas estén correctamente escaneadas y no existan novedades abiertas."
+        confirmLabel={finalizandoCargue ? "Finalizando…" : "Finalizar cargue"}
+        tone="primary"
+        loading={finalizandoCargue}
       />
 
       {/* Paginación */}

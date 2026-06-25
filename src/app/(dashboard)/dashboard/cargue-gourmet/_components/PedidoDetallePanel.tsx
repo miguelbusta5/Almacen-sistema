@@ -111,6 +111,8 @@ export function PedidoDetallePanel({
   ultimoResultadoEscaneo = null,
   enviandoEscaneo = false,
   onEscanear,
+  onFinalizarCargue,
+  finalizandoCargue = false,
 }: {
   open: boolean;
   onClose: () => void;
@@ -129,6 +131,8 @@ export function PedidoDetallePanel({
   ultimoResultadoEscaneo?: UltimoResultadoEscaneo | null;
   enviandoEscaneo?: boolean;
   onEscanear?: (codigo: string) => Promise<boolean>;
+  onFinalizarCargue?: () => void;
+  finalizandoCargue?: boolean;
 }) {
   const badge = pedido ? (
     <Badge label={ESTADO_LABEL[pedido.estado]} variant={estadoVariant(pedido.estado)} color={ESTADO_COLOR[pedido.estado]} />
@@ -175,6 +179,9 @@ export function PedidoDetallePanel({
             puedeTransporte={puedeTransporte}
             onIniciarCargue={() => onIniciarCargue?.()}
             iniciando={iniciandoCargue}
+            progreso={progresoEscaneo}
+            onFinalizarCargue={() => onFinalizarCargue?.()}
+            finalizando={finalizandoCargue}
           />
 
           <EscaneoCajasPanel
