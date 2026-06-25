@@ -22,6 +22,24 @@ export function validateColumns(fields) {
 }
 
 /**
+ * Normaliza las claves de una fila cruda del CSV: trim + minúscula.
+ * PapaParse usa el texto literal de la cabecera como clave del objeto
+ * (`CODIGO`, `Tienda`, " Ciudad ", etc.) — sin esto, `validateRow` nunca
+ * encontraría los valores en un CSV con cabeceras en mayúsculas/mixtas,
+ * aunque `validateColumns` (que sí normaliza) hubiera aprobado esas mismas
+ * columnas. Columnas no reconocidas (`ALL_COLUMNS`) se preservan igual,
+ * por si en el futuro se necesitan para diagnóstico.
+ */
+export function normalizeRowKeys(raw) {
+  const normalized = {};
+  for (const [key, value] of Object.entries(raw ?? {})) {
+    const cleanKey = String(key).trim().toLowerCase();
+    normalized[cleanKey] = value;
+  }
+  return normalized;
+}
+
+/**
  * Parsea el valor de la columna `activo`. Vacío/ausente → true (default).
  * Devuelve { value: boolean } o { error: string } si el valor no es reconocible.
  */
@@ -35,23 +53,27 @@ function parseActivo(raw) {
 }
 
 /**
- * Valida y normaliza una fila cruda del CSV (objeto con claves de columna).
- * Todos los campos se recortan (trim). `codigo` siempre se trata como string
- * (nunca se convierte a número) para no perder ceros a la izquierda.
+ * Valida y normaliza una fila cruda del CSV (objeto con claves de columna,
+ * en cualquier combinación de mayúsculas/minúsculas — ej. CODIGO, Codigo,
+ * codigo son equivalentes). Todos los valores se recortan (trim). `codigo`
+ * siempre se trata como string (nunca se convierte a número) para no perder
+ * ceros a la izquierda.
  *
  * Devuelve { ok: true, row: { codigo, tienda, ciudad, activo } }
  * o { ok: false, error: string }.
  */
 export function validateRow(raw, rowNumber) {
-  const codigo = String(raw.codigo ?? "").trim();
-  const tienda = String(raw.tienda ?? "").trim();
-  const ciudad = String(raw.ciudad ?? "").trim();
+  const r = normalizeRowKeys(raw);
+
+  const codigo = String(r.codigo ?? "").trim();
+  const tienda = String(r.tienda ?? "").trim();
+  const ciudad = String(r.ciudad ?? "").trim();
 
   if (!codigo) return { ok: false, rowNumber, error: "codigo requerido" };
   if (!tienda) return { ok: false, rowNumber, error: "tienda requerida" };
   if (!ciudad) return { ok: false, rowNumber, error: "ciudad requerida" };
 
-  const activoResult = parseActivo(raw.activo);
+  const activoResult = parseActivo(r.activo);
   if ("error" in activoResult) {
     return { ok: false, rowNumber, error: activoResult.error };
   }

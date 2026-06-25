@@ -1,8 +1,10 @@
 import { describe, it, expect } from "vitest";
+import Papa from "papaparse";
 import {
   validateColumns,
   validateRow,
   processRows,
+  normalizeRowKeys,
 } from "../../scripts/lib/maestroTiendasCsv.mjs";
 
 describe("validateColumns", () => {
@@ -122,5 +124,58 @@ describe("processRows", () => {
     ]);
     expect(result.upsertPlan).toHaveLength(3);
     expect(result.duplicateCodigos).toEqual([]);
+  });
+});
+
+describe("normalizeRowKeys", () => {
+  it("convierte claves a minúscula y hace trim", () => {
+    expect(normalizeRowKeys({ CODIGO: "144", " Tienda ": "X", CIUDAD: "Bogotá" })).toEqual({
+      codigo: "144",
+      tienda: "X",
+      ciudad: "Bogotá",
+    });
+  });
+});
+
+describe("validateRow — cabeceras reales del CSV de Centros de Costos (caso reportado en QA)", () => {
+  it("CSV con cabeceras en mayúscula (CODIGO;TIENDA;CIUDAD) valida correctamente", () => {
+    const parsed = Papa.parse("CODIGO;TIENDA;CIUDAD\n144;AG Viva Barranquilla;BARRANQUILLA", { header: true });
+    const r = validateRow(parsed.data[0], 2);
+    expect(r.ok).toBe(true);
+    expect(r.row).toEqual({ codigo: "144", tienda: "AG Viva Barranquilla", ciudad: "BARRANQUILLA", activo: true });
+  });
+
+  it("CSV con cabeceras mixtas (Codigo;Tienda;Ciudad;Activo) valida correctamente", () => {
+    const parsed = Papa.parse("Codigo;Tienda;Ciudad;Activo\n144;Tienda X;Bogotá;true", { header: true });
+    const r = validateRow(parsed.data[0], 2);
+    expect(r.ok).toBe(true);
+    expect(r.row).toEqual({ codigo: "144", tienda: "Tienda X", ciudad: "Bogotá", activo: true });
+  });
+
+  it("código '00144' conserva los ceros a la izquierda con cabecera en mayúscula", () => {
+    const parsed = Papa.parse("CODIGO;TIENDA;CIUDAD\n00144;Tienda X;Bogotá", { header: true });
+    const r = validateRow(parsed.data[0], 2);
+    expect(r.ok && r.row?.codigo).toBe("00144");
+  });
+
+  it("CSV sin columna ACTIVO (mayúscula) sigue usando default true", () => {
+    const parsed = Papa.parse("CODIGO;TIENDA;CIUDAD\n144;Tienda X;Bogotá", { header: true });
+    const r = validateRow(parsed.data[0], 2);
+    expect(r.ok && r.row?.activo).toBe(true);
+  });
+
+  it("fila completamente vacía (;;) sigue siendo inválida", () => {
+    const parsed = Papa.parse("CODIGO;TIENDA;CIUDAD\n;;", { header: true });
+    const r = validateRow(parsed.data[0], 2);
+    expect(r.ok).toBe(false);
+    expect(r.error).toMatch(/codigo/);
+  });
+
+  it("caso real mínimo reportado en QA: '144;AG Viva Barranquilla;BARRANQUILLA' es válido", () => {
+    const parsed = Papa.parse("CODIGO;TIENDA;CIUDAD\n144;AG Viva Barranquilla;BARRANQUILLA", { header: true });
+    const result = processRows(parsed.data);
+    expect(result.validCount).toBe(1);
+    expect(result.invalidCount).toBe(0);
+    expect(result.upsertPlan[0].codigo).toBe("144");
   });
 });
