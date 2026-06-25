@@ -5,6 +5,8 @@ import { SlidePanel, DetailSection, DetailGrid } from "@/components/ui/SlidePane
 import { PackageSearch } from "lucide-react";
 import { ESTADO_COLOR, ESTADO_LABEL, estadoVariant, fmtFechaHora, type EstadoPedidoGourmet } from "../_components";
 import { GourmetAccionesBar } from "./GourmetAccionesBar";
+import { TransporteAccionesBar } from "./TransporteAccionesBar";
+import { EscaneoCajasPanel, type ProgresoEscaneo, type UltimoResultadoEscaneo } from "./EscaneoCajasPanel";
 
 export interface EstibaDetalle {
   id: string;
@@ -102,6 +104,13 @@ export function PedidoDetallePanel({
   onEditar,
   onAsignarUbicacion,
   onEnviarTransporte,
+  puedeTransporte = false,
+  onIniciarCargue,
+  iniciandoCargue = false,
+  progresoEscaneo = null,
+  ultimoResultadoEscaneo = null,
+  enviandoEscaneo = false,
+  onEscanear,
 }: {
   open: boolean;
   onClose: () => void;
@@ -113,6 +122,13 @@ export function PedidoDetallePanel({
   onEditar?: () => void;
   onAsignarUbicacion?: () => void;
   onEnviarTransporte?: () => void;
+  puedeTransporte?: boolean;
+  onIniciarCargue?: () => void;
+  iniciandoCargue?: boolean;
+  progresoEscaneo?: ProgresoEscaneo | null;
+  ultimoResultadoEscaneo?: UltimoResultadoEscaneo | null;
+  enviandoEscaneo?: boolean;
+  onEscanear?: (codigo: string) => Promise<boolean>;
 }) {
   const badge = pedido ? (
     <Badge label={ESTADO_LABEL[pedido.estado]} variant={estadoVariant(pedido.estado)} color={ESTADO_COLOR[pedido.estado]} />
@@ -152,6 +168,22 @@ export function PedidoDetallePanel({
             onEditar={() => onEditar?.()}
             onAsignarUbicacion={() => onAsignarUbicacion?.()}
             onEnviarTransporte={() => onEnviarTransporte?.()}
+          />
+
+          <TransporteAccionesBar
+            estado={pedido.estado}
+            puedeTransporte={puedeTransporte}
+            onIniciarCargue={() => onIniciarCargue?.()}
+            iniciando={iniciandoCargue}
+          />
+
+          <EscaneoCajasPanel
+            estado={pedido.estado}
+            puedeTransporte={puedeTransporte}
+            progreso={progresoEscaneo}
+            ultimoResultado={ultimoResultadoEscaneo}
+            enviando={enviandoEscaneo}
+            onEscanear={onEscanear ?? (async () => false)}
           />
 
           <DetailSection title="Resumen del pedido">
