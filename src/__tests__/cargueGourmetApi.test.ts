@@ -86,6 +86,7 @@ import { POST as postEnviarTransporte } from "@/app/api/cargue-gourmet/[id]/envi
 import { POST as postIniciarCargue } from "@/app/api/cargue-gourmet/[id]/iniciar-cargue/route";
 import { POST as postEscanear } from "@/app/api/cargue-gourmet/[id]/escanear/route";
 import { POST as postFinalizar } from "@/app/api/cargue-gourmet/[id]/finalizar/route";
+import { POST as postCierreManual } from "@/app/api/cargue-gourmet/[id]/cierre-manual/route";
 
 function actor(role: string) {
   return { id: "u_1", email: "u@test.com", name: "Usuario Test", role };
@@ -1764,6 +1765,347 @@ describe("POST /api/cargue-gourmet/[id]/finalizar", () => {
     mocks.notificacionCreateMany.mockRejectedValue(new Error("db down"));
 
     const res = await postFinalizar(finalizarPostReq("p1", validBody), params);
+    expect(res.status).toBe(200);
+  });
+});
+
+const CIERRE_MANUAL_UPDATED_AT = new Date("2026-06-24T13:00:00.000Z");
+
+function cierreManualPostReq(id: string, body: unknown) {
+  return new NextRequest(`http://localhost/api/cargue-gourmet/${id}/cierre-manual`, {
+    method: "POST",
+    body: JSON.stringify(body),
+    headers: { "Content-Type": "application/json" },
+  });
+}
+
+describe("POST /api/cargue-gourmet/[id]/cierre-manual", () => {
+  const params = { params: Promise.resolve({ id: "p1" }) };
+  const validBody = {
+    cantidadContadaManual: 4,
+    motivo: "QR ilegibles por daño en varias cajas",
+    observacion: "Se reintentó 3 veces sin éxito",
+    updatedAt: CIERRE_MANUAL_UPDATED_AT.toISOString(),
+  };
+
+  function mockPedido(estado: string, overrides: Partial<Record<string, unknown>> = {}) {
+    mocks.pedidoFindUnique.mockResolvedValue({
+      id: "p1",
+      orden: "TSDM98761",
+      estado,
+      updatedAt: CIERRE_MANUAL_UPDATED_AT,
+      ciudadDestino: "Bogotá",
+      creadoPorId: "u_gourmet",
+      ...overrides,
+    });
+  }
+
+  function mockCargueValido(estado: "EN_CARGUE" | "CON_NOVEDAD" = "EN_CARGUE") {
+    mocks.cargueFindFirst.mockResolvedValue({
+      id: "cg1",
+      pedidoId: "p1",
+      estado,
+      cantidadEsperada: 5,
+      cantidadEscaneada: 3,
+    });
+  }
+
+  function mockCierreManualResultados() {
+    mocks.novedadCreate.mockResolvedValue({
+      id: "nov1", cargueId: "cg1", pedidoId: "p1", tipo: "CIERRE_MANUAL",
+      descripcion: "desc", estado: "RESUELTA", registradaPorId: "u_1", resueltaPorId: "u_1", resueltaAt: new Date(),
+    });
+    mocks.cargueUpdate.mockResolvedValue({
+      id: "cg1", pedidoId: "p1", estado: "CARGUE_COMPLETO_MANUAL", tipoCierre: "MANUAL",
+      cantidadEsperada: 5, cantidadEscaneada: 3, cantidadContadaManual: 4, motivoCierreManual: "QR ilegibles por daño en varias cajas",
+      observacion: "Se reintentó 3 veces sin éxito", finalizadoAt: new Date(), finalizadoPorId: "u_1",
+    });
+    mocks.pedidoUpdate.mockResolvedValue({
+      id: "p1", orden: "TSDM98761", tipoOrden: "TSDM", codigoTienda: "T001",
+      nombreTienda: "Tienda Centro", ciudadDestino: "Bogotá", estado: "CARGUE_COMPLETO_MANUAL",
+      updatedAt: new Date(), esCierreManual: true, cantidadContadaManual: 4,
+      motivoCierreManual: "QR ilegibles por daño en varias cajas", observacionCierreManual: "Se reintentó 3 veces sin éxito",
+      cargueCompletadoAt: new Date(), cargueCompletadoPorId: "u_1",
+    });
+  }
+
+  it("cierra manualmente desde EN_CARGUE", async () => {
+    mocks.getSessionUser.mockResolvedValue(actor("SUPERVISOR_TRANSPORTE"));
+    mockPedido("EN_CARGUE");
+    mockCargueValido("EN_CARGUE");
+    mockCierreManualResultados();
+
+    const res = await postCierreManual(cierreManualPostReq("p1", validBody), params);
+    const json = await res.json();
+
+    expect(res.status).toBe(200);
+    expect(json.success).toBe(true);
+    expect(json.data.pedido.estado).toBe("CARGUE_COMPLETO_MANUAL");
+    expect(json.data.cargue.estado).toBe("CARGUE_COMPLETO_MANUAL");
+    expect(json.data.novedad.tipo).toBe("CIERRE_MANUAL");
+  });
+
+  it("cierra manualmente desde CON_NOVEDAD", async () => {
+    mocks.getSessionUser.mockResolvedValue(actor("ADMIN"));
+    mockPedido("CON_NOVEDAD");
+    mockCargueValido("CON_NOVEDAD");
+    mockCierreManualResultados();
+
+    const res = await postCierreManual(cierreManualPostReq("p1", validBody), params);
+    expect(res.status).toBe(200);
+  });
+
+  it("rechaza si el pedido no existe (404)", async () => {
+    mocks.getSessionUser.mockResolvedValue(actor("ADMIN"));
+    mocks.pedidoFindUnique.mockResolvedValue(null);
+
+    const res = await postCierreManual(cierreManualPostReq("p1", validBody), params);
+    expect(res.status).toBe(404);
+  });
+
+  it("rechaza si el pedido está BORRADOR (409)", async () => {
+    mocks.getSessionUser.mockResolvedValue(actor("ADMIN"));
+    mockPedido("BORRADOR");
+
+    const res = await postCierreManual(cierreManualPostReq("p1", validBody), params);
+    expect(res.status).toBe(409);
+    expect(mocks.transaction).not.toHaveBeenCalled();
+  });
+
+  it("rechaza si el pedido está ENVIADO_A_TRANSPORTE (409)", async () => {
+    mocks.getSessionUser.mockResolvedValue(actor("ADMIN"));
+    mockPedido("ENVIADO_A_TRANSPORTE");
+
+    const res = await postCierreManual(cierreManualPostReq("p1", validBody), params);
+    expect(res.status).toBe(409);
+  });
+
+  it("rechaza si el pedido está CARGUE_COMPLETO (409)", async () => {
+    mocks.getSessionUser.mockResolvedValue(actor("ADMIN"));
+    mockPedido("CARGUE_COMPLETO");
+
+    const res = await postCierreManual(cierreManualPostReq("p1", validBody), params);
+    expect(res.status).toBe(409);
+  });
+
+  it("rechaza si el pedido está CARGUE_COMPLETO_MANUAL (409)", async () => {
+    mocks.getSessionUser.mockResolvedValue(actor("ADMIN"));
+    mockPedido("CARGUE_COMPLETO_MANUAL");
+
+    const res = await postCierreManual(cierreManualPostReq("p1", validBody), params);
+    expect(res.status).toBe(409);
+  });
+
+  it("rechaza si el pedido está CANCELADO (409)", async () => {
+    mocks.getSessionUser.mockResolvedValue(actor("ADMIN"));
+    mockPedido("CANCELADO");
+
+    const res = await postCierreManual(cierreManualPostReq("p1", validBody), params);
+    expect(res.status).toBe(409);
+  });
+
+  it("rechaza si no hay cargue válido (409)", async () => {
+    mocks.getSessionUser.mockResolvedValue(actor("ADMIN"));
+    mockPedido("EN_CARGUE");
+    mocks.cargueFindFirst.mockResolvedValue(null);
+
+    const res = await postCierreManual(cierreManualPostReq("p1", validBody), params);
+    expect(res.status).toBe(409);
+    expect(mocks.transaction).not.toHaveBeenCalled();
+  });
+
+  it("rechaza si falta updatedAt (400)", async () => {
+    mocks.getSessionUser.mockResolvedValue(actor("ADMIN"));
+    const { updatedAt, ...sinUpdatedAt } = validBody;
+    const res = await postCierreManual(cierreManualPostReq("p1", sinUpdatedAt), params);
+    expect(res.status).toBe(400);
+    expect(mocks.pedidoFindUnique).not.toHaveBeenCalled();
+  });
+
+  it("rechaza si updatedAt no coincide (409)", async () => {
+    mocks.getSessionUser.mockResolvedValue(actor("ADMIN"));
+    mockPedido("EN_CARGUE");
+    mockCargueValido("EN_CARGUE");
+
+    const res = await postCierreManual(
+      cierreManualPostReq("p1", { ...validBody, updatedAt: new Date("2020-01-01T00:00:00.000Z").toISOString() }),
+      params
+    );
+    expect(res.status).toBe(409);
+    expect(mocks.transaction).not.toHaveBeenCalled();
+  });
+
+  it("rechaza si cantidadContadaManual es negativa (400)", async () => {
+    mocks.getSessionUser.mockResolvedValue(actor("ADMIN"));
+    const res = await postCierreManual(cierreManualPostReq("p1", { ...validBody, cantidadContadaManual: -1 }), params);
+    expect(res.status).toBe(400);
+    expect(mocks.pedidoFindUnique).not.toHaveBeenCalled();
+  });
+
+  it("rechaza si cantidadContadaManual no es entero (400)", async () => {
+    mocks.getSessionUser.mockResolvedValue(actor("ADMIN"));
+    const res = await postCierreManual(cierreManualPostReq("p1", { ...validBody, cantidadContadaManual: 2.5 }), params);
+    expect(res.status).toBe(400);
+  });
+
+  it("rechaza si falta motivo (400)", async () => {
+    mocks.getSessionUser.mockResolvedValue(actor("ADMIN"));
+    const { motivo, ...sinMotivo } = validBody;
+    const res = await postCierreManual(cierreManualPostReq("p1", sinMotivo), params);
+    expect(res.status).toBe(400);
+  });
+
+  it("rechaza si motivo tiene menos de 5 caracteres (400)", async () => {
+    mocks.getSessionUser.mockResolvedValue(actor("ADMIN"));
+    const res = await postCierreManual(cierreManualPostReq("p1", { ...validBody, motivo: "abc" }), params);
+    expect(res.status).toBe(400);
+  });
+
+  it("rechaza TRANSPORTE (403)", async () => {
+    mocks.getSessionUser.mockResolvedValue(actor("TRANSPORTE"));
+    const res = await postCierreManual(cierreManualPostReq("p1", validBody), params);
+    expect(res.status).toBe(403);
+    expect(mocks.pedidoFindUnique).not.toHaveBeenCalled();
+  });
+
+  it("rechaza OPERACIONES_GOURMET (403)", async () => {
+    mocks.getSessionUser.mockResolvedValue(actor("OPERACIONES_GOURMET"));
+    const res = await postCierreManual(cierreManualPostReq("p1", validBody), params);
+    expect(res.status).toBe(403);
+  });
+
+  it.each(["SUPERVISOR_TRANSPORTE", "ADMIN", "GERENTE"])("permite %s", async (role) => {
+    mocks.getSessionUser.mockResolvedValue(actor(role));
+    mockPedido("EN_CARGUE");
+    mockCargueValido("EN_CARGUE");
+    mockCierreManualResultados();
+
+    const res = await postCierreManual(cierreManualPostReq("p1", validBody), params);
+    expect(res.status).toBe(200);
+  });
+
+  it("crea novedad CIERRE_MANUAL", async () => {
+    mocks.getSessionUser.mockResolvedValue(actor("ADMIN"));
+    mockPedido("EN_CARGUE");
+    mockCargueValido("EN_CARGUE");
+    mockCierreManualResultados();
+
+    await postCierreManual(cierreManualPostReq("p1", validBody), params);
+
+    expect(mocks.novedadCreate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          cargueId: "cg1",
+          pedidoId: "p1",
+          tipo: "CIERRE_MANUAL",
+          registradaPorId: "u_1",
+        }),
+      })
+    );
+  });
+
+  it("actualiza GourmetCargue a CARGUE_COMPLETO_MANUAL con tipoCierre MANUAL", async () => {
+    mocks.getSessionUser.mockResolvedValue(actor("ADMIN"));
+    mockPedido("EN_CARGUE");
+    mockCargueValido("EN_CARGUE");
+    mockCierreManualResultados();
+
+    await postCierreManual(cierreManualPostReq("p1", validBody), params);
+
+    expect(mocks.cargueUpdate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: "cg1" },
+        data: expect.objectContaining({
+          estado: "CARGUE_COMPLETO_MANUAL",
+          tipoCierre: "MANUAL",
+          cantidadContadaManual: 4,
+          motivoCierreManual: validBody.motivo,
+        }),
+      })
+    );
+  });
+
+  it("actualiza GourmetPedido a CARGUE_COMPLETO_MANUAL", async () => {
+    mocks.getSessionUser.mockResolvedValue(actor("ADMIN"));
+    mockPedido("EN_CARGUE");
+    mockCargueValido("EN_CARGUE");
+    mockCierreManualResultados();
+
+    await postCierreManual(cierreManualPostReq("p1", validBody), params);
+
+    expect(mocks.pedidoUpdate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: "p1" },
+        data: expect.objectContaining({ estado: "CARGUE_COMPLETO_MANUAL", cargueCompletadoPorId: "u_1" }),
+      })
+    );
+  });
+
+  it("guarda cantidadContadaManual y motivoCierreManual en ambos modelos", async () => {
+    mocks.getSessionUser.mockResolvedValue(actor("ADMIN"));
+    mockPedido("EN_CARGUE");
+    mockCargueValido("EN_CARGUE");
+    mockCierreManualResultados();
+
+    await postCierreManual(cierreManualPostReq("p1", validBody), params);
+
+    expect(mocks.cargueUpdate.mock.calls[0][0].data).toEqual(
+      expect.objectContaining({ cantidadContadaManual: 4, motivoCierreManual: validBody.motivo })
+    );
+    expect(mocks.pedidoUpdate.mock.calls[0][0].data).toEqual(
+      expect.objectContaining({ cantidadContadaManual: 4, motivoCierreManual: validBody.motivo })
+    );
+  });
+
+  it("no modifica cajas ni estibas", async () => {
+    mocks.getSessionUser.mockResolvedValue(actor("ADMIN"));
+    mockPedido("EN_CARGUE");
+    mockCargueValido("EN_CARGUE");
+    mockCierreManualResultados();
+
+    await postCierreManual(cierreManualPostReq("p1", validBody), params);
+
+    expect(mocks.estibaCreateMany).not.toHaveBeenCalled();
+    expect(mocks.estibaDeleteMany).not.toHaveBeenCalled();
+    expect(mocks.cajaCreateMany).not.toHaveBeenCalled();
+    expect(mocks.cajaDeleteMany).not.toHaveBeenCalled();
+  });
+
+  it("no crea escaneos", async () => {
+    mocks.getSessionUser.mockResolvedValue(actor("ADMIN"));
+    mockPedido("EN_CARGUE");
+    mockCargueValido("EN_CARGUE");
+    mockCierreManualResultados();
+
+    await postCierreManual(cierreManualPostReq("p1", validBody), params);
+
+    expect(mocks.escaneoCreate).not.toHaveBeenCalled();
+  });
+
+  it("intenta notificar al creador del pedido y a ADMIN/GERENTE", async () => {
+    mocks.getSessionUser.mockResolvedValue(actor("SUPERVISOR_TRANSPORTE"));
+    mockPedido("EN_CARGUE");
+    mockCargueValido("EN_CARGUE");
+    mockCierreManualResultados();
+    mocks.userFindMany.mockResolvedValue([{ id: "u_admin1" }]);
+
+    const res = await postCierreManual(cierreManualPostReq("p1", validBody), params);
+
+    expect(res.status).toBe(200);
+    const notifData = mocks.notificacionCreateMany.mock.calls[0][0].data as Array<{ userId: string; titulo: string }>;
+    expect(notifData.some((n) => n.userId === "u_gourmet")).toBe(true);
+    expect(notifData.some((n) => n.userId === "u_admin1")).toBe(true);
+    expect(notifData[0].titulo).toBe("Cargue Gourmet cerrado manualmente");
+  });
+
+  it("responde éxito igual si la notificación falla", async () => {
+    mocks.getSessionUser.mockResolvedValue(actor("ADMIN"));
+    mockPedido("EN_CARGUE");
+    mockCargueValido("EN_CARGUE");
+    mockCierreManualResultados();
+    mocks.notificacionCreateMany.mockRejectedValue(new Error("db down"));
+
+    const res = await postCierreManual(cierreManualPostReq("p1", validBody), params);
     expect(res.status).toBe(200);
   });
 });
