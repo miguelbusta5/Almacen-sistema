@@ -10,6 +10,13 @@ const mocks = vi.hoisted(() => ({
   pedidoCreate: vi.fn(),
   pedidoFindUnique: vi.fn(),
   pedidoUpdate: vi.fn(),
+  estibaDeleteMany: vi.fn(),
+  estibaCreateMany: vi.fn(),
+  cajaDeleteMany: vi.fn(),
+  cajaCreateMany: vi.fn(),
+  transaction: vi.fn(),
+  userFindMany: vi.fn(),
+  notificacionCreateMany: vi.fn(),
   activityLogCreate: vi.fn(),
 }));
 
@@ -34,6 +41,12 @@ vi.mock("@/lib/authz", () => ({
   },
 }));
 
+const tx = {
+  gourmetPedidoEstiba: { deleteMany: mocks.estibaDeleteMany, createMany: mocks.estibaCreateMany },
+  gourmetPedidoCaja: { deleteMany: mocks.cajaDeleteMany, createMany: mocks.cajaCreateMany },
+  gourmetPedido: { update: mocks.pedidoUpdate },
+};
+
 vi.mock("@/lib/prisma", () => ({
   prisma: {
     maestroTiendaGourmet: { findMany: mocks.maestroFindMany, findUnique: mocks.maestroFindUnique },
@@ -44,13 +57,20 @@ vi.mock("@/lib/prisma", () => ({
       findUnique: mocks.pedidoFindUnique,
       update: mocks.pedidoUpdate,
     },
+    gourmetPedidoEstiba: { deleteMany: mocks.estibaDeleteMany, createMany: mocks.estibaCreateMany },
+    gourmetPedidoCaja: { deleteMany: mocks.cajaDeleteMany, createMany: mocks.cajaCreateMany },
+    user: { findMany: mocks.userFindMany },
+    notificacion: { createMany: mocks.notificacionCreateMany },
     activityLog: { create: mocks.activityLogCreate },
+    $transaction: mocks.transaction,
   },
 }));
 
 import { GET as getMaestroTiendas } from "@/app/api/cargue-gourmet/maestro-tiendas/route";
 import { GET as getPedidos, POST as postPedido } from "@/app/api/cargue-gourmet/route";
 import { GET as getPedidoDetalle, PUT as putPedido } from "@/app/api/cargue-gourmet/[id]/route";
+import { POST as postUbicacion } from "@/app/api/cargue-gourmet/[id]/ubicacion/route";
+import { POST as postEnviarTransporte } from "@/app/api/cargue-gourmet/[id]/enviar-transporte/route";
 
 function actor(role: string) {
   return { id: "u_1", email: "u@test.com", name: "Usuario Test", role };
@@ -59,6 +79,13 @@ function actor(role: string) {
 beforeEach(() => {
   vi.clearAllMocks();
   mocks.activityLogCreate.mockResolvedValue({});
+  mocks.transaction.mockImplementation((cb: (tx: unknown) => unknown) => cb(tx));
+  mocks.estibaDeleteMany.mockResolvedValue({ count: 0 });
+  mocks.estibaCreateMany.mockResolvedValue({ count: 0 });
+  mocks.cajaDeleteMany.mockResolvedValue({ count: 0 });
+  mocks.cajaCreateMany.mockResolvedValue({ count: 0 });
+  mocks.userFindMany.mockResolvedValue([]);
+  mocks.notificacionCreateMany.mockResolvedValue({ count: 0 });
 });
 
 describe("GET /api/cargue-gourmet/maestro-tiendas", () => {
@@ -566,5 +593,374 @@ describe("PUT /api/cargue-gourmet/[id]", () => {
     const callArg = mocks.pedidoUpdate.mock.calls[0][0];
     expect(callArg.data).not.toHaveProperty("estado");
     expect(callArg.data).not.toHaveProperty("cargueCompletadoAt");
+  });
+});
+
+const UBICACION_UPDATED_AT = new Date("2026-06-24T11:00:00.000Z");
+
+function ubicacionPostReq(id: string, body: unknown) {
+  return new NextRequest(`http://localhost/api/cargue-gourmet/${id}/ubicacion`, {
+    method: "POST",
+    body: JSON.stringify(body),
+    headers: { "Content-Type": "application/json" },
+  });
+}
+
+function enviarTransportePostReq(id: string, body: unknown) {
+  return new NextRequest(`http://localhost/api/cargue-gourmet/${id}/enviar-transporte`, {
+    method: "POST",
+    body: JSON.stringify(body),
+    headers: { "Content-Type": "application/json" },
+  });
+}
+
+describe("POST /api/cargue-gourmet/[id]/ubicacion", () => {
+  const params = { params: Promise.resolve({ id: "p1" }) };
+  const validBody = {
+    estibas: [{ secuencia: 1, ubicacion: "A1" }, { secuencia: 2, ubicacion: "A2" }],
+    cajas: [{ codigoCaja: "TSDM1-CAJA-01", numeroSecuencia: 1 }],
+    updatedAt: UBICACION_UPDATED_AT.toISOString(),
+  };
+
+  function mockCurrent(estado: string) {
+    mocks.pedidoFindUnique.mockResolvedValue({ estado, updatedAt: UBICACION_UPDATED_AT });
+  }
+
+  function mockUpdateResult() {
+    mocks.pedidoUpdate.mockResolvedValue({
+      id: "p1", orden: "TSDM1", tipoOrden: "TSDM", codigoTienda: "T001",
+      nombreTienda: "Tienda Centro", ciudadDestino: "Bogotá",
+      cajasEsperadas: 5, estibasEsperadas: 2, estado: "UBICACION_ASIGNADA",
+      updatedAt: new Date(), ubicacionAsignadaAt: new Date(), ubicacionAsignadaPorId: "u_1",
+      enviadoTransporteAt: null, enviadoTransportePorId: null,
+      cargueIniciadoAt: null, cargueCompletadoAt: null,
+      estibas: validBody.estibas, cajas: validBody.cajas,
+    });
+  }
+
+  it("asigna ubicación correctamente desde BORRADOR", async () => {
+    mocks.getSessionUser.mockResolvedValue(actor("OPERACIONES_GOURMET"));
+    mockCurrent("BORRADOR");
+    mockUpdateResult();
+
+    const res = await postUbicacion(ubicacionPostReq("p1", validBody), params);
+    const json = await res.json();
+
+    expect(res.status).toBe(200);
+    expect(json.success).toBe(true);
+    expect(json.data.estado).toBe("UBICACION_ASIGNADA");
+  });
+
+  it("reasigna ubicación correctamente desde UBICACION_ASIGNADA", async () => {
+    mocks.getSessionUser.mockResolvedValue(actor("OPERACIONES_GOURMET"));
+    mockCurrent("UBICACION_ASIGNADA");
+    mockUpdateResult();
+
+    const res = await postUbicacion(ubicacionPostReq("p1", validBody), params);
+    expect(res.status).toBe(200);
+  });
+
+  it("rechaza si está ENVIADO_A_TRANSPORTE (409)", async () => {
+    mocks.getSessionUser.mockResolvedValue(actor("OPERACIONES_GOURMET"));
+    mockCurrent("ENVIADO_A_TRANSPORTE");
+
+    const res = await postUbicacion(ubicacionPostReq("p1", validBody), params);
+    expect(res.status).toBe(409);
+    expect(mocks.transaction).not.toHaveBeenCalled();
+  });
+
+  it("rechaza si está EN_CARGUE (409)", async () => {
+    mocks.getSessionUser.mockResolvedValue(actor("ADMIN"));
+    mockCurrent("EN_CARGUE");
+
+    const res = await postUbicacion(ubicacionPostReq("p1", validBody), params);
+    expect(res.status).toBe(409);
+  });
+
+  it("rechaza si está CARGUE_COMPLETO (409)", async () => {
+    mocks.getSessionUser.mockResolvedValue(actor("ADMIN"));
+    mockCurrent("CARGUE_COMPLETO");
+
+    const res = await postUbicacion(ubicacionPostReq("p1", validBody), params);
+    expect(res.status).toBe(409);
+  });
+
+  it("rechaza si falta updatedAt (400)", async () => {
+    mocks.getSessionUser.mockResolvedValue(actor("OPERACIONES_GOURMET"));
+    const { updatedAt, ...sinUpdatedAt } = validBody;
+    const res = await postUbicacion(ubicacionPostReq("p1", sinUpdatedAt), params);
+    expect(res.status).toBe(400);
+    expect(mocks.pedidoFindUnique).not.toHaveBeenCalled();
+  });
+
+  it("rechaza si updatedAt no coincide (409)", async () => {
+    mocks.getSessionUser.mockResolvedValue(actor("OPERACIONES_GOURMET"));
+    mockCurrent("BORRADOR");
+
+    const res = await postUbicacion(
+      ubicacionPostReq("p1", { ...validBody, updatedAt: new Date("2020-01-01T00:00:00.000Z").toISOString() }),
+      params
+    );
+    expect(res.status).toBe(409);
+    expect(mocks.transaction).not.toHaveBeenCalled();
+  });
+
+  it("rechaza si no hay estibas (400)", async () => {
+    mocks.getSessionUser.mockResolvedValue(actor("OPERACIONES_GOURMET"));
+    const res = await postUbicacion(ubicacionPostReq("p1", { ...validBody, estibas: [] }), params);
+    expect(res.status).toBe(400);
+    expect(mocks.pedidoFindUnique).not.toHaveBeenCalled();
+  });
+
+  it("rechaza estibas con secuencia duplicada (400)", async () => {
+    mocks.getSessionUser.mockResolvedValue(actor("OPERACIONES_GOURMET"));
+    const res = await postUbicacion(
+      ubicacionPostReq("p1", { ...validBody, estibas: [{ secuencia: 1, ubicacion: "A1" }, { secuencia: 1, ubicacion: "A2" }] }),
+      params
+    );
+    expect(res.status).toBe(400);
+  });
+
+  it("rechaza ubicación vacía (400)", async () => {
+    mocks.getSessionUser.mockResolvedValue(actor("OPERACIONES_GOURMET"));
+    const res = await postUbicacion(
+      ubicacionPostReq("p1", { ...validBody, estibas: [{ secuencia: 1, ubicacion: "" }] }),
+      params
+    );
+    expect(res.status).toBe(400);
+  });
+
+  it("rechaza TRANSPORTE (403)", async () => {
+    mocks.getSessionUser.mockResolvedValue(actor("TRANSPORTE"));
+    const res = await postUbicacion(ubicacionPostReq("p1", validBody), params);
+    expect(res.status).toBe(403);
+    expect(mocks.pedidoFindUnique).not.toHaveBeenCalled();
+  });
+
+  it("rechaza SUPERVISOR_TRANSPORTE (403)", async () => {
+    mocks.getSessionUser.mockResolvedValue(actor("SUPERVISOR_TRANSPORTE"));
+    const res = await postUbicacion(ubicacionPostReq("p1", validBody), params);
+    expect(res.status).toBe(403);
+  });
+
+  it("OPERACIONES_GOURMET sí puede", async () => {
+    mocks.getSessionUser.mockResolvedValue(actor("OPERACIONES_GOURMET"));
+    mockCurrent("BORRADOR");
+    mockUpdateResult();
+    const res = await postUbicacion(ubicacionPostReq("p1", validBody), params);
+    expect(res.status).toBe(200);
+  });
+
+  it("reemplaza estibas/cajas con deleteMany + createMany dentro de la transacción", async () => {
+    mocks.getSessionUser.mockResolvedValue(actor("OPERACIONES_GOURMET"));
+    mockCurrent("BORRADOR");
+    mockUpdateResult();
+
+    await postUbicacion(ubicacionPostReq("p1", validBody), params);
+
+    expect(mocks.transaction).toHaveBeenCalled();
+    expect(mocks.estibaDeleteMany).toHaveBeenCalledWith({ where: { pedidoId: "p1" } });
+    expect(mocks.estibaCreateMany).toHaveBeenCalledWith(
+      expect.objectContaining({ data: expect.arrayContaining([expect.objectContaining({ pedidoId: "p1", secuencia: 1, ubicacion: "A1" })]) })
+    );
+    expect(mocks.cajaDeleteMany).toHaveBeenCalledWith({ where: { pedidoId: "p1" } });
+    expect(mocks.cajaCreateMany).toHaveBeenCalledWith(
+      expect.objectContaining({ data: expect.arrayContaining([expect.objectContaining({ pedidoId: "p1", codigoCaja: "TSDM1-CAJA-01" })]) })
+    );
+  });
+
+  it("no modifica timestamps de transporte/cargue", async () => {
+    mocks.getSessionUser.mockResolvedValue(actor("OPERACIONES_GOURMET"));
+    mockCurrent("BORRADOR");
+    mockUpdateResult();
+
+    await postUbicacion(ubicacionPostReq("p1", validBody), params);
+
+    const callArg = mocks.pedidoUpdate.mock.calls[0][0];
+    expect(callArg.data).not.toHaveProperty("enviadoTransporteAt");
+    expect(callArg.data).not.toHaveProperty("enviadoTransportePorId");
+    expect(callArg.data).not.toHaveProperty("cargueIniciadoAt");
+    expect(callArg.data).not.toHaveProperty("cargueCompletadoAt");
+    expect(callArg.data).toEqual(
+      expect.objectContaining({ estado: "UBICACION_ASIGNADA", ubicacionAsignadaPorId: "u_1" })
+    );
+  });
+});
+
+describe("POST /api/cargue-gourmet/[id]/enviar-transporte", () => {
+  const params = { params: Promise.resolve({ id: "p1" }) };
+  const validBody = { updatedAt: UBICACION_UPDATED_AT.toISOString() };
+
+  function mockCurrent(estado: string, overrides: Partial<Record<string, unknown>> = {}) {
+    mocks.pedidoFindUnique.mockResolvedValue({
+      estado,
+      updatedAt: UBICACION_UPDATED_AT,
+      orden: "TSDM1",
+      ciudadDestino: "Bogotá",
+      cajasEsperadas: 5,
+      estibasEsperadas: 2,
+      _count: { estibas: 1 },
+      ...overrides,
+    });
+  }
+
+  function mockUpdateResult() {
+    mocks.pedidoUpdate.mockResolvedValue({
+      id: "p1", orden: "TSDM1", tipoOrden: "TSDM", codigoTienda: "T001",
+      nombreTienda: "Tienda Centro", ciudadDestino: "Bogotá",
+      cajasEsperadas: 5, estibasEsperadas: 2, estado: "ENVIADO_A_TRANSPORTE",
+      updatedAt: new Date(), enviadoTransporteAt: new Date(), enviadoTransportePorId: "u_1",
+    });
+  }
+
+  it("envía correctamente desde UBICACION_ASIGNADA", async () => {
+    mocks.getSessionUser.mockResolvedValue(actor("OPERACIONES_GOURMET"));
+    mockCurrent("UBICACION_ASIGNADA");
+    mockUpdateResult();
+
+    const res = await postEnviarTransporte(enviarTransportePostReq("p1", validBody), params);
+    const json = await res.json();
+
+    expect(res.status).toBe(200);
+    expect(json.success).toBe(true);
+    expect(json.data.estado).toBe("ENVIADO_A_TRANSPORTE");
+  });
+
+  it("rechaza desde BORRADOR (409)", async () => {
+    mocks.getSessionUser.mockResolvedValue(actor("OPERACIONES_GOURMET"));
+    mockCurrent("BORRADOR");
+
+    const res = await postEnviarTransporte(enviarTransportePostReq("p1", validBody), params);
+    expect(res.status).toBe(409);
+    expect(mocks.pedidoUpdate).not.toHaveBeenCalled();
+  });
+
+  it("rechaza desde EN_CARGUE (409)", async () => {
+    mocks.getSessionUser.mockResolvedValue(actor("ADMIN"));
+    mockCurrent("EN_CARGUE");
+
+    const res = await postEnviarTransporte(enviarTransportePostReq("p1", validBody), params);
+    expect(res.status).toBe(409);
+  });
+
+  it("rechaza si no tiene estibas (409)", async () => {
+    mocks.getSessionUser.mockResolvedValue(actor("OPERACIONES_GOURMET"));
+    mockCurrent("UBICACION_ASIGNADA", { _count: { estibas: 0 } });
+
+    const res = await postEnviarTransporte(enviarTransportePostReq("p1", validBody), params);
+    expect(res.status).toBe(409);
+    expect(mocks.pedidoUpdate).not.toHaveBeenCalled();
+  });
+
+  it("rechaza si falta updatedAt (400)", async () => {
+    mocks.getSessionUser.mockResolvedValue(actor("OPERACIONES_GOURMET"));
+    const res = await postEnviarTransporte(enviarTransportePostReq("p1", {}), params);
+    expect(res.status).toBe(400);
+    expect(mocks.pedidoFindUnique).not.toHaveBeenCalled();
+  });
+
+  it("rechaza si updatedAt no coincide (409)", async () => {
+    mocks.getSessionUser.mockResolvedValue(actor("OPERACIONES_GOURMET"));
+    mockCurrent("UBICACION_ASIGNADA");
+
+    const res = await postEnviarTransporte(
+      enviarTransportePostReq("p1", { updatedAt: new Date("2020-01-01T00:00:00.000Z").toISOString() }),
+      params
+    );
+    expect(res.status).toBe(409);
+    expect(mocks.pedidoUpdate).not.toHaveBeenCalled();
+  });
+
+  it("rechaza TRANSPORTE (403)", async () => {
+    mocks.getSessionUser.mockResolvedValue(actor("TRANSPORTE"));
+    const res = await postEnviarTransporte(enviarTransportePostReq("p1", validBody), params);
+    expect(res.status).toBe(403);
+    expect(mocks.pedidoFindUnique).not.toHaveBeenCalled();
+  });
+
+  it("rechaza SUPERVISOR_TRANSPORTE (403)", async () => {
+    mocks.getSessionUser.mockResolvedValue(actor("SUPERVISOR_TRANSPORTE"));
+    const res = await postEnviarTransporte(enviarTransportePostReq("p1", validBody), params);
+    expect(res.status).toBe(403);
+  });
+
+  it("OPERACIONES_GOURMET sí puede", async () => {
+    mocks.getSessionUser.mockResolvedValue(actor("OPERACIONES_GOURMET"));
+    mockCurrent("UBICACION_ASIGNADA");
+    mockUpdateResult();
+    const res = await postEnviarTransporte(enviarTransportePostReq("p1", validBody), params);
+    expect(res.status).toBe(200);
+  });
+
+  it("actualiza enviadoTransporteAt/enviadoTransportePorId", async () => {
+    mocks.getSessionUser.mockResolvedValue(actor("OPERACIONES_GOURMET"));
+    mockCurrent("UBICACION_ASIGNADA");
+    mockUpdateResult();
+
+    await postEnviarTransporte(enviarTransportePostReq("p1", validBody), params);
+
+    expect(mocks.pedidoUpdate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          estado: "ENVIADO_A_TRANSPORTE",
+          enviadoTransportePorId: "u_1",
+        }),
+      })
+    );
+  });
+
+  it("no crea cargue (no toca prisma.gourmetCargue)", async () => {
+    mocks.getSessionUser.mockResolvedValue(actor("OPERACIONES_GOURMET"));
+    mockCurrent("UBICACION_ASIGNADA");
+    mockUpdateResult();
+
+    await postEnviarTransporte(enviarTransportePostReq("p1", validBody), params);
+
+    // El mock de prisma no expone gourmetCargue: si el endpoint intentara
+    // usarlo, fallaría con TypeError antes de llegar aquí.
+    expect(mocks.pedidoUpdate).toHaveBeenCalledTimes(1);
+  });
+
+  it("no modifica cajas ni estibas", async () => {
+    mocks.getSessionUser.mockResolvedValue(actor("OPERACIONES_GOURMET"));
+    mockCurrent("UBICACION_ASIGNADA");
+    mockUpdateResult();
+
+    await postEnviarTransporte(enviarTransportePostReq("p1", validBody), params);
+
+    expect(mocks.estibaCreateMany).not.toHaveBeenCalled();
+    expect(mocks.cajaCreateMany).not.toHaveBeenCalled();
+    expect(mocks.estibaDeleteMany).not.toHaveBeenCalled();
+    expect(mocks.cajaDeleteMany).not.toHaveBeenCalled();
+  });
+
+  it("intenta crear notificación para TRANSPORTE/SUPERVISOR_TRANSPORTE/ADMIN/GERENTE sin bloquear la respuesta", async () => {
+    mocks.getSessionUser.mockResolvedValue(actor("OPERACIONES_GOURMET"));
+    mockCurrent("UBICACION_ASIGNADA");
+    mockUpdateResult();
+    mocks.userFindMany.mockResolvedValue([{ id: "u_t1" }, { id: "u_t2" }]);
+
+    const res = await postEnviarTransporte(enviarTransportePostReq("p1", validBody), params);
+
+    expect(res.status).toBe(200);
+    expect(mocks.userFindMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          active: true,
+          role: { in: ["TRANSPORTE", "SUPERVISOR_TRANSPORTE", "ADMIN", "GERENTE"] },
+        }),
+      })
+    );
+  });
+
+  it("no bloquea la respuesta si la notificación falla", async () => {
+    mocks.getSessionUser.mockResolvedValue(actor("OPERACIONES_GOURMET"));
+    mockCurrent("UBICACION_ASIGNADA");
+    mockUpdateResult();
+    mocks.userFindMany.mockResolvedValue([{ id: "u_t1" }]);
+    mocks.notificacionCreateMany.mockRejectedValue(new Error("db down"));
+
+    const res = await postEnviarTransporte(enviarTransportePostReq("p1", validBody), params);
+    expect(res.status).toBe(200);
   });
 });
