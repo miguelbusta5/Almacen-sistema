@@ -101,22 +101,23 @@ model User {
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
-  activityLogs        ActivityLog[]
-  transportista       Transportista?
-  novedadesAsign      Novedad[]                  @relation("NovedadesAsignadas")
-  contactosGuard      ContactoGuardado[]
-  despachosTienda     DespachoTienda[]           @relation("DespachosCreadosPor")
-  historialDespachos  HistorialDespacho[]        @relation("HistorialDespachoUsuario")
-  inspecciones        InspeccionPreoperacional[] @relation("InspeccionesRealizadas")
-  notificaciones      Notificacion[]
-  guardadosPendientes GuardadoPendienteTienda[]  @relation("GuardadosPendientesAsignados")
-  integracionesCreadoras   IntegracionPedido[]   @relation("integracionesCreadoras")
-  integracionesCompletadas IntegracionPedido[]   @relation("integracionesCompletadas")
-  solicitudesTransporte    SolicitudTransporte[] @relation("SolicitudesTransporteCreadas")
-  solicitudesGestionadas   SolicitudTransporte[] @relation("SolicitudesTransporteGestionadas")
+  activityLogs                   ActivityLog[]
+  transportista                  Transportista?
+  novedadesAsign                 Novedad[]                      @relation("NovedadesAsignadas")
+  contactosGuard                 ContactoGuardado[]
+  despachosTienda                DespachoTienda[]               @relation("DespachosCreadosPor")
+  historialDespachos             HistorialDespacho[]            @relation("HistorialDespachoUsuario")
+  inspecciones                   InspeccionPreoperacional[]     @relation("InspeccionesRealizadas")
+  notificaciones                 Notificacion[]
+  guardadosPendientes            GuardadoPendienteTienda[]      @relation("GuardadosPendientesAsignados")
+  integracionesCreadoras         IntegracionPedido[]            @relation("integracionesCreadoras")
+  integracionesCompletadas       IntegracionPedido[]            @relation("integracionesCompletadas")
+  solicitudesTransporte          SolicitudTransporte[]          @relation("SolicitudesTransporteCreadas")
+  solicitudesGestionadas         SolicitudTransporte[]          @relation("SolicitudesTransporteGestionadas")
   historialSolicitudesTransporte HistorialSolicitudTransporte[] @relation("HistorialSolicitudTransporteUsuario")
-  exportacionesEtiquetado  EtiquetadoExportacion[] @relation("ExportacionesEtiquetadoCreadas")
-  exportacionesActualizadas EtiquetadoExportacion[] @relation("ExportacionesEtiquetadoActualizadas")
+  exportacionesEtiquetado        EtiquetadoExportacion[]        @relation("ExportacionesEtiquetadoCreadas")
+  exportacionesActualizadas      EtiquetadoExportacion[]        @relation("ExportacionesEtiquetadoActualizadas")
+  gourmetPedidosCreados          GourmetPedido[]                @relation("GourmetPedidosCreados")
 
   @@index([email])
   @@map("users")
@@ -536,32 +537,32 @@ model ItemInspeccion {
 // ═══════════════════════════════════════════
 
 model IntegracionPedido {
-  id               String            @id @default(cuid())
-  numeroDocumento  String            @db.VarChar(100)
-  tipoDocumento    String            @db.VarChar(10)   // "OVDM" | "TSDM"
-  fecha            DateTime          @db.Date
-  estado           EstadoIntegracion @default(PENDIENTE_AREA2)
+  id              String            @id @default(cuid())
+  numeroDocumento String            @db.VarChar(100)
+  tipoDocumento   String            @db.VarChar(10) // "OVDM" | "TSDM"
+  fecha           DateTime          @db.Date
+  estado          EstadoIntegracion @default(PENDIENTE_AREA2)
 
-  areaIniciadora   String            @db.VarChar(20)   // "MUEBLES" | "GOURMET"
+  areaIniciadora   String   @db.VarChar(20) // "MUEBLES" | "GOURMET"
   numeroCajasArea1 Int?
   creadoPorId      String
-  creadoPor        User              @relation("integracionesCreadoras", fields: [creadoPorId], references: [id])
-  creadoAt         DateTime          @default(now())
+  creadoPor        User     @relation("integracionesCreadoras", fields: [creadoPorId], references: [id])
+  creadoAt         DateTime @default(now())
 
-  numeroCajasArea2  Int?
-  completadoPorId   String?
-  completadoPor     User?             @relation("integracionesCompletadas", fields: [completadoPorId], references: [id])
-  completadoAt      DateTime?
+  numeroCajasArea2 Int?
+  completadoPorId  String?
+  completadoPor    User?     @relation("integracionesCompletadas", fields: [completadoPorId], references: [id])
+  completadoAt     DateTime?
 
-  entregadoATransporteAt  DateTime?
-  marcadoCompletadoPorId  String?
-  marcadoCompletadoAt     DateTime?
+  entregadoATransporteAt DateTime?
+  marcadoCompletadoPorId String?
+  marcadoCompletadoAt    DateTime?
 
-  observaciones    String?
-  createdAt        DateTime          @default(now()) @map("created_at")
-  updatedAt        DateTime          @updatedAt @map("updated_at")
+  observaciones String?
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
 
-  plines           PlinIntegracion[]
+  plines PlinIntegracion[]
 
   @@index([numeroDocumento])
   @@index([estado, createdAt])
@@ -569,14 +570,14 @@ model IntegracionPedido {
 }
 
 model PlinIntegracion {
-  id             String            @id @default(cuid())
-  integracionId  String            @map("integracion_id")
-  integracion    IntegracionPedido @relation(fields: [integracionId], references: [id], onDelete: Cascade)
-  area           String            @db.VarChar(20)   // "MUEBLES" | "GOURMET"
-  plu            String            @db.VarChar(100)
-  descripcion    String?           @db.VarChar(255)
-  unidades       Int
-  createdAt      DateTime          @default(now()) @map("created_at")
+  id            String            @id @default(cuid())
+  integracionId String            @map("integracion_id")
+  integracion   IntegracionPedido @relation(fields: [integracionId], references: [id], onDelete: Cascade)
+  area          String            @db.VarChar(20) // "MUEBLES" | "GOURMET"
+  plu           String            @db.VarChar(100)
+  descripcion   String?           @db.VarChar(255)
+  unidades      Int
+  createdAt     DateTime          @default(now()) @map("created_at")
 
   @@index([integracionId])
   @@map("plines_integracion")
@@ -587,7 +588,7 @@ model PlinIntegracion {
 // ═══════════════════════════════════════════════════════════════════
 
 model SolicitudTransporte {
-  id        String @id @default(cuid())
+  id String @id @default(cuid())
 
   fechaSolicitud      DateTime @map("fecha_solicitud") @db.Date
   areaSolicitante     String   @map("area_solicitante") @db.VarChar(80)
@@ -615,44 +616,44 @@ model SolicitudTransporte {
   direccionEntrega String  @map("direccion_entrega")
   zonaEntrega      String? @map("zona_entrega") @db.VarChar(20)
 
-  fechaPromesaEntrega   DateTime? @map("fecha_promesa_entrega") @db.Date
-  ventanaEntrega        String?   @map("ventana_entrega") @db.VarChar(40)
-  restriccionHoraria    Boolean?  @map("restriccion_horaria")
-  descripcionRestriccion String?  @map("descripcion_restriccion")
+  fechaPromesaEntrega    DateTime? @map("fecha_promesa_entrega") @db.Date
+  ventanaEntrega         String?   @map("ventana_entrega") @db.VarChar(40)
+  restriccionHoraria     Boolean?  @map("restriccion_horaria")
+  descripcionRestriccion String?   @map("descripcion_restriccion")
 
   tipoServicio             String? @map("tipo_servicio") @db.VarChar(80)
   tipoServicioOtro         String? @map("tipo_servicio_otro") @db.VarChar(120)
   observacionesSolicitante String? @map("observaciones_solicitante")
 
-  estado             EstadoSolicitudTransporte @default(PENDIENTE)
-  stellaEstado       StellaEstado              @default(PENDIENTE) @map("stella_estado")
-  documentoNetSuite  String? @map("documento_netsuite") @db.VarChar(120)
-  transportadora     String? @db.VarChar(120)
-  numeroGuia         String? @map("numero_guia") @db.VarChar(120)
-  fechaProgramacion  DateTime? @map("fecha_programacion") @db.Date
-  observacionTransporte String? @map("observacion_transporte")
+  estado                EstadoSolicitudTransporte @default(PENDIENTE)
+  stellaEstado          StellaEstado              @default(PENDIENTE) @map("stella_estado")
+  documentoNetSuite     String?                   @map("documento_netsuite") @db.VarChar(120)
+  transportadora        String?                   @db.VarChar(120)
+  numeroGuia            String?                   @map("numero_guia") @db.VarChar(120)
+  fechaProgramacion     DateTime?                 @map("fecha_programacion") @db.Date
+  observacionTransporte String?                   @map("observacion_transporte")
 
   prioridad    PrioridadSolicitudTransporte? @map("prioridad")
   semaforo     SemaforoSolicitudTransporte   @default(SIN_FECHA)
-  mesSolicitud String? @map("mes_solicitud") @db.VarChar(20)
+  mesSolicitud String?                       @map("mes_solicitud") @db.VarChar(20)
 
   motivoRechazo String?   @map("motivo_rechazo")
   rechazadoAt   DateTime? @map("rechazado_at")
   reenviadoAt   DateTime? @map("reenviado_at")
 
-  creadoPorId String @map("creado_por_id")
-  creadoPor   User   @relation("SolicitudesTransporteCreadas", fields: [creadoPorId], references: [id])
+  creadoPorId     String  @map("creado_por_id")
+  creadoPor       User    @relation("SolicitudesTransporteCreadas", fields: [creadoPorId], references: [id])
   gestionadoPorId String? @map("gestionado_por_id")
   gestionadoPor   User?   @relation("SolicitudesTransporteGestionadas", fields: [gestionadoPorId], references: [id])
 
-  deletedAt     DateTime? @map("deleted_at")
-  deletedById   String?   @map("deleted_by_id")
-  deleteReason  String?   @map("delete_reason")
+  deletedAt    DateTime? @map("deleted_at")
+  deletedById  String?   @map("deleted_by_id")
+  deleteReason String?   @map("delete_reason")
 
   plines    PluSolicitudTransporte[]
   historial HistorialSolicitudTransporte[]
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
+  createdAt DateTime                       @default(now()) @map("created_at")
+  updatedAt DateTime                       @updatedAt @map("updated_at")
 
   @@index([estado, createdAt])
   @@index([deletedAt])
@@ -664,15 +665,15 @@ model SolicitudTransporte {
 }
 
 model HistorialSolicitudTransporte {
-  id             String @id @default(cuid())
-  solicitudId    String @map("solicitud_id")
-  solicitud      SolicitudTransporte @relation(fields: [solicitudId], references: [id], onDelete: Cascade)
+  id             String                     @id @default(cuid())
+  solicitudId    String                     @map("solicitud_id")
+  solicitud      SolicitudTransporte        @relation(fields: [solicitudId], references: [id], onDelete: Cascade)
   estadoAnterior EstadoSolicitudTransporte? @map("estado_anterior")
   estadoNuevo    EstadoSolicitudTransporte  @map("estado_nuevo")
   observacion    String?
-  usuarioId      String @map("usuario_id")
-  usuario        User   @relation("HistorialSolicitudTransporteUsuario", fields: [usuarioId], references: [id])
-  createdAt      DateTime @default(now()) @map("created_at")
+  usuarioId      String                     @map("usuario_id")
+  usuario        User                       @relation("HistorialSolicitudTransporteUsuario", fields: [usuarioId], references: [id])
+  createdAt      DateTime                   @default(now()) @map("created_at")
 
   @@index([solicitudId, createdAt])
   @@index([usuarioId])
@@ -680,13 +681,13 @@ model HistorialSolicitudTransporte {
 }
 
 model PluSolicitudTransporte {
-  id          String               @id @default(cuid())
-  solicitudId String               @map("solicitud_id")
-  solicitud   SolicitudTransporte  @relation(fields: [solicitudId], references: [id], onDelete: Cascade)
-  plu         String               @db.VarChar(100)
-  descripcion String               @db.VarChar(255)
+  id          String              @id @default(cuid())
+  solicitudId String              @map("solicitud_id")
+  solicitud   SolicitudTransporte @relation(fields: [solicitudId], references: [id], onDelete: Cascade)
+  plu         String              @db.VarChar(100)
+  descripcion String              @db.VarChar(255)
   unidades    Int
-  createdAt   DateTime             @default(now()) @map("created_at")
+  createdAt   DateTime            @default(now()) @map("created_at")
 
   @@index([solicitudId])
   @@index([plu])
@@ -694,23 +695,23 @@ model PluSolicitudTransporte {
 }
 
 model EtiquetadoExportacion {
-  id                String    @id @default(cuid())
-  numeroCaja        String    @map("numero_caja") @db.VarChar(100)
-  plu               String    @db.VarChar(100)
-  descripcion       String    @db.VarChar(255)
-  unidadEmpaque     Int       @map("unidad_empaque")
-  fecha             DateTime  @db.Date
-  horaInicio        DateTime  @map("hora_inicio")
-  horaFinalizacion  DateTime? @map("hora_finalizacion")
-  motivoCorreccion  String?   @map("motivo_correccion")
-  hayReguero        Boolean   @default(false) @map("hay_reguero")
-  cantidadReguero   Int?                      @map("cantidad_reguero")
-  deletedAt         DateTime? @map("deleted_at")
+  id               String    @id @default(cuid())
+  numeroCaja       String    @map("numero_caja") @db.VarChar(100)
+  plu              String    @db.VarChar(100)
+  descripcion      String    @db.VarChar(255)
+  unidadEmpaque    Int       @map("unidad_empaque")
+  fecha            DateTime  @db.Date
+  horaInicio       DateTime  @map("hora_inicio")
+  horaFinalizacion DateTime? @map("hora_finalizacion")
+  motivoCorreccion String?   @map("motivo_correccion")
+  hayReguero       Boolean   @default(false) @map("hay_reguero")
+  cantidadReguero  Int?      @map("cantidad_reguero")
+  deletedAt        DateTime? @map("deleted_at")
 
-  creadoPorId       String   @map("creado_por_id")
-  creadoPor         User     @relation("ExportacionesEtiquetadoCreadas", fields: [creadoPorId], references: [id])
-  actualizadoPorId  String?  @map("actualizado_por_id")
-  actualizadoPor    User?    @relation("ExportacionesEtiquetadoActualizadas", fields: [actualizadoPorId], references: [id])
+  creadoPorId      String  @map("creado_por_id")
+  creadoPor        User    @relation("ExportacionesEtiquetadoCreadas", fields: [creadoPorId], references: [id])
+  actualizadoPorId String? @map("actualizado_por_id")
+  actualizadoPor   User?   @relation("ExportacionesEtiquetadoActualizadas", fields: [actualizadoPorId], references: [id])
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
@@ -721,4 +722,208 @@ model EtiquetadoExportacion {
   @@index([numeroCaja])
   @@index([horaFinalizacion])
   @@map("etiquetado_exportaciones")
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// MÓDULO CARGUE GOURMET (diseño G1, aún no expuesto en UI/endpoints)
+// ═══════════════════════════════════════════════════════════════════
+
+enum EstadoPedidoGourmet {
+  BORRADOR
+  UBICACION_ASIGNADA
+  ENVIADO_A_TRANSPORTE
+  EN_CARGUE
+  CARGUE_COMPLETO
+  CARGUE_COMPLETO_MANUAL
+  CON_NOVEDAD
+  CANCELADO
+}
+
+enum TipoCierreCargue {
+  NORMAL
+  MANUAL
+}
+
+enum ResultadoEscaneoGourmet {
+  VALIDO
+  DUPLICADO
+  CAJA_AJENA
+  FORMATO_INVALIDO
+  EXCEDE_CANTIDAD
+}
+
+enum TipoNovedadGourmet {
+  CAJA_FALTANTE
+  CAJA_DUPLICADA
+  CAJA_AJENA
+  CIERRE_MANUAL
+  DIFERENCIA_CANTIDAD
+  OTRA
+}
+
+enum EstadoNovedadGourmet {
+  ABIERTA
+  RESUELTA
+}
+
+model MaestroTiendaGourmet {
+  id        String   @id @default(cuid())
+  codigo    String   @unique @db.VarChar(50)
+  tienda    String   @db.VarChar(255)
+  ciudad    String   @db.VarChar(80)
+  activo    Boolean  @default(true)
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("maestro_tiendas_gourmet")
+}
+
+model GourmetPedido {
+  id               String              @id @default(cuid())
+  orden            String              @db.VarChar(100)
+  tipoOrden        String              @map("tipo_orden") @db.VarChar(10) // "OVDM" | "TSDM"
+  codigoTienda     String              @map("codigo_tienda") @db.VarChar(50)
+  nombreTienda     String              @map("nombre_tienda") @db.VarChar(255)
+  ciudadDestino    String              @map("ciudad_destino") @db.VarChar(80)
+  cajasEsperadas   Int                 @map("cajas_esperadas")
+  estibasEsperadas Int                 @map("estibas_esperadas")
+  estado           EstadoPedidoGourmet @default(BORRADOR)
+
+  creadoPorId String   @map("creado_por_id")
+  creadoPor   User     @relation("GourmetPedidosCreados", fields: [creadoPorId], references: [id])
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  // Transición: ubicación asignada
+  ubicacionAsignadaAt    DateTime? @map("ubicacion_asignada_at")
+  ubicacionAsignadaPorId String?   @map("ubicacion_asignada_por_id")
+
+  // Transición: enviado a Transporte
+  enviadoTransporteAt    DateTime? @map("enviado_transporte_at")
+  enviadoTransportePorId String?   @map("enviado_transporte_por_id")
+
+  // Transición: cargue iniciado
+  cargueIniciadoAt    DateTime? @map("cargue_iniciado_at")
+  cargueIniciadoPorId String?   @map("cargue_iniciado_por_id")
+
+  // Transición: cargue completado (normal o manual)
+  cargueCompletadoAt    DateTime? @map("cargue_completado_at")
+  cargueCompletadoPorId String?   @map("cargue_completado_por_id")
+
+  // Cierre manual de contingencia
+  esCierreManual          Boolean @default(false) @map("es_cierre_manual")
+  cantidadContadaManual   Int?    @map("cantidad_contada_manual")
+  motivoCierreManual      String? @map("motivo_cierre_manual")
+  observacionCierreManual String? @map("observacion_cierre_manual")
+
+  estibas   GourmetPedidoEstiba[]
+  cajas     GourmetPedidoCaja[]
+  cargues   GourmetCargue[]
+  novedades GourmetCargueNovedad[]
+
+  @@index([orden])
+  @@index([tipoOrden])
+  @@index([codigoTienda])
+  @@index([ciudadDestino])
+  @@index([estado, createdAt])
+  @@index([createdAt])
+  @@index([enviadoTransporteAt])
+  @@index([cargueIniciadoAt])
+  @@map("gourmet_pedidos")
+}
+
+model GourmetPedidoEstiba {
+  id          String        @id @default(cuid())
+  pedidoId    String        @map("pedido_id")
+  pedido      GourmetPedido @relation(fields: [pedidoId], references: [id], onDelete: Cascade)
+  secuencia   Int
+  ubicacion   String        @db.VarChar(120)
+  observacion String?
+  createdAt   DateTime      @default(now()) @map("created_at")
+
+  @@unique([pedidoId, secuencia])
+  @@index([pedidoId])
+  @@map("gourmet_pedido_estibas")
+}
+
+model GourmetPedidoCaja {
+  id                 String        @id @default(cuid())
+  pedidoId           String        @map("pedido_id")
+  pedido             GourmetPedido @relation(fields: [pedidoId], references: [id], onDelete: Cascade)
+  codigoCaja         String?       @map("codigo_caja") @db.VarChar(150)
+  numeroSecuencia    Int?          @map("numero_secuencia")
+  generadaPorEscaneo Boolean       @default(false) @map("generada_por_escaneo")
+  estado             String?       @db.VarChar(20)
+  createdAt          DateTime      @default(now()) @map("created_at")
+  updatedAt          DateTime      @updatedAt @map("updated_at")
+
+  @@index([pedidoId])
+  @@index([codigoCaja])
+  @@index([pedidoId, numeroSecuencia])
+  @@map("gourmet_pedido_cajas")
+}
+
+model GourmetCargue {
+  id       String        @id @default(cuid())
+  pedidoId String        @map("pedido_id")
+  pedido   GourmetPedido @relation(fields: [pedidoId], references: [id], onDelete: Cascade)
+
+  iniciadoPorId   String    @map("iniciado_por_id")
+  iniciadoAt      DateTime  @default(now()) @map("iniciado_at")
+  finalizadoPorId String?   @map("finalizado_por_id")
+  finalizadoAt    DateTime? @map("finalizado_at")
+
+  tipoCierre            TipoCierreCargue? @map("tipo_cierre")
+  cantidadEsperada      Int               @map("cantidad_esperada")
+  cantidadEscaneada     Int               @default(0) @map("cantidad_escaneada")
+  cantidadContadaManual Int?              @map("cantidad_contada_manual")
+  motivoCierreManual    String?           @map("motivo_cierre_manual")
+  observacion           String?
+
+  estado EstadoPedidoGourmet @default(EN_CARGUE)
+
+  escaneos  GourmetCargueEscaneo[]
+  novedades GourmetCargueNovedad[]
+
+  @@index([pedidoId, iniciadoAt])
+  @@index([estado])
+  @@map("gourmet_cargues")
+}
+
+model GourmetCargueEscaneo {
+  id              String                  @id @default(cuid())
+  cargueId        String                  @map("cargue_id")
+  cargue          GourmetCargue           @relation(fields: [cargueId], references: [id], onDelete: Cascade)
+  pedidoId        String                  @map("pedido_id")
+  codigoEscaneado String                  @map("codigo_escaneado") @db.VarChar(150)
+  resultado       ResultadoEscaneoGourmet
+  escaneadoPorId  String                  @map("escaneado_por_id")
+  observacion     String?
+  createdAt       DateTime                @default(now()) @map("created_at")
+
+  @@index([cargueId])
+  @@index([cargueId, codigoEscaneado])
+  @@index([codigoEscaneado])
+  @@index([pedidoId])
+  @@map("gourmet_cargue_escaneos")
+}
+
+model GourmetCargueNovedad {
+  id              String               @id @default(cuid())
+  cargueId        String               @map("cargue_id")
+  cargue          GourmetCargue        @relation(fields: [cargueId], references: [id], onDelete: Cascade)
+  pedidoId        String               @map("pedido_id")
+  pedido          GourmetPedido        @relation(fields: [pedidoId], references: [id], onDelete: Cascade)
+  tipo            TipoNovedadGourmet
+  descripcion     String
+  estado          EstadoNovedadGourmet @default(ABIERTA)
+  registradaPorId String               @map("registrada_por_id")
+  resueltaPorId   String?              @map("resuelta_por_id")
+  resueltaAt      DateTime?            @map("resuelta_at")
+  createdAt       DateTime             @default(now()) @map("created_at")
+
+  @@index([cargueId])
+  @@index([pedidoId])
+  @@index([estado])
+  @@map("gourmet_cargue_novedades")
 }
