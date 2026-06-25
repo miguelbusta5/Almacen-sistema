@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useSession } from "next-auth/react";
+import { Plus } from "lucide-react";
 import { ModuleHero } from "@/components/ui";
 import { useToast } from "@/contexts/ToastContext";
 import { canSeeModule } from "@/lib/modulePermissions";
@@ -10,9 +11,11 @@ import {
   CargueGourmetTable, ESTADOS_PEDIDO_GOURMET, ESTADO_LABEL,
   type GourmetPedidoRow, type EstadoPedidoGourmet,
 } from "./_components";
+import { CrearPedidoModal } from "./_components/CrearPedidoModal";
 
 const DEBOUNCE_MS = 300;
 const PAGE_SIZE = 25;
+const ROLES_CREAN = ["OPERACIONES_GOURMET", "ADMIN", "GERENTE"];
 
 const inp: React.CSSProperties = {
   border: "1px solid var(--border)", borderRadius: 8, padding: "0.45rem 0.7rem",
@@ -35,6 +38,7 @@ export default function CargueGourmetPage() {
   const [ciudad, setCiudad] = useState("");
   const [estado, setEstado] = useState<EstadoPedidoGourmet | "">("");
   const [tipoOrden, setTipoOrden] = useState<"" | "OVDM" | "TSDM">("");
+  const [showCrear, setShowCrear] = useState(false);
 
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -94,6 +98,7 @@ export default function CargueGourmetPage() {
 
   const hasFilters = q || ciudad || estado || tipoOrden;
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+  const puedeCrear = !!role && ROLES_CREAN.includes(role);
 
   return (
     <div className="animate-fade-in" style={getModuleCssVars("cargue-gourmet") as React.CSSProperties}>
@@ -102,6 +107,19 @@ export default function CargueGourmetPage() {
         kicker="Gourmet · Transporte"
         title="Cargue Gourmet"
         description={`${total} pedido${total !== 1 ? "s" : ""} · ubicación y cargue verificado de pedidos Gourmet.`}
+        actions={
+          puedeCrear && (
+            <button onClick={() => setShowCrear(true)} className="g-btn g-btn-primary">
+              <Plus size={14} />Nuevo pedido
+            </button>
+          )
+        }
+      />
+
+      <CrearPedidoModal
+        open={showCrear}
+        onClose={() => setShowCrear(false)}
+        onCreated={() => load(1)}
       />
 
       {/* Filtros */}
