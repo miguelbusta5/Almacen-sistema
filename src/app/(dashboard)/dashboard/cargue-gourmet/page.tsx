@@ -12,6 +12,7 @@ import {
   type GourmetPedidoRow, type EstadoPedidoGourmet,
 } from "./_components";
 import { CrearPedidoModal } from "./_components/CrearPedidoModal";
+import { PedidoDetallePanel, type PedidoDetalle } from "./_components/PedidoDetallePanel";
 
 const DEBOUNCE_MS = 300;
 const PAGE_SIZE = 25;
@@ -39,6 +40,11 @@ export default function CargueGourmetPage() {
   const [estado, setEstado] = useState<EstadoPedidoGourmet | "">("");
   const [tipoOrden, setTipoOrden] = useState<"" | "OVDM" | "TSDM">("");
   const [showCrear, setShowCrear] = useState(false);
+
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [detalle, setDetalle] = useState<PedidoDetalle | null>(null);
+  const [detalleLoading, setDetalleLoading] = useState(false);
+  const [detalleError, setDetalleError] = useState<string | null>(null);
 
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -86,6 +92,45 @@ export default function CargueGourmetPage() {
     load(1);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [qDebounced, ciudad, estado, tipoOrden, role]);
+
+  const loadDetalle = useCallback(async (id: string) => {
+    setDetalleLoading(true);
+    setDetalleError(null);
+    try {
+      const res = await fetch(`/api/cargue-gourmet/${id}`);
+      if (res.status === 404) {
+        setDetalleError("Este pedido no existe o fue eliminado.");
+        return;
+      }
+      if (res.status === 403) {
+        setDetalleError("No tienes permiso para ver este pedido.");
+        return;
+      }
+      if (!res.ok) {
+        setDetalleError("No se pudo cargar el detalle del pedido.");
+        return;
+      }
+      const json = await res.json();
+      setDetalle(json.data ?? null);
+    } catch {
+      setDetalleError("Error de red — verifica tu conexión e intenta de nuevo.");
+    } finally {
+      setDetalleLoading(false);
+    }
+  }, []);
+
+  function openDetalle(row: GourmetPedidoRow) {
+    setSelectedId(row.id);
+    setDetalle(null);
+    setDetalleError(null);
+    loadDetalle(row.id);
+  }
+
+  function closeDetalle() {
+    setSelectedId(null);
+    setDetalle(null);
+    setDetalleError(null);
+  }
 
   if (role && !canSeeModule(role, "cargue-gourmet")) {
     return (
@@ -157,7 +202,16 @@ export default function CargueGourmetPage() {
         )}
       </div>
 
-      <CargueGourmetTable rows={pedidos} loading={loading} debug={debugTable} />
+      <CargueGourmetTable rows={pedidos} loading={loading} debug={debugTable} onView={openDetalle} />
+
+      <PedidoDetallePanel
+        open={selectedId !== null}
+        onClose={closeDetalle}
+        loading={detalleLoading}
+        error={detalleError}
+        pedido={detalle}
+        onRetry={() => selectedId && loadDetalle(selectedId)}
+      />
 
       {/* Paginación */}
       {!loading && pedidos.length > 0 && (

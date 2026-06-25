@@ -51,17 +51,25 @@ describe("CargueGourmetTable — estructura (Fase G3C1)", () => {
   const tdCount = (firstRow.match(/<td[ >]/g) ?? []).length;
   const colCount = (html.match(/<col[ />]/g) ?? []).length;
 
-  it("th.length === td.length === col.length === 8", () => {
-    expect(thCount).toBe(8);
-    expect(tdCount).toBe(8);
-    expect(colCount).toBe(8);
+  it("th.length === td.length === col.length === 9", () => {
+    expect(thCount).toBe(9);
+    expect(tdCount).toBe(9);
+    expect(colCount).toBe(9);
   });
 
   it("las celdas van en el mismo orden que los headers", () => {
-    const ids = ["orden-cell", "tipo-cell", "tienda-cell", "ciudad-cell", "cajas-cell", "estibas-cell", "estado-cell", "actualizado-cell"];
+    const ids = ["orden-cell", "tipo-cell", "tienda-cell", "ciudad-cell", "cajas-cell", "estibas-cell", "estado-cell", "actualizado-cell", "acciones-cell"];
     const positions = ids.map((id) => firstRow.indexOf(`data-testid="${id}"`));
     expect(positions.every((p) => p >= 0)).toBe(true);
     expect(positions).toEqual([...positions].sort((a, b) => a - b));
+  });
+
+  it("la acción 'Ver' aparece en acciones-cell y no es ninguna acción operativa prohibida", () => {
+    const cell = cellHtml("acciones-cell", firstRow);
+    expect(cell).toContain("Ver");
+    for (const prohibido of ["Editar", "Asignar ubicación", "Enviar a Transporte", "Iniciar cargue", "Escanear", "Finalizar", "Cierre manual"]) {
+      expect(cell).not.toContain(prohibido);
+    }
   });
 
   it("Orden aparece en orden-cell", () => {
@@ -133,5 +141,6 @@ describe("CargueGourmetTable — modo debug", () => {
     expect(html).toContain("ESTIBAS");
     expect(html).toContain("ESTADO");
     expect(html).toContain("ACTUALIZADO");
+    expect(html).toContain("ACCIONES");
   });
 });

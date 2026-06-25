@@ -1,5 +1,6 @@
 "use client";
 
+import { Eye } from "lucide-react";
 import { Badge } from "@/components/ui";
 import { DataTable, type Column } from "@/components/ui/DataTable";
 
@@ -114,16 +115,18 @@ export function CargueGourmetTable({
   rows,
   loading,
   debug = false,
+  onView,
 }: {
   rows: GourmetPedidoRow[];
   loading: boolean;
   debug?: boolean;
+  onView?: (row: GourmetPedidoRow) => void;
 }) {
   const columns: Column<GourmetPedidoRow>[] = [
     {
       key: "orden",
       header: "Orden",
-      width: "14%",
+      width: "13%",
       testId: "orden-cell",
       debugLabel: "Orden",
       render: (r) => <span style={{ fontFamily: "var(--mono)", fontWeight: 600 }}>{r.orden}</span>,
@@ -131,14 +134,14 @@ export function CargueGourmetTable({
     {
       key: "tipoOrden",
       header: "Tipo",
-      width: "8%",
+      width: "7%",
       testId: "tipo-cell",
       debugLabel: "Tipo",
     },
     {
       key: "nombreTienda",
       header: "Tienda",
-      width: "20%",
+      width: "18%",
       testId: "tienda-cell",
       debugLabel: "Tienda",
       truncate: true,
@@ -146,14 +149,14 @@ export function CargueGourmetTable({
     {
       key: "ciudadDestino",
       header: "Ciudad",
-      width: "12%",
+      width: "11%",
       testId: "ciudad-cell",
       debugLabel: "Ciudad",
     },
     {
       key: "cajasEsperadas",
       header: "Cajas",
-      width: "8%",
+      width: "7%",
       align: "right",
       testId: "cajas-cell",
       debugLabel: "Cajas",
@@ -161,7 +164,7 @@ export function CargueGourmetTable({
     {
       key: "estibasEsperadas",
       header: "Estibas",
-      width: "8%",
+      width: "7%",
       align: "right",
       testId: "estibas-cell",
       debugLabel: "Estibas",
@@ -169,7 +172,7 @@ export function CargueGourmetTable({
     {
       key: "estado",
       header: "Estado",
-      width: "16%",
+      width: "15%",
       testId: "estado-cell",
       debugLabel: "Estado",
       render: (r) => <EstadoBadge estado={r.estado} />,
@@ -177,10 +180,27 @@ export function CargueGourmetTable({
     {
       key: "updatedAt",
       header: "Actualizado",
-      width: "14%",
+      width: "12%",
       testId: "actualizado-cell",
       debugLabel: "Actualizado",
       render: (r) => <span style={{ fontFamily: "var(--mono)", fontSize: 12, color: "var(--muted2)" }}>{fmtFechaHora(r.updatedAt)}</span>,
+    },
+    {
+      key: "acciones",
+      header: "Acciones",
+      width: "10%",
+      testId: "acciones-cell",
+      debugLabel: "Acciones",
+      render: (r) => (
+        <button
+          type="button"
+          onClick={(e) => { e.stopPropagation(); onView?.(r); }}
+          className="g-btn g-btn-secondary g-btn-sm"
+          data-testid={`ver-btn-${r.id}`}
+        >
+          <Eye size={13} />Ver
+        </button>
+      ),
     },
   ];
 
