@@ -20,6 +20,9 @@ const mocks = vi.hoisted(() => ({
   activityLogCreate: vi.fn(),
   cargueFindFirst: vi.fn(),
   cargueCreate: vi.fn(),
+  cargueUpdate: vi.fn(),
+  escaneoCreate: vi.fn(),
+  novedadCreate: vi.fn(),
 }));
 
 // No usamos vi.importActual aquí: @/lib/authz importa next-auth, que en este
@@ -47,7 +50,9 @@ const tx = {
   gourmetPedidoEstiba: { deleteMany: mocks.estibaDeleteMany, createMany: mocks.estibaCreateMany },
   gourmetPedidoCaja: { deleteMany: mocks.cajaDeleteMany, createMany: mocks.cajaCreateMany },
   gourmetPedido: { update: mocks.pedidoUpdate },
-  gourmetCargue: { create: mocks.cargueCreate },
+  gourmetCargue: { create: mocks.cargueCreate, update: mocks.cargueUpdate },
+  gourmetCargueEscaneo: { create: mocks.escaneoCreate },
+  gourmetCargueNovedad: { create: mocks.novedadCreate },
 };
 
 vi.mock("@/lib/prisma", () => ({
@@ -62,7 +67,9 @@ vi.mock("@/lib/prisma", () => ({
     },
     gourmetPedidoEstiba: { deleteMany: mocks.estibaDeleteMany, createMany: mocks.estibaCreateMany },
     gourmetPedidoCaja: { deleteMany: mocks.cajaDeleteMany, createMany: mocks.cajaCreateMany },
-    gourmetCargue: { findFirst: mocks.cargueFindFirst, create: mocks.cargueCreate },
+    gourmetCargue: { findFirst: mocks.cargueFindFirst, create: mocks.cargueCreate, update: mocks.cargueUpdate },
+    gourmetCargueEscaneo: { create: mocks.escaneoCreate },
+    gourmetCargueNovedad: { create: mocks.novedadCreate },
     user: { findMany: mocks.userFindMany },
     notificacion: { createMany: mocks.notificacionCreateMany },
     activityLog: { create: mocks.activityLogCreate },
@@ -76,6 +83,7 @@ import { GET as getPedidoDetalle, PUT as putPedido } from "@/app/api/cargue-gour
 import { POST as postUbicacion } from "@/app/api/cargue-gourmet/[id]/ubicacion/route";
 import { POST as postEnviarTransporte } from "@/app/api/cargue-gourmet/[id]/enviar-transporte/route";
 import { POST as postIniciarCargue } from "@/app/api/cargue-gourmet/[id]/iniciar-cargue/route";
+import { POST as postEscanear } from "@/app/api/cargue-gourmet/[id]/escanear/route";
 
 function actor(role: string) {
   return { id: "u_1", email: "u@test.com", name: "Usuario Test", role };
@@ -92,6 +100,13 @@ beforeEach(() => {
   mocks.userFindMany.mockResolvedValue([]);
   mocks.notificacionCreateMany.mockResolvedValue({ count: 0 });
   mocks.cargueFindFirst.mockResolvedValue(null);
+  mocks.escaneoCreate.mockImplementation((args: { data: Record<string, unknown> }) =>
+    Promise.resolve({ id: "esc1", createdAt: new Date(), ...args.data })
+  );
+  mocks.novedadCreate.mockImplementation((args: { data: Record<string, unknown> }) =>
+    Promise.resolve({ id: "nov1", createdAt: new Date(), ...args.data })
+  );
+  mocks.cargueUpdate.mockImplementation(() => Promise.resolve({ cantidadEscaneada: 1 }));
 });
 
 describe("GET /api/cargue-gourmet/maestro-tiendas", () => {
@@ -1214,5 +1229,261 @@ describe("POST /api/cargue-gourmet/[id]/iniciar-cargue", () => {
 
     const res = await postIniciarCargue(iniciarCarguePostReq("p1", validBody), params);
     expect(res.status).toBe(200);
+  });
+});
+
+function escanearPostReq(id: string, body: unknown) {
+  return new NextRequest(`http://localhost/api/cargue-gourmet/${id}/escanear`, {
+    method: "POST",
+    body: JSON.stringify(body),
+    headers: { "Content-Type": "application/json" },
+  });
+}
+
+describe("POST /api/cargue-gourmet/[id]/escanear", () => {
+  const params = { params: Promise.resolve({ id: "p1" }) };
+
+  function mockPedido(estado: string, cajas: { codigoCaja: string | null }[] = []) {
+    mocks.pedidoFindUnique.mockResolvedValue({ id: "p1", orden: "TSDM98761", estado, cajas });
+  }
+
+  function mockCargueActivo(cantidadEsperada: number, cantidadEscaneada: number, escaneosValidos: string[] = []) {
+    mocks.cargueFindFirst.mockResolvedValue({
+      id: "cg1",
+      cantidadEsperada,
+      cantidadEscaneada,
+      escaneos: escaneosValidos.map((codigoEscaneado) => ({ codigoEscaneado })),
+    });
+  }
+
+  it("escaneo válido incrementa cantidadEscaneada", async () => {
+    mocks.getSessionUser.mockResolvedValue(actor("TRANSPORTE"));
+    mockPedido("EN_CARGUE", [{ codigoCaja: "TSDM98761-CAJA-01" }, { codigoCaja: "TSDM98761-CAJA-02" }]);
+    mockCargueActivo(2, 0);
+    mocks.cargueUpdate.mockResolvedValue({ cantidadEscaneada: 1 });
+
+    const res = await postEscanear(escanearPostReq("p1", { codigo: "TSDM98761-CAJA-01" }), params);
+    const json = await res.json();
+
+    expect(res.status).toBe(200);
+    expect(json.resultado).toBe("VALIDO");
+    expect(json.progreso).toEqual({ escaneados: 1, esperados: 2 });
+    expect(mocks.cargueUpdate).toHaveBeenCalledWith({
+      where: { id: "cg1" },
+      data: { cantidadEscaneada: { increment: 1 } },
+      select: { cantidadEscaneada: true },
+    });
+  });
+
+  it("escaneo válido crea GourmetCargueEscaneo", async () => {
+    mocks.getSessionUser.mockResolvedValue(actor("TRANSPORTE"));
+    mockPedido("EN_CARGUE", [{ codigoCaja: "TSDM98761-CAJA-01" }, { codigoCaja: "TSDM98761-CAJA-02" }]);
+    mockCargueActivo(2, 0);
+
+    await postEscanear(escanearPostReq("p1", { codigo: "TSDM98761-CAJA-01" }), params);
+
+    expect(mocks.escaneoCreate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          cargueId: "cg1",
+          pedidoId: "p1",
+          codigoEscaneado: "TSDM98761-CAJA-01",
+          resultado: "VALIDO",
+          escaneadoPorId: "u_1",
+        }),
+      })
+    );
+  });
+
+  it("duplicado crea escaneo, no incrementa contador y crea novedad CAJA_DUPLICADA", async () => {
+    mocks.getSessionUser.mockResolvedValue(actor("TRANSPORTE"));
+    mockPedido("EN_CARGUE", [{ codigoCaja: "TSDM98761-CAJA-01" }, { codigoCaja: "TSDM98761-CAJA-02" }]);
+    mockCargueActivo(2, 1, ["TSDM98761-CAJA-01"]);
+
+    const res = await postEscanear(escanearPostReq("p1", { codigo: "TSDM98761-CAJA-01" }), params);
+    const json = await res.json();
+
+    expect(json.resultado).toBe("DUPLICADO");
+    expect(mocks.escaneoCreate).toHaveBeenCalled();
+    expect(mocks.cargueUpdate).not.toHaveBeenCalled();
+    expect(json.novedadCreada).toBe(true);
+    expect(mocks.novedadCreate).toHaveBeenCalledWith(
+      expect.objectContaining({ data: expect.objectContaining({ tipo: "CAJA_DUPLICADA", estado: "ABIERTA" }) })
+    );
+  });
+
+  it("caja ajena crea escaneo, no incrementa y crea novedad CAJA_AJENA", async () => {
+    mocks.getSessionUser.mockResolvedValue(actor("TRANSPORTE"));
+    mockPedido("EN_CARGUE", [{ codigoCaja: "TSDM98761-CAJA-01" }, { codigoCaja: "TSDM98761-CAJA-02" }]);
+    mockCargueActivo(2, 0);
+
+    const res = await postEscanear(escanearPostReq("p1", { codigo: "OVDM00001-CAJA-01" }), params);
+    const json = await res.json();
+
+    expect(json.resultado).toBe("CAJA_AJENA");
+    expect(mocks.cargueUpdate).not.toHaveBeenCalled();
+    expect(json.novedadCreada).toBe(true);
+    expect(mocks.novedadCreate).toHaveBeenCalledWith(
+      expect.objectContaining({ data: expect.objectContaining({ tipo: "CAJA_AJENA" }) })
+    );
+  });
+
+  it("formato inválido crea escaneo, no incrementa y no crea novedad", async () => {
+    mocks.getSessionUser.mockResolvedValue(actor("TRANSPORTE"));
+    mockPedido("EN_CARGUE", [{ codigoCaja: "TSDM98761-CAJA-01" }, { codigoCaja: "TSDM98761-CAJA-02" }]);
+    mockCargueActivo(2, 0);
+
+    const res = await postEscanear(escanearPostReq("p1", { codigo: "   " }), params);
+    const json = await res.json();
+
+    expect(json.resultado).toBe("FORMATO_INVALIDO");
+    expect(mocks.escaneoCreate).toHaveBeenCalled();
+    expect(mocks.cargueUpdate).not.toHaveBeenCalled();
+    expect(mocks.novedadCreate).not.toHaveBeenCalled();
+    expect(json.novedadCreada).toBe(false);
+  });
+
+  it("excede cantidad crea escaneo, no incrementa y crea novedad DIFERENCIA_CANTIDAD", async () => {
+    mocks.getSessionUser.mockResolvedValue(actor("TRANSPORTE"));
+    mockPedido("EN_CARGUE", []); // SIN_CODIGOS_PREVIOS
+    mockCargueActivo(2, 2, ["TSDM98761", "TSDM98761"]);
+
+    const res = await postEscanear(escanearPostReq("p1", { codigo: "TSDM98761" }), params);
+    const json = await res.json();
+
+    expect(json.resultado).toBe("EXCEDE_CANTIDAD");
+    expect(mocks.cargueUpdate).not.toHaveBeenCalled();
+    expect(json.novedadCreada).toBe(true);
+    expect(mocks.novedadCreate).toHaveBeenCalledWith(
+      expect.objectContaining({ data: expect.objectContaining({ tipo: "DIFERENCIA_CANTIDAD" }) })
+    );
+  });
+
+  it("rechaza si el pedido no existe (404)", async () => {
+    mocks.getSessionUser.mockResolvedValue(actor("TRANSPORTE"));
+    mocks.pedidoFindUnique.mockResolvedValue(null);
+
+    const res = await postEscanear(escanearPostReq("p1", { codigo: "X" }), params);
+    expect(res.status).toBe(404);
+  });
+
+  it("rechaza si el pedido no está EN_CARGUE (409)", async () => {
+    mocks.getSessionUser.mockResolvedValue(actor("TRANSPORTE"));
+    mockPedido("ENVIADO_A_TRANSPORTE");
+
+    const res = await postEscanear(escanearPostReq("p1", { codigo: "X" }), params);
+    expect(res.status).toBe(409);
+    expect(mocks.cargueFindFirst).not.toHaveBeenCalled();
+  });
+
+  it("rechaza si no hay cargue activo (409)", async () => {
+    mocks.getSessionUser.mockResolvedValue(actor("TRANSPORTE"));
+    mockPedido("EN_CARGUE");
+    mocks.cargueFindFirst.mockResolvedValue(null);
+
+    const res = await postEscanear(escanearPostReq("p1", { codigo: "X" }), params);
+    expect(res.status).toBe(409);
+    expect(mocks.transaction).not.toHaveBeenCalled();
+  });
+
+  it("rechaza si falta codigo en el body (400)", async () => {
+    mocks.getSessionUser.mockResolvedValue(actor("TRANSPORTE"));
+    const res = await postEscanear(escanearPostReq("p1", {}), params);
+    expect(res.status).toBe(400);
+    expect(mocks.pedidoFindUnique).not.toHaveBeenCalled();
+  });
+
+  it("rechaza OPERACIONES_GOURMET (403)", async () => {
+    mocks.getSessionUser.mockResolvedValue(actor("OPERACIONES_GOURMET"));
+    const res = await postEscanear(escanearPostReq("p1", { codigo: "X" }), params);
+    expect(res.status).toBe(403);
+    expect(mocks.pedidoFindUnique).not.toHaveBeenCalled();
+  });
+
+  it.each(["TRANSPORTE", "SUPERVISOR_TRANSPORTE", "ADMIN", "GERENTE"])("permite %s", async (role) => {
+    mocks.getSessionUser.mockResolvedValue(actor(role));
+    mockPedido("EN_CARGUE", [{ codigoCaja: "TSDM98761-CAJA-01" }, { codigoCaja: "TSDM98761-CAJA-02" }]);
+    mockCargueActivo(2, 0);
+
+    const res = await postEscanear(escanearPostReq("p1", { codigo: "TSDM98761-CAJA-01" }), params);
+    expect(res.status).toBe(200);
+  });
+
+  it("modo QR_UNICO_CAJA usa los códigos de caja esperados (caja ajena si no está en la lista)", async () => {
+    mocks.getSessionUser.mockResolvedValue(actor("TRANSPORTE"));
+    mockPedido("EN_CARGUE", [{ codigoCaja: "TSDM98761-CAJA-01" }, { codigoCaja: "TSDM98761-CAJA-02" }]);
+    mockCargueActivo(2, 0);
+
+    const res = await postEscanear(escanearPostReq("p1", { codigo: "TSDM98761-CAJA-99" }), params);
+    const json = await res.json();
+    expect(json.resultado).toBe("CAJA_AJENA");
+  });
+
+  it("modo QR_SOLO_ORDEN no devuelve DUPLICADO real, usa EXCEDE_CANTIDAD", async () => {
+    mocks.getSessionUser.mockResolvedValue(actor("TRANSPORTE"));
+    mockPedido("EN_CARGUE", [{ codigoCaja: "TSDM98761" }, { codigoCaja: "TSDM98761" }]);
+    mockCargueActivo(2, 2, ["TSDM98761", "TSDM98761"]);
+
+    const res = await postEscanear(escanearPostReq("p1", { codigo: "TSDM98761" }), params);
+    const json = await res.json();
+    expect(json.resultado).toBe("EXCEDE_CANTIDAD");
+    expect(json.resultado).not.toBe("DUPLICADO");
+  });
+
+  it("modo SIN_CODIGOS_PREVIOS valida por orden", async () => {
+    mocks.getSessionUser.mockResolvedValue(actor("TRANSPORTE"));
+    mockPedido("EN_CARGUE", []);
+    mockCargueActivo(2, 0);
+
+    const res = await postEscanear(escanearPostReq("p1", { codigo: "TSDM98761-X" }), params);
+    const json = await res.json();
+    expect(json.resultado).toBe("VALIDO");
+  });
+
+  it("no modifica GourmetPedido.estado", async () => {
+    mocks.getSessionUser.mockResolvedValue(actor("TRANSPORTE"));
+    mockPedido("EN_CARGUE", [{ codigoCaja: "TSDM98761-CAJA-01" }, { codigoCaja: "TSDM98761-CAJA-02" }]);
+    mockCargueActivo(2, 0);
+
+    await postEscanear(escanearPostReq("p1", { codigo: "TSDM98761-CAJA-01" }), params);
+
+    expect(mocks.pedidoUpdate).not.toHaveBeenCalled();
+  });
+
+  it("no finaliza el cargue automáticamente aunque se alcance la cantidad esperada", async () => {
+    mocks.getSessionUser.mockResolvedValue(actor("TRANSPORTE"));
+    mockPedido("EN_CARGUE", [{ codigoCaja: "TSDM98761-CAJA-01" }, { codigoCaja: "TSDM98761-CAJA-02" }]);
+    mockCargueActivo(2, 1, ["TSDM98761-CAJA-01"]);
+    mocks.cargueUpdate.mockResolvedValue({ cantidadEscaneada: 2 });
+
+    const res = await postEscanear(escanearPostReq("p1", { codigo: "TSDM98761-CAJA-02" }), params);
+    const json = await res.json();
+
+    expect(json.progreso).toEqual({ escaneados: 2, esperados: 2 });
+    expect(mocks.pedidoUpdate).not.toHaveBeenCalled();
+  });
+
+  it("no crea notificaciones por escaneo válido", async () => {
+    mocks.getSessionUser.mockResolvedValue(actor("TRANSPORTE"));
+    mockPedido("EN_CARGUE", [{ codigoCaja: "TSDM98761-CAJA-01" }, { codigoCaja: "TSDM98761-CAJA-02" }]);
+    mockCargueActivo(2, 0);
+
+    await postEscanear(escanearPostReq("p1", { codigo: "TSDM98761-CAJA-01" }), params);
+
+    expect(mocks.notificacionCreateMany).not.toHaveBeenCalled();
+    expect(mocks.userFindMany).not.toHaveBeenCalled();
+  });
+
+  it("la respuesta incluye progreso actualizado", async () => {
+    mocks.getSessionUser.mockResolvedValue(actor("TRANSPORTE"));
+    mockPedido("EN_CARGUE", [{ codigoCaja: "TSDM98761-CAJA-01" }, { codigoCaja: "TSDM98761-CAJA-02" }]);
+    mockCargueActivo(2, 0);
+    mocks.cargueUpdate.mockResolvedValue({ cantidadEscaneada: 1 });
+
+    const res = await postEscanear(escanearPostReq("p1", { codigo: "TSDM98761-CAJA-01" }), params);
+    const json = await res.json();
+
+    expect(json.progreso.escaneados).toBe(1);
+    expect(json.progreso.esperados).toBe(2);
   });
 });
