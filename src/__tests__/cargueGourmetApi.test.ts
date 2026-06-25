@@ -23,6 +23,7 @@ const mocks = vi.hoisted(() => ({
   cargueUpdate: vi.fn(),
   escaneoCreate: vi.fn(),
   novedadCreate: vi.fn(),
+  novedadFindFirst: vi.fn(),
 }));
 
 // No usamos vi.importActual aquí: @/lib/authz importa next-auth, que en este
@@ -69,7 +70,7 @@ vi.mock("@/lib/prisma", () => ({
     gourmetPedidoCaja: { deleteMany: mocks.cajaDeleteMany, createMany: mocks.cajaCreateMany },
     gourmetCargue: { findFirst: mocks.cargueFindFirst, create: mocks.cargueCreate, update: mocks.cargueUpdate },
     gourmetCargueEscaneo: { create: mocks.escaneoCreate },
-    gourmetCargueNovedad: { create: mocks.novedadCreate },
+    gourmetCargueNovedad: { create: mocks.novedadCreate, findFirst: mocks.novedadFindFirst },
     user: { findMany: mocks.userFindMany },
     notificacion: { createMany: mocks.notificacionCreateMany },
     activityLog: { create: mocks.activityLogCreate },
@@ -84,6 +85,7 @@ import { POST as postUbicacion } from "@/app/api/cargue-gourmet/[id]/ubicacion/r
 import { POST as postEnviarTransporte } from "@/app/api/cargue-gourmet/[id]/enviar-transporte/route";
 import { POST as postIniciarCargue } from "@/app/api/cargue-gourmet/[id]/iniciar-cargue/route";
 import { POST as postEscanear } from "@/app/api/cargue-gourmet/[id]/escanear/route";
+import { POST as postFinalizar } from "@/app/api/cargue-gourmet/[id]/finalizar/route";
 
 function actor(role: string) {
   return { id: "u_1", email: "u@test.com", name: "Usuario Test", role };
@@ -107,6 +109,7 @@ beforeEach(() => {
     Promise.resolve({ id: "nov1", createdAt: new Date(), ...args.data })
   );
   mocks.cargueUpdate.mockImplementation(() => Promise.resolve({ cantidadEscaneada: 1 }));
+  mocks.novedadFindFirst.mockResolvedValue(null);
 });
 
 describe("GET /api/cargue-gourmet/maestro-tiendas", () => {
@@ -1485,5 +1488,282 @@ describe("POST /api/cargue-gourmet/[id]/escanear", () => {
 
     expect(json.progreso.escaneados).toBe(1);
     expect(json.progreso.esperados).toBe(2);
+  });
+});
+
+const FINALIZAR_UPDATED_AT = new Date("2026-06-24T12:00:00.000Z");
+
+function finalizarPostReq(id: string, body: unknown) {
+  return new NextRequest(`http://localhost/api/cargue-gourmet/${id}/finalizar`, {
+    method: "POST",
+    body: JSON.stringify(body),
+    headers: { "Content-Type": "application/json" },
+  });
+}
+
+describe("POST /api/cargue-gourmet/[id]/finalizar", () => {
+  const params = { params: Promise.resolve({ id: "p1" }) };
+  const validBody = { updatedAt: FINALIZAR_UPDATED_AT.toISOString() };
+
+  function mockPedido(estado: string, overrides: Partial<Record<string, unknown>> = {}) {
+    mocks.pedidoFindUnique.mockResolvedValue({
+      id: "p1",
+      orden: "TSDM98761",
+      estado,
+      updatedAt: FINALIZAR_UPDATED_AT,
+      ciudadDestino: "Bogotá",
+      creadoPorId: "u_gourmet",
+      ...overrides,
+    });
+  }
+
+  function mockCargueActivo(cantidadEsperada: number, cantidadEscaneada: number) {
+    mocks.cargueFindFirst.mockResolvedValue({
+      id: "cg1",
+      pedidoId: "p1",
+      estado: "EN_CARGUE",
+      cantidadEsperada,
+      cantidadEscaneada,
+    });
+  }
+
+  function mockFinalizarResultados() {
+    mocks.cargueUpdate.mockResolvedValue({
+      id: "cg1", pedidoId: "p1", estado: "CARGUE_COMPLETO", tipoCierre: "NORMAL",
+      cantidadEsperada: 2, cantidadEscaneada: 2, finalizadoAt: new Date(), finalizadoPorId: "u_1",
+    });
+    mocks.pedidoUpdate.mockResolvedValue({
+      id: "p1", orden: "TSDM98761", tipoOrden: "TSDM", codigoTienda: "T001",
+      nombreTienda: "Tienda Centro", ciudadDestino: "Bogotá", estado: "CARGUE_COMPLETO",
+      updatedAt: new Date(), cargueCompletadoAt: new Date(), cargueCompletadoPorId: "u_1",
+    });
+  }
+
+  it("finaliza correctamente desde EN_CARGUE", async () => {
+    mocks.getSessionUser.mockResolvedValue(actor("TRANSPORTE"));
+    mockPedido("EN_CARGUE");
+    mockCargueActivo(2, 2);
+    mockFinalizarResultados();
+
+    const res = await postFinalizar(finalizarPostReq("p1", validBody), params);
+    const json = await res.json();
+
+    expect(res.status).toBe(200);
+    expect(json.success).toBe(true);
+    expect(json.data.pedido.estado).toBe("CARGUE_COMPLETO");
+    expect(json.data.cargue.estado).toBe("CARGUE_COMPLETO");
+  });
+
+  it("rechaza si el pedido no existe (404)", async () => {
+    mocks.getSessionUser.mockResolvedValue(actor("TRANSPORTE"));
+    mocks.pedidoFindUnique.mockResolvedValue(null);
+
+    const res = await postFinalizar(finalizarPostReq("p1", validBody), params);
+    expect(res.status).toBe(404);
+  });
+
+  it("rechaza si el pedido está BORRADOR (409)", async () => {
+    mocks.getSessionUser.mockResolvedValue(actor("TRANSPORTE"));
+    mockPedido("BORRADOR");
+
+    const res = await postFinalizar(finalizarPostReq("p1", validBody), params);
+    expect(res.status).toBe(409);
+    expect(mocks.transaction).not.toHaveBeenCalled();
+  });
+
+  it("rechaza si el pedido está ENVIADO_A_TRANSPORTE (409)", async () => {
+    mocks.getSessionUser.mockResolvedValue(actor("ADMIN"));
+    mockPedido("ENVIADO_A_TRANSPORTE");
+
+    const res = await postFinalizar(finalizarPostReq("p1", validBody), params);
+    expect(res.status).toBe(409);
+  });
+
+  it("rechaza si el pedido está CARGUE_COMPLETO (409)", async () => {
+    mocks.getSessionUser.mockResolvedValue(actor("ADMIN"));
+    mockPedido("CARGUE_COMPLETO");
+
+    const res = await postFinalizar(finalizarPostReq("p1", validBody), params);
+    expect(res.status).toBe(409);
+  });
+
+  it("rechaza si no hay cargue activo (409)", async () => {
+    mocks.getSessionUser.mockResolvedValue(actor("TRANSPORTE"));
+    mockPedido("EN_CARGUE");
+    mocks.cargueFindFirst.mockResolvedValue(null);
+
+    const res = await postFinalizar(finalizarPostReq("p1", validBody), params);
+    expect(res.status).toBe(409);
+    expect(mocks.transaction).not.toHaveBeenCalled();
+  });
+
+  it("rechaza si falta updatedAt (400)", async () => {
+    mocks.getSessionUser.mockResolvedValue(actor("TRANSPORTE"));
+    const res = await postFinalizar(finalizarPostReq("p1", {}), params);
+    expect(res.status).toBe(400);
+    expect(mocks.pedidoFindUnique).not.toHaveBeenCalled();
+  });
+
+  it("rechaza si updatedAt no coincide (409)", async () => {
+    mocks.getSessionUser.mockResolvedValue(actor("TRANSPORTE"));
+    mockPedido("EN_CARGUE");
+    mockCargueActivo(2, 2);
+
+    const res = await postFinalizar(
+      finalizarPostReq("p1", { updatedAt: new Date("2020-01-01T00:00:00.000Z").toISOString() }),
+      params
+    );
+    expect(res.status).toBe(409);
+    expect(mocks.transaction).not.toHaveBeenCalled();
+  });
+
+  it("rechaza si cantidadEscaneada < cantidadEsperada (409)", async () => {
+    mocks.getSessionUser.mockResolvedValue(actor("TRANSPORTE"));
+    mockPedido("EN_CARGUE");
+    mockCargueActivo(5, 3);
+
+    const res = await postFinalizar(finalizarPostReq("p1", validBody), params);
+    expect(res.status).toBe(409);
+    expect(mocks.transaction).not.toHaveBeenCalled();
+  });
+
+  it("rechaza si cantidadEscaneada > cantidadEsperada (409)", async () => {
+    mocks.getSessionUser.mockResolvedValue(actor("TRANSPORTE"));
+    mockPedido("EN_CARGUE");
+    mockCargueActivo(2, 3);
+
+    const res = await postFinalizar(finalizarPostReq("p1", validBody), params);
+    expect(res.status).toBe(409);
+    expect(mocks.transaction).not.toHaveBeenCalled();
+  });
+
+  it("rechaza si hay novedades abiertas (409)", async () => {
+    mocks.getSessionUser.mockResolvedValue(actor("TRANSPORTE"));
+    mockPedido("EN_CARGUE");
+    mockCargueActivo(2, 2);
+    mocks.novedadFindFirst.mockResolvedValue({ id: "nov1" });
+
+    const res = await postFinalizar(finalizarPostReq("p1", validBody), params);
+    expect(res.status).toBe(409);
+    expect(mocks.transaction).not.toHaveBeenCalled();
+  });
+
+  it("rechaza OPERACIONES_GOURMET (403)", async () => {
+    mocks.getSessionUser.mockResolvedValue(actor("OPERACIONES_GOURMET"));
+    const res = await postFinalizar(finalizarPostReq("p1", validBody), params);
+    expect(res.status).toBe(403);
+    expect(mocks.pedidoFindUnique).not.toHaveBeenCalled();
+  });
+
+  it.each(["TRANSPORTE", "SUPERVISOR_TRANSPORTE", "ADMIN", "GERENTE"])("permite %s", async (role) => {
+    mocks.getSessionUser.mockResolvedValue(actor(role));
+    mockPedido("EN_CARGUE");
+    mockCargueActivo(2, 2);
+    mockFinalizarResultados();
+
+    const res = await postFinalizar(finalizarPostReq("p1", validBody), params);
+    expect(res.status).toBe(200);
+  });
+
+  it("actualiza GourmetCargue a CARGUE_COMPLETO con tipoCierre NORMAL", async () => {
+    mocks.getSessionUser.mockResolvedValue(actor("TRANSPORTE"));
+    mockPedido("EN_CARGUE");
+    mockCargueActivo(2, 2);
+    mockFinalizarResultados();
+
+    await postFinalizar(finalizarPostReq("p1", validBody), params);
+
+    expect(mocks.cargueUpdate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: "cg1" },
+        data: expect.objectContaining({
+          estado: "CARGUE_COMPLETO",
+          tipoCierre: "NORMAL",
+          finalizadoPorId: "u_1",
+        }),
+      })
+    );
+  });
+
+  it("actualiza GourmetPedido a CARGUE_COMPLETO", async () => {
+    mocks.getSessionUser.mockResolvedValue(actor("TRANSPORTE"));
+    mockPedido("EN_CARGUE");
+    mockCargueActivo(2, 2);
+    mockFinalizarResultados();
+
+    await postFinalizar(finalizarPostReq("p1", validBody), params);
+
+    expect(mocks.pedidoUpdate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: "p1" },
+        data: expect.objectContaining({ estado: "CARGUE_COMPLETO", cargueCompletadoPorId: "u_1" }),
+      })
+    );
+  });
+
+  it("no modifica cajas ni estibas", async () => {
+    mocks.getSessionUser.mockResolvedValue(actor("TRANSPORTE"));
+    mockPedido("EN_CARGUE");
+    mockCargueActivo(2, 2);
+    mockFinalizarResultados();
+
+    await postFinalizar(finalizarPostReq("p1", validBody), params);
+
+    expect(mocks.estibaCreateMany).not.toHaveBeenCalled();
+    expect(mocks.estibaDeleteMany).not.toHaveBeenCalled();
+    expect(mocks.cajaCreateMany).not.toHaveBeenCalled();
+    expect(mocks.cajaDeleteMany).not.toHaveBeenCalled();
+  });
+
+  it("no crea escaneos", async () => {
+    mocks.getSessionUser.mockResolvedValue(actor("TRANSPORTE"));
+    mockPedido("EN_CARGUE");
+    mockCargueActivo(2, 2);
+    mockFinalizarResultados();
+
+    await postFinalizar(finalizarPostReq("p1", validBody), params);
+
+    expect(mocks.escaneoCreate).not.toHaveBeenCalled();
+  });
+
+  it("no crea cierre manual (tipoCierre es NORMAL, no MANUAL)", async () => {
+    mocks.getSessionUser.mockResolvedValue(actor("TRANSPORTE"));
+    mockPedido("EN_CARGUE");
+    mockCargueActivo(2, 2);
+    mockFinalizarResultados();
+
+    await postFinalizar(finalizarPostReq("p1", validBody), params);
+
+    const callArg = mocks.cargueUpdate.mock.calls[0][0];
+    expect(callArg.data.tipoCierre).toBe("NORMAL");
+    expect(callArg.data).not.toHaveProperty("cantidadContadaManual");
+    expect(callArg.data).not.toHaveProperty("motivoCierreManual");
+  });
+
+  it("intenta notificar al creador del pedido y a ADMIN/GERENTE", async () => {
+    mocks.getSessionUser.mockResolvedValue(actor("SUPERVISOR_TRANSPORTE"));
+    mockPedido("EN_CARGUE");
+    mockCargueActivo(2, 2);
+    mockFinalizarResultados();
+    mocks.userFindMany.mockResolvedValue([{ id: "u_admin1" }]);
+
+    const res = await postFinalizar(finalizarPostReq("p1", validBody), params);
+
+    expect(res.status).toBe(200);
+    const notifData = mocks.notificacionCreateMany.mock.calls[0][0].data as Array<{ userId: string; titulo: string }>;
+    expect(notifData.some((n) => n.userId === "u_gourmet")).toBe(true);
+    expect(notifData.some((n) => n.userId === "u_admin1")).toBe(true);
+    expect(notifData[0].titulo).toBe("Cargue Gourmet finalizado");
+  });
+
+  it("responde éxito igual si la notificación falla", async () => {
+    mocks.getSessionUser.mockResolvedValue(actor("TRANSPORTE"));
+    mockPedido("EN_CARGUE");
+    mockCargueActivo(2, 2);
+    mockFinalizarResultados();
+    mocks.notificacionCreateMany.mockRejectedValue(new Error("db down"));
+
+    const res = await postFinalizar(finalizarPostReq("p1", validBody), params);
+    expect(res.status).toBe(200);
   });
 });
