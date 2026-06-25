@@ -1,0 +1,4 @@
+codigo,tienda,ciudad,activo
+001,Tienda Centro Ejemplo,Bogotá,true
+002,Tienda Norte Ejemplo,Medellín,true
+003,Tienda Inactiva Ejemplo,Cali,false
