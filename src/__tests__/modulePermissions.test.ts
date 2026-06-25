@@ -105,6 +105,19 @@ describe("canSeeModule — Sprint 8", () => {
     "%s ve solicitudes-transporte", (role) => expect(canSeeModule(role, "solicitudes-transporte")).toBe(true)
   );
 
+  // ── Módulo cargue-gourmet ─────────────────────────────
+  describe("cargue-gourmet", () => {
+    it.each(["ADMIN", "GERENTE", "OPERACIONES_GOURMET", "TRANSPORTE", "SUPERVISOR_TRANSPORTE"] as const)(
+      "%s ve cargue-gourmet", (role) => expect(canSeeModule(role, "cargue-gourmet")).toBe(true)
+    );
+    it.each([
+      "OPERADOR", "INVENTARIO", "SUPERVISOR_INVENTARIO", "TIENDA", "SUPERVISOR_TIENDA",
+      "TRANSPORTISTA", "OPERACIONES_MUEBLES", "ETIQUETADO", "SUPERVISOR_ALMACENAMIENTO",
+    ] as const)(
+      "%s NO ve cargue-gourmet", (role) => expect(canSeeModule(role, "cargue-gourmet")).toBe(false)
+    );
+  });
+
   // ── Guardias de edge cases ────────────────────────────
   it("role undefined → false", () => expect(canSeeModule(undefined, "inventario")).toBe(false));
   it("role null → false",      () => expect(canSeeModule(null, "inventario")).toBe(false));

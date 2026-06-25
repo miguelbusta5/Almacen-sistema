@@ -16,7 +16,8 @@ export type ModuleKey =
   | "usuarios"
   | "auditoria"
   | "centro-control"
-  | "integracion";
+  | "integracion"
+  | "cargue-gourmet";
 
 export const MODULE_ACCESS: Record<ModuleKey, AppRole[]> = {
   inventario: ["INVENTARIO", "SUPERVISOR_INVENTARIO", "GERENTE", "ADMIN", "OPERADOR"],
@@ -65,6 +66,13 @@ export const MODULE_ACCESS: Record<ModuleKey, AppRole[]> = {
     "GERENTE",
     "SUPERVISOR_TRANSPORTE",
     "TRANSPORTE",
+  ],
+  "cargue-gourmet": [
+    "ADMIN",
+    "GERENTE",
+    "OPERACIONES_GOURMET",
+    "TRANSPORTE",
+    "SUPERVISOR_TRANSPORTE",
   ],
 };
 
