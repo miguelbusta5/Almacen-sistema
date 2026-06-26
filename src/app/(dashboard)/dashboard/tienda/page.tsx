@@ -12,11 +12,11 @@ import {
   ESTADO_DESPACHO_COLOR, COLOR_TIENDA, estadoDespachoVariant,
   fmtFechaTienda, todayISO, ESTADOS_ACTIVOS,
 } from "@/lib/tienda";
-import { Badge, ModuleHero, SkeletonLine, NetSuiteChip } from "@/components/ui";
+import { Badge, ModuleHero, ModuleDetailView, SkeletonLine, NetSuiteChip } from "@/components/ui";
 import { useToast } from "@/contexts/ToastContext";
 import { Modal } from "@/components/ui/Modal";
 import { AutoRefreshIndicator } from "@/components/ui/AutoRefreshIndicator";
-import { SlidePanel, DetailSection, DetailGrid, MiniHistory } from "@/components/ui/SlidePanel";
+import { IntelBanner, DetailSection, DetailGrid, MiniHistory } from "@/components/ui/SlidePanel";
 import { insightsTienda, insightsPorDespacho } from "@/lib/inteligencia";
 import { useAutoRefresh } from "@/hooks/useAutoRefresh";
 import { getModuleColor, getModuleCssVars } from "@/lib/moduleTheme";
@@ -221,6 +221,8 @@ export default function TiendaPage() {
         }
       />
 
+      {!panelItem && (
+        <>
       <FacturaKpiGrid loading={loading} kpis={kpis} onEstado={setFEstado} />
 
       {!loading && (
@@ -269,73 +271,74 @@ export default function TiendaPage() {
         loading={loading}
         items={filtered}
         allCount={items.length}
-        selectedId={panelItem?.id}
+        selectedId={undefined}
         onOpen={abrirPanel}
         onClearFilters={() => { setFq(""); setFEstado(""); setFCC(""); }}
         debug={debugTable}
       />
+        </>
+      )}
 
-      <SlidePanel
-        open={!!panelItem}
-        onClose={() => setPanelItem(null)}
-        title={panelItem ? (panelItem.numeroDocumento || "Factura sin número") : ""}
-        subtitle={panelItem ? ([panelItem.centroCostos, panelItem.consecutivo && `#${panelItem.consecutivo}`].filter(Boolean).join(" · ") || undefined) : undefined}
-        insights={panelInsights}
-        width={460}
-        moduleColor={panelItem ? ESTADO_DESPACHO_COLOR[panelItem.estado] : COLOR_TIENDA}
-        badge={panelItem && <Badge label={ESTADO_DESPACHO_LABEL[panelItem.estado]} variant={estadoDespachoVariant(panelItem.estado)} color={ESTADO_DESPACHO_COLOR[panelItem.estado]} />}
-        primaryAction={
-          panelItem && canChangeOperationalState && panelItem.estado === "CREADO_TIENDA" ? (
-            <button className="ds-btn ds-btn-primary" style={{ width: "100%", background: "var(--info)" }} onClick={() => cambiarEstado(panelItem, "RECOGIDO_TIENDA")}>
-              <Truck size={13} />Marcar como Recogido
-            </button>
-          ) : panelItem && canChangeOperationalState && panelItem.estado === "RECOGIDO_TIENDA" ? (
-            <button className="ds-btn ds-btn-primary" style={{ width: "100%", background: COLOR_CEDI }} onClick={() => cambiarEstado(panelItem, "ENTREGADO_CEDI")}>
-              <PackageCheck size={13} />Entregado en CEDI
-            </button>
-          ) : panelItem && canChangeOperationalState && panelItem.estado === "ENTREGADO_CEDI" ? (
-            <button className="ds-btn ds-btn-primary" style={{ width: "100%", background: "var(--success)" }} onClick={() => cambiarEstado(panelItem, "ENVIADO_CLIENTE")}>
-              <CheckCircle2 size={13} />Marcar enviado al cliente
-            </button>
-          ) : panelItem && canCreate && panelItem.estado === "RECHAZADO" ? (
-            <button className="ds-btn ds-btn-primary" style={{ width: "100%", background: COLOR_TIENDA }} onClick={() => reenviarDespacho(panelItem.id)}>
-              <CheckCircle2 size={13} />Re-enviar solicitud
-            </button>
-          ) : undefined
-        }
-        secondaryActions={
-          <div style={{ display: "flex", gap: 8 }}>
-            {panelItem && canChangeOperationalState && ESTADOS_ACTIVOS.includes(panelItem.estado) && (
-              <button className="ds-btn ds-btn-sm ds-btn-secondary" style={{ color: "var(--error)" }}
-                onClick={() => {
-                  const novedad = prompt("Describe la novedad:");
-                  if (novedad !== null) cambiarEstado(panelItem, "CON_NOVEDAD", { novedad });
-                }}>
-                <AlertTriangle size={13} />Novedad
-              </button>
-            )}
-            {panelItem && canChangeOperationalState && panelItem.estado === "CREADO_TIENDA" && (
-              <button className="ds-btn ds-btn-sm ds-btn-secondary" style={{ color: "var(--error)" }}
-                onClick={() => setRechazarItem(panelItem)}>
-                Rechazar
-              </button>
-            )}
-            {panelItem && canChangeOperationalState && panelItem.estado === "ENTREGADO_CEDI" && !panelItem.guardadoPendiente && (
-              <button className="ds-btn ds-btn-sm ds-btn-secondary" style={{ color: COLOR_TRANSPORTE }}
-                onClick={() => setAsignandoGuardado(panelItem)}>
-                <UserPlus size={13} />Enviar a guardado
-              </button>
-            )}
-            {canEditBasic && panelItem && (panelItem.estado === "RECHAZADO" || (panelItem.estado === "CREADO_TIENDA" && role !== "TIENDA") || canEdit) && <button className="ds-btn ds-btn-sm ds-btn-secondary" onClick={() => setEditing(panelItem)}><Pencil size={13} /></button>}
-            {panelItem && canDelete && (
-              <button className="ds-btn ds-btn-sm ds-btn-secondary" style={{ color: "var(--error)" }} onClick={() => setDeleting(panelItem)} title="Eliminar">
-                <Trash2 size={13} />
-              </button>
-            )}
-          </div>
-        }
-      >
-        {panelItem && (
+      {panelItem && (
+        <ModuleDetailView
+          testId="factura-detalle-view"
+          onBack={() => setPanelItem(null)}
+          title={panelItem.numeroDocumento || "Factura sin número"}
+          subtitle={[panelItem.centroCostos, panelItem.consecutivo && `#${panelItem.consecutivo}`].filter(Boolean).join(" · ") || undefined}
+          moduleColor={ESTADO_DESPACHO_COLOR[panelItem.estado]}
+          badge={<Badge label={ESTADO_DESPACHO_LABEL[panelItem.estado]} variant={estadoDespachoVariant(panelItem.estado)} color={ESTADO_DESPACHO_COLOR[panelItem.estado]} />}
+          actions={
+            <>
+              {canChangeOperationalState && ESTADOS_ACTIVOS.includes(panelItem.estado) && (
+                <button className="ds-btn ds-btn-sm ds-btn-secondary" style={{ color: "var(--error)" }}
+                  onClick={() => {
+                    const novedad = prompt("Describe la novedad:");
+                    if (novedad !== null) cambiarEstado(panelItem, "CON_NOVEDAD", { novedad });
+                  }}>
+                  <AlertTriangle size={13} />Novedad
+                </button>
+              )}
+              {canChangeOperationalState && panelItem.estado === "CREADO_TIENDA" && (
+                <button className="ds-btn ds-btn-sm ds-btn-secondary" style={{ color: "var(--error)" }}
+                  onClick={() => setRechazarItem(panelItem)}>
+                  Rechazar
+                </button>
+              )}
+              {canChangeOperationalState && panelItem.estado === "ENTREGADO_CEDI" && !panelItem.guardadoPendiente && (
+                <button className="ds-btn ds-btn-sm ds-btn-secondary" style={{ color: COLOR_TRANSPORTE }}
+                  onClick={() => setAsignandoGuardado(panelItem)}>
+                  <UserPlus size={13} />Enviar a guardado
+                </button>
+              )}
+              {canEditBasic && (panelItem.estado === "RECHAZADO" || (panelItem.estado === "CREADO_TIENDA" && role !== "TIENDA") || canEdit) && <button className="ds-btn ds-btn-sm ds-btn-secondary" onClick={() => setEditing(panelItem)}><Pencil size={13} /></button>}
+              {canDelete && (
+                <button className="ds-btn ds-btn-sm ds-btn-secondary" style={{ color: "var(--error)" }} onClick={() => setDeleting(panelItem)} title="Eliminar">
+                  <Trash2 size={13} />
+                </button>
+              )}
+              {canChangeOperationalState && panelItem.estado === "CREADO_TIENDA" ? (
+                <button className="ds-btn ds-btn-primary" style={{ background: "var(--info)" }} onClick={() => cambiarEstado(panelItem, "RECOGIDO_TIENDA")}>
+                  <Truck size={13} />Marcar como Recogido
+                </button>
+              ) : canChangeOperationalState && panelItem.estado === "RECOGIDO_TIENDA" ? (
+                <button className="ds-btn ds-btn-primary" style={{ background: COLOR_CEDI }} onClick={() => cambiarEstado(panelItem, "ENTREGADO_CEDI")}>
+                  <PackageCheck size={13} />Entregado en CEDI
+                </button>
+              ) : canChangeOperationalState && panelItem.estado === "ENTREGADO_CEDI" ? (
+                <button className="ds-btn ds-btn-primary" style={{ background: "var(--success)" }} onClick={() => cambiarEstado(panelItem, "ENVIADO_CLIENTE")}>
+                  <CheckCircle2 size={13} />Marcar enviado al cliente
+                </button>
+              ) : canCreate && panelItem.estado === "RECHAZADO" ? (
+                <button className="ds-btn ds-btn-primary" style={{ background: COLOR_TIENDA }} onClick={() => reenviarDespacho(panelItem.id)}>
+                  <CheckCircle2 size={13} />Re-enviar solicitud
+                </button>
+              ) : null}
+            </>
+          }
+        >
+          {panelInsights.length > 0 && (
+            <IntelBanner insights={panelInsights} title="Inteligencia operacional" />
+          )}
           <>
             <DetailSection title="Flujo logístico" color={panelItem.estado === "RECHAZADO" ? ESTADO_DESPACHO_COLOR.RECHAZADO : COLOR_TIENDA}>
               <DetailFlow estado={panelItem.estado} />
@@ -447,8 +450,8 @@ export default function TiendaPage() {
               </DetailSection>
             )}
           </>
-        )}
-      </SlidePanel>
+        </ModuleDetailView>
+      )}
 
       {/* Modales */}
       {(creando || editing) && (
