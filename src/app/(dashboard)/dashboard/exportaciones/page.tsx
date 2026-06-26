@@ -300,7 +300,7 @@ export default function ExportacionesPage() {
   );
 
   const filters = (
-    <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : (canManage ? "1.4fr 150px 150px 170px auto" : "1.4fr 180px 180px auto"), gap: 10, marginBottom: 14 }}>
+    <div style={{ display: "grid", gridTemplateColumns: isMobile ? "minmax(0, 1fr)" : (canManage ? "1.4fr 150px 150px 170px auto" : "1.4fr 180px 180px auto"), gap: 10, marginBottom: 14 }}>
       <div style={{ position: "relative" }}>
         <Search size={15} style={{ position: "absolute", left: 10, top: 11, color: "var(--muted)" }} />
         <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Buscar caja, PLU o descripcion" className="ds-input" style={{ paddingLeft: 32 }} />
