@@ -16,6 +16,11 @@ import { useAutoRefresh } from "@/hooks/useAutoRefresh";
 import { useToast } from "@/contexts/ToastContext";
 import { HistorialPreoperacionalTable } from "./_components";
 
+// Mensaje de error seguro desde un `catch (e: unknown)` conservando el fallback.
+function errMsg(e: unknown, fallback: string): string {
+  return (e instanceof Error ? e.message : "") || fallback;
+}
+
 // ─── tipos ──────────────────────────────────────────────────────────────────
 
 type EstadoInspeccion = "APROBADA" | "APROBADA_CON_OBSERVACIONES" | "BLOQUEADA";
@@ -165,8 +170,8 @@ function ConductorView() {
         observacion: "",
         fotoUrl: null,
       })));
-    } catch (e: any) {
-      showToast(e.message || "No se pudo cargar preoperacional", true);
+    } catch (e) {
+      showToast(errMsg(e, "No se pudo cargar preoperacional"), true);
     } finally {
       setLoading(false);
     }
@@ -204,8 +209,8 @@ function ConductorView() {
       if (!json.success) throw new Error(json.error || "No se pudo subir la foto");
       updateItem(index, { fotoUrl: json.url });
       showToast("Foto cargada");
-    } catch (e: any) {
-      showToast(e.message || "Error cargando foto", true);
+    } catch (e) {
+      showToast(errMsg(e, "Error cargando foto"), true);
     } finally {
       updateItem(index, { uploading: false });
     }
@@ -238,8 +243,8 @@ function ConductorView() {
       setKilometraje("");
       setObservaciones("");
       await load();
-    } catch (e: any) {
-      showToast(e.message || "Error guardando", true);
+    } catch (e) {
+      showToast(errMsg(e, "Error guardando"), true);
     } finally {
       setSaving(false);
     }
@@ -442,8 +447,8 @@ function SupervisorView({ role }: { role: string }) {
       setPages(json.pages);
       setPage(p);
       if (json.conductores?.length) setConductores(json.conductores);
-    } catch (e: any) {
-      showToast(e.message || "Error", true);
+    } catch (e) {
+      showToast(errMsg(e, "Error"), true);
     } finally {
       setLoading(false);
     }
@@ -469,8 +474,8 @@ function SupervisorView({ role }: { role: string }) {
       a.download = `preoperacionales-${new Date().toISOString().slice(0, 10)}.xlsx`;
       a.click();
       URL.revokeObjectURL(url);
-    } catch (e: any) {
-      showToast(e.message || "Error al exportar", true);
+    } catch (e) {
+      showToast(errMsg(e, "Error al exportar"), true);
     } finally {
       setExporting(false);
     }
@@ -495,8 +500,8 @@ function SupervisorView({ role }: { role: string }) {
       showToast("Inspección eliminada");
       setDeletingId(null);
       load(page);
-    } catch (e: any) {
-      showToast(e.message || "Error al eliminar", true);
+    } catch (e) {
+      showToast(errMsg(e, "Error al eliminar"), true);
       setDeletingId(null);
     }
   }
