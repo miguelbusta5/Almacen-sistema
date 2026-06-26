@@ -416,7 +416,7 @@ export default function ExportacionesPage() {
   );
 
   return (
-    <div className="animate-fade-in" style={{ ...getModuleCssVars("exportaciones"), "--module-color": COLOR, display: "grid", gap: 16, maxWidth: 1180 } as React.CSSProperties}>
+    <div className="animate-fade-in" style={{ ...getModuleCssVars("exportaciones"), "--module-color": COLOR, display: "grid", gridTemplateColumns: "minmax(0, 1fr)", gap: 16, maxWidth: 1180 } as React.CSSProperties}>
       <ModuleHero
         moduleKey="exportaciones"
         kicker="Operacion de etiquetado"
