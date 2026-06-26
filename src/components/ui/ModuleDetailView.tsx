@@ -1,6 +1,6 @@
 "use client";
 
-import type { CSSProperties } from "react";
+import { useEffect, useRef, type CSSProperties } from "react";
 import { ArrowLeft } from "lucide-react";
 
 /**
@@ -36,6 +36,30 @@ export function ModuleDetailView({
   testId?: string;
   moduleColor?: string;
 }) {
+  const backRef = useRef<HTMLButtonElement>(null);
+  // Mantener la última `onBack` sin re-suscribir/re-enfocar en cada render
+  // (suele llegar como arrow inline → nueva referencia cada vez).
+  const onBackRef = useRef(onBack);
+  onBackRef.current = onBack;
+
+  // Solo al montar: foco inicial en "Volver" + cerrar con Escape (volver al
+  // listado). Guarda: ignorar si hay un modal abierto (`.g-modal-overlay`,
+  // que maneja su propio Escape) o si el usuario está escribiendo en un campo,
+  // para no disparar un doble cierre. Equivale al Escape del antiguo SlidePanel.
+  useEffect(() => {
+    backRef.current?.focus();
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== "Escape") return;
+      if (document.querySelector(".g-modal-overlay")) return;
+      const el = document.activeElement;
+      const tag = el?.tagName;
+      if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT" || (el as HTMLElement | null)?.isContentEditable) return;
+      onBackRef.current();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
+
   return (
     <div
       data-testid={testId}
@@ -43,6 +67,7 @@ export function ModuleDetailView({
       style={{ display: "flex", flexDirection: "column", gap: 16, "--panel-color": moduleColor } as CSSProperties}
     >
       <button
+        ref={backRef}
         type="button"
         onClick={onBack}
         data-testid="volver-listado-btn"
