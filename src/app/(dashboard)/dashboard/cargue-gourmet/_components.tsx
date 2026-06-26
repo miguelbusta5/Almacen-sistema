@@ -211,6 +211,7 @@ export function CargueGourmetTable({
       getRowKey={(r) => r.id}
       loading={loading}
       tableLayout="fixed"
+      minWidth={940}
       debug={debug}
       empty={{ title: "Sin pedidos", description: "No hay pedidos Gourmet que coincidan con los filtros aplicados." }}
     />
