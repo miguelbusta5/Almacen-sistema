@@ -7,13 +7,11 @@ import { ModuleHero } from "@/components/ui";
 import { useToast } from "@/contexts/ToastContext";
 import { canSeeModule } from "@/lib/modulePermissions";
 import { getModuleCssVars } from "@/lib/moduleTheme";
-import { useIsMobile } from "@/lib/useIsMobile";
 import {
   CargueGourmetTable, ESTADOS_PEDIDO_GOURMET, ESTADO_LABEL,
   type GourmetPedidoRow, type EstadoPedidoGourmet,
 } from "./_components";
 import { CrearPedidoModal } from "./_components/CrearPedidoModal";
-import { PedidoDetallePanel } from "./_components/PedidoDetallePanel";
 import { PedidoDetalleView } from "./_components/PedidoDetalleView";
 import type { PedidoDetalle } from "./_components/PedidoDetalleTypes";
 import { EditarPedidoModal } from "./_components/EditarPedidoModal";
@@ -53,10 +51,6 @@ export default function CargueGourmetPage() {
   const { data: session } = useSession();
   const role = (session?.user as { role?: string } | undefined)?.role;
   const toast = useToast();
-  // Navegación interna (listado ↔ vista detalle a ancho completo) en desktop;
-  // en mobile el detalle se conserva como SlidePanel/bottom-sheet (sin tocar
-  // SlidePanel global) — ver G3C-QA-FIX3.
-  const isMobile = useIsMobile(1024);
 
   const [pedidos, setPedidos] = useState<GourmetPedidoRow[]>([]);
   const [total, setTotal] = useState(0);
@@ -335,9 +329,9 @@ export default function CargueGourmetPage() {
   const puedeGourmet = !!role && ROLES_GOURMET.includes(role);
   const puedeTransporte = !!role && ROLES_TRANSPORTE.includes(role);
   const puedeCierreManual = !!role && ROLES_CIERRE_MANUAL.includes(role);
-  // Desktop: la vista de detalle a ancho completo reemplaza al listado.
-  // Mobile: el listado permanece y el detalle se muestra como SlidePanel.
-  const showDetailView = !isMobile && selectedId !== null;
+  // La vista de detalle a ancho completo reemplaza al listado (todos los
+  // tamaños de pantalla) — ya no hay overlay/SlidePanel.
+  const showDetailView = selectedId !== null;
 
   return (
     <div className="animate-fade-in" style={getModuleCssVars("cargue-gourmet") as React.CSSProperties}>
@@ -422,34 +416,6 @@ export default function CargueGourmetPage() {
           </div>
 
           <CargueGourmetTable rows={pedidos} loading={loading} debug={debugTable} onView={openDetalle} />
-
-          {/* En mobile el detalle es un SlidePanel/bottom-sheet sobre el listado;
-              en desktop la vista de detalle reemplaza al listado (rama showDetailView). */}
-          {isMobile && (
-            <PedidoDetallePanel
-              open={selectedId !== null}
-              onClose={closeDetalle}
-              loading={detalleLoading}
-              error={detalleError}
-              pedido={detalle}
-              onRetry={() => selectedId && loadDetalle(selectedId)}
-              puedeGourmet={puedeGourmet}
-              onEditar={() => setShowEditar(true)}
-              onAsignarUbicacion={() => setShowUbicacion(true)}
-              onEnviarTransporte={() => setShowEnviarConfirm(true)}
-              puedeTransporte={puedeTransporte}
-              onIniciarCargue={() => setShowIniciarConfirm(true)}
-              iniciandoCargue={iniciandoCargue}
-              progresoEscaneo={progresoEscaneo}
-              ultimoResultadoEscaneo={ultimoResultadoEscaneo}
-              enviandoEscaneo={enviandoEscaneo}
-              onEscanear={handleEscanear}
-              onFinalizarCargue={() => setShowFinalizarConfirm(true)}
-              finalizandoCargue={finalizandoCargue}
-              puedeCierreManual={puedeCierreManual}
-              onCierreManual={() => setShowCierreManual(true)}
-            />
-          )}
 
           {/* Paginación */}
           {!loading && pedidos.length > 0 && (

@@ -3,6 +3,7 @@ import React from "react";
 import { CheckCircle2, AlertTriangle, Info, X } from "lucide-react";
 import { getModuleIconBg } from "@/lib/moduleTheme";
 export { ModuleHero } from "./ModuleHero";
+export { ModuleDetailView } from "./ModuleDetailView";
 
 // ═══════════════════════════════════════════════════════════
 // BADGE — estado inteligente con dot semántico

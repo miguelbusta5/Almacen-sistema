@@ -10,8 +10,8 @@ import { EscaneoCajasPanel, type ProgresoEscaneo, type UltimoResultadoEscaneo } 
 import { decodeEstibaObservacion } from "./AsignarUbicacionModal";
 import type { PedidoDetalle } from "./PedidoDetalleTypes";
 
-// Respiración consistente entre secciones del detalle — usado tanto en el
-// SlidePanel (mobile) como en el dock master-detail integrado (desktop).
+// Respiración consistente entre secciones del detalle, dentro de la vista a
+// ancho completo (`PedidoDetalleView` → `ModuleDetailView`).
 function PanelBlock({ children, last = false }: { children: React.ReactNode; last?: boolean }) {
   return (
     <div

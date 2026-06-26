@@ -1,14 +1,12 @@
 import { describe, it, expect } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
-import { PedidoDetallePanel, type PedidoDetalle } from "@/app/(dashboard)/dashboard/cargue-gourmet/_components/PedidoDetallePanel";
+import { PedidoDetalleView } from "@/app/(dashboard)/dashboard/cargue-gourmet/_components/PedidoDetalleView";
+import type { PedidoDetalle } from "@/app/(dashboard)/dashboard/cargue-gourmet/_components/PedidoDetalleTypes";
 
-// Nota de alcance (Fase G3C3): igual que en G3C2, `SlidePanel`
-// (src/components/ui/SlidePanel.tsx) no usa `createPortal` directamente,
-// pero sí depende de refs/efectos de cliente para animaciones; en
-// renderToStaticMarkup SÍ pinta su markup (a diferencia de `Modal`, que usa
-// createPortal y requiere `document`). Esto permite verificar el contenido
-// estático del panel de detalle, aunque sin simular clics/cierre real
-// (requeriría jsdom, igual limitación documentada en G3C2).
+// Nota de alcance: la vista de detalle (`PedidoDetalleView`) usa el marco
+// compartido `ModuleDetailView` (no `SlidePanel`/`createPortal`), así que
+// `renderToStaticMarkup` pinta todo su markup y permite verificar el contenido
+// estático del detalle, sin simular clics/cierre real (requeriría jsdom).
 
 const mockPedido: PedidoDetalle = {
   id: "p1",
@@ -68,9 +66,8 @@ function renderPanel(overrides: Partial<{
   loading: boolean; error: string | null; pedido: PedidoDetalle | null;
 }> = {}) {
   return renderToStaticMarkup(
-    <PedidoDetallePanel
-      open={true}
-      onClose={() => {}}
+    <PedidoDetalleView
+      onBack={() => {}}
       onRetry={() => {}}
       loading={overrides.loading ?? false}
       error={overrides.error ?? null}
