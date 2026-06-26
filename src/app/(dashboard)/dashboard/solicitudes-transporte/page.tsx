@@ -427,85 +427,89 @@ export default function SolicitudesTransportePage() {
           </>
         }
       />
-      <div style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "flex-start", flexWrap: "wrap" }}>
-        <div>
-          <div style={{ display: "flex", alignItems: "center", gap: 10, color: COLOR, marginBottom: 8 }}>
-            <FileText size={22} />
-            <span style={{ fontSize: 12, textTransform: "uppercase", letterSpacing: ".08em", fontWeight: 800 }}>Control transporte</span>
+      {selected ? (
+        <SolicitudDetailPanel
+          selected={selected}
+          isGestor={isGestor}
+          canEdit={canEditSelected(selected)}
+          canDelete={canDelete}
+          gestion={gestion}
+          setGestion={setGestion}
+          rejectText={rejectText}
+          setRejectText={setRejectText}
+          transportadoras={catalogos?.transportadoras ?? []}
+          moduleColor={COLOR}
+          onClose={() => setSelected(null)}
+          onEdit={() => { setEditing(selected); setShowForm(true); }}
+          onDelete={() => borrarSolicitud(selected)}
+          onReenviar={() => reenviar(selected)}
+          onSaveGestion={saveGestion}
+          onRechazar={rechazar}
+        />
+      ) : (
+        <>
+          <div style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "flex-start", flexWrap: "wrap" }}>
+            <div>
+              <div style={{ display: "flex", alignItems: "center", gap: 10, color: COLOR, marginBottom: 8 }}>
+                <FileText size={22} />
+                <span style={{ fontSize: 12, textTransform: "uppercase", letterSpacing: ".08em", fontWeight: 800 }}>Control transporte</span>
+              </div>
+              <h1 style={{ margin: 0, color: "var(--text)", fontSize: 28 }}>Bandeja operativa</h1>
+              <p style={{ margin: "5px 0 0", color: "var(--muted)", fontSize: 14 }}>Servicio interno para entregas, recolecciones, traslados e inversa.</p>
+            </div>
           </div>
-          <h1 style={{ margin: 0, color: "var(--text)", fontSize: 28 }}>Bandeja operativa</h1>
-          <p style={{ margin: "5px 0 0", color: "var(--muted)", fontSize: 14 }}>Servicio interno para entregas, recolecciones, traslados e inversa.</p>
-        </div>
-      </div>
 
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(160px,1fr))", gap: 10 }}>
-        {[
-          ["Pendientes", kpis.pendientes, <Clock key="i" size={16} />, ESTADO_COLOR.PENDIENTE],
-          ["Programadas", kpis.programadas, <Send key="i" size={16} />, ESTADO_COLOR.PROGRAMADA],
-          ["Rechazadas", kpis.rechazadas, <AlertTriangle key="i" size={16} />, ESTADO_COLOR.RECHAZADA],
-          ["Alertas", kpis.alerta, <AlertTriangle key="i" size={16} />, SEMAFORO_COLOR.ALERTA],
-        ].map(([label, value, icon, color]) => (
-          <div key={String(label)} className="ds-stat" style={{ "--stat-color": color as string } as React.CSSProperties}>
-            <div style={{ display: "flex", justifyContent: "space-between", color: color as string }}>{icon}</div>
-            <div style={{ fontSize: 24, fontWeight: 800, color: "var(--text)", marginTop: 8 }}>{value as number}</div>
-            <div style={{ fontSize: 12, color: "var(--muted)" }}>{label as string}</div>
-          </div>
-        ))}
-      </div>
-
-      {rechazadas.length > 0 && !isGestor && (
-        <div style={{ border: "1px solid rgba(220,38,38,.25)", background: "var(--error-tint)", borderRadius: 12, padding: 14 }}>
-          <strong style={{ color: "var(--error)", fontSize: 13 }}>Solicitudes rechazadas por corregir</strong>
-          <div style={{ display: "grid", gap: 8, marginTop: 10 }}>
-            {rechazadas.map((r) => (
-              <div key={r.id} style={{ display: "flex", justifyContent: "space-between", gap: 10, alignItems: "center", background: "var(--surface)", borderRadius: 8, padding: 10 }}>
-                <div style={{ fontSize: 13, color: "var(--text)" }}>{r.numeroPedido ?? r.ciudadEntrega} - {r.motivoRechazo}</div>
-                <button onClick={() => { setEditing(r); setShowForm(true); }} style={{ border: "none", background: COLOR, color: "white", borderRadius: 8, height: 32, padding: "0 10px", cursor: "pointer" }}>Corregir</button>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(160px,1fr))", gap: 10 }}>
+            {[
+              ["Pendientes", kpis.pendientes, <Clock key="i" size={16} />, ESTADO_COLOR.PENDIENTE],
+              ["Programadas", kpis.programadas, <Send key="i" size={16} />, ESTADO_COLOR.PROGRAMADA],
+              ["Rechazadas", kpis.rechazadas, <AlertTriangle key="i" size={16} />, ESTADO_COLOR.RECHAZADA],
+              ["Alertas", kpis.alerta, <AlertTriangle key="i" size={16} />, SEMAFORO_COLOR.ALERTA],
+            ].map(([label, value, icon, color]) => (
+              <div key={String(label)} className="ds-stat" style={{ "--stat-color": color as string } as React.CSSProperties}>
+                <div style={{ display: "flex", justifyContent: "space-between", color: color as string }}>{icon}</div>
+                <div style={{ fontSize: 24, fontWeight: 800, color: "var(--text)", marginTop: 8 }}>{value as number}</div>
+                <div style={{ fontSize: 12, color: "var(--muted)" }}>{label as string}</div>
               </div>
             ))}
           </div>
-        </div>
+
+          {rechazadas.length > 0 && !isGestor && (
+            <div style={{ border: "1px solid rgba(220,38,38,.25)", background: "var(--error-tint)", borderRadius: 12, padding: 14 }}>
+              <strong style={{ color: "var(--error)", fontSize: 13 }}>Solicitudes rechazadas por corregir</strong>
+              <div style={{ display: "grid", gap: 8, marginTop: 10 }}>
+                {rechazadas.map((r) => (
+                  <div key={r.id} style={{ display: "flex", justifyContent: "space-between", gap: 10, alignItems: "center", background: "var(--surface)", borderRadius: 8, padding: 10 }}>
+                    <div style={{ fontSize: 13, color: "var(--text)" }}>{r.numeroPedido ?? r.ciudadEntrega} - {r.motivoRechazo}</div>
+                    <button onClick={() => { setEditing(r); setShowForm(true); }} style={{ border: "none", background: COLOR, color: "white", borderRadius: 8, height: 32, padding: "0 10px", cursor: "pointer" }}>Corregir</button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+            <div style={{ position: "relative", flex: "1 1 260px" }}>
+              <Search size={15} style={{ position: "absolute", left: 10, top: 10, color: "var(--muted)" }} />
+              <input value={query} onChange={(e) => setQuery(e.target.value)} onKeyDown={(e) => e.key === "Enter" && load()} placeholder="Buscar por solicitante, pedido, ciudad, guia..." style={{ ...inputStyle, paddingLeft: 32 }} />
+            </div>
+            <select value={estado} onChange={(e) => setEstado(e.target.value)} style={{ ...inputStyle, width: 190 }}>
+              <option value="">Todos los estados</option>
+              {["PENDIENTE", "REENVIADA", "PROGRAMADA", "EFECTUADA", "RECHAZADA", "CANCELADA"].map((e) => <option key={e}>{e}</option>)}
+            </select>
+            <button onClick={load} style={{ height: 36, border: "1px solid var(--border)", background: "var(--surface)", color: "var(--text)", borderRadius: 8, padding: "0 12px", display: "flex", alignItems: "center", gap: 6, cursor: "pointer" }}><RefreshCw size={14} /> Actualizar</button>
+          </div>
+
+          {error && <div style={{ color: "var(--error)", background: "var(--error-tint)", borderRadius: 8, padding: 10, fontSize: 13 }}>{error}</div>}
+
+          <SolicitudesTable
+            loading={loading}
+            rows={rows}
+            onOpen={(r) => setSelected(r)}
+            debug={debugTable}
+          />
+        </>
       )}
-
-      <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-        <div style={{ position: "relative", flex: "1 1 260px" }}>
-          <Search size={15} style={{ position: "absolute", left: 10, top: 10, color: "var(--muted)" }} />
-          <input value={query} onChange={(e) => setQuery(e.target.value)} onKeyDown={(e) => e.key === "Enter" && load()} placeholder="Buscar por solicitante, pedido, ciudad, guia..." style={{ ...inputStyle, paddingLeft: 32 }} />
-        </div>
-        <select value={estado} onChange={(e) => setEstado(e.target.value)} style={{ ...inputStyle, width: 190 }}>
-          <option value="">Todos los estados</option>
-          {["PENDIENTE", "REENVIADA", "PROGRAMADA", "EFECTUADA", "RECHAZADA", "CANCELADA"].map((e) => <option key={e}>{e}</option>)}
-        </select>
-        <button onClick={load} style={{ height: 36, border: "1px solid var(--border)", background: "var(--surface)", color: "var(--text)", borderRadius: 8, padding: "0 12px", display: "flex", alignItems: "center", gap: 6, cursor: "pointer" }}><RefreshCw size={14} /> Actualizar</button>
-      </div>
-
-      {error && <div style={{ color: "var(--error)", background: "var(--error-tint)", borderRadius: 8, padding: 10, fontSize: 13 }}>{error}</div>}
-
-      <SolicitudesTable
-        loading={loading}
-        rows={rows}
-        onOpen={(r) => setSelected(r)}
-        debug={debugTable}
-      />
-
-      <SolicitudDetailPanel
-        selected={selected}
-        isGestor={isGestor}
-        canEdit={selected ? canEditSelected(selected) : false}
-        canDelete={canDelete}
-        gestion={gestion}
-        setGestion={setGestion}
-        rejectText={rejectText}
-        setRejectText={setRejectText}
-        transportadoras={catalogos?.transportadoras ?? []}
-        moduleColor={COLOR}
-        onClose={() => setSelected(null)}
-        onEdit={() => { if (selected) { setEditing(selected); setShowForm(true); } }}
-        onDelete={() => { if (selected) borrarSolicitud(selected); }}
-        onReenviar={() => { if (selected) reenviar(selected); }}
-        onSaveGestion={saveGestion}
-        onRechazar={rechazar}
-      />
 
       {showForm && (
         <SolicitudForm

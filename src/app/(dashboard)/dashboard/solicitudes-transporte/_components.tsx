@@ -1,9 +1,9 @@
 "use client";
 
 import { FileText, Pencil, Trash2, CheckCircle2 } from "lucide-react";
-import { Badge } from "@/components/ui";
+import { Badge, ModuleDetailView } from "@/components/ui";
 import { DataTable, type Column } from "@/components/ui/DataTable";
-import { SlidePanel, DetailSection, DetailGrid } from "@/components/ui/SlidePanel";
+import { DetailSection, DetailGrid } from "@/components/ui/SlidePanel";
 
 export type Estado = "PENDIENTE" | "RECHAZADA" | "REENVIADA" | "PROGRAMADA" | "EFECTUADA" | "CANCELADA";
 
@@ -280,27 +280,24 @@ export function SolicitudDetailPanel({
   onSaveGestion: () => void;
   onRechazar: () => void;
 }) {
+  if (!selected) return null;
+  const showCorregirReenviar = !isGestor && selected.estado === "RECHAZADA";
+
   return (
-    <SlidePanel
-      open={!!selected}
-      onClose={onClose}
-      title={selected?.numeroPedido || "Solicitud transporte"}
-      subtitle={selected ? `${selected.ciudadOrigen} -> ${selected.ciudadEntrega}` : undefined}
-      moduleColor={selected ? ESTADO_COLOR[selected.estado] : undefined}
-      badge={selected && (
+    <ModuleDetailView
+      testId="solicitud-detalle-view"
+      onBack={onClose}
+      title={selected.numeroPedido || "Solicitud transporte"}
+      subtitle={`${selected.ciudadOrigen} -> ${selected.ciudadEntrega}`}
+      moduleColor={ESTADO_COLOR[selected.estado]}
+      badge={
         <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
           <EstadoBadge estado={selected.estado} />
           <SemaforoBadge semaforo={selected.semaforo} color={ESTADO_COLOR[selected.estado]} />
         </div>
-      )}
-      primaryAction={selected && !isGestor && selected.estado === "RECHAZADA" ? (
-        <div style={{ display: "flex", gap: 8, width: "100%" }}>
-          <button data-testid="panel-corregir" onClick={onEdit} style={{ flex: 1, height: 36, border: "none", borderRadius: 8, background: moduleColor, color: "white", fontWeight: 700, cursor: "pointer" }}>Corregir</button>
-          <button data-testid="panel-reenviar" onClick={onReenviar} style={{ flex: 1, height: 36, border: "1px solid var(--border)", borderRadius: 8, background: "var(--surface)", color: "var(--text)", fontWeight: 700, cursor: "pointer" }}>Reenviar</button>
-        </div>
-      ) : undefined}
-      secondaryActions={selected && (
-        <div style={{ display: "flex", gap: 8 }}>
+      }
+      actions={
+        <>
           {canEdit && (
             <button data-testid="panel-editar" className="ds-btn ds-btn-secondary ds-btn-sm" onClick={onEdit}>
               <Pencil size={13} /> Editar
@@ -311,11 +308,16 @@ export function SolicitudDetailPanel({
               <Trash2 size={13} /> Borrar
             </button>
           )}
-        </div>
-      )}
+          {showCorregirReenviar && (
+            <>
+              <button data-testid="panel-corregir" onClick={onEdit} style={{ height: 36, padding: "0 14px", border: "none", borderRadius: 8, background: moduleColor, color: "white", fontWeight: 700, cursor: "pointer" }}>Corregir</button>
+              <button data-testid="panel-reenviar" onClick={onReenviar} style={{ height: 36, padding: "0 14px", border: "1px solid var(--border)", borderRadius: 8, background: "var(--surface)", color: "var(--text)", fontWeight: 700, cursor: "pointer" }}>Reenviar</button>
+            </>
+          )}
+        </>
+      }
     >
-      {selected && (
-        <>
+      <>
           {selected.motivoRechazo && (
             <div data-testid="panel-motivo-rechazo" style={{ padding: 12, borderRadius: 10, background: "var(--error-tint)", color: "var(--error)", fontSize: 13, marginBottom: 14 }}>
               <strong>Motivo de rechazo:</strong> {selected.motivoRechazo}
@@ -416,7 +418,6 @@ export function SolicitudDetailPanel({
             </DetailSection>
           )}
         </>
-      )}
-    </SlidePanel>
+    </ModuleDetailView>
   );
 }
