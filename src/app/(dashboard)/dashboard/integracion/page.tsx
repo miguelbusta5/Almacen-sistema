@@ -4,8 +4,8 @@ import { useEffect, useMemo, useState, useCallback } from "react";
 import { createPortal } from "react-dom";
 import { useSession } from "next-auth/react";
 import { Plus, Search, X, Minus, Trash2 } from "lucide-react";
-import { Badge, ModuleHero } from "@/components/ui";
-import { SlidePanel, DetailSection, DetailGrid } from "@/components/ui/SlidePanel";
+import { Badge, ModuleDetailView, ModuleHero } from "@/components/ui";
+import { DetailSection, DetailGrid } from "@/components/ui/SlidePanel";
 import { AutoRefreshIndicator } from "@/components/ui/AutoRefreshIndicator";
 import { useAutoRefresh } from "@/hooks/useAutoRefresh";
 import { useIsMobile } from "@/lib/useIsMobile";
@@ -510,76 +510,27 @@ export default function IntegracionPage() {
         )}
       />
 
-      {/* Filtros */}
-      <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-        <div style={{ position: "relative", flex: "1 1 160px", minWidth: 140 }}>
-          <Search size={14} style={{ position: "absolute", left: 10, top: "50%", transform: "translateY(-50%)", color: "var(--muted)", pointerEvents: "none" }} />
-          <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Buscar documento…"
-            style={{ ...inp, paddingLeft: 32 }} {...focusProps} />
-        </div>
-        <select value={filterEstado} onChange={(e) => setFilterEstado(e.target.value)} style={{ ...inp, flex: "0 0 auto", width: "auto" }} {...focusProps}>
-          <option value="">Todos los estados</option>
-          <option value="PENDIENTE_AREA2">Pendiente Área 2</option>
-          <option value="LISTA_TRANSPORTE">Lista para Transporte</option>
-          <option value="COMPLETADA">Completada</option>
-        </select>
-        <select value={filterArea} onChange={(e) => setFilterArea(e.target.value)} style={{ ...inp, flex: "0 0 auto", width: "auto" }} {...focusProps}>
-          <option value="">Todas las áreas</option>
-          <option value="MUEBLES">Muebles</option>
-          <option value="GOURMET">Gourmet</option>
-        </select>
-        <select value={filterTipo} onChange={(e) => setFilterTipo(e.target.value)} style={{ ...inp, flex: "0 0 auto", width: "auto" }} {...focusProps}>
-          <option value="">OVDM + TSDM</option>
-          <option value="OVDM">OVDM</option>
-          <option value="TSDM">TSDM</option>
-        </select>
-      </div>
-
-      {/* Tabla */}
-      <div style={{ background: "var(--surface)", borderRadius: 14, border: "1px solid var(--border)", overflow: "hidden" }}>
-        <IntegracionTable
-          items={filtered}
-          loading={loading}
-          color={COLOR}
-          canCompleteArea2={canCompleteArea2}
-          canTransport={canTransport}
-          isAdmin={isAdmin}
-          deletingIntId={deletingIntId}
-          onRowClick={(item) => setSelected(item)}
-          onCompletar={(item) => setCompletarItem(item)}
-          onRecibido={(item) => setRecibidoItem(item)}
-          onDeleteStart={(id) => setDeletingIntId(id)}
-          onDeleteConfirm={(id) => deleteIntegracion(id)}
-          onDeleteCancel={() => setDeletingIntId(null)}
-          hasSearch={Boolean(search)}
-          onClearSearch={() => setSearch("")}
-          debug={debugTable}
-        />
-      </div>
-
-      {/* Slide panel detalle */}
-      <SlidePanel
-        open={!!selected}
-        onClose={() => setSelected(null)}
-        title={selected ? `${selected.tipoDocumento} ${selected.numeroDocumento}` : ""}
-        badge={selected ? <Badge variant={estadoVariant(selected.estado)} label={ESTADO_LABEL[selected.estado]} /> : undefined}
-        moduleColor={COLOR}
-        primaryAction={
-          selected && canCompleteArea2(selected) ? (
-            <button onClick={() => { setCompletarItem(selected); setSelected(null); }}
-              className="ds-btn ds-btn-primary" style={{ fontSize: 13, background: COLOR, border: "none" }}>
-              Completar Área 2
-            </button>
-          ) : selected && canTransport && selected.estado === "LISTA_TRANSPORTE" ? (
-            <button onClick={() => { setRecibidoItem(selected); setSelected(null); }}
-              className="ds-btn ds-btn-primary" style={{ fontSize: 13, background: "var(--success)", border: "none" }}>
-              Confirmar recepción
-            </button>
-          ) : undefined
-        }
-      >
-        {selected && (
-          <>
+      {selected ? (
+        <ModuleDetailView
+          testId="integracion-detalle-view"
+          onBack={() => setSelected(null)}
+          title={`${selected.tipoDocumento} ${selected.numeroDocumento}`}
+          badge={<Badge variant={estadoVariant(selected.estado)} label={ESTADO_LABEL[selected.estado]} />}
+          moduleColor={COLOR}
+          actions={
+            canCompleteArea2(selected) ? (
+              <button onClick={() => { setCompletarItem(selected); setSelected(null); }}
+                className="ds-btn ds-btn-primary" style={{ fontSize: 13, background: COLOR, border: "none" }}>
+                Completar Área 2
+              </button>
+            ) : canTransport && selected.estado === "LISTA_TRANSPORTE" ? (
+              <button onClick={() => { setRecibidoItem(selected); setSelected(null); }}
+                className="ds-btn ds-btn-primary" style={{ fontSize: 13, background: "var(--success)", border: "none" }}>
+                Confirmar recepción
+              </button>
+            ) : undefined
+          }
+        >
             <DetailSection title="Información general">
               <DetailGrid items={[
                 { label: "Fecha", value: fmtDate(selected.fecha) },
@@ -655,9 +606,57 @@ export default function IntegracionPage() {
                 </div>
               </DetailSection>
             )}
-          </>
-        )}
-      </SlidePanel>
+        </ModuleDetailView>
+      ) : (
+        <>
+          {/* Filtros */}
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+            <div style={{ position: "relative", flex: "1 1 160px", minWidth: 140 }}>
+              <Search size={14} style={{ position: "absolute", left: 10, top: "50%", transform: "translateY(-50%)", color: "var(--muted)", pointerEvents: "none" }} />
+              <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Buscar documento…"
+                style={{ ...inp, paddingLeft: 32 }} {...focusProps} />
+            </div>
+            <select value={filterEstado} onChange={(e) => setFilterEstado(e.target.value)} style={{ ...inp, flex: "0 0 auto", width: "auto" }} {...focusProps}>
+              <option value="">Todos los estados</option>
+              <option value="PENDIENTE_AREA2">Pendiente Área 2</option>
+              <option value="LISTA_TRANSPORTE">Lista para Transporte</option>
+              <option value="COMPLETADA">Completada</option>
+            </select>
+            <select value={filterArea} onChange={(e) => setFilterArea(e.target.value)} style={{ ...inp, flex: "0 0 auto", width: "auto" }} {...focusProps}>
+              <option value="">Todas las áreas</option>
+              <option value="MUEBLES">Muebles</option>
+              <option value="GOURMET">Gourmet</option>
+            </select>
+            <select value={filterTipo} onChange={(e) => setFilterTipo(e.target.value)} style={{ ...inp, flex: "0 0 auto", width: "auto" }} {...focusProps}>
+              <option value="">OVDM + TSDM</option>
+              <option value="OVDM">OVDM</option>
+              <option value="TSDM">TSDM</option>
+            </select>
+          </div>
+
+          {/* Tabla */}
+          <div style={{ background: "var(--surface)", borderRadius: 14, border: "1px solid var(--border)", overflow: "hidden" }}>
+            <IntegracionTable
+              items={filtered}
+              loading={loading}
+              color={COLOR}
+              canCompleteArea2={canCompleteArea2}
+              canTransport={canTransport}
+              isAdmin={isAdmin}
+              deletingIntId={deletingIntId}
+              onRowClick={(item) => setSelected(item)}
+              onCompletar={(item) => setCompletarItem(item)}
+              onRecibido={(item) => setRecibidoItem(item)}
+              onDeleteStart={(id) => setDeletingIntId(id)}
+              onDeleteConfirm={(id) => deleteIntegracion(id)}
+              onDeleteCancel={() => setDeletingIntId(null)}
+              hasSearch={Boolean(search)}
+              onClearSearch={() => setSearch("")}
+              debug={debugTable}
+            />
+          </div>
+        </>
+      )}
 
       {/* Modales */}
       {showNueva && (
