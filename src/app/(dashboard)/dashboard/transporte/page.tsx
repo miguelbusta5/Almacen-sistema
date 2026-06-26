@@ -15,12 +15,12 @@ import {
 } from "@/lib/transporte";
 import { calcAlmacenaje, TARIFA_ALM } from "@/lib/almacenaje";
 import { insightsGuardados, insightsPorGuardado } from "@/lib/inteligencia";
-import { Stat, SkeletonStat, NetSuiteChip, ModuleHero } from "@/components/ui";
+import { Stat, SkeletonStat, NetSuiteChip, ModuleHero, ModuleDetailView } from "@/components/ui";
 import { GuardadosTable, EstadoBadge, TipoBadge } from "./_components";
 import { getModuleCssVars } from "@/lib/moduleTheme";
 import styles from "./transporte.module.css";
 import { AutoRefreshIndicator } from "@/components/ui/AutoRefreshIndicator";
-import { SlidePanel, IntelBanner, DetailSection, DetailGrid, MiniHistory } from "@/components/ui/SlidePanel";
+import { IntelBanner, DetailSection, DetailGrid, MiniHistory } from "@/components/ui/SlidePanel";
 import { useIsMobile } from "@/lib/useIsMobile";
 import { useAutoRefresh } from "@/hooks/useAutoRefresh";
 import { useToast } from "@/contexts/ToastContext";
@@ -266,6 +266,8 @@ export default function TransportePage() {
         }
       />
 
+      {!panelItem && (
+        <>
       {/* ── KPIs ── */}
       {!loading && pendientesTienda.length > 0 && (
         <div className="ds-card" style={{ padding: 18, marginBottom: 22, borderColor: "rgba(29,78,216,.18)" }}>
@@ -358,7 +360,7 @@ export default function TransportePage() {
             loading={loading}
             items={filtered}
             hasFilters={Boolean(fq || fEstado || fTipo || fAlerta)}
-            selectedId={panelItem?.clientId}
+            selectedId={undefined}
             onOpen={abrirPanel}
             onClearFilters={() => { setFq(""); setFEstado(""); setFTipo(""); setFAlerta(false); }}
             onNew={() => setCreando(true)}
@@ -366,49 +368,54 @@ export default function TransportePage() {
           />
         </div>
       )}
+        </>
+      )}
 
-      {/* ── Panel lateral de detalle ── */}
-      <SlidePanel
-        open={!!panelItem}
-        onClose={() => setPanelItem(null)}
-        title={panelItem?.documento ?? ""}
-        subtitle={panelItem?.ubicacion}
-        insights={panelInsights}
-        badge={panelItem && <EstadoBadge estado={panelItem.estado} />}
-        primaryAction={panelItem && panelItem.estado !== "DESPACHADO" ? (
-          <button className="ds-btn ds-btn-primary" style={{ width: "100%", background: "var(--success)", boxShadow: "none" }} onClick={() => despachar(panelItem)}>
-            <CheckCircle2 size={13} />Marcar como enviado
-          </button>
-        ) : panelItem && panelItem.estado === "DESPACHADO" && canDelete ? (
-          <button
-            className="ds-btn ds-btn-secondary"
-            style={{ width: "100%", color: "var(--warning)", borderColor: "var(--warning)" }}
-            onClick={() => revertirDespacho(panelItem)}
-          >
-            <RotateCcw size={13} />Revertir a Pendiente Despacho
-          </button>
-        ) : undefined}
-        secondaryActions={
-          <div style={{ display: "flex", gap: 8 }}>
-            {panelItem && panelItem.estado !== "DESPACHADO" && (
-              <button className="ds-btn ds-btn-secondary ds-btn-sm" onClick={() => setFechaModal(panelItem)}>
-                <Calendar size={13} />Fecha
-              </button>
-            )}
-            {canEdit && panelItem && (
-              <button className="ds-btn ds-btn-secondary ds-btn-sm" onClick={() => setEditing(panelItem)}>
-                <Pencil size={13} />
-              </button>
-            )}
-            {canDelete && panelItem && (
-              <button className="ds-btn ds-btn-ghost ds-btn-sm" style={{ color: "var(--error)" }} onClick={() => { setDeleting(panelItem); setPanelItem(null); }}>
-                <Trash2 size={13} />
-              </button>
-            )}
-          </div>
-        }
-      >
-        {panelItem && panelAlm && (
+      {/* ── Vista de detalle a ancho completo ── */}
+      {panelItem && (
+        <ModuleDetailView
+          testId="guardado-detalle-view"
+          onBack={() => setPanelItem(null)}
+          title={panelItem.documento ?? ""}
+          subtitle={panelItem.ubicacion}
+          badge={<EstadoBadge estado={panelItem.estado} />}
+          actions={
+            <>
+              {panelItem.estado !== "DESPACHADO" && (
+                <button className="ds-btn ds-btn-secondary ds-btn-sm" onClick={() => setFechaModal(panelItem)}>
+                  <Calendar size={13} />Fecha
+                </button>
+              )}
+              {canEdit && (
+                <button className="ds-btn ds-btn-secondary ds-btn-sm" onClick={() => setEditing(panelItem)}>
+                  <Pencil size={13} />
+                </button>
+              )}
+              {canDelete && (
+                <button className="ds-btn ds-btn-ghost ds-btn-sm" style={{ color: "var(--error)" }} onClick={() => { setDeleting(panelItem); setPanelItem(null); }}>
+                  <Trash2 size={13} />
+                </button>
+              )}
+              {panelItem.estado !== "DESPACHADO" ? (
+                <button className="ds-btn ds-btn-primary" style={{ background: "var(--success)", boxShadow: "none" }} onClick={() => despachar(panelItem)}>
+                  <CheckCircle2 size={13} />Marcar como enviado
+                </button>
+              ) : panelItem.estado === "DESPACHADO" && canDelete ? (
+                <button
+                  className="ds-btn ds-btn-secondary"
+                  style={{ color: "var(--warning)", borderColor: "var(--warning)" }}
+                  onClick={() => revertirDespacho(panelItem)}
+                >
+                  <RotateCcw size={13} />Revertir a Pendiente Despacho
+                </button>
+              ) : null}
+            </>
+          }
+        >
+          {panelInsights.length > 0 && (
+            <IntelBanner insights={panelInsights} title="Inteligencia operacional" />
+          )}
+          {panelAlm && (
           <>
             {/* Almacenaje destacado */}
             <div style={{ background: "var(--surface2)", borderRadius: 10, padding: "14px 16px", marginBottom: 20 }}>
@@ -515,8 +522,9 @@ export default function TransportePage() {
               </button>
             )}
           </>
-        )}
-      </SlidePanel>
+          )}
+        </ModuleDetailView>
+      )}
 
       {/* ── Modales ── */}
       {(creando || editing) && (
