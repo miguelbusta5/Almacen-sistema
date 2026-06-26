@@ -17,9 +17,9 @@ import {
   TIPOS_NOVEDAD, TIPO_NOVEDAD_LABEL, TIPO_NOVEDAD_COLOR, CAUSAS_RAIZ, CAUSA_RAIZ_LABEL, TURNOS,
 } from "@/lib/muebles";
 import { insightsNovedades, insightsPorNovedad } from "@/lib/inteligencia";
-import { Stat, SkeletonStat, Badge, EmptyState, SkeletonTable, NetSuiteChip, ModuleHero } from "@/components/ui";
+import { Stat, SkeletonStat, Badge, EmptyState, SkeletonTable, NetSuiteChip, ModuleHero, ModuleDetailView } from "@/components/ui";
 import { Modal, ConfirmModal } from "@/components/ui/Modal";
-import { SlidePanel, IntelBanner, IntelAlert, DetailSection, DetailGrid, MiniHistory } from "@/components/ui/SlidePanel";
+import { IntelBanner, IntelAlert, DetailSection, DetailGrid, MiniHistory } from "@/components/ui/SlidePanel";
 import { getModuleCssVars } from "@/lib/moduleTheme";
 import { useToast } from "@/contexts/ToastContext";
 
@@ -278,6 +278,8 @@ export default function MueblesPage() {
         }
       />
 
+      {!panelItem && (
+        <>
       {/* ── KPIs ── */}
       <div style={{ display: "grid", gridTemplateColumns: "repeat(5,1fr)", gap: 28, marginBottom: 28, padding: "0 2px" }}>
         {loading ? <><SkeletonStat /><SkeletonStat /><SkeletonStat /><SkeletonStat /><SkeletonStat /></> : (
@@ -495,7 +497,6 @@ export default function MueblesPage() {
                         key={n.id}
                         className="ds-row"
                         onClick={() => setPanelItem(n)}
-                        style={{ background: panelItem?.id === n.id ? "var(--surface2)" : undefined }}
                       >
                         {/* Indicador de inteligencia */}
                         <td style={{ padding: "0 4px 0 12px" }}>
@@ -528,39 +529,35 @@ export default function MueblesPage() {
           </div>
         </div>
       )}
+        </>
+      )}
 
-      {/* ── Panel lateral de detalle ── */}
-      <SlidePanel
-        open={!!panelItem}
-        onClose={() => setPanelItem(null)}
-        title={panelItem ? `PLU ${panelItem.plu}` : ""}
-        subtitle={panelItem?.descripcion ?? undefined}
-        insights={panelInsights}
-        badge={panelItem && <Badge label={estadoLabel(panelItem.estado)} variant={estadoBadgeVariant(panelItem.estado)} />}
-        primaryAction={canEdit && panelItem ? (
-          <button
-            className="ds-btn ds-btn-primary"
-            style={{ width: "100%" }}
-            onClick={() => { setEditing(panelItem); setPanelItem(null); }}
-          >
-            <Pencil size={13} />Editar novedad
-          </button>
-        ) : undefined}
-        secondaryActions={
-          <div style={{ display: "flex", gap: 8 }}>
-            {canDelete && panelItem && (
-              <button
-                className="ds-btn ds-btn-ghost ds-btn-sm"
-                style={{ color: "var(--error)" }}
-                onClick={() => { setDeleting(panelItem); setPanelItem(null); }}
-              >
-                <Trash2 size={13} />
-              </button>
-            )}
-          </div>
-        }
-      >
-        {panelItem && (
+      {/* ── Vista de detalle a ancho completo ── */}
+      {panelItem && (
+        <ModuleDetailView
+          testId="novedad-detalle-view"
+          onBack={() => setPanelItem(null)}
+          title={`PLU ${panelItem.plu}`}
+          subtitle={panelItem.descripcion ?? undefined}
+          badge={<Badge label={estadoLabel(panelItem.estado)} variant={estadoBadgeVariant(panelItem.estado)} />}
+          actions={
+            <>
+              {canEdit && (
+                <button className="ds-btn ds-btn-primary" onClick={() => { setEditing(panelItem); setPanelItem(null); }}>
+                  <Pencil size={13} />Editar novedad
+                </button>
+              )}
+              {canDelete && (
+                <button className="ds-btn ds-btn-ghost ds-btn-sm" style={{ color: "var(--error)" }} onClick={() => { setDeleting(panelItem); setPanelItem(null); }}>
+                  <Trash2 size={13} />
+                </button>
+              )}
+            </>
+          }
+        >
+          {panelInsights.length > 0 && (
+            <IntelBanner insights={panelInsights} title="Inteligencia operacional" />
+          )}
           <>
             {/* Clasificación operativa */}
             {(panelItem.tipoNovedad || panelItem.causaRaiz || panelItem.turno || panelItem.zonaBodega) && (
@@ -734,8 +731,8 @@ export default function MueblesPage() {
               </button>
             )}
           </>
-        )}
-      </SlidePanel>
+        </ModuleDetailView>
+      )}
 
       {/* ── Modal crear/editar ── */}
       {(creando || editing) && (
