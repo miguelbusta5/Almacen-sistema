@@ -14,7 +14,7 @@ import {
 } from "./_components";
 import { CrearPedidoModal } from "./_components/CrearPedidoModal";
 import { PedidoDetallePanel } from "./_components/PedidoDetallePanel";
-import { PedidoDetalleDock } from "./_components/PedidoDetalleDock";
+import { PedidoDetalleView } from "./_components/PedidoDetalleView";
 import type { PedidoDetalle } from "./_components/PedidoDetalleTypes";
 import { EditarPedidoModal } from "./_components/EditarPedidoModal";
 import { AsignarUbicacionModal } from "./_components/AsignarUbicacionModal";
@@ -53,9 +53,9 @@ export default function CargueGourmetPage() {
   const { data: session } = useSession();
   const role = (session?.user as { role?: string } | undefined)?.role;
   const toast = useToast();
-  // Master-detail (tabla + dock integrado) en desktop; en mobile/tablet el
-  // detalle se conserva como SlidePanel/bottom-sheet (sin tocar SlidePanel
-  // global) — ver G3C-QA-FIX2.
+  // Navegación interna (listado ↔ vista detalle a ancho completo) en desktop;
+  // en mobile el detalle se conserva como SlidePanel/bottom-sheet (sin tocar
+  // SlidePanel global) — ver G3C-QA-FIX3.
   const isMobile = useIsMobile(1024);
 
   const [pedidos, setPedidos] = useState<GourmetPedidoRow[]>([]);
@@ -335,6 +335,9 @@ export default function CargueGourmetPage() {
   const puedeGourmet = !!role && ROLES_GOURMET.includes(role);
   const puedeTransporte = !!role && ROLES_TRANSPORTE.includes(role);
   const puedeCierreManual = !!role && ROLES_CIERRE_MANUAL.includes(role);
+  // Desktop: la vista de detalle a ancho completo reemplaza al listado.
+  // Mobile: el listado permanece y el detalle se muestra como SlidePanel.
+  const showDetailView = !isMobile && selectedId !== null;
 
   return (
     <div className="animate-fade-in" style={getModuleCssVars("cargue-gourmet") as React.CSSProperties}>
@@ -358,99 +361,107 @@ export default function CargueGourmetPage() {
         onCreated={() => load(1)}
       />
 
-      {/* Filtros */}
-      <div className="g-panel" style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center", padding: "0.75rem 1rem", marginBottom: "1rem" }}>
-        <input
-          value={q}
-          onChange={(e) => setQ(e.target.value)}
-          placeholder="Buscar por orden, tienda o código…"
-          style={{ ...inp, flex: 1, minWidth: 180 }}
+      {showDetailView ? (
+        <PedidoDetalleView
+          onBack={closeDetalle}
+          loading={detalleLoading}
+          error={detalleError}
+          pedido={detalle}
+          onRetry={() => selectedId && loadDetalle(selectedId)}
+          puedeGourmet={puedeGourmet}
+          onEditar={() => setShowEditar(true)}
+          onAsignarUbicacion={() => setShowUbicacion(true)}
+          onEnviarTransporte={() => setShowEnviarConfirm(true)}
+          puedeTransporte={puedeTransporte}
+          onIniciarCargue={() => setShowIniciarConfirm(true)}
+          iniciandoCargue={iniciandoCargue}
+          progresoEscaneo={progresoEscaneo}
+          ultimoResultadoEscaneo={ultimoResultadoEscaneo}
+          enviandoEscaneo={enviandoEscaneo}
+          onEscanear={handleEscanear}
+          onFinalizarCargue={() => setShowFinalizarConfirm(true)}
+          finalizandoCargue={finalizandoCargue}
+          puedeCierreManual={puedeCierreManual}
+          onCierreManual={() => setShowCierreManual(true)}
         />
-        <input
-          value={ciudad}
-          onChange={(e) => setCiudad(e.target.value)}
-          placeholder="Ciudad"
-          style={{ ...inp, width: 140 }}
-        />
-        <select value={estado} onChange={(e) => setEstado(e.target.value as EstadoPedidoGourmet | "")} style={inp}>
-          <option value="">Todos los estados</option>
-          {ESTADOS_PEDIDO_GOURMET.map((e) => (
-            <option key={e} value={e}>{ESTADO_LABEL[e]}</option>
-          ))}
-        </select>
-        <select value={tipoOrden} onChange={(e) => setTipoOrden(e.target.value as "" | "OVDM" | "TSDM")} style={inp}>
-          <option value="">Todos los tipos</option>
-          <option value="OVDM">OVDM</option>
-          <option value="TSDM">TSDM</option>
-        </select>
-        {hasFilters && (
-          <button
-            onClick={() => { setQ(""); setCiudad(""); setEstado(""); setTipoOrden(""); }}
-            style={{ fontSize: 11, color: "var(--muted)", background: "none", border: "none", textDecoration: "underline", cursor: "pointer", fontWeight: 600 }}
-          >
-            Limpiar
-          </button>
-        )}
-      </div>
-
-      {isMobile ? (
-        <>
-          <CargueGourmetTable rows={pedidos} loading={loading} debug={debugTable} onView={openDetalle} />
-
-          <PedidoDetallePanel
-            open={selectedId !== null}
-            onClose={closeDetalle}
-            loading={detalleLoading}
-            error={detalleError}
-            pedido={detalle}
-            onRetry={() => selectedId && loadDetalle(selectedId)}
-            puedeGourmet={puedeGourmet}
-            onEditar={() => setShowEditar(true)}
-            onAsignarUbicacion={() => setShowUbicacion(true)}
-            onEnviarTransporte={() => setShowEnviarConfirm(true)}
-            puedeTransporte={puedeTransporte}
-            onIniciarCargue={() => setShowIniciarConfirm(true)}
-            iniciandoCargue={iniciandoCargue}
-            progresoEscaneo={progresoEscaneo}
-            ultimoResultadoEscaneo={ultimoResultadoEscaneo}
-            enviandoEscaneo={enviandoEscaneo}
-            onEscanear={handleEscanear}
-            onFinalizarCargue={() => setShowFinalizarConfirm(true)}
-            finalizandoCargue={finalizandoCargue}
-            puedeCierreManual={puedeCierreManual}
-            onCierreManual={() => setShowCierreManual(true)}
-          />
-        </>
       ) : (
-        <div style={{ display: "flex", gap: 16, alignItems: "flex-start" }} data-testid="cargue-gourmet-master-detail">
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <CargueGourmetTable rows={pedidos} loading={loading} debug={debugTable} onView={openDetalle} />
+        <>
+          {/* Filtros */}
+          <div className="g-panel" style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center", padding: "0.75rem 1rem", marginBottom: "1rem" }}>
+            <input
+              value={q}
+              onChange={(e) => setQ(e.target.value)}
+              placeholder="Buscar por orden, tienda o código…"
+              style={{ ...inp, flex: 1, minWidth: 180 }}
+            />
+            <input
+              value={ciudad}
+              onChange={(e) => setCiudad(e.target.value)}
+              placeholder="Ciudad"
+              style={{ ...inp, width: 140 }}
+            />
+            <select value={estado} onChange={(e) => setEstado(e.target.value as EstadoPedidoGourmet | "")} style={inp}>
+              <option value="">Todos los estados</option>
+              {ESTADOS_PEDIDO_GOURMET.map((e) => (
+                <option key={e} value={e}>{ESTADO_LABEL[e]}</option>
+              ))}
+            </select>
+            <select value={tipoOrden} onChange={(e) => setTipoOrden(e.target.value as "" | "OVDM" | "TSDM")} style={inp}>
+              <option value="">Todos los tipos</option>
+              <option value="OVDM">OVDM</option>
+              <option value="TSDM">TSDM</option>
+            </select>
+            {hasFilters && (
+              <button
+                onClick={() => { setQ(""); setCiudad(""); setEstado(""); setTipoOrden(""); }}
+                style={{ fontSize: 11, color: "var(--muted)", background: "none", border: "none", textDecoration: "underline", cursor: "pointer", fontWeight: 600 }}
+              >
+                Limpiar
+              </button>
+            )}
           </div>
 
-          <PedidoDetalleDock
-            selected={selectedId !== null}
-            onClose={closeDetalle}
-            loading={detalleLoading}
-            error={detalleError}
-            pedido={detalle}
-            onRetry={() => selectedId && loadDetalle(selectedId)}
-            puedeGourmet={puedeGourmet}
-            onEditar={() => setShowEditar(true)}
-            onAsignarUbicacion={() => setShowUbicacion(true)}
-            onEnviarTransporte={() => setShowEnviarConfirm(true)}
-            puedeTransporte={puedeTransporte}
-            onIniciarCargue={() => setShowIniciarConfirm(true)}
-            iniciandoCargue={iniciandoCargue}
-            progresoEscaneo={progresoEscaneo}
-            ultimoResultadoEscaneo={ultimoResultadoEscaneo}
-            enviandoEscaneo={enviandoEscaneo}
-            onEscanear={handleEscanear}
-            onFinalizarCargue={() => setShowFinalizarConfirm(true)}
-            finalizandoCargue={finalizandoCargue}
-            puedeCierreManual={puedeCierreManual}
-            onCierreManual={() => setShowCierreManual(true)}
-          />
-        </div>
+          <CargueGourmetTable rows={pedidos} loading={loading} debug={debugTable} onView={openDetalle} />
+
+          {/* En mobile el detalle es un SlidePanel/bottom-sheet sobre el listado;
+              en desktop la vista de detalle reemplaza al listado (rama showDetailView). */}
+          {isMobile && (
+            <PedidoDetallePanel
+              open={selectedId !== null}
+              onClose={closeDetalle}
+              loading={detalleLoading}
+              error={detalleError}
+              pedido={detalle}
+              onRetry={() => selectedId && loadDetalle(selectedId)}
+              puedeGourmet={puedeGourmet}
+              onEditar={() => setShowEditar(true)}
+              onAsignarUbicacion={() => setShowUbicacion(true)}
+              onEnviarTransporte={() => setShowEnviarConfirm(true)}
+              puedeTransporte={puedeTransporte}
+              onIniciarCargue={() => setShowIniciarConfirm(true)}
+              iniciandoCargue={iniciandoCargue}
+              progresoEscaneo={progresoEscaneo}
+              ultimoResultadoEscaneo={ultimoResultadoEscaneo}
+              enviandoEscaneo={enviandoEscaneo}
+              onEscanear={handleEscanear}
+              onFinalizarCargue={() => setShowFinalizarConfirm(true)}
+              finalizandoCargue={finalizandoCargue}
+              puedeCierreManual={puedeCierreManual}
+              onCierreManual={() => setShowCierreManual(true)}
+            />
+          )}
+
+          {/* Paginación */}
+          {!loading && pedidos.length > 0 && (
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: "1rem", fontSize: 12, color: "var(--muted)" }}>
+              <span>Página {page} de {totalPages} · {total} pedido{total !== 1 ? "s" : ""}</span>
+              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <button disabled={page <= 1} onClick={() => load(page - 1)} className="g-btn g-btn-secondary g-btn-sm">Anterior</button>
+                <button disabled={page >= totalPages} onClick={() => load(page + 1)} className="g-btn g-btn-secondary g-btn-sm">Siguiente</button>
+              </div>
+            </div>
+          )}
+        </>
       )}
 
       <EditarPedidoModal
@@ -506,17 +517,6 @@ export default function CargueGourmetPage() {
         onClose={() => setShowCierreManual(false)}
         onClosed={refreshAfterAction}
       />
-
-      {/* Paginación */}
-      {!loading && pedidos.length > 0 && (
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: "1rem", fontSize: 12, color: "var(--muted)" }}>
-          <span>Página {page} de {totalPages} · {total} pedido{total !== 1 ? "s" : ""}</span>
-          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-            <button disabled={page <= 1} onClick={() => load(page - 1)} className="g-btn g-btn-secondary g-btn-sm">Anterior</button>
-            <button disabled={page >= totalPages} onClick={() => load(page + 1)} className="g-btn g-btn-secondary g-btn-sm">Siguiente</button>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

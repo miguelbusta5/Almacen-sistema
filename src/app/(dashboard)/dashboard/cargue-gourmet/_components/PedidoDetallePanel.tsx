@@ -10,10 +10,9 @@ export type {
 } from "./PedidoDetalleTypes";
 import type { PedidoDetalle } from "./PedidoDetalleTypes";
 
-// Wrapper SlidePanel (overlay) — usado en mobile. En desktop, Cargue Gourmet
-// usa el layout master-detail (`PedidoDetalleDock`), que reutiliza el mismo
-// `PedidoDetalleContent` integrado al módulo en vez de un overlay encima de
-// toda la app. Ver G3C-QA-FIX2.
+// Wrapper SlidePanel (overlay/bottom-sheet) — usado en mobile. En desktop,
+// Cargue Gourmet usa `PedidoDetalleView` (vista a ancho completo que reemplaza
+// al listado), que reutiliza el mismo `PedidoDetalleContent`. Ver G3C-QA-FIX3.
 export function PedidoDetallePanel({
   open,
   onClose,
