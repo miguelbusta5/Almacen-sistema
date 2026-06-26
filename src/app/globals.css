@@ -694,9 +694,10 @@ select option { background: var(--surface); color: var(--text); }
   border-left: 1px solid var(--border-strong);
   color: var(--text);
 }
-/* Estándar visual del sistema (SlidePanel default, `variant="fullHeight"`):
-   refuerza top/bottom explícitos por si algo más sube la especificidad sobre
-   el inline style. Solo aplica en desktop — en mobile el bottom-sheet sigue igual. */
+/* Opt-in puntual (SlidePanel `variant="fullHeight"`), NO es el default del
+   sistema: refuerza top/bottom explícitos por si algo más sube la
+   especificidad sobre el inline style. Solo aplica en desktop — en mobile
+   el bottom-sheet sigue igual. Ningún módulo lo usa actualmente. */
 @media (min-width: 641px) {
   .slide-panel--full { top: 0; bottom: 0; height: auto; }
 }

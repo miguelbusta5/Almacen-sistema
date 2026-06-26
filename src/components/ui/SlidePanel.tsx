@@ -91,21 +91,20 @@ interface SlidePanelProps {
   insights?: IntelInsight[];
   moduleColor?: string;
   /**
-   * "fullHeight" (default, estándar visual del sistema): ancla el panel con
-   * `top:0; bottom:0; height:auto` en desktop, en vez de depender solo de
-   * `height:100vh` — el panel cubre toda la altura útil del viewport.
-   * "legacy": comportamiento anterior (`height:100vh` sin `bottom`), por si
-   * algún módulo necesitara conservarlo. Ningún módulo lo usa hoy.
-   * El comportamiento mobile (bottom-sheet, `max-width:640px`) es igual en
-   * ambas variantes — no se ve afectado por este prop.
+   * "default" (comportamiento histórico, usado por todos los módulos salvo
+   * que pidan lo contrario): `height:100vh` sin `bottom` explícito.
+   * "fullHeight": ancla el panel con `top:0; bottom:0; height:auto` en
+   * desktop — opt-in puntual para un módulo que lo necesite específicamente.
+   * No cambia el comportamiento mobile (bottom-sheet, `max-width:640px`) en
+   * ninguna variante.
    */
-  variant?: "fullHeight" | "legacy";
+  variant?: "default" | "fullHeight";
 }
 
 export function SlidePanel({
   open, onClose, title, subtitle, badge,
   primaryAction, secondaryActions,
-  children, width = 420, insights = [], moduleColor, variant = "fullHeight",
+  children, width = 420, insights = [], moduleColor, variant = "default",
 }: SlidePanelProps) {
   const panelRef = useRef<HTMLDivElement>(null);
 
@@ -150,13 +149,13 @@ export function SlidePanel({
       {/* Panel */}
       <div
         ref={panelRef}
-        className={variant === "legacy" ? "slide-panel" : "slide-panel slide-panel--full"}
+        className={variant === "fullHeight" ? "slide-panel slide-panel--full" : "slide-panel"}
         inert={open ? undefined : true}
         style={{
           position: "fixed",
           top: 0, right: 0,
-          bottom: variant === "legacy" ? undefined : 0,
-          height: variant === "legacy" ? "100vh" : "auto",
+          bottom: variant === "fullHeight" ? 0 : undefined,
+          height: variant === "fullHeight" ? "auto" : "100vh",
           width,
           background: "var(--surface)",
           borderLeft: "1px solid var(--border)",
