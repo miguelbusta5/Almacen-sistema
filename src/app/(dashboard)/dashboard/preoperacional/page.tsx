@@ -6,9 +6,9 @@ import {
   AlertTriangle, Camera, CheckCircle2, ChevronLeft, ChevronRight,
   Download, RefreshCw, Save, ShieldCheck, Trash2, Truck, XCircle,
 } from "lucide-react";
-import { Badge, EmptyState, ModuleHero, SkeletonTable, Stat } from "@/components/ui";
+import { Badge, EmptyState, ModuleDetailView, ModuleHero, SkeletonTable, Stat } from "@/components/ui";
 import { AutoRefreshIndicator } from "@/components/ui/AutoRefreshIndicator";
-import { SlidePanel, DetailSection, DetailGrid } from "@/components/ui/SlidePanel";
+import { DetailSection, DetailGrid } from "@/components/ui/SlidePanel";
 import { useIsMobile } from "@/lib/useIsMobile";
 import type { ResultadoInspeccion } from "@/lib/preoperacional";
 import { getModuleColor, getModuleCssVars } from "@/lib/moduleTheme";
@@ -533,68 +533,15 @@ function SupervisorView({ role }: { role: string }) {
         )}
       />
 
-      {/* Filtros */}
-      <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: "1rem", alignItems: "center" }}>
-        <input type="date" value={fDesde} onChange={(e) => setFDesde(e.target.value)} style={inp} title="Desde" />
-        <input type="date" value={fHasta} onChange={(e) => setFHasta(e.target.value)} style={inp} title="Hasta" />
-        <select value={fConductor} onChange={(e) => setFConductor(e.target.value)} style={inp}>
-          <option value="">Todos los conductores</option>
-          {conductores.map((c) => <option key={c.id} value={c.id}>{c.nombre}</option>)}
-        </select>
-        <select value={fEstado} onChange={(e) => setFEstado(e.target.value)} style={inp}>
-          <option value="">Todos los estados</option>
-          <option value="APROBADA">Aprobada</option>
-          <option value="APROBADA_CON_OBSERVACIONES">Con observaciones</option>
-          <option value="BLOQUEADA">Bloqueada</option>
-        </select>
-        {hayFiltros && (
-          <button onClick={limpiar} style={{ background: "none", border: "none", color: "var(--muted2)", cursor: "pointer", fontSize: 12, padding: "0.4rem 0.6rem" }}>
-            Limpiar
-          </button>
-        )}
-      </div>
-
-      {/* Tabla */}
-      {loading ? (
-        <SkeletonTable rows={8} cols={6} />
-      ) : (
-        <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 14, overflow: "hidden" }}>
-          <HistorialPreoperacionalTable
-            rows={rows}
-            role={role}
-            loading={false}
-            deletingId={deletingId}
-            onRowClick={(r) => openDetail(r)}
-            onDeleteStart={(id) => setDeletingId(id)}
-            onDeleteConfirm={(id) => deleteRow(id)}
-            onDeleteCancel={() => setDeletingId(null)}
-            debug={debugTable}
-          />
-
-          {/* Paginación */}
-          {pages > 1 && (
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 12, padding: "0.75rem 1rem", borderTop: "1px solid var(--border)", fontSize: 13 }}>
-              <button onClick={() => load(page - 1)} disabled={page <= 1} className="ds-btn ds-btn-ghost ds-btn-sm" style={{ opacity: page <= 1 ? 0.4 : 1 }}>
-                <ChevronLeft size={14} />Anterior
-              </button>
-              <span style={{ color: "var(--muted)" }}>Página {page} de {pages}</span>
-              <button onClick={() => load(page + 1)} disabled={page >= pages} className="ds-btn ds-btn-ghost ds-btn-sm" style={{ opacity: page >= pages ? 0.4 : 1 }}>
-                Siguiente<ChevronRight size={14} />
-              </button>
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* Slide panel detalle */}
-      <SlidePanel
-        open={!!selected}
-        onClose={() => { setSelected(null); setDetail(null); setDeletingId(null); }}
-        title={selected ? `${selected.conductor?.nombre ?? "Inspector"} — ${selected.fecha}` : ""}
-        badge={selected ? <Badge label={ESTADO_LABEL[selected.estado]} variant={estadoBadge(selected.estado)} dot={false} color={ESTADO_COLOR[selected.estado]} /> : undefined}
-        moduleColor={selected ? ESTADO_COLOR[selected.estado] : PREOP_COLOR}
-      >
-        {selected && (
+      {/* Vista de detalle a ancho completo (reemplaza al listado) o listado */}
+      {selected ? (
+        <ModuleDetailView
+          testId="inspeccion-detalle-view"
+          onBack={() => { setSelected(null); setDetail(null); setDeletingId(null); }}
+          title={`${selected.conductor?.nombre ?? "Inspector"} — ${selected.fecha}`}
+          badge={<Badge label={ESTADO_LABEL[selected.estado]} variant={estadoBadge(selected.estado)} dot={false} color={ESTADO_COLOR[selected.estado]} />}
+          moduleColor={ESTADO_COLOR[selected.estado]}
+        >
           <>
             <DetailSection title="Información general">
               <DetailGrid items={[
@@ -681,8 +628,63 @@ function SupervisorView({ role }: { role: string }) {
               </DetailSection>
             )}
           </>
-        )}
-      </SlidePanel>
+        </ModuleDetailView>
+      ) : (
+        <>
+          {/* Filtros */}
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: "1rem", alignItems: "center" }}>
+            <input type="date" value={fDesde} onChange={(e) => setFDesde(e.target.value)} style={inp} title="Desde" />
+            <input type="date" value={fHasta} onChange={(e) => setFHasta(e.target.value)} style={inp} title="Hasta" />
+            <select value={fConductor} onChange={(e) => setFConductor(e.target.value)} style={inp}>
+              <option value="">Todos los conductores</option>
+              {conductores.map((c) => <option key={c.id} value={c.id}>{c.nombre}</option>)}
+            </select>
+            <select value={fEstado} onChange={(e) => setFEstado(e.target.value)} style={inp}>
+              <option value="">Todos los estados</option>
+              <option value="APROBADA">Aprobada</option>
+              <option value="APROBADA_CON_OBSERVACIONES">Con observaciones</option>
+              <option value="BLOQUEADA">Bloqueada</option>
+            </select>
+            {hayFiltros && (
+              <button onClick={limpiar} style={{ background: "none", border: "none", color: "var(--muted2)", cursor: "pointer", fontSize: 12, padding: "0.4rem 0.6rem" }}>
+                Limpiar
+              </button>
+            )}
+          </div>
+
+          {/* Tabla */}
+          {loading ? (
+            <SkeletonTable rows={8} cols={6} />
+          ) : (
+            <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 14, overflow: "hidden" }}>
+              <HistorialPreoperacionalTable
+                rows={rows}
+                role={role}
+                loading={false}
+                deletingId={deletingId}
+                onRowClick={(r) => openDetail(r)}
+                onDeleteStart={(id) => setDeletingId(id)}
+                onDeleteConfirm={(id) => deleteRow(id)}
+                onDeleteCancel={() => setDeletingId(null)}
+                debug={debugTable}
+              />
+
+              {/* Paginación */}
+              {pages > 1 && (
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 12, padding: "0.75rem 1rem", borderTop: "1px solid var(--border)", fontSize: 13 }}>
+                  <button onClick={() => load(page - 1)} disabled={page <= 1} className="ds-btn ds-btn-ghost ds-btn-sm" style={{ opacity: page <= 1 ? 0.4 : 1 }}>
+                    <ChevronLeft size={14} />Anterior
+                  </button>
+                  <span style={{ color: "var(--muted)" }}>Página {page} de {pages}</span>
+                  <button onClick={() => load(page + 1)} disabled={page >= pages} className="ds-btn ds-btn-ghost ds-btn-sm" style={{ opacity: page >= pages ? 0.4 : 1 }}>
+                    Siguiente<ChevronRight size={14} />
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
+        </>
+      )}
     </div>
   );
 }
