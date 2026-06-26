@@ -355,9 +355,9 @@ export default function ExportacionesPage() {
 
   const totalPages = Math.max(1, Math.ceil(totalItems / PAGE_SIZE));
   const pagination = totalItems > PAGE_SIZE ? (
-    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "12px 4px 0", borderTop: "1px solid var(--border)", fontSize: 13, color: "var(--muted2)" }}>
+    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, flexWrap: "wrap", padding: "12px 4px 0", borderTop: "1px solid var(--border)", fontSize: 13, color: "var(--muted2)" }}>
       <span>Mostrando {(page - 1) * PAGE_SIZE + 1}–{Math.min(page * PAGE_SIZE, totalItems)} de {totalItems} registros</span>
-      <div style={{ display: "flex", gap: 6 }}>
+      <div style={{ display: "flex", gap: 6, flexShrink: 0 }}>
         <button
           disabled={page <= 1}
           onClick={() => { const p = page - 1; setPage(p); load(p); }}
@@ -365,7 +365,7 @@ export default function ExportacionesPage() {
         >
           ← Anterior
         </button>
-        <span style={{ padding: "0 8px", lineHeight: "30px", fontWeight: 700 }}>
+        <span style={{ padding: "0 8px", lineHeight: "30px", fontWeight: 700, whiteSpace: "nowrap" }}>
           {page} / {totalPages}
         </span>
         <button
