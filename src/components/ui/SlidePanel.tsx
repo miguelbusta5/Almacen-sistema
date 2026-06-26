@@ -90,12 +90,22 @@ interface SlidePanelProps {
   width?: number;
   insights?: IntelInsight[];
   moduleColor?: string;
+  /**
+   * "fullHeight" (default, estándar visual del sistema): ancla el panel con
+   * `top:0; bottom:0; height:auto` en desktop, en vez de depender solo de
+   * `height:100vh` — el panel cubre toda la altura útil del viewport.
+   * "legacy": comportamiento anterior (`height:100vh` sin `bottom`), por si
+   * algún módulo necesitara conservarlo. Ningún módulo lo usa hoy.
+   * El comportamiento mobile (bottom-sheet, `max-width:640px`) es igual en
+   * ambas variantes — no se ve afectado por este prop.
+   */
+  variant?: "fullHeight" | "legacy";
 }
 
 export function SlidePanel({
   open, onClose, title, subtitle, badge,
   primaryAction, secondaryActions,
-  children, width = 420, insights = [], moduleColor,
+  children, width = 420, insights = [], moduleColor, variant = "fullHeight",
 }: SlidePanelProps) {
   const panelRef = useRef<HTMLDivElement>(null);
 
@@ -140,12 +150,14 @@ export function SlidePanel({
       {/* Panel */}
       <div
         ref={panelRef}
-        className="slide-panel"
+        className={variant === "legacy" ? "slide-panel" : "slide-panel slide-panel--full"}
         inert={open ? undefined : true}
         style={{
           position: "fixed",
           top: 0, right: 0,
-          width, height: "100vh",
+          bottom: variant === "legacy" ? undefined : 0,
+          height: variant === "legacy" ? "100vh" : "auto",
+          width,
           background: "var(--surface)",
           borderLeft: "1px solid var(--border)",
           "--panel-color": moduleColor,
