@@ -253,14 +253,14 @@ export function AsignarUbicacionModal({
                     value={row.ubicacion}
                     onChange={(e) => updateEstiba(idx, { ubicacion: e.target.value })}
                     data-testid={`estiba-ubicacion-${idx}`}
-                    style={{ height: 34, padding: "0 8px", fontSize: 13, border: "1px solid var(--border)", borderRadius: 6, background: "var(--surface)" }}
+                    style={{ minWidth: 0, width: "100%", height: 34, padding: "0 8px", fontSize: 13, border: "1px solid var(--border)", borderRadius: 6, background: "var(--surface)" }}
                   />
                   <input
                     type="number" min={1} placeholder="Cajas"
                     value={row.cantidadCajas}
                     onChange={(e) => updateEstiba(idx, { cantidadCajas: e.target.value })}
                     data-testid={`estiba-cantidad-${idx}`}
-                    style={{ height: 34, padding: "0 8px", fontSize: 13, border: "1px solid var(--border)", borderRadius: 6, background: "var(--surface)" }}
+                    style={{ minWidth: 0, width: "100%", height: 34, padding: "0 8px", fontSize: 13, border: "1px solid var(--border)", borderRadius: 6, background: "var(--surface)" }}
                   />
                 </div>
                 <input
@@ -318,14 +318,14 @@ export function AsignarUbicacionModal({
                       value={row.numeroSecuencia}
                       onChange={(e) => updateCaja(idx, { numeroSecuencia: e.target.value })}
                       data-testid={`caja-numero-${idx}`}
-                      style={{ height: 34, padding: "0 8px", fontSize: 13, border: "1px solid var(--border)", borderRadius: 6, background: "var(--surface2)" }}
+                      style={{ minWidth: 0, width: "100%", height: 34, padding: "0 8px", fontSize: 13, border: "1px solid var(--border)", borderRadius: 6, background: "var(--surface2)" }}
                     />
                     <input
                       placeholder="Código de caja (opcional)"
                       value={row.codigoCaja}
                       onChange={(e) => updateCaja(idx, { codigoCaja: e.target.value })}
                       data-testid={`caja-codigo-${idx}`}
-                      style={{ height: 34, padding: "0 8px", fontSize: 13, border: "1px solid var(--border)", borderRadius: 6, background: "var(--surface2)" }}
+                      style={{ minWidth: 0, width: "100%", height: 34, padding: "0 8px", fontSize: 13, border: "1px solid var(--border)", borderRadius: 6, background: "var(--surface2)" }}
                     />
                     <button type="button" onClick={() => removeCaja(idx)} data-testid={`remove-caja-${idx}`} style={{ width: 28, height: 28, borderRadius: 6, border: "none", background: "var(--error-tint)", color: "var(--error)", cursor: "pointer" }}>
                       <Trash2 size={13} />
