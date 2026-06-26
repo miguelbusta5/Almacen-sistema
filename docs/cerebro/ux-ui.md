@@ -46,6 +46,22 @@ success #2EE6A6 · warning #FFC53D · error #FF6B6B · info(cian) #34D9F0
 .slide-panel  .detail-section  .status-tab  .colored-kpi  .g-nav-item  .g-modal*
 ```
 
+Componentes React del DS: `ModuleHero`, `DataTable`, `Stat`, `Badge`, `Modal`/`ConfirmModal`,
+`ModuleDetailView` (detalle), y los helpers de detalle `DetailSection`/`DetailGrid`/`MiniHistory`/
+`IntelBanner` (en `src/components/ui/SlidePanel.tsx`).
+
+## Patrón de detalle (2026-06-26)
+
+- El detalle de un registro es una **vista a ancho completo que reemplaza al listado** dentro del
+  módulo, vía el componente compartido **`ModuleDetailView`** (`src/components/ui/ModuleDetailView.tsx`):
+  botón "Volver al listado" + header con título/badge/**barra de acciones** + cuerpo `g-panel`. Es
+  scroll de página (sin `position:fixed`), igual en desktop y mobile.
+- Aplica a los 7 módulos con detalle (cargue-gourmet, preoperacional, integración, solicitudes-transporte,
+  transporte, tienda, muebles). Las acciones operativas van en el **header**; las secciones de datos usan
+  `DetailSection`/`DetailGrid`/`MiniHistory`.
+- El **overlay `SlidePanel`** (drawer lateral / bottom-sheet) quedó **retirado de las páginas** y sin uso;
+  solo se conservan sus helpers. No reintroducir el overlay para detalle. Ver [[decisiones]] (2026-06-26).
+
 ## Datos en vivo
 
 - Hook base: `src/hooks/useAutoRefresh.ts`. Indicador: `src/components/ui/AutoRefreshIndicator.tsx`.
@@ -59,17 +75,19 @@ success #2EE6A6 · warning #FFC53D · error #FF6B6B · info(cian) #34D9F0
 - No sacrificar velocidad de captura por decoracion.
 - Mantener permisos con doble validacion: server + UI.
 - No reintroducir modo claro, color por modulo ni imagenes en encabezados.
-- Evitar nuevos estilos inline para color; preferir tokens, `Badge`, `Stat`, `DataTable` y `SlidePanel`.
+- Evitar nuevos estilos inline para color; preferir tokens, `Badge`, `Stat`, `DataTable`, `ModuleDetailView` (detalle) y los helpers `DetailSection`/`DetailGrid`. El overlay `SlidePanel` queda deprecado/sin uso para detalle (ver "Patrón de detalle").
 
 ## QA visual
 
 Revisar en **oscuro** (unico tema), desktop (1440px), tablet (768px) y movil (390px):
 
-- Dashboard / Login / Facturas Contado / Solicitudes Transporte / Exportaciones
+- Dashboard / Login / Facturas Contado / Solicitudes Transporte / Exportaciones / Cargue Gourmet
 - Indicadores / Preoperacional / Integracion / Conteo / Contar / Centro de Control / Mis Tareas / Usuarios / Auditoria
+- **Patrón de detalle (2026-06-26):** en los 7 módulos con `ModuleDetailView` verificar abrir detalle → vista a ancho completo, "Volver al listado", acciones en el header y responsive en los 3 breakpoints.
 
 ## Historial visual resumido
 
 - 2026-06-11: identidad modular inicial y Control Logistico CEDI.
 - 2026-06-16 / 17 / 18: iteraciones Operativo Premium → Claro Ejecutivo → CEDI Clean → Colorido Enterprise → Colorido Neon Enterprise con assets (claro+oscuro, color por modulo, heroes con render 3D).
 - 2026-06-19: **reescritura total del frontend a Dark Elegant (Obsidiana + Esmeralda)**: solo modo oscuro, acento unico esmeralda, estados con color propio, encabezados sin imagenes, fuentes Inter+Sora. Se elimina el tema claro, `ThemeToggle`, el color por modulo y `heroImage`.
+- 2026-06-26: **migración del detalle a `ModuleDetailView`** (vista a ancho completo que reemplaza al listado) en los 7 módulos; se retira el overlay `SlidePanel` (helpers conservados). Ver [[decisiones]].

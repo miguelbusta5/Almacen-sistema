@@ -131,8 +131,9 @@ verdad en base de datos; acceso desde móvil y escritorio.
 - **Jerarquía de lectura por pantalla:** encabezado de módulo → KPIs → filtros/tabs → tabla/lista →
   detalle (panel) → acciones. Debe leerse rápido.
 - **Un solo patrón por elemento:** encabezado = `ModuleHero`; KPI = `<Stat>`; tabla = `<DataTable>`;
-  detalle = `SlidePanel`+`DetailSection`; confirmaciones/formularios = `Modal`/`ConfirmModal`;
-  estado = `<Badge>`. No reinventar por módulo.
+  detalle = `ModuleDetailView` (vista a ancho completo que reemplaza al listado) + `DetailSection`/
+  `DetailGrid` (el overlay `SlidePanel` fue retirado, 2026-06-26; ver `docs/cerebro/decisiones.md`);
+  confirmaciones/formularios = `Modal`/`ConfirmModal`; estado = `<Badge>`. No reinventar por módulo.
 - **Prohibido** un segundo `<h1>` de módulo cuando ya hay `ModuleHero` (un `<h1>` de sección menor es aceptable).
 - **Sin imágenes en encabezados** (`ModuleHero` es tipográfico). No reintroducir `heroImage`.
 - Datos en vivo con `useAutoRefresh` (~60 s; pausar con pestaña oculta, modal abierto o edición sin guardar).
@@ -172,10 +173,11 @@ verdad en base de datos; acceso desde móvil y escritorio.
 5. **Truncado:** textos largos con `ellipsis` + atributo `title` (tooltip nativo). Nunca romper la fila.
 6. **Densidad compacta**, hover sutil, fila seleccionada discreta (no invasiva). Ordenamiento por columna.
 7. Estados vacíos con `EmptyState`; carga con `SkeletonTable`/`SkeletonRow`.
-8. **Acciones de fila — decisión vigente y abierta:** hoy las acciones viven en el `SlidePanel` de detalle
-   (decisión 2026-06-20, por un problema de layout que corría columnas). Una columna **ACCIONES** compacta
-   es una opción **abierta** que requiere decisión explícita del dueño antes de implementarse. Mientras no
-   se decida, las filas son clicables y abren el panel.
+8. **Acciones de fila — decisión vigente y abierta:** las acciones viven en el **detalle**, hoy en la
+   **barra de acciones del header de `ModuleDetailView`** (antes en el footer del `SlidePanel`; migrado
+   2026-06-26). Una columna **ACCIONES** compacta es una opción **abierta** que requiere decisión
+   explícita del dueño antes de implementarse. Mientras no se decida, las filas son clicables y abren el
+   detalle a ancho completo (que reemplaza al listado).
 
 ### 9.1 Regla crítica para tablas con rail lateral (NO NEGOCIABLE)
 
@@ -255,7 +257,9 @@ verdad en base de datos; acceso desde móvil y escritorio.
 - **Separación de responsabilidades por página:** `page.tsx` **posee** datos, permisos, handlers y flujo;
   el render se delega a `_components.tsx` del módulo y/o a componentes del DS. (Patrón ya aplicado en `tienda`.)
 - **Design system único** en `src/components/ui/` — fuente visual canónica:
-  `DataTable`, `Stat`, `ModuleHero`, `SlidePanel`/`DetailSection`/`DetailGrid`, `Modal`/`ConfirmModal`,
+  `DataTable`, `Stat`, `ModuleHero`, `ModuleDetailView` (detalle a ancho completo) +
+  helpers `DetailSection`/`DetailGrid`/`MiniHistory`/`IntelBanner` (en `SlidePanel.tsx`; el overlay
+  `SlidePanel` quedó retirado/sin uso, 2026-06-26), `Modal`/`ConfirmModal`,
   `Badge`, `Alert`, `Toast`, `NetSuiteChip`, `EmptyState`, `Skeleton*`, primitivas `form`.
 - **Converger, no promover:** cuando un módulo tenga UI a medida, migrarlo al componente compartido. Si el
   componente compartido es más pobre, **enriquecer el componente del DS** (no mantener CSS a medida).

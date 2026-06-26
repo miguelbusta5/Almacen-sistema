@@ -60,6 +60,22 @@
 - [ ] QA visual Desktop/Mobile con sesión real (ADMIN y SUPERVISOR)
 - [ ] Imagen/logo: componente StudioImagen con URL configurable
 
+### Migración detalle a ancho completo (`ModuleDetailView`) — 2026-06-26
+
+Se reemplazó el overlay `SlidePanel` por la vista de detalle a ancho completo (`ModuleDetailView`)
+en los 7 módulos con detalle. Ver [[decisiones]] (2026-06-26). Validación por fase: `tsc` + 812 tests
++ `build` verdes; commit/push selectivo y QA visual del usuario entre fases.
+
+- [x] **Componente compartido `ModuleDetailView` + Cargue Gourmet** (quita `PedidoDetallePanel`, unifica mobile) — `f31abbc`
+- [x] **Preoperacional** — `fe691f1`
+- [x] **Integración** — `043f8cb`
+- [x] **Solicitudes Transporte** (migra su test de panel) — `8963459`
+- [x] **Transporte / Guardados** — `19e25de`
+- [x] **Tienda / Facturas Contado** — `f4f1198`
+- [x] **Muebles** — `1034e87`
+- [ ] **QA visual de los 7 módulos** (1440/768/390px): abrir detalle → vista a ancho completo →
+  "Volver al listado"; acciones en el header; responsive sin romperse.
+
 ### Modulo Cargue Gourmet
 
 - [x] **G3D1 — Importación real del Maestro de Tiendas Gourmet** ([[bugs]] BUG-002): el modal
@@ -120,6 +136,32 @@
 - [ ] Revisar modelos de logistica suspendidos: decidir si eliminarlos del schema o mantenerlos documentados como proyecto futuro
 - [ ] Verificar que `/api/logistica/*` retorna 410
 - [ ] Monitorear vulnerabilidades moderadas indirectas de `next` y `prisma` hasta que haya upgrades seguros
+
+#### Deuda técnica (auditoría 2026-06-26)
+
+Hallazgos de la auditoría profunda tras la migración a `ModuleDetailView`. Priorizados (ALTA primero).
+Solo documentados — no se cambió código de la app en esa tarea.
+
+- [ ] 🔴 **Se pierde scroll/filtros/paginación al volver** del detalle al listado (el render condicional
+  `{selected ? <ModuleDetailView> : <lista>}` desmonta el listado). Afecta a los 7 page.tsx; más visible
+  en tienda. Opción: conservar el listado montado (oculto) o restaurar scroll/estado al volver.
+- [ ] 🔴 **UX: `prompt()`/`window.confirm()` nativos para acciones reales** — reemplazar por modal del DS.
+  Sitios: `muebles/page.tsx:584,630` (asignar responsable, NetSuite), `tienda/page.tsx:295,373` (novedad,
+  NetSuite), `transporte/page.tsx:127,131,455` (ubicación/nota, NetSuite), `solicitudes-transporte/page.tsx:395`
+  (archivar), `exportaciones/page.tsx:240` (borrar caja, destructivo).
+- [ ] 🟡 **`ModuleDetailView` sin accesibilidad**: no cierra con Escape ni gestiona foco/`inert` (el
+  `SlidePanel` sí: `SlidePanel.tsx:111-116`). Quick win: añadir listener de Escape → `onBack`.
+- [ ] 🟡 **`muebles` huérfano + sin test**: la página migró pero no está en `Sidebar`/`homeActions`/
+  `modulePermissions` (solo URL directa / CommandPalette). Decidir: eliminar la página legacy o
+  reactivarla; si se mantiene, añadir test de render.
+- [ ] 🟡 **Tipado débil (`any`)**: ~113 usos; hotspots en `muebles/page.tsx` (stats gráficas) y
+  `centro-control/page.tsx:181`, `lib/inteligencia.ts`, `lib/auth.ts`. Crear interfaces de `stats`.
+- [ ] 🟡 **Sin cliente fetch centralizado**: `fetch()` crudo + manejo de error duplicado en ~20 páginas.
+  Evaluar `src/lib/apiClient.ts` con wrapper tipado.
+- [ ] 🟡 **`catch (e: any)` ×11** (asume `e.message`): tipar como `unknown`. `preoperacional/page.tsx`
+  (6) + 5 endpoints.
+- [ ] 🟢 **Export muerto `SlidePanel`** (overlay, `SlidePanel.tsx:104-257`): sin uso tras la migración
+  (solo los helpers se usan). Deprecar/retirar cuando se confirme que ningún módulo lo necesita.
 
 ---
 

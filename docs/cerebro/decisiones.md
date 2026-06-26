@@ -1,5 +1,48 @@
 # Decisiones de Arquitectura y Producto
 
+## 2026-06-26 - Migración del detalle de módulos a `ModuleDetailView` (vista a ancho completo)
+
+**Decisión:**
+- Se crea el componente compartido **`src/components/ui/ModuleDetailView.tsx`**: marco de "vista de
+  detalle a ancho completo" que **reemplaza al listado** dentro del módulo (botón "Volver al listado" +
+  header con título/badge/**barra de acciones** + contenedor `g-panel`). Es scroll de página normal
+  (sin `position:fixed` ni altura calculada), por lo que nunca se "ve cortado" y funciona igual en
+  desktop y mobile. Exportado desde `src/components/ui/index.tsx`.
+- Reemplaza el overlay **`SlidePanel`** como patrón de detalle en los **7 módulos** con detalle:
+  cargue-gourmet, preoperacional, integración, solicitudes-transporte, transporte (Guardados), tienda
+  (Facturas Contado) y muebles. Patrón por página: `{selected ? <ModuleDetailView>…</> : <>listado</>}`.
+- Las acciones que vivían en el footer del `SlidePanel` (`primaryAction`/`secondaryActions`) se mueven
+  a la **barra de acciones del header** (`actions`). Los `insights` del panel se rinden arriba del
+  contenido con `IntelBanner`.
+- **Mobile unificado:** se elimina el bottom-sheet; desktop y mobile usan la misma vista a ancho
+  completo (decisión del usuario: "no quiero más SlidePanel").
+
+**Contexto:**
+- El overlay `SlidePanel` se sentía "cortado"/angosto en Cargue Gourmet; tras descartar varios intentos
+  (master-detail, full-height global —revertido por romper módulos cerrados—), la "vista a ancho
+  completo" quedó aprobada en QA (G3C-QA-FIX3, commit `5653bea`) y el usuario pidió replicarla en todos
+  los módulos priorizando calidad de UI/UX. Sin tocar backend, Prisma, scripts, endpoints ni lógica de
+  negocio. Despliegue **por fases, 1 módulo por commit**, con QA visual del usuario entre cada una.
+
+**Consecuencias:**
+- `SlidePanel.tsx` **no se modificó**; su export overlay `SlidePanel` queda **sin uso** (código muerto
+  candidato a deprecación), pero sus helpers `DetailSection`/`DetailGrid`/`MiniHistory`/`IntelBanner`
+  siguen vigentes y se usan dentro de `ModuleDetailView`.
+- Tests de panel migrados: `cargueGourmetDetail.render.test.tsx` (→ `PedidoDetalleView`) y
+  `solicitudesTransportePanel.render.test.tsx` (aserción `slide-panel` → `solicitud-detalle-view`).
+  Las pruebas de tabla no cambiaron. Validación por fase: `tsc` + **812 tests** + `build` verdes.
+- **Deuda registrada** (ver [[pendientes]] "Deuda técnica (auditoría 2026-06-26)"): `ModuleDetailView`
+  no cierra con Escape ni gestiona foco; se pierde scroll/filtros/paginación al volver al listado;
+  `muebles` quedó migrado pero es página huérfana (sin nav/permiso) y sin test.
+- Commits: `f31abbc` (componente + gourmet), `fe691f1` (preoperacional), `043f8cb` (integración),
+  `8963459` (solicitudes), `19e25de` (transporte), `f4f1198` (tienda), `1034e87` (muebles).
+
+**Archivos:** `src/components/ui/{ModuleDetailView.tsx,index.tsx}`,
+`src/app/(dashboard)/dashboard/{cargue-gourmet,preoperacional,integracion,solicitudes-transporte,transporte,tienda,muebles}/…`,
+`src/app/(dashboard)/dashboard/cargue-gourmet/_components/{PedidoDetalleView,PedidoDetalleContent,PedidoDetalleTypes}.tsx`
+(se eliminó `PedidoDetallePanel.tsx`), `src/__tests__/{cargueGourmetDetail,solicitudesTransportePanel}.render.test.tsx`,
+`docs/cerebro/{decisiones,ux-ui,pendientes}.md`, `PROJECT_SOURCE_OF_TRUTH.md`.
+
 ## 2026-06-20 - Guardados/Transporte: 2º módulo piloto al patrón canónico (DataTable)
 
 **Decisión:**
