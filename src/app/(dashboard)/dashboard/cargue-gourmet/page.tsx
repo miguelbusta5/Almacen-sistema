@@ -7,12 +7,15 @@ import { ModuleHero } from "@/components/ui";
 import { useToast } from "@/contexts/ToastContext";
 import { canSeeModule } from "@/lib/modulePermissions";
 import { getModuleCssVars } from "@/lib/moduleTheme";
+import { useIsMobile } from "@/lib/useIsMobile";
 import {
   CargueGourmetTable, ESTADOS_PEDIDO_GOURMET, ESTADO_LABEL,
   type GourmetPedidoRow, type EstadoPedidoGourmet,
 } from "./_components";
 import { CrearPedidoModal } from "./_components/CrearPedidoModal";
-import { PedidoDetallePanel, type PedidoDetalle } from "./_components/PedidoDetallePanel";
+import { PedidoDetallePanel } from "./_components/PedidoDetallePanel";
+import { PedidoDetalleDock } from "./_components/PedidoDetalleDock";
+import type { PedidoDetalle } from "./_components/PedidoDetalleTypes";
 import { EditarPedidoModal } from "./_components/EditarPedidoModal";
 import { AsignarUbicacionModal } from "./_components/AsignarUbicacionModal";
 import { ConfirmModal } from "@/components/ui/Modal";
@@ -50,6 +53,10 @@ export default function CargueGourmetPage() {
   const { data: session } = useSession();
   const role = (session?.user as { role?: string } | undefined)?.role;
   const toast = useToast();
+  // Master-detail (tabla + dock integrado) en desktop; en mobile/tablet el
+  // detalle se conserva como SlidePanel/bottom-sheet (sin tocar SlidePanel
+  // global) — ver G3C-QA-FIX2.
+  const isMobile = useIsMobile(1024);
 
   const [pedidos, setPedidos] = useState<GourmetPedidoRow[]>([]);
   const [total, setTotal] = useState(0);
@@ -386,31 +393,65 @@ export default function CargueGourmetPage() {
         )}
       </div>
 
-      <CargueGourmetTable rows={pedidos} loading={loading} debug={debugTable} onView={openDetalle} />
+      {isMobile ? (
+        <>
+          <CargueGourmetTable rows={pedidos} loading={loading} debug={debugTable} onView={openDetalle} />
 
-      <PedidoDetallePanel
-        open={selectedId !== null}
-        onClose={closeDetalle}
-        loading={detalleLoading}
-        error={detalleError}
-        pedido={detalle}
-        onRetry={() => selectedId && loadDetalle(selectedId)}
-        puedeGourmet={puedeGourmet}
-        onEditar={() => setShowEditar(true)}
-        onAsignarUbicacion={() => setShowUbicacion(true)}
-        onEnviarTransporte={() => setShowEnviarConfirm(true)}
-        puedeTransporte={puedeTransporte}
-        onIniciarCargue={() => setShowIniciarConfirm(true)}
-        iniciandoCargue={iniciandoCargue}
-        progresoEscaneo={progresoEscaneo}
-        ultimoResultadoEscaneo={ultimoResultadoEscaneo}
-        enviandoEscaneo={enviandoEscaneo}
-        onEscanear={handleEscanear}
-        onFinalizarCargue={() => setShowFinalizarConfirm(true)}
-        finalizandoCargue={finalizandoCargue}
-        puedeCierreManual={puedeCierreManual}
-        onCierreManual={() => setShowCierreManual(true)}
-      />
+          <PedidoDetallePanel
+            open={selectedId !== null}
+            onClose={closeDetalle}
+            loading={detalleLoading}
+            error={detalleError}
+            pedido={detalle}
+            onRetry={() => selectedId && loadDetalle(selectedId)}
+            puedeGourmet={puedeGourmet}
+            onEditar={() => setShowEditar(true)}
+            onAsignarUbicacion={() => setShowUbicacion(true)}
+            onEnviarTransporte={() => setShowEnviarConfirm(true)}
+            puedeTransporte={puedeTransporte}
+            onIniciarCargue={() => setShowIniciarConfirm(true)}
+            iniciandoCargue={iniciandoCargue}
+            progresoEscaneo={progresoEscaneo}
+            ultimoResultadoEscaneo={ultimoResultadoEscaneo}
+            enviandoEscaneo={enviandoEscaneo}
+            onEscanear={handleEscanear}
+            onFinalizarCargue={() => setShowFinalizarConfirm(true)}
+            finalizandoCargue={finalizandoCargue}
+            puedeCierreManual={puedeCierreManual}
+            onCierreManual={() => setShowCierreManual(true)}
+          />
+        </>
+      ) : (
+        <div style={{ display: "flex", gap: 16, alignItems: "flex-start" }} data-testid="cargue-gourmet-master-detail">
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <CargueGourmetTable rows={pedidos} loading={loading} debug={debugTable} onView={openDetalle} />
+          </div>
+
+          <PedidoDetalleDock
+            selected={selectedId !== null}
+            onClose={closeDetalle}
+            loading={detalleLoading}
+            error={detalleError}
+            pedido={detalle}
+            onRetry={() => selectedId && loadDetalle(selectedId)}
+            puedeGourmet={puedeGourmet}
+            onEditar={() => setShowEditar(true)}
+            onAsignarUbicacion={() => setShowUbicacion(true)}
+            onEnviarTransporte={() => setShowEnviarConfirm(true)}
+            puedeTransporte={puedeTransporte}
+            onIniciarCargue={() => setShowIniciarConfirm(true)}
+            iniciandoCargue={iniciandoCargue}
+            progresoEscaneo={progresoEscaneo}
+            ultimoResultadoEscaneo={ultimoResultadoEscaneo}
+            enviandoEscaneo={enviandoEscaneo}
+            onEscanear={handleEscanear}
+            onFinalizarCargue={() => setShowFinalizarConfirm(true)}
+            finalizandoCargue={finalizandoCargue}
+            puedeCierreManual={puedeCierreManual}
+            onCierreManual={() => setShowCierreManual(true)}
+          />
+        </div>
+      )}
 
       <EditarPedidoModal
         open={showEditar}
