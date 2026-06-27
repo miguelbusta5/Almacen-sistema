@@ -141,7 +141,10 @@ verdad en base de datos; acceso desde móvil y escritorio.
 
 ## 8. Reglas de diseño — Dark Elegant (Obsidiana + Esmeralda)
 
-- **Solo modo oscuro.** No reintroducir tema claro, `ThemeToggle` ni script de init de tema.
+- **Oscuro por defecto + modo claro opt-in (2026-06-26).** `:root` = oscuro; `html[data-theme="light"]` = claro
+  (override de tokens). Toggle por dispositivo (`localStorage` + script anti-parpadeo en `layout.tsx`), expuesto en
+  el Header vía `THEME_TOGGLE_ENABLED`. Marca esmeralda en ambos. **Todo color desde tokens** (`var(--…)`), nunca
+  literales inline. Ver `docs/cerebro/decisiones.md` (2026-06-26).
 - **Acento único esmeralda** (`#14DBA0`). Los **módulos NO se diferencian por color** (se distinguen por
   icono, kicker y tipografía). `src/lib/moduleTheme.ts` resuelve todos los módulos a esmeralda.
 - **Los estados SÍ tienen color propio** vía tokens `--state-*` (ver §10).
@@ -236,7 +239,7 @@ verdad en base de datos; acceso desde móvil y escritorio.
 
 ## 13. Reglas responsive
 
-- Breakpoints de QA: **desktop 1440 · tablet 768 · móvil 390**. Todo en modo oscuro (único tema).
+- Breakpoints de QA: **desktop 1440 · tablet 768 · móvil 390**, en **ambos temas** (oscuro default + claro opt-in).
 - Móvil: priorizar captura, lectura compacta y acciones principales visibles. Tablas con scroll interno
   contenido (no scroll de página). Sidebar colapsa a menú hamburguesa.
 - No sacrificar velocidad de captura por decoración.

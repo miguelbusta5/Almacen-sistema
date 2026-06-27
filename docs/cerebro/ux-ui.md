@@ -7,7 +7,7 @@
 ## Direccion vigente 2026-06-19: Dark Elegant (Obsidiana + Esmeralda)
 
 - La interfaz adopta una identidad **Dark Elegant**: base casi negra neutra (obsidiana) con un **unico acento esmeralda** (vivo, con punto neon) reservado a accion, foco y estado activo.
-- **Solo modo oscuro.** Se elimino el tema claro, el toggle (`ThemeToggle`) y el script de init de tema. `:root` es el tema oscuro; `<html data-theme="dark">` se fija como salvaguarda de selectores legacy.
+- **Oscuro por defecto + modo claro opt-in (2026-06-26).** `:root` define el tema **oscuro**; `html[data-theme="light"]` overridea los tokens para el **claro**. El usuario alterna con el `ThemeToggle` (Header); la preferencia se guarda **por dispositivo** (`localStorage`, con script anti-parpadeo en `layout.tsx`). `<html data-theme="dark">` es el default SSR. La marca esmeralda se conserva en ambos temas. Ver [[decisiones]] (2026-06-26).
 - **Acento unico de marca:** los modulos ya **no** se diferencian por color. Se distinguen por icono, kicker y tipografia. `moduleTheme.ts` resuelve todos los modulos a esmeralda.
 - **Los estados SI conservan color** y son diferenciados/vivos: creado (esmeralda), recogido (cian), CEDI (verde), enviado (azul), rechazado (rojo), alerta (ambar). Viven en los tokens `--state-*` y en las variantes de `Badge`/`DataTable` (rail por fila), no en el tema de modulo.
 - **Sin imagenes en los encabezados.** Se elimino `heroImage` y el slot de asset; `ModuleHero` es puramente tipografico (kicker + titulo + descripcion + acciones + metricas, con rail/hairline esmeralda). Los assets de `public/ui/module-heroes/` ya no se referencian.
@@ -74,7 +74,7 @@ Componentes React del DS: `ModuleHero`, `DataTable`, `Stat`, `Badge`, `Modal`/`C
 - No convertir el dashboard en landing page.
 - No sacrificar velocidad de captura por decoracion.
 - Mantener permisos con doble validacion: server + UI.
-- No reintroducir modo claro, color por modulo ni imagenes en encabezados.
+- Oscuro por defecto; el modo claro es opt-in (toggle). **Todo color debe salir de tokens** (`var(--…)`), nunca literales inline, para que ambos temas funcionen. No reintroducir color por modulo ni imagenes en encabezados.
 - Evitar nuevos estilos inline para color; preferir tokens, `Badge`, `Stat`, `DataTable`, `ModuleDetailView` (detalle) y los helpers `DetailSection`/`DetailGrid`. El overlay `SlidePanel` queda deprecado/sin uso para detalle (ver "Patrón de detalle").
 
 ## QA visual
@@ -91,3 +91,4 @@ Revisar en **oscuro** (unico tema), desktop (1440px), tablet (768px) y movil (39
 - 2026-06-16 / 17 / 18: iteraciones Operativo Premium → Claro Ejecutivo → CEDI Clean → Colorido Enterprise → Colorido Neon Enterprise con assets (claro+oscuro, color por modulo, heroes con render 3D).
 - 2026-06-19: **reescritura total del frontend a Dark Elegant (Obsidiana + Esmeralda)**: solo modo oscuro, acento unico esmeralda, estados con color propio, encabezados sin imagenes, fuentes Inter+Sora. Se elimina el tema claro, `ThemeToggle`, el color por modulo y `heroImage`.
 - 2026-06-26: **migración del detalle a `ModuleDetailView`** (vista a ancho completo que reemplaza al listado) en los 7 módulos; se retira el overlay `SlidePanel` (helpers conservados). Ver [[decisiones]].
+- 2026-06-26: **modo claro opt-in** (directiva de empresa). Tokenización de literales + paleta `html[data-theme="light"]` + toggle por dispositivo; oscuro sigue como default. Ver [[decisiones]].

@@ -6,4 +6,4 @@
  * tema visible. QA puede probar el claro vía `localStorage.theme='light'` /
  * devtools. Se pondrá en `true` tras validar el modo claro (Fase D).
  */
-export const THEME_TOGGLE_ENABLED = false;
+export const THEME_TOGGLE_ENABLED = true;

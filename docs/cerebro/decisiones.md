@@ -1,5 +1,37 @@
 # Decisiones de Arquitectura y Producto
 
+## 2026-06-26 - Modo claro opt-in (revierte "solo modo oscuro")
+
+**Decisión:**
+- Por **directiva de la empresa** se **añade un modo claro**; el oscuro sigue siendo el **default**. Esto
+  revierte la regla previa "solo modo oscuro / no reintroducir modo claro" (que queda actualizada en
+  CLAUDE.md, [[ux-ui]] y el SOT).
+- **Selección por usuario** con `ThemeToggle` (Header, icono sol/luna); **persistencia por dispositivo**
+  (`localStorage`, sin tocar DB/Prisma) + **script anti-parpadeo** inline en `layout.tsx` que aplica el tema
+  antes del paint. `<html data-theme="dark">` es el default SSR.
+- **Implementación por tokens**: `:root` = oscuro; `html[data-theme="light"]` overridea los tokens semánticos
+  (superficies, bordes, texto, sombras, estados, chart). La **marca esmeralda se conserva** en ambos
+  (ligeramente profundizada en claro para contraste sobre blanco).
+
+**Contexto / enfoque seguro (por fases, en oscuro nada cambió hasta exponer):**
+- A — **tokenizar** todo color hardcodeado para que el override funcione: `globals.css` (fondos/sombras/hovers/
+  ::selection/botones) y `charts.tsx` (grid/tooltip/ejes resueltos en runtime con `getComputedStyle` +
+  re-render por `data-theme`). Auditoría: el resto de literales inline son **theme-independent** (texto sobre
+  botones esmeralda/de color, fotos, toasts) → no requirieron cambio.
+- B — paleta clara `html[data-theme="light"]` (oculta).
+- C — mecanismo: script anti-flash + `useTheme` + `ThemeToggle` **gateado** por `THEME_TOGGLE_ENABLED`.
+- D — QA del claro (aprobado) → **flip `THEME_TOGGLE_ENABLED → true`** (expone el toggle).
+
+**Consecuencias:**
+- Regla nueva: **todo color debe salir de tokens** (`var(--…)`), nunca literales inline, para no romper temas.
+- Validación por fase: `tsc` + 812 tests + `build`. Commits `623590a` (globals), `1639aba` (charts),
+  `4f7f862` (paleta clara), `d0250ef` (mecanismo gateado), + flip del flag + docs.
+
+**Archivos:** `src/app/globals.css` (tokens + bloque claro), `src/app/layout.tsx` (script anti-flash),
+`src/components/ui/charts.tsx`, `src/hooks/useTheme.ts`, `src/components/common/ThemeToggle.tsx`,
+`src/config/featureFlags.ts`, `src/components/common/Header.tsx`; docs CLAUDE.md, [[ux-ui]],
+`PROJECT_SOURCE_OF_TRUTH.md`, este archivo.
+
 ## 2026-06-26 - Eliminada la página huérfana `muebles` + cierre de deuda de la auditoría
 
 **Decisión:**

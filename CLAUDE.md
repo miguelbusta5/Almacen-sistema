@@ -47,7 +47,7 @@ antes de tocar APIs/convenciones que no conozcas.
 - `src/app/api/preoperacional` — inspección diaria del conductor (TRANSPORTISTA).
 - `src/app/(dashboard)/dashboard/*` — páginas: inventario, tienda, transporte, preoperacional, usuarios, auditoria.
 - `src/components/common/Logo.tsx` — wordmark `/logo.png` (se invierte a blanco en oscuro).
-- `src/app/globals.css` — tokens de marca (obsidiana + esmeralda), dark-only, utilidades.
+- `src/app/globals.css` — tokens de marca (obsidiana + esmeralda); `:root` = oscuro, `html[data-theme="light"]` = claro; utilidades.
 
 ## Roles activos (Sprint 8)
 | Rol | Ve |
@@ -67,11 +67,14 @@ Vehículos y transportistas operativos se gestionan desde **Usuarios** (solo ADM
 Se valida en servidor (`requireCan`) **y** en UI (ocultar botones). No confiar nunca solo en el cliente.
 
 ## Identidad visual
-Marca **Grupo Ambiente**. Identidad **Dark Elegant (Obsidiana + Esmeralda)** — **solo modo oscuro**, base casi negra
-y un **único acento esmeralda** (`#14DBA0`) para acción/foco/estado activo. Los módulos **no** se diferencian por
-color (se distinguen por icono + tipografía); los **estados** sí conservan color propio (`--state-*`).
-**Sin imágenes en encabezados** (`ModuleHero` tipográfico). Fuentes Inter + Sora. Logo en `public/logo.png`
-(se invierte a blanco). Detalle en `docs/cerebro/ux-ui.md`. No reintroducir modo claro, color por módulo ni `heroImage`.
+Marca **Grupo Ambiente**. Identidad **Dark Elegant (Obsidiana + Esmeralda)** — **oscuro por defecto** con un
+**modo claro opt-in** (toggle por dispositivo, `localStorage`; ver `docs/cerebro/decisiones.md` 2026-06-26).
+Base casi negra (o blanca en claro) y un **único acento esmeralda** (`#14DBA0`) para acción/foco/estado activo.
+Los módulos **no** se diferencian por color (se distinguen por icono + tipografía); los **estados** sí conservan
+color propio (`--state-*`). **Sin imágenes en encabezados** (`ModuleHero` tipográfico). Fuentes Inter + Sora.
+Logo en `public/logo.png` (se invierte a blanco). Detalle en `docs/cerebro/ux-ui.md`.
+**Todo color debe salir de tokens** (`var(--…)`) para que ambos temas funcionen. No reintroducir color por
+módulo ni `heroImage`.
 
 ## Comandos
 - Dev: `npm run dev` · Build: `npm run build` · Type-check: `npx tsc --noEmit`
