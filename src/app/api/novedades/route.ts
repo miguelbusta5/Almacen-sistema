@@ -3,6 +3,7 @@ import { requireAuth, requireCan } from "@/lib/authz";
 import { prisma } from "@/lib/prisma";
 import { z } from "zod";
 import { deriveNovedadFromMaestro, normalizePlu, productoToClient } from "@/lib/productosMaestro";
+import { getErrorCode } from "@/lib/errors";
 
 function mapRow(r: {
   id: number; plu: string; posicion: string; fecha: Date; estado: string;
@@ -122,8 +123,8 @@ export async function POST(req: NextRequest) {
     }).catch(() => {});
 
     return NextResponse.json({ success: true, data: mapRow(row) }, { status: 201 });
-  } catch (e: any) {
-    if (e?.code === "P2002") {
+  } catch (e) {
+    if (getErrorCode(e) === "P2002") {
       return NextResponse.json({ error: "Ya existe una novedad con ese PLU, posición y fecha" }, { status: 400 });
     }
     return NextResponse.json({ error: "Error al crear" }, { status: 500 });

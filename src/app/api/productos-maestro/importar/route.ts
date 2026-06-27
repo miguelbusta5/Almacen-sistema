@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { mapExcelProductoRow } from "@/lib/productosMaestro";
 import { readWorkbook, worksheetObjects } from "@/lib/excel";
 import { validateImportFile, validateRowLimit } from "@/lib/fileSecurity";
+import { getErrorMessage } from "@/lib/errors";
 
 const SHEET_NAME = "ResultadosMaestrodeproductosPV";
 
@@ -62,8 +63,8 @@ export async function POST(req: NextRequest) {
       });
       if (existing) actualizados += 1;
       else importados += 1;
-    } catch (error: any) {
-      errores.push(`Fila ${index + 2}: ${error?.message ?? "error al importar"}`);
+    } catch (error) {
+      errores.push(`Fila ${index + 2}: ${getErrorMessage(error, "error al importar")}`);
     }
   }
 

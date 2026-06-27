@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { z } from "zod";
 import { esTransicionValida, rolPuedeTransicionar } from "@/lib/tiendaFlow";
 import type { EstadoDespacho } from "@/lib/tiendaFlow";
+import { getErrorCode } from "@/lib/errors";
 
 const updateSchema = z.object({
   // Estado — flujo simplificado tienda -> CEDI -> cliente
@@ -291,8 +292,8 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
     }
 
     return NextResponse.json({ success: true, data: mapRow(updatedRow) });
-  } catch (e: any) {
-    if (e.code === "P2025") {
+  } catch (e) {
+    if (getErrorCode(e) === "P2025") {
       return NextResponse.json({ error: "Conflicto: el despacho fue modificado por otro usuario", code: "CONFLICT" }, { status: 409 });
     }
     throw e;
