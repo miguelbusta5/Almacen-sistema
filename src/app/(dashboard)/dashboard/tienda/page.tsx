@@ -14,6 +14,7 @@ import {
 } from "@/lib/tienda";
 import { Badge, ModuleHero, ModuleDetailView, SkeletonLine, NetSuiteChip } from "@/components/ui";
 import { usePrompt } from "@/components/ui/useDialogs";
+import { useListDetailScroll } from "@/hooks/useListDetailScroll";
 import { useToast } from "@/contexts/ToastContext";
 import { Modal } from "@/components/ui/Modal";
 import { AutoRefreshIndicator } from "@/components/ui/AutoRefreshIndicator";
@@ -79,6 +80,7 @@ export default function TiendaPage() {
   const [debugTable, setDebugTable] = useState(false);
 
   const [panelItem, setPanelItem] = useState<DespachoTienda | null>(null);
+  useListDetailScroll(panelItem !== null);
   const [panelHistorial, setPanelHistorial] = useState<any[]>([]);
   const [panelLoading, setPanelLoading] = useState(false);
   const [creando, setCreando] = useState(false);

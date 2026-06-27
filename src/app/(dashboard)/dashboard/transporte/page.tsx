@@ -17,6 +17,7 @@ import { calcAlmacenaje, TARIFA_ALM } from "@/lib/almacenaje";
 import { insightsGuardados, insightsPorGuardado } from "@/lib/inteligencia";
 import { Stat, SkeletonStat, NetSuiteChip, ModuleHero, ModuleDetailView } from "@/components/ui";
 import { useConfirm, usePrompt } from "@/components/ui/useDialogs";
+import { useListDetailScroll } from "@/hooks/useListDetailScroll";
 import { GuardadosTable, EstadoBadge, TipoBadge } from "./_components";
 import { getModuleCssVars } from "@/lib/moduleTheme";
 import styles from "./transporte.module.css";
@@ -70,6 +71,7 @@ export default function TransportePage() {
   const [debugTable, setDebugTable] = useState(false);
 
   const [panelItem, setPanelItem] = useState<Guardado | null>(null);
+  useListDetailScroll(panelItem !== null);
   const [contactos, setContactos] = useState<ContactoGuardado[]>([]);
   const [loadingContactos, setLoadingContactos] = useState(false);
   const [mostrarFormContacto, setMostrarFormContacto] = useState(false);

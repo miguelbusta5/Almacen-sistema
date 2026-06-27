@@ -9,6 +9,7 @@ import { DetailSection, DetailGrid } from "@/components/ui/SlidePanel";
 import { AutoRefreshIndicator } from "@/components/ui/AutoRefreshIndicator";
 import { useAutoRefresh } from "@/hooks/useAutoRefresh";
 import { useIsMobile } from "@/lib/useIsMobile";
+import { useListDetailScroll } from "@/hooks/useListDetailScroll";
 import { getModuleColor, getModuleCssVars } from "@/lib/moduleTheme";
 import {
   IntegracionTable, ESTADO_LABEL, estadoVariant, fmtDate,
@@ -408,6 +409,7 @@ export default function IntegracionPage() {
   const [filterTipo, setFilterTipo] = useState("");
 
   const [selected, setSelected] = useState<Integracion | null>(null);
+  useListDetailScroll(selected !== null);
   const [showNueva, setShowNueva] = useState(false);
   const [completarItem, setCompletarItem] = useState<Integracion | null>(null);
   const [recibidoItem, setRecibidoItem] = useState<Integracion | null>(null);

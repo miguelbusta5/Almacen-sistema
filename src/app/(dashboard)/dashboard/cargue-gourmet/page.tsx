@@ -7,6 +7,7 @@ import { ModuleHero } from "@/components/ui";
 import { useToast } from "@/contexts/ToastContext";
 import { canSeeModule } from "@/lib/modulePermissions";
 import { getModuleCssVars } from "@/lib/moduleTheme";
+import { useListDetailScroll } from "@/hooks/useListDetailScroll";
 import {
   CargueGourmetTable, ESTADOS_PEDIDO_GOURMET, ESTADO_LABEL,
   type GourmetPedidoRow, type EstadoPedidoGourmet,
@@ -66,6 +67,7 @@ export default function CargueGourmetPage() {
   const [showCrear, setShowCrear] = useState(false);
 
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  useListDetailScroll(selectedId !== null);
   const [detalle, setDetalle] = useState<PedidoDetalle | null>(null);
   const [detalleLoading, setDetalleLoading] = useState(false);
   const [detalleError, setDetalleError] = useState<string | null>(null);

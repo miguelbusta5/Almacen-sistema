@@ -10,6 +10,7 @@ import { Badge, EmptyState, ModuleDetailView, ModuleHero, SkeletonTable, Stat } 
 import { AutoRefreshIndicator } from "@/components/ui/AutoRefreshIndicator";
 import { DetailSection, DetailGrid } from "@/components/ui/SlidePanel";
 import { useIsMobile } from "@/lib/useIsMobile";
+import { useListDetailScroll } from "@/hooks/useListDetailScroll";
 import type { ResultadoInspeccion } from "@/lib/preoperacional";
 import { getModuleColor, getModuleCssVars } from "@/lib/moduleTheme";
 import { useAutoRefresh } from "@/hooks/useAutoRefresh";
@@ -408,6 +409,7 @@ function SupervisorView({ role }: { role: string }) {
   const [exporting, setExporting] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [selected,      setSelected]      = useState<HistorialRow | null>(null);
+  useListDetailScroll(selected !== null);
   const [detail,        setDetail]        = useState<InspeccionDetalle | null>(null);
   const [loadingDetail, setLoadingDetail] = useState(false);
   const toastCtx = useToast();

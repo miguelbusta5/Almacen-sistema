@@ -8,6 +8,7 @@ import {
 } from "lucide-react";
 import { ModuleHero } from "@/components/ui";
 import { useConfirm } from "@/components/ui/useDialogs";
+import { useListDetailScroll } from "@/hooks/useListDetailScroll";
 import { AutoRefreshIndicator } from "@/components/ui/AutoRefreshIndicator";
 import { getModuleColor, getModuleCssVars } from "@/lib/moduleTheme";
 import { puedeEliminarSolicitudTransporte, puedeGestionarSolicitudTransporte } from "@/lib/solicitudesTransporte";
@@ -278,6 +279,7 @@ export default function SolicitudesTransportePage() {
   const [query, setQuery] = useState("");
   const [estado, setEstado] = useState("");
   const [selected, setSelected] = useState<Solicitud | null>(null);
+  useListDetailScroll(selected !== null);
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState<Solicitud | null>(null);
   const [error, setError] = useState("");
