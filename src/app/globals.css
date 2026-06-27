@@ -688,20 +688,8 @@ select option { background: var(--surface); color: var(--text); }
 .g-modal-body { padding: 20px; overflow-y: auto; }
 .g-modal-footer { display: flex; align-items: center; justify-content: flex-end; gap: 8px; padding: 14px 20px; border-top: 1px solid var(--border); background: var(--surface2); }
 
-/* ── 23. SLIDE PANEL / DETAIL SECTION (drawer) ──────────────────────────── */
-.slide-panel {
-  background: linear-gradient(180deg, var(--surface-elevated) 0%, var(--surface) 30%);
-  border-left: 1px solid var(--border-strong);
-  color: var(--text);
-}
-/* Opt-in puntual (SlidePanel `variant="fullHeight"`), NO es el default del
-   sistema: refuerza top/bottom explícitos por si algo más sube la
-   especificidad sobre el inline style. Solo aplica en desktop — en mobile
-   el bottom-sheet sigue igual. Ningún módulo lo usa actualmente. */
-@media (min-width: 641px) {
-  .slide-panel--full { top: 0; bottom: 0; height: auto; }
-}
-.detail-section, .slide-panel .detail-section {
+/* ── 23. DETAIL SECTION (helper de detalle, usado por ModuleDetailView) ──── */
+.detail-section {
   border: 1px solid var(--border);
   border-left: 3px solid var(--section-color, var(--accent));
   border-radius: var(--r-md); padding: 14px;
