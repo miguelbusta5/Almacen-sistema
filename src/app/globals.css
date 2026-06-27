@@ -145,6 +145,92 @@
   --page-max:  1280px;
 }
 
+/* ── 1.b TEMA CLARO (opt-in: html[data-theme="light"]) ───────────────────────
+   Override de tokens semánticos. La marca esmeralda se conserva (ligeramente
+   profundizada para contraste sobre blanco). Solo aplica bajo data-theme=light;
+   el oscuro (:root) queda intacto. Aún no expuesto (toggle gateado, Fase C/D). */
+html[data-theme="light"] {
+  color-scheme: light;
+
+  /* Superficies */
+  --canvas:           #F4F6F8;
+  --bg:               #F4F6F8;
+  --surface:          #FFFFFF;
+  --surface2:         #F4F6F8;
+  --surface3:         #E9EDF1;
+  --surface-elevated: #FFFFFF;
+  --surface-command:  rgba(255, 255, 255, 0.86);
+  --surface-rail:     #EEF1F4;
+  --overlay:          rgba(15, 20, 25, 0.45);
+
+  /* Bordes */
+  --border:        rgba(0, 0, 0, 0.10);
+  --border-strong: rgba(0, 0, 0, 0.18);
+
+  /* Texto */
+  --text:   #15181C;
+  --muted2: #3C4248;
+  --muted:  #6A7178;
+  --faint:  #9AA1A8;
+
+  /* Acento esmeralda — profundizado para legibilidad sobre blanco */
+  --accent:        #0E9C76;
+  --accent-bright: #14DBA0;
+  --accent-deep:   #0A7A5C;
+  --accent-tint:   rgba(14, 156, 118, 0.12);
+  --accent-ring:   rgba(14, 156, 118, 0.30);
+  --accent-grad:   linear-gradient(135deg, #0A7A5C 0%, #0E9C76 58%, #14DBA0 100%);
+
+  /* Semánticos — profundizados para texto sobre claro */
+  --success: #0FA968;  --success-tint: rgba(15, 169, 104, 0.12);
+  --warning: #B5790A;  --warning-tint: rgba(181, 121, 10, 0.12);
+  --error:   #D64545;  --error-tint:   rgba(214, 69, 69, 0.12);
+  --info:    #0E93BC;  --info-tint:    rgba(14, 147, 188, 0.12);
+
+  /* Estados operativos */
+  --state-created:  #0E9C76;
+  --state-picked:   #0E93BC;
+  --state-cedi:     #0FA968;
+  --state-sent:     #2E6FE0;
+  --state-rejected: #D64545;
+  --state-alert:    #B5790A;
+  --state-success: #0FA968;
+  --state-warning: #B5790A;
+  --state-danger:  #D64545;
+  --state-info:    #0E93BC;
+
+  /* Compat legacy */
+  --blue: #2E6FE0;  --blue-light: rgba(46, 111, 224, 0.12);
+  --green: #0FA968; --red: #D64545; --amber: #B5790A;
+  --orange: #B5790A; --orange-light: rgba(181, 121, 10, 0.12);
+
+  /* Sombras — suaves y frías */
+  --shadow-xs: 0 1px 2px rgba(16, 24, 40, 0.06);
+  --shadow-sm: 0 2px 8px rgba(16, 24, 40, 0.08), 0 1px 2px rgba(16, 24, 40, 0.06);
+  --shadow:    0 12px 28px rgba(16, 24, 40, 0.10), 0 1px 2px rgba(16, 24, 40, 0.06);
+  --shadow-md: 0 18px 40px rgba(16, 24, 40, 0.12), 0 2px 8px rgba(16, 24, 40, 0.08);
+  --shadow-lg: 0 26px 60px rgba(16, 24, 40, 0.14), 0 4px 14px rgba(16, 24, 40, 0.10);
+  --shadow-xl: 0 36px 80px rgba(16, 24, 40, 0.16), 0 8px 24px rgba(16, 24, 40, 0.12);
+  --ring-error: 0 0 0 3px rgba(214, 69, 69, 0.22);
+
+  /* Superficies/efectos tematizables */
+  --body-grad:       linear-gradient(180deg, #F7F9FB 0%, #EEF1F4 100%);
+  --sidebar-grad:    linear-gradient(180deg, #FFFFFF 0%, #F4F6F8 100%);
+  --sidebar-shadow:  18px 0 48px rgba(16, 24, 40, 0.06);
+  --header-shadow:   0 10px 28px rgba(16, 24, 40, 0.08);
+  --hover-surface:   rgba(0, 0, 0, 0.04);
+  --shimmer:         rgba(0, 0, 0, 0.05);
+  --selection-text:  #0B1A14;
+
+  /* Charts */
+  --chart-grid:           rgba(0, 0, 0, 0.08);
+  --chart-tooltip-bg:     #FFFFFF;
+  --chart-tooltip-title:  #15181C;
+  --chart-tooltip-body:   #3C4248;
+  --chart-tooltip-border: rgba(0, 0, 0, 0.12);
+  --chart-axis:           #6A7178;
+}
+
 /* ── 2. RESET Y BASE ────────────────────────────────────────────────────── */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 html { scroll-behavior: smooth; overflow-x: clip; }
