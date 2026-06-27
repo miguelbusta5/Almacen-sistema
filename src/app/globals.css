@@ -108,6 +108,20 @@
   --ring-error: 0 0 0 3px rgba(255, 107, 107, 0.26);
   --glow:       0 0 22px color-mix(in srgb, var(--accent) 38%, transparent);
 
+  /* Superficies/efectos tematizables — overridados en [data-theme="light"].
+     Los --text-on-* (texto sobre botón de color) son iguales en ambos temas
+     (el fondo del botón sigue siendo el color vivo). */
+  --body-grad:       linear-gradient(180deg, #0B0E11 0%, #08090B 100%);
+  --sidebar-grad:    linear-gradient(180deg, #0C0F12 0%, #08090B 100%);
+  --sidebar-shadow:  18px 0 48px rgba(0, 0, 0, 0.30);
+  --header-shadow:   0 10px 28px rgba(0, 0, 0, 0.34);
+  --hover-surface:   rgba(255, 255, 255, 0.04);
+  --shimmer:         rgba(255, 255, 255, 0.06);
+  --selection-text:  #fff;
+  --text-on-accent:  #04130D;
+  --text-on-error:   #1A0606;
+  --text-on-warning: #1A1303;
+
   /* Tipografía */
   --sans:    "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
   --display: "Sora", "Inter", system-ui, sans-serif;
@@ -136,7 +150,7 @@ body {
   color: var(--text);
   background:
     radial-gradient(1200px 620px at 14% -12%, color-mix(in srgb, var(--accent) 9%, transparent), transparent 60%),
-    linear-gradient(180deg, #0B0E11 0%, #08090B 100%);
+    var(--body-grad);
   background-attachment: fixed;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
@@ -152,7 +166,7 @@ body {
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: var(--border-strong); border-radius: 4px; }
 ::-webkit-scrollbar-thumb:hover { background: color-mix(in srgb, var(--accent) 40%, var(--border-strong)); }
-::selection { background: color-mix(in srgb, var(--accent) 32%, transparent); color: #fff; }
+::selection { background: color-mix(in srgb, var(--accent) 32%, transparent); color: var(--selection-text); }
 
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
@@ -192,7 +206,7 @@ body {
 }
 .skeleton::after {
   content: ""; position: absolute; inset: 0; transform: translateX(-100%);
-  background: linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.06) 50%, transparent 100%);
+  background: linear-gradient(90deg, transparent 0%, var(--shimmer) 50%, transparent 100%);
   animation: shimmer 1.4s ease-in-out infinite;
 }
 
@@ -232,9 +246,9 @@ body {
   position: sticky; top: 0; height: 100vh;
   display: flex; flex-direction: column;
   color: var(--muted2);
-  background: linear-gradient(180deg, #0C0F12 0%, #08090B 100%);
+  background: var(--sidebar-grad);
   border-right: 1px solid var(--border);
-  box-shadow: 18px 0 48px rgba(0, 0, 0, 0.30);
+  box-shadow: var(--sidebar-shadow);
 }
 .g-sidebar-brand { padding: 20px 16px 16px; border-bottom: 1px solid var(--border); }
 .g-sidebar-nav { flex: 1; padding: 12px 0; overflow-y: auto; }
@@ -254,7 +268,7 @@ body {
 }
 .g-nav-item:hover {
   color: var(--text);
-  background: rgba(255, 255, 255, 0.04);
+  background: var(--hover-surface);
   transform: translateX(2px);
 }
 .g-nav-item.active {
@@ -267,7 +281,7 @@ body {
   display: grid; place-items: center; flex-shrink: 0;
   width: 28px; height: 28px; border-radius: 9px;
   color: var(--muted);
-  background: rgba(255, 255, 255, 0.04);
+  background: var(--hover-surface);
   transition: color 0.13s ease, background 0.13s ease;
 }
 .g-nav-item:hover .g-nav-icon { color: var(--text); }
@@ -282,7 +296,7 @@ body {
   border-bottom: 1px solid var(--border);
   backdrop-filter: blur(16px) saturate(140%);
   -webkit-backdrop-filter: blur(16px) saturate(140%);
-  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.34);
+  box-shadow: var(--header-shadow);
 }
 
 /* ── 8. MODULE HERO (sin imagen — puramente tipográfico) ────────────────── */
@@ -544,7 +558,7 @@ body {
 .g-btn:disabled, .ds-btn:disabled { opacity: 0.45; cursor: not-allowed; pointer-events: none; }
 
 .g-btn-primary, .ds-btn-primary {
-  color: #04130D; background: var(--accent);
+  color: var(--text-on-accent); background: var(--accent);
   box-shadow: 0 6px 18px color-mix(in srgb, var(--accent) 30%, transparent);
 }
 .g-btn-primary:hover:not(:disabled), .ds-btn-primary:hover:not(:disabled) { background: var(--accent-bright); box-shadow: var(--glow); transform: translateY(-1px); }
@@ -556,13 +570,13 @@ body {
 .g-btn-ghost:hover:not(:disabled), .ds-btn-ghost:hover:not(:disabled) { background: var(--surface2); color: var(--text); }
 
 .g-btn-danger, .ds-btn-danger { background: var(--error-tint); color: var(--error); border-color: color-mix(in srgb, var(--error) 26%, transparent); }
-.g-btn-danger:hover:not(:disabled), .ds-btn-danger:hover:not(:disabled) { background: var(--error); color: #1A0606; border-color: var(--error); }
+.g-btn-danger:hover:not(:disabled), .ds-btn-danger:hover:not(:disabled) { background: var(--error); color: var(--text-on-error); border-color: var(--error); }
 
 .g-btn-success, .ds-btn-success { background: var(--success-tint); color: var(--success); border-color: color-mix(in srgb, var(--success) 26%, transparent); }
-.g-btn-success:hover:not(:disabled), .ds-btn-success:hover:not(:disabled) { background: var(--success); color: #04130D; }
+.g-btn-success:hover:not(:disabled), .ds-btn-success:hover:not(:disabled) { background: var(--success); color: var(--text-on-accent); }
 
 .g-btn-warning, .ds-btn-warning { background: var(--warning-tint); color: var(--warning); border-color: color-mix(in srgb, var(--warning) 26%, transparent); }
-.g-btn-warning:hover:not(:disabled), .ds-btn-warning:hover:not(:disabled) { background: var(--warning); color: #1A1303; }
+.g-btn-warning:hover:not(:disabled), .ds-btn-warning:hover:not(:disabled) { background: var(--warning); color: var(--text-on-warning); }
 
 .g-btn-sm, .ds-btn-sm { height: 28px; padding: 0 10px; font-size: 12px; border-radius: var(--r-sm); }
 .g-btn-lg, .ds-btn-lg { height: 44px; padding: 0 22px; font-size: 14px; font-weight: 600; border-radius: var(--r-md); }
