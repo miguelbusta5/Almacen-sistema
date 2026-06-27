@@ -16,6 +16,7 @@ import {
 import { calcAlmacenaje, TARIFA_ALM } from "@/lib/almacenaje";
 import { insightsGuardados, insightsPorGuardado } from "@/lib/inteligencia";
 import { Stat, SkeletonStat, NetSuiteChip, ModuleHero, ModuleDetailView } from "@/components/ui";
+import { useConfirm, usePrompt } from "@/components/ui/useDialogs";
 import { GuardadosTable, EstadoBadge, TipoBadge } from "./_components";
 import { getModuleCssVars } from "@/lib/moduleTheme";
 import styles from "./transporte.module.css";
@@ -59,6 +60,8 @@ export default function TransportePage() {
   const [loading, setLoading] = useState(true);
   const [view, setView] = useState<"lista" | "graficos">("lista");
   const toastCtx = useToast();
+  const { confirm, confirmModal } = useConfirm();
+  const { prompt, promptModal } = usePrompt();
 
   const [fq, setFq] = useState("");
   const [fEstado, setFEstado] = useState("");
@@ -124,11 +127,24 @@ export default function TransportePage() {
   }
 
   async function convertirPendienteTienda(p: PendienteTiendaGuardado) {
-    const ubicacion = prompt(`Ubicación para guardar ${p.despacho.numeroDocumento}:`);
+    const ubicacion = await prompt({
+      title: "Registrar guardado",
+      label: `Ubicación para guardar ${p.despacho.numeroDocumento}:`,
+      placeholder: "Ej. Pasillo B - Nivel 2",
+      confirmLabel: "Continuar",
+      required: true,
+    });
     if (ubicacion === null) return;
     const clean = ubicacion.trim();
     if (!clean) { showToast("Ubicación requerida", true); return; }
-    const nota = prompt("Nota adicional para el guardado:", p.nota ?? "") ?? null;
+    const notaRes = await prompt({
+      title: "Registrar guardado",
+      label: "Nota adicional para el guardado (opcional):",
+      defaultValue: p.nota ?? "",
+      multiline: true,
+      confirmLabel: "Guardar",
+    });
+    const nota = notaRes;
     const res = await fetch("/api/transporte/pendientes-tienda", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -143,7 +159,13 @@ export default function TransportePage() {
 
   // Solo ADMIN: revertir de DESPACHADO a PENDIENTE DESPACHO
   async function revertirDespacho(g: Guardado) {
-    if (!confirm(`¿Revertir "${g.documento}" a Pendiente Despacho? Esto anulará la fecha de despacho registrada.`)) return;
+    const ok = await confirm({
+      title: "Revertir a Pendiente Despacho",
+      message: `¿Revertir "${g.documento}" a Pendiente Despacho? Esto anulará la fecha de despacho registrada.`,
+      confirmLabel: "Revertir",
+      tone: "danger",
+    });
+    if (!ok) return;
     const res = await fetch(`/api/transporte/${encodeURIComponent(g.clientId)}`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
@@ -452,7 +474,7 @@ export default function TransportePage() {
                       {canEdit && (
                         <button className="ds-btn ds-btn-ghost ds-btn-sm" style={{ fontSize: 11, height: 22, color: "var(--muted)" }}
                           onClick={async () => {
-                            const id = prompt("ID interno de NetSuite:", panelItem.netsuiteId ?? "");
+                            const id = await prompt({ title: "ID NetSuite", label: "ID interno de NetSuite:", defaultValue: panelItem.netsuiteId ?? "", confirmLabel: "Guardar" });
                             if (id === null) return;
                             const val = id.trim() || null;
                             const r = await fetch(`/api/transporte/${panelItem.clientId}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ netsuiteId: val }) });
@@ -564,6 +586,9 @@ export default function TransportePage() {
           }}
         />
       )}
+
+      {confirmModal}
+      {promptModal}
     </div>
   );
 }
