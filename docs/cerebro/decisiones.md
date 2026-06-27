@@ -1,5 +1,31 @@
 # Decisiones de Arquitectura y Producto
 
+## 2026-06-26 - Eliminada la página huérfana `muebles` + cierre de deuda de la auditoría
+
+**Decisión:**
+- Se **elimina** `src/app/(dashboard)/dashboard/muebles/page.tsx` (duplicado legacy de escritorio de
+  `inventario`: mismo `@/lib/muebles`, mismos endpoints `/api/novedades`, `moduleKey="inventario"`).
+  Estaba huérfana — **ningún enlace** a `/dashboard/muebles` (Sidebar/homeActions/modulePermissions/
+  CommandPalette → el grupo "muebles" navega a `/dashboard/inventario`). Se conserva `@/lib/muebles`
+  (lo re-exporta `lib/inventario`) y los identificadores de módulo `"muebles"` (etiquetas de dominio
+  en auditoría/activity-log/insights). El acceso por URL directa pasa a 404 (esperado).
+- Cierre de la **deuda de la auditoría 2026-06-26** (ver [[pendientes]]): a11y de `ModuleDetailView`
+  (Escape + foco, `feba756`); `prompt()/confirm()` nativos → `Modal` del DS vía hooks promesa
+  `useConfirm`/`usePrompt` + `PromptModal` (`src/components/ui/useDialogs.tsx`; transporte `2ef7bbd`,
+  tienda/solicitudes/exportaciones `a58dd0a`); conservar scroll del listado al volver del detalle
+  (`src/hooks/useListDetailScroll.ts`, `5c529ee`); `catch (e:any)`→`unknown` en preoperacional
+  (`7d42e3c`).
+
+**Consecuencias:**
+- Menos código muerto (~934 líneas) y deuda asociada (tabla nativa, 2 `prompt()`, `any`). El dominio
+  novedades/inventario sigue íntegro vía `inventario/page.tsx` + `@/lib/muebles`.
+- Pendiente menor: `catch (e:any)` en ~5 endpoints, tipado `any` residual, export muerto `SlidePanel`,
+  evaluar cliente fetch centralizado.
+
+**Archivos:** borrado `src/app/(dashboard)/dashboard/muebles/page.tsx`; nuevos
+`src/components/ui/useDialogs.tsx`, `src/hooks/useListDetailScroll.ts`; `docs/cerebro/{pendientes,decisiones}.md`,
+`PROJECT_SOURCE_OF_TRUTH.md`.
+
 ## 2026-06-26 - Migración del detalle de módulos a `ModuleDetailView` (vista a ancho completo)
 
 **Decisión:**

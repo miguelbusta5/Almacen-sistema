@@ -898,7 +898,7 @@ restantes bajo `src/app/(dashboard)/dashboard`.
 | `/dashboard/inventario` | `inventario/page.tsx` (1032 líneas) | sí | sí | sí (`INVENTARIO, SUPERVISOR_INVENTARIO, GERENTE, ADMIN, OPERADOR`) | **Especial — mobile-first.** Sin `<table>` manual (cards), con cámara/fotos. Ya auditado (§9/§19.7): NO forzar a `DataTable`+`SlidePanel`. |
 | `/dashboard/mis-tareas` | `mis-tareas/page.tsx` (260 líneas) | sí | sí | sí | **Dashboard/agregador** — resumen de tareas, sin tabla. No requiere migración. |
 | `/dashboard/centro-control` | `centro-control/page.tsx` (592 líneas) | sí | sí | sí | **Dashboard/agregador** de KPIs, sin tabla. No requiere migración. |
-| `/dashboard/muebles` | `muebles/page.tsx` (934 líneas) | **no** | **no** | **no** | **Huérfana/legacy.** Versión desktop pre-rewrite de Inventario (mismo `@/lib/muebles`, mismos endpoints), con `<table>` manual, formularios, `SlidePanel`, gráficos Chart.js. Sustituida por `inventario/page.tsx` (mobile-first) pero el archivo sigue en el repo sin ningún enlace de navegación ni permiso de rol. |
+| ~~`/dashboard/muebles`~~ | — (eliminada) | — | — | — | **ELIMINADA (2026-06-26).** Era una versión desktop pre-rewrite de Inventario (huérfana, sin enlaces de navegación), reemplazada por `inventario/page.tsx` (mobile-first). Se conserva `@/lib/muebles` (lo re-exporta `lib/inventario`) y los identificadores de módulo `"muebles"` en auditoría/activity-log/insights. Ver `docs/cerebro/decisiones.md`. |
 
 ### Hallazgos clave
 

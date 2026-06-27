@@ -142,24 +142,25 @@ en los 7 módulos con detalle. Ver [[decisiones]] (2026-06-26). Validación por 
 Hallazgos de la auditoría profunda tras la migración a `ModuleDetailView`. Priorizados (ALTA primero).
 Solo documentados — no se cambió código de la app en esa tarea.
 
-- [ ] 🔴 **Se pierde scroll/filtros/paginación al volver** del detalle al listado (el render condicional
-  `{selected ? <ModuleDetailView> : <lista>}` desmonta el listado). Afecta a los 7 page.tsx; más visible
-  en tienda. Opción: conservar el listado montado (oculto) o restaurar scroll/estado al volver.
-- [ ] 🔴 **UX: `prompt()`/`window.confirm()` nativos para acciones reales** — reemplazar por modal del DS.
-  Sitios: `muebles/page.tsx:584,630` (asignar responsable, NetSuite), `tienda/page.tsx:295,373` (novedad,
-  NetSuite), `transporte/page.tsx:127,131,455` (ubicación/nota, NetSuite), `solicitudes-transporte/page.tsx:395`
-  (archivar), `exportaciones/page.tsx:240` (borrar caja, destructivo).
-- [ ] 🟡 **`ModuleDetailView` sin accesibilidad**: no cierra con Escape ni gestiona foco/`inert` (el
-  `SlidePanel` sí: `SlidePanel.tsx:111-116`). Quick win: añadir listener de Escape → `onBack`.
-- [ ] 🟡 **`muebles` huérfano + sin test**: la página migró pero no está en `Sidebar`/`homeActions`/
-  `modulePermissions` (solo URL directa / CommandPalette). Decidir: eliminar la página legacy o
-  reactivarla; si se mantiene, añadir test de render.
-- [ ] 🟡 **Tipado débil (`any`)**: ~113 usos; hotspots en `muebles/page.tsx` (stats gráficas) y
-  `centro-control/page.tsx:181`, `lib/inteligencia.ts`, `lib/auth.ts`. Crear interfaces de `stats`.
+- [x] 🔴 **Conservar scroll del listado al volver** del detalle — hook `src/hooks/useListDetailScroll.ts`
+  cableado en los 6 módulos activos con detalle (recuerda `scrollY` de la lista, va al tope al abrir,
+  restaura al volver). Commit `5c529ee`. — 2026-06-26
+- [x] 🔴 **UX: `prompt()`/`window.confirm()` nativos reemplazados** por el `Modal` del DS — hooks
+  promesa `useConfirm`/`usePrompt` + `PromptModal` (`src/components/ui/useDialogs.tsx`). Migrados
+  transporte, tienda, solicitudes y exportaciones (commits `2ef7bbd`, `a58dd0a`). Los de muebles se
+  cerraron al eliminar la página. — 2026-06-26
+- [x] 🟡 **`ModuleDetailView` accesibilidad**: cierra con Escape (→ `onBack`, guardado anti-doble-cierre
+  si hay modal abierto o se está escribiendo) y enfoca "Volver" al montar. Commit `feba756`. — 2026-06-26
+- [x] 🟡 **`muebles` huérfano eliminado**: `src/app/(dashboard)/dashboard/muebles/page.tsx` borrado
+  (duplicado legacy de `inventario`, sin enlaces de navegación). Se conserva `@/lib/muebles` (lo
+  re-exporta `lib/inventario`) y los identificadores de módulo `"muebles"` (audit/insights). — 2026-06-26
+- [ ] 🟡 **Tipado débil (`any`)**: ~110 usos; hotspots en `centro-control/page.tsx:181`,
+  `lib/inteligencia.ts`, `lib/auth.ts`. Crear interfaces de `stats`. (Se redujeron al eliminar muebles.)
 - [ ] 🟡 **Sin cliente fetch centralizado**: `fetch()` crudo + manejo de error duplicado en ~20 páginas.
   Evaluar `src/lib/apiClient.ts` con wrapper tipado.
-- [ ] 🟡 **`catch (e: any)` ×11** (asume `e.message`): tipar como `unknown`. `preoperacional/page.tsx`
-  (6) + 5 endpoints.
+- [x] 🟡 **`catch (e: any)` en preoperacional** tipado como `unknown` (helper `errMsg`). Commit
+  `7d42e3c`. Quedan ~5 en endpoints `src/app/api/**`. — 2026-06-26
+- [ ] 🟡 **`catch (e: any)` en endpoints** (`src/app/api/**`, ~5): tipar como `unknown`.
 - [ ] 🟢 **Export muerto `SlidePanel`** (overlay, `SlidePanel.tsx:104-257`): sin uso tras la migración
   (solo los helpers se usan). Deprecar/retirar cuando se confirme que ningún módulo lo necesita.
 
