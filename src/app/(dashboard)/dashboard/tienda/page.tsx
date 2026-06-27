@@ -13,6 +13,7 @@ import {
   fmtFechaTienda, todayISO, ESTADOS_ACTIVOS,
 } from "@/lib/tienda";
 import { Badge, ModuleHero, ModuleDetailView, SkeletonLine, NetSuiteChip } from "@/components/ui";
+import { usePrompt } from "@/components/ui/useDialogs";
 import { useToast } from "@/contexts/ToastContext";
 import { Modal } from "@/components/ui/Modal";
 import { AutoRefreshIndicator } from "@/components/ui/AutoRefreshIndicator";
@@ -70,6 +71,7 @@ export default function TiendaPage() {
   const [items, setItems] = useState<DespachoTienda[]>([]);
   const [loading, setLoading] = useState(true);
   const toastCtx = useToast();
+  const { prompt, promptModal } = usePrompt();
 
   const [fq, setFq] = useState("");
   const [fEstado, setFEstado] = useState("");
@@ -291,8 +293,8 @@ export default function TiendaPage() {
             <>
               {canChangeOperationalState && ESTADOS_ACTIVOS.includes(panelItem.estado) && (
                 <button className="ds-btn ds-btn-sm ds-btn-secondary" style={{ color: "var(--error)" }}
-                  onClick={() => {
-                    const novedad = prompt("Describe la novedad:");
+                  onClick={async () => {
+                    const novedad = await prompt({ title: "Registrar novedad", label: "Describe la novedad:", placeholder: "Detalle de la novedad", multiline: true, required: true, confirmLabel: "Registrar" });
                     if (novedad !== null) cambiarEstado(panelItem, "CON_NOVEDAD", { novedad });
                   }}>
                   <AlertTriangle size={13} />Novedad
@@ -370,7 +372,7 @@ export default function TiendaPage() {
                       {canEdit && (
                         <button className="ds-btn ds-btn-ghost ds-btn-sm" style={{ fontSize: 11, height: 22, color: "var(--muted)" }}
                           onClick={async () => {
-                            const id = prompt("ID interno de NetSuite:", panelItem.netsuiteId ?? "");
+                            const id = await prompt({ title: "ID NetSuite", label: "ID interno de NetSuite:", defaultValue: panelItem.netsuiteId ?? "", confirmLabel: "Guardar" });
                             if (id === null) return;
                             const val = id.trim() || null;
                             const r = await fetch(`/api/tienda/${panelItem.id}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ netsuiteId: val }) });
@@ -494,6 +496,8 @@ export default function TiendaPage() {
           onRechazado={() => { setRechazarItem(null); setPanelItem(null); load(); showToast("Factura rechazada"); }}
         />
       )}
+
+      {promptModal}
     </div>
   );
 }

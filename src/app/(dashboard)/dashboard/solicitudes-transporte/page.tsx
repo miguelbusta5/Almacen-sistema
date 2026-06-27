@@ -7,6 +7,7 @@ import {
   Plus, RefreshCw, Search, Send, X,
 } from "lucide-react";
 import { ModuleHero } from "@/components/ui";
+import { useConfirm } from "@/components/ui/useDialogs";
 import { AutoRefreshIndicator } from "@/components/ui/AutoRefreshIndicator";
 import { getModuleColor, getModuleCssVars } from "@/lib/moduleTheme";
 import { puedeEliminarSolicitudTransporte, puedeGestionarSolicitudTransporte } from "@/lib/solicitudesTransporte";
@@ -270,6 +271,7 @@ export default function SolicitudesTransportePage() {
   const userId = user?.id;
   const isGestor = puedeGestionarSolicitudTransporte(role);
   const canDelete = puedeEliminarSolicitudTransporte(role);
+  const { confirm, confirmModal } = useConfirm();
   const [rows, setRows] = useState<Solicitud[]>([]);
   const [catalogos, setCatalogos] = useState<Catalogos | null>(null);
   const [loading, setLoading] = useState(true);
@@ -392,7 +394,13 @@ export default function SolicitudesTransportePage() {
   }
 
   async function borrarSolicitud(solicitud: Solicitud) {
-    if (!window.confirm("Esta solicitud se ocultara del modulo y conservara historial. ¿Continuar?")) return;
+    const ok = await confirm({
+      title: "Archivar solicitud",
+      message: "Esta solicitud se ocultará del módulo y conservará su historial. ¿Continuar?",
+      confirmLabel: "Archivar",
+      tone: "danger",
+    });
+    if (!ok) return;
     const res = await fetch(`/api/solicitudes-transporte/${solicitud.id}`, {
       method: "DELETE",
       headers: { "Content-Type": "application/json" },
@@ -519,6 +527,8 @@ export default function SolicitudesTransportePage() {
           onSaved={async () => { setShowForm(false); setEditing(null); await load(); }}
         />
       )}
+
+      {confirmModal}
     </div>
   );
 }

@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useSession } from "next-auth/react";
 import { BarChart3, CheckCircle2, ChevronDown, ChevronUp, Clock, Pencil, RefreshCw, Search, Tags, Trash2 } from "lucide-react";
 import { EmptyState, ModuleHero, SkeletonTable } from "@/components/ui";
+import { useConfirm } from "@/components/ui/useDialogs";
 import { Modal } from "@/components/ui/Modal";
 import { AutoRefreshIndicator } from "@/components/ui/AutoRefreshIndicator";
 import { getModuleColor, getModuleCssVars } from "@/lib/moduleTheme";
@@ -56,6 +57,7 @@ export default function ExportacionesPage() {
   const canUse = puedeUsarExportaciones(role);
   const canManage = puedeGestionarExportaciones(role);
 
+  const { confirm, confirmModal } = useConfirm();
   const [items, setItems] = useState<Exportacion[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -237,7 +239,13 @@ export default function ExportacionesPage() {
   }
 
   async function remove(item: Exportacion) {
-    if (!window.confirm(`Borrar caja ${item.numeroCaja}?`)) return;
+    const ok = await confirm({
+      title: "Borrar caja",
+      message: `¿Borrar la caja ${item.numeroCaja}? Esta acción no se puede deshacer.`,
+      confirmLabel: "Borrar",
+      tone: "danger",
+    });
+    if (!ok) return;
     const res = await fetch(`/api/exportaciones/${item.id}`, {
       method: "DELETE",
       headers: { "Content-Type": "application/json" },
@@ -513,6 +521,8 @@ export default function ExportacionesPage() {
           </form>
         </Modal>
       )}
+
+      {confirmModal}
     </div>
   );
 }
