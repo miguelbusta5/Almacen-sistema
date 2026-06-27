@@ -10,13 +10,19 @@ export const metadata: Metadata = {
 
 export const viewport: Viewport = {
   themeColor: "#08090B",
-  colorScheme: "dark",
+  colorScheme: "dark light",
 };
+
+// Script anti-parpadeo: antes del paint aplica el tema guardado por dispositivo
+// (localStorage 'theme'); por defecto queda en oscuro (atributo SSR). Quien no
+// lo haya elegido nunca verá el claro (toggle gateado hasta QA — Fase C/D).
+const THEME_INIT = `try{var t=localStorage.getItem('theme');if(t==='light'||t==='dark'){document.documentElement.dataset.theme=t;}}catch(e){}`;
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="es" className="h-full" data-theme="dark">
+    <html lang="es" className="h-full" data-theme="dark" suppressHydrationWarning>
       <head>
+        <script dangerouslySetInnerHTML={{ __html: THEME_INIT }} />
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         <link

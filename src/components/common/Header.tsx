@@ -4,6 +4,7 @@ import { signOut } from "next-auth/react";
 import { Bell, ChevronDown, Clock3, LogOut, Search, ShieldCheck, Wifi } from "lucide-react";
 import { useEffect, useState } from "react";
 import Logo from "./Logo";
+import { ThemeToggle } from "./ThemeToggle";
 import { useIsMobile } from "@/lib/useIsMobile";
 import { useCommandPalette } from "@/contexts/CommandPaletteContext";
 import { getVisibleModules, ROLE_LABEL_EXT, type AppRole } from "@/lib/modulePermissions";
@@ -173,6 +174,8 @@ export default function Header({ user }: HeaderProps) {
             <Search size={15} />
           </button>
         )}
+
+        <ThemeToggle />
 
         <div style={{ position: "relative" }}>
           <button
