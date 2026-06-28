@@ -239,7 +239,7 @@ function BottomSheet({ onClose, children, title }: {
           )}
         </div>
         {/* Contenido scrollable */}
-        <div style={{ flex: 1, overflowY: "auto", WebkitOverflowScrolling: "touch" as any }}>
+        <div style={{ flex: 1, overflowY: "auto", WebkitOverflowScrolling: "touch" }}>
           {children}
         </div>
       </div>
@@ -311,20 +311,20 @@ function NuevaNovedadSheet({ onClose, onCreada, existingPlus, existingPosiciones
       if (j.success && j.url) {
         setFoto((prev) =>
           prev.phase !== "idle"
-            ? { phase: "ready", file: prev.file, dataUrl: (prev as any).dataUrl, url: j.url }
+            ? { phase: "ready", file: prev.file, dataUrl: prev.dataUrl, url: j.url }
             : prev
         );
       } else {
         setFoto((prev) =>
           prev.phase !== "idle"
-            ? { phase: "error", file: prev.file, dataUrl: (prev as any).dataUrl }
+            ? { phase: "error", file: prev.file, dataUrl: prev.dataUrl }
             : prev
         );
       }
     } catch {
       setFoto((prev) =>
         prev.phase !== "idle"
-          ? { phase: "error", file: prev.file, dataUrl: (prev as any).dataUrl }
+          ? { phase: "error", file: prev.file, dataUrl: prev.dataUrl }
           : prev
       );
     }
@@ -476,7 +476,7 @@ function NuevaNovedadSheet({ onClose, onCreada, existingPlus, existingPosiciones
           <label style={{ display: "block", fontSize: 12, fontWeight: 700, color: "var(--muted)", textTransform: "uppercase", letterSpacing: ".06em", marginBottom: 10 }}>
             Tipo de novedad
           </label>
-          <div style={{ display: "flex", gap: 8, overflowX: "auto", paddingBottom: 4, WebkitOverflowScrolling: "touch" as any }}>
+          <div style={{ display: "flex", gap: 8, overflowX: "auto", paddingBottom: 4, WebkitOverflowScrolling: "touch" }}>
             {CHIP_TIPOS.map((t) => (
               <TipoChip
                 key={t.id}
@@ -506,7 +506,7 @@ function NuevaNovedadSheet({ onClose, onCreada, existingPlus, existingPosiciones
           ) : (
             <div style={{ position: "relative", borderRadius: 14, overflow: "hidden", border: "1px solid var(--border)" }}>
               <img
-                src={(foto as any).dataUrl}
+                src={foto.dataUrl}
                 alt="Vista previa"
                 style={{ width: "100%", height: 160, objectFit: "cover", display: "block" }}
               />
@@ -928,7 +928,7 @@ export default function InventarioMobilePage() {
       </div>
 
       {/* ── Lista ─────────────────────────────────────────── */}
-      <div style={{ flex: 1, overflowY: "auto", WebkitOverflowScrolling: "touch" as any }}>
+      <div style={{ flex: 1, overflowY: "auto", WebkitOverflowScrolling: "touch" }}>
         {loading ? (
           <div style={{ padding: 16, display: "flex", flexDirection: "column", gap: 1 }}>
             {Array.from({ length: 8 }).map((_, i) => (
