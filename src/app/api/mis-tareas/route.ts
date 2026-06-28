@@ -23,7 +23,7 @@ export async function GET() {
           fecha: true, costoIncidencia: true,
           asignadoA: true,
           fechaCompromiso: true,
-        } as any,
+        },
         orderBy: [{ created_at: "asc" }],
         take: 50,
       })
@@ -82,18 +82,18 @@ export async function GET() {
     success: true,
     role,
     data: {
-      novedades: novedades.map((n: any) => ({
+      novedades: novedades.map((n) => ({
         id: n.id, plu: n.plu, posicion: n.posicion, estado: n.estado,
         fabricante: n.fabricante, asignadoA: n.asignadoA,
         fechaCompromiso: n.fechaCompromiso ? new Date(n.fechaCompromiso).toISOString().slice(0, 10) : null,
         esPropio: n.asignadoA === userName,
       })),
-      guardados: guardados.map((g: any) => ({
+      guardados: guardados.map((g) => ({
         id: g.id, clientId: g.client_id, documento: g.documento,
         ubicacion: g.ubicacion, estado: g.estado,
         fecha: new Date(g.fecha).toISOString().slice(0, 10), nota: g.nota, tipo: g.tipo,
       })),
-      guardadosTiendaPendientes: guardadosTiendaPendientes.map((p: any) => ({
+      guardadosTiendaPendientes: guardadosTiendaPendientes.map((p) => ({
         id: p.id,
         despachoId: p.despachoId,
         nota: p.nota,
@@ -103,7 +103,7 @@ export async function GET() {
         centroCostos: p.despacho.centroCostos,
         numeroCajas: p.despacho.numeroCajas,
       })),
-      despachosTienda: despachosTienda.map((d: any) => ({
+      despachosTienda: despachosTienda.map((d) => ({
         id: d.id, centroCostos: d.centroCostos, numeroDocumento: d.numeroDocumento,
         clienteNombre: d.clienteNombre, estado: d.estado,
         fechaCreacion: new Date(d.fechaCreacion).toISOString().slice(0, 10),

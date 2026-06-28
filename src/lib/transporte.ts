@@ -51,7 +51,7 @@ export type Urgencia =
   | null;
 
 // Alerta cuando faltan ≤5 días para la entrega (o ya venció).
-export function urgencia(g: Guardado): Urgencia {
+export function urgencia(g: { estado: string; nota: string | null }): Urgencia {
   if (g.estado === "DESPACHADO") return null;
   const entrega = parseEntrega(g.nota);
   if (!entrega) return null;

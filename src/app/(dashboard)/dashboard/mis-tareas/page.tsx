@@ -15,11 +15,30 @@ import { useAutoRefresh } from "@/hooks/useAutoRefresh";
 import Link from "next/link";
 import { getModuleCssVars } from "@/lib/moduleTheme";
 
+// Forma de los items que devuelve GET /api/mis-tareas.
+interface TareaNovedad {
+  id: string; plu: string; posicion: string; estado: string;
+  fabricante: string | null; asignadoA: string | null;
+  fechaCompromiso: string | null; esPropio: boolean;
+}
+interface TareaGuardado {
+  id: string; clientId: string; documento: string; ubicacion: string;
+  estado: string; fecha: string; nota: string | null; tipo: string | null;
+}
+interface TareaGuardadoTienda {
+  id: string; despachoId: string; nota: string | null; createdAt: string;
+  documento: string; clienteNombre: string; centroCostos: string; numeroCajas: number | null;
+}
+interface TareaDespacho {
+  id: string; centroCostos: string; numeroDocumento: string; clienteNombre: string;
+  estado: string; fechaCreacion: string; fechaEntregaComprometida: string | null; createdAt: string;
+}
+
 interface MisTareas {
-  novedades: any[];
-  guardados: any[];
-  guardadosTiendaPendientes: any[];
-  despachosTienda: any[];
+  novedades: TareaNovedad[];
+  guardados: TareaGuardado[];
+  guardadosTiendaPendientes: TareaGuardadoTienda[];
+  despachosTienda: TareaDespacho[];
   notifNoLeidas: number;
 }
 
@@ -162,7 +181,7 @@ export default function MisTareasPage() {
           {/* ── INVENTARIO: Novedades ──────────────────────── */}
           {data.novedades.length > 0 && (
             <Seccion icon={<Package size={15} />} title="Novedades asignadas" count={data.novedades.length} color="#14DBA0">
-              {data.novedades.slice(0, 10).map((n: any) => {
+              {data.novedades.slice(0, 10).map((n) => {
                 const sla = calcSla(n.fechaCompromiso);
                 const dias = diasRestantesSla(n.fechaCompromiso);
                 return (
@@ -185,7 +204,7 @@ export default function MisTareasPage() {
           {/* ── TRANSPORTE: Guardados ─────────────────────── */}
           {data.guardados.length > 0 && (
             <Seccion icon={<Truck size={15} />} title="Guardados pendientes" count={data.guardados.length} color="var(--brand)">
-              {data.guardados.slice(0, 8).map((g: any) => {
+              {data.guardados.slice(0, 8).map((g) => {
                 const u = urgencia(g);
                 const alerta = u?.tipo === "vencida";
                 return (
@@ -207,7 +226,7 @@ export default function MisTareasPage() {
 
           {data.guardadosTiendaPendientes.length > 0 && (
             <Seccion icon={<Truck size={15} />} title="Despachos de tienda por guardar" count={data.guardadosTiendaPendientes.length} color="var(--brand)">
-              {data.guardadosTiendaPendientes.slice(0, 8).map((p: any) => (
+              {data.guardadosTiendaPendientes.slice(0, 8).map((p) => (
                 <TareaCard
                   key={p.id}
                   href="/dashboard/transporte"
@@ -224,7 +243,7 @@ export default function MisTareasPage() {
           {/* ── TIENDA: Despachos pendientes ──────────────── */}
           {data.despachosTienda.length > 0 && (
             <Seccion icon={<Store size={15} />} title="Despachos tienda pendientes" count={data.despachosTienda.length} color="var(--brand)">
-              {data.despachosTienda.slice(0, 8).map((d: any) => {
+              {data.despachosTienda.slice(0, 8).map((d) => {
                 const horas = horasDesde(d.createdAt);
                 const critico = horas >= 24;
                 const slaDespach = d.fechaEntregaComprometida ? calcSla(d.fechaEntregaComprometida) : null;
