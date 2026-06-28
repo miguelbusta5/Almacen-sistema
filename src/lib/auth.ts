@@ -1,7 +1,23 @@
-import NextAuth from "next-auth";
+import NextAuth, { type DefaultSession } from "next-auth";
 import Credentials from "next-auth/providers/credentials";
 import { prisma } from "@/lib/prisma";
 import bcrypt from "bcryptjs";
+
+// Augmentación de tipos: la sesión/usuario/JWT llevan `id` y `role`.
+declare module "next-auth" {
+  interface User {
+    role?: string;
+  }
+  interface Session {
+    user: { id?: string; role?: string } & DefaultSession["user"];
+  }
+}
+declare module "@auth/core/jwt" {
+  interface JWT {
+    id?: string;
+    role?: string;
+  }
+}
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
   providers: [
@@ -30,15 +46,15 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   callbacks: {
     async jwt({ token, user }) {
       if (user) {
-        token.role = (user as any).role;
-        token.id = (user as any).id;
+        token.role = user.role;
+        token.id = user.id;
       }
       return token;
     },
     async session({ session, token }) {
       if (session.user) {
-        (session.user as any).role = token.role;
-        (session.user as any).id = token.id;
+        session.user.role = token.role;
+        if (token.id) session.user.id = token.id;
       }
       return session;
     },
