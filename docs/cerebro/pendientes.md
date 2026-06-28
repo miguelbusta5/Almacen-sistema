@@ -160,9 +160,10 @@ Solo documentados — no se cambió código de la app en esa tarea.
   Evaluar `src/lib/apiClient.ts` con wrapper tipado.
 - [x] 🟡 **`catch (e: any)` en preoperacional** tipado como `unknown` (helper `errMsg`). Commit
   `7d42e3c`. Quedan ~5 en endpoints `src/app/api/**`. — 2026-06-26
-- [ ] 🟡 **`catch (e: any)` en endpoints** (`src/app/api/**`, ~5): tipar como `unknown`.
-- [ ] 🟢 **Export muerto `SlidePanel`** (overlay, `SlidePanel.tsx:104-257`): sin uso tras la migración
-  (solo los helpers se usan). Deprecar/retirar cuando se confirme que ningún módulo lo necesita.
+- [x] 🟡 **`catch (e: any)` en endpoints** tipados como `unknown` (helpers `getErrorCode`/`getErrorMessage`
+  en `src/lib/errors.ts`). Commit `e370323`. — 2026-06-26
+- [x] 🟢 **Export muerto `SlidePanel`** retirado (overlay + CSS `.slide-panel` muerto); se conservan los
+  helpers `DetailSection`/`DetailGrid`/`MiniHistory`/`IntelBanner`. Commit `b9d4cc4`. — 2026-06-26
 
 ---
 
