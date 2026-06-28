@@ -231,6 +231,23 @@ html[data-theme="light"] {
   --chart-axis:           #6A7178;
 }
 
+/* El login es una pantalla de marca pre-auth: siempre oscuro, independiente del
+   tema. Se re-declaran los tokens oscuros scopeados a `.login-page` (los valores
+   puestos en el elemento ganan sobre los heredados de html[data-theme=light]),
+   así sus gradientes oscuros hardcodeados conviven con texto/superficies claros. */
+.login-page {
+  color-scheme: dark;
+  --bg: #0A0C0E; --surface: #121519; --surface2: #171B20; --surface3: #1E232A;
+  --surface-elevated: #161A1F;
+  --border: rgba(255, 255, 255, 0.08); --border-strong: rgba(255, 255, 255, 0.16);
+  --text: #ECEFF1; --muted2: #C2C8CE; --muted: #8B9398; --faint: #5C636A;
+  --accent: #14DBA0; --accent-bright: #5BF5C7; --accent-deep: #0E9C76;
+  --accent-tint: rgba(20, 219, 160, 0.13);
+  --error: #FF6B6B; --error-tint: rgba(255, 107, 107, 0.15);
+  --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.40);
+  --text-on-accent: #04130D;
+}
+
 /* ── 2. RESET Y BASE ────────────────────────────────────────────────────── */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 html { scroll-behavior: smooth; overflow-x: clip; }
