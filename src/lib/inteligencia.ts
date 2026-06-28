@@ -295,12 +295,12 @@ export function insightsPluReincidente(items: Novedad[]): IntelInsight[] {
 // REGLA: Zona crítica — zona con >35% de novedades activas
 export function insightsZonaCritica(items: Novedad[]): IntelInsight[] {
   const out: IntelInsight[] = [];
-  const activas = items.filter((n) => n.estado !== "SOLUCIONADO" && (n as any).zonaBodega);
+  const activas = items.filter((n) => n.estado !== "SOLUCIONADO" && n.zonaBodega);
   if (activas.length < 5) return out; // Umbral mínimo de datos
 
   const byZona: Record<string, number> = {};
   for (const n of activas) {
-    const zona = (n as any).zonaBodega as string;
+    const zona = n.zonaBodega as string;
     byZona[zona] = (byZona[zona] ?? 0) + 1;
   }
 
@@ -323,11 +323,11 @@ export function insightsZonaCritica(items: Novedad[]): IntelInsight[] {
 // REGLA: Responsable saturado — >10 novedades asignadas
 export function insightsResponsableSaturado(items: Novedad[]): IntelInsight[] {
   const out: IntelInsight[] = [];
-  const abiertas = items.filter((n) => n.estado !== "SOLUCIONADO" && (n as any).asignadoA);
+  const abiertas = items.filter((n) => n.estado !== "SOLUCIONADO" && n.asignadoA);
 
   const byResp: Record<string, number> = {};
   for (const n of abiertas) {
-    const r = (n as any).asignadoA as string;
+    const r = n.asignadoA as string;
     byResp[r] = (byResp[r] ?? 0) + 1;
   }
 
@@ -353,7 +353,7 @@ export function insightsResponsableSaturado(items: Novedad[]): IntelInsight[] {
 export function insightsSinClasificar(items: Novedad[]): IntelInsight[] {
   const out: IntelInsight[] = [];
   const pendientes = items.filter((n) => n.estado !== "SOLUCIONADO");
-  const sinClasif = pendientes.filter((n) => !(n as any).tipoNovedad || !(n as any).causaRaiz);
+  const sinClasif = pendientes.filter((n) => !n.tipoNovedad || !n.causaRaiz);
   if (sinClasif.length > 0) {
     const pct = Math.round(sinClasif.length / Math.max(pendientes.length, 1) * 100);
     if (pct >= 40) {
@@ -369,7 +369,7 @@ export function insightsSinClasificar(items: Novedad[]): IntelInsight[] {
   }
   // Novedades sin asignar hace más de 2 días
   const sinAsignarOld = pendientes.filter((n) => {
-    if ((n as any).asignadoA) return false;
+    if (n.asignadoA) return false;
     const dias = Math.floor((Date.now() - new Date(n.fecha + "T00:00:00").getTime()) / 86_400_000);
     return dias >= 2;
   });
@@ -417,7 +417,7 @@ export function insightsSla(items: Novedad[]): IntelInsight[] {
 
   // SLA vencidas (tiene fechaCompromiso y ya pasó)
   const vencidas = abiertas.filter((n) => {
-    const fc = (n as any).fechaCompromiso as string | null;
+    const fc = (n as { fechaCompromiso?: string | null }).fechaCompromiso ?? null;
     return fc && calcSla(fc) === "VENCIDO";
   });
   if (vencidas.length > 0) {
@@ -433,7 +433,7 @@ export function insightsSla(items: Novedad[]): IntelInsight[] {
 
   // Próximas a vencer (≤2 días)
   const proximas = abiertas.filter((n) => {
-    const fc = (n as any).fechaCompromiso as string | null;
+    const fc = (n as { fechaCompromiso?: string | null }).fechaCompromiso ?? null;
     return fc && calcSla(fc) === "PROXIMO";
   });
   if (proximas.length > 0) {
@@ -449,7 +449,7 @@ export function insightsSla(items: Novedad[]): IntelInsight[] {
   // Backlog por responsable (>8 abiertas)
   const byResp: Record<string, number> = {};
   for (const n of abiertas) {
-    const r = (n as any).asignadoA as string | null;
+    const r = n.asignadoA;
     if (r) byResp[r] = (byResp[r] ?? 0) + 1;
   }
   for (const [resp, count] of Object.entries(byResp)) {
@@ -483,7 +483,7 @@ export function insightsTienda(despachos: DespachoTienda[]): IntelInsight[] {
     out.push({
       id: "tienda-pendientes-24h",
       level: "critical",
-      module: "tienda" as any,
+      module: "tienda",
       message: `${viejos.length} despacho${viejos.length !== 1 ? "s" : ""} llevan más de 24h sin ser recogidos`,
       context: viejos.slice(0, 2).map((d) => d.numeroDocumento).join(" · "),
       action: "Ver pendientes",
@@ -495,7 +495,7 @@ export function insightsTienda(despachos: DespachoTienda[]): IntelInsight[] {
     out.push({
       id: "tienda-con-novedad",
       level: "warning",
-      module: "tienda" as any,
+      module: "tienda",
       message: `${novedades.length} despacho${novedades.length !== 1 ? "s" : ""} registrado${novedades.length !== 1 ? "s" : ""} con novedad`,
       context: novedades.slice(0, 2).map((d) => d.numeroDocumento).join(" · "),
       action: "Ver novedades",
@@ -514,7 +514,7 @@ export function insightsTienda(despachos: DespachoTienda[]): IntelInsight[] {
         out.push({
           id: `tienda-cc-concentrado-${cc}`,
           level: "info",
-          module: "tienda" as any,
+          module: "tienda",
           message: `${cc} concentra el ${pct}% del volumen de hoy`,
           context: `${count} de ${hoyDespachos.length} despachos hoy`,
         });
@@ -530,11 +530,11 @@ export function insightsPorDespacho(d: DespachoTienda, todos: DespachoTienda[]):
   const sinRecoger = d.estado === "CREADO_TIENDA";
   const horas = sinRecoger ? horasDesde(d.createdAt) : 0;
   if (horas >= 24) {
-    out.push({ id: `pend-24h-${d.id}`, level: "critical", module: "tienda" as any, message: `Sin recoger hace ${horas}h`, context: "Verificar con transporte" });
+    out.push({ id: `pend-24h-${d.id}`, level: "critical", module: "tienda", message: `Sin recoger hace ${horas}h`, context: "Verificar con transporte" });
   }
   const mismoCC = todos.filter((x) => x.centroCostos === d.centroCostos && x.id !== d.id && x.estado === "CREADO_TIENDA").length;
   if (mismoCC >= 3) {
-    out.push({ id: `cc-acum-${d.id}`, level: "info", module: "tienda" as any, message: `${d.centroCostos} tiene ${mismoCC} despachos adicionales sin recoger` });
+    out.push({ id: `cc-acum-${d.id}`, level: "info", module: "tienda", message: `${d.centroCostos} tiene ${mismoCC} despachos adicionales sin recoger` });
   }
   return out;
 }
