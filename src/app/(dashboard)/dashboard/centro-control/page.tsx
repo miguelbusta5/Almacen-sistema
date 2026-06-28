@@ -38,6 +38,12 @@ interface SinContactoData {
   items: Array<{ clientId: string; documento: string; fecha: string }>;
 }
 
+// Subconjunto consumido de la respuesta de /api/novedades/stats.
+interface CentroControlStats {
+  tasaClasificacion?: number;
+  resumen?: { sinAsignar?: number };
+}
+
 // ── Componente: fila de alerta ────────────────────────────
 function AlertaRow({ level, count, title, context, href }: {
   level: "critical" | "warning" | "info";
@@ -178,7 +184,7 @@ export default function CentroControlPage() {
   const [novedades,   setNovedades]   = useState<Novedad[]>([]);
   const [guardados,   setGuardados]   = useState<Guardado[]>([]);
   const [despachos,   setDespachos]   = useState<DespachoTienda[]>([]);
-  const [kpis,        setKpis]        = useState<{ stats: any } | null>(null);
+  const [kpis,        setKpis]        = useState<{ stats: CentroControlStats | null } | null>(null);
   const [sinContacto, setSinContacto] = useState<SinContactoData>({ count: 0, items: [] });
   const [loading,     setLoading]     = useState(true);
 
@@ -200,7 +206,7 @@ export default function CentroControlPage() {
       if (dJ.success)  setDespachos(dJ.data ?? []);
       if (scJ.success) setSinContacto({ count: scJ.count ?? 0, items: scJ.items ?? [] });
       setKpis({
-        stats:       sJ.success ? sJ : null,
+        stats:       sJ.success ? (sJ as CentroControlStats) : null,
       });
     } catch { /* noop */ }
     finally { if (!silent) setLoading(false); }
@@ -231,7 +237,7 @@ export default function CentroControlPage() {
   const rankingInventario = useMemo(() => {
     const byResp: Record<string, { total: number; resueltas: number; abiertas: number }> = {};
     for (const n of novedades) {
-      const r = (n as any).asignadoA as string | null;
+      const r = n.asignadoA;
       if (!r) continue;
       if (!byResp[r]) byResp[r] = { total: 0, resueltas: 0, abiertas: 0 };
       byResp[r].total++;
@@ -255,7 +261,7 @@ export default function CentroControlPage() {
   const grdKpis = useMemo(() => {
     const activos  = guardados.filter((g) => g.estado === "PENDIENTE DESPACHO");
     const costoTotal  = activos.reduce((s, g) => s + calcAlmacenaje(g.fecha, null).costo, 0);
-    const proyeccion  = activos.reduce((s, g) => { const a = calcAlmacenaje(g.fecha, null); return s + (a.fase === "cobro" ? (a as any).costoProximo ?? a.costo : 0); }, 0);
+    const proyeccion  = activos.reduce((s, g) => { const a = calcAlmacenaje(g.fecha, null); return s + (a.fase === "cobro" ? a.costoProximo ?? a.costo : 0); }, 0);
     const criticos = activos.filter((g) => scoreGuardado(g) >= 70).length;
     const vencidos = activos.filter((g) => urgencia(g)?.tipo === "vencida").length;
     return { activos: activos.length, costoTotal, proyeccion, criticos, vencidos };
@@ -306,7 +312,7 @@ export default function CentroControlPage() {
     ].filter((a) => a.count > 0);
 
     // ── WARNING ───────────────────────────────────────────
-    const novSinAsig = novedades.filter((n) => n.estado !== "SOLUCIONADO" && !(n as any).asignadoA);
+    const novSinAsig = novedades.filter((n) => n.estado !== "SOLUCIONADO" && !n.asignadoA);
 
     const warning: AlertaItem[] = [
       {
@@ -524,8 +530,8 @@ export default function CentroControlPage() {
           </div>
           {kpis?.stats && (
             <div style={{ marginTop: 10, fontSize: 12, color: "var(--muted)", display: "flex", gap: 12 }}>
-              <span>Clasificadas: <strong style={{ color: "var(--text)" }}>{kpis.stats.tasaClasificacion}%</strong></span>
-              <span>Sin asignar: <strong style={{ color: (kpis.stats.resumen?.sinAsignar > 0) ? "var(--warning)" : "var(--success)" }}>{kpis.stats.resumen?.sinAsignar ?? 0}</strong></span>
+              <span>Clasificadas: <strong style={{ color: "var(--text)" }}>{kpis.stats.tasaClasificacion ?? 0}%</strong></span>
+              <span>Sin asignar: <strong style={{ color: ((kpis.stats.resumen?.sinAsignar ?? 0) > 0) ? "var(--warning)" : "var(--success)" }}>{kpis.stats.resumen?.sinAsignar ?? 0}</strong></span>
             </div>
           )}
         </KpiBlock>
