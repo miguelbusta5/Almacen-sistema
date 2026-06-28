@@ -14,7 +14,7 @@ import {
   Legend,
   Filler,
 } from "chart.js";
-import type { ChartOptions } from "chart.js";
+import type { ChartOptions, TooltipItem } from "chart.js";
 import { Bar, Line, Doughnut } from "react-chartjs-2";
 
 ChartJS.register(
@@ -158,8 +158,7 @@ export function BarGroupedChart({
       tooltip: {
         ...baseTooltip(),
         callbacks: {
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          label: (ctx: any) =>
+          label: (ctx: TooltipItem<"bar">) =>
             ` ${ctx.dataset.label}: ${Number(ctx.parsed.y ?? 0).toLocaleString("es-CO")}`,
         },
       },
@@ -215,8 +214,7 @@ export function LineTrendChart({
       tooltip: {
         ...baseTooltip(),
         callbacks: {
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          label: (ctx: any) =>
+          label: (ctx: TooltipItem<"line">) =>
             ` ${ctx.dataset.label}: ${Number(ctx.parsed.y ?? 0).toLocaleString("es-CO")}`,
         },
       },
@@ -273,8 +271,7 @@ export function DonutChart({
       tooltip: {
         ...baseTooltip(),
         callbacks: {
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          label: (ctx: any) => {
+          label: (ctx: TooltipItem<"doughnut">) => {
             const v = Number(ctx.parsed ?? 0);
             const total = (ctx.dataset.data as number[]).reduce((a: number, b: number) => a + b, 0);
             const pct = total > 0 ? ((v / total) * 100).toFixed(1) : "0";
@@ -379,8 +376,7 @@ export function HBarChart({
       tooltip: {
         ...baseTooltip(),
         callbacks: {
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          label: (ctx: any) =>
+          label: (ctx: TooltipItem<"bar">) =>
             ` ${Number(ctx.parsed.x ?? 0).toLocaleString("es-CO")}`,
         },
       },
