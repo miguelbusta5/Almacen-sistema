@@ -3,6 +3,19 @@ import { requireAuth } from "@/lib/authz";
 import { prisma } from "@/lib/prisma";
 import { canSeeModule } from "@/lib/modulePermissions";
 import { z } from "zod";
+import type { Prisma } from "@prisma/client";
+
+// Algunos call-sites (verificación de duplicado / creación) no incluyen
+// `completadoPor` → relación opcional para que todos encajen sin `any`.
+type IntegracionFull = Prisma.IntegracionPedidoGetPayload<{
+  include: {
+    creadoPor: { select: { name: true } };
+    completadoPor: { select: { name: true } };
+    plines: true;
+  };
+}>;
+type IntegracionRow = Omit<IntegracionFull, "completadoPor"> &
+  Partial<Pick<IntegracionFull, "completadoPor">>;
 
 const ALLOWED_ROLES = ["OPERACIONES_MUEBLES", "OPERACIONES_GOURMET", "ADMIN", "GERENTE", "SUPERVISOR_TRANSPORTE", "TRANSPORTE"] as const;
 
@@ -12,7 +25,7 @@ function areaFromRole(role: string): "MUEBLES" | "GOURMET" | null {
   return null;
 }
 
-function mapRow(r: any) {
+function mapRow(r: IntegracionRow) {
   return {
     id: r.id,
     numeroDocumento: r.numeroDocumento,

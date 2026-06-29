@@ -3,6 +3,17 @@ import { requireAuth, requireCan } from "@/lib/authz";
 import { prisma } from "@/lib/prisma";
 import { canSeeModule } from "@/lib/modulePermissions";
 import { z } from "zod";
+import type { Prisma } from "@prisma/client";
+
+type IntegracionFull = Prisma.IntegracionPedidoGetPayload<{
+  include: {
+    creadoPor: { select: { name: true } };
+    completadoPor: { select: { name: true } };
+    plines: true;
+  };
+}>;
+type IntegracionRow = Omit<IntegracionFull, "completadoPor"> &
+  Partial<Pick<IntegracionFull, "completadoPor">>;
 
 const TRANSPORT_ROLES = ["SUPERVISOR_TRANSPORTE", "TRANSPORTE", "ADMIN", "GERENTE"] as const;
 
@@ -12,7 +23,7 @@ function areaFromRole(role: string): "MUEBLES" | "GOURMET" | null {
   return null;
 }
 
-function mapRow(r: any) {
+function mapRow(r: IntegracionRow) {
   return {
     id: r.id,
     numeroDocumento: r.numeroDocumento,
