@@ -3,6 +3,14 @@ import { requireAuth } from "@/lib/authz";
 import { prisma } from "@/lib/prisma";
 import { z } from "zod";
 import { getErrorMessage } from "@/lib/errors";
+import type { Prisma } from "@prisma/client";
+
+type PendienteRow = Prisma.GuardadoPendienteTiendaGetPayload<{
+  include: {
+    asignadoA: { select: { id: true; name: true } };
+    despacho: true;
+  };
+}>;
 
 const convertSchema = z.object({
   pendienteId: z.string().cuid(),
@@ -14,7 +22,7 @@ function canViewAll(role: string) {
   return ["SUPERVISOR_TRANSPORTE", "GERENTE", "ADMIN"].includes(role);
 }
 
-function mapPendiente(p: any) {
+function mapPendiente(p: PendienteRow) {
   const d = p.despacho;
   return {
     id: p.id,

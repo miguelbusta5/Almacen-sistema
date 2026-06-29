@@ -5,6 +5,15 @@ import { z } from "zod";
 import { esTransicionValida, rolPuedeTransicionar } from "@/lib/tiendaFlow";
 import type { EstadoDespacho } from "@/lib/tiendaFlow";
 import { getErrorCode } from "@/lib/errors";
+import type { Prisma } from "@prisma/client";
+
+type DespachoTiendaRow = Prisma.DespachoTiendaGetPayload<{
+  include: {
+    creadoPor: { select: { id: true; name: true } };
+    plines: true;
+    guardadoPendiente: { include: { asignadoA: { select: { name: true } } } };
+  };
+}>;
 
 const updateSchema = z.object({
   // Estado — flujo simplificado tienda -> CEDI -> cliente
@@ -52,7 +61,7 @@ const ESTADO_LABEL: Record<string, string> = {
   CON_NOVEDAD:        "Con novedad",
 };
 
-function mapRow(r: any): object {
+function mapRow(r: DespachoTiendaRow): object {
   return {
     id:               r.id,
     centroCostos:     r.centroCostos,

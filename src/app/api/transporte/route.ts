@@ -2,12 +2,9 @@ import { NextRequest, NextResponse } from "next/server";
 import { requireAuth, requireCan } from "@/lib/authz";
 import { prisma } from "@/lib/prisma";
 import { z } from "zod";
+import type { Prisma, TransporteGuardado } from "@prisma/client";
 
-function mapRow(r: {
-  id: number; client_id: string; fecha: Date; documento: string;
-  ubicacion: string; estado: string; tipo?: string;
-  fecha_despacho: Date | null; nota: string | null;
-}) {
+function mapRow(r: TransporteGuardado) {
   return {
     id: r.id, clientId: r.client_id,
     fecha: r.fecha.toISOString().slice(0, 10),
@@ -15,7 +12,7 @@ function mapRow(r: {
     estado: r.estado, tipo: (r.tipo ?? "COMUN"),
     fechaDespacho: r.fecha_despacho ? r.fecha_despacho.toISOString().slice(0, 10) : null,
     nota: r.nota,
-    netsuiteId: (r as any).netsuiteId ?? null,
+    netsuiteId: r.netsuiteId ?? null,
   };
 }
 
@@ -41,7 +38,7 @@ export async function GET(req: NextRequest) {
   const estado = sp.get("estado") ?? "";
   const tipo = sp.get("tipo") ?? "";
 
-  const where: any = {};
+  const where: Prisma.TransporteGuardadoWhereInput = {};
   if (estado) where.estado = estado;
   if (tipo) where.tipo = tipo;
   if (q) where.OR = [

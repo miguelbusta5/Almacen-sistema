@@ -14,6 +14,19 @@ import {
   validarPlinesSolicitudTransporte,
 } from "@/lib/solicitudesTransporte";
 import { requireAuth } from "@/lib/authz";
+import type { Prisma } from "@prisma/client";
+
+// Payload con relaciones (forma del findMany/create). Algunos call-sites
+// (reenviar/rechazar) no incluyen `plines` → relaciones opcionales.
+type SolicitudConRelaciones = Prisma.SolicitudTransporteGetPayload<{
+  include: {
+    creadoPor: { select: { name: true } };
+    gestionadoPor: { select: { name: true } };
+    plines: true;
+  };
+}>;
+type SolicitudRow = Omit<SolicitudConRelaciones, "creadoPor" | "gestionadoPor" | "plines"> &
+  Partial<Pick<SolicitudConRelaciones, "creadoPor" | "gestionadoPor" | "plines">>;
 
 const estadoSchema = z.enum(["PENDIENTE", "RECHAZADA", "REENVIADA", "PROGRAMADA", "EFECTUADA", "CANCELADA"]);
 const prioridadSchema = z.enum(["ALTO", "MEDIO", "BAJO"]);
@@ -78,7 +91,7 @@ export const solicitudCreateSchema = z.object({
   }
 });
 
-export function mapSolicitudTransporte(row: any) {
+export function mapSolicitudTransporte(row: SolicitudRow) {
   return {
     id: row.id,
     fechaSolicitud: row.fechaSolicitud ? row.fechaSolicitud.toISOString().slice(0, 10) : null,
@@ -179,12 +192,12 @@ export async function GET(req: NextRequest) {
   const semaforo = semaforoSchema.safeParse(url.searchParams.get("semaforo")).success ? url.searchParams.get("semaforo") : null;
   const area = url.searchParams.get("area")?.trim();
 
-  const where: any = {
+  const where: Prisma.SolicitudTransporteWhereInput = {
     deletedAt: null,
     ...(puedeGestionarSolicitudTransporte(actor.role) ? {} : { creadoPorId: actor.id }),
-    ...(estado ? { estado } : {}),
-    ...(prioridad ? { prioridad } : {}),
-    ...(semaforo ? { semaforo } : {}),
+    ...(estado ? { estado: estado as Prisma.SolicitudTransporteWhereInput["estado"] } : {}),
+    ...(prioridad ? { prioridad: prioridad as Prisma.SolicitudTransporteWhereInput["prioridad"] } : {}),
+    ...(semaforo ? { semaforo: semaforo as Prisma.SolicitudTransporteWhereInput["semaforo"] } : {}),
     ...(area ? { areaSolicitante: area } : {}),
     ...(q ? {
       OR: [

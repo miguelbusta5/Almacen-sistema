@@ -4,6 +4,15 @@ import { prisma } from "@/lib/prisma";
 import { z } from "zod";
 import { todayISO } from "@/lib/tienda";
 import { derivePlinFromMaestro, normalizePlu, productoToClient } from "@/lib/productosMaestro";
+import type { Prisma } from "@prisma/client";
+
+type DespachoTiendaRow = Prisma.DespachoTiendaGetPayload<{
+  include: {
+    creadoPor: { select: { id: true; name: true } };
+    plines: true;
+    guardadoPendiente: { include: { asignadoA: { select: { name: true } } } };
+  };
+}>;
 
 const plinSchema = z.object({
   plu:        z.string().min(1).max(100),
@@ -25,7 +34,7 @@ const createSchema = z.object({
   plines:                    z.array(plinSchema).optional(),
 });
 
-function mapRow(r: any): object {
+function mapRow(r: DespachoTiendaRow): object {
   return {
     id:               r.id,
     centroCostos:     r.centroCostos,
@@ -90,8 +99,8 @@ export async function GET(req: NextRequest) {
   const cc       = sp.get("centroCostos") ?? "";
   const q        = sp.get("q")?.trim() ?? "";
 
-  const where: any = {};
-  if (estado) where.estado = estado;
+  const where: Prisma.DespachoTiendaWhereInput = {};
+  if (estado) where.estado = estado as Prisma.DespachoTiendaWhereInput["estado"];
   if (cc) where.centroCostos = { contains: cc, mode: "insensitive" };
   if (q) where.OR = [
     { numeroDocumento: { contains: q, mode: "insensitive" } },
@@ -179,5 +188,5 @@ export async function POST(req: NextRequest) {
     data: { userId: actor.id, action: "CREATE", module: "tienda", recordId: row!.id, details: `${d.numeroDocumento} · ${d.clienteNombre} · ${d.centroCostos}` },
   }).catch(() => {});
 
-  return NextResponse.json({ success: true, data: mapRow(row) }, { status: 201 });
+  return NextResponse.json({ success: true, data: mapRow(row!) }, { status: 201 });
 }
