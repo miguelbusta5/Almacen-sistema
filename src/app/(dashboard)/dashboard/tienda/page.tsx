@@ -59,6 +59,14 @@ function ModalBase({ title, sub, children, onClose }: { title: string; sub?: str
   );
 }
 
+// Entrada de historial de auditoría que devuelve GET /api/tienda/[id].
+interface HistorialEntry {
+  action: string;
+  details: string | null;
+  userName: string | null;
+  createdAt: string;
+}
+
 // Pagina principal.
 export default function TiendaPage() {
   const { data: session } = useSession();
@@ -81,7 +89,7 @@ export default function TiendaPage() {
 
   const [panelItem, setPanelItem] = useState<DespachoTienda | null>(null);
   useListDetailScroll(panelItem !== null);
-  const [panelHistorial, setPanelHistorial] = useState<any[]>([]);
+  const [panelHistorial, setPanelHistorial] = useState<HistorialEntry[]>([]);
   const [panelLoading, setPanelLoading] = useState(false);
   const [creando, setCreando] = useState(false);
   const [editing, setEditing] = useState<DespachoTienda | null>(null);
@@ -133,7 +141,7 @@ export default function TiendaPage() {
   }
 
   async function cambiarEstado(d: DespachoTienda, estado: EstadoDespacho, extra?: Record<string, unknown>) {
-    const body: any = { estado, ...extra };
+    const body: Record<string, unknown> = { estado, ...extra };
     const res = await fetch(`/api/tienda/${d.id}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
     const json = await res.json();
     if (json.success) {
@@ -197,7 +205,7 @@ export default function TiendaPage() {
   }, [items, fq, fEstado, fCC]);
 
   // Historial timeline del panel
-  const historialItems = panelHistorial.map((h: any) => ({
+  const historialItems = panelHistorial.map((h) => ({
     label: h.details ?? h.action,
     meta: h.userName ?? "Sistema",
     time: h.createdAt ? new Date(h.createdAt).toLocaleString("es-CO", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" }) : "",
@@ -686,7 +694,7 @@ function ModalDespacho({ despacho, role, onClose, onSaved, onError }: {
     try {
       const url = isEdit ? `/api/tienda/${despacho!.id}` : "/api/tienda";
       const method = isEdit ? "PUT" : "POST";
-      const body: any = {
+      const body: Record<string, unknown> = {
         centroCostos: centroCostos.trim(), numeroDocumento: numeroDocumento.trim(),
         consecutivo: consecutivo.trim(), clienteNombre: clienteNombre.trim(),
         clienteDocumento: clienteDocumento.trim() || null,

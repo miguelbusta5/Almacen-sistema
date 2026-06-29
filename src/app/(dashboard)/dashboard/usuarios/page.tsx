@@ -66,7 +66,7 @@ const ROLE_META: Record<Role, { label: string; color: string; icon: React.ReactN
 
 export default function UsuariosPage() {
   const { data: session } = useSession();
-  const role = (session?.user as any)?.role as Role | undefined;
+  const role = (session?.user as { role?: Role } | undefined)?.role;
 
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
@@ -249,7 +249,7 @@ export default function UsuariosPage() {
       />
 
       {showForm && <FormNuevo onClose={() => setShowForm(false)} onSaved={() => { setShowForm(false); load(); loadCatalogos(); showToast("Usuario creado ✓"); }} onError={m => showToast(m, true)} />}
-      {editing && <ModalEditar u={editing} selfId={(session?.user as any)?.id} onClose={() => setEditing(null)} onSaved={() => { setEditing(null); load(); showToast("Usuario actualizado ✓"); }} onError={m => showToast(m, true)} />}
+      {editing && <ModalEditar u={editing} selfId={(session?.user as { id?: string } | undefined)?.id} onClose={() => setEditing(null)} onSaved={() => { setEditing(null); load(); showToast("Usuario actualizado ✓"); }} onError={m => showToast(m, true)} />}
     </div>
   );
 }
@@ -627,7 +627,7 @@ function ModalEditar({ u, selfId, onClose, onSaved, onError }: { u: User; selfId
 
   async function save() {
     setSaving(true);
-    const body: any = { name: name.trim(), role, active };
+    const body: Record<string, unknown> = { name: name.trim(), role, active };
     if (password) body.password = password;
     try {
       const res = await fetch(`/api/users/${u.id}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });

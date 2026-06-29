@@ -215,7 +215,7 @@ export default function ExportacionesPage() {
     if (!editing) return;
     setSaving(true);
     setError("");
-    const payload: any = {
+    const payload: Record<string, unknown> = {
       numeroCaja:       editForm.numeroCaja,
       plu:              editForm.plu,
       unidadEmpaque:    Number(editForm.unidadEmpaque),
