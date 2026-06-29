@@ -3,6 +3,7 @@ import { requireRole } from "@/lib/authz";
 import { prisma } from "@/lib/prisma";
 import { z } from "zod";
 import { assertTransicionGourmet, type EstadoPedidoGourmet } from "@/lib/gourmetCargueFlow";
+import type { GourmetPedido } from "@prisma/client";
 
 const ROLES_PERMITIDOS = ["OPERACIONES_GOURMET", "ADMIN", "GERENTE"] as const;
 const ROLES_NOTIFICAR = ["TRANSPORTE", "SUPERVISOR_TRANSPORTE", "ADMIN", "GERENTE"] as const;
@@ -11,7 +12,7 @@ const bodySchema = z.object({
   updatedAt: z.string().datetime(),
 });
 
-function mapPedido(r: any) {
+function mapPedido(r: GourmetPedido) {
   return {
     id: r.id,
     orden: r.orden,

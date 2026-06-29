@@ -3,6 +3,7 @@ import { requireRole } from "@/lib/authz";
 import { prisma } from "@/lib/prisma";
 import { z } from "zod";
 import { assertTransicionGourmet, type EstadoPedidoGourmet } from "@/lib/gourmetCargueFlow";
+import type { GourmetPedido, GourmetCargue, GourmetCargueNovedad } from "@prisma/client";
 
 const ROLES_PERMITIDOS = ["SUPERVISOR_TRANSPORTE", "ADMIN", "GERENTE"] as const;
 const ROLES_NOTIFICAR = ["ADMIN", "GERENTE"] as const;
@@ -17,7 +18,7 @@ const bodySchema = z.object({
   updatedAt: z.string().datetime(),
 });
 
-function mapPedido(r: any) {
+function mapPedido(r: GourmetPedido) {
   return {
     id: r.id,
     orden: r.orden,
@@ -36,7 +37,7 @@ function mapPedido(r: any) {
   };
 }
 
-function mapCargue(c: any) {
+function mapCargue(c: GourmetCargue) {
   return {
     id: c.id,
     pedidoId: c.pedidoId,
@@ -52,7 +53,7 @@ function mapCargue(c: any) {
   };
 }
 
-function mapNovedad(n: any) {
+function mapNovedad(n: GourmetCargueNovedad) {
   return {
     id: n.id,
     cargueId: n.cargueId,

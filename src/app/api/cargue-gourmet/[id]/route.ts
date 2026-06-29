@@ -2,6 +2,23 @@ import { NextRequest, NextResponse } from "next/server";
 import { requireRole } from "@/lib/authz";
 import { prisma } from "@/lib/prisma";
 import { z } from "zod";
+import type { Prisma } from "@prisma/client";
+
+// Payload con todas las relaciones (forma del GET).
+type PedidoFull = Prisma.GourmetPedidoGetPayload<{
+  include: {
+    creadoPor: { select: { name: true } };
+    estibas: true;
+    cajas: true;
+    cargues: { include: { escaneos: true } };
+    novedades: true;
+  };
+}>;
+
+// El PUT mapea un pedido sin relaciones cargadas (solo creadoPor) → las
+// relaciones son opcionales para que ambos call-sites encajen sin `any`.
+type PedidoDetalle = Omit<PedidoFull, "estibas" | "cajas" | "cargues" | "novedades"> &
+  Partial<Pick<PedidoFull, "estibas" | "cajas" | "cargues" | "novedades">>;
 
 const ALLOWED_ROLES = ["ADMIN", "GERENTE", "OPERACIONES_GOURMET", "TRANSPORTE", "SUPERVISOR_TRANSPORTE"] as const;
 const ROLES_EDITAN = ["OPERACIONES_GOURMET", "ADMIN", "GERENTE"] as const;
@@ -10,7 +27,7 @@ const ROLES_EDITAN = ["OPERACIONES_GOURMET", "ADMIN", "GERENTE"] as const;
 // nunca una vez el pedido entró en el flujo operativo de Transporte).
 const ESTADOS_EDITABLES = ["BORRADOR", "UBICACION_ASIGNADA", "CON_NOVEDAD"] as const;
 
-function mapDetalle(r: any) {
+function mapDetalle(r: PedidoDetalle) {
   return {
     id: r.id,
     orden: r.orden,
@@ -39,7 +56,7 @@ function mapDetalle(r: any) {
     observacionCierreManual: r.observacionCierreManual,
     estibas: r.estibas ?? [],
     cajas: r.cajas ?? [],
-    cargues: (r.cargues ?? []).map((c: any) => ({
+    cargues: (r.cargues ?? []).map((c) => ({
       id: c.id,
       iniciadoPorId: c.iniciadoPorId,
       iniciadoAt: c.iniciadoAt,

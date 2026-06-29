@@ -2,6 +2,11 @@ import { NextRequest, NextResponse } from "next/server";
 import { requireRole } from "@/lib/authz";
 import { prisma } from "@/lib/prisma";
 import { z } from "zod";
+import type { Prisma } from "@prisma/client";
+
+type PedidoListRow = Prisma.GourmetPedidoGetPayload<{
+  include: { creadoPor: { select: { name: true } } };
+}>;
 
 const ALLOWED_ROLES = ["ADMIN", "GERENTE", "OPERACIONES_GOURMET", "TRANSPORTE", "SUPERVISOR_TRANSPORTE"] as const;
 const ROLES_CREAN = ["OPERACIONES_GOURMET", "ADMIN", "GERENTE"] as const;
@@ -12,7 +17,7 @@ type SortField = (typeof SORT_FIELDS)[number];
 const DEFAULT_PAGE_SIZE = 25;
 const MAX_PAGE_SIZE = 50;
 
-function mapRow(r: any) {
+function mapRow(r: PedidoListRow) {
   return {
     id: r.id,
     orden: r.orden,
