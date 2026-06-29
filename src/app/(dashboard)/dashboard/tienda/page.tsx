@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useSession } from "next-auth/react";
 import { can } from "@/lib/permissions";
 import {
@@ -21,6 +21,9 @@ import { AutoRefreshIndicator } from "@/components/ui/AutoRefreshIndicator";
 import { IntelBanner, DetailSection, DetailGrid, MiniHistory } from "@/components/ui/SlidePanel";
 import { insightsTienda, insightsPorDespacho } from "@/lib/inteligencia";
 import { useAutoRefresh } from "@/hooks/useAutoRefresh";
+import { useApi } from "@/hooks/useApi";
+import { apiGet, apiSend, apiPost, apiPut, apiDelete } from "@/lib/apiClient";
+import { getErrorMessage } from "@/lib/errors";
 import { getModuleColor, getModuleCssVars } from "@/lib/moduleTheme";
 import {
   DetailFlow,
@@ -77,8 +80,8 @@ export default function TiendaPage() {
   const canChangeOperationalState = ["SUPERVISOR_TRANSPORTE", "GERENTE", "ADMIN"].includes(role ?? "");
   const canCreate = ["TIENDA", "SUPERVISOR_TIENDA"].includes(role ?? "");
 
-  const [items, setItems] = useState<DespachoTienda[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { data: itemsData, isLoading: loading, mutate: mutateItems } = useApi<{ data: DespachoTienda[] }>("/api/tienda?pageSize=500");
+  const items = useMemo(() => itemsData?.data ?? [], [itemsData]);
   const toastCtx = useToast();
   const { prompt, promptModal } = usePrompt();
 
@@ -97,16 +100,7 @@ export default function TiendaPage() {
   const [asignandoGuardado, setAsignandoGuardado] = useState<DespachoTienda | null>(null);
   const [rechazarItem, setRechazarItem] = useState<DespachoTienda | null>(null);
 
-  async function load() {
-    setLoading(true);
-    try {
-      const res = await fetch("/api/tienda?pageSize=500");
-      const json = await res.json();
-      if (json.success) setItems(json.data);
-    } catch { showToast("Error al cargar", true); }
-    finally { setLoading(false); }
-  }
-  useEffect(() => { load(); }, []);
+  const load = useCallback(() => { void mutateItems(); }, [mutateItems]);
   // Modo debug de tabla: /dashboard/tienda?debugTable=1 (diagnóstico de mapeo de columnas).
   useEffect(() => { setDebugTable(new URLSearchParams(window.location.search).get("debugTable") === "1"); }, []);
 
@@ -123,18 +117,15 @@ export default function TiendaPage() {
     setPanelHistorial([]);
     setPanelLoading(true);
     try {
-      const res = await fetch(`/api/tienda/${d.id}`);
-      const json = await res.json();
-      if (res.ok && json.success && json.data) {
+      const json = await apiGet<{ data: DespachoTienda; historial?: HistorialEntry[] }>(`/api/tienda/${d.id}`);
+      if (json.data) {
         // Mergea el detalle sobre d (nunca reemplaza por algo más pobre) y
         // protege contra carreras si el usuario abrió otra factura entretanto.
         setPanelItem((prev) => (prev?.id === d.id ? { ...d, ...json.data } : prev));
         setPanelHistorial(json.historial ?? []);
-      } else {
-        showToast(json.error || "No se pudo cargar el detalle", true); // se conserva d
       }
-    } catch {
-      showToast("No se pudo cargar el detalle completo", true);        // se conserva d
+    } catch (e) {
+      showToast(getErrorMessage(e, "No se pudo cargar el detalle completo"), true); // se conserva d
     } finally {
       setPanelLoading(false);
     }
@@ -142,40 +133,32 @@ export default function TiendaPage() {
 
   async function cambiarEstado(d: DespachoTienda, estado: EstadoDespacho, extra?: Record<string, unknown>) {
     const body: Record<string, unknown> = { estado, ...extra };
-    const res = await fetch(`/api/tienda/${d.id}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
-    const json = await res.json();
-    if (json.success) {
-      setItems((prev) => prev.map((x) => x.id === d.id ? json.data : x));
+    try {
+      const json = await apiPut<{ data: DespachoTienda }>(`/api/tienda/${d.id}`, body);
+      await mutateItems();
       if (panelItem?.id === d.id) { setPanelItem(json.data); abrirPanel(json.data); }
       showToast(`Estado actualizado: ${ESTADO_DESPACHO_LABEL[estado]} ✓`);
-    } else showToast(json.error || "Error", true);
+    } catch (e) { showToast(getErrorMessage(e, "Error"), true); }
   }
 
   async function asignarAGuardado(d: DespachoTienda, asignadoAId: string, nota: string | null) {
-    const res = await fetch(`/api/tienda/${d.id}/guardado`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ asignadoAId, nota }),
-    });
-    const json = await res.json();
-    if (json.success) {
+    try {
+      await apiPost(`/api/tienda/${d.id}/guardado`, { asignadoAId, nota });
       setAsignandoGuardado(null);
       await load();
       if (panelItem?.id === d.id) abrirPanel(d);
       showToast("Despacho enviado a guardado");
-    } else showToast(json.error || "Error", true);
+    } catch (e) { showToast(getErrorMessage(e, "Error"), true); }
   }
 
   const rechazados = useMemo(() => items.filter((d) => d.estado === "RECHAZADO"), [items]);
 
   async function reenviarDespacho(id: string) {
-    const res = await fetch(`/api/tienda/${id}`, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ estado: "CREADO_TIENDA" }),
-    });
-    if (res.ok) { await load(); showToast("Solicitud re-enviada ✓"); }
-    else { showToast("Error al re-enviar", true); }
+    try {
+      await apiPut(`/api/tienda/${id}`, { estado: "CREADO_TIENDA" });
+      await load();
+      showToast("Solicitud re-enviada ✓");
+    } catch (e) { showToast(getErrorMessage(e, "Error al re-enviar"), true); }
   }
 
   const globalInsights = useMemo(() => insightsTienda(items), [items]);
@@ -385,9 +368,12 @@ export default function TiendaPage() {
                             const id = await prompt({ title: "ID NetSuite", label: "ID interno de NetSuite:", defaultValue: panelItem.netsuiteId ?? "", confirmLabel: "Guardar" });
                             if (id === null) return;
                             const val = id.trim() || null;
-                            const r = await fetch(`/api/tienda/${panelItem.id}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ netsuiteId: val }) });
-                            const j = await r.json();
-                            if (j.success) { setPanelItem(p => p ? { ...p, netsuiteId: val } : p); setItems(prev => prev.map(d => d.id === panelItem.id ? { ...d, netsuiteId: val } : d)); showToast(val ? "ID NetSuite vinculado ✓" : "ID eliminado"); }
+                            try {
+                              await apiPut(`/api/tienda/${panelItem.id}`, { netsuiteId: val });
+                              setPanelItem(p => p ? { ...p, netsuiteId: val } : p);
+                              await mutateItems();
+                              showToast(val ? "ID NetSuite vinculado ✓" : "ID eliminado");
+                            } catch (e) { showToast(getErrorMessage(e, "Error"), true); }
                           }}>
                           {panelItem.netsuiteId ? "Cambiar" : "Vincular"}
                         </button>
@@ -482,9 +468,10 @@ export default function TiendaPage() {
           <div style={{ display: "flex", gap: 8 }}>
             <button className="ds-btn ds-btn-secondary" style={{ flex: 1 }} onClick={() => setDeleting(null)}>Cancelar</button>
             <button className="ds-btn ds-btn-danger" style={{ flex: 1 }} onClick={async () => {
-              const res = await fetch(`/api/tienda/${deleting.id}`, { method: "DELETE" });
-              if (res.ok) { setDeleting(null); setPanelItem(null); load(); showToast("Eliminado"); }
-              else showToast("Error", true);
+              try {
+                await apiDelete(`/api/tienda/${deleting.id}`);
+                setDeleting(null); setPanelItem(null); load(); showToast("Eliminado");
+              } catch (e) { showToast(getErrorMessage(e, "Error"), true); }
             }}>Eliminar</button>
           </div>
         </ModalBase>
@@ -526,18 +513,13 @@ function ModalRechazar({ despacho, onClose, onRechazado }: {
     e.preventDefault();
     if (motivo.trim().length < 5) { setError("Describe el motivo (mínimo 5 caracteres)"); return; }
     setSaving(true);
-    const res = await fetch(`/api/tienda/${despacho.id}`, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ estado: "RECHAZADO", motivoRechazo: motivo.trim() }),
-    });
-    if (!res.ok) {
-      const j = await res.json();
-      setError(j.error || "Error al rechazar");
+    try {
+      await apiPut(`/api/tienda/${despacho.id}`, { estado: "RECHAZADO", motivoRechazo: motivo.trim() });
+      onRechazado();
+    } catch (e) {
+      setError(getErrorMessage(e, "Error al rechazar"));
       setSaving(false);
-      return;
     }
-    onRechazado();
   }
 
   return (
@@ -584,9 +566,8 @@ function ModalAsignarGuardado({ despacho, onClose, onAsignado, onError }: {
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    fetch("/api/users?role=TRANSPORTE")
-      .then((r) => r.json())
-      .then((j) => { if (j.success) setUsuarios(j.data ?? []); })
+    apiGet<{ data: Array<{ id: string; name: string; email: string }> }>("/api/users?role=TRANSPORTE")
+      .then((j) => setUsuarios(j.data ?? []))
       .catch(() => onError("No se pudieron cargar operarios transporte"))
       .finally(() => setLoading(false));
   }, [onError]);
@@ -671,14 +652,9 @@ function ModalDespacho({ despacho, role, onClose, onSaved, onError }: {
     if (!current || !normalized) return;
     setPlines((prev) => prev.map((p, j) => j === i ? { ...p, plu: normalized, status: "loading" } : p));
     try {
-      const res = await fetch(`/api/productos-maestro/${encodeURIComponent(normalized)}`);
-      const json = await res.json();
-      if (res.ok && json.success) {
-        const producto = json.data as ProductoMaestro;
-        setPlines((prev) => prev.map((p, j) => j === i ? { ...p, descripcion: producto.descripcion ?? "", maestro: true, status: "found", override: false } : p));
-      } else {
-        setPlines((prev) => prev.map((p, j) => j === i ? { ...p, maestro: false, status: "missing" } : p));
-      }
+      const json = await apiGet<{ data: ProductoMaestro }>(`/api/productos-maestro/${encodeURIComponent(normalized)}`);
+      const producto = json.data;
+      setPlines((prev) => prev.map((p, j) => j === i ? { ...p, descripcion: producto.descripcion ?? "", maestro: true, status: "found", override: false } : p));
     } catch {
       setPlines((prev) => prev.map((p, j) => j === i ? { ...p, maestro: false, status: "missing" } : p));
     }
@@ -707,10 +683,9 @@ function ModalDespacho({ despacho, role, onClose, onSaved, onError }: {
       if (!isEdit && plinesValidos.length > 0) {
         body.plines = plinesValidos.map((p) => ({ plu: p.plu.trim(), descripcion: p.descripcion.trim() || null, unidades: parseInt(p.unidades) }));
       }
-      const res = await fetch(url, { method, headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
-      const json = await res.json();
-      if (json.success) onSaved(); else onError(json.error || "Error");
-    } catch { onError("Error de conexión"); } finally { setSaving(false); }
+      await apiSend(url, method, body);
+      onSaved();
+    } catch (e) { onError(getErrorMessage(e, "Error de conexión")); } finally { setSaving(false); }
   }
 
   return (
