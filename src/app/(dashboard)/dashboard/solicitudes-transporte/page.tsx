@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useSession } from "next-auth/react";
 import {
   AlertTriangle, Clock, FileText, Minus,
@@ -13,6 +13,9 @@ import { AutoRefreshIndicator } from "@/components/ui/AutoRefreshIndicator";
 import { getModuleColor, getModuleCssVars } from "@/lib/moduleTheme";
 import { puedeEliminarSolicitudTransporte, puedeGestionarSolicitudTransporte } from "@/lib/solicitudesTransporte";
 import { useAutoRefresh } from "@/hooks/useAutoRefresh";
+import { useApi } from "@/hooks/useApi";
+import { apiGet, apiSend, apiPost, apiPatch, apiDelete, buildQuery } from "@/lib/apiClient";
+import { getErrorMessage } from "@/lib/errors";
 import {
   SolicitudesTable, SolicitudDetailPanel, Field, inputStyle, ESTADO_COLOR, SEMAFORO_COLOR,
   type Solicitud, type Estado, type PluLinea,
@@ -79,10 +82,12 @@ function SelectField({ value, onChange, options, required = true }: { value: str
 async function buscarProductoMaestro(plu: string): Promise<string | null> {
   const clean = plu.trim();
   if (!clean) return null;
-  const res = await fetch(`/api/productos-maestro/${encodeURIComponent(clean)}`);
-  if (!res.ok) return null;
-  const json = await res.json();
-  return json?.data?.descripcion ?? null;
+  try {
+    const json = await apiGet<{ data?: { descripcion?: string | null } }>(`/api/productos-maestro/${encodeURIComponent(clean)}`);
+    return json?.data?.descripcion ?? null;
+  } catch {
+    return null;
+  }
 }
 
 function SolicitudForm({ catalogos, initial, onClose, onSaved }: {
@@ -139,18 +144,14 @@ function SolicitudForm({ catalogos, initial, onClose, onSaved }: {
         unidades: Number(p.unidades),
       })),
     };
-    const res = await fetch(initial ? `/api/solicitudes-transporte/${initial.id}` : "/api/solicitudes-transporte", {
-      method: initial ? "PATCH" : "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
-    });
-    const json = await res.json();
-    setSaving(false);
-    if (!res.ok) {
-      setError(json.error ?? "No se pudo guardar");
-      return;
+    try {
+      await apiSend(initial ? `/api/solicitudes-transporte/${initial.id}` : "/api/solicitudes-transporte", initial ? "PATCH" : "POST", payload);
+      setSaving(false);
+      onSaved();
+    } catch (err) {
+      setSaving(false);
+      setError(getErrorMessage(err, "No se pudo guardar"));
     }
-    onSaved();
   }
 
   return (
@@ -273,10 +274,9 @@ export default function SolicitudesTransportePage() {
   const isGestor = puedeGestionarSolicitudTransporte(role);
   const canDelete = puedeEliminarSolicitudTransporte(role);
   const { confirm, confirmModal } = useConfirm();
-  const [rows, setRows] = useState<Solicitud[]>([]);
   const [catalogos, setCatalogos] = useState<Catalogos | null>(null);
-  const [loading, setLoading] = useState(true);
   const [query, setQuery] = useState("");
+  const [appliedQuery, setAppliedQuery] = useState("");
   const [estado, setEstado] = useState("");
   const [selected, setSelected] = useState<Solicitud | null>(null);
   useListDetailScroll(selected !== null);
@@ -290,6 +290,12 @@ export default function SolicitudesTransportePage() {
   // Modo debug de tabla: /dashboard/solicitudes-transporte?debugTable=1 (diagnóstico de mapeo de columnas).
   useEffect(() => { setDebugTable(new URLSearchParams(window.location.search).get("debugTable") === "1"); }, []);
 
+  // ── Lectura SWR (estado reactivo en la key; query se aplica con Enter) ──────
+  const listKey = `/api/solicitudes-transporte${buildQuery({ q: appliedQuery, estado })}`;
+  const { data: rowsData, isLoading: loading, error: rowsError, mutate: mutateRows } = useApi<{ data: Solicitud[] }>(listKey);
+  const rows = useMemo(() => rowsData?.data ?? [], [rowsData]);
+  const load = useCallback(() => { void mutateRows(); }, [mutateRows]);
+
   const kpis = useMemo(() => ({
     pendientes: rows.filter((r) => ["PENDIENTE", "REENVIADA"].includes(r.estado)).length,
     programadas: rows.filter((r) => r.estado === "PROGRAMADA").length,
@@ -298,32 +304,15 @@ export default function SolicitudesTransportePage() {
   }), [rows]);
   const rechazadas = rows.filter((r) => r.estado === "RECHAZADA");
 
-  async function load() {
-    setLoading(true);
-    const params = new URLSearchParams();
-    if (query.trim()) params.set("q", query.trim());
-    if (estado) params.set("estado", estado);
-    const res = await fetch(`/api/solicitudes-transporte?${params.toString()}`);
-    const json = await res.json();
-    setLoading(false);
-    if (!res.ok) {
-      setError(json.error ?? "No se pudieron cargar las solicitudes");
-      return;
-    }
-    setRows(json.data ?? []);
-  }
+  useEffect(() => {
+    if (rowsError) setError(getErrorMessage(rowsError, "No se pudieron cargar las solicitudes"));
+  }, [rowsError]);
 
   useEffect(() => {
-    fetch("/api/solicitudes-transporte/catalogos")
-      .then((r) => r.json())
+    apiGet<{ data: Catalogos | null }>("/api/solicitudes-transporte/catalogos")
       .then((j) => setCatalogos(j.data ?? null))
       .catch(() => {});
   }, []);
-
-  useEffect(() => {
-    load();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [estado]);
 
   const autoRefresh = useAutoRefresh({
     pause: Boolean(showForm || editing || selected || rejectText.trim()),
@@ -353,46 +342,29 @@ export default function SolicitudesTransportePage() {
       setError("Selecciona una transportadora");
       return;
     }
-    const res = await fetch(`/api/solicitudes-transporte/${selected.id}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(gestion),
-    });
-    const json = await res.json();
-    if (!res.ok) {
-      setError(json.error ?? "No se pudo actualizar gestion");
-      return;
-    }
-    setSelected(json.data);
-    await load();
+    try {
+      const json = await apiPatch<{ data: Solicitud }>(`/api/solicitudes-transporte/${selected.id}`, gestion);
+      setSelected(json.data);
+      await load();
+    } catch (e) { setError(getErrorMessage(e, "No se pudo actualizar gestion")); }
   }
 
   async function rechazar() {
     if (!selected) return;
-    const res = await fetch(`/api/solicitudes-transporte/${selected.id}/rechazar`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ motivoRechazo: rejectText }),
-    });
-    const json = await res.json();
-    if (!res.ok) {
-      setError(json.error ?? "No se pudo rechazar");
-      return;
-    }
-    setSelected(json.data);
-    setRejectText("");
-    await load();
+    try {
+      const json = await apiPost<{ data: Solicitud }>(`/api/solicitudes-transporte/${selected.id}/rechazar`, { motivoRechazo: rejectText });
+      setSelected(json.data);
+      setRejectText("");
+      await load();
+    } catch (e) { setError(getErrorMessage(e, "No se pudo rechazar")); }
   }
 
   async function reenviar(solicitud: Solicitud) {
-    const res = await fetch(`/api/solicitudes-transporte/${solicitud.id}/reenviar`, { method: "POST" });
-    const json = await res.json();
-    if (!res.ok) {
-      setError(json.error ?? "No se pudo reenviar");
-      return;
-    }
-    setSelected(json.data);
-    await load();
+    try {
+      const json = await apiPost<{ data: Solicitud }>(`/api/solicitudes-transporte/${solicitud.id}/reenviar`);
+      setSelected(json.data);
+      await load();
+    } catch (e) { setError(getErrorMessage(e, "No se pudo reenviar")); }
   }
 
   async function borrarSolicitud(solicitud: Solicitud) {
@@ -403,18 +375,11 @@ export default function SolicitudesTransportePage() {
       tone: "danger",
     });
     if (!ok) return;
-    const res = await fetch(`/api/solicitudes-transporte/${solicitud.id}`, {
-      method: "DELETE",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ deleteReason: "Eliminada desde interfaz" }),
-    });
-    const json = await res.json();
-    if (!res.ok) {
-      setError(json.error ?? "No se pudo borrar");
-      return;
-    }
-    setSelected(null);
-    await load();
+    try {
+      await apiDelete(`/api/solicitudes-transporte/${solicitud.id}`, { deleteReason: "Eliminada desde interfaz" });
+      setSelected(null);
+      await load();
+    } catch (e) { setError(getErrorMessage(e, "No se pudo borrar")); }
   }
 
   return (
@@ -501,7 +466,7 @@ export default function SolicitudesTransportePage() {
           <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
             <div style={{ position: "relative", flex: "1 1 260px" }}>
               <Search size={15} style={{ position: "absolute", left: 10, top: 10, color: "var(--muted)" }} />
-              <input value={query} onChange={(e) => setQuery(e.target.value)} onKeyDown={(e) => e.key === "Enter" && load()} placeholder="Buscar por solicitante, pedido, ciudad, guia..." style={{ ...inputStyle, paddingLeft: 32 }} />
+              <input value={query} onChange={(e) => setQuery(e.target.value)} onKeyDown={(e) => e.key === "Enter" && setAppliedQuery(query.trim())} placeholder="Buscar por solicitante, pedido, ciudad, guia..." style={{ ...inputStyle, paddingLeft: 32 }} />
             </div>
             <select value={estado} onChange={(e) => setEstado(e.target.value)} style={{ ...inputStyle, width: 190 }}>
               <option value="">Todos los estados</option>
