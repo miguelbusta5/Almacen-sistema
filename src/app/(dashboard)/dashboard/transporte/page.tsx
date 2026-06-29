@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 import { useSession } from "next-auth/react";
 import { can } from "@/lib/permissions";
@@ -25,6 +25,9 @@ import { AutoRefreshIndicator } from "@/components/ui/AutoRefreshIndicator";
 import { IntelBanner, DetailSection, DetailGrid, MiniHistory } from "@/components/ui/SlidePanel";
 import { useIsMobile } from "@/lib/useIsMobile";
 import { useAutoRefresh } from "@/hooks/useAutoRefresh";
+import { useApi } from "@/hooks/useApi";
+import { apiSend, apiPost, apiPut, apiDelete, ApiError } from "@/lib/apiClient";
+import { getErrorMessage } from "@/lib/errors";
 import { useToast } from "@/contexts/ToastContext";
 
 ChartJS.register(ArcElement, BarElement, CategoryScale, LinearScale, Tooltip, Legend);
@@ -56,9 +59,6 @@ export default function TransportePage() {
   const isMobile = useIsMobile();
   const canDelete = can(role, "delete");
 
-  const [guardados, setGuardados] = useState<Guardado[]>([]);
-  const [pendientesTienda, setPendientesTienda] = useState<PendienteTiendaGuardado[]>([]);
-  const [loading, setLoading] = useState(true);
   const [view, setView] = useState<"lista" | "graficos">("lista");
   const toastCtx = useToast();
   const { confirm, confirmModal } = useConfirm();
@@ -72,29 +72,23 @@ export default function TransportePage() {
 
   const [panelItem, setPanelItem] = useState<Guardado | null>(null);
   useListDetailScroll(panelItem !== null);
-  const [contactos, setContactos] = useState<ContactoGuardado[]>([]);
-  const [loadingContactos, setLoadingContactos] = useState(false);
   const [mostrarFormContacto, setMostrarFormContacto] = useState(false);
   const [editing, setEditing] = useState<Guardado | null>(null);
   const [deleting, setDeleting] = useState<Guardado | null>(null);
   const [creando, setCreando] = useState(false);
   const [fechaModal, setFechaModal] = useState<Guardado | null>(null);
 
-  async function load() {
-    setLoading(true);
-    try {
-      const [res, pendientesRes] = await Promise.all([
-        fetch("/api/transporte?pageSize=500"),
-        fetch("/api/transporte/pendientes-tienda"),
-      ]);
-      const json = await res.json();
-      const pendientesJson = await pendientesRes.json();
-      if (json.success) setGuardados(json.data);
-      if (pendientesJson.success) setPendientesTienda(pendientesJson.data);
-    } catch { showToast("Error al cargar datos", true); }
-    finally { setLoading(false); }
-  }
-  useEffect(() => { load(); }, []);
+  // ── Lecturas SWR ──────────────────────────────────────────────────────────
+  const { data: guardadosData, isLoading: loading, mutate: mutateGuardados } = useApi<{ data: Guardado[] }>("/api/transporte?pageSize=500");
+  const guardados = useMemo(() => guardadosData?.data ?? [], [guardadosData]);
+  const { data: pendientesData, mutate: mutatePendientes } = useApi<{ data: PendienteTiendaGuardado[] }>("/api/transporte/pendientes-tienda");
+  const pendientesTienda = useMemo(() => pendientesData?.data ?? [], [pendientesData]);
+  const load = useCallback(() => { void mutateGuardados(); void mutatePendientes(); }, [mutateGuardados, mutatePendientes]);
+
+  const contactosKey = panelItem ? `/api/transporte/${encodeURIComponent(panelItem.clientId)}/contactos` : null;
+  const { data: contactosData, isLoading: loadingContactos, mutate: mutateContactos } = useApi<{ data: ContactoGuardado[] }>(contactosKey);
+  const contactos = contactosData?.data ?? [];
+
   // Modo debug de tabla: /dashboard/transporte?debugTable=1 (diagnóstico de mapeo de columnas).
   useEffect(() => { setDebugTable(new URLSearchParams(window.location.search).get("debugTable") === "1"); }, []);
 
@@ -104,28 +98,20 @@ export default function TransportePage() {
   });
   function showToast(msg: string, err = false) { err ? toastCtx.error(msg) : toastCtx.success(msg); }
 
-  async function abrirPanel(g: Guardado) {
+  // Los contactos del panel se cargan vía useApi (key reactiva a panelItem).
+  function abrirPanel(g: Guardado) {
     setPanelItem(g);
-    setContactos([]);
     setMostrarFormContacto(false);
-    setLoadingContactos(true);
-    try {
-      const res = await fetch(`/api/transporte/${encodeURIComponent(g.clientId)}/contactos`);
-      const json = await res.json();
-      if (json.success) setContactos(json.data);
-    } catch { /* noop */ }
-    finally { setLoadingContactos(false); }
   }
 
   async function despachar(g: Guardado) {
-    const res = await fetch(`/api/transporte/${encodeURIComponent(g.clientId)}/acciones`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ tipo: "despachar" }) });
-    const json = await res.json();
-    if (json.success) {
+    try {
+      await apiPost(`/api/transporte/${encodeURIComponent(g.clientId)}/acciones`, { tipo: "despachar" });
       const updated = { ...g, estado: "DESPACHADO" as const, fechaDespacho: new Date().toISOString().slice(0, 10) };
-      setGuardados((prev) => prev.map((x) => x.clientId === g.clientId ? updated : x));
       if (panelItem?.clientId === g.clientId) setPanelItem(updated);
+      await mutateGuardados();
       showToast("Marcado como enviado ✓");
-    } else showToast(json.error || "Error", true);
+    } catch (e) { showToast(getErrorMessage(e, "Error"), true); }
   }
 
   async function convertirPendienteTienda(p: PendienteTiendaGuardado) {
@@ -147,16 +133,11 @@ export default function TransportePage() {
       confirmLabel: "Guardar",
     });
     const nota = notaRes;
-    const res = await fetch("/api/transporte/pendientes-tienda", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ pendienteId: p.id, ubicacion: clean, nota }),
-    });
-    const json = await res.json();
-    if (json.success) {
+    try {
+      await apiPost("/api/transporte/pendientes-tienda", { pendienteId: p.id, ubicacion: clean, nota });
       showToast("Guardado creado desde despacho tienda");
       load();
-    } else showToast(json.error || "Error", true);
+    } catch (e) { showToast(getErrorMessage(e, "Error"), true); }
   }
 
   // Solo ADMIN: revertir de DESPACHADO a PENDIENTE DESPACHO
@@ -168,18 +149,13 @@ export default function TransportePage() {
       tone: "danger",
     });
     if (!ok) return;
-    const res = await fetch(`/api/transporte/${encodeURIComponent(g.clientId)}`, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ estado: "PENDIENTE DESPACHO" }),
-    });
-    const json = await res.json();
-    if (json.success) {
+    try {
+      await apiPut(`/api/transporte/${encodeURIComponent(g.clientId)}`, { estado: "PENDIENTE DESPACHO" });
       const updated = { ...g, estado: "PENDIENTE DESPACHO" as const, fechaDespacho: null };
-      setGuardados((prev) => prev.map((x) => x.clientId === g.clientId ? updated : x));
       if (panelItem?.clientId === g.clientId) setPanelItem(updated);
+      await mutateGuardados();
       showToast("Revertido a Pendiente Despacho ✓");
-    } else showToast(json.error || "Error", true);
+    } catch (e) { showToast(getErrorMessage(e, "Error"), true); }
   }
 
   // Exportar lista filtrada a CSV (abre directo en Excel)
@@ -479,9 +455,12 @@ export default function TransportePage() {
                             const id = await prompt({ title: "ID NetSuite", label: "ID interno de NetSuite:", defaultValue: panelItem.netsuiteId ?? "", confirmLabel: "Guardar" });
                             if (id === null) return;
                             const val = id.trim() || null;
-                            const r = await fetch(`/api/transporte/${panelItem.clientId}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ netsuiteId: val }) });
-                            const j = await r.json();
-                            if (j.success) { setPanelItem(p => p ? { ...p, netsuiteId: val } : p); setGuardados(prev => prev.map(g => g.clientId === panelItem.clientId ? { ...g, netsuiteId: val } : g)); showToast(val ? "ID NetSuite vinculado ✓" : "ID eliminado"); }
+                            try {
+                              await apiPut(`/api/transporte/${panelItem.clientId}`, { netsuiteId: val });
+                              setPanelItem(p => p ? { ...p, netsuiteId: val } : p);
+                              await mutateGuardados();
+                              showToast(val ? "ID NetSuite vinculado ✓" : "ID eliminado");
+                            } catch (e) { showToast(getErrorMessage(e, "Error"), true); }
                           }}>
                           {panelItem.netsuiteId ? "Cambiar" : "Vincular"}
                         </button>
@@ -527,7 +506,7 @@ export default function TransportePage() {
                   {mostrarFormContacto ? (
                     <FormContacto
                       clientId={panelItem.clientId}
-                      onGuardado={(c) => { setContactos(prev => [c, ...prev]); setMostrarFormContacto(false); showToast("Contacto registrado ✓"); }}
+                      onGuardado={() => { void mutateContactos(); setMostrarFormContacto(false); showToast("Contacto registrado ✓"); }}
                       onCancel={() => setMostrarFormContacto(false)}
                     />
                   ) : (
@@ -566,9 +545,9 @@ export default function TransportePage() {
           g={fechaModal}
           onClose={() => setFechaModal(null)}
           onSaved={(clientId, nota) => {
-            setGuardados((prev) => prev.map((x) => x.clientId === clientId ? { ...x, nota } : x));
             if (panelItem?.clientId === clientId) setPanelItem((p) => p ? { ...p, nota } : p);
             setFechaModal(null);
+            void mutateGuardados();
             showToast("Fecha de entrega actualizada ✓");
           }}
           onError={(m) => showToast(m, true)}
@@ -581,10 +560,15 @@ export default function TransportePage() {
           sub={`${deleting.documento} · ${deleting.ubicacion}`}
           onClose={() => setDeleting(null)}
           onConfirm={async () => {
-            const res = await fetch(`/api/transporte/${encodeURIComponent(deleting.clientId)}`, { method: "DELETE" });
-            const json = await res.json().catch(() => ({}));
-            if (res.ok && json.success) { setDeleting(null); load(); showToast("Eliminado"); }
-            else showToast(json.error || res.status === 403 ? "Solo un administrador puede eliminar" : "Error", true);
+            try {
+              await apiDelete(`/api/transporte/${encodeURIComponent(deleting.clientId)}`);
+              setDeleting(null);
+              load();
+              showToast("Eliminado");
+            } catch (e) {
+              const msg = e instanceof ApiError && e.status === 403 ? "Solo un administrador puede eliminar" : getErrorMessage(e, "Error");
+              showToast(msg, true);
+            }
           }}
         />
       )}
@@ -600,7 +584,7 @@ export default function TransportePage() {
 // y formularios que interrumpen intencionalmente el flujo)
 // ─────────────────────────────────────────────────────────
 function FormContacto({ clientId, onGuardado, onCancel }: {
-  clientId: string; onGuardado: (c: ContactoGuardado) => void; onCancel: () => void;
+  clientId: string; onGuardado: () => void; onCancel: () => void;
 }) {
   const isMobile = useIsMobile();
   const [tipo, setTipo] = useState<TipoContacto>("LLAMADA");
@@ -613,12 +597,8 @@ function FormContacto({ clientId, onGuardado, onCancel }: {
     e.preventDefault();
     setSaving(true);
     try {
-      const res = await fetch(`/api/transporte/${encodeURIComponent(clientId)}/contactos`, {
-        method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ tipo, resultado, fechaCompromiso: fechaComp || null, nota: nota.trim() || null }),
-      });
-      const json = await res.json();
-      if (json.success) onGuardado(json.data);
+      await apiPost(`/api/transporte/${encodeURIComponent(clientId)}/contactos`, { tipo, resultado, fechaCompromiso: fechaComp || null, nota: nota.trim() || null });
+      onGuardado();
     } catch { /* noop */ } finally { setSaving(false); }
   }
 
@@ -706,10 +686,9 @@ function ModalFechaEntrega({ g, onClose, onSaved, onError }: { g: Guardado; onCl
     e.preventDefault();
     setSaving(true);
     try {
-      const res = await fetch(`/api/transporte/${encodeURIComponent(g.clientId)}/acciones`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ tipo: "fecha_entrega", fecha }) });
-      const json = await res.json();
-      if (json.success) onSaved(g.clientId, json.nota); else onError(json.error || "Error");
-    } catch { onError("Error"); } finally { setSaving(false); }
+      const json = await apiPost<{ nota: string }>(`/api/transporte/${encodeURIComponent(g.clientId)}/acciones`, { tipo: "fecha_entrega", fecha });
+      onSaved(g.clientId, json.nota);
+    } catch (e) { onError(getErrorMessage(e, "Error")); } finally { setSaving(false); }
   }
   return (
     <ModalBase title="Fecha de entrega" sub={`${g.documento} · ${g.ubicacion}`} onClose={onClose}>
@@ -748,10 +727,9 @@ function ModalGuardado({ guardado, onClose, onSaved, onError, isAdmin }: { guard
     try {
       const url = isEdit ? `/api/transporte/${encodeURIComponent(guardado!.clientId)}` : "/api/transporte";
       const method = isEdit ? "PUT" : "POST";
-      const res = await fetch(url, { method, headers: { "Content-Type": "application/json" }, body: JSON.stringify({ fecha, documento: documento.trim(), ubicacion: ubicacion.trim(), estado, tipo, fechaDespacho: estado === "DESPACHADO" ? (fechaDespacho || todayISO()) : null, nota: nota.trim() || null }) });
-      const json = await res.json();
-      if (json.success) onSaved(); else onError(json.error || "Error");
-    } catch { onError("Error de conexión"); } finally { setSaving(false); }
+      await apiSend(url, method, { fecha, documento: documento.trim(), ubicacion: ubicacion.trim(), estado, tipo, fechaDespacho: estado === "DESPACHADO" ? (fechaDespacho || todayISO()) : null, nota: nota.trim() || null });
+      onSaved();
+    } catch (e) { onError(getErrorMessage(e, "Error de conexión")); } finally { setSaving(false); }
   }
   return (
     <ModalBase title={isEdit ? "Editar guardado" : "Nuevo guardado"} sub={isEdit ? `${guardado!.documento} · ${guardado!.ubicacion}` : undefined} onClose={onClose}>
