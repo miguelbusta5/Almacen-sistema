@@ -11,6 +11,10 @@ import { getModuleColor, getModuleCssVars } from "@/lib/moduleTheme";
 import { puedeGestionarExportaciones, puedeUsarExportaciones } from "@/lib/exportaciones";
 import { useIsMobile } from "@/lib/useIsMobile";
 import { useAutoRefresh } from "@/hooks/useAutoRefresh";
+import { useApi } from "@/hooks/useApi";
+import { apiGet, apiPost, apiPatch, apiDelete, buildQuery } from "@/lib/apiClient";
+import { getErrorMessage } from "@/lib/errors";
+import type { ApiListResponse } from "@/types";
 import { RegistrosTable, ProductividadTable, fmtTime, type Exportacion, type UserStat } from "./_components";
 
 const COLOR = getModuleColor("exportaciones");
@@ -44,10 +48,12 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
 async function lookupDescripcion(plu: string) {
   const clean = plu.trim();
   if (!clean) return null;
-  const res = await fetch(`/api/productos-maestro/${encodeURIComponent(clean)}`);
-  if (!res.ok) return null;
-  const json = await res.json();
-  return json.data?.descripcion as string | null;
+  try {
+    const json = await apiGet<{ data?: { descripcion?: string | null } }>(`/api/productos-maestro/${encodeURIComponent(clean)}`);
+    return json.data?.descripcion ?? null;
+  } catch {
+    return null;
+  }
 }
 
 export default function ExportacionesPage() {
@@ -58,26 +64,40 @@ export default function ExportacionesPage() {
   const canManage = puedeGestionarExportaciones(role);
 
   const { confirm, confirmModal } = useConfirm();
-  const [items, setItems] = useState<Exportacion[]>([]);
-  const [loading, setLoading] = useState(true);
+  const PAGE_SIZE = 40;
   const [saving, setSaving] = useState(false);
   const [finalizing, setFinalizing] = useState(false);
   const [error, setError] = useState("");
-  const [stats, setStats] = useState<UserStat[]>([]);
-  const [loadingStats, setLoadingStats] = useState(false);
   const [showStats, setShowStats] = useState(true);
   const [statsOperario, setStatsOperario] = useState("");
-  const [statsDesde, setStatsDesde] = useState("");
-  const [statsHasta, setStatsHasta] = useState("");
+  const initialRange = useMemo(() => { const hasta = hoyBogota(); return { desde: sumarDias(hasta, -6), hasta }; }, []);
+  const [statsDesde, setStatsDesde] = useState(initialRange.desde);
+  const [statsHasta, setStatsHasta] = useState(initialRange.hasta);
+  const [appliedStats, setAppliedStats] = useState(initialRange);
   const [query, setQuery] = useState("");
   const [fecha, setFecha] = useState("");
   const [estado, setEstado] = useState("");
   const [operarioFiltro, setOperarioFiltro] = useState("");
-  const [operarios, setOperarios] = useState<{ id: string; nombre: string }[]>([]);
+  const [applied, setApplied] = useState({ q: "", fecha: "", estado: "", usuarioId: "" });
   const [page, setPage] = useState(1);
-  const [totalItems, setTotalItems] = useState(0);
-  const PAGE_SIZE = 40;
   const userId = (session?.user as { id?: string } | undefined)?.id;
+
+  // ── Lecturas SWR ──────────────────────────────────────────────────────────
+  const listKey = canUse
+    ? `/api/exportaciones${buildQuery({ q: applied.q, fecha: applied.fecha, estado: applied.estado, usuarioId: applied.usuarioId, page, pageSize: PAGE_SIZE })}`
+    : null;
+  const { data: listData, isLoading: loading, mutate: mutateList } = useApi<ApiListResponse<Exportacion>>(listKey);
+  const items = useMemo(() => listData?.data ?? [], [listData]);
+  const totalItems = listData?.total ?? 0;
+
+  const statsKey = canManage
+    ? `/api/exportaciones/stats${buildQuery({ desde: appliedStats.desde, hasta: appliedStats.hasta })}`
+    : null;
+  const { data: statsData, isLoading: loadingStats } = useApi<{ data: UserStat[] }>(statsKey);
+  const stats = statsData?.data ?? [];
+
+  const { data: operariosData } = useApi<{ data: { id: string; nombre: string }[] }>(canManage ? "/api/exportaciones/operarios" : null);
+  const operarios = operariosData?.data ?? [];
   const [form, setForm] = useState({ numeroCaja: "", plu: "", descripcion: "", unidadEmpaque: "1" });
   const [editing, setEditing] = useState<Exportacion | null>(null);
   const [editForm, setEditForm] = useState({ numeroCaja: "", plu: "", descripcion: "", unidadEmpaque: "1", horaInicio: "", horaFinalizacion: "", motivoCorreccion: "" });
@@ -93,66 +113,22 @@ export default function ExportacionesPage() {
     [stats, statsOperario],
   );
 
-  async function load(targetPage = page) {
-    setLoading(true);
-    const params = new URLSearchParams();
-    if (query.trim()) params.set("q", query.trim());
-    if (fecha) params.set("fecha", fecha);
-    if (estado) params.set("estado", estado);
-    if (operarioFiltro) params.set("usuarioId", operarioFiltro);
-    params.set("page", String(targetPage));
-    params.set("pageSize", String(PAGE_SIZE));
-    const res = await fetch(`/api/exportaciones?${params.toString()}`);
-    const json = await res.json().catch(() => ({}));
-    if (res.ok && json.success) {
-      setItems(json.data ?? []);
-      setTotalItems(json.total ?? 0);
-    } else {
-      setError(json.error ?? "No se pudo cargar Exportaciones");
-    }
-    setLoading(false);
-  }
-
-  async function loadStats(desde = statsDesde, hasta = statsHasta) {
-    if (!canManage) return;
-    setLoadingStats(true);
-    const params = new URLSearchParams();
-    if (desde) params.set("desde", desde);
-    if (hasta) params.set("hasta", hasta);
-    const res = await fetch(`/api/exportaciones/stats?${params.toString()}`);
-    const json = await res.json().catch(() => ({}));
-    if (res.ok && json.success) setStats(json.data ?? []);
-    setLoadingStats(false);
-  }
-
-  async function loadOperarios() {
-    if (!canManage) return;
-    const res = await fetch("/api/exportaciones/operarios");
-    const json = await res.json().catch(() => ({}));
-    if (res.ok && json.success) setOperarios(json.data ?? []);
+  // Aplica los filtros del formulario a la key de SWR (botón "Filtrar").
+  function aplicarFiltros(targetPage = 1) {
+    setPage(targetPage);
+    setApplied({ q: query.trim(), fecha, estado, usuarioId: operarioFiltro });
   }
 
   function aplicarRangoStats(desde: string, hasta: string) {
     setStatsDesde(desde);
     setStatsHasta(hasta);
-    loadStats(desde, hasta);
+    setAppliedStats({ desde, hasta });
   }
-
-  useEffect(() => { if (canUse) load(1); }, [canUse]); // eslint-disable-line react-hooks/exhaustive-deps
-  useEffect(() => {
-    if (!canManage) return;
-    loadOperarios();
-    const hasta = hoyBogota();
-    const desde = sumarDias(hasta, -6); // acumulado de los últimos 7 días por defecto
-    setStatsDesde(desde);
-    setStatsHasta(hasta);
-    loadStats(desde, hasta);
-  }, [canManage]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const autoRefresh = useAutoRefresh({
     enabled: canUse,
     pause: Boolean(editing || saving || finalizing || formDirty),
-    onRefresh: () => load(),
+    onRefresh: () => { void mutateList(); },
   });
 
   async function autocomplete(plu: string, target: "create" | "edit") {
@@ -167,34 +143,33 @@ export default function ExportacionesPage() {
     e.preventDefault();
     setSaving(true);
     setError("");
-    const res = await fetch("/api/exportaciones", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
+    try {
+      await apiPost("/api/exportaciones", {
         numeroCaja:    form.numeroCaja,
         plu:           form.plu,
         unidadEmpaque: Number(form.unidadEmpaque),
-      }),
-    });
-    const json = await res.json().catch(() => ({}));
-    setSaving(false);
-    if (!res.ok) {
-      setError(json.error ?? "No se pudo guardar");
-      return;
+      });
+      setForm({ numeroCaja: "", plu: "", descripcion: "", unidadEmpaque: "1" });
+      await mutateList();
+    } catch (err) {
+      setError(getErrorMessage(err, "No se pudo guardar"));
+    } finally {
+      setSaving(false);
     }
-    setForm({ numeroCaja: "", plu: "", descripcion: "", unidadEmpaque: "1" });
-    await load();
   }
 
   async function finalize() {
     if (!openItem) return;
     setFinalizing(true);
     setError("");
-    const res = await fetch(`/api/exportaciones/${openItem.id}/finalize`, { method: "POST" });
-    const json = await res.json().catch(() => ({}));
-    setFinalizing(false);
-    if (!res.ok) { setError(json.error ?? "No se pudo finalizar"); return; }
-    await load();
+    try {
+      await apiPost(`/api/exportaciones/${openItem.id}/finalize`);
+      await mutateList();
+    } catch (err) {
+      setError(getErrorMessage(err, "No se pudo finalizar"));
+    } finally {
+      setFinalizing(false);
+    }
   }
 
   function startEdit(item: Exportacion) {
@@ -223,19 +198,15 @@ export default function ExportacionesPage() {
     };
     if (editForm.horaInicio) payload.horaInicio = new Date(editForm.horaInicio).toISOString();
     payload.horaFinalizacion = editForm.horaFinalizacion ? new Date(editForm.horaFinalizacion).toISOString() : null;
-    const res = await fetch(`/api/exportaciones/${editing.id}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
-    });
-    const json = await res.json().catch(() => ({}));
-    setSaving(false);
-    if (!res.ok) {
-      setError(json.error ?? "No se pudo editar");
-      return;
+    try {
+      await apiPatch(`/api/exportaciones/${editing.id}`, payload);
+      setEditing(null);
+      await mutateList();
+    } catch (err) {
+      setError(getErrorMessage(err, "No se pudo editar"));
+    } finally {
+      setSaving(false);
     }
-    setEditing(null);
-    await load();
   }
 
   async function remove(item: Exportacion) {
@@ -246,17 +217,12 @@ export default function ExportacionesPage() {
       tone: "danger",
     });
     if (!ok) return;
-    const res = await fetch(`/api/exportaciones/${item.id}`, {
-      method: "DELETE",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ motivoCorreccion: "Borrado desde gestion Exportaciones" }),
-    });
-    if (!res.ok) {
-      const json = await res.json().catch(() => ({}));
-      setError(json.error ?? "No se pudo borrar");
-      return;
+    try {
+      await apiDelete(`/api/exportaciones/${item.id}`, { motivoCorreccion: "Borrado desde gestion Exportaciones" });
+      await mutateList();
+    } catch (err) {
+      setError(getErrorMessage(err, "No se pudo borrar"));
     }
-    await load();
   }
 
   if (!session) return <SkeletonTable rows={6} cols={4} />;
@@ -325,7 +291,7 @@ export default function ExportacionesPage() {
           {operarios.map((o) => <option key={o.id} value={o.id}>{o.nombre}</option>)}
         </select>
       )}
-      <button onClick={() => { setPage(1); load(1); }} style={{ height: 38, border: `1px solid ${COLOR}55`, color: COLOR, background: `${COLOR}10`, borderRadius: 8, fontWeight: 800, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 7 }}>
+      <button onClick={() => aplicarFiltros(1)} style={{ height: 38, border: `1px solid ${COLOR}55`, color: COLOR, background: `${COLOR}10`, borderRadius: 8, fontWeight: 800, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 7 }}>
         <RefreshCw size={15} /> Filtrar
       </button>
     </div>
@@ -368,7 +334,7 @@ export default function ExportacionesPage() {
       <div style={{ display: "flex", gap: 6, flexShrink: 0 }}>
         <button
           disabled={page <= 1}
-          onClick={() => { const p = page - 1; setPage(p); load(p); }}
+          onClick={() => setPage(page - 1)}
           className="ds-btn ds-btn-ghost ds-btn-sm" style={{ opacity: page <= 1 ? 0.4 : 1 }}
         >
           ← Anterior
@@ -378,7 +344,7 @@ export default function ExportacionesPage() {
         </span>
         <button
           disabled={page >= totalPages}
-          onClick={() => { const p = page + 1; setPage(p); load(p); }}
+          onClick={() => setPage(page + 1)}
           className="ds-btn ds-btn-ghost ds-btn-sm" style={{ opacity: page >= totalPages ? 0.4 : 1 }}
         >
           Siguiente →
@@ -403,7 +369,7 @@ export default function ExportacionesPage() {
         <span style={{ fontSize: 11, fontWeight: 700, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.04em" }}>Hasta</span>
         <input type="date" value={statsHasta} min={statsDesde || undefined} onChange={(e) => setStatsHasta(e.target.value)} className="ds-input" style={{ height: 32, width: "auto", fontSize: 12 }} />
       </div>
-      <button onClick={() => loadStats()} className="ds-btn ds-btn-sm" style={{ height: 32, background: COLOR, color: "white", border: "none" }}>
+      <button onClick={() => setAppliedStats({ desde: statsDesde, hasta: statsHasta })} className="ds-btn ds-btn-sm" style={{ height: 32, background: COLOR, color: "white", border: "none" }}>
         <RefreshCw size={13} /> Aplicar
       </button>
       <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
