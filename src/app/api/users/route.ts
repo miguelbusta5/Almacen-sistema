@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import bcrypt from "bcryptjs";
 import { z } from "zod";
 import { USER_ROLE_VALUES } from "@/lib/roles";
+import type { Role } from "@prisma/client";
 
 const createUserSchema = z.object({
   email: z.string().email("Email invalido"),
@@ -16,7 +17,7 @@ const createUserSchema = z.object({
 export async function GET(req: NextRequest) {
   const session = await auth();
   if (!session) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
-  const userRole = (session.user as any)?.role as string;
+  const userRole = session.user?.role ?? "";
 
   // Filtro por rol — accesible para supervisores de transporte y gerencia (usados en dropdowns)
   const roleFilter = req.nextUrl.searchParams.get("role");
@@ -26,7 +27,7 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: "No autorizado" }, { status: 403 });
     }
     const users = await prisma.user.findMany({
-      where: { role: roleFilter as any, active: true },
+      where: { role: roleFilter as Role, active: true },
       select: { id: true, name: true, email: true, role: true },
       orderBy: { name: "asc" },
     });
@@ -46,7 +47,7 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   const session = await auth();
-  if (!session || (session.user as any)?.role !== "ADMIN") {
+  if (!session || session.user?.role !== "ADMIN") {
     return NextResponse.json({ error: "No autorizado" }, { status: 403 });
   }
   const body = await req.json();

@@ -19,7 +19,7 @@ const updateSchema = z.object({
 
 async function requireAdmin() {
   const session = await auth();
-  return session && (session.user as any)?.role === "ADMIN";
+  return session && session.user?.role === "ADMIN";
 }
 
 export async function GET() {
