@@ -3,6 +3,7 @@ import { requireAuth } from "@/lib/authz";
 import { prisma } from "@/lib/prisma";
 import ExcelJS from "exceljs";
 import { workbookBuffer } from "@/lib/excel";
+import type { Prisma } from "@prisma/client";
 
 const ALLOWED = ["ADMIN", "GERENTE", "SUPERVISOR_TRANSPORTE"];
 
@@ -25,11 +26,13 @@ export async function GET(req: NextRequest) {
   const conductorId = params.get("conductorId") || undefined;
   const estado      = params.get("estado") || undefined;
 
-  const where: any = { vigente: true };
-  if (fechaDesde) where.fecha = { ...where.fecha, gte: new Date(fechaDesde) };
-  if (fechaHasta) where.fecha = { ...where.fecha, lte: new Date(fechaHasta + "T23:59:59Z") };
+  const where: Prisma.InspeccionPreoperacionalWhereInput = { vigente: true };
+  const fechaFilter: Prisma.DateTimeFilter = {};
+  if (fechaDesde) fechaFilter.gte = new Date(fechaDesde);
+  if (fechaHasta) fechaFilter.lte = new Date(fechaHasta + "T23:59:59Z");
+  if (fechaDesde || fechaHasta) where.fecha = fechaFilter;
   if (conductorId) where.conductorId = conductorId;
-  if (estado) where.estado = estado;
+  if (estado) where.estado = estado as Prisma.InspeccionPreoperacionalWhereInput["estado"];
 
   const inspecciones = await prisma.inspeccionPreoperacional.findMany({
     where,

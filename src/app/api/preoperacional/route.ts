@@ -8,6 +8,11 @@ import {
   todayISO,
   type ResultadoInspeccion,
 } from "@/lib/preoperacional";
+import type { Prisma } from "@prisma/client";
+
+type InspeccionRow = Prisma.InspeccionPreoperacionalGetPayload<{
+  include: { vehiculo: true; conductor: true; items: true };
+}>;
 
 const itemSchema = z.object({
   item: z.string().min(1),
@@ -22,7 +27,7 @@ const createSchema = z.object({
   items: z.array(itemSchema).min(CHECKLIST_PREOPERACIONAL.length),
 });
 
-function mapInspeccion(i: any) {
+function mapInspeccion(i: InspeccionRow) {
   return {
     id: i.id,
     fecha: i.fecha instanceof Date ? i.fecha.toISOString().slice(0, 10) : i.fecha,
@@ -33,7 +38,7 @@ function mapInspeccion(i: any) {
     createdAt: i.createdAt.toISOString(),
     vehiculo: i.vehiculo ? { id: i.vehiculo.id, placa: i.vehiculo.placa, tipo: i.vehiculo.tipo } : null,
     conductor: i.conductor ? { id: i.conductor.id, nombre: i.conductor.nombre } : null,
-    items: (i.items ?? []).map((item: any) => ({
+    items: (i.items ?? []).map((item) => ({
       id: item.id,
       categoria: item.categoria,
       item: item.item,

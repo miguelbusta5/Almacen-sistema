@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { requireAuth } from "@/lib/authz";
 import { mapExportacion } from "../route";
 import { normalizePlu, puedeGestionarExportaciones, puedeUsarExportaciones } from "@/lib/exportaciones";
+import type { Prisma } from "@prisma/client";
 
 const patchSchema = z.object({
   numeroCaja:       z.string().min(1).max(100).optional(),
@@ -49,7 +50,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     return NextResponse.json({ error: "Motivo de correccion obligatorio para modificar horas" }, { status: 400 });
   }
 
-  const data: any = {
+  const data: Prisma.EtiquetadoExportacionUncheckedUpdateInput = {
     actualizadoPorId: actor.id,
     ...(d.numeroCaja !== undefined && { numeroCaja: d.numeroCaja.trim() }),
     ...(d.unidadEmpaque !== undefined && { unidadEmpaque: d.unidadEmpaque }),

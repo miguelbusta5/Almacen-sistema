@@ -11,6 +11,14 @@ import {
   todayBogota,
   validarCapturaExportacion,
 } from "@/lib/exportaciones";
+import type { Prisma } from "@prisma/client";
+
+type ExportacionRow = Prisma.EtiquetadoExportacionGetPayload<{
+  include: {
+    creadoPor: { select: { name: true } };
+    actualizadoPor: { select: { name: true } };
+  };
+}>;
 
 const createSchema = z.object({
   numeroCaja:    z.string().min(1).max(100),
@@ -18,7 +26,7 @@ const createSchema = z.object({
   unidadEmpaque: z.number().int().min(1),
 });
 
-export function mapExportacion(row: any) {
+export function mapExportacion(row: ExportacionRow) {
   return {
     id: row.id,
     numeroCaja: row.numeroCaja,
@@ -56,7 +64,7 @@ export async function GET(req: NextRequest) {
   const pageSize = Math.min(100, Math.max(10, Number(url.searchParams.get("pageSize") || 40)));
   const isGestor = puedeGestionarExportaciones(actor.role);
 
-  const where: any = {
+  const where: Prisma.EtiquetadoExportacionWhereInput = {
     deletedAt: null,
     ...(isGestor ? {} : { creadoPorId: actor.id }),
     ...(isGestor && usuarioId ? { creadoPorId: usuarioId } : {}),
