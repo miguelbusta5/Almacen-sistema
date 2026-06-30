@@ -5,7 +5,7 @@ import { z } from "zod";
 import { assertTransicionGourmet, type EstadoPedidoGourmet } from "@/lib/gourmetCargueFlow";
 import type { GourmetPedido, GourmetCargue } from "@prisma/client";
 
-const ROLES_PERMITIDOS = ["TRANSPORTE", "SUPERVISOR_TRANSPORTE", "ADMIN", "GERENTE"] as const;
+const ROLES_PERMITIDOS = ["TRANSPORTE", "SUPERVISOR_TRANSPORTE", "OPERACIONES_GOURMET", "ADMIN", "GERENTE"] as const;
 const ROLES_NOTIFICAR = ["ADMIN", "GERENTE"] as const;
 
 const bodySchema = z.object({

@@ -86,36 +86,34 @@ describe("gourmetCargueFlow — permisos por rol", () => {
     expect(rolPuedeTransicionarGourmet("TRANSPORTE", "BORRADOR", "UBICACION_ASIGNADA")).toBe(false);
   });
 
-  it("Transporte/Supervisor/Admin/Gerente inician cargue (ENVIADO_A_TRANSPORTE → EN_CARGUE)", () => {
-    for (const role of ["TRANSPORTE", "SUPERVISOR_TRANSPORTE", "ADMIN", "GERENTE"]) {
+  it("Transporte/Gourmet/Supervisor/Admin/Gerente inician cargue (ENVIADO_A_TRANSPORTE → EN_CARGUE)", () => {
+    for (const role of ["TRANSPORTE", "SUPERVISOR_TRANSPORTE", "OPERACIONES_GOURMET", "ADMIN", "GERENTE"]) {
       expect(rolPuedeTransicionarGourmet(role, "ENVIADO_A_TRANSPORTE", "EN_CARGUE")).toBe(true);
     }
   });
 
-  it("OPERACIONES_GOURMET no puede iniciar cargue", () => {
-    expect(rolPuedeTransicionarGourmet("OPERACIONES_GOURMET", "ENVIADO_A_TRANSPORTE", "EN_CARGUE")).toBe(false);
+  it("OPERACIONES_GOURMET también puede iniciar cargue (cargue compartido)", () => {
+    expect(rolPuedeTransicionarGourmet("OPERACIONES_GOURMET", "ENVIADO_A_TRANSPORTE", "EN_CARGUE")).toBe(true);
   });
 
-  it("Transporte/Supervisor/Admin/Gerente finalizan cargue normal (EN_CARGUE → CARGUE_COMPLETO)", () => {
-    for (const role of ["TRANSPORTE", "SUPERVISOR_TRANSPORTE", "ADMIN", "GERENTE"]) {
+  it("Transporte/Gourmet/Supervisor/Admin/Gerente finalizan cargue normal (EN_CARGUE → CARGUE_COMPLETO)", () => {
+    for (const role of ["TRANSPORTE", "SUPERVISOR_TRANSPORTE", "OPERACIONES_GOURMET", "ADMIN", "GERENTE"]) {
       expect(rolPuedeTransicionarGourmet(role, "EN_CARGUE", "CARGUE_COMPLETO")).toBe(true);
     }
   });
 
-  it("cierre manual permitido para SUPERVISOR_TRANSPORTE, ADMIN, GERENTE", () => {
+  it("cierre manual permitido para SUPERVISOR_TRANSPORTE, OPERACIONES_GOURMET, ADMIN, GERENTE", () => {
     expect(rolPuedeTransicionarGourmet("SUPERVISOR_TRANSPORTE", "EN_CARGUE", "CARGUE_COMPLETO_MANUAL")).toBe(true);
+    expect(rolPuedeTransicionarGourmet("OPERACIONES_GOURMET", "EN_CARGUE", "CARGUE_COMPLETO_MANUAL")).toBe(true);
     expect(rolPuedeTransicionarGourmet("ADMIN", "EN_CARGUE", "CARGUE_COMPLETO_MANUAL")).toBe(true);
     expect(rolPuedeTransicionarGourmet("GERENTE", "EN_CARGUE", "CARGUE_COMPLETO_MANUAL")).toBe(true);
     expect(rolPuedeTransicionarGourmet("SUPERVISOR_TRANSPORTE", "CON_NOVEDAD", "CARGUE_COMPLETO_MANUAL")).toBe(true);
+    expect(rolPuedeTransicionarGourmet("OPERACIONES_GOURMET", "CON_NOVEDAD", "CARGUE_COMPLETO_MANUAL")).toBe(true);
   });
 
   it("cierre manual rechazado para TRANSPORTE", () => {
     expect(rolPuedeTransicionarGourmet("TRANSPORTE", "EN_CARGUE", "CARGUE_COMPLETO_MANUAL")).toBe(false);
     expect(rolPuedeTransicionarGourmet("TRANSPORTE", "CON_NOVEDAD", "CARGUE_COMPLETO_MANUAL")).toBe(false);
-  });
-
-  it("cierre manual rechazado para OPERACIONES_GOURMET", () => {
-    expect(rolPuedeTransicionarGourmet("OPERACIONES_GOURMET", "EN_CARGUE", "CARGUE_COMPLETO_MANUAL")).toBe(false);
   });
 
   it("cancelación solo ADMIN/GERENTE", () => {

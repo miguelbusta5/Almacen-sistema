@@ -5,7 +5,7 @@ import { z } from "zod";
 import { assertTransicionGourmet, type EstadoPedidoGourmet } from "@/lib/gourmetCargueFlow";
 import type { GourmetPedido, GourmetCargue, GourmetCargueNovedad } from "@prisma/client";
 
-const ROLES_PERMITIDOS = ["SUPERVISOR_TRANSPORTE", "ADMIN", "GERENTE"] as const;
+const ROLES_PERMITIDOS = ["SUPERVISOR_TRANSPORTE", "OPERACIONES_GOURMET", "ADMIN", "GERENTE"] as const;
 const ROLES_NOTIFICAR = ["ADMIN", "GERENTE"] as const;
 
 // Estados de cargue desde los que se acepta un cierre manual de contingencia.

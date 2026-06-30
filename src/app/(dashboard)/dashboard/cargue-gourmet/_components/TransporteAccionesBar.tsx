@@ -33,6 +33,8 @@ export function TransporteAccionesBar({
   puedeCierreManual?: boolean;
   onCierreManual?: () => void;
 }) {
+  // `puedeTransporte` representa "puede operar el cargue del camión" — lo cumplen
+  // tanto Transporte como Gourmet (ver ROLES_TRANSPORTE en page.tsx).
   const puedeIniciar = puedeTransporte && ESTADOS_INICIABLES_TRANSPORTE.includes(estado);
   const puedeFinalizar = puedeTransporte && ESTADOS_FINALIZABLES_TRANSPORTE.includes(estado);
   const puedeCerrarManualmente = puedeCierreManual && ESTADOS_CIERRE_MANUAL.includes(estado);
@@ -42,7 +44,7 @@ export function TransporteAccionesBar({
   const completo = progresoCompleto(progreso);
 
   return (
-    <DetailSection title="Acciones Transporte">
+    <DetailSection title="Acciones de cargue">
       <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
         {puedeIniciar && (
           <button

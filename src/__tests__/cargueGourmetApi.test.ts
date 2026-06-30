@@ -1116,11 +1116,17 @@ describe("POST /api/cargue-gourmet/[id]/iniciar-cargue", () => {
     expect(mocks.transaction).not.toHaveBeenCalled();
   });
 
-  it("rechaza OPERACIONES_GOURMET (403)", async () => {
+  it("OPERACIONES_GOURMET también puede iniciar cargue", async () => {
     mocks.getSessionUser.mockResolvedValue(actor("OPERACIONES_GOURMET"));
+    mockCurrent("ENVIADO_A_TRANSPORTE");
+    mockCreateResults();
+
     const res = await postIniciarCargue(iniciarCarguePostReq("p1", validBody), params);
-    expect(res.status).toBe(403);
-    expect(mocks.pedidoFindUnique).not.toHaveBeenCalled();
+    const json = await res.json();
+
+    expect(res.status).toBe(200);
+    expect(json.success).toBe(true);
+    expect(json.data.pedido.estado).toBe("EN_CARGUE");
   });
 
   it("permite TRANSPORTE", async () => {
@@ -1399,14 +1405,7 @@ describe("POST /api/cargue-gourmet/[id]/escanear", () => {
     expect(mocks.pedidoFindUnique).not.toHaveBeenCalled();
   });
 
-  it("rechaza OPERACIONES_GOURMET (403)", async () => {
-    mocks.getSessionUser.mockResolvedValue(actor("OPERACIONES_GOURMET"));
-    const res = await postEscanear(escanearPostReq("p1", { codigo: "X" }), params);
-    expect(res.status).toBe(403);
-    expect(mocks.pedidoFindUnique).not.toHaveBeenCalled();
-  });
-
-  it.each(["TRANSPORTE", "SUPERVISOR_TRANSPORTE", "ADMIN", "GERENTE"])("permite %s", async (role) => {
+  it.each(["TRANSPORTE", "SUPERVISOR_TRANSPORTE", "OPERACIONES_GOURMET", "ADMIN", "GERENTE"])("permite %s", async (role) => {
     mocks.getSessionUser.mockResolvedValue(actor(role));
     mockPedido("EN_CARGUE", [{ codigoCaja: "TSDM98761-CAJA-01" }, { codigoCaja: "TSDM98761-CAJA-02" }]);
     mockCargueActivo(2, 0);
@@ -1651,14 +1650,7 @@ describe("POST /api/cargue-gourmet/[id]/finalizar", () => {
     expect(mocks.transaction).not.toHaveBeenCalled();
   });
 
-  it("rechaza OPERACIONES_GOURMET (403)", async () => {
-    mocks.getSessionUser.mockResolvedValue(actor("OPERACIONES_GOURMET"));
-    const res = await postFinalizar(finalizarPostReq("p1", validBody), params);
-    expect(res.status).toBe(403);
-    expect(mocks.pedidoFindUnique).not.toHaveBeenCalled();
-  });
-
-  it.each(["TRANSPORTE", "SUPERVISOR_TRANSPORTE", "ADMIN", "GERENTE"])("permite %s", async (role) => {
+  it.each(["TRANSPORTE", "SUPERVISOR_TRANSPORTE", "OPERACIONES_GOURMET", "ADMIN", "GERENTE"])("permite %s", async (role) => {
     mocks.getSessionUser.mockResolvedValue(actor(role));
     mockPedido("EN_CARGUE");
     mockCargueActivo(2, 2);
@@ -1970,13 +1962,7 @@ describe("POST /api/cargue-gourmet/[id]/cierre-manual", () => {
     expect(mocks.pedidoFindUnique).not.toHaveBeenCalled();
   });
 
-  it("rechaza OPERACIONES_GOURMET (403)", async () => {
-    mocks.getSessionUser.mockResolvedValue(actor("OPERACIONES_GOURMET"));
-    const res = await postCierreManual(cierreManualPostReq("p1", validBody), params);
-    expect(res.status).toBe(403);
-  });
-
-  it.each(["SUPERVISOR_TRANSPORTE", "ADMIN", "GERENTE"])("permite %s", async (role) => {
+  it.each(["SUPERVISOR_TRANSPORTE", "OPERACIONES_GOURMET", "ADMIN", "GERENTE"])("permite %s", async (role) => {
     mocks.getSessionUser.mockResolvedValue(actor(role));
     mockPedido("EN_CARGUE");
     mockCargueValido("EN_CARGUE");

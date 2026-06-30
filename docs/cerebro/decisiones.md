@@ -1,5 +1,29 @@
 # Decisiones de Arquitectura y Producto
 
+## 2026-06-30 - Cargue Gourmet: ambas áreas operan el cargue del camión
+
+**Decisión:**
+- El **ciclo de cargue** de un pedido Gourmet (Iniciar cargue, Escanear cajas, Finalizar cargue) y
+  el **Cierre manual** de contingencia dejan de ser exclusivos de Transporte: ahora también los
+  ejecuta **`OPERACIONES_GOURMET`**. Esto revierte la nota previa "cierre manual deliberadamente sin
+  Gourmet" (decisión G3A).
+- **"Enviar a Transporte"** (`UBICACION_ASIGNADA → ENVIADO_A_TRANSPORTE`) **no cambia**: sigue siendo
+  el handoff que solo dispara Gourmet para continuar el proceso.
+
+**Contexto:** en la operación real, tanto Gourmet como Transporte cargan físicamente el camión y
+escanean las cajas; restringir el escaneo a Transporte bloqueaba a Gourmet.
+
+**Implementación (doble validación servidor + UI):**
+- `src/lib/gourmetCargueFlow.ts`: se agrega `OPERACIONES_GOURMET` a las transiciones del cargue
+  (`ENVIADO_A_TRANSPORTE-EN_CARGUE`, `EN_CARGUE-{CARGUE_COMPLETO, CARGUE_COMPLETO_MANUAL, CON_NOVEDAD}`,
+  `CON_NOVEDAD-{CARGUE_COMPLETO_MANUAL, EN_CARGUE}`).
+- Endpoints `iniciar-cargue`, `escanear`, `finalizar`, `cierre-manual`: `OPERACIONES_GOURMET` en
+  `ROLES_PERMITIDOS`. `TRANSPORTE` sigue **sin** cierre manual.
+- `cargue-gourmet/page.tsx`: `OPERACIONES_GOURMET` en `ROLES_TRANSPORTE` y `ROLES_CIERRE_MANUAL`.
+- UI: la sección "Acciones Transporte" pasa a llamarse **"Acciones de cargue"** (la usan ambas áreas).
+
+**Validación:** `tsc --noEmit` + `npm test`.
+
 ## 2026-06-26 - Modo claro opt-in (revierte "solo modo oscuro")
 
 **Decisión:**

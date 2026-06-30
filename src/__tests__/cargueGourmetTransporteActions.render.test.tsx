@@ -28,7 +28,7 @@ describe("TransporteAccionesBar — 'Iniciar cargue' por rol", () => {
     expect(renderIniciar("ENVIADO_A_TRANSPORTE", true)).toContain('data-testid="btn-iniciar-cargue"');
   });
 
-  it("NO aparece para OPERACIONES_GOURMET (puedeTransporte=false)", () => {
+  it("NO aparece cuando puedeTransporte=false (sin permiso de cargue)", () => {
     expect(renderIniciar("ENVIADO_A_TRANSPORTE", false)).toBe("");
   });
 });
@@ -68,7 +68,7 @@ describe("EscaneoCajasPanel — visibilidad por rol/estado", () => {
     expect(html).toContain('data-testid="escaneo-input"');
   });
 
-  it("NO aparece para OPERACIONES_GOURMET (puedeTransporte=false)", () => {
+  it("NO aparece cuando puedeTransporte=false (sin permiso de cargue)", () => {
     expect(renderEscaneo({ estado: "EN_CARGUE", puedeTransporte: false })).toBe("");
   });
 

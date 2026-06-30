@@ -4,7 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { z } from "zod";
 import { clasificarEscaneoGourmet, type ModoCodigoGourmet } from "@/lib/gourmetEscaneo";
 
-const ROLES_PERMITIDOS = ["TRANSPORTE", "SUPERVISOR_TRANSPORTE", "ADMIN", "GERENTE"] as const;
+const ROLES_PERMITIDOS = ["TRANSPORTE", "SUPERVISOR_TRANSPORTE", "OPERACIONES_GOURMET", "ADMIN", "GERENTE"] as const;
 
 const bodySchema = z.object({
   codigo: z.string(),

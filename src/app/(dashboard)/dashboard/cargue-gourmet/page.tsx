@@ -31,12 +31,13 @@ const ROLES_CREAN = ["OPERACIONES_GOURMET", "ADMIN", "GERENTE"];
 // asignar ubicación, enviar a Transporte) — coincide con ROLES_PERMITIDOS de
 // los endpoints PUT/[id], POST/ubicacion y POST/enviar-transporte.
 const ROLES_GOURMET = ROLES_CREAN;
-// Roles para iniciar cargue y escanear — coincide con ROLES_PERMITIDOS de
-// /iniciar-cargue y /escanear.
-const ROLES_TRANSPORTE = ["TRANSPORTE", "SUPERVISOR_TRANSPORTE", "ADMIN", "GERENTE"];
-// Roles para cierre manual — coincide con ROLES_PERMITIDOS de
-// /cierre-manual (deliberadamente sin TRANSPORTE, decisión cerrada en G3A).
-const ROLES_CIERRE_MANUAL = ["SUPERVISOR_TRANSPORTE", "ADMIN", "GERENTE"];
+// Roles que operan el cargue del camión (iniciar, escanear, finalizar) — ambas
+// áreas: Transporte y Gourmet. Coincide con ROLES_PERMITIDOS de /iniciar-cargue,
+// /escanear y /finalizar.
+const ROLES_TRANSPORTE = ["TRANSPORTE", "SUPERVISOR_TRANSPORTE", "OPERACIONES_GOURMET", "ADMIN", "GERENTE"];
+// Roles para cierre manual — coincide con ROLES_PERMITIDOS de /cierre-manual.
+// Incluye Gourmet (decisión 2026-06-30); TRANSPORTE sigue sin cierre manual.
+const ROLES_CIERRE_MANUAL = ["SUPERVISOR_TRANSPORTE", "OPERACIONES_GOURMET", "ADMIN", "GERENTE"];
 
 const RESULTADO_TOAST_ERROR: Record<ResultadoEscaneo, string> = {
   VALIDO: "",
