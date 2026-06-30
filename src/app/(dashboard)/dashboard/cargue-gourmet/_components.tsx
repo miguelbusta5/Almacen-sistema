@@ -26,7 +26,7 @@ export const ESTADOS_PEDIDO_GOURMET: EstadoPedidoGourmet[] = [
 ];
 
 export const ESTADO_LABEL: Record<EstadoPedidoGourmet, string> = {
-  BORRADOR: "Borrador",
+  BORRADOR: "Sin ubicación",
   UBICACION_ASIGNADA: "Ubicación asignada",
   ENVIADO_A_TRANSPORTE: "Enviado a Transporte",
   EN_CARGUE: "En cargue",

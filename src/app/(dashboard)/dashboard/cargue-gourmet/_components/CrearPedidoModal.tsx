@@ -119,7 +119,7 @@ export function CrearPedidoModal({
         cajasEsperadas: cajas,
         estibasEsperadas: estibas,
       });
-      toast.success("Pedido Gourmet creado en Borrador");
+      toast.success("Pedido Gourmet creado sin ubicación");
       onCreated();
       onClose();
     } catch (e) {
@@ -134,7 +134,7 @@ export function CrearPedidoModal({
       open={open}
       onClose={handleClose}
       title="Nuevo pedido Gourmet"
-      subtitle="Se creará en estado Borrador"
+      subtitle="Se creará sin ubicación asignada"
       footer={
         <>
           <button type="button" onClick={handleClose} className="g-btn g-btn-ghost" disabled={saving}>Cancelar</button>
