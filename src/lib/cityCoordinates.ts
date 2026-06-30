@@ -47,6 +47,13 @@ const RAW: Record<string, CityCoords> = {
   "mitu":             { lat: 1.2536,  lng: -70.2335 },
   "puerto carreno":   { lat: 6.1896,  lng: -67.4857 },
   "inirida":          { lat: 3.8653,  lng: -67.9239 },
+  // Origen fijo de exportaciones
+  "la estrella":      { lat: 6.1574,  lng: -75.6436 }, // La Estrella, Antioquia
+  // Destinos de exportación (país)
+  "ecuador":          { lat: -0.1807, lng: -78.4678 }, // Quito
+  "mexico":           { lat: 19.4326, lng: -99.1332 }, // CDMX
+  "estados unidos":   { lat: 38.9072, lng: -77.0369 }, // Washington
+  "eeuu":             { lat: 38.9072, lng: -77.0369 }, // alias "EE.UU"
 };
 
 export function getCityCoords(nombre: string): CityCoords | null {

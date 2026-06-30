@@ -8,6 +8,7 @@ import type { CiudadMapaDTO } from "@/app/api/mapa-ciudades/route";
 
 const AMBER = "#F59E0B";
 const EMERALD = "#0E9C76";
+const EXPORT = "#6366F1"; // índigo — exportaciones
 const SIZE = 22;
 const R = SIZE / 2;
 
@@ -58,6 +59,9 @@ export default function ColombiaMap({ ciudades, onSelectCity }: Props) {
               <div style={{ fontWeight: 700, marginBottom: 4 }}>{ciudad.nombre}</div>
               <div>Recogidas: <strong>{ciudad.comoOrigen}</strong></div>
               <div>Entregas: <strong>{ciudad.comoDestino}</strong></div>
+              {ciudad.comoExportacion > 0 && (
+                <div>Exportaciones: <strong>{ciudad.comoExportacion}</strong></div>
+              )}
               <div>Total: <strong>{ciudad.total}</strong></div>
               {ciudad.transportadoras.length > 0 && (
                 <div style={{ marginTop: 4, fontSize: "0.85em", color: "#555" }}>
@@ -68,9 +72,25 @@ export default function ColombiaMap({ ciudades, onSelectCity }: Props) {
           </Tooltip>
         );
 
+        const esExportacion = ciudad.comoExportacion > 0;
         const soloOrigen = ciudad.comoOrigen > 0 && ciudad.comoDestino === 0;
         const soloDestino = ciudad.comoDestino > 0 && ciudad.comoOrigen === 0;
         const handlers = { click: () => onSelectCity?.(ciudad) };
+
+        // Prioridad: si hay actividad de exportación, el nodo se pinta índigo.
+        if (esExportacion) {
+          return (
+            <CircleMarker
+              key={ciudad.nombre}
+              center={pos}
+              radius={radiusFor(ciudad.total)}
+              pathOptions={{ color: "#fff", weight: 1.5, fillColor: EXPORT, fillOpacity: 0.9 }}
+              eventHandlers={handlers}
+            >
+              {tooltip}
+            </CircleMarker>
+          );
+        }
 
         if (soloOrigen || soloDestino) {
           const color = soloOrigen ? AMBER : EMERALD;

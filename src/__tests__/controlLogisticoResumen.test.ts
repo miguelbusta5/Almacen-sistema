@@ -8,6 +8,8 @@ const mocks = vi.hoisted(() => ({
   guardadoPendienteCount: vi.fn(),
   solicitudTransporteCount: vi.fn(),
   exportacionCount: vi.fn(),
+  exportacionMexicoCount: vi.fn(),
+  exportacionEeuuCount: vi.fn(),
   integracionCount: vi.fn(),
   notificacionCount: vi.fn(),
   inspeccionCount: vi.fn(),
@@ -21,6 +23,8 @@ vi.mock("@/lib/prisma", () => ({
     guardadoPendienteTienda: { count: mocks.guardadoPendienteCount },
     solicitudTransporte: { count: mocks.solicitudTransporteCount },
     etiquetadoExportacion: { count: mocks.exportacionCount },
+    etiquetadoExportacionMexico: { count: mocks.exportacionMexicoCount },
+    etiquetadoExportacionEeuu: { count: mocks.exportacionEeuuCount },
     integracionPedido: { count: mocks.integracionCount },
     notificacion: { count: mocks.notificacionCount },
     inspeccionPreoperacional: { count: mocks.inspeccionCount },
@@ -42,6 +46,8 @@ describe("buildControlLogisticoResumen", () => {
     mocks.guardadoPendienteCount.mockResolvedValue(0);
     mocks.solicitudTransporteCount.mockResolvedValue(0);
     mocks.exportacionCount.mockResolvedValue(0);
+    mocks.exportacionMexicoCount.mockResolvedValue(0);
+    mocks.exportacionEeuuCount.mockResolvedValue(0);
     mocks.integracionCount.mockResolvedValue(0);
     mocks.notificacionCount.mockResolvedValue(0);
     mocks.inspeccionCount.mockResolvedValue(0);
@@ -112,8 +118,8 @@ describe("buildControlLogisticoResumen", () => {
 
     const resumen = await buildControlLogisticoResumen(actor("ETIQUETADO"));
 
-    expect(resumen.visibleModules).toEqual(["exportaciones"]);
-    expect(resumen.modules.map((m) => m.key)).toEqual(["exportaciones"]);
+    expect(resumen.visibleModules).toEqual(["exportaciones", "exportaciones-mexico", "exportaciones-eeuu"]);
+    expect(resumen.modules.map((m) => m.key)).toEqual(["exportaciones", "exportaciones-mexico", "exportaciones-eeuu"]);
     expect(resumen.actions.map((a) => a.href)).toEqual(["/dashboard/exportaciones"]);
     expect(mocks.exportacionCount).toHaveBeenCalledWith({
       where: { deletedAt: null, horaFinalizacion: null, creadoPorId: "u_1" },

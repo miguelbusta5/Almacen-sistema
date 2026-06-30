@@ -19,8 +19,8 @@ describe("canSeeModule — Sprint 8", () => {
   });
 
   describe("ETIQUETADO", () => {
-    it("solo ve exportaciones", () => {
-      expect(getVisibleModules("ETIQUETADO")).toEqual(["exportaciones"]);
+    it("solo ve exportaciones (Ecuador/México/EE.UU)", () => {
+      expect(getVisibleModules("ETIQUETADO")).toEqual(["exportaciones", "exportaciones-mexico", "exportaciones-eeuu"]);
     });
     it("NO ve otros modulos operativos", () => {
       expect(canSeeModule("ETIQUETADO", "inventario")).toBe(false);

@@ -12,6 +12,8 @@ export type ModuleKey =
   | "tienda"
   | "solicitudes-transporte"
   | "exportaciones"
+  | "exportaciones-mexico"
+  | "exportaciones-eeuu"
   | "mis-tareas"
   | "usuarios"
   | "auditoria"
@@ -50,6 +52,8 @@ export const MODULE_ACCESS: Record<ModuleKey, AppRole[]> = {
     "OPERACIONES_GOURMET",
   ],
   exportaciones: ["ETIQUETADO", "SUPERVISOR_ALMACENAMIENTO", "GERENTE", "ADMIN"],
+  "exportaciones-mexico": ["ETIQUETADO", "SUPERVISOR_ALMACENAMIENTO", "GERENTE", "ADMIN"],
+  "exportaciones-eeuu": ["ETIQUETADO", "SUPERVISOR_ALMACENAMIENTO", "GERENTE", "ADMIN"],
   usuarios: ["ADMIN"],
   auditoria: ["ADMIN", "GERENTE"],
   "centro-control": [

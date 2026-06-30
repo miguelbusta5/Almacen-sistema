@@ -118,6 +118,10 @@ model User {
   historialSolicitudesTransporte HistorialSolicitudTransporte[] @relation("HistorialSolicitudTransporteUsuario")
   exportacionesEtiquetado        EtiquetadoExportacion[]        @relation("ExportacionesEtiquetadoCreadas")
   exportacionesActualizadas      EtiquetadoExportacion[]        @relation("ExportacionesEtiquetadoActualizadas")
+  exportacionesMexicoCreadas     EtiquetadoExportacionMexico[]  @relation("ExportacionesMexicoEtiquetadoCreadas")
+  exportacionesMexicoActualizadas EtiquetadoExportacionMexico[] @relation("ExportacionesMexicoEtiquetadoActualizadas")
+  exportacionesEeuuCreadas       EtiquetadoExportacionEeuu[]    @relation("ExportacionesEeuuEtiquetadoCreadas")
+  exportacionesEeuuActualizadas  EtiquetadoExportacionEeuu[]    @relation("ExportacionesEeuuEtiquetadoActualizadas")
   gourmetPedidosCreados          GourmetPedido[]                @relation("GourmetPedidosCreados")
 
   @@index([email])
@@ -723,6 +727,66 @@ model EtiquetadoExportacion {
   @@index([numeroCaja])
   @@index([horaFinalizacion])
   @@map("etiquetado_exportaciones")
+}
+
+model EtiquetadoExportacionMexico {
+  id               String    @id @default(cuid())
+  numeroCaja       String    @map("numero_caja") @db.VarChar(100)
+  plu              String    @db.VarChar(100)
+  descripcion      String    @db.VarChar(255)
+  unidadEmpaque    Int       @map("unidad_empaque")
+  fecha            DateTime  @db.Date
+  horaInicio       DateTime  @map("hora_inicio")
+  horaFinalizacion DateTime? @map("hora_finalizacion")
+  motivoCorreccion String?   @map("motivo_correccion")
+  hayReguero       Boolean   @default(false) @map("hay_reguero")
+  cantidadReguero  Int?      @map("cantidad_reguero")
+  deletedAt        DateTime? @map("deleted_at")
+
+  creadoPorId      String  @map("creado_por_id")
+  creadoPor        User    @relation("ExportacionesMexicoEtiquetadoCreadas", fields: [creadoPorId], references: [id])
+  actualizadoPorId String? @map("actualizado_por_id")
+  actualizadoPor   User?   @relation("ExportacionesMexicoEtiquetadoActualizadas", fields: [actualizadoPorId], references: [id])
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([creadoPorId, deletedAt])
+  @@index([fecha])
+  @@index([plu])
+  @@index([numeroCaja])
+  @@index([horaFinalizacion])
+  @@map("etiquetado_exportaciones_mexico")
+}
+
+model EtiquetadoExportacionEeuu {
+  id               String    @id @default(cuid())
+  numeroCaja       String    @map("numero_caja") @db.VarChar(100)
+  plu              String    @db.VarChar(100)
+  descripcion      String    @db.VarChar(255)
+  unidadEmpaque    Int       @map("unidad_empaque")
+  fecha            DateTime  @db.Date
+  horaInicio       DateTime  @map("hora_inicio")
+  horaFinalizacion DateTime? @map("hora_finalizacion")
+  motivoCorreccion String?   @map("motivo_correccion")
+  hayReguero       Boolean   @default(false) @map("hay_reguero")
+  cantidadReguero  Int?      @map("cantidad_reguero")
+  deletedAt        DateTime? @map("deleted_at")
+
+  creadoPorId      String  @map("creado_por_id")
+  creadoPor        User    @relation("ExportacionesEeuuEtiquetadoCreadas", fields: [creadoPorId], references: [id])
+  actualizadoPorId String? @map("actualizado_por_id")
+  actualizadoPor   User?   @relation("ExportacionesEeuuEtiquetadoActualizadas", fields: [actualizadoPorId], references: [id])
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([creadoPorId, deletedAt])
+  @@index([fecha])
+  @@index([plu])
+  @@index([numeroCaja])
+  @@index([horaFinalizacion])
+  @@map("etiquetado_exportaciones_eeuu")
 }
 
 // ═══════════════════════════════════════════════════════════════════

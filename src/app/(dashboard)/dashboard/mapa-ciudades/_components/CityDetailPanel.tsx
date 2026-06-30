@@ -5,6 +5,7 @@ import type { CiudadMapaDTO } from "@/app/api/mapa-ciudades/route";
 
 const AMBER = "#F59E0B";
 const EMERALD = "#0E9C76";
+const EXPORT = "#6366F1";
 
 interface Props {
   ciudad: CiudadMapaDTO;
@@ -77,6 +78,12 @@ export default function CityDetailPanel({ ciudad, onClose }: Props) {
         <Metric label="Entregas" value={ciudad.comoDestino} color={EMERALD} />
         <Metric label="Total" value={ciudad.total} />
       </div>
+
+      {ciudad.comoExportacion > 0 && (
+        <div style={{ display: "flex", gap: 8 }}>
+          <Metric label="Exportaciones" value={ciudad.comoExportacion} color={EXPORT} />
+        </div>
+      )}
 
       {/* Barra de proporción origen/destino */}
       {ciudad.total > 0 && (

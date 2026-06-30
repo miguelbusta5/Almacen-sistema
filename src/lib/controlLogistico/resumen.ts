@@ -50,6 +50,8 @@ export async function buildControlLogisticoResumen(actor: SessionUser): Promise<
     integracionesPendientes,
     notifNoLeidas,
     preopBloqueadas,
+    exportacionesMexicoEnCurso,
+    exportacionesEeuuEnCurso,
   ] = await Promise.all([
     see("inventario") ? prisma.novedad.count({ where: { estado: "PENDIENTE" } }) : 0,
     see("inventario") ? prisma.novedad.count({
@@ -94,6 +96,20 @@ export async function buildControlLogisticoResumen(actor: SessionUser): Promise<
     see("preoperacional") && role !== "TRANSPORTISTA"
       ? prisma.inspeccionPreoperacional.count({ where: { estado: "BLOQUEADA", vigente: true } })
       : 0,
+    see("exportaciones-mexico") ? prisma.etiquetadoExportacionMexico.count({
+      where: {
+        deletedAt: null,
+        horaFinalizacion: null,
+        ...(role === "ETIQUETADO" ? { creadoPorId: actor.id } : {}),
+      },
+    }) : 0,
+    see("exportaciones-eeuu") ? prisma.etiquetadoExportacionEeuu.count({
+      where: {
+        deletedAt: null,
+        horaFinalizacion: null,
+        ...(role === "ETIQUETADO" ? { creadoPorId: actor.id } : {}),
+      },
+    }) : 0,
   ]);
 
   const priorities: ControlPriority[] = [];
@@ -213,6 +229,8 @@ export async function buildControlLogisticoResumen(actor: SessionUser): Promise<
     ...(see("transporte") ? [moduleSignal("transporte", guardadosPendientes + pendientesGuardado, statusFrom(guardadosPendientes + pendientesGuardado, 1, 10), "/dashboard/transporte")] : []),
     ...(see("solicitudes-transporte") ? [moduleSignal("solicitudes-transporte", solicitudesPendientes, statusFrom(solicitudesAlertas, 1, 5), "/dashboard/solicitudes-transporte")] : []),
     ...(see("exportaciones") ? [moduleSignal("exportaciones", exportacionesEnCurso, statusFrom(exportacionesEnCurso, 1, 20), "/dashboard/exportaciones")] : []),
+    ...(see("exportaciones-mexico") ? [moduleSignal("exportaciones-mexico", exportacionesMexicoEnCurso, statusFrom(exportacionesMexicoEnCurso, 1, 20), "/dashboard/exportaciones-mexico")] : []),
+    ...(see("exportaciones-eeuu") ? [moduleSignal("exportaciones-eeuu", exportacionesEeuuEnCurso, statusFrom(exportacionesEeuuEnCurso, 1, 20), "/dashboard/exportaciones-eeuu")] : []),
     ...(see("preoperacional") ? [moduleSignal("preoperacional", preopBloqueadas, statusFrom(preopBloqueadas, 1, 2), "/dashboard/preoperacional")] : []),
     ...(see("integracion") ? [moduleSignal("integracion", integracionesPendientes, statusFrom(integracionesPendientes, 1, 8), "/dashboard/integracion")] : []),
     ...(see("usuarios") ? [moduleSignal("usuarios", undefined, "neutral", "/dashboard/usuarios")] : []),
@@ -223,7 +241,7 @@ export async function buildControlLogisticoResumen(actor: SessionUser): Promise<
 
   const critical = priorities.filter((p) => p.level === "critical").length;
   const warning = priorities.filter((p) => p.level === "warning").length;
-  const pending = novedadesPendientes + guardadosPendientes + tiendaCreados + tiendaNovedad + tiendaRechazados + pendientesGuardado + solicitudesPendientes + exportacionesEnCurso + integracionesPendientes + notifNoLeidas + preopBloqueadas;
+  const pending = novedadesPendientes + guardadosPendientes + tiendaCreados + tiendaNovedad + tiendaRechazados + pendientesGuardado + solicitudesPendientes + exportacionesEnCurso + exportacionesMexicoEnCurso + exportacionesEeuuEnCurso + integracionesPendientes + notifNoLeidas + preopBloqueadas;
 
   return {
     success: true,

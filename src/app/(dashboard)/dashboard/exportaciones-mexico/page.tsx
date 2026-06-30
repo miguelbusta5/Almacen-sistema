@@ -3,6 +3,6 @@
 import ExportacionesModule from "@/components/exportaciones/ExportacionesModule";
 import { PAISES_EXPORT } from "@/lib/exportaciones/paises";
 
-export default function ExportacionesEcuadorPage() {
-  return <ExportacionesModule cfg={PAISES_EXPORT.ecuador} />;
+export default function ExportacionesMexicoPage() {
+  return <ExportacionesModule cfg={PAISES_EXPORT.mexico} />;
 }

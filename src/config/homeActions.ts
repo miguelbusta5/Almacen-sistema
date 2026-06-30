@@ -54,7 +54,7 @@ export const HOME_ACTIONS: HomeAction[] = [
   },
   {
     id: "registrar-exportacion",
-    title: "Registrar exportacion",
+    title: "Registrar exportación Ecuador",
     description: "Capturar caja, PLU y unidad de empaque",
     href: "/dashboard/exportaciones",
     icon: "Tags",

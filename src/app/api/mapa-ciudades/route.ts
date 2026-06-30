@@ -2,6 +2,8 @@ import { NextResponse, type NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireAuth } from "@/lib/authz";
 import { getCityCoords, normalizeCity } from "@/lib/cityCoordinates";
+import { getExportDelegate } from "@/lib/exportaciones/delegate";
+import { PAISES_EXPORT_LIST } from "@/lib/exportaciones/paises";
 
 export interface TransportadoraCount {
   nombre: string;
@@ -14,6 +16,7 @@ export interface CiudadMapaDTO {
   lng: number;
   comoOrigen: number;
   comoDestino: number;
+  comoExportacion: number;
   transportadoras: TransportadoraCount[];
   total: number;
 }
@@ -21,6 +24,7 @@ export interface CiudadMapaDTO {
 interface CityEvent {
   ciudad: string;
   rol: "origen" | "destino";
+  tipo?: "logistica" | "exportacion";
   transportadora?: string | null;
 }
 
@@ -28,6 +32,7 @@ interface CityAcc {
   nombre: string;
   comoOrigen: number;
   comoDestino: number;
+  comoExportacion: number;
   transportadoras: Map<string, number>;
 }
 
@@ -79,14 +84,39 @@ async function tiendaAdapter(fecha: DateFilter): Promise<CityEvent[]> {
     .map((r) => ({ ciudad: r.ciudad, rol: "destino" as const }));
 }
 
+// Exportaciones: recorre las 3 tablas (Ecuador/México/EE.UU). Cada registro
+// emite 2 eventos tipo "exportacion": origen fijo (La Estrella) + destino (país).
+async function exportacionesAdapter(fecha: DateFilter): Promise<CityEvent[]> {
+  const out: CityEvent[] = [];
+  for (const cfg of PAISES_EXPORT_LIST) {
+    try {
+      const rows = await getExportDelegate(cfg.pais).findMany({
+        where: {
+          deletedAt: null,
+          ...(fecha.gte || fecha.lte ? { createdAt: fecha } : {}),
+        },
+        select: { id: true },
+      });
+      for (let i = 0; i < rows.length; i++) {
+        out.push({ ciudad: "La Estrella", rol: "origen", tipo: "exportacion" });
+        out.push({ ciudad: cfg.destino.ciudad, rol: "destino", tipo: "exportacion" });
+      }
+    } catch {
+      // Tabla aún no creada (prisma db push pendiente) → omitir este país sin romper el mapa.
+    }
+  }
+  return out;
+}
+
 // Registry de fuentes — agregar nuevas fuentes es una línea aquí.
 const ADAPTERS: Record<string, (f: DateFilter) => Promise<CityEvent[]>> = {
   solicitudes: solicitudesAdapter,
   transporte: transporteAdapter,
   tienda: tiendaAdapter,
+  exportaciones: exportacionesAdapter,
 };
 
-const DEFAULT_FUENTES = ["solicitudes", "transporte", "tienda"];
+const DEFAULT_FUENTES = ["solicitudes", "transporte", "tienda", "exportaciones"];
 
 // ── Agregación ────────────────────────────────────────────
 
@@ -98,12 +128,14 @@ function aggregate(events: CityEvent[]): Map<string, CityAcc> {
     if (!key) continue;
 
     if (!acc.has(key)) {
-      acc.set(key, { nombre: ev.ciudad, comoOrigen: 0, comoDestino: 0, transportadoras: new Map() });
+      acc.set(key, { nombre: ev.ciudad, comoOrigen: 0, comoDestino: 0, comoExportacion: 0, transportadoras: new Map() });
     }
     const entry = acc.get(key)!;
 
     if (ev.rol === "origen") entry.comoOrigen++;
     else entry.comoDestino++;
+
+    if (ev.tipo === "exportacion") entry.comoExportacion++;
 
     const t = ev.transportadora?.trim();
     if (t) entry.transportadoras.set(t, (entry.transportadoras.get(t) ?? 0) + 1);
@@ -151,6 +183,7 @@ export async function GET(req: NextRequest) {
       lng: coords.lng,
       comoOrigen: entry.comoOrigen,
       comoDestino: entry.comoDestino,
+      comoExportacion: entry.comoExportacion,
       transportadoras,
       total: entry.comoOrigen + entry.comoDestino,
     });

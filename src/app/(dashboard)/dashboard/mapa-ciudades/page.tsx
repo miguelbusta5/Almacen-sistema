@@ -32,11 +32,13 @@ interface MapaData {
 
 const AMBER = "#F59E0B";
 const EMERALD = "#0E9C76";
+const EXPORT = "#6366F1";
 
 const FUENTES: { key: string; label: string }[] = [
   { key: "solicitudes", label: "Solicitudes" },
   { key: "transporte", label: "Guardados" },
   { key: "tienda", label: "Tienda" },
+  { key: "exportaciones", label: "Exportaciones" },
 ];
 
 function LegendDot({ color, label }: { color: string; label: string }) {
@@ -246,6 +248,7 @@ export default function MapaCiudadesPage() {
         <div style={{ display: "flex", gap: 20, alignItems: "center", marginBottom: 14, flexWrap: "wrap" }}>
           <LegendDot color={AMBER} label="Recogidas (origen)" />
           <LegendDot color={EMERALD} label="Entregas (destino)" />
+          <LegendDot color={EXPORT} label="Exportación" />
           <span style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 13, color: "var(--muted)" }}>
             <SplitDot />
             Ambas
