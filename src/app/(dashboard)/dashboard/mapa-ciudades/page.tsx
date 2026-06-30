@@ -51,10 +51,10 @@ function LegendDot({ color, label }: { color: string; label: string }) {
 }
 
 function SplitDot() {
+  // Borde amber + relleno esmeralda = región con recogidas Y entregas.
   return (
-    <svg width={12} height={12} style={{ flexShrink: 0 }}>
-      <circle cx={6} cy={6} r={6} fill={AMBER} />
-      <path d="M6,6 L6,0 A6,6 0 0,1 6,12 Z" fill={EMERALD} />
+    <svg width={13} height={13} style={{ flexShrink: 0 }}>
+      <rect x={1.5} y={1.5} width={10} height={10} rx={2} fill={EMERALD} stroke={AMBER} strokeWidth={2} />
     </svg>
   );
 }
@@ -253,7 +253,7 @@ export default function MapaCiudadesPage() {
             <SplitDot />
             Ambas
           </span>
-          <span style={{ fontSize: 12, color: "var(--faint)" }}>· El tamaño del marcador refleja el volumen</span>
+          <span style={{ fontSize: 12, color: "var(--faint)" }}>· Se resalta el departamento / país con actividad</span>
         </div>
 
         {/* Mapa + panel */}

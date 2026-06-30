@@ -1,34 +1,31 @@
 "use client";
 
 // Este archivo solo se evalúa en el cliente (importado con dynamic + ssr:false).
-import { MapContainer, TileLayer, CircleMarker, Marker, Tooltip } from "react-leaflet";
-import L from "leaflet";
+import { useEffect, useMemo, useState } from "react";
+import { MapContainer, TileLayer, GeoJSON, CircleMarker, Tooltip } from "react-leaflet";
+import type { Feature, FeatureCollection, GeoJsonProperties, Geometry } from "geojson";
+import type { Layer, PathOptions } from "leaflet";
 import "leaflet/dist/leaflet.css";
-import type { CiudadMapaDTO } from "@/app/api/mapa-ciudades/route";
+import type { CiudadMapaDTO, TransportadoraCount } from "@/app/api/mapa-ciudades/route";
+import { normalizeCity } from "@/lib/cityCoordinates";
+import { departamentoDeCiudad, deptLabel } from "@/lib/cityDepartamentos";
 
 const AMBER = "#F59E0B";
 const EMERALD = "#0E9C76";
 const EXPORT = "#6366F1"; // índigo — exportaciones
-const SIZE = 22;
-const R = SIZE / 2;
 
-function splitIcon(): L.DivIcon {
-  const svg = `<svg width="${SIZE}" height="${SIZE}" xmlns="http://www.w3.org/2000/svg">
-    <circle cx="${R}" cy="${R}" r="${R - 1}" fill="${AMBER}" stroke="#fff" stroke-width="1.5"/>
-    <path d="M${R},${R} L${R},1 A${R - 1},${R - 1} 0 0,1 ${R},${SIZE - 1} Z" fill="${EMERALD}"/>
-  </svg>`;
-  return L.divIcon({
-    html: svg,
-    className: "",
-    iconSize: [SIZE, SIZE],
-    iconAnchor: [R, R],
-    tooltipAnchor: [0, -R - 4],
-  });
-}
+// Países destino de exportación (nombre tal como llega del API / GeoJSON).
+const PAIS_KEYS = new Set(["ecuador", "mexico", "estados unidos"]);
 
-// Radio escalado por volumen de procesos.
-function radiusFor(total: number): number {
-  return 7 + Math.min(9, Math.sqrt(total));
+interface RegionAgg {
+  key: string;            // "dept:<norm>" | "pais:<norm>"
+  label: string;
+  comoOrigen: number;
+  comoDestino: number;
+  comoExportacion: number;
+  total: number;
+  transportadoras: Map<string, number>;
+  ciudades: string[];
 }
 
 interface Props {
@@ -36,11 +33,143 @@ interface Props {
   onSelectCity?: (ciudad: CiudadMapaDTO) => void;
 }
 
+// Color de borde/relleno según la actividad agregada de la región.
+function colorsFor(r: RegionAgg): { stroke: string; fill: string } {
+  if (r.comoExportacion > 0) return { stroke: EXPORT, fill: EXPORT };
+  if (r.comoOrigen > 0 && r.comoDestino > 0) return { stroke: AMBER, fill: EMERALD }; // ambas
+  if (r.comoOrigen > 0) return { stroke: AMBER, fill: AMBER };
+  return { stroke: EMERALD, fill: EMERALD };
+}
+
+function toDTO(r: RegionAgg): CiudadMapaDTO {
+  const transportadoras: TransportadoraCount[] = Array.from(r.transportadoras.entries())
+    .map(([nombre, count]) => ({ nombre, count }))
+    .sort((a, b) => b.count - a.count || a.nombre.localeCompare(b.nombre));
+  return {
+    nombre: r.label,
+    lat: 0,
+    lng: 0,
+    comoOrigen: r.comoOrigen,
+    comoDestino: r.comoDestino,
+    comoExportacion: r.comoExportacion,
+    transportadoras,
+    total: r.total,
+  };
+}
+
+function tooltipHtml(r: RegionAgg): string {
+  const t = Array.from(r.transportadoras.keys());
+  return `
+    <div style="line-height:1.5;min-width:150px">
+      <div style="font-weight:700;margin-bottom:4px">${r.label}</div>
+      <div>Recogidas: <strong>${r.comoOrigen}</strong></div>
+      <div>Entregas: <strong>${r.comoDestino}</strong></div>
+      ${r.comoExportacion > 0 ? `<div>Exportaciones: <strong>${r.comoExportacion}</strong></div>` : ""}
+      <div>Total: <strong>${r.total}</strong></div>
+      ${r.ciudades.length ? `<div style="margin-top:4px;font-size:0.85em;color:#555">${r.ciudades.join(" · ")}</div>` : ""}
+      ${t.length ? `<div style="margin-top:2px;font-size:0.85em;color:#777">${t.join(" · ")}</div>` : ""}
+    </div>`;
+}
+
 export default function ColombiaMap({ ciudades, onSelectCity }: Props) {
+  const [geoDepts, setGeoDepts] = useState<FeatureCollection | null>(null);
+  const [geoPaises, setGeoPaises] = useState<FeatureCollection | null>(null);
+
+  useEffect(() => {
+    let alive = true;
+    Promise.all([
+      fetch("/geo/colombia-departamentos.geojson").then((r) => r.json()).catch(() => null),
+      fetch("/geo/paises-export.geojson").then((r) => r.json()).catch(() => null),
+    ]).then(([d, p]) => {
+      if (!alive) return;
+      setGeoDepts(d);
+      setGeoPaises(p);
+    });
+    return () => { alive = false; };
+  }, []);
+
+  // Agrega los DTOs por región (departamento o país).
+  const { regions, fallback } = useMemo(() => {
+    const map = new Map<string, RegionAgg>();
+    const fallback: CiudadMapaDTO[] = [];
+
+    const ensure = (key: string, label: string): RegionAgg => {
+      let r = map.get(key);
+      if (!r) {
+        r = { key, label, comoOrigen: 0, comoDestino: 0, comoExportacion: 0, total: 0, transportadoras: new Map(), ciudades: [] };
+        map.set(key, r);
+      }
+      return r;
+    };
+
+    for (const c of ciudades) {
+      const norm = normalizeCity(c.nombre);
+      let key: string | null = null;
+      let label = c.nombre;
+
+      if (PAIS_KEYS.has(norm)) {
+        key = `pais:${norm}`;
+      } else {
+        const dpt = departamentoDeCiudad(c.nombre);
+        if (dpt) {
+          key = `dept:${normalizeCity(dpt)}`;
+          label = deptLabel(dpt);
+        }
+      }
+
+      if (!key) { fallback.push(c); continue; }
+
+      const r = ensure(key, label);
+      r.comoOrigen += c.comoOrigen;
+      r.comoDestino += c.comoDestino;
+      r.comoExportacion += c.comoExportacion;
+      r.total += c.total;
+      for (const t of c.transportadoras) {
+        r.transportadoras.set(t.nombre, (r.transportadoras.get(t.nombre) ?? 0) + t.count);
+      }
+      // Nombre original de ciudad (no repetir La Estrella si ya está)
+      if (!r.ciudades.includes(c.nombre)) r.ciudades.push(c.nombre);
+    }
+
+    return { regions: map, fallback };
+  }, [ciudades]);
+
+  // Firma para forzar el re-render de las capas GeoJSON al cambiar los filtros.
+  const sig = useMemo(
+    () => Array.from(regions.values()).map((r) => `${r.key}:${r.total}:${r.comoExportacion}`).sort().join("|"),
+    [regions],
+  );
+
+  // Estilo de un feature de departamento.
+  const styleDept = (feature?: Feature<Geometry, GeoJsonProperties>): PathOptions => {
+    const nombre = (feature?.properties?.NOMBRE_DPT as string) ?? "";
+    const r = regions.get(`dept:${normalizeCity(nombre)}`);
+    if (!r) return { color: "#9aa5b1", weight: 0.6, opacity: 0.25, fillOpacity: 0 };
+    const { stroke, fill } = colorsFor(r);
+    return { color: stroke, weight: 2.5, opacity: 0.95, fillColor: fill, fillOpacity: 0.35 };
+  };
+
+  const stylePais = (feature?: Feature<Geometry, GeoJsonProperties>): PathOptions => {
+    const pais = (feature?.properties?.pais as string) ?? "";
+    const r = regions.get(`pais:${normalizeCity(pais)}`);
+    if (!r) return { color: "#9aa5b1", weight: 0.4, opacity: 0.15, fillOpacity: 0 };
+    const { stroke, fill } = colorsFor(r);
+    return { color: stroke, weight: 2.5, opacity: 0.95, fillColor: fill, fillOpacity: 0.3 };
+  };
+
+  const bindRegion = (prefix: "dept" | "pais", prop: string) =>
+    (feature: Feature<Geometry, GeoJsonProperties>, layer: Layer) => {
+      const nombre = (feature.properties?.[prop] as string) ?? "";
+      const r = regions.get(`${prefix}:${normalizeCity(nombre)}`);
+      if (!r) return;
+      layer.bindTooltip(tooltipHtml(r), { sticky: true, direction: "top" });
+      layer.on("click", () => onSelectCity?.(toDTO(r)));
+    };
+
   return (
     <MapContainer
       center={[4.5709, -74.2973]}
-      zoom={6}
+      zoom={5}
       style={{ height: "100%", width: "100%", background: "#e8eef2" }}
       zoomControl
     >
@@ -51,69 +180,36 @@ export default function ColombiaMap({ ciudades, onSelectCity }: Props) {
         maxZoom={19}
       />
 
-      {ciudades.map((ciudad) => {
-        const pos: [number, number] = [ciudad.lat, ciudad.lng];
-        const tooltip = (
-          <Tooltip direction="top" offset={[0, -6]}>
-            <div style={{ lineHeight: 1.5, minWidth: 150 }}>
-              <div style={{ fontWeight: 700, marginBottom: 4 }}>{ciudad.nombre}</div>
-              <div>Recogidas: <strong>{ciudad.comoOrigen}</strong></div>
-              <div>Entregas: <strong>{ciudad.comoDestino}</strong></div>
-              {ciudad.comoExportacion > 0 && (
-                <div>Exportaciones: <strong>{ciudad.comoExportacion}</strong></div>
-              )}
-              <div>Total: <strong>{ciudad.total}</strong></div>
-              {ciudad.transportadoras.length > 0 && (
-                <div style={{ marginTop: 4, fontSize: "0.85em", color: "#555" }}>
-                  {ciudad.transportadoras.map((t) => t.nombre).join(" · ")}
-                </div>
-              )}
-            </div>
-          </Tooltip>
-        );
+      {geoPaises && (
+        <GeoJSON
+          key={`paises-${sig}`}
+          data={geoPaises}
+          style={stylePais}
+          onEachFeature={bindRegion("pais", "pais")}
+        />
+      )}
 
-        const esExportacion = ciudad.comoExportacion > 0;
-        const soloOrigen = ciudad.comoOrigen > 0 && ciudad.comoDestino === 0;
-        const soloDestino = ciudad.comoDestino > 0 && ciudad.comoOrigen === 0;
-        const handlers = { click: () => onSelectCity?.(ciudad) };
+      {geoDepts && (
+        <GeoJSON
+          key={`depts-${sig}`}
+          data={geoDepts}
+          style={styleDept}
+          onEachFeature={bindRegion("dept", "NOMBRE_DPT")}
+        />
+      )}
 
-        // Prioridad: si hay actividad de exportación, el nodo se pinta índigo.
-        if (esExportacion) {
-          return (
-            <CircleMarker
-              key={ciudad.nombre}
-              center={pos}
-              radius={radiusFor(ciudad.total)}
-              pathOptions={{ color: "#fff", weight: 1.5, fillColor: EXPORT, fillOpacity: 0.9 }}
-              eventHandlers={handlers}
-            >
-              {tooltip}
-            </CircleMarker>
-          );
-        }
-
-        if (soloOrigen || soloDestino) {
-          const color = soloOrigen ? AMBER : EMERALD;
-          return (
-            <CircleMarker
-              key={ciudad.nombre}
-              center={pos}
-              radius={radiusFor(ciudad.total)}
-              pathOptions={{ color: "#fff", weight: 1.5, fillColor: color, fillOpacity: 0.9 }}
-              eventHandlers={handlers}
-            >
-              {tooltip}
-            </CircleMarker>
-          );
-        }
-
-        // Ambos roles → marcador bicolor
-        return (
-          <Marker key={ciudad.nombre} position={pos} icon={splitIcon()} eventHandlers={handlers}>
-            {tooltip}
-          </Marker>
-        );
-      })}
+      {/* Fallback: regiones activas sin polígono conocido → punto */}
+      {fallback.map((c) => (
+        <CircleMarker
+          key={c.nombre}
+          center={[c.lat, c.lng]}
+          radius={8}
+          pathOptions={{ color: "#fff", weight: 1.5, fillColor: EXPORT, fillOpacity: 0.9 }}
+          eventHandlers={{ click: () => onSelectCity?.(c) }}
+        >
+          <Tooltip direction="top">{c.nombre}</Tooltip>
+        </CircleMarker>
+      ))}
     </MapContainer>
   );
 }
