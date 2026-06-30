@@ -14,6 +14,7 @@ import {
   TipoContacto, ResultadoContacto, TIPO_CONTACTO_LABEL, RESULTADO_CONTACTO_LABEL, ContactoGuardado,
 } from "@/lib/transporte";
 import { calcAlmacenaje, TARIFA_ALM } from "@/lib/almacenaje";
+import { CIUDAD_OPTIONS } from "@/lib/solicitudesTransporte";
 import { insightsGuardados, insightsPorGuardado } from "@/lib/inteligencia";
 import { Stat, SkeletonStat, NetSuiteChip, ModuleHero, ModuleDetailView } from "@/components/ui";
 import { useConfirm, usePrompt } from "@/components/ui/useDialogs";
@@ -440,6 +441,7 @@ export default function TransportePage() {
                 { label: "Fecha ingreso", value: fmtFecha(panelItem.fecha) },
                 { label: "Tipo", value: <TipoBadge tipo={panelItem.tipo} /> },
                 { label: "Ubicación", value: panelItem.ubicacion },
+                { label: "Ciudad destino", value: panelItem.ciudad ?? undefined },
                 { label: "Entrega comprometida", value: panelEntrega ? fmtFecha(panelEntrega) : undefined },
                 { label: "Fecha despacho", value: panelItem.fechaDespacho ? fmtFecha(panelItem.fechaDespacho) : undefined },
                 { label: "ID NetSuite",
@@ -719,6 +721,7 @@ function ModalGuardado({ guardado, onClose, onSaved, onError, isAdmin }: { guard
   const [tipo, setTipo] = useState<"COMUN" | "ECOMMERCE">(guardado?.tipo ?? "COMUN");
   const [fechaDespacho, setFDesp] = useState(guardado?.fechaDespacho ?? "");
   const [nota, setNota] = useState(guardado?.nota ?? "");
+  const [ciudad, setCiudad] = useState(guardado?.ciudad ?? "");
   const [saving, setSaving] = useState(false);
   async function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -727,7 +730,7 @@ function ModalGuardado({ guardado, onClose, onSaved, onError, isAdmin }: { guard
     try {
       const url = isEdit ? `/api/transporte/${encodeURIComponent(guardado!.clientId)}` : "/api/transporte";
       const method = isEdit ? "PUT" : "POST";
-      await apiSend(url, method, { fecha, documento: documento.trim(), ubicacion: ubicacion.trim(), estado, tipo, fechaDespacho: estado === "DESPACHADO" ? (fechaDespacho || todayISO()) : null, nota: nota.trim() || null });
+      await apiSend(url, method, { fecha, documento: documento.trim(), ubicacion: ubicacion.trim(), estado, tipo, fechaDespacho: estado === "DESPACHADO" ? (fechaDespacho || todayISO()) : null, nota: nota.trim() || null, ciudad: ciudad || null });
       onSaved();
     } catch (e) { onError(getErrorMessage(e, "Error de conexión")); } finally { setSaving(false); }
   }
@@ -763,6 +766,13 @@ function ModalGuardado({ guardado, onClose, onSaved, onError, isAdmin }: { guard
         <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
           <label style={{ fontSize: 12, fontWeight: 500, color: "var(--muted2)" }}>Ubicación *</label>
           <input value={ubicacion} onChange={(e) => setUbic(e.target.value)} placeholder="Bodega, estante…" className="ds-input" />
+        </div>
+        <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
+          <label style={{ fontSize: 12, fontWeight: 500, color: "var(--muted2)" }}>Ciudad destino</label>
+          <select value={ciudad} onChange={(e) => setCiudad(e.target.value)} className="ds-input">
+            <option value="">— Sin asignar —</option>
+            {CIUDAD_OPTIONS.map((c) => <option key={c} value={c}>{c}</option>)}
+          </select>
         </div>
         <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr", gap: 12 }}>
           <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>

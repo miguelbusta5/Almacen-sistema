@@ -98,7 +98,7 @@ export function GuardadosTable({
       header: "Fecha",
       sortable: true,
       sortValue: (g) => g.fecha,
-      width: "13%",
+      width: "11%",
       testId: "fecha-cell",
       debugLabel: "Fecha",
       render: (g) => (
@@ -115,7 +115,7 @@ export function GuardadosTable({
       // Asc = entrega más próxima primero (vencidas/tempranas arriba); los
       // guardados sin fecha quedan al final (sentinel "9999-99-99").
       sortValue: (g) => parseEntrega(g.nota) ?? "9999-99-99",
-      width: "15%",
+      width: "14%",
       testId: "entrega-cell",
       debugLabel: "Entrega",
       render: (g) => {
@@ -126,11 +126,23 @@ export function GuardadosTable({
       },
     },
     {
+      key: "ciudad",
+      header: "Ciudad destino",
+      sortable: true,
+      sortValue: (g) => g.ciudad ?? "",
+      width: "13%",
+      testId: "ciudad-cell",
+      debugLabel: "Ciudad",
+      render: (g) => (
+        <span className={styles.cellTruncate} style={{ display: "block", color: g.ciudad ? undefined : "var(--faint)" }} title={g.ciudad ?? ""}>{g.ciudad ?? "—"}</span>
+      ),
+    },
+    {
       key: "documento",
       header: "Documento",
       sortable: true,
       sortValue: (g) => g.documento,
-      width: "19%",
+      width: "17%",
       testId: "doc-cell",
       debugLabel: "Doc",
       render: (g) => {
@@ -148,7 +160,7 @@ export function GuardadosTable({
       header: "Ubicación",
       sortable: true,
       sortValue: (g) => g.ubicacion,
-      width: "19%",
+      width: "16%",
       testId: "ubicacion-cell",
       debugLabel: "Ubicación",
       render: (g) => (
@@ -160,7 +172,7 @@ export function GuardadosTable({
       header: "Tipo",
       sortable: true,
       sortValue: (g) => g.tipo,
-      width: "10%",
+      width: "9%",
       testId: "tipo-cell",
       debugLabel: "Tipo",
       render: (g) => <TipoBadge tipo={g.tipo} />,
@@ -170,7 +182,7 @@ export function GuardadosTable({
       header: "Estado",
       sortable: true,
       sortValue: (g) => g.estado,
-      width: "14%",
+      width: "11%",
       testId: "estado-cell",
       debugLabel: "Estado",
       render: (g) => <EstadoBadge estado={g.estado} />,
@@ -180,8 +192,8 @@ export function GuardadosTable({
       header: "Almacenaje",
       sortable: true,
       align: "right",
-      width: "12%",
-      // (Fecha 13 · Entrega 15 · Doc 19 · Ubic 19 · Tipo 10 · Estado 12 · Alm 12 = 100%)
+      width: "9%",
+      // (Fecha 11 · Entrega 14 · Ciudad 13 · Doc 17 · Ubic 16 · Tipo 9 · Estado 11 · Alm 9 = 100%)
       testId: "almacenaje-cell",
       debugLabel: "Almacenaje",
       sortValue: (g) => calcAlmacenaje(g.fecha, g.estado === "DESPACHADO" ? g.fechaDespacho : null).costo,
@@ -206,7 +218,7 @@ export function GuardadosTable({
         isRowSelected={(g) => !!selectedId && g.clientId === selectedId}
         density="compact"
         tableLayout="fixed"
-        minWidth={960}
+        minWidth={1040}
         skeletonRows={8}
         ariaLabel="Guardados transporte"
         debug={debug}

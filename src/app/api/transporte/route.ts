@@ -12,6 +12,7 @@ function mapRow(r: TransporteGuardado) {
     estado: r.estado, tipo: (r.tipo ?? "COMUN"),
     fechaDespacho: r.fecha_despacho ? r.fecha_despacho.toISOString().slice(0, 10) : null,
     nota: r.nota,
+    ciudad: r.ciudad ?? null,
     netsuiteId: r.netsuiteId ?? null,
   };
 }
@@ -24,6 +25,7 @@ const createSchema = z.object({
   tipo: z.enum(["COMUN", "ECOMMERCE"]).default("COMUN"),
   fechaDespacho: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable().optional(),
   nota: z.string().nullable().optional(),
+  ciudad: z.string().max(100).nullable().optional(),
 });
 
 // GET /api/transporte?page=1&pageSize=200&q=&estado=&tipo=
@@ -70,6 +72,7 @@ export async function POST(req: NextRequest) {
       estado: d.estado, tipo: d.tipo,
       fecha_despacho: esDesp && d.fechaDespacho ? new Date(d.fechaDespacho + "T00:00:00") : null,
       nota: d.nota || null,
+      ciudad: d.ciudad || null,
     },
   });
   await prisma.activityLog.create({

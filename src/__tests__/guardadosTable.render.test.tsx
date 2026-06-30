@@ -14,6 +14,7 @@ const mockRow = {
   tipo: "ECOMMERCE",
   fechaDespacho: null,
   nota: "Entrega 30/06/2026",
+  ciudad: "Medellin",
   netsuiteId: null,
 } as unknown as Guardado;
 
@@ -22,6 +23,7 @@ const mockSinFecha = {
   ...mockRow,
   clientId: "client-2",
   nota: null,
+  ciudad: null,
 } as unknown as Guardado;
 
 const html = renderToStaticMarkup(
@@ -64,16 +66,16 @@ describe("GuardadosTable — estructura y mapeo (render)", () => {
   const tdCount = (firstRow.match(/<td[ >]/g) ?? []).length;
   const colCount = (html.match(/<col[ />]/g) ?? []).length;
 
-  it("ESTRUCTURA: th === td === col === 7 (sin celda extra de rail)", () => {
-    expect(thCount).toBe(7);
-    expect(tdCount).toBe(7);
-    expect(colCount).toBe(7);
+  it("ESTRUCTURA: th === td === col === 8 (sin celda extra de rail)", () => {
+    expect(thCount).toBe(8);
+    expect(tdCount).toBe(8);
+    expect(colCount).toBe(8);
     expect(thCount).toBe(tdCount);
     expect(colCount).toBe(thCount);
   });
 
   it("ESTRUCTURA: las celdas van en el mismo orden que los headers (fecha→almacenaje)", () => {
-    const ids = ["fecha-cell", "entrega-cell", "doc-cell", "ubicacion-cell", "tipo-cell", "estado-cell", "almacenaje-cell"];
+    const ids = ["fecha-cell", "entrega-cell", "ciudad-cell", "doc-cell", "ubicacion-cell", "tipo-cell", "estado-cell", "almacenaje-cell"];
     const positions = ids.map((id) => firstRow.indexOf(`data-testid="${id}"`));
     expect(positions.every((p) => p >= 0)).toBe(true);
     expect(positions).toEqual([...positions].sort((a, b) => a - b));
@@ -94,6 +96,14 @@ describe("GuardadosTable — estructura y mapeo (render)", () => {
 
   it("CONTENIDO: entrega-cell = fecha extraída de la nota (DD/MM/YYYY)", () => {
     expect(text("entrega-cell")).toContain("30/06/2026");
+  });
+
+  it("CONTENIDO: ciudad-cell = ciudad destino", () => {
+    expect(text("ciudad-cell")).toContain("Medellin");
+  });
+
+  it("CONTENIDO: ciudad-cell sin ciudad = '—'", () => {
+    expect(textIn(htmlSinFecha, "ciudad-cell")).toBe("—");
   });
 
   it("CONTENIDO: entrega-cell sin fecha en la nota = 'Sin fecha asignada'", () => {

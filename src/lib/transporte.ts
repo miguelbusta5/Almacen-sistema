@@ -16,6 +16,7 @@ export interface Guardado {
   tipo: TipoGuardado;
   fechaDespacho: string | null; // YYYY-MM-DD
   nota: string | null;
+  ciudad: string | null;
   netsuiteId: string | null;
 }
 
