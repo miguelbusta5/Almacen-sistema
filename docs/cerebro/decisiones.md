@@ -1,5 +1,26 @@
 # Decisiones de Arquitectura y Producto
 
+## 2026-06-30 - Cargue Gourmet: se elimina "Enviar a Transporte" (cargue directo)
+
+**Decisión:**
+- Se **elimina la acción "Enviar a Transporte"** y su endpoint. El cargue del camión ahora
+  **arranca directo desde `UBICACION_ASIGNADA`**: Transporte o Gourmet filtran por ciudad (o no),
+  entran a cada pedido y presionan **"Iniciar cargue"**.
+- Nueva transición `UBICACION_ASIGNADA → EN_CARGUE` (ambas áreas). Desaparece
+  `UBICACION_ASIGNADA → ENVIADO_A_TRANSPORTE`.
+- **`ENVIADO_A_TRANSPORTE` se conserva** como estado solo para **pedidos heredados** que ya estaban
+  ahí: su transición `→ EN_CARGUE` sigue válida para no varar datos. Ningún pedido nuevo llega a él.
+
+**Implementación:**
+- `src/lib/gourmetCargueFlow.ts`: `UBICACION_ASIGNADA` ahora transiciona a `EN_CARGUE`; se quita la
+  transición a `ENVIADO_A_TRANSPORTE` y su mapping de roles; se agrega `UBICACION_ASIGNADA-EN_CARGUE`.
+- Se **borra** `src/app/api/cargue-gourmet/[id]/enviar-transporte/route.ts`.
+- `GourmetAccionesBar`: se quita el botón "Enviar a Transporte". `TransporteAccionesBar`:
+  "Iniciar cargue" visible desde `UBICACION_ASIGNADA` (y `ENVIADO_A_TRANSPORTE` heredado).
+- `page.tsx`: se elimina el handler, estado y `ConfirmModal` de enviar a Transporte.
+
+**Validación:** `tsc --noEmit` + `npm test` (821 passed).
+
 ## 2026-06-30 - Cargue Gourmet: ambas áreas operan el cargue del camión
 
 **Decisión:**

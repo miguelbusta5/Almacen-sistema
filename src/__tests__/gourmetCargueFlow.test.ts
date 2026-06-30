@@ -13,7 +13,7 @@ describe("gourmetCargueFlow — transiciones válidas", () => {
   it.each([
     ["BORRADOR", "UBICACION_ASIGNADA"],
     ["BORRADOR", "CANCELADO"],
-    ["UBICACION_ASIGNADA", "ENVIADO_A_TRANSPORTE"],
+    ["UBICACION_ASIGNADA", "EN_CARGUE"],
     ["UBICACION_ASIGNADA", "UBICACION_ASIGNADA"],
     ["UBICACION_ASIGNADA", "CANCELADO"],
     ["ENVIADO_A_TRANSPORTE", "EN_CARGUE"],
@@ -33,7 +33,7 @@ describe("gourmetCargueFlow — transiciones inválidas", () => {
   it.each([
     ["BORRADOR", "ENVIADO_A_TRANSPORTE"],
     ["BORRADOR", "EN_CARGUE"],
-    ["UBICACION_ASIGNADA", "EN_CARGUE"],
+    ["UBICACION_ASIGNADA", "CARGUE_COMPLETO"],
     ["ENVIADO_A_TRANSPORTE", "CARGUE_COMPLETO"],
     ["ENVIADO_A_TRANSPORTE", "BORRADOR"],
     ["EN_CARGUE", "BORRADOR"],
@@ -86,13 +86,14 @@ describe("gourmetCargueFlow — permisos por rol", () => {
     expect(rolPuedeTransicionarGourmet("TRANSPORTE", "BORRADOR", "UBICACION_ASIGNADA")).toBe(false);
   });
 
-  it("Transporte/Gourmet/Supervisor/Admin/Gerente inician cargue (ENVIADO_A_TRANSPORTE → EN_CARGUE)", () => {
+  it("Transporte/Gourmet/Supervisor/Admin/Gerente inician cargue (UBICACION_ASIGNADA → EN_CARGUE)", () => {
     for (const role of ["TRANSPORTE", "SUPERVISOR_TRANSPORTE", "OPERACIONES_GOURMET", "ADMIN", "GERENTE"]) {
-      expect(rolPuedeTransicionarGourmet(role, "ENVIADO_A_TRANSPORTE", "EN_CARGUE")).toBe(true);
+      expect(rolPuedeTransicionarGourmet(role, "UBICACION_ASIGNADA", "EN_CARGUE")).toBe(true);
     }
   });
 
-  it("OPERACIONES_GOURMET también puede iniciar cargue (cargue compartido)", () => {
+  it("el cargue heredado (ENVIADO_A_TRANSPORTE → EN_CARGUE) sigue permitido para ambas áreas", () => {
+    expect(rolPuedeTransicionarGourmet("TRANSPORTE", "ENVIADO_A_TRANSPORTE", "EN_CARGUE")).toBe(true);
     expect(rolPuedeTransicionarGourmet("OPERACIONES_GOURMET", "ENVIADO_A_TRANSPORTE", "EN_CARGUE")).toBe(true);
   });
 

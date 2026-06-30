@@ -19,7 +19,6 @@ function renderBar(estado: EstadoPedidoGourmet, puedeGourmet = true) {
       puedeGourmet={puedeGourmet}
       onEditar={() => {}}
       onAsignarUbicacion={() => {}}
-      onEnviarTransporte={() => {}}
     />
   );
 }
@@ -61,13 +60,9 @@ describe("GourmetAccionesBar — 'Asignar ubicación' por estado", () => {
   );
 });
 
-describe("GourmetAccionesBar — 'Enviar a Transporte' por estado", () => {
-  it("aparece SOLO en UBICACION_ASIGNADA", () => {
-    expect(renderBar("UBICACION_ASIGNADA")).toContain('data-testid="btn-enviar-transporte"');
-  });
-
-  it.each(["BORRADOR", "ENVIADO_A_TRANSPORTE", "EN_CARGUE", "CARGUE_COMPLETO", "CARGUE_COMPLETO_MANUAL", "CON_NOVEDAD", "CANCELADO"] as EstadoPedidoGourmet[])(
-    "NO aparece en %s",
+describe("GourmetAccionesBar — ya no existe 'Enviar a Transporte'", () => {
+  it.each(["BORRADOR", "UBICACION_ASIGNADA", "ENVIADO_A_TRANSPORTE", "EN_CARGUE", "CARGUE_COMPLETO", "CARGUE_COMPLETO_MANUAL", "CON_NOVEDAD", "CANCELADO"] as EstadoPedidoGourmet[])(
+    "NO aparece el botón enviar-transporte en %s",
     (estado) => expect(renderBar(estado)).not.toContain('data-testid="btn-enviar-transporte"')
   );
 });
@@ -113,6 +108,4 @@ describe("EditarPedidoModal / AsignarUbicacionModal — contrato mínimo (Modal 
   it.todo("EditarPedidoModal precarga orden/tipo/tienda/cajas/estibas del pedido (requiere jsdom)");
   it.todo("AsignarUbicacionModal permite agregar/quitar filas de estibas y cajas (requiere jsdom)");
   it.todo("AsignarUbicacionModal rechaza secuencias de estiba duplicadas antes de enviar (requiere jsdom)");
-  it.todo("ConfirmModal de enviar a Transporte llama POST /enviar-transporte con updatedAt y cierra al éxito (requiere jsdom)");
-  it.todo("409 de enviar a Transporte muestra el mensaje del backend y refresca el detalle (requiere jsdom)");
 });

@@ -34,11 +34,12 @@ describe("TransporteAccionesBar — 'Iniciar cargue' por rol", () => {
 });
 
 describe("TransporteAccionesBar — 'Iniciar cargue' por estado", () => {
-  it("aparece SOLO en ENVIADO_A_TRANSPORTE", () => {
-    expect(renderIniciar("ENVIADO_A_TRANSPORTE")).toContain('data-testid="btn-iniciar-cargue"');
-  });
+  it.each(["UBICACION_ASIGNADA", "ENVIADO_A_TRANSPORTE"] as EstadoPedidoGourmet[])(
+    "aparece en %s (cargue directo + heredado)",
+    (estado) => expect(renderIniciar(estado)).toContain('data-testid="btn-iniciar-cargue"')
+  );
 
-  it.each(["BORRADOR", "UBICACION_ASIGNADA", "EN_CARGUE", "CARGUE_COMPLETO", "CARGUE_COMPLETO_MANUAL", "CON_NOVEDAD", "CANCELADO"] as EstadoPedidoGourmet[])(
+  it.each(["BORRADOR", "EN_CARGUE", "CARGUE_COMPLETO", "CARGUE_COMPLETO_MANUAL", "CON_NOVEDAD", "CANCELADO"] as EstadoPedidoGourmet[])(
     "NO aparece en %s",
     (estado) => expect(renderIniciar(estado)).not.toContain('data-testid="btn-iniciar-cargue"')
   );

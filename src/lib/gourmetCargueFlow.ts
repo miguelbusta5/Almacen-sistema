@@ -34,7 +34,10 @@ export const ESTADOS_TERMINALES_GOURMET: EstadoPedidoGourmet[] = [
 // Transiciones válidas desde cada estado
 export const TRANSICIONES_GOURMET: Record<EstadoPedidoGourmet, EstadoPedidoGourmet[]> = {
   BORRADOR:               ["UBICACION_ASIGNADA", "CANCELADO"],
-  UBICACION_ASIGNADA:     ["ENVIADO_A_TRANSPORTE", "UBICACION_ASIGNADA", "CANCELADO"],
+  // El cargue ahora arranca directo desde UBICACION_ASIGNADA (ya no se "envía a
+  // Transporte"). ENVIADO_A_TRANSPORTE se mantiene solo para pedidos heredados
+  // que ya estaban en ese estado: pueden seguir iniciando cargue.
+  UBICACION_ASIGNADA:     ["EN_CARGUE", "UBICACION_ASIGNADA", "CANCELADO"],
   ENVIADO_A_TRANSPORTE:   ["EN_CARGUE", "CANCELADO"],
   EN_CARGUE:              ["CARGUE_COMPLETO", "CARGUE_COMPLETO_MANUAL", "CON_NOVEDAD"],
   CARGUE_COMPLETO:        [],
@@ -47,12 +50,12 @@ export const TRANSICIONES_GOURMET: Record<EstadoPedidoGourmet, EstadoPedidoGourm
 export const ROLES_POR_TRANSICION_GOURMET: Record<string, string[]> = {
   "BORRADOR-UBICACION_ASIGNADA":             ["OPERACIONES_GOURMET", "ADMIN", "GERENTE"],
   "BORRADOR-CANCELADO":                      ["ADMIN", "GERENTE"],
-  "UBICACION_ASIGNADA-ENVIADO_A_TRANSPORTE": ["OPERACIONES_GOURMET", "ADMIN", "GERENTE"],
   "UBICACION_ASIGNADA-UBICACION_ASIGNADA":   ["OPERACIONES_GOURMET", "ADMIN", "GERENTE"],
   "UBICACION_ASIGNADA-CANCELADO":            ["ADMIN", "GERENTE"],
   // El ciclo de cargue (iniciar/finalizar/novedad/reanudar) lo operan ambas áreas:
-  // Transporte y Gourmet (OPERACIONES_GOURMET). "Enviar a Transporte" sigue siendo
-  // solo de Gourmet; aquí ya estamos en el cargue físico del camión.
+  // Transporte y Gourmet (OPERACIONES_GOURMET). El cargue inicia directo desde
+  // UBICACION_ASIGNADA; ENVIADO_A_TRANSPORTE queda solo para pedidos heredados.
+  "UBICACION_ASIGNADA-EN_CARGUE":            ["TRANSPORTE", "SUPERVISOR_TRANSPORTE", "OPERACIONES_GOURMET", "ADMIN", "GERENTE"],
   "ENVIADO_A_TRANSPORTE-EN_CARGUE":          ["TRANSPORTE", "SUPERVISOR_TRANSPORTE", "OPERACIONES_GOURMET", "ADMIN", "GERENTE"],
   "ENVIADO_A_TRANSPORTE-CANCELADO":          ["ADMIN", "GERENTE"],
   "EN_CARGUE-CARGUE_COMPLETO":               ["TRANSPORTE", "SUPERVISOR_TRANSPORTE", "OPERACIONES_GOURMET", "ADMIN", "GERENTE"],

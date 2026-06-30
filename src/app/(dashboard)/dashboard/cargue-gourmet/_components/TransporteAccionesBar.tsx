@@ -4,7 +4,9 @@ import { DetailSection } from "@/components/ui/SlidePanel";
 import type { EstadoPedidoGourmet } from "../_components";
 import type { ProgresoEscaneo } from "./EscaneoCajasPanel";
 
-export const ESTADOS_INICIABLES_TRANSPORTE: EstadoPedidoGourmet[] = ["ENVIADO_A_TRANSPORTE"];
+// El cargue arranca directo desde UBICACION_ASIGNADA. ENVIADO_A_TRANSPORTE se
+// conserva solo para pedidos heredados que ya estaban en ese estado.
+export const ESTADOS_INICIABLES_TRANSPORTE: EstadoPedidoGourmet[] = ["UBICACION_ASIGNADA", "ENVIADO_A_TRANSPORTE"];
 export const ESTADOS_FINALIZABLES_TRANSPORTE: EstadoPedidoGourmet[] = ["EN_CARGUE"];
 export const ESTADOS_CIERRE_MANUAL: EstadoPedidoGourmet[] = ["EN_CARGUE", "CON_NOVEDAD"];
 

@@ -132,8 +132,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   });
 
   // El creador del pedido ya es conocido (pedido.creadoPorId) — no requiere
-  // búsqueda adicional, igual criterio de "destinatario identificable de forma
-  // simple" usado en /enviar-transporte.
+  // búsqueda adicional ("destinatario identificable de forma simple").
   const destinatariosIds = new Set<string>();
   if (current.creadoPorId) destinatariosIds.add(current.creadoPorId);
   const adminsGerentes = await prisma.user.findMany({

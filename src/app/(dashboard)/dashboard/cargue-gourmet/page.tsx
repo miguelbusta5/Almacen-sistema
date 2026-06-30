@@ -27,9 +27,9 @@ import { CierreManualModal } from "./_components/CierreManualModal";
 const DEBOUNCE_MS = 300;
 const PAGE_SIZE = 25;
 const ROLES_CREAN = ["OPERACIONES_GOURMET", "ADMIN", "GERENTE"];
-// Mismo set de roles para todas las acciones del lado Gourmet (crear, editar,
-// asignar ubicación, enviar a Transporte) — coincide con ROLES_PERMITIDOS de
-// los endpoints PUT/[id], POST/ubicacion y POST/enviar-transporte.
+// Mismo set de roles para las acciones del lado Gourmet (crear, editar,
+// asignar ubicación) — coincide con ROLES_PERMITIDOS de los endpoints
+// PUT/[id] y POST/ubicacion.
 const ROLES_GOURMET = ROLES_CREAN;
 // Roles que operan el cargue del camión (iniciar, escanear, finalizar) — ambas
 // áreas: Transporte y Gourmet. Coincide con ROLES_PERMITIDOS de /iniciar-cargue,
@@ -75,8 +75,6 @@ export default function CargueGourmetPage() {
 
   const [showEditar, setShowEditar] = useState(false);
   const [showUbicacion, setShowUbicacion] = useState(false);
-  const [showEnviarConfirm, setShowEnviarConfirm] = useState(false);
-  const [enviando, setEnviando] = useState(false);
 
   const [showIniciarConfirm, setShowIniciarConfirm] = useState(false);
   const [iniciandoCargue, setIniciandoCargue] = useState(false);
@@ -164,26 +162,6 @@ export default function CargueGourmetPage() {
   function refreshAfterAction() {
     if (selectedId) loadDetalle(selectedId);
     load();
-  }
-
-  async function confirmarEnviarTransporte() {
-    if (!detalle || enviando) return;
-    setEnviando(true);
-    try {
-      await apiPost(`/api/cargue-gourmet/${detalle.id}/enviar-transporte`, { updatedAt: detalle.updatedAt });
-      toast.success("Pedido enviado a Transporte");
-      setShowEnviarConfirm(false);
-      refreshAfterAction();
-    } catch (e) {
-      // 409 no siempre es optimistic lock — puede ser regla de negocio (sin
-      // estibas, transición inválida, etc.) — se muestra el mensaje real del
-      // backend y se refresca el detalle para que el usuario vea el estado
-      // actual antes de reintentar.
-      toast.error(getErrorMessage(e, "No se pudo enviar el pedido a Transporte"));
-      if (e instanceof ApiError && e.status === 409) loadDetalle(detalle.id);
-    } finally {
-      setEnviando(false);
-    }
   }
 
   async function confirmarIniciarCargue() {
@@ -304,7 +282,6 @@ export default function CargueGourmetPage() {
           puedeGourmet={puedeGourmet}
           onEditar={() => setShowEditar(true)}
           onAsignarUbicacion={() => setShowUbicacion(true)}
-          onEnviarTransporte={() => setShowEnviarConfirm(true)}
           puedeTransporte={puedeTransporte}
           onIniciarCargue={() => setShowIniciarConfirm(true)}
           iniciandoCargue={iniciandoCargue}
@@ -381,17 +358,6 @@ export default function CargueGourmetPage() {
         pedido={detalle}
         onClose={() => setShowUbicacion(false)}
         onSaved={refreshAfterAction}
-      />
-
-      <ConfirmModal
-        open={showEnviarConfirm}
-        onClose={() => { if (!enviando) setShowEnviarConfirm(false); }}
-        onConfirm={confirmarEnviarTransporte}
-        title="Enviar a Transporte"
-        message="¿Confirmas enviar este pedido a Transporte? Después de enviarlo ya no podrás editarlo desde Gourmet."
-        confirmLabel={enviando ? "Enviando…" : "Enviar a Transporte"}
-        tone="primary"
-        loading={enviando}
       />
 
       <ConfirmModal

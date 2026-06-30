@@ -51,7 +51,6 @@ export interface PedidoDetalleContentProps {
   puedeGourmet?: boolean;
   onEditar?: () => void;
   onAsignarUbicacion?: () => void;
-  onEnviarTransporte?: () => void;
   puedeTransporte?: boolean;
   onIniciarCargue?: () => void;
   iniciandoCargue?: boolean;
@@ -73,7 +72,6 @@ export function PedidoDetalleContent({
   puedeGourmet = false,
   onEditar,
   onAsignarUbicacion,
-  onEnviarTransporte,
   puedeTransporte = false,
   onIniciarCargue,
   iniciandoCargue = false,
@@ -136,7 +134,6 @@ export function PedidoDetalleContent({
               puedeGourmet={puedeGourmet}
               onEditar={() => onEditar?.()}
               onAsignarUbicacion={() => onAsignarUbicacion?.()}
-              onEnviarTransporte={() => onEnviarTransporte?.()}
             />
 
             <TransporteAccionesBar

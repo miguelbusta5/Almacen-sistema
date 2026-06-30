@@ -107,12 +107,14 @@ describe("TransporteAccionesBar — sin cámara ni QR", () => {
     }
   });
 
-  it("no modifica los endpoints previos (iniciar-cargue, escanear, finalizar, enviar-transporte, ubicacion, editar siguen referenciados igual)", async () => {
+  it("mantiene los endpoints del cargue (iniciar-cargue, escanear, finalizar, ubicacion) referenciados", async () => {
     const fs = await import("fs");
     const src = fs.readFileSync("src/app/(dashboard)/dashboard/cargue-gourmet/page.tsx", "utf-8");
-    for (const endpoint of ["/iniciar-cargue", "/escanear", "/finalizar", "/enviar-transporte", "/ubicacion"]) {
+    for (const endpoint of ["/iniciar-cargue", "/escanear", "/finalizar", "/ubicacion"]) {
       expect(src).toContain(endpoint);
     }
+    // "Enviar a Transporte" fue eliminado: ya no debe referenciarse.
+    expect(src).not.toContain("/enviar-transporte");
   });
 });
 
