@@ -7,14 +7,14 @@ import "leaflet/dist/leaflet.css";
 import type { CiudadMapaDTO } from "@/app/api/mapa-ciudades/route";
 
 const AMBER = "#F59E0B";
-const EMERALD = "#14DBA0";
-const SIZE = 20;
+const EMERALD = "#0E9C76";
+const SIZE = 22;
 const R = SIZE / 2;
 
 function splitIcon(): L.DivIcon {
   const svg = `<svg width="${SIZE}" height="${SIZE}" xmlns="http://www.w3.org/2000/svg">
-    <circle cx="${R}" cy="${R}" r="${R}" fill="${AMBER}"/>
-    <path d="M${R},${R} L${R},0 A${R},${R} 0 0,1 ${R},${SIZE} Z" fill="${EMERALD}"/>
+    <circle cx="${R}" cy="${R}" r="${R - 1}" fill="${AMBER}" stroke="#fff" stroke-width="1.5"/>
+    <path d="M${R},${R} L${R},1 A${R - 1},${R - 1} 0 0,1 ${R},${SIZE - 1} Z" fill="${EMERALD}"/>
   </svg>`;
   return L.divIcon({
     html: svg,
@@ -25,20 +25,26 @@ function splitIcon(): L.DivIcon {
   });
 }
 
-interface Props {
-  ciudades: CiudadMapaDTO[];
+// Radio escalado por volumen de procesos.
+function radiusFor(total: number): number {
+  return 7 + Math.min(9, Math.sqrt(total));
 }
 
-export default function ColombiaMap({ ciudades }: Props) {
+interface Props {
+  ciudades: CiudadMapaDTO[];
+  onSelectCity?: (ciudad: CiudadMapaDTO) => void;
+}
+
+export default function ColombiaMap({ ciudades, onSelectCity }: Props) {
   return (
     <MapContainer
       center={[4.5709, -74.2973]}
       zoom={6}
-      style={{ height: "100%", width: "100%", background: "#0d1117" }}
+      style={{ height: "100%", width: "100%", background: "#e8eef2" }}
       zoomControl
     >
       <TileLayer
-        url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
+        url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png"
         attribution='&copy; <a href="https://carto.com/">CARTO</a> &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
         subdomains="abcd"
         maxZoom={19}
@@ -48,14 +54,14 @@ export default function ColombiaMap({ ciudades }: Props) {
         const pos: [number, number] = [ciudad.lat, ciudad.lng];
         const tooltip = (
           <Tooltip direction="top" offset={[0, -6]}>
-            <div style={{ lineHeight: 1.5, minWidth: 160 }}>
+            <div style={{ lineHeight: 1.5, minWidth: 150 }}>
               <div style={{ fontWeight: 700, marginBottom: 4 }}>{ciudad.nombre}</div>
               <div>Recogidas: <strong>{ciudad.comoOrigen}</strong></div>
               <div>Entregas: <strong>{ciudad.comoDestino}</strong></div>
               <div>Total: <strong>{ciudad.total}</strong></div>
               {ciudad.transportadoras.length > 0 && (
-                <div style={{ marginTop: 4, fontSize: "0.85em", color: "#aaa" }}>
-                  {ciudad.transportadoras.join(" · ")}
+                <div style={{ marginTop: 4, fontSize: "0.85em", color: "#555" }}>
+                  {ciudad.transportadoras.map((t) => t.nombre).join(" · ")}
                 </div>
               )}
             </div>
@@ -64,27 +70,17 @@ export default function ColombiaMap({ ciudades }: Props) {
 
         const soloOrigen = ciudad.comoOrigen > 0 && ciudad.comoDestino === 0;
         const soloDestino = ciudad.comoDestino > 0 && ciudad.comoOrigen === 0;
+        const handlers = { click: () => onSelectCity?.(ciudad) };
 
-        if (soloOrigen) {
+        if (soloOrigen || soloDestino) {
+          const color = soloOrigen ? AMBER : EMERALD;
           return (
             <CircleMarker
               key={ciudad.nombre}
               center={pos}
-              radius={9}
-              pathOptions={{ color: AMBER, fillColor: AMBER, fillOpacity: 0.9, weight: 1.5 }}
-            >
-              {tooltip}
-            </CircleMarker>
-          );
-        }
-
-        if (soloDestino) {
-          return (
-            <CircleMarker
-              key={ciudad.nombre}
-              center={pos}
-              radius={9}
-              pathOptions={{ color: EMERALD, fillColor: EMERALD, fillOpacity: 0.9, weight: 1.5 }}
+              radius={radiusFor(ciudad.total)}
+              pathOptions={{ color: "#fff", weight: 1.5, fillColor: color, fillOpacity: 0.9 }}
+              eventHandlers={handlers}
             >
               {tooltip}
             </CircleMarker>
@@ -93,7 +89,7 @@ export default function ColombiaMap({ ciudades }: Props) {
 
         // Ambos roles → marcador bicolor
         return (
-          <Marker key={ciudad.nombre} position={pos} icon={splitIcon()}>
+          <Marker key={ciudad.nombre} position={pos} icon={splitIcon()} eventHandlers={handlers}>
             {tooltip}
           </Marker>
         );
