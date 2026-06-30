@@ -17,6 +17,13 @@ const mockRow = {
   netsuiteId: null,
 } as unknown as Guardado;
 
+// Guardado sin fecha de entrega en la nota (caso "Sin fecha asignada").
+const mockSinFecha = {
+  ...mockRow,
+  clientId: "client-2",
+  nota: null,
+} as unknown as Guardado;
+
 const html = renderToStaticMarkup(
   <GuardadosTable
     loading={false}
@@ -29,11 +36,25 @@ const html = renderToStaticMarkup(
   />,
 );
 
-function cellHtml(testId: string): string {
-  const m = html.match(new RegExp(`data-testid="${testId}"[^>]*>(.*?)</td>`));
+const htmlSinFecha = renderToStaticMarkup(
+  <GuardadosTable
+    loading={false}
+    items={[mockSinFecha]}
+    hasFilters={false}
+    selectedId={null}
+    onOpen={() => {}}
+    onClearFilters={() => {}}
+    onNew={() => {}}
+  />,
+);
+
+function cellHtmlIn(source: string, testId: string): string {
+  const m = source.match(new RegExp(`data-testid="${testId}"[^>]*>(.*?)</td>`));
   return m ? m[1] : "";
 }
+const cellHtml = (testId: string) => cellHtmlIn(html, testId);
 const text = (testId: string) => cellHtml(testId).replace(/<[^>]*>/g, "").trim();
+const textIn = (source: string, testId: string) => cellHtmlIn(source, testId).replace(/<[^>]*>/g, "").trim();
 
 describe("GuardadosTable — estructura y mapeo (render)", () => {
   const thead = html.split("</thead>")[0] ?? "";
@@ -43,16 +64,16 @@ describe("GuardadosTable — estructura y mapeo (render)", () => {
   const tdCount = (firstRow.match(/<td[ >]/g) ?? []).length;
   const colCount = (html.match(/<col[ />]/g) ?? []).length;
 
-  it("ESTRUCTURA: th === td === col === 6 (sin celda extra de rail)", () => {
-    expect(thCount).toBe(6);
-    expect(tdCount).toBe(6);
-    expect(colCount).toBe(6);
+  it("ESTRUCTURA: th === td === col === 7 (sin celda extra de rail)", () => {
+    expect(thCount).toBe(7);
+    expect(tdCount).toBe(7);
+    expect(colCount).toBe(7);
     expect(thCount).toBe(tdCount);
     expect(colCount).toBe(thCount);
   });
 
   it("ESTRUCTURA: las celdas van en el mismo orden que los headers (fecha→almacenaje)", () => {
-    const ids = ["fecha-cell", "doc-cell", "ubicacion-cell", "tipo-cell", "estado-cell", "almacenaje-cell"];
+    const ids = ["fecha-cell", "entrega-cell", "doc-cell", "ubicacion-cell", "tipo-cell", "estado-cell", "almacenaje-cell"];
     const positions = ids.map((id) => firstRow.indexOf(`data-testid="${id}"`));
     expect(positions.every((p) => p >= 0)).toBe(true);
     expect(positions).toEqual([...positions].sort((a, b) => a - b));
@@ -69,6 +90,14 @@ describe("GuardadosTable — estructura y mapeo (render)", () => {
   it("CONTENIDO: doc-cell = documento; ubicacion-cell = ubicación", () => {
     expect(text("doc-cell")).toContain("GD-7788");
     expect(text("ubicacion-cell")).toContain("BODEGA NORTE - ESTANTE 14 PASILLO B");
+  });
+
+  it("CONTENIDO: entrega-cell = fecha extraída de la nota (DD/MM/YYYY)", () => {
+    expect(text("entrega-cell")).toContain("30/06/2026");
+  });
+
+  it("CONTENIDO: entrega-cell sin fecha en la nota = 'Sin fecha asignada'", () => {
+    expect(textIn(htmlSinFecha, "entrega-cell")).toBe("Sin fecha asignada");
   });
 
   it("CONTENIDO: estado-cell = badge de estado (no documento ni ubicación)", () => {
