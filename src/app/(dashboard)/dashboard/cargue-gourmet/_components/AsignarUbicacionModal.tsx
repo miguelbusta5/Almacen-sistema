@@ -4,6 +4,8 @@ import { useEffect, useState } from "react";
 import { Trash2, Plus, ChevronDown } from "lucide-react";
 import { Modal } from "@/components/ui/Modal";
 import { useToast } from "@/contexts/ToastContext";
+import { apiPost } from "@/lib/apiClient";
+import { getErrorMessage } from "@/lib/errors";
 
 export interface EstibaForm { ubicacion: string; cantidadCajas: string; observacion: string; }
 export interface CajaForm { codigoCaja: string; numeroSecuencia: string; }
@@ -176,25 +178,16 @@ export function AsignarUbicacionModal({
 
     setSaving(true);
     try {
-      const res = await fetch(`/api/cargue-gourmet/${pedido.id}/ubicacion`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          estibas: estibasParsed,
-          cajas: cajasParsed.length > 0 ? cajasParsed : undefined,
-          updatedAt: pedido.updatedAt,
-        }),
+      await apiPost(`/api/cargue-gourmet/${pedido.id}/ubicacion`, {
+        estibas: estibasParsed,
+        cajas: cajasParsed.length > 0 ? cajasParsed : undefined,
+        updatedAt: pedido.updatedAt,
       });
-      const json = await res.json();
-      if (!res.ok) {
-        setError(json.error ?? "No se pudo guardar la ubicación");
-        return;
-      }
       toast.success("Ubicación asignada");
       onSaved();
       onClose();
-    } catch {
-      setError("Error de red — verifica tu conexión e intenta de nuevo");
+    } catch (e) {
+      setError(getErrorMessage(e, "No se pudo guardar la ubicación"));
     } finally {
       setSaving(false);
     }

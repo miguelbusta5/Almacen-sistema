@@ -3,6 +3,8 @@
 import { useEffect, useRef, useState } from "react";
 import { Modal } from "@/components/ui/Modal";
 import { useToast } from "@/contexts/ToastContext";
+import { apiGet, apiPut } from "@/lib/apiClient";
+import { getErrorMessage } from "@/lib/errors";
 
 const SEARCH_DEBOUNCE_MS = 250;
 
@@ -95,13 +97,7 @@ export function EditarPedidoModal({
       setSearchLoading(true);
       setSearchError("");
       try {
-        const res = await fetch(`/api/cargue-gourmet/maestro-tiendas?q=${encodeURIComponent(value.trim())}`);
-        if (!res.ok) {
-          setSearchError("No se pudo buscar tiendas");
-          setSuggestions([]);
-          return;
-        }
-        const json = await res.json();
+        const json = await apiGet<{ data?: TiendaOption[] }>(`/api/cargue-gourmet/maestro-tiendas?q=${encodeURIComponent(value.trim())}`);
         setSuggestions(json.data ?? []);
       } catch {
         setSearchError("No se pudo buscar tiendas");
@@ -132,28 +128,19 @@ export function EditarPedidoModal({
 
     setSaving(true);
     try {
-      const res = await fetch(`/api/cargue-gourmet/${pedido.id}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          orden: form.orden.trim(),
-          tipoOrden: form.tipoOrden,
-          codigoTienda: form.tiendaSeleccionada.codigo,
-          cajasEsperadas: cajas,
-          estibasEsperadas: estibas,
-          updatedAt: pedido.updatedAt,
-        }),
+      await apiPut(`/api/cargue-gourmet/${pedido.id}`, {
+        orden: form.orden.trim(),
+        tipoOrden: form.tipoOrden,
+        codigoTienda: form.tiendaSeleccionada.codigo,
+        cajasEsperadas: cajas,
+        estibasEsperadas: estibas,
+        updatedAt: pedido.updatedAt,
       });
-      const json = await res.json();
-      if (!res.ok) {
-        setError(json.error ?? "No se pudo guardar la edición");
-        return;
-      }
       toast.success("Pedido actualizado");
       onUpdated();
       onClose();
-    } catch {
-      setError("Error de red — verifica tu conexión e intenta de nuevo");
+    } catch (e) {
+      setError(getErrorMessage(e, "No se pudo guardar la edición"));
     } finally {
       setSaving(false);
     }

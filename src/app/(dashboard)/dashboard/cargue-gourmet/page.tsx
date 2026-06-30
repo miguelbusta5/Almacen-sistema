@@ -8,6 +8,9 @@ import { useToast } from "@/contexts/ToastContext";
 import { canSeeModule } from "@/lib/modulePermissions";
 import { getModuleCssVars } from "@/lib/moduleTheme";
 import { useListDetailScroll } from "@/hooks/useListDetailScroll";
+import { useApi } from "@/hooks/useApi";
+import { apiGet, apiPost, buildQuery, ApiError } from "@/lib/apiClient";
+import { getErrorMessage } from "@/lib/errors";
 import {
   CargueGourmetTable, ESTADOS_PEDIDO_GOURMET, ESTADO_LABEL,
   type GourmetPedidoRow, type EstadoPedidoGourmet,
@@ -53,10 +56,7 @@ export default function CargueGourmetPage() {
   const role = (session?.user as { role?: string } | undefined)?.role;
   const toast = useToast();
 
-  const [pedidos, setPedidos] = useState<GourmetPedidoRow[]>([]);
-  const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
-  const [loading, setLoading] = useState(true);
   const [debugTable, setDebugTable] = useState(false);
 
   const [q, setQ] = useState("");
@@ -101,61 +101,35 @@ export default function CargueGourmetPage() {
     return () => { if (debounceRef.current) clearTimeout(debounceRef.current); };
   }, [q]);
 
-  const load = useCallback(async (toPage = page) => {
-    setLoading(true);
-    try {
-      const params = new URLSearchParams();
-      if (qDebounced) params.set("q", qDebounced);
-      if (ciudad) params.set("ciudad", ciudad);
-      if (estado) params.set("estado", estado);
-      if (tipoOrden) params.set("tipoOrden", tipoOrden);
-      params.set("page", String(toPage));
-      params.set("pageSize", String(PAGE_SIZE));
+  const puedeVer = Boolean(role && canSeeModule(role, "cargue-gourmet"));
+  const listKey = puedeVer
+    ? `/api/cargue-gourmet${buildQuery({ q: qDebounced, ciudad, estado, tipoOrden, page, pageSize: PAGE_SIZE })}`
+    : null;
+  const { data: listData, isLoading: loading, mutate: mutateList } = useApi<{ data: GourmetPedidoRow[]; total: number }>(listKey, {
+    onError: () => toast.error("No se pudo cargar el listado de Cargue Gourmet"),
+  });
+  const pedidos = listData?.data ?? [];
+  const total = listData?.total ?? 0;
+  const load = useCallback(() => { void mutateList(); }, [mutateList]);
 
-      const res = await fetch(`/api/cargue-gourmet?${params.toString()}`);
-      if (!res.ok) {
-        toast.error("No se pudo cargar el listado de Cargue Gourmet");
-        return;
-      }
-      const json = await res.json();
-      setPedidos(json.data ?? []);
-      setTotal(json.total ?? 0);
-      setPage(json.page ?? toPage);
-    } catch {
-      toast.error("Error de red al cargar pedidos — verifica tu conexión");
-    } finally {
-      setLoading(false);
-    }
-  }, [qDebounced, ciudad, estado, tipoOrden, page, toast]);
-
+  // Al cambiar cualquier filtro se vuelve a la página 1 (la key de SWR reacciona).
   useEffect(() => {
-    if (!role || !canSeeModule(role, "cargue-gourmet")) return;
     setPage(1);
-    load(1);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [qDebounced, ciudad, estado, tipoOrden, role]);
+  }, [qDebounced, ciudad, estado, tipoOrden]);
 
   const loadDetalle = useCallback(async (id: string) => {
     setDetalleLoading(true);
     setDetalleError(null);
     try {
-      const res = await fetch(`/api/cargue-gourmet/${id}`);
-      if (res.status === 404) {
-        setDetalleError("Este pedido no existe o fue eliminado.");
-        return;
-      }
-      if (res.status === 403) {
-        setDetalleError("No tienes permiso para ver este pedido.");
-        return;
-      }
-      if (!res.ok) {
-        setDetalleError("No se pudo cargar el detalle del pedido.");
-        return;
-      }
-      const json = await res.json();
+      const json = await apiGet<{ data: PedidoDetalle | null }>(`/api/cargue-gourmet/${id}`);
       setDetalle(json.data ?? null);
-    } catch {
-      setDetalleError("Error de red — verifica tu conexión e intenta de nuevo.");
+    } catch (e) {
+      const status = e instanceof ApiError ? e.status : 0;
+      setDetalleError(
+        status === 404 ? "Este pedido no existe o fue eliminado." :
+        status === 403 ? "No tienes permiso para ver este pedido." :
+        "No se pudo cargar el detalle del pedido.",
+      );
     } finally {
       setDetalleLoading(false);
     }
@@ -188,33 +162,24 @@ export default function CargueGourmetPage() {
 
   function refreshAfterAction() {
     if (selectedId) loadDetalle(selectedId);
-    load(page);
+    load();
   }
 
   async function confirmarEnviarTransporte() {
     if (!detalle || enviando) return;
     setEnviando(true);
     try {
-      const res = await fetch(`/api/cargue-gourmet/${detalle.id}/enviar-transporte`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ updatedAt: detalle.updatedAt }),
-      });
-      const json = await res.json();
-      if (!res.ok) {
-        // 409 no siempre es optimistic lock — puede ser regla de negocio
-        // (sin estibas, transición inválida, etc.) — se muestra el mensaje
-        // real del backend y se refresca el detalle para que el usuario vea
-        // el estado actual antes de reintentar.
-        toast.error(json.error ?? "No se pudo enviar el pedido a Transporte");
-        if (res.status === 409) loadDetalle(detalle.id);
-        return;
-      }
+      await apiPost(`/api/cargue-gourmet/${detalle.id}/enviar-transporte`, { updatedAt: detalle.updatedAt });
       toast.success("Pedido enviado a Transporte");
       setShowEnviarConfirm(false);
       refreshAfterAction();
-    } catch {
-      toast.error("Error de red al enviar a Transporte — verifica tu conexión");
+    } catch (e) {
+      // 409 no siempre es optimistic lock — puede ser regla de negocio (sin
+      // estibas, transición inválida, etc.) — se muestra el mensaje real del
+      // backend y se refresca el detalle para que el usuario vea el estado
+      // actual antes de reintentar.
+      toast.error(getErrorMessage(e, "No se pudo enviar el pedido a Transporte"));
+      if (e instanceof ApiError && e.status === 409) loadDetalle(detalle.id);
     } finally {
       setEnviando(false);
     }
@@ -224,25 +189,15 @@ export default function CargueGourmetPage() {
     if (!detalle || iniciandoCargue) return;
     setIniciandoCargue(true);
     try {
-      const res = await fetch(`/api/cargue-gourmet/${detalle.id}/iniciar-cargue`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ updatedAt: detalle.updatedAt }),
-      });
-      const json = await res.json();
-      if (!res.ok) {
-        // 409 puede ser optimistic lock O "ya existe un cargue activo" — en
-        // ambos casos se muestra el mensaje real del backend y se refresca
-        // el detalle para que el usuario vea el estado actual.
-        toast.error(json.error ?? "No se pudo iniciar el cargue");
-        if (res.status === 409) loadDetalle(detalle.id);
-        return;
-      }
+      await apiPost(`/api/cargue-gourmet/${detalle.id}/iniciar-cargue`, { updatedAt: detalle.updatedAt });
       toast.success("Cargue iniciado");
       setShowIniciarConfirm(false);
       refreshAfterAction();
-    } catch {
-      toast.error("Error de red al iniciar el cargue — verifica tu conexión");
+    } catch (e) {
+      // 409 puede ser optimistic lock O "ya existe un cargue activo" — en ambos
+      // casos se muestra el mensaje real del backend y se refresca el detalle.
+      toast.error(getErrorMessage(e, "No se pudo iniciar el cargue"));
+      if (e instanceof ApiError && e.status === 409) loadDetalle(detalle.id);
     } finally {
       setIniciandoCargue(false);
     }
@@ -257,20 +212,8 @@ export default function CargueGourmetPage() {
     if (!selectedId) return false;
     setEnviandoEscaneo(true);
     try {
-      const res = await fetch(`/api/cargue-gourmet/${selectedId}/escanear`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ codigo }),
-      });
-      const json = await res.json();
-      if (!res.ok) {
-        // 409 aquí significa que el pedido ya no está EN_CARGUE o no hay
-        // cargue activo — no es optimistic lock (este endpoint no lo usa).
-        toast.error(json.error ?? "No se pudo registrar el escaneo");
-        if (res.status === 409) loadDetalle(selectedId);
-        return false;
-      }
-      const resultado = json.resultado as ResultadoEscaneo;
+      const json = await apiPost<{ resultado: ResultadoEscaneo; progreso?: ProgresoEscaneo | null }>(`/api/cargue-gourmet/${selectedId}/escanear`, { codigo });
+      const resultado = json.resultado;
       setProgresoEscaneo(json.progreso ?? null);
       setUltimoResultadoEscaneo({ codigo, resultado });
       if (resultado === "VALIDO") {
@@ -279,8 +222,11 @@ export default function CargueGourmetPage() {
         toast.error(RESULTADO_TOAST_ERROR[resultado] || "Revisa el resultado del escaneo");
       }
       return true;
-    } catch {
-      toast.error("Error de red al registrar el escaneo — verifica tu conexión");
+    } catch (e) {
+      // 409 aquí significa que el pedido ya no está EN_CARGUE o no hay cargue
+      // activo — no es optimistic lock (este endpoint no lo usa).
+      toast.error(getErrorMessage(e, "No se pudo registrar el escaneo"));
+      if (e instanceof ApiError && e.status === 409) loadDetalle(selectedId);
       return false;
     } finally {
       setEnviandoEscaneo(false);
@@ -291,26 +237,16 @@ export default function CargueGourmetPage() {
     if (!detalle || finalizandoCargue) return;
     setFinalizandoCargue(true);
     try {
-      const res = await fetch(`/api/cargue-gourmet/${detalle.id}/finalizar`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ updatedAt: detalle.updatedAt }),
-      });
-      const json = await res.json();
-      if (!res.ok) {
-        // 409 aquí puede ser: cantidad no coincide, novedades abiertas,
-        // el pedido ya no está EN_CARGUE, o updatedAt desactualizado — no se
-        // asume cuál; se muestra siempre el mensaje real del backend y se
-        // refresca el detalle para que el usuario vea el estado actual.
-        toast.error(json.error ?? "No se pudo finalizar el cargue");
-        if (res.status === 409) loadDetalle(detalle.id);
-        return;
-      }
+      await apiPost(`/api/cargue-gourmet/${detalle.id}/finalizar`, { updatedAt: detalle.updatedAt });
       toast.success("Cargue finalizado");
       setShowFinalizarConfirm(false);
       refreshAfterAction();
-    } catch {
-      toast.error("Error de red al finalizar el cargue — verifica tu conexión");
+    } catch (e) {
+      // 409 aquí puede ser: cantidad no coincide, novedades abiertas, el pedido
+      // ya no está EN_CARGUE, o updatedAt desactualizado — no se asume cuál; se
+      // muestra siempre el mensaje real del backend y se refresca el detalle.
+      toast.error(getErrorMessage(e, "No se pudo finalizar el cargue"));
+      if (e instanceof ApiError && e.status === 409) loadDetalle(detalle.id);
     } finally {
       setFinalizandoCargue(false);
     }
@@ -354,7 +290,7 @@ export default function CargueGourmetPage() {
       <CrearPedidoModal
         open={showCrear}
         onClose={() => setShowCrear(false)}
-        onCreated={() => load(1)}
+        onCreated={() => { setPage(1); load(); }}
       />
 
       {showDetailView ? (
@@ -424,8 +360,8 @@ export default function CargueGourmetPage() {
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: "1rem", fontSize: 12, color: "var(--muted)" }}>
               <span>Página {page} de {totalPages} · {total} pedido{total !== 1 ? "s" : ""}</span>
               <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                <button disabled={page <= 1} onClick={() => load(page - 1)} className="g-btn g-btn-secondary g-btn-sm">Anterior</button>
-                <button disabled={page >= totalPages} onClick={() => load(page + 1)} className="g-btn g-btn-secondary g-btn-sm">Siguiente</button>
+                <button disabled={page <= 1} onClick={() => setPage(page - 1)} className="g-btn g-btn-secondary g-btn-sm">Anterior</button>
+                <button disabled={page >= totalPages} onClick={() => setPage(page + 1)} className="g-btn g-btn-secondary g-btn-sm">Siguiente</button>
               </div>
             </div>
           )}

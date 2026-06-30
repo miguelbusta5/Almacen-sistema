@@ -3,6 +3,8 @@
 import { useEffect, useState } from "react";
 import { Modal } from "@/components/ui/Modal";
 import { useToast } from "@/contexts/ToastContext";
+import { apiPost } from "@/lib/apiClient";
+import { getErrorMessage } from "@/lib/errors";
 
 export interface PedidoCerrable {
   id: string;
@@ -69,29 +71,20 @@ export function CierreManualModal({
 
     setSaving(true);
     try {
-      const res = await fetch(`/api/cargue-gourmet/${pedido.id}/cierre-manual`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          cantidadContadaManual: cantidad,
-          motivo: form.motivo.trim(),
-          observacion: form.observacion.trim() || undefined,
-          updatedAt: pedido.updatedAt,
-        }),
+      // 409 aquí puede ser: el pedido ya no está EN_CARGUE/CON_NOVEDAD, ya fue
+      // cerrado, updatedAt desactualizado, o no hay cargue válido — se muestra
+      // siempre el mensaje real del backend, sin asumir cuál caso.
+      await apiPost(`/api/cargue-gourmet/${pedido.id}/cierre-manual`, {
+        cantidadContadaManual: cantidad,
+        motivo: form.motivo.trim(),
+        observacion: form.observacion.trim() || undefined,
+        updatedAt: pedido.updatedAt,
       });
-      const json = await res.json();
-      if (!res.ok) {
-        // 409 aquí puede ser: el pedido ya no está EN_CARGUE/CON_NOVEDAD, ya
-        // fue cerrado, updatedAt desactualizado, o no hay cargue válido — se
-        // muestra siempre el mensaje real del backend, sin asumir cuál caso.
-        setError(json.error ?? "No se pudo cerrar manualmente el cargue");
-        return;
-      }
       toast.success("Cargue cerrado manualmente");
       onClosed();
       onClose();
-    } catch {
-      setError("Error de red — verifica tu conexión e intenta de nuevo");
+    } catch (e) {
+      setError(getErrorMessage(e, "No se pudo cerrar manualmente el cargue"));
     } finally {
       setSaving(false);
     }
