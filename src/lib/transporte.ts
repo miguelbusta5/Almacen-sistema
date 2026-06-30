@@ -74,17 +74,24 @@ export function tieneAlerta(g: Guardado): boolean {
 // urgencia de entrega). "sin-fecha" aplica siempre que la nota no traiga fecha.
 export type EntregaColorNivel = "neutro" | "sin-fecha" | "vencida" | "amarillo" | "azul" | "verde";
 
-export function nivelEntregaColor(g: { estado: string; nota: string | null }): EntregaColorNivel {
-  const entrega = parseEntrega(g.nota);
-  if (!entrega) return "sin-fecha";
-  if (g.estado === "DESPACHADO") return "neutro";
+// Versión genérica: recibe la fecha de entrega (ISO YYYY-MM-DD) directamente y
+// un flag `neutro` (el llamador decide qué estado ya no urge). Reutilizable por
+// módulos cuya entrega es un campo propio (p. ej. Facturas Contado).
+export function nivelEntregaColorFecha(fechaEntrega: string | null, neutro: boolean): EntregaColorNivel {
+  if (!fechaEntrega) return "sin-fecha";
+  if (neutro) return "neutro";
   const diasRestantes = Math.floor(
-    (new Date(entrega).getTime() - new Date(todayISO()).getTime()) / 86_400_000,
+    (new Date(fechaEntrega).getTime() - new Date(todayISO()).getTime()) / 86_400_000,
   );
   if (diasRestantes < 0) return "vencida";
   if (diasRestantes <= 10) return "amarillo";
   if (diasRestantes <= 15) return "azul";
   return "verde";
+}
+
+// Guardados: la fecha de entrega se extrae de la nota; neutro = DESPACHADO.
+export function nivelEntregaColor(g: { estado: string; nota: string | null }): EntregaColorNivel {
+  return nivelEntregaColorFecha(parseEntrega(g.nota), g.estado === "DESPACHADO");
 }
 
 export const ENTREGA_COLOR: Record<EntregaColorNivel, string | undefined> = {

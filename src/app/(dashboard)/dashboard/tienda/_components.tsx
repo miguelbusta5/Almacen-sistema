@@ -25,6 +25,7 @@ import {
   fmtFechaTienda,
   horasDesde,
 } from "@/lib/tienda";
+import { nivelEntregaColorFecha, ENTREGA_COLOR } from "@/lib/transporte";
 import type { IntelInsight } from "@/lib/inteligencia";
 import styles from "./tienda.module.css";
 
@@ -360,7 +361,7 @@ export function FacturasTable({
       header: "Fecha",
       sortable: true,
       sortValue: (d) => d.fechaCreacion,
-      width: "13%",
+      width: "10%",
       testId: "fecha-cell",
       debugLabel: "Fecha",
       render: (d) => {
@@ -380,11 +381,38 @@ export function FacturasTable({
       },
     },
     {
+      key: "entrega",
+      header: "Entrega comprometida",
+      sortable: true,
+      // Asc = entrega más próxima primero (vencidas arriba); sin fecha al final.
+      sortValue: (d) => d.fechaEntregaComprometida ?? "9999-99-99",
+      width: "13%",
+      testId: "entrega-cell",
+      debugLabel: "Entrega",
+      render: (d) => {
+        if (!d.fechaEntregaComprometida) return <span style={{ color: "var(--error)", fontWeight: 600, fontSize: 11 }}>Sin fecha asignada</span>;
+        const color = ENTREGA_COLOR[nivelEntregaColorFecha(d.fechaEntregaComprometida, d.estado === "ENVIADO_CLIENTE")];
+        return <span className={styles.monoText} style={{ color, fontWeight: color ? 700 : undefined }}>{fmtFechaTienda(d.fechaEntregaComprometida)}</span>;
+      },
+    },
+    {
+      key: "ciudad",
+      header: "Ciudad destino",
+      sortable: true,
+      sortValue: (d) => d.ciudad ?? "",
+      width: "12%",
+      testId: "ciudad-cell",
+      debugLabel: "Ciudad",
+      render: (d) => (
+        <span className={styles.cellTruncate} style={{ display: "block", color: d.ciudad ? undefined : "var(--faint)" }} title={d.ciudad ?? ""}>{d.ciudad ?? "—"}</span>
+      ),
+    },
+    {
       key: "centroCostos",
       header: "Centro costos",
       sortable: true,
       sortValue: (d) => d.centroCostos,
-      width: "16%",
+      width: "14%",
       testId: "centro-cell",
       debugLabel: "Centro",
       render: (d) => (
@@ -396,7 +424,7 @@ export function FacturasTable({
     {
       key: "documento",
       header: "Doc. / consecutivo",
-      width: "21%",
+      width: "17%",
       testId: "doc-cell",
       debugLabel: "Doc",
       render: (d) => (
@@ -411,7 +439,7 @@ export function FacturasTable({
       header: "Cliente",
       sortable: true,
       sortValue: (d) => d.clienteNombre,
-      width: "30%",
+      width: "19%",
       testId: "cliente-cell",
       debugLabel: "Cliente",
       render: (d) => {
@@ -429,7 +457,8 @@ export function FacturasTable({
       header: "Estado",
       sortable: true,
       sortValue: (d) => ESTADO_DESPACHO_LABEL[d.estado] ?? "Sin estado",
-      width: "20%",
+      width: "15%",
+      // (Fecha 10 · Entrega 13 · Ciudad 12 · Centro 14 · Doc 17 · Cliente 19 · Estado 15 = 100%)
       testId: "estado-cell",
       debugLabel: "Estado",
       render: (d) => <EstadoBadge estado={d.estado} />,
@@ -448,11 +477,11 @@ export function FacturasTable({
         isRowSelected={(d) => !!selectedId && d.id === selectedId}
         density="compact"
         tableLayout="fixed"
-        minWidth={760}
+        minWidth={980}
         skeletonRows={8}
         ariaLabel="Facturas contado"
         debug={debug}
-        defaultSort={{ key: "fechaCreacion", dir: "desc" }}
+        defaultSort={{ key: "entrega", dir: "asc" }}
         legend={<StateLegend items={items} />}
         empty={{
           icon: <Store size={22} />,

@@ -14,6 +14,8 @@ const mockRow = {
   clienteDocumento: "9011218257",
   clienteTelefono: "3137918413",
   estado: "CREADO_TIENDA",
+  fechaEntregaComprometida: "2026-06-30",
+  ciudad: "Medellin",
   createdAt: "2026-06-19T10:00:00.000Z",
   updatedAt: "2026-06-19T10:00:00.000Z",
 } as unknown as DespachoTienda;
@@ -45,21 +47,21 @@ describe("FacturasTable — mapeo real de columnas (render)", () => {
   const tdCount = (firstRow.match(/<td[ >]/g) ?? []).length;
   const colCount = (html.match(/<col[ />]/g) ?? []).length;
 
-  it("ESTRUCTURA: th === td === col === 5 (no hay celda extra del rail)", () => {
-    expect(thCount).toBe(5);
-    expect(tdCount).toBe(5);
-    expect(colCount).toBe(5);
+  it("ESTRUCTURA: th === td === col === 7 (no hay celda extra del rail)", () => {
+    expect(thCount).toBe(7);
+    expect(tdCount).toBe(7);
+    expect(colCount).toBe(7);
     expect(thCount).toBe(tdCount);
     expect(colCount).toBe(thCount);
   });
 
   it("ESTRUCTURA: las celdas van en el mismo orden que los headers (fecha→estado)", () => {
-    const ids = ["fecha-cell", "centro-cell", "doc-cell", "cliente-cell", "estado-cell"];
+    const ids = ["fecha-cell", "entrega-cell", "ciudad-cell", "centro-cell", "doc-cell", "cliente-cell", "estado-cell"];
     const positions = ids.map((id) => firstRow.indexOf(`data-testid="${id}"`));
     expect(positions.every((p) => p >= 0)).toBe(true);
     expect(positions).toEqual([...positions].sort((a, b) => a - b));
     // estado-cell es la ÚLTIMA celda (debajo del header ESTADO).
-    expect(positions[4]).toBe(Math.max(...positions));
+    expect(positions[6]).toBe(Math.max(...positions));
   });
 
   it("ESTRUCTURA: la primera celda del body es fecha-cell (no una celda de rail)", () => {
@@ -77,10 +79,12 @@ describe("FacturasTable — mapeo real de columnas (render)", () => {
     expect(text("cliente-cell")).toBe("ALIMENTOS SALUDABLES FIT JUICE SAS9011218257 · 3137918413");
     expect(text("estado-cell")).toBe("Pendiente recogida");
     expect(text("fecha-cell")).toContain("19/06/2026");
+    expect(text("entrega-cell")).toContain("30/06/2026");
+    expect(text("ciudad-cell")).toContain("Medellin");
   });
 
-  it("las 5 celdas existen y están en orden", () => {
-    const order = ["fecha-cell", "centro-cell", "doc-cell", "cliente-cell", "estado-cell"];
+  it("las 7 celdas existen y están en orden", () => {
+    const order = ["fecha-cell", "entrega-cell", "ciudad-cell", "centro-cell", "doc-cell", "cliente-cell", "estado-cell"];
     const positions = order.map((t) => html.indexOf(`data-testid="${t}"`));
     expect(positions.every((p) => p >= 0)).toBe(true);
     const sorted = [...positions].sort((a, b) => a - b);

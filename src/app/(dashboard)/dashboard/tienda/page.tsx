@@ -24,6 +24,7 @@ import { useAutoRefresh } from "@/hooks/useAutoRefresh";
 import { useApi } from "@/hooks/useApi";
 import { apiGet, apiSend, apiPost, apiPut, apiDelete } from "@/lib/apiClient";
 import { getErrorMessage } from "@/lib/errors";
+import { CIUDAD_OPTIONS } from "@/lib/solicitudesTransporte";
 import { getModuleColor, getModuleCssVars } from "@/lib/moduleTheme";
 import {
   DetailFlow,
@@ -351,6 +352,7 @@ export default function TiendaPage() {
                 { label: "N° Documento",             value: <span style={{ fontFamily: "var(--mono)", fontWeight: 600 }}>{panelItem.numeroDocumento}</span> },
                 { label: "Consecutivo",              value: <span style={{ fontFamily: "var(--mono)" }}>#{panelItem.consecutivo}</span> },
                 { label: "Entrega comprometida",     value: panelItem.fechaEntregaComprometida ? fmtFechaTienda(panelItem.fechaEntregaComprometida) : undefined },
+                { label: "Ciudad destino",           value: panelItem.ciudad ?? undefined },
                 { label: "Número de cajas",          value: panelItem.numeroCajas != null ? String(panelItem.numeroCajas) : undefined },
                 { label: "Recogido",                 value: panelItem.recibidoAt  ? new Date(panelItem.recibidoAt).toLocaleString("es-CO",  { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" }) : undefined },
                 { label: "Llegada CEDI",             value: panelItem.entregadoCediAt ? new Date(panelItem.entregadoCediAt).toLocaleString("es-CO", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" }) : undefined },
@@ -633,6 +635,7 @@ function ModalDespacho({ despacho, role, onClose, onSaved, onError }: {
   const [clienteTelefono,         setCT]     = useState(despacho?.clienteTelefono ?? "");
   const [fechaCreacion,           setFecha]  = useState(despacho?.fechaCreacion ?? todayISO());
   const [fechaEntrega,            setFEntrega]=useState(despacho?.fechaEntregaComprometida ?? "");
+  const [ciudad,                  setCiudad] = useState(despacho?.ciudad ?? "");
   const [numeroCajas,             setNCajas] = useState(despacho?.numeroCajas != null ? String(despacho.numeroCajas) : "");
   const [notaEntrega,             setNotaEntrega] = useState(despacho?.notaEntrega ?? "");
   const [plines, setPlines] = useState<Array<{ plu: string; descripcion: string; unidades: string; maestro?: boolean; status?: "idle" | "loading" | "found" | "missing"; override?: boolean }>>(
@@ -679,6 +682,7 @@ function ModalDespacho({ despacho, role, onClose, onSaved, onError }: {
         fechaEntregaComprometida: fechaEntrega || null,
         numeroCajas: numeroCajas ? parseInt(numeroCajas) : null,
         notaEntrega: notaEntrega.trim() || null,
+        ciudad: ciudad || null,
       };
       if (!isEdit && plinesValidos.length > 0) {
         body.plines = plinesValidos.map((p) => ({ plu: p.plu.trim(), descripcion: p.descripcion.trim() || null, unidades: parseInt(p.unidades) }));
@@ -712,6 +716,12 @@ function ModalDespacho({ despacho, role, onClose, onSaved, onError }: {
             <Field label="Entrega comprometida"><input type="date" value={fechaEntrega} onChange={(e) => setFEntrega(e.target.value)} className="ds-input" /></Field>
             <Field label="Número de cajas"><input type="number" value={numeroCajas} onChange={(e) => setNCajas(e.target.value)} min="1" placeholder="0" className="ds-input" /></Field>
           </div>
+          <Field label="Ciudad destino">
+            <select value={ciudad} onChange={(e) => setCiudad(e.target.value)} className="ds-input">
+              <option value="">— Sin asignar —</option>
+              {CIUDAD_OPTIONS.map((c) => <option key={c} value={c}>{c}</option>)}
+            </select>
+          </Field>
           <Field label="Nota de entrega">
             <textarea
               value={notaEntrega}

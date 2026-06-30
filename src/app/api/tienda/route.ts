@@ -31,6 +31,7 @@ const createSchema = z.object({
   fechaEntregaComprometida:  z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable().optional(),
   numeroCajas:               z.number().int().min(1).nullable().optional(),
   notaEntrega:               z.string().nullable().optional(),
+  ciudad:                    z.string().max(100).nullable().optional(),
   plines:                    z.array(plinSchema).optional(),
 });
 
@@ -146,6 +147,7 @@ export async function POST(req: NextRequest) {
         fechaEntregaComprometida:d.fechaEntregaComprometida ? new Date(d.fechaEntregaComprometida + "T00:00:00") : null,
         numeroCajas:             d.numeroCajas ?? null,
         notaEntrega:             d.notaEntrega ?? null,
+        ciudad:                  d.ciudad ?? null,
         creadoPorId:             actor.id,
       },
       include: { creadoPor: { select: { id: true, name: true } }, plines: true, guardadoPendiente: { include: { asignadoA: { select: { name: true } } } } },
