@@ -9,6 +9,7 @@ import {
   FileText,
   GitMerge,
   Home,
+  Map,
   Menu,
   Package,
   ScanLine,
@@ -49,6 +50,7 @@ const ALL_ITEMS: NavItem[] = [
   { href: "/dashboard/solicitudes-transporte", label: "Solicitudes Transporte", icon: <FileText size={16} strokeWidth={2.1} />, moduleKey: "solicitudes-transporte" },
   { href: "/dashboard/transporte", label: "Guardados", icon: <Truck size={16} strokeWidth={2.1} />, moduleKey: "transporte" },
   { href: "/dashboard/centro-control", label: "Centro de Control", icon: <BarChart3 size={16} strokeWidth={2.1} />, moduleKey: "centro-control" },
+  { href: "/dashboard/mapa-ciudades", label: "Mapa de Ciudades", icon: <Map size={16} strokeWidth={2.1} />, moduleKey: "mapa-ciudades" },
   { href: "/dashboard/usuarios", label: "Usuarios", icon: <Users size={16} strokeWidth={2.1} />, moduleKey: "usuarios" },
   { href: "/dashboard/auditoria", label: "Auditoria", icon: <ScrollText size={16} strokeWidth={2.1} />, moduleKey: "auditoria" },
 ];
@@ -64,7 +66,7 @@ const GROUPS = [
     "/dashboard/solicitudes-transporte",
     "/dashboard/transporte",
   ],
-  ["/dashboard/centro-control"],
+  ["/dashboard/centro-control", "/dashboard/mapa-ciudades"],
   ["/dashboard/usuarios", "/dashboard/auditoria"],
 ];
 

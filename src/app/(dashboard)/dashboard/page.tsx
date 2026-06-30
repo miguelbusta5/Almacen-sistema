@@ -7,7 +7,7 @@ import { useSession } from "next-auth/react";
 import {
   Package, Truck, ClipboardList, ArrowRight, AlertTriangle,
   Clock, Plus, CheckCircle2,
-  CheckSquare, Store, BarChart2, Users, History, ShieldCheck, GitMerge, FileText, Tags, Gauge, LayoutDashboard,
+  CheckSquare, Map, Store, BarChart2, Users, History, ShieldCheck, GitMerge, FileText, Tags, Gauge, LayoutDashboard,
 } from "lucide-react";
 import { Badge, Stat, TimelineItem, SectionHeader, SkeletonStat as SK } from "@/components/ui";
 import { AutoRefreshIndicator } from "@/components/ui/AutoRefreshIndicator";
@@ -185,6 +185,7 @@ const ICON_MAP: Record<string, React.ReactNode> = {
   FileText:         <FileText size={18} />,
   Tags:             <Tags size={18} />,
   LayoutDashboard:  <LayoutDashboard size={18} />,
+  Map:              <Map size={18} />,
 };
 
 // ── Botón de acción rápida ────────────────────────────────

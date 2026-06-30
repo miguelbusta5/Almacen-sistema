@@ -144,6 +144,18 @@ export const HOME_ACTIONS: HomeAction[] = [
     ],
     priority: 1,
   },
+  // ── Mapa de ciudades ────────────────────────────────────
+  {
+    id: "ver-mapa-ciudades",
+    title: "Mapa de ciudades",
+    description: "Ver distribución geográfica de solicitudes de transporte",
+    href: "/dashboard/mapa-ciudades",
+    icon: "Map",
+    color: getModuleColor("mapa-ciudades"),
+    moduleKey: "mapa-ciudades",
+    roles: ["ADMIN", "GERENTE", "SUPERVISOR_TRANSPORTE", "SUPERVISOR_INVENTARIO", "SUPERVISOR_TIENDA"],
+    priority: 3,
+  },
   // ── Administración ──────────────────────────────────────
   {
     id: "gestionar-usuarios",
