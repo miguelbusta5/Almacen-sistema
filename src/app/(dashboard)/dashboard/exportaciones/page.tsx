@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useSession } from "next-auth/react";
-import { BarChart3, CheckCircle2, ChevronDown, ChevronUp, Clock, Pencil, RefreshCw, Search, Tags, Trash2 } from "lucide-react";
+import { BarChart3, CheckCircle2, ChevronDown, ChevronUp, Clock, Download, Pencil, RefreshCw, Search, Tags, Trash2 } from "lucide-react";
 import { EmptyState, ModuleHero, SkeletonTable } from "@/components/ui";
 import { useConfirm } from "@/components/ui/useDialogs";
 import { Modal } from "@/components/ui/Modal";
@@ -67,6 +67,7 @@ export default function ExportacionesPage() {
   const PAGE_SIZE = 40;
   const [saving, setSaving] = useState(false);
   const [finalizing, setFinalizing] = useState(false);
+  const [exporting, setExporting] = useState(false);
   const [error, setError] = useState("");
   const [showStats, setShowStats] = useState(true);
   const [statsOperario, setStatsOperario] = useState("");
@@ -123,6 +124,28 @@ export default function ExportacionesPage() {
     setStatsDesde(desde);
     setStatsHasta(hasta);
     setAppliedStats({ desde, hasta });
+  }
+
+  // Descarga XLSX (solo gestores) respetando los filtros aplicados de la lista.
+  async function exportar() {
+    setExporting(true);
+    setError("");
+    try {
+      const qs = buildQuery({ q: applied.q, fecha: applied.fecha, estado: applied.estado, usuarioId: applied.usuarioId });
+      const res = await fetch(`/api/exportaciones/export${qs}`);
+      if (!res.ok) throw new Error("No se pudo exportar");
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `exportaciones-${new Date().toISOString().slice(0, 10)}.xlsx`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      setError(getErrorMessage(err, "No se pudo exportar"));
+    } finally {
+      setExporting(false);
+    }
   }
 
   const autoRefresh = useAutoRefresh({
@@ -456,6 +479,11 @@ export default function ExportacionesPage() {
             <p style={{ margin: "4px 0 0", color: "var(--muted)", fontSize: 12 }}>Inicio y finalizacion se calculan automaticamente al capturar cajas consecutivas.</p>
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            {canManage && (
+              <button onClick={exportar} disabled={exporting} className="ds-btn ds-btn-secondary ds-btn-sm" style={{ display: "flex", alignItems: "center", gap: 6, opacity: exporting ? 0.7 : 1 }}>
+                <Download size={14} />{exporting ? "Exportando..." : "Exportar Excel"}
+              </button>
+            )}
             <AutoRefreshIndicator
               lastUpdatedAt={autoRefresh.lastUpdatedAt}
               refreshing={autoRefresh.refreshing}
