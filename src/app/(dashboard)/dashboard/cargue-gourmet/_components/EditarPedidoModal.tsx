@@ -40,7 +40,6 @@ const label: React.CSSProperties = {
 function formFromPedido(p: PedidoEditable | null) {
   return {
     orden: p?.orden ?? "",
-    tipoOrden: (p?.tipoOrden as "OVDM" | "TSDM") ?? "OVDM",
     codigoTiendaQuery: p?.codigoTienda ?? "",
     tiendaSeleccionada: p ? { codigo: p.codigoTienda, tienda: p.nombreTienda, ciudad: p.ciudadDestino } as TiendaOption : null,
     cajasEsperadas: p ? String(p.cajasEsperadas) : "",
@@ -130,7 +129,6 @@ export function EditarPedidoModal({
     try {
       await apiPut(`/api/cargue-gourmet/${pedido.id}`, {
         orden: form.orden.trim(),
-        tipoOrden: form.tipoOrden,
         codigoTienda: form.tiendaSeleccionada.codigo,
         cajasEsperadas: cajas,
         estibasEsperadas: estibas,
@@ -162,30 +160,16 @@ export function EditarPedidoModal({
       }
     >
       <form id="editar-pedido-gourmet-form" onSubmit={submit} style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 120px", gap: 10 }}>
-          <div>
-            <label style={label}>Orden</label>
-            <input
-              required
-              value={form.orden}
-              onChange={(e) => setForm((f) => ({ ...f, orden: e.target.value }))}
-              maxLength={100}
-              style={inp}
-              data-testid="editar-orden-input"
-            />
-          </div>
-          <div>
-            <label style={label}>Tipo</label>
-            <select
-              value={form.tipoOrden}
-              onChange={(e) => setForm((f) => ({ ...f, tipoOrden: e.target.value as "OVDM" | "TSDM" }))}
-              style={inp}
-              data-testid="editar-tipo-orden-select"
-            >
-              <option value="OVDM">OVDM</option>
-              <option value="TSDM">TSDM</option>
-            </select>
-          </div>
+        <div>
+          <label style={label}>Orden</label>
+          <input
+            required
+            value={form.orden}
+            onChange={(e) => setForm((f) => ({ ...f, orden: e.target.value }))}
+            maxLength={100}
+            style={inp}
+            data-testid="editar-orden-input"
+          />
         </div>
 
         <div style={{ position: "relative" }}>

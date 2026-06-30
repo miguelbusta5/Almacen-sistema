@@ -3,6 +3,7 @@ import { requireRole } from "@/lib/authz";
 import { prisma } from "@/lib/prisma";
 import { z } from "zod";
 import type { Prisma } from "@prisma/client";
+import { derivarTipoOrden } from "@/lib/gourmetTipoOrden";
 
 type PedidoListRow = Prisma.GourmetPedidoGetPayload<{
   include: { creadoPor: { select: { name: true } } };
@@ -94,7 +95,6 @@ export async function GET(req: NextRequest) {
 
 const createSchema = z.object({
   orden: z.string().min(1).max(100),
-  tipoOrden: z.enum(["OVDM", "TSDM"]),
   codigoTienda: z.string().min(1).max(50),
   cajasEsperadas: z.number().int().min(1),
   estibasEsperadas: z.number().int().min(1),
@@ -122,10 +122,12 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "La tienda está inactiva en el maestro" }, { status: 400 });
   }
 
+  const tipoOrden = derivarTipoOrden(data.orden);
+
   const pedido = await prisma.gourmetPedido.create({
     data: {
       orden: data.orden,
-      tipoOrden: data.tipoOrden,
+      tipoOrden,
       codigoTienda: data.codigoTienda,
       nombreTienda: tienda.tienda,
       ciudadDestino: tienda.ciudad,
@@ -143,7 +145,7 @@ export async function POST(req: NextRequest) {
       action: "CREATE",
       module: "cargue-gourmet",
       recordId: pedido.id,
-      details: `${data.tipoOrden} ${data.orden} — tienda ${tienda.tienda}`,
+      details: `${tipoOrden} ${data.orden} — tienda ${tienda.tienda}`,
     },
   }).catch(() => {});
 

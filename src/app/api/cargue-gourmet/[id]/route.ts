@@ -3,6 +3,7 @@ import { requireRole } from "@/lib/authz";
 import { prisma } from "@/lib/prisma";
 import { z } from "zod";
 import type { Prisma } from "@prisma/client";
+import { derivarTipoOrden } from "@/lib/gourmetTipoOrden";
 
 // Payload con todas las relaciones (forma del GET).
 type PedidoFull = Prisma.GourmetPedidoGetPayload<{
@@ -103,7 +104,6 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
 
 const updateSchema = z.object({
   orden: z.string().min(1).max(100).optional(),
-  tipoOrden: z.enum(["OVDM", "TSDM"]).optional(),
   codigoTienda: z.string().min(1).max(50).optional(),
   cajasEsperadas: z.number().int().min(1).optional(),
   estibasEsperadas: z.number().int().min(1).optional(),
@@ -144,8 +144,10 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
   }
 
   const data: Record<string, unknown> = {};
-  if (d.orden !== undefined) data.orden = d.orden;
-  if (d.tipoOrden !== undefined) data.tipoOrden = d.tipoOrden;
+  if (d.orden !== undefined) {
+    data.orden = d.orden;
+    data.tipoOrden = derivarTipoOrden(d.orden);
+  }
   if (d.cajasEsperadas !== undefined) data.cajasEsperadas = d.cajasEsperadas;
   if (d.estibasEsperadas !== undefined) data.estibasEsperadas = d.estibasEsperadas;
 

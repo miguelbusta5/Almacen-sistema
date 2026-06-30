@@ -224,7 +224,6 @@ describe("POST /api/cargue-gourmet", () => {
 
   const validBody = {
     orden: "TSDM98761",
-    tipoOrden: "TSDM",
     codigoTienda: "T001",
     cajasEsperadas: 5,
     estibasEsperadas: 2,
@@ -258,6 +257,23 @@ describe("POST /api/cargue-gourmet", () => {
     );
   });
 
+  it("deriva tipoOrden desde el prefijo de la orden", async () => {
+    mocks.getSessionUser.mockResolvedValue(actor("OPERACIONES_GOURMET"));
+    mocks.maestroFindUnique.mockResolvedValue({ codigo: "T001", tienda: "Tienda Centro", ciudad: "Bogotá", activo: true });
+    mocks.pedidoCreate.mockResolvedValue({
+      id: "p1", orden: "OVDM00001", tipoOrden: "OVDM", codigoTienda: "T001",
+      nombreTienda: "Tienda Centro", ciudadDestino: "Bogotá",
+      cajasEsperadas: 5, estibasEsperadas: 2, estado: "BORRADOR",
+      creadoPorId: "u_1", createdAt: new Date(), updatedAt: new Date(),
+    });
+
+    const res = await postPedido(postReq({ ...validBody, orden: "OVDM00001" }));
+    expect(res.status).toBe(201);
+    expect(mocks.pedidoCreate).toHaveBeenCalledWith(
+      expect.objectContaining({ data: expect.objectContaining({ tipoOrden: "OVDM" }) })
+    );
+  });
+
   it("rechaza tienda inexistente con 400", async () => {
     mocks.getSessionUser.mockResolvedValue(actor("OPERACIONES_GOURMET"));
     mocks.maestroFindUnique.mockResolvedValue(null);
@@ -274,13 +290,6 @@ describe("POST /api/cargue-gourmet", () => {
     const res = await postPedido(postReq(validBody));
     expect(res.status).toBe(400);
     expect(mocks.pedidoCreate).not.toHaveBeenCalled();
-  });
-
-  it("rechaza tipoOrden inválido", async () => {
-    mocks.getSessionUser.mockResolvedValue(actor("OPERACIONES_GOURMET"));
-    const res = await postPedido(postReq({ ...validBody, tipoOrden: "XOVDM" }));
-    expect(res.status).toBe(400);
-    expect(mocks.maestroFindUnique).not.toHaveBeenCalled();
   });
 
   it("rechaza cajasEsperadas <= 0", async () => {
@@ -437,7 +446,6 @@ describe("PUT /api/cargue-gourmet/[id]", () => {
   const params = { params: Promise.resolve({ id: "p1" }) };
   const validUpdate = {
     orden: "TSDM98761-B",
-    tipoOrden: "TSDM" as const,
     cajasEsperadas: 6,
     estibasEsperadas: 3,
     updatedAt: FIXED_UPDATED_AT.toISOString(),
@@ -528,12 +536,6 @@ describe("PUT /api/cargue-gourmet/[id]", () => {
     const res = await putPedido(putReq("p1", { ...validUpdate, codigoTienda: "T002" }), params);
     expect(res.status).toBe(400);
     expect(mocks.pedidoUpdate).not.toHaveBeenCalled();
-  });
-
-  it("rechaza tipoOrden inválido", async () => {
-    mocks.getSessionUser.mockResolvedValue(actor("OPERACIONES_GOURMET"));
-    const res = await putPedido(putReq("p1", { ...validUpdate, tipoOrden: "XOVDM" }), params);
-    expect(res.status).toBe(400);
   });
 
   it("rechaza cajasEsperadas/estibasEsperadas <= 0", async () => {
