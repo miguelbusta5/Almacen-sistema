@@ -213,6 +213,7 @@ export function CargueGourmetTable({
       tableLayout="fixed"
       minWidth={940}
       debug={debug}
+      onRowClick={onView ? (r) => onView(r) : undefined}
       empty={{ title: "Sin pedidos", description: "No hay pedidos Gourmet que coincidan con los filtros aplicados." }}
     />
   );
