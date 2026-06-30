@@ -67,6 +67,34 @@ export function tieneAlerta(g: Guardado): boolean {
   return u !== null && (u.tipo === "vencida" || u.tipo === "proxima");
 }
 
+// ── Semáforo de color de la fecha de entrega comprometida (columna Guardados) ──
+// Escala por días restantes hasta la entrega: <0 vencida; 0–10 amarillo;
+// 11–15 azul; 16+ verde. Los DESPACHADO con fecha quedan neutros (ya no hay
+// urgencia de entrega). "sin-fecha" aplica siempre que la nota no traiga fecha.
+export type EntregaColorNivel = "neutro" | "sin-fecha" | "vencida" | "amarillo" | "azul" | "verde";
+
+export function nivelEntregaColor(g: { estado: string; nota: string | null }): EntregaColorNivel {
+  const entrega = parseEntrega(g.nota);
+  if (!entrega) return "sin-fecha";
+  if (g.estado === "DESPACHADO") return "neutro";
+  const diasRestantes = Math.floor(
+    (new Date(entrega).getTime() - new Date(todayISO()).getTime()) / 86_400_000,
+  );
+  if (diasRestantes < 0) return "vencida";
+  if (diasRestantes <= 10) return "amarillo";
+  if (diasRestantes <= 15) return "azul";
+  return "verde";
+}
+
+export const ENTREGA_COLOR: Record<EntregaColorNivel, string | undefined> = {
+  neutro:      undefined,        // texto normal
+  "sin-fecha": "var(--error)",
+  vencida:     "var(--error)",
+  amarillo:    "var(--warning)",
+  azul:        "var(--info)",
+  verde:       "var(--success)",
+};
+
 // ── Scoring de urgencia (0-100) ──────────────────────────
 // Determina prioridad: qué guardado atender primero.
 import { calcAlmacenaje } from "@/lib/almacenaje";

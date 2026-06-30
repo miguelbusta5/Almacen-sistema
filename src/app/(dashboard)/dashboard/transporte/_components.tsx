@@ -12,7 +12,8 @@ import {
   fmtFecha,
   fmtCOP,
   parseEntrega,
-  urgencia,
+  nivelEntregaColor,
+  ENTREGA_COLOR,
   ALERTA_TIER_COLOR,
   ALERTA_TIER_LABEL,
 } from "@/lib/transporte";
@@ -120,8 +121,7 @@ export function GuardadosTable({
       render: (g) => {
         const entrega = parseEntrega(g.nota);
         if (!entrega) return <span style={{ color: "var(--error)", fontWeight: 600, fontSize: 11 }}>Sin fecha asignada</span>;
-        const u = urgencia(g);
-        const color = u?.tipo === "vencida" ? "var(--error)" : u?.tipo === "proxima" ? "var(--warning)" : undefined;
+        const color = ENTREGA_COLOR[nivelEntregaColor(g)];
         return <span className={styles.monoText} style={{ color, fontWeight: color ? 700 : undefined }}>{fmtFecha(entrega)}</span>;
       },
     },
