@@ -311,7 +311,7 @@
 .detailFlowStepDone .flowDot {
   border-color: var(--flow-color);
   background: var(--flow-color);
-  color: #04130D;
+  color: var(--text-on-accent);
   box-shadow: 0 0 16px color-mix(in srgb, var(--flow-color) 40%, transparent);
 }
 
