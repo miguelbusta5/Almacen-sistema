@@ -23,12 +23,6 @@ const COLOR = getModuleColor("integracion");
 const TIPO_DOC_OPTIONS = ["OVDM", "TSDM"] as const;
 const AREA_OPTIONS = ["MUEBLES", "GOURMET"] as const;
 
-const ESTADO_COLOR: Record<EstadoIntegracion, string> = {
-  PENDIENTE_AREA2:   "var(--warning)",
-  LISTA_TRANSPORTE:  "var(--brand)",
-  COMPLETADA:        "var(--success)",
-};
-
 function fmtDateTime(iso: string | null | undefined) {
   if (!iso) return "—";
   return new Date(iso).toLocaleString("es-CO", { day: "2-digit", month: "2-digit", year: "2-digit", hour: "2-digit", minute: "2-digit" });
