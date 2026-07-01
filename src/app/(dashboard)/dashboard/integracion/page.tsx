@@ -8,6 +8,9 @@ import { Badge, ModuleDetailView, ModuleHero } from "@/components/ui";
 import { DetailSection, DetailGrid } from "@/components/ui/SlidePanel";
 import { AutoRefreshIndicator } from "@/components/ui/AutoRefreshIndicator";
 import { useAutoRefresh } from "@/hooks/useAutoRefresh";
+import { useApi } from "@/hooks/useApi";
+import { apiPut, apiDelete, buildQuery } from "@/lib/apiClient";
+import { getErrorMessage } from "@/lib/errors";
 import { useIsMobile } from "@/lib/useIsMobile";
 import { useListDetailScroll } from "@/hooks/useListDetailScroll";
 import { getModuleColor, getModuleCssVars } from "@/lib/moduleTheme";
@@ -263,10 +266,10 @@ function ModalCompletarArea2({ integracion, role, onClose, onCompleted }: {
         plines: validPlines.map((p) => ({ plu: p.plu.trim(), descripcion: p.descripcion.trim() || undefined, unidades: p.unidades })),
         observaciones: obs.trim() || undefined,
       };
-      const res = await fetch(`/api/integracion/${integracion.id}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
-      const json = await res.json();
-      if (!res.ok) { setError(json.error ?? "Error al completar"); return; }
+      await apiPut(`/api/integracion/${integracion.id}`, body);
       onCompleted();
+    } catch (e) {
+      setError(getErrorMessage(e, "Error al completar"));
     } finally {
       setSaving(false);
     }
@@ -354,15 +357,12 @@ function ModalMarcarRecibido({ integracion, onClose, onDone }: {
     e.preventDefault();
     setSaving(true);
     try {
-      const res = await fetch(`/api/integracion/${integracion.id}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ accion: "MARCAR_COMPLETADA", observaciones: obs.trim() || undefined }),
-      });
-      const json = await res.json();
-      if (!res.ok) { setError(json.error ?? "Error"); setSaving(false); return; }
+      await apiPut(`/api/integracion/${integracion.id}`, { accion: "MARCAR_COMPLETADA", observaciones: obs.trim() || undefined });
       onDone();
-    } catch { setSaving(false); }
+    } catch (e) {
+      setError(getErrorMessage(e, "Error"));
+      setSaving(false);
+    }
   }
 
   return (
@@ -400,9 +400,6 @@ export default function IntegracionPage() {
   const { data: session } = useSession();
   const role = (session?.user as { role?: string } | undefined)?.role ?? "";
 
-  const [integraciones, setIntegraciones] = useState<Integracion[]>([]);
-  const [total, setTotal] = useState(0);
-  const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [filterEstado, setFilterEstado] = useState("");
   const [filterArea, setFilterArea] = useState("");
@@ -432,29 +429,19 @@ export default function IntegracionPage() {
     return areaFromRole !== item.areaIniciadora;
   }, [role, areaFromRole]);
 
-  const load = useCallback(async () => {
-    setLoading(true);
-    try {
-      const params = new URLSearchParams();
-      if (filterEstado) params.set("estado", filterEstado);
-      if (filterArea) params.set("area", filterArea);
-      if (filterTipo) params.set("tipoDocumento", filterTipo);
-      const res = await fetch(`/api/integracion?${params}`);
-      if (!res.ok) return;
-      const json = await res.json();
-      setIntegraciones(json.data ?? []);
-      setTotal(json.total ?? 0);
-    } finally {
-      setLoading(false);
-    }
-  }, [filterEstado, filterArea, filterTipo]);
-
-  useEffect(() => { if (role && ALLOWED.includes(role)) load(); }, [load, role]);
+  const puedeVer = Boolean(role && ALLOWED.includes(role));
+  const listKey = puedeVer
+    ? `/api/integracion${buildQuery({ estado: filterEstado, area: filterArea, tipoDocumento: filterTipo })}`
+    : null;
+  const { data: listJson, isLoading: loading, mutate: mutateList } = useApi<{ data: Integracion[]; total: number }>(listKey);
+  const integraciones = listJson?.data ?? [];
+  const total = listJson?.total ?? 0;
+  const load = useCallback(() => { void mutateList(); }, [mutateList]);
 
   const autoRefresh = useAutoRefresh({
-    enabled: Boolean(role && ALLOWED.includes(role)),
+    enabled: puedeVer,
     pause: Boolean(selected || showNueva || completarItem || recibidoItem || deletingIntId),
-    onRefresh: () => load(),
+    onRefresh: () => { void mutateList(); },
   });
 
   const filtered = useMemo(() => {
@@ -471,8 +458,7 @@ export default function IntegracionPage() {
 
   async function deleteIntegracion(id: string) {
     try {
-      const res = await fetch(`/api/integracion/${id}`, { method: "DELETE" });
-      if (!res.ok) throw new Error("Error al eliminar");
+      await apiDelete(`/api/integracion/${id}`);
       setSelected(null);
       setDeletingIntId(null);
       refresh();

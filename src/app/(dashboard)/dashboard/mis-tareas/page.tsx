@@ -1,6 +1,5 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
 import {
   CheckSquare, Package, Truck, Store,
@@ -12,6 +11,7 @@ import { horasDesde } from "@/lib/tienda";
 import { Badge, EmptyState, ModuleHero } from "@/components/ui";
 import { AutoRefreshIndicator } from "@/components/ui/AutoRefreshIndicator";
 import { useAutoRefresh } from "@/hooks/useAutoRefresh";
+import { useApi } from "@/hooks/useApi";
 import Link from "next/link";
 import { getModuleCssVars } from "@/lib/moduleTheme";
 
@@ -102,22 +102,11 @@ export default function MisTareasPage() {
   const { data: session } = useSession();
   const userName = (session?.user as { name?: string } | undefined)?.name ?? "";
 
-  const [data, setData] = useState<MisTareas | null>(null);
-  const [loading, setLoading] = useState(true);
-
-  async function load() {
-    setLoading(true);
-    try {
-      const res = await fetch("/api/mis-tareas");
-      const json = await res.json();
-      if (json.success) setData(json.data);
-    } catch { /* noop */ }
-    finally { setLoading(false); }
-  }
-  useEffect(() => { load(); }, []);
+  const { data: json, isLoading: loading, mutate: mutateData } = useApi<{ data: MisTareas }>("/api/mis-tareas");
+  const data = json?.data ?? null;
 
   const autoRefresh = useAutoRefresh({
-    onRefresh: () => load(),
+    onRefresh: () => { void mutateData(); },
   });
 
   // ── Calcular KPIs ─────────────────────────────────────────

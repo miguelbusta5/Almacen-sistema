@@ -5,6 +5,7 @@ import { Bell, ChevronDown, Clock3, LogOut, Search, ShieldCheck, Wifi } from "lu
 import { useEffect, useState } from "react";
 import Logo from "./Logo";
 import { ThemeToggle } from "./ThemeToggle";
+import { useApi } from "@/hooks/useApi";
 import { useIsMobile } from "@/lib/useIsMobile";
 import { useCommandPalette } from "@/contexts/CommandPaletteContext";
 import { getVisibleModules, ROLE_LABEL_EXT, type AppRole } from "@/lib/modulePermissions";
@@ -46,9 +47,6 @@ export default function Header({ user }: HeaderProps) {
   const isMobile = useIsMobile();
   const [menuOpen, setMenuOpen] = useState(false);
   const { open: openPalette } = useCommandPalette();
-  const [notifCount, setNotifCount] = useState(0);
-  const [notifications, setNotifications] = useState<NotificacionItem[]>([]);
-  const [notifLoading, setNotifLoading] = useState(true);
   const [activityOpen, setActivityOpen] = useState(false);
   const [markingAllRead, setMarkingAllRead] = useState(false);
   const toast = useToast();
@@ -63,25 +61,11 @@ export default function Header({ user }: HeaderProps) {
 
   // Mismo polling de siempre (60s) — ahora también guarda la lista, no solo el conteo,
   // para alimentar el Centro de Actividad (Fase C1) sin duplicar el fetch.
-  useEffect(() => {
-    async function fetchNotif() {
-      try {
-        const res = await fetch("/api/notificaciones?unread=true");
-        const json = await res.json();
-        if (json.success) {
-          setNotifCount(json.totalNoLeidas ?? 0);
-          setNotifications(json.data ?? []);
-        }
-      } catch {
-        // No bloquear el shell por notificaciones.
-      } finally {
-        setNotifLoading(false);
-      }
-    }
-    fetchNotif();
-    const id = setInterval(fetchNotif, 60_000);
-    return () => clearInterval(id);
-  }, []);
+  const { data: notifJson, isLoading: notifLoading, mutate: mutateNotif } = useApi<{
+    data: NotificacionItem[]; totalNoLeidas: number;
+  }>("/api/notificaciones?unread=true", { refreshInterval: 60_000 });
+  const notifications = notifJson?.data ?? [];
+  const notifCount = notifJson?.totalNoLeidas ?? 0;
 
   // Cierre con Escape (mismo criterio de accesibilidad que el resto del DS, p. ej. SlidePanel).
   useEffect(() => {
@@ -97,8 +81,7 @@ export default function Header({ user }: HeaderProps) {
     setMarkingAllRead(true);
     const ok = await performMarkAllRead();
     if (ok) {
-      setNotifications([]);
-      setNotifCount(0);
+      void mutateNotif({ data: [], totalNoLeidas: 0 }, { revalidate: false });
       toast.success("Notificaciones marcadas como leídas");
     } else {
       toast.error("No se pudieron marcar las notificaciones como leídas");

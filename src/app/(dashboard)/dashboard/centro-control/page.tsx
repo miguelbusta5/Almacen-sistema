@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo } from "react";
 import Link from "next/link";
 import { useSession } from "next-auth/react";
 import {
@@ -10,6 +10,7 @@ import {
 import { SectionHeader } from "@/components/ui";
 import { AutoRefreshIndicator } from "@/components/ui/AutoRefreshIndicator";
 import { useAutoRefresh } from "@/hooks/useAutoRefresh";
+import { useApi } from "@/hooks/useApi";
 import { useIsMobile } from "@/lib/useIsMobile";
 import { calcAlmacenaje } from "@/lib/almacenaje";
 import { scoreGuardado, urgencia } from "@/lib/transporte";
@@ -181,41 +182,21 @@ export default function CentroControlPage() {
   const { data: session } = useSession();
   const userName = (session?.user as { name?: string } | undefined)?.name ?? "";
 
-  const [novedades,   setNovedades]   = useState<Novedad[]>([]);
-  const [guardados,   setGuardados]   = useState<Guardado[]>([]);
-  const [despachos,   setDespachos]   = useState<DespachoTienda[]>([]);
-  const [kpis,        setKpis]        = useState<{ stats: CentroControlStats | null } | null>(null);
-  const [sinContacto, setSinContacto] = useState<SinContactoData>({ count: 0, items: [] });
-  const [loading,     setLoading]     = useState(true);
+  const { data: novJson, isLoading: loadingNov, mutate: mutateNov } = useApi<{ data: Novedad[] }>("/api/novedades?pageSize=500");
+  const novedades = novJson?.data ?? [];
+  const { data: guaJson, isLoading: loadingGua, mutate: mutateGua } = useApi<{ data: Guardado[] }>("/api/transporte?pageSize=500");
+  const guardados = guaJson?.data ?? [];
+  const { data: statsJson, isLoading: loadingStats, mutate: mutateStats } = useApi<CentroControlStats>("/api/novedades/stats?dias=30");
+  const kpis = { stats: statsJson ?? null };
+  const { data: despJson, isLoading: loadingDesp, mutate: mutateDesp } = useApi<{ data: DespachoTienda[] }>("/api/tienda?pageSize=500");
+  const despachos = despJson?.data ?? [];
+  const { data: scJson, isLoading: loadingSc, mutate: mutateSc } = useApi<SinContactoData>("/api/transporte/sin-contacto");
+  const sinContacto = scJson ?? { count: 0, items: [] };
 
-  async function load(silent = false) {
-    if (!silent) setLoading(true);
-    try {
-      const [nR, gR, sR, dR, scR] = await Promise.all([
-        fetch("/api/novedades?pageSize=500"),
-        fetch("/api/transporte?pageSize=500"),
-        fetch("/api/novedades/stats?dias=30"),
-        fetch("/api/tienda?pageSize=500"),
-        fetch("/api/transporte/sin-contacto"),
-      ]);
-      const [nJ, gJ, sJ, dJ, scJ] = await Promise.all([
-        nR.json(), gR.json(), sR.json(), dR.json(), scR.json(),
-      ]);
-      if (nJ.success)  setNovedades(nJ.data ?? []);
-      if (gJ.success)  setGuardados(gJ.data ?? []);
-      if (dJ.success)  setDespachos(dJ.data ?? []);
-      if (scJ.success) setSinContacto({ count: scJ.count ?? 0, items: scJ.items ?? [] });
-      setKpis({
-        stats:       sJ.success ? (sJ as CentroControlStats) : null,
-      });
-    } catch { /* noop */ }
-    finally { if (!silent) setLoading(false); }
-  }
-
-  useEffect(() => { void load(); }, []);
+  const loading = loadingNov || loadingGua || loadingStats || loadingDesp || loadingSc;
 
   const autoRefresh = useAutoRefresh({
-    onRefresh: () => load(true),
+    onRefresh: () => { void mutateNov(); void mutateGua(); void mutateStats(); void mutateDesp(); void mutateSc(); },
   });
 
   // ── Rankings (para INFO y KPI blocks) ────────────────────
