@@ -688,7 +688,7 @@ function DetalleSheet({ item, onClose, onUpdated, canEdit }: {
               type="button"
               onClick={() => cambiarEstado("SOLUCIONADO")}
               disabled={saving}
-              style={{ height: 58, borderRadius: 14, border: "none", background: "var(--brand)", color: "#fff", fontSize: 16, fontWeight: 800, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 8, WebkitTapHighlightColor: "transparent" }}
+              style={{ height: 58, borderRadius: 14, border: "none", background: "var(--brand)", color: "var(--text-on-accent)", fontSize: 16, fontWeight: 800, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 8, WebkitTapHighlightColor: "transparent" }}
             >
               <CheckCircle2 size={18} />
               Marcar como solucionado

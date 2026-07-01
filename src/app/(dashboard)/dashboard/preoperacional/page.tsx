@@ -593,7 +593,7 @@ function SupervisorView({ role }: { role: string }) {
                   {deletingId === selected.id ? (
                     <div style={{ display: "flex", gap: 8 }}>
                       <button onClick={() => deleteRow(selected.id)}
-                        className="ds-btn" style={{ fontSize: 12, background: "var(--error)", color: "#fff", border: "none" }}>
+                        className="ds-btn" style={{ fontSize: 12, background: "var(--error)", color: "var(--text-on-error)", border: "none" }}>
                         Confirmar eliminación
                       </button>
                       <button onClick={() => setDeletingId(null)} className="ds-btn ds-btn-ghost" style={{ fontSize: 12 }}>

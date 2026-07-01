@@ -40,7 +40,7 @@ function SortableHeader({ label, col, sortCol, sortDir, onToggleSort }: {
   return (
     <span
       onClick={() => onToggleSort(col)}
-      style={{ cursor: "pointer", userSelect: "none", color: active ? "#14DBA0" : "inherit" }}
+      style={{ cursor: "pointer", userSelect: "none", color: active ? "var(--accent)" : "inherit" }}
     >
       {label}{active ? (sortDir === "asc" ? " ↑" : " ↓") : " ↕"}
     </span>

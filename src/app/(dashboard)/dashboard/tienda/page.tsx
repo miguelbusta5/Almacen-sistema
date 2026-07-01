@@ -588,7 +588,7 @@ function ModalRechazar({ despacho, onClose, onRechazado }: {
         <div style={{ display: "flex", gap: 8 }}>
           <button type="button" onClick={onClose} className="ds-btn ds-btn-secondary" style={{ flex: 1 }}>Cancelar</button>
           <button type="submit" disabled={saving} className="ds-btn"
-            style={{ flex: 2, background: "var(--error)", color: "#fff", border: "none" }}>
+            style={{ flex: 2, background: "var(--error)", color: "var(--text-on-error)", border: "none" }}>
             {saving ? "Rechazando..." : "Confirmar rechazo"}
           </button>
         </div>

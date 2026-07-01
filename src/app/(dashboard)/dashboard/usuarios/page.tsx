@@ -625,4 +625,4 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
 }
 
 const inp: React.CSSProperties = { border: "1px solid var(--border-strong)", borderRadius: "var(--r)", padding: "0 12px", height: 36, fontSize: 13, fontFamily: "var(--sans)", outline: "none", background: "var(--surface)", color: "var(--text)", width: "100%", boxSizing: "border-box" };
-const btnPri: React.CSSProperties = { flex: 1, padding: "0.65rem", background: "var(--brand)", color: "#fff", border: "none", borderRadius: 9, fontSize: 13, fontWeight: 700, cursor: "pointer" };
+const btnPri: React.CSSProperties = { flex: 1, padding: "0.65rem", background: "var(--brand)", color: "var(--text-on-accent)", border: "none", borderRadius: 9, fontSize: 13, fontWeight: 700, cursor: "pointer" };

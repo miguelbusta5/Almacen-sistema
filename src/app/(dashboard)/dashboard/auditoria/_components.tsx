@@ -16,13 +16,13 @@ export interface LogItem {
 
 export const ACTION_META: Record<string, { label: string; color: string }> = {
   CREATE: { label: "Creó", color: "var(--brand)" },
-  UPDATE: { label: "Editó", color: "#34D9F0" },
+  UPDATE: { label: "Editó", color: "var(--info)" },
   DELETE: { label: "Eliminó", color: "var(--error)" },
 };
 export const MODULE_META: Record<string, { label: string; color: string }> = {
-  muebles: { label: "Muebles", color: "#34D9F0" },
+  muebles: { label: "Muebles", color: "var(--info)" },
   transporte: { label: "Transporte", color: "#f97316" },
-  users: { label: "Usuarios", color: "#5B9DFF" },
+  users: { label: "Usuarios", color: "var(--blue)" },
 };
 
 export function fmtDateTime(iso: string) {
@@ -41,7 +41,7 @@ function SortableHeader({
   return (
     <span
       onClick={() => onToggleSort(col)}
-      style={{ cursor: "pointer", userSelect: "none", color: sortCol === col ? "#5B9DFF" : undefined }}
+      style={{ cursor: "pointer", userSelect: "none", color: sortCol === col ? "var(--accent)" : undefined }}
     >
       {label}{sortCol === col ? (sortDir === "asc" ? " ↑" : " ↓") : " ↕"}
     </span>

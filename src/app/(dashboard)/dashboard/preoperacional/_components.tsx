@@ -133,7 +133,7 @@ export function HistorialPreoperacionalTable({
           <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
             <button
               onClick={(e) => { e.stopPropagation(); onDeleteConfirm(r.id); }}
-              style={{ fontSize: 11, padding: "3px 8px", background: "var(--error)", color: "#fff", border: "none", borderRadius: 6, cursor: "pointer" }}
+              style={{ fontSize: 11, padding: "3px 8px", background: "var(--error)", color: "var(--text-on-error)", border: "none", borderRadius: 6, cursor: "pointer" }}
             >
               Sí, eliminar
             </button>
