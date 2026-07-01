@@ -37,6 +37,11 @@ describe("gourmetCargueFlow — transiciones inválidas", () => {
     ["ENVIADO_A_TRANSPORTE", "CARGUE_COMPLETO"],
     ["ENVIADO_A_TRANSPORTE", "BORRADOR"],
     ["EN_CARGUE", "BORRADOR"],
+    // "Revertir cargue" (ADMIN/GERENTE) es una acción de supervisión aparte,
+    // fuera de esta máquina de estados compartida — ver
+    // src/app/api/cargue-gourmet/[id]/revertir-cargue/route.ts.
+    ["EN_CARGUE", "UBICACION_ASIGNADA"],
+    ["EN_CARGUE", "ENVIADO_A_TRANSPORTE"],
     ["CON_NOVEDAD", "CARGUE_COMPLETO"],
     ["CON_NOVEDAD", "CANCELADO"],
   ] as [EstadoPedidoGourmet, EstadoPedidoGourmet][])(

@@ -9,7 +9,7 @@ import { canSeeModule } from "@/lib/modulePermissions";
 import { getModuleCssVars } from "@/lib/moduleTheme";
 import { useListDetailScroll } from "@/hooks/useListDetailScroll";
 import { useApi } from "@/hooks/useApi";
-import { apiGet, apiPost, buildQuery, ApiError } from "@/lib/apiClient";
+import { apiGet, apiPost, apiDelete, buildQuery, ApiError } from "@/lib/apiClient";
 import { getErrorMessage } from "@/lib/errors";
 import {
   CargueGourmetTable, ESTADOS_PEDIDO_GOURMET, ESTADO_LABEL,
@@ -38,6 +38,9 @@ const ROLES_TRANSPORTE = ["TRANSPORTE", "SUPERVISOR_TRANSPORTE", "OPERACIONES_GO
 // Roles para cierre manual — coincide con ROLES_PERMITIDOS de /cierre-manual.
 // Incluye Gourmet (decisión 2026-06-30); TRANSPORTE sigue sin cierre manual.
 const ROLES_CIERRE_MANUAL = ["SUPERVISOR_TRANSPORTE", "OPERACIONES_GOURMET", "ADMIN", "GERENTE"];
+// Eliminar pedidos y revertir un cargue accidental — acciones de supervisión,
+// coincide con ROLES_ELIMINAN de /[id] (DELETE) y de /revertir-cargue.
+const ROLES_ADMIN_GERENTE = ["ADMIN", "GERENTE"];
 
 const RESULTADO_TOAST_ERROR: Record<ResultadoEscaneo, string> = {
   VALIDO: "",
@@ -86,6 +89,12 @@ export default function CargueGourmetPage() {
   const [finalizandoCargue, setFinalizandoCargue] = useState(false);
 
   const [showCierreManual, setShowCierreManual] = useState(false);
+
+  const [showEliminarConfirm, setShowEliminarConfirm] = useState(false);
+  const [eliminando, setEliminando] = useState(false);
+
+  const [showRevertirConfirm, setShowRevertirConfirm] = useState(false);
+  const [revirtiendo, setRevirtiendo] = useState(false);
 
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -231,6 +240,41 @@ export default function CargueGourmetPage() {
     }
   }
 
+  async function confirmarEliminar() {
+    if (!detalle || eliminando) return;
+    setEliminando(true);
+    try {
+      await apiDelete(`/api/cargue-gourmet/${detalle.id}`);
+      toast.success("Pedido eliminado");
+      setShowEliminarConfirm(false);
+      closeDetalle();
+      load();
+    } catch (e) {
+      toast.error(getErrorMessage(e, "No se pudo eliminar el pedido"));
+    } finally {
+      setEliminando(false);
+    }
+  }
+
+  async function confirmarRevertirCargue() {
+    if (!detalle || revirtiendo) return;
+    setRevirtiendo(true);
+    try {
+      await apiPost(`/api/cargue-gourmet/${detalle.id}/revertir-cargue`, { updatedAt: detalle.updatedAt });
+      toast.success("Cargue revertido");
+      setShowRevertirConfirm(false);
+      refreshAfterAction();
+    } catch (e) {
+      // 409 aquí puede ser: el pedido ya no está EN_CARGUE, no hay cargue
+      // activo, o updatedAt desactualizado — se muestra el mensaje real del
+      // backend y se refresca el detalle.
+      toast.error(getErrorMessage(e, "No se pudo revertir el cargue"));
+      if (e instanceof ApiError && e.status === 409) loadDetalle(detalle.id);
+    } finally {
+      setRevirtiendo(false);
+    }
+  }
+
   if (role && !canSeeModule(role, "cargue-gourmet")) {
     return (
       <div className="g-panel g-empty animate-fade-in">
@@ -246,6 +290,8 @@ export default function CargueGourmetPage() {
   const puedeGourmet = !!role && ROLES_GOURMET.includes(role);
   const puedeTransporte = !!role && ROLES_TRANSPORTE.includes(role);
   const puedeCierreManual = !!role && ROLES_CIERRE_MANUAL.includes(role);
+  const puedeEliminar = !!role && ROLES_ADMIN_GERENTE.includes(role);
+  const puedeRevertirCargue = puedeEliminar;
   // La vista de detalle a ancho completo reemplaza al listado (todos los
   // tamaños de pantalla) — ya no hay overlay/SlidePanel.
   const showDetailView = selectedId !== null;
@@ -293,6 +339,10 @@ export default function CargueGourmetPage() {
           finalizandoCargue={finalizandoCargue}
           puedeCierreManual={puedeCierreManual}
           onCierreManual={() => setShowCierreManual(true)}
+          puedeEliminar={puedeEliminar}
+          onEliminar={() => setShowEliminarConfirm(true)}
+          puedeRevertirCargue={puedeRevertirCargue}
+          onRevertirCargue={() => setShowRevertirConfirm(true)}
         />
       ) : (
         <>
@@ -387,6 +437,28 @@ export default function CargueGourmetPage() {
         pedido={detalle}
         onClose={() => setShowCierreManual(false)}
         onClosed={refreshAfterAction}
+      />
+
+      <ConfirmModal
+        open={showEliminarConfirm}
+        onClose={() => { if (!eliminando) setShowEliminarConfirm(false); }}
+        onConfirm={confirmarEliminar}
+        title="Eliminar pedido"
+        message="¿Confirmas eliminar este pedido? Se borrarán también sus ubicaciones, cajas y cargues asociados. Esta acción no se puede deshacer."
+        confirmLabel={eliminando ? "Eliminando…" : "Eliminar"}
+        tone="danger"
+        loading={eliminando}
+      />
+
+      <ConfirmModal
+        open={showRevertirConfirm}
+        onClose={() => { if (!revirtiendo) setShowRevertirConfirm(false); }}
+        onConfirm={confirmarRevertirCargue}
+        title="Revertir cargue"
+        message="¿Confirmas revertir este cargue? Se descartará cualquier escaneo registrado y el pedido volverá a su estado anterior."
+        confirmLabel={revirtiendo ? "Revirtiendo…" : "Revertir cargue"}
+        tone="danger"
+        loading={revirtiendo}
       />
     </div>
   );

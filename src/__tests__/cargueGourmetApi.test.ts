@@ -10,6 +10,7 @@ const mocks = vi.hoisted(() => ({
   pedidoCreate: vi.fn(),
   pedidoFindUnique: vi.fn(),
   pedidoUpdate: vi.fn(),
+  pedidoDelete: vi.fn(),
   estibaDeleteMany: vi.fn(),
   estibaCreateMany: vi.fn(),
   cajaDeleteMany: vi.fn(),
@@ -21,6 +22,7 @@ const mocks = vi.hoisted(() => ({
   cargueFindFirst: vi.fn(),
   cargueCreate: vi.fn(),
   cargueUpdate: vi.fn(),
+  cargueDelete: vi.fn(),
   escaneoCreate: vi.fn(),
   novedadCreate: vi.fn(),
   novedadFindFirst: vi.fn(),
@@ -51,7 +53,7 @@ const tx = {
   gourmetPedidoEstiba: { deleteMany: mocks.estibaDeleteMany, createMany: mocks.estibaCreateMany },
   gourmetPedidoCaja: { deleteMany: mocks.cajaDeleteMany, createMany: mocks.cajaCreateMany },
   gourmetPedido: { update: mocks.pedidoUpdate },
-  gourmetCargue: { create: mocks.cargueCreate, update: mocks.cargueUpdate },
+  gourmetCargue: { create: mocks.cargueCreate, update: mocks.cargueUpdate, delete: mocks.cargueDelete },
   gourmetCargueEscaneo: { create: mocks.escaneoCreate },
   gourmetCargueNovedad: { create: mocks.novedadCreate },
 };
@@ -65,10 +67,11 @@ vi.mock("@/lib/prisma", () => ({
       create: mocks.pedidoCreate,
       findUnique: mocks.pedidoFindUnique,
       update: mocks.pedidoUpdate,
+      delete: mocks.pedidoDelete,
     },
     gourmetPedidoEstiba: { deleteMany: mocks.estibaDeleteMany, createMany: mocks.estibaCreateMany },
     gourmetPedidoCaja: { deleteMany: mocks.cajaDeleteMany, createMany: mocks.cajaCreateMany },
-    gourmetCargue: { findFirst: mocks.cargueFindFirst, create: mocks.cargueCreate, update: mocks.cargueUpdate },
+    gourmetCargue: { findFirst: mocks.cargueFindFirst, create: mocks.cargueCreate, update: mocks.cargueUpdate, delete: mocks.cargueDelete },
     gourmetCargueEscaneo: { create: mocks.escaneoCreate },
     gourmetCargueNovedad: { create: mocks.novedadCreate, findFirst: mocks.novedadFindFirst },
     user: { findMany: mocks.userFindMany },
@@ -80,12 +83,13 @@ vi.mock("@/lib/prisma", () => ({
 
 import { GET as getMaestroTiendas } from "@/app/api/cargue-gourmet/maestro-tiendas/route";
 import { GET as getPedidos, POST as postPedido } from "@/app/api/cargue-gourmet/route";
-import { GET as getPedidoDetalle, PUT as putPedido } from "@/app/api/cargue-gourmet/[id]/route";
+import { GET as getPedidoDetalle, PUT as putPedido, DELETE as deletePedido } from "@/app/api/cargue-gourmet/[id]/route";
 import { POST as postUbicacion } from "@/app/api/cargue-gourmet/[id]/ubicacion/route";
 import { POST as postIniciarCargue } from "@/app/api/cargue-gourmet/[id]/iniciar-cargue/route";
 import { POST as postEscanear } from "@/app/api/cargue-gourmet/[id]/escanear/route";
 import { POST as postFinalizar } from "@/app/api/cargue-gourmet/[id]/finalizar/route";
 import { POST as postCierreManual } from "@/app/api/cargue-gourmet/[id]/cierre-manual/route";
+import { POST as postRevertirCargue } from "@/app/api/cargue-gourmet/[id]/revertir-cargue/route";
 
 function actor(role: string) {
   return { id: "u_1", email: "u@test.com", name: "Usuario Test", role };
@@ -110,6 +114,8 @@ beforeEach(() => {
   );
   mocks.cargueUpdate.mockImplementation(() => Promise.resolve({ cantidadEscaneada: 1 }));
   mocks.novedadFindFirst.mockResolvedValue(null);
+  mocks.pedidoDelete.mockResolvedValue({});
+  mocks.cargueDelete.mockResolvedValue({});
 });
 
 describe("GET /api/cargue-gourmet/maestro-tiendas", () => {
@@ -513,20 +519,33 @@ describe("PUT /api/cargue-gourmet/[id]", () => {
     expect(mocks.pedidoUpdate).not.toHaveBeenCalled();
   });
 
-  it("rechaza edición en EN_CARGUE con 409", async () => {
-    mocks.getSessionUser.mockResolvedValue(actor("ADMIN"));
+  it("rechaza edición en EN_CARGUE con 409 para OPERACIONES_GOURMET", async () => {
+    mocks.getSessionUser.mockResolvedValue(actor("OPERACIONES_GOURMET"));
     mockCurrent("EN_CARGUE");
 
     const res = await putPedido(putReq("p1", validUpdate), params);
     expect(res.status).toBe(409);
   });
 
-  it("rechaza edición en CARGUE_COMPLETO con 409", async () => {
-    mocks.getSessionUser.mockResolvedValue(actor("ADMIN"));
+  it("rechaza edición en CARGUE_COMPLETO con 409 para OPERACIONES_GOURMET", async () => {
+    mocks.getSessionUser.mockResolvedValue(actor("OPERACIONES_GOURMET"));
     mockCurrent("CARGUE_COMPLETO");
 
     const res = await putPedido(putReq("p1", validUpdate), params);
     expect(res.status).toBe(409);
+  });
+
+  it("ADMIN/GERENTE pueden editar sin importar el estado (EN_CARGUE, CARGUE_COMPLETO)", async () => {
+    for (const role of ["ADMIN", "GERENTE"]) {
+      for (const estadoActual of ["EN_CARGUE", "CARGUE_COMPLETO", "CANCELADO"]) {
+        mocks.getSessionUser.mockResolvedValue(actor(role));
+        mockCurrent(estadoActual);
+        mocks.pedidoUpdate.mockResolvedValue(pedidoDetalleMock());
+
+        const res = await putPedido(putReq("p1", validUpdate), params);
+        expect(res.status).toBe(200);
+      }
+    }
   });
 
   it("rechaza si falta updatedAt con 400", async () => {
@@ -1945,5 +1964,220 @@ describe("POST /api/cargue-gourmet/[id]/cierre-manual", () => {
 
     const res = await postCierreManual(cierreManualPostReq("p1", validBody), params);
     expect(res.status).toBe(200);
+  });
+});
+
+function deletePedidoReq(id: string) {
+  return new NextRequest(`http://localhost/api/cargue-gourmet/${id}`, { method: "DELETE" });
+}
+
+describe("DELETE /api/cargue-gourmet/[id]", () => {
+  const params = { params: Promise.resolve({ id: "p1" }) };
+
+  function mockCurrent(estado: string) {
+    mocks.pedidoFindUnique.mockResolvedValue({ estado, orden: "TSDM98761", tipoOrden: "TSDM" });
+  }
+
+  it.each(["ADMIN", "GERENTE"])("%s puede eliminar un pedido", async (role) => {
+    mocks.getSessionUser.mockResolvedValue(actor(role));
+    mockCurrent("BORRADOR");
+
+    const res = await deletePedido(deletePedidoReq("p1"), params);
+    const json = await res.json();
+
+    expect(res.status).toBe(200);
+    expect(json.success).toBe(true);
+    expect(mocks.pedidoDelete).toHaveBeenCalledWith({ where: { id: "p1" } });
+  });
+
+  it.each(["OPERACIONES_GOURMET", "TRANSPORTE", "SUPERVISOR_TRANSPORTE"])("%s no puede eliminar (403)", async (role) => {
+    mocks.getSessionUser.mockResolvedValue(actor(role));
+
+    const res = await deletePedido(deletePedidoReq("p1"), params);
+    expect(res.status).toBe(403);
+    expect(mocks.pedidoFindUnique).not.toHaveBeenCalled();
+  });
+
+  it("rechaza si el pedido no existe (404)", async () => {
+    mocks.getSessionUser.mockResolvedValue(actor("ADMIN"));
+    mocks.pedidoFindUnique.mockResolvedValue(null);
+
+    const res = await deletePedido(deletePedidoReq("p1"), params);
+    expect(res.status).toBe(404);
+    expect(mocks.pedidoDelete).not.toHaveBeenCalled();
+  });
+
+  it("rechaza si el pedido está EN_CARGUE (409)", async () => {
+    mocks.getSessionUser.mockResolvedValue(actor("ADMIN"));
+    mockCurrent("EN_CARGUE");
+
+    const res = await deletePedido(deletePedidoReq("p1"), params);
+    expect(res.status).toBe(409);
+    expect(mocks.pedidoDelete).not.toHaveBeenCalled();
+  });
+
+  it("permite eliminar en cualquier otro estado (CANCELADO, CARGUE_COMPLETO, CON_NOVEDAD)", async () => {
+    for (const estado of ["CANCELADO", "CARGUE_COMPLETO", "CARGUE_COMPLETO_MANUAL", "CON_NOVEDAD", "UBICACION_ASIGNADA"]) {
+      mocks.getSessionUser.mockResolvedValue(actor("ADMIN"));
+      mockCurrent(estado);
+
+      const res = await deletePedido(deletePedidoReq("p1"), params);
+      expect(res.status).toBe(200);
+    }
+  });
+
+  it("registra la acción en activityLog", async () => {
+    mocks.getSessionUser.mockResolvedValue(actor("ADMIN"));
+    mockCurrent("BORRADOR");
+
+    await deletePedido(deletePedidoReq("p1"), params);
+
+    expect(mocks.activityLogCreate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ action: "DELETE", module: "cargue-gourmet", recordId: "p1" }),
+      })
+    );
+  });
+});
+
+function revertirCarguePostReq(id: string, body: unknown) {
+  return new NextRequest(`http://localhost/api/cargue-gourmet/${id}/revertir-cargue`, {
+    method: "POST",
+    body: JSON.stringify(body),
+    headers: { "Content-Type": "application/json" },
+  });
+}
+
+describe("POST /api/cargue-gourmet/[id]/revertir-cargue", () => {
+  const params = { params: Promise.resolve({ id: "p1" }) };
+  const REVERTIR_UPDATED_AT = new Date("2026-06-24T14:00:00.000Z");
+  const validBody = { updatedAt: REVERTIR_UPDATED_AT.toISOString() };
+
+  function mockPedido(estado: string, overrides: Partial<Record<string, unknown>> = {}) {
+    mocks.pedidoFindUnique.mockResolvedValue({
+      id: "p1",
+      orden: "TSDM98761",
+      tipoOrden: "TSDM",
+      estado,
+      updatedAt: REVERTIR_UPDATED_AT,
+      ciudadDestino: "Bogotá",
+      enviadoTransporteAt: null,
+      creadoPorId: "u_gourmet",
+      ...overrides,
+    });
+  }
+
+  function mockCargueActivo() {
+    mocks.cargueFindFirst.mockResolvedValue({ id: "cg1", pedidoId: "p1", estado: "EN_CARGUE" });
+  }
+
+  function mockUpdateResultado(estado: string) {
+    mocks.pedidoUpdate.mockResolvedValue({
+      id: "p1", orden: "TSDM98761", tipoOrden: "TSDM", codigoTienda: "T001",
+      nombreTienda: "Tienda Centro", ciudadDestino: "Bogotá", estado,
+      updatedAt: new Date(), cargueIniciadoAt: null, cargueIniciadoPorId: null,
+    });
+  }
+
+  it.each(["ADMIN", "GERENTE"])("%s puede revertir a UBICACION_ASIGNADA cuando no pasó por ENVIADO_A_TRANSPORTE", async (role) => {
+    mocks.getSessionUser.mockResolvedValue(actor(role));
+    mockPedido("EN_CARGUE");
+    mockCargueActivo();
+    mockUpdateResultado("UBICACION_ASIGNADA");
+
+    const res = await postRevertirCargue(revertirCarguePostReq("p1", validBody), params);
+    const json = await res.json();
+
+    expect(res.status).toBe(200);
+    expect(json.data.pedido.estado).toBe("UBICACION_ASIGNADA");
+    expect(mocks.cargueDelete).toHaveBeenCalledWith({ where: { id: "cg1" } });
+    expect(mocks.pedidoUpdate.mock.calls[0][0].data).toEqual(
+      expect.objectContaining({ estado: "UBICACION_ASIGNADA", cargueIniciadoAt: null, cargueIniciadoPorId: null })
+    );
+  });
+
+  it("revierte a ENVIADO_A_TRANSPORTE cuando el pedido pasó por ahí (flujo heredado)", async () => {
+    mocks.getSessionUser.mockResolvedValue(actor("ADMIN"));
+    mockPedido("EN_CARGUE", { enviadoTransporteAt: new Date("2026-06-24T13:00:00.000Z") });
+    mockCargueActivo();
+    mockUpdateResultado("ENVIADO_A_TRANSPORTE");
+
+    const res = await postRevertirCargue(revertirCarguePostReq("p1", validBody), params);
+    const json = await res.json();
+
+    expect(res.status).toBe(200);
+    expect(json.data.pedido.estado).toBe("ENVIADO_A_TRANSPORTE");
+  });
+
+  it.each(["OPERACIONES_GOURMET", "TRANSPORTE", "SUPERVISOR_TRANSPORTE"])("%s no puede revertir (403)", async (role) => {
+    mocks.getSessionUser.mockResolvedValue(actor(role));
+
+    const res = await postRevertirCargue(revertirCarguePostReq("p1", validBody), params);
+    expect(res.status).toBe(403);
+    expect(mocks.pedidoFindUnique).not.toHaveBeenCalled();
+  });
+
+  it("rechaza si el pedido no existe (404)", async () => {
+    mocks.getSessionUser.mockResolvedValue(actor("ADMIN"));
+    mocks.pedidoFindUnique.mockResolvedValue(null);
+
+    const res = await postRevertirCargue(revertirCarguePostReq("p1", validBody), params);
+    expect(res.status).toBe(404);
+  });
+
+  it("rechaza si el pedido no está EN_CARGUE (409)", async () => {
+    mocks.getSessionUser.mockResolvedValue(actor("ADMIN"));
+    mockPedido("UBICACION_ASIGNADA");
+
+    const res = await postRevertirCargue(revertirCarguePostReq("p1", validBody), params);
+    expect(res.status).toBe(409);
+  });
+
+  it("rechaza si no hay cargue activo (409)", async () => {
+    mocks.getSessionUser.mockResolvedValue(actor("ADMIN"));
+    mockPedido("EN_CARGUE");
+    mocks.cargueFindFirst.mockResolvedValue(null);
+
+    const res = await postRevertirCargue(revertirCarguePostReq("p1", validBody), params);
+    expect(res.status).toBe(409);
+    expect(mocks.cargueDelete).not.toHaveBeenCalled();
+  });
+
+  it("rechaza si updatedAt no coincide (409)", async () => {
+    mocks.getSessionUser.mockResolvedValue(actor("ADMIN"));
+    mockPedido("EN_CARGUE");
+
+    const res = await postRevertirCargue(
+      revertirCarguePostReq("p1", { updatedAt: new Date("2020-01-01T00:00:00.000Z").toISOString() }),
+      params
+    );
+    expect(res.status).toBe(409);
+    expect(mocks.cargueDelete).not.toHaveBeenCalled();
+  });
+
+  it("permite revertir aunque el cargue ya tenga cajas escaneadas", async () => {
+    mocks.getSessionUser.mockResolvedValue(actor("ADMIN"));
+    mockPedido("EN_CARGUE");
+    mocks.cargueFindFirst.mockResolvedValue({ id: "cg1", pedidoId: "p1", estado: "EN_CARGUE", cantidadEscaneada: 3 });
+    mockUpdateResultado("UBICACION_ASIGNADA");
+
+    const res = await postRevertirCargue(revertirCarguePostReq("p1", validBody), params);
+    expect(res.status).toBe(200);
+    expect(mocks.cargueDelete).toHaveBeenCalledWith({ where: { id: "cg1" } });
+  });
+
+  it("registra la acción en activityLog", async () => {
+    mocks.getSessionUser.mockResolvedValue(actor("ADMIN"));
+    mockPedido("EN_CARGUE");
+    mockCargueActivo();
+    mockUpdateResultado("UBICACION_ASIGNADA");
+
+    await postRevertirCargue(revertirCarguePostReq("p1", validBody), params);
+
+    expect(mocks.activityLogCreate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ action: "UPDATE", module: "cargue-gourmet", recordId: "p1" }),
+      })
+    );
   });
 });

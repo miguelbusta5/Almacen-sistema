@@ -12,13 +12,15 @@ import type { EstadoPedidoGourmet } from "@/app/(dashboard)/dashboard/cargue-gou
 // `GourmetAccionesBar`, en cambio, es un componente puro sin portal — tiene
 // cobertura completa real, incluida en este archivo.
 
-function renderBar(estado: EstadoPedidoGourmet, puedeGourmet = true) {
+function renderBar(estado: EstadoPedidoGourmet, puedeGourmet = true, puedeEliminar = false) {
   return renderToStaticMarkup(
     <GourmetAccionesBar
       estado={estado}
       puedeGourmet={puedeGourmet}
       onEditar={() => {}}
       onAsignarUbicacion={() => {}}
+      puedeEliminar={puedeEliminar}
+      onEliminar={() => {}}
     />
   );
 }
@@ -82,6 +84,27 @@ describe("GourmetAccionesBar — nunca incluye acciones de Transporte/cierre", (
       for (const prohibido of ["Iniciar cargue", "Escanear", "Finalizar", "Cierre manual"]) {
         expect(html).not.toContain(prohibido);
       }
+    }
+  });
+});
+
+describe("GourmetAccionesBar — 'Eliminar pedido' (ADMIN/GERENTE)", () => {
+  it.each(["BORRADOR", "UBICACION_ASIGNADA", "ENVIADO_A_TRANSPORTE", "CARGUE_COMPLETO", "CARGUE_COMPLETO_MANUAL", "CON_NOVEDAD", "CANCELADO"] as EstadoPedidoGourmet[])(
+    "aparece en %s cuando puedeEliminar=true",
+    (estado) => expect(renderBar(estado, true, true)).toContain('data-testid="btn-eliminar-pedido"')
+  );
+
+  it("NO aparece en EN_CARGUE aunque puedeEliminar=true (hay que revertir el cargue primero)", () => {
+    expect(renderBar("EN_CARGUE", true, true)).not.toContain('data-testid="btn-eliminar-pedido"');
+  });
+
+  it("NO aparece cuando puedeEliminar=false", () => {
+    expect(renderBar("BORRADOR", true, false)).not.toContain('data-testid="btn-eliminar-pedido"');
+  });
+
+  it("'Editar pedido' aparece en cualquier estado cuando puedeEliminar=true (bypass de ADMIN/GERENTE)", () => {
+    for (const estado of ["ENVIADO_A_TRANSPORTE", "EN_CARGUE", "CARGUE_COMPLETO", "CARGUE_COMPLETO_MANUAL", "CANCELADO"] as EstadoPedidoGourmet[]) {
+      expect(renderBar(estado, true, true)).toContain('data-testid="btn-editar-pedido"');
     }
   });
 });

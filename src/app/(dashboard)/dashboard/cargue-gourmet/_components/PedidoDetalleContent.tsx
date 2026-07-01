@@ -62,6 +62,10 @@ export interface PedidoDetalleContentProps {
   finalizandoCargue?: boolean;
   puedeCierreManual?: boolean;
   onCierreManual?: () => void;
+  puedeEliminar?: boolean;
+  onEliminar?: () => void;
+  puedeRevertirCargue?: boolean;
+  onRevertirCargue?: () => void;
 }
 
 export function PedidoDetalleContent({
@@ -83,6 +87,10 @@ export function PedidoDetalleContent({
   finalizandoCargue = false,
   puedeCierreManual = false,
   onCierreManual,
+  puedeEliminar = false,
+  onEliminar,
+  puedeRevertirCargue = false,
+  onRevertirCargue,
 }: PedidoDetalleContentProps) {
   return (
     <>
@@ -134,6 +142,8 @@ export function PedidoDetalleContent({
               puedeGourmet={puedeGourmet}
               onEditar={() => onEditar?.()}
               onAsignarUbicacion={() => onAsignarUbicacion?.()}
+              puedeEliminar={puedeEliminar}
+              onEliminar={() => onEliminar?.()}
             />
 
             <TransporteAccionesBar
@@ -146,6 +156,8 @@ export function PedidoDetalleContent({
               finalizando={finalizandoCargue}
               puedeCierreManual={puedeCierreManual}
               onCierreManual={() => onCierreManual?.()}
+              puedeRevertirCargue={puedeRevertirCargue}
+              onRevertirCargue={() => onRevertirCargue?.()}
             />
 
             <EscaneoCajasPanel

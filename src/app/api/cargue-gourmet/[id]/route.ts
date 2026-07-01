@@ -24,6 +24,7 @@ type PedidoDetalle = Omit<PedidoFull, "estibas" | "cajas" | "cargues" | "novedad
 
 const ALLOWED_ROLES = ["ADMIN", "GERENTE", "OPERACIONES_GOURMET", "TRANSPORTE", "SUPERVISOR_TRANSPORTE"] as const;
 const ROLES_EDITAN = ["OPERACIONES_GOURMET", "ADMIN", "GERENTE"] as const;
+const ROLES_ELIMINAN = ["ADMIN", "GERENTE"] as const;
 
 // Estados desde los que se puede editar la cabecera (antes/durante corrección,
 // nunca una vez el pedido entró en el flujo operativo de Transporte).
@@ -130,7 +131,10 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
   });
   if (!current) return NextResponse.json({ error: "No encontrado" }, { status: 404 });
 
-  if (!(ESTADOS_EDITABLES as readonly string[]).includes(current.estado)) {
+  // ADMIN/GERENTE pueden corregir datos básicos sin importar el estado del
+  // pedido; OPERACIONES_GOURMET conserva la restricción a estados tempranos.
+  const esGestor = actor.role === "ADMIN" || actor.role === "GERENTE";
+  if (!esGestor && !(ESTADOS_EDITABLES as readonly string[]).includes(current.estado)) {
     return NextResponse.json(
       { error: `No se puede editar un pedido en estado ${current.estado}`, code: "ESTADO_NO_EDITABLE" },
       { status: 409 }
@@ -188,4 +192,40 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
   }).catch(() => {});
 
   return NextResponse.json({ success: true, data: mapDetalle(pedido) });
+}
+
+// DELETE /api/cargue-gourmet/[id]
+export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const actor = await requireRole([...ROLES_ELIMINAN]);
+  if (actor instanceof NextResponse) return actor;
+  const { id } = await params;
+
+  const pedido = await prisma.gourmetPedido.findUnique({
+    where: { id },
+    select: { estado: true, orden: true, tipoOrden: true },
+  });
+  if (!pedido) return NextResponse.json({ error: "No encontrado" }, { status: 404 });
+
+  if (pedido.estado === "EN_CARGUE") {
+    return NextResponse.json(
+      { error: "No se puede eliminar un pedido con cargue en curso. Revierte el cargue primero.", code: "CARGUE_EN_CURSO" },
+      { status: 409 }
+    );
+  }
+
+  // Las relaciones (estibas, cajas, cargues → escaneos/novedades) tienen
+  // onDelete: Cascade en el schema — no requieren borrado manual.
+  await prisma.gourmetPedido.delete({ where: { id } });
+
+  prisma.activityLog.create({
+    data: {
+      userId: actor.id,
+      action: "DELETE",
+      module: "cargue-gourmet",
+      recordId: id,
+      details: `Pedido eliminado — ${pedido.tipoOrden} ${pedido.orden}`,
+    },
+  }).catch(() => {});
+
+  return NextResponse.json({ success: true });
 }

@@ -15,6 +15,18 @@ function renderIniciar(estado: EstadoPedidoGourmet, puedeTransporte = true) {
   );
 }
 
+function renderConRevertir(estado: EstadoPedidoGourmet, puedeRevertirCargue: boolean) {
+  return renderToStaticMarkup(
+    <TransporteAccionesBar
+      estado={estado}
+      puedeTransporte={false}
+      onIniciarCargue={() => {}}
+      puedeRevertirCargue={puedeRevertirCargue}
+      onRevertirCargue={() => {}}
+    />
+  );
+}
+
 describe("TransporteAccionesBar — 'Iniciar cargue' por rol", () => {
   it("aparece para TRANSPORTE (puedeTransporte=true) en ENVIADO_A_TRANSPORTE", () => {
     expect(renderIniciar("ENVIADO_A_TRANSPORTE", true)).toContain('data-testid="btn-iniciar-cargue"');
@@ -42,6 +54,21 @@ describe("TransporteAccionesBar — 'Iniciar cargue' por estado", () => {
   it.each(["BORRADOR", "EN_CARGUE", "CARGUE_COMPLETO", "CARGUE_COMPLETO_MANUAL", "CON_NOVEDAD", "CANCELADO"] as EstadoPedidoGourmet[])(
     "NO aparece en %s",
     (estado) => expect(renderIniciar(estado)).not.toContain('data-testid="btn-iniciar-cargue"')
+  );
+});
+
+describe("TransporteAccionesBar — 'Revertir cargue' (ADMIN/GERENTE)", () => {
+  it("aparece en EN_CARGUE cuando puedeRevertirCargue=true", () => {
+    expect(renderConRevertir("EN_CARGUE", true)).toContain('data-testid="btn-revertir-cargue"');
+  });
+
+  it("NO aparece cuando puedeRevertirCargue=false", () => {
+    expect(renderConRevertir("EN_CARGUE", false)).not.toContain('data-testid="btn-revertir-cargue"');
+  });
+
+  it.each(["BORRADOR", "UBICACION_ASIGNADA", "ENVIADO_A_TRANSPORTE", "CARGUE_COMPLETO", "CARGUE_COMPLETO_MANUAL", "CON_NOVEDAD", "CANCELADO"] as EstadoPedidoGourmet[])(
+    "NO aparece en %s aunque puedeRevertirCargue=true (solo aplica a un cargue activo)",
+    (estado) => expect(renderConRevertir(estado, true)).not.toContain('data-testid="btn-revertir-cargue"')
   );
 });
 

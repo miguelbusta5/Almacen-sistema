@@ -24,6 +24,8 @@ export function TransporteAccionesBar({
   finalizando = false,
   puedeCierreManual = false,
   onCierreManual,
+  puedeRevertirCargue = false,
+  onRevertirCargue,
 }: {
   estado: EstadoPedidoGourmet;
   puedeTransporte: boolean;
@@ -34,14 +36,17 @@ export function TransporteAccionesBar({
   finalizando?: boolean;
   puedeCierreManual?: boolean;
   onCierreManual?: () => void;
+  puedeRevertirCargue?: boolean;
+  onRevertirCargue?: () => void;
 }) {
   // `puedeTransporte` representa "puede operar el cargue del camión" — lo cumplen
   // tanto Transporte como Gourmet (ver ROLES_TRANSPORTE en page.tsx).
   const puedeIniciar = puedeTransporte && ESTADOS_INICIABLES_TRANSPORTE.includes(estado);
   const puedeFinalizar = puedeTransporte && ESTADOS_FINALIZABLES_TRANSPORTE.includes(estado);
   const puedeCerrarManualmente = puedeCierreManual && ESTADOS_CIERRE_MANUAL.includes(estado);
+  const puedeRevertir = puedeRevertirCargue && estado === "EN_CARGUE";
 
-  if (!puedeIniciar && !puedeFinalizar && !puedeCerrarManualmente) return null;
+  if (!puedeIniciar && !puedeFinalizar && !puedeCerrarManualmente && !puedeRevertir) return null;
 
   const completo = progresoCompleto(progreso);
 
@@ -87,6 +92,17 @@ export function TransporteAccionesBar({
             data-testid="btn-cierre-manual"
           >
             Cierre manual
+          </button>
+        )}
+
+        {puedeRevertir && (
+          <button
+            type="button"
+            onClick={() => onRevertirCargue?.()}
+            className="g-btn g-btn-danger g-btn-sm"
+            data-testid="btn-revertir-cargue"
+          >
+            Revertir cargue
           </button>
         )}
       </div>

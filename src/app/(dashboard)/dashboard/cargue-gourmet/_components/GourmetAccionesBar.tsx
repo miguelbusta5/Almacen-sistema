@@ -11,18 +11,24 @@ export function GourmetAccionesBar({
   puedeGourmet,
   onEditar,
   onAsignarUbicacion,
+  puedeEliminar = false,
+  onEliminar,
 }: {
   estado: EstadoPedidoGourmet;
   puedeGourmet: boolean;
   onEditar: () => void;
   onAsignarUbicacion: () => void;
+  puedeEliminar?: boolean;
+  onEliminar?: () => void;
 }) {
-  if (!puedeGourmet) return null;
+  // ADMIN/GERENTE (puedeEliminar) pueden editar sin importar el estado, para
+  // corregir datos básicos después del hecho — el resto conserva la
+  // restricción a estados tempranos.
+  const puedeEditar = (puedeGourmet && ESTADOS_EDITABLES_GOURMET.includes(estado)) || puedeEliminar;
+  const puedeUbicar = puedeGourmet && ESTADOS_UBICABLES_GOURMET.includes(estado);
+  const puedeBorrar = puedeEliminar && estado !== "EN_CARGUE";
 
-  const puedeEditar = ESTADOS_EDITABLES_GOURMET.includes(estado);
-  const puedeUbicar = ESTADOS_UBICABLES_GOURMET.includes(estado);
-
-  if (!puedeEditar && !puedeUbicar) return null;
+  if (!puedeEditar && !puedeUbicar && !puedeBorrar) return null;
 
   return (
     <DetailSection title="Acciones Gourmet">
@@ -35,6 +41,11 @@ export function GourmetAccionesBar({
         {puedeUbicar && (
           <button type="button" onClick={onAsignarUbicacion} className="g-btn g-btn-secondary g-btn-sm" data-testid="btn-asignar-ubicacion">
             Asignar ubicación
+          </button>
+        )}
+        {puedeBorrar && (
+          <button type="button" onClick={() => onEliminar?.()} className="g-btn g-btn-danger g-btn-sm" data-testid="btn-eliminar-pedido">
+            Eliminar pedido
           </button>
         )}
       </div>
