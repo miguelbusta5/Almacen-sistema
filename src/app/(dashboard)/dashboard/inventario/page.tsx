@@ -554,7 +554,7 @@ function NuevaNovedadSheet({ onClose, onCreada, existingPlus, existingPosiciones
               : "var(--brand)",
             color: saving || uploadingFoto || !plu.trim() || !posicion.trim()
               ? "var(--muted)"
-              : "#fff",
+              : "var(--text-on-accent)",
             border: "none",
             fontSize: 16, fontWeight: 800,
             cursor: saving || uploadingFoto ? "wait" : "pointer",
@@ -928,14 +928,14 @@ export default function InventarioMobilePage() {
             borderRadius: "50%",
             background: "var(--brand)",
             border: "none",
-            boxShadow: "0 4px 20px rgba(37,99,235,0.45)",
+            boxShadow: "0 4px 20px color-mix(in srgb, var(--accent) 45%, transparent)",
             display: "flex", alignItems: "center", justifyContent: "center",
             cursor: "pointer",
             WebkitTapHighlightColor: "transparent",
             zIndex: 100,
           }}
         >
-          <Plus size={28} color="#fff" strokeWidth={2.5} />
+          <Plus size={28} color="var(--text-on-accent)" strokeWidth={2.5} />
         </button>
       )}
 
@@ -973,7 +973,7 @@ export default function InventarioMobilePage() {
           zIndex: 10000,
           padding: "14px 20px",
           background: toast.ok ? "#0F0F10" : "var(--error)",
-          color: "#fff",
+          color: toast.ok ? "#fff" : "var(--text-on-error)",
           borderRadius: 14,
           fontSize: 15, fontWeight: 600,
           display: "flex", alignItems: "center", gap: 10,
