@@ -7,6 +7,7 @@ import { validateImportFile, validateRowLimit } from "@/lib/fileSecurity";
 import { getErrorMessage } from "@/lib/errors";
 
 const SHEET_NAME = "ResultadosMaestrodeproductosPV";
+const MAX_MAESTRO_ROWS = 25000;
 
 export async function POST(req: NextRequest) {
   const actor = await requireRole(["ADMIN"]);
@@ -26,7 +27,7 @@ export async function POST(req: NextRequest) {
   if (!sheet) return NextResponse.json({ error: "No se encontro hoja en el archivo" }, { status: 400 });
 
   const rows = worksheetObjects(sheet);
-  const rowLimitError = validateRowLimit(rows.length);
+  const rowLimitError = validateRowLimit(rows.length, MAX_MAESTRO_ROWS);
   if (rowLimitError) return NextResponse.json({ error: rowLimitError }, { status: 400 });
   let importados = 0;
   let actualizados = 0;
