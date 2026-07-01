@@ -16,7 +16,7 @@ import { Badge, ModuleHero, ModuleDetailView, SkeletonLine, NetSuiteChip } from 
 import { usePrompt } from "@/components/ui/useDialogs";
 import { useListDetailScroll } from "@/hooks/useListDetailScroll";
 import { useToast } from "@/contexts/ToastContext";
-import { Modal } from "@/components/ui/Modal";
+import { Modal, ConfirmModal } from "@/components/ui/Modal";
 import { AutoRefreshIndicator } from "@/components/ui/AutoRefreshIndicator";
 import { IntelBanner, DetailSection, DetailGrid, MiniHistory } from "@/components/ui/SlidePanel";
 import { insightsTienda, insightsPorDespacho } from "@/lib/inteligencia";
@@ -80,6 +80,9 @@ export default function TiendaPage() {
   const canEditBasic = ["TIENDA", "SUPERVISOR_TIENDA", "SUPERVISOR_TRANSPORTE", "GERENTE", "ADMIN"].includes(role ?? "");
   const canChangeOperationalState = ["SUPERVISOR_TRANSPORTE", "GERENTE", "ADMIN"].includes(role ?? "");
   const canCreate = ["TIENDA", "SUPERVISOR_TIENDA"].includes(role ?? "");
+  // Revertir estado — acción de supervisión excepcional, coincide con
+  // ROLES_PERMITIDOS de /api/tienda/[id]/revertir-estado.
+  const canRevertirEstado = ["ADMIN", "GERENTE"].includes(role ?? "");
 
   const { data: itemsData, isLoading: loading, mutate: mutateItems } = useApi<{ data: DespachoTienda[] }>("/api/tienda?pageSize=500");
   const items = useMemo(() => itemsData?.data ?? [], [itemsData]);
@@ -100,6 +103,8 @@ export default function TiendaPage() {
   const [deleting, setDeleting] = useState<DespachoTienda | null>(null);
   const [asignandoGuardado, setAsignandoGuardado] = useState<DespachoTienda | null>(null);
   const [rechazarItem, setRechazarItem] = useState<DespachoTienda | null>(null);
+  const [showRevertirConfirm, setShowRevertirConfirm] = useState(false);
+  const [revirtiendo, setRevirtiendo] = useState(false);
 
   const load = useCallback(() => { void mutateItems(); }, [mutateItems]);
   // Modo debug de tabla: /dashboard/tienda?debugTable=1 (diagnóstico de mapeo de columnas).
@@ -160,6 +165,23 @@ export default function TiendaPage() {
       await load();
       showToast("Solicitud re-enviada ✓");
     } catch (e) { showToast(getErrorMessage(e, "Error al re-enviar"), true); }
+  }
+
+  async function confirmarRevertirEstado() {
+    if (!panelItem || revirtiendo) return;
+    setRevirtiendo(true);
+    try {
+      const json = await apiPost<{ data: DespachoTienda }>(`/api/tienda/${panelItem.id}/revertir-estado`, { updatedAt: panelItem.updatedAt });
+      setShowRevertirConfirm(false);
+      await mutateItems();
+      setPanelItem(json.data);
+      abrirPanel(json.data);
+      showToast(`Estado revertido: ${ESTADO_DESPACHO_LABEL[json.data.estado]} ✓`);
+    } catch (e) {
+      showToast(getErrorMessage(e, "No se pudo revertir el estado"), true);
+    } finally {
+      setRevirtiendo(false);
+    }
   }
 
   const globalInsights = useMemo(() => insightsTienda(items), [items]);
@@ -310,6 +332,16 @@ export default function TiendaPage() {
               {canDelete && (
                 <button className="ds-btn ds-btn-sm ds-btn-secondary" style={{ color: "var(--error)" }} onClick={() => setDeleting(panelItem)} title="Eliminar">
                   <Trash2 size={13} />
+                </button>
+              )}
+              {canRevertirEstado && panelItem.estado !== "CREADO_TIENDA" && !panelItem.guardadoPendiente && (
+                <button
+                  type="button"
+                  onClick={() => setShowRevertirConfirm(true)}
+                  className="ds-btn ds-btn-danger ds-btn-sm"
+                  data-testid="btn-revertir-estado"
+                >
+                  Revertir estado
                 </button>
               )}
               {canChangeOperationalState && panelItem.estado === "CREADO_TIENDA" ? (
@@ -495,6 +527,17 @@ export default function TiendaPage() {
           onRechazado={() => { setRechazarItem(null); setPanelItem(null); load(); showToast("Factura rechazada"); }}
         />
       )}
+
+      <ConfirmModal
+        open={showRevertirConfirm}
+        onClose={() => { if (!revirtiendo) setShowRevertirConfirm(false); }}
+        onConfirm={confirmarRevertirEstado}
+        title="Revertir estado"
+        message="¿Confirmas revertir este despacho a su estado anterior? Esta acción queda registrada en el historial."
+        confirmLabel={revirtiendo ? "Revirtiendo…" : "Revertir estado"}
+        tone="danger"
+        loading={revirtiendo}
+      />
 
       {promptModal}
     </div>

@@ -7,7 +7,7 @@ import type { EstadoDespacho } from "@/lib/tiendaFlow";
 import { getErrorCode } from "@/lib/errors";
 import type { Prisma } from "@prisma/client";
 
-type DespachoTiendaRow = Prisma.DespachoTiendaGetPayload<{
+export type DespachoTiendaRow = Prisma.DespachoTiendaGetPayload<{
   include: {
     creadoPor: { select: { id: true; name: true } };
     plines: true;
@@ -52,7 +52,7 @@ const updateSchema = z.object({
   telefonoEntrega:   z.string().max(30).nullable().optional(),
 });
 
-const ESTADO_LABEL: Record<string, string> = {
+export const ESTADO_LABEL: Record<string, string> = {
   CREADO_TIENDA:      "Creado en tienda",
   RECHAZADO:          "Rechazado",
   RECOGIDO_TIENDA:    "Recogido en tienda",
@@ -61,7 +61,7 @@ const ESTADO_LABEL: Record<string, string> = {
   CON_NOVEDAD:        "Con novedad",
 };
 
-function mapRow(r: DespachoTiendaRow): object {
+export function mapRow(r: DespachoTiendaRow): object {
   return {
     id:               r.id,
     centroCostos:     r.centroCostos,
