@@ -7,7 +7,10 @@ import { derivarTipoOrden } from "@/lib/gourmetTipoOrden";
 import { CIUDAD_TIENDA_CLIENTE, CODIGO_TIENDA_CLIENTE, NOMBRE_TIENDA_CLIENTE, esCodigoTiendaCliente } from "@/lib/gourmetCliente";
 
 type PedidoListRow = Prisma.GourmetPedidoGetPayload<{
-  include: { creadoPor: { select: { name: true } } };
+  include: {
+    creadoPor: { select: { name: true } };
+    estibas: { select: { ubicacion: true; secuencia: true } };
+  };
 }>;
 
 const ALLOWED_ROLES = ["ADMIN", "GERENTE", "OPERACIONES_GOURMET", "TRANSPORTE", "SUPERVISOR_TRANSPORTE"] as const;
@@ -39,6 +42,17 @@ function mapRow(r: PedidoListRow) {
     cargueIniciadoAt: r.cargueIniciadoAt,
     cargueCompletadoAt: r.cargueCompletadoAt,
     esCierreManual: r.esCierreManual,
+    // Ubicaciones físicas de las estibas (una por estiba), ordenadas por
+    // secuencia y sin repetir, unidas en un texto legible para la tabla.
+    ubicaciones: Array.from(
+      new Set(
+        (r.estibas ?? [])
+          .slice()
+          .sort((a, b) => a.secuencia - b.secuencia)
+          .map((e) => e.ubicacion.trim())
+          .filter(Boolean)
+      )
+    ).join(", "),
   };
 }
 
@@ -81,7 +95,10 @@ export async function GET(req: NextRequest) {
       orderBy: { [sortField]: "desc" },
       skip: (page - 1) * pageSize,
       take: pageSize,
-      include: { creadoPor: { select: { name: true } } },
+      include: {
+        creadoPor: { select: { name: true } },
+        estibas: { select: { ubicacion: true, secuencia: true } },
+      },
     }),
   ]);
 
@@ -150,7 +167,10 @@ export async function POST(req: NextRequest) {
       estado: "BORRADOR",
       creadoPorId: actor.id,
     },
-    include: { creadoPor: { select: { name: true } } },
+    include: {
+      creadoPor: { select: { name: true } },
+      estibas: { select: { ubicacion: true, secuencia: true } },
+    },
   });
 
   prisma.activityLog.create({

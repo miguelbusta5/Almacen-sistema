@@ -15,6 +15,8 @@ const mockRows: GourmetPedidoRow[] = [
     estibasEsperadas: 2,
     estado: "EN_CARGUE",
     updatedAt: "2026-06-24T10:30:00.000Z",
+    ubicaciones: "Pasillo B-2, Pasillo C-1",
+    cargueCompletadoAt: null,
   },
   {
     id: "p2",
@@ -27,6 +29,8 @@ const mockRows: GourmetPedidoRow[] = [
     estibasEsperadas: 1,
     estado: "CARGUE_COMPLETO_MANUAL",
     updatedAt: "2026-06-24T11:00:00.000Z",
+    ubicaciones: "",
+    cargueCompletadoAt: "2026-06-24T12:15:00.000Z",
   },
 ];
 
@@ -58,17 +62,15 @@ describe("CargueGourmetTable — estructura (Fase G3C1)", () => {
   });
 
   it("las celdas van en el mismo orden que los headers", () => {
-    const ids = ["orden-cell", "tipo-cell", "tienda-cell", "ciudad-cell", "cajas-cell", "estibas-cell", "estado-cell", "actualizado-cell", "acciones-cell"];
+    const ids = ["orden-cell", "ubicacion-cell", "tienda-cell", "ciudad-cell", "cajas-cell", "estibas-cell", "estado-cell", "actualizado-cell", "finalizacion-cell"];
     const positions = ids.map((id) => firstRow.indexOf(`data-testid="${id}"`));
     expect(positions.every((p) => p >= 0)).toBe(true);
     expect(positions).toEqual([...positions].sort((a, b) => a - b));
   });
 
-  it("la acción 'Ver' aparece en acciones-cell y no es ninguna acción operativa prohibida", () => {
-    const cell = cellHtml("acciones-cell", firstRow);
-    expect(cell).toContain("Ver");
-    for (const prohibido of ["Editar", "Asignar ubicación", "Enviar a Transporte", "Iniciar cargue", "Escanear", "Finalizar", "Cierre manual"]) {
-      expect(cell).not.toContain(prohibido);
+  it("no expone ninguna acción operativa ni el botón 'Ver' en las filas (la fila abre el detalle)", () => {
+    for (const prohibido of ["ver-btn-", "Editar", "Asignar ubicación", "Enviar a Transporte", "Iniciar cargue", "Escanear", "Finalizar", "Cierre manual"]) {
+      expect(firstRow).not.toContain(prohibido);
     }
   });
 
@@ -76,8 +78,21 @@ describe("CargueGourmetTable — estructura (Fase G3C1)", () => {
     expect(text(firstRow, "orden-cell")).toBe("TSDM98761");
   });
 
-  it("Tipo aparece en tipo-cell", () => {
-    expect(text(firstRow, "tipo-cell")).toBe("TSDM");
+  it("Ubicación de estibas aparece en ubicacion-cell", () => {
+    expect(text(firstRow, "ubicacion-cell")).toBe("Pasillo B-2, Pasillo C-1");
+  });
+
+  it("Finalización de cargue: muestra '—' si el cargue no ha finalizado", () => {
+    expect(text(firstRow, "finalizacion-cell")).toBe("—");
+  });
+
+  it("Finalización de cargue: muestra la fecha/hora cuando el cargue finalizó", () => {
+    const tbody2 = html.split("<tbody>")[1]?.split("</tbody>")[0] ?? "";
+    const rows = tbody2.split("</tr>").filter((r) => r.includes("<td"));
+    const secondRow = rows[1] ?? "";
+    // fmtFechaHora formatea a es-CO; basta con verificar que no es el placeholder.
+    expect(text(secondRow, "finalizacion-cell")).not.toBe("—");
+    expect(text(secondRow, "finalizacion-cell").length).toBeGreaterThan(0);
   });
 
   it("Ciudad aparece en ciudad-cell", () => {
@@ -134,13 +149,13 @@ describe("CargueGourmetTable — modo debug", () => {
   it("antepone etiquetas de columna cuando debug=true", () => {
     const html = renderTable({ debug: true });
     expect(html).toContain("ORDEN");
-    expect(html).toContain("TIPO");
+    expect(html).toContain("UBICACIÓN");
     expect(html).toContain("TIENDA");
     expect(html).toContain("CIUDAD");
     expect(html).toContain("CAJAS");
     expect(html).toContain("ESTIBAS");
     expect(html).toContain("ESTADO");
     expect(html).toContain("ACTUALIZADO");
-    expect(html).toContain("ACCIONES");
+    expect(html).toContain("FINALIZACIÓN CARGUE");
   });
 });

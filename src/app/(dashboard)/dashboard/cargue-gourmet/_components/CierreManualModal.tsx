@@ -12,7 +12,7 @@ export interface PedidoCerrable {
 }
 
 function emptyForm() {
-  return { cantidadContadaManual: "", motivo: "", observacion: "" };
+  return { cantidadContadaManual: "" };
 }
 
 const label: React.CSSProperties = {
@@ -24,7 +24,6 @@ const inp: React.CSSProperties = {
   borderRadius: 8, fontSize: 14, fontFamily: "var(--sans)",
   color: "var(--text)", outline: "none",
 };
-const textarea: React.CSSProperties = { ...inp, height: "auto", padding: "8px 12px", resize: "vertical" };
 
 export function CierreManualModal({
   open,
@@ -64,10 +63,6 @@ export function CierreManualModal({
       setError("La cantidad contada debe ser un entero mayor o igual a 0");
       return;
     }
-    if (form.motivo.trim().length < 5) {
-      setError("El motivo es obligatorio y debe tener al menos 5 caracteres");
-      return;
-    }
 
     setSaving(true);
     try {
@@ -76,8 +71,6 @@ export function CierreManualModal({
       // siempre el mensaje real del backend, sin asumir cuál caso.
       await apiPost(`/api/cargue-gourmet/${pedido.id}/cierre-manual`, {
         cantidadContadaManual: cantidad,
-        motivo: form.motivo.trim(),
-        observacion: form.observacion.trim() || undefined,
         updatedAt: pedido.updatedAt,
       });
       toast.success("Cargue cerrado manualmente");
@@ -111,6 +104,7 @@ export function CierreManualModal({
           style={{ fontSize: 13, color: "var(--warning)", background: "var(--warning-tint, rgba(255,196,61,0.12))", border: "1px solid var(--warning)", borderRadius: 8, padding: "10px 12px" }}
         >
           Este cierre documenta una contingencia operativa. Solo debe usarse cuando el cargue no puede finalizarse normalmente.
+          El motivo se registra automáticamente como &quot;TIEMPO&quot;.
         </div>
 
         <div>
@@ -121,30 +115,6 @@ export function CierreManualModal({
             onChange={(e) => setForm((f) => ({ ...f, cantidadContadaManual: e.target.value }))}
             style={inp}
             data-testid="cierre-manual-cantidad-input"
-          />
-        </div>
-
-        <div>
-          <label style={label}>Motivo (mínimo 5 caracteres)</label>
-          <textarea
-            required
-            rows={2}
-            value={form.motivo}
-            onChange={(e) => setForm((f) => ({ ...f, motivo: e.target.value }))}
-            placeholder="Ej. QR ilegibles por daño en varias cajas"
-            style={textarea}
-            data-testid="cierre-manual-motivo-input"
-          />
-        </div>
-
-        <div>
-          <label style={label}>Observación (opcional)</label>
-          <textarea
-            rows={2}
-            value={form.observacion}
-            onChange={(e) => setForm((f) => ({ ...f, observacion: e.target.value }))}
-            style={textarea}
-            data-testid="cierre-manual-observacion-input"
           />
         </div>
 

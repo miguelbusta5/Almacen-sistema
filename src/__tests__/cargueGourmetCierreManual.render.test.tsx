@@ -128,10 +128,9 @@ describe("CierreManualModal — contrato mínimo (Modal con portal, ver nota de 
     ).not.toThrow();
   });
 
-  it.todo("muestra la advertencia de contingencia y los 3 campos del formulario (requiere jsdom)");
-  it.todo("rechaza motivo con menos de 5 caracteres antes de enviar (requiere jsdom)");
+  it.todo("muestra la advertencia de contingencia y el único campo cantidadContadaManual (requiere jsdom)");
   it.todo("rechaza cantidadContadaManual negativa o no entera antes de enviar (requiere jsdom)");
-  it.todo("envía POST /cierre-manual con cantidadContadaManual, motivo, observacion y updatedAt=detalle.updatedAt (requiere jsdom)");
-  it.todo("409 muestra el mensaje del backend sin cerrar el modal y conserva los datos del formulario (requiere jsdom)");
+  it.todo("envía POST /cierre-manual con cantidadContadaManual y updatedAt=detalle.updatedAt, sin motivo ni observacion (requiere jsdom)");
+  it.todo("409 muestra el mensaje del backend sin cerrar el modal y conserva cantidadContadaManual del formulario (requiere jsdom)");
   it.todo("éxito muestra toast, cierra el modal, recarga detalle y listado (requiere jsdom)");
 });

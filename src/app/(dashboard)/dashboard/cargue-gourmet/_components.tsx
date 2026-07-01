@@ -1,6 +1,5 @@
 "use client";
 
-import { Eye } from "lucide-react";
 import { Badge } from "@/components/ui";
 import { DataTable, type Column } from "@/components/ui/DataTable";
 
@@ -86,6 +85,10 @@ export interface GourmetPedidoRow {
   estibasEsperadas: number;
   estado: EstadoPedidoGourmet;
   updatedAt: string;
+  // Ubicaciones físicas de las estibas, ya unidas por el API ("" si no hay).
+  ubicaciones: string;
+  // Fecha/hora de finalización del cargue (null si aún no finaliza).
+  cargueCompletadoAt: string | null;
 }
 
 export function fmtFechaHora(iso: string | null | undefined): string {
@@ -126,22 +129,27 @@ export function CargueGourmetTable({
     {
       key: "orden",
       header: "Orden",
-      width: "13%",
+      width: "11%",
       testId: "orden-cell",
       debugLabel: "Orden",
       render: (r) => <span style={{ fontFamily: "var(--mono)", fontWeight: 600 }}>{r.orden}</span>,
     },
     {
-      key: "tipoOrden",
-      header: "Tipo",
-      width: "7%",
-      testId: "tipo-cell",
-      debugLabel: "Tipo",
+      key: "ubicaciones",
+      header: "Ubicación",
+      width: "15%",
+      testId: "ubicacion-cell",
+      debugLabel: "Ubicación",
+      truncate: true,
+      render: (r) =>
+        r.ubicaciones
+          ? <span style={{ fontFamily: "var(--mono)", fontSize: 12 }}>{r.ubicaciones}</span>
+          : <span style={{ color: "var(--faint)" }}>—</span>,
     },
     {
       key: "nombreTienda",
       header: "Tienda",
-      width: "18%",
+      width: "15%",
       testId: "tienda-cell",
       debugLabel: "Tienda",
       truncate: true,
@@ -149,14 +157,14 @@ export function CargueGourmetTable({
     {
       key: "ciudadDestino",
       header: "Ciudad",
-      width: "11%",
+      width: "10%",
       testId: "ciudad-cell",
       debugLabel: "Ciudad",
     },
     {
       key: "cajasEsperadas",
       header: "Cajas",
-      width: "7%",
+      width: "6%",
       align: "right",
       testId: "cajas-cell",
       debugLabel: "Cajas",
@@ -172,7 +180,7 @@ export function CargueGourmetTable({
     {
       key: "estado",
       header: "Estado",
-      width: "15%",
+      width: "13%",
       testId: "estado-cell",
       debugLabel: "Estado",
       render: (r) => <EstadoBadge estado={r.estado} />,
@@ -180,27 +188,18 @@ export function CargueGourmetTable({
     {
       key: "updatedAt",
       header: "Actualizado",
-      width: "12%",
+      width: "11%",
       testId: "actualizado-cell",
       debugLabel: "Actualizado",
       render: (r) => <span style={{ fontFamily: "var(--mono)", fontSize: 12, color: "var(--muted2)" }}>{fmtFechaHora(r.updatedAt)}</span>,
     },
     {
-      key: "acciones",
-      header: "Acciones",
-      width: "10%",
-      testId: "acciones-cell",
-      debugLabel: "Acciones",
-      render: (r) => (
-        <button
-          type="button"
-          onClick={(e) => { e.stopPropagation(); onView?.(r); }}
-          className="g-btn g-btn-secondary g-btn-sm"
-          data-testid={`ver-btn-${r.id}`}
-        >
-          <Eye size={13} />Ver
-        </button>
-      ),
+      key: "cargueCompletadoAt",
+      header: "Finalización cargue",
+      width: "12%",
+      testId: "finalizacion-cell",
+      debugLabel: "Finalización cargue",
+      render: (r) => <span style={{ fontFamily: "var(--mono)", fontSize: 12, color: "var(--muted2)" }}>{fmtFechaHora(r.cargueCompletadoAt)}</span>,
     },
   ];
 
@@ -211,7 +210,7 @@ export function CargueGourmetTable({
       getRowKey={(r) => r.id}
       loading={loading}
       tableLayout="fixed"
-      minWidth={940}
+      minWidth={1040}
       debug={debug}
       onRowClick={onView ? (r) => onView(r) : undefined}
       empty={{ title: "Sin pedidos", description: "No hay pedidos Gourmet que coincidan con los filtros aplicados." }}

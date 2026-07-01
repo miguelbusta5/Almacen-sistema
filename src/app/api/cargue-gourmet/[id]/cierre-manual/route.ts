@@ -11,10 +11,11 @@ const ROLES_NOTIFICAR = ["ADMIN", "GERENTE"] as const;
 // Estados de cargue desde los que se acepta un cierre manual de contingencia.
 const ESTADOS_CARGUE_CERRABLES = ["EN_CARGUE", "CON_NOVEDAD"] as const;
 
+// El motivo se registra automáticamente — el usuario ya no lo escribe.
+const MOTIVO_CIERRE_MANUAL_AUTOMATICO = "TIEMPO";
+
 const bodySchema = z.object({
   cantidadContadaManual: z.number().int().min(0),
-  motivo: z.string().min(5),
-  observacion: z.string().optional(),
   updatedAt: z.string().datetime(),
 });
 
@@ -117,8 +118,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 
   const descripcion =
     `Cierre manual — esperadas: ${cargue.cantidadEsperada}, escaneadas: ${cargue.cantidadEscaneada}, ` +
-    `contadas manualmente: ${d.cantidadContadaManual}. Motivo: ${d.motivo}.` +
-    (d.observacion ? ` Observación: ${d.observacion}.` : "");
+    `contadas manualmente: ${d.cantidadContadaManual}. Motivo: ${MOTIVO_CIERRE_MANUAL_AUTOMATICO}.`;
 
   const { pedido: pedidoActualizado, cargue: cargueActualizado, novedad } = await prisma.$transaction(
     async (tx) => {
@@ -143,8 +143,8 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
           finalizadoPorId: actor.id,
           tipoCierre: "MANUAL",
           cantidadContadaManual: d.cantidadContadaManual,
-          motivoCierreManual: d.motivo,
-          observacion: d.observacion ?? null,
+          motivoCierreManual: MOTIVO_CIERRE_MANUAL_AUTOMATICO,
+          observacion: null,
         },
       });
 
@@ -156,8 +156,8 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
           cargueCompletadoPorId: actor.id,
           esCierreManual: true,
           cantidadContadaManual: d.cantidadContadaManual,
-          motivoCierreManual: d.motivo,
-          observacionCierreManual: d.observacion ?? null,
+          motivoCierreManual: MOTIVO_CIERRE_MANUAL_AUTOMATICO,
+          observacionCierreManual: null,
         },
       });
 
@@ -178,7 +178,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       data: Array.from(destinatariosIds).map((userId) => ({
         userId,
         titulo: "Cargue Gourmet cerrado manualmente",
-        descripcion: `${pedidoActualizado.orden} — destino ${pedidoActualizado.ciudadDestino}. Motivo: ${d.motivo}`,
+        descripcion: `${pedidoActualizado.orden} — destino ${pedidoActualizado.ciudadDestino}. Motivo: ${MOTIVO_CIERRE_MANUAL_AUTOMATICO}`,
         tipo: "CARGUE_GOURMET",
         enlace: "/dashboard/cargue-gourmet",
       })),

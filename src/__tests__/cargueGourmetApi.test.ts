@@ -167,7 +167,7 @@ describe("GET /api/cargue-gourmet", () => {
     mocks.getSessionUser.mockResolvedValue(actor("SUPERVISOR_TRANSPORTE"));
     mocks.pedidoCount.mockResolvedValue(1);
     mocks.pedidoFindMany.mockResolvedValue([
-      { id: "p1", orden: "TSDM1", tipoOrden: "TSDM", codigoTienda: "T001", nombreTienda: "Tienda Centro", ciudadDestino: "Bogotá", cajasEsperadas: 5, estibasEsperadas: 2, estado: "BORRADOR", creadoPorId: "u_1", createdAt: new Date(), updatedAt: new Date() },
+      { id: "p1", orden: "TSDM1", tipoOrden: "TSDM", codigoTienda: "T001", nombreTienda: "Tienda Centro", ciudadDestino: "Bogotá", cajasEsperadas: 5, estibasEsperadas: 2, estado: "BORRADOR", creadoPorId: "u_1", createdAt: new Date(), updatedAt: new Date(), estibas: [{ secuencia: 2, ubicacion: "Pasillo C-1" }, { secuencia: 1, ubicacion: "Pasillo B-2" }] },
     ]);
 
     const req = new NextRequest("http://localhost/api/cargue-gourmet?ciudad=Bogot%C3%A1&estado=BORRADOR&tipoOrden=TSDM&page=1&pageSize=10");
@@ -178,11 +178,16 @@ describe("GET /api/cargue-gourmet", () => {
     expect(json.success).toBe(true);
     expect(json.total).toBe(1);
     expect(json.data).toHaveLength(1);
+    // Las ubicaciones de estibas se ordenan por secuencia y se unen para la tabla.
+    expect(json.data[0].ubicaciones).toBe("Pasillo B-2, Pasillo C-1");
     expect(mocks.pedidoFindMany).toHaveBeenCalledWith(
       expect.objectContaining({
         where: { ciudadDestino: "Bogotá", estado: "BORRADOR", tipoOrden: "TSDM" },
         skip: 0,
         take: 10,
+        include: expect.objectContaining({
+          estibas: { select: { ubicacion: true, secuencia: true } },
+        }),
       })
     );
   });
@@ -1637,8 +1642,6 @@ describe("POST /api/cargue-gourmet/[id]/cierre-manual", () => {
   const params = { params: Promise.resolve({ id: "p1" }) };
   const validBody = {
     cantidadContadaManual: 4,
-    motivo: "QR ilegibles por daño en varias cajas",
-    observacion: "Se reintentó 3 veces sin éxito",
     updatedAt: CIERRE_MANUAL_UPDATED_AT.toISOString(),
   };
 
@@ -1671,14 +1674,14 @@ describe("POST /api/cargue-gourmet/[id]/cierre-manual", () => {
     });
     mocks.cargueUpdate.mockResolvedValue({
       id: "cg1", pedidoId: "p1", estado: "CARGUE_COMPLETO_MANUAL", tipoCierre: "MANUAL",
-      cantidadEsperada: 5, cantidadEscaneada: 3, cantidadContadaManual: 4, motivoCierreManual: "QR ilegibles por daño en varias cajas",
-      observacion: "Se reintentó 3 veces sin éxito", finalizadoAt: new Date(), finalizadoPorId: "u_1",
+      cantidadEsperada: 5, cantidadEscaneada: 3, cantidadContadaManual: 4, motivoCierreManual: "TIEMPO",
+      observacion: null, finalizadoAt: new Date(), finalizadoPorId: "u_1",
     });
     mocks.pedidoUpdate.mockResolvedValue({
       id: "p1", orden: "TSDM98761", tipoOrden: "TSDM", codigoTienda: "T001",
       nombreTienda: "Tienda Centro", ciudadDestino: "Bogotá", estado: "CARGUE_COMPLETO_MANUAL",
       updatedAt: new Date(), esCierreManual: true, cantidadContadaManual: 4,
-      motivoCierreManual: "QR ilegibles por daño en varias cajas", observacionCierreManual: "Se reintentó 3 veces sin éxito",
+      motivoCierreManual: "TIEMPO", observacionCierreManual: null,
       cargueCompletadoAt: new Date(), cargueCompletadoPorId: "u_1",
     });
   }
@@ -1802,19 +1805,6 @@ describe("POST /api/cargue-gourmet/[id]/cierre-manual", () => {
     expect(res.status).toBe(400);
   });
 
-  it("rechaza si falta motivo (400)", async () => {
-    mocks.getSessionUser.mockResolvedValue(actor("ADMIN"));
-    const { motivo, ...sinMotivo } = validBody;
-    const res = await postCierreManual(cierreManualPostReq("p1", sinMotivo), params);
-    expect(res.status).toBe(400);
-  });
-
-  it("rechaza si motivo tiene menos de 5 caracteres (400)", async () => {
-    mocks.getSessionUser.mockResolvedValue(actor("ADMIN"));
-    const res = await postCierreManual(cierreManualPostReq("p1", { ...validBody, motivo: "abc" }), params);
-    expect(res.status).toBe(400);
-  });
-
   it("rechaza TRANSPORTE (403)", async () => {
     mocks.getSessionUser.mockResolvedValue(actor("TRANSPORTE"));
     const res = await postCierreManual(cierreManualPostReq("p1", validBody), params);
@@ -1867,7 +1857,7 @@ describe("POST /api/cargue-gourmet/[id]/cierre-manual", () => {
           estado: "CARGUE_COMPLETO_MANUAL",
           tipoCierre: "MANUAL",
           cantidadContadaManual: 4,
-          motivoCierreManual: validBody.motivo,
+          motivoCierreManual: "TIEMPO",
         }),
       })
     );
@@ -1898,10 +1888,10 @@ describe("POST /api/cargue-gourmet/[id]/cierre-manual", () => {
     await postCierreManual(cierreManualPostReq("p1", validBody), params);
 
     expect(mocks.cargueUpdate.mock.calls[0][0].data).toEqual(
-      expect.objectContaining({ cantidadContadaManual: 4, motivoCierreManual: validBody.motivo })
+      expect.objectContaining({ cantidadContadaManual: 4, motivoCierreManual: "TIEMPO" })
     );
     expect(mocks.pedidoUpdate.mock.calls[0][0].data).toEqual(
-      expect.objectContaining({ cantidadContadaManual: 4, motivoCierreManual: validBody.motivo })
+      expect.objectContaining({ cantidadContadaManual: 4, motivoCierreManual: "TIEMPO" })
     );
   });
 
