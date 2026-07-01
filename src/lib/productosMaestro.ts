@@ -9,12 +9,15 @@ export interface ProductoMaestroDTO {
 export interface ProductoMaestroRow {
   plu?: unknown;
   PLU?: unknown;
+  "Referencia Original"?: unknown;
   descripcion?: unknown;
   DESCRIPCION?: unknown;
+  "Nombre para mostrar"?: unknown;
   Fabricante?: unknown;
   fabricante?: unknown;
   PRECIO?: unknown;
   precio?: unknown;
+  "Precio unitario"?: unknown;
   MARCAS?: unknown;
   marcas?: unknown;
 }
@@ -42,13 +45,13 @@ export function parsePrecio(value: unknown): number | null {
 }
 
 export function mapExcelProductoRow(row: ProductoMaestroRow): ProductoMaestroDTO | null {
-  const plu = normalizePlu(row.PLU ?? row.plu);
+  const plu = normalizePlu(row.PLU ?? row.plu ?? row["Referencia Original"]);
   if (!plu) return null;
   return {
     plu,
-    descripcion: nullableText(row.DESCRIPCION ?? row.descripcion),
+    descripcion: nullableText(row.DESCRIPCION ?? row.descripcion ?? row["Nombre para mostrar"]),
     fabricante: nullableText(row.Fabricante ?? row.fabricante),
-    precio: parsePrecio(row.PRECIO ?? row.precio),
+    precio: parsePrecio(row.PRECIO ?? row.precio ?? row["Precio unitario"]),
     marca: nullableText(row.MARCAS ?? row.marcas),
   };
 }

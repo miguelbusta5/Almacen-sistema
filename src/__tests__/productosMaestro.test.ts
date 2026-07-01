@@ -46,6 +46,22 @@ describe("productos maestro", () => {
     expect(mapExcelProductoRow({ DESCRIPCION: "Sin codigo" })).toBeNull();
   });
 
+  it("mapea fila del export real ResultadosMaestrodeproductosPV", () => {
+    expect(mapExcelProductoRow({
+      "Referencia Original": 10005,
+      "Nombre para mostrar": "LOUNGE CHARLESTON SET X5",
+      Fabricante: "Z MUEBLES EX TZ",
+      "Precio unitario": 6780000,
+      MARCAS: "Ambiente Living",
+    })).toEqual({
+      plu: "10005",
+      descripcion: "LOUNGE CHARLESTON SET X5",
+      fabricante: "Z MUEBLES EX TZ",
+      precio: 6780000,
+      marca: "Ambiente Living",
+    });
+  });
+
   it("no-admin usa datos del maestro en novedades", () => {
     expect(deriveNovedadFromMaestro({
       descripcion: "Manual",
