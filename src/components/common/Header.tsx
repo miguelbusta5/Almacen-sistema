@@ -34,7 +34,7 @@ function UserInitials({ name }: { name: string }) {
       justifyContent: "center",
       fontSize: 11,
       fontWeight: 800,
-      color: "#04130D",
+      color: "var(--text-on-accent)",
       flexShrink: 0,
       boxShadow: "0 6px 16px rgba(20,219,160,0.24)",
     }}>
@@ -171,7 +171,7 @@ export default function Header({ user }: HeaderProps) {
           >
             <Bell size={15} />
             {notifCount > 0 && (
-              <span style={{ position: "absolute", top: -4, right: -4, background: "var(--brand)", color: "#04130D", fontSize: 9, fontWeight: 800, width: 16, height: 16, borderRadius: 999, display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "var(--mono)", boxShadow: "0 0 0 3px var(--brand-tint)" }}>
+              <span style={{ position: "absolute", top: -4, right: -4, background: "var(--brand)", color: "var(--text-on-accent)", fontSize: 9, fontWeight: 800, width: 16, height: 16, borderRadius: 999, display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "var(--mono)", boxShadow: "0 0 0 3px var(--brand-tint)" }}>
                 {notifCount > 9 ? "9+" : notifCount}
               </span>
             )}

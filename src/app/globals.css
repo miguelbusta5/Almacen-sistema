@@ -121,6 +121,8 @@
   --text-on-accent:  #04130D;
   --text-on-error:   #1A0606;
   --text-on-warning: #1A1303;
+  --text-on-success: #04130D;
+  --text-on-info:    #03151A;
 
   /* Charts (Chart.js lee strings → se resuelven en runtime desde estos tokens) */
   --chart-grid:          rgba(255, 255, 255, 0.07);
@@ -684,7 +686,7 @@ body {
 .g-btn-danger:hover:not(:disabled), .ds-btn-danger:hover:not(:disabled) { background: var(--error); color: var(--text-on-error); border-color: var(--error); }
 
 .g-btn-success, .ds-btn-success { background: var(--success-tint); color: var(--success); border-color: color-mix(in srgb, var(--success) 26%, transparent); }
-.g-btn-success:hover:not(:disabled), .ds-btn-success:hover:not(:disabled) { background: var(--success); color: var(--text-on-accent); }
+.g-btn-success:hover:not(:disabled), .ds-btn-success:hover:not(:disabled) { background: var(--success); color: var(--text-on-success); }
 
 .g-btn-warning, .ds-btn-warning { background: var(--warning-tint); color: var(--warning); border-color: color-mix(in srgb, var(--warning) 26%, transparent); }
 .g-btn-warning:hover:not(:disabled), .ds-btn-warning:hover:not(:disabled) { background: var(--warning); color: var(--text-on-warning); }
