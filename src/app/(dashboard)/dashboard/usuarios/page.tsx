@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useSession } from "next-auth/react";
 import { Users, Plus, Shield, ShieldCheck, ShieldAlert, Truck, Car, Upload, Search, GitMerge, Package } from "lucide-react";
 import { SkeletonTable, EmptyState, ModuleHero } from "@/components/ui";
@@ -8,6 +8,9 @@ import { Modal } from "@/components/ui/Modal";
 import { AutoRefreshIndicator } from "@/components/ui/AutoRefreshIndicator";
 import { getModuleColor, getModuleCssVars } from "@/lib/moduleTheme";
 import { useAutoRefresh } from "@/hooks/useAutoRefresh";
+import { useApi } from "@/hooks/useApi";
+import { apiGet, apiPost, apiPut, apiPatch, apiUpload } from "@/lib/apiClient";
+import { getErrorMessage } from "@/lib/errors";
 import { useToast } from "@/contexts/ToastContext";
 import { UsuariosTable, TransportistasOperativosTable } from "./_components";
 
@@ -68,14 +71,21 @@ export default function UsuariosPage() {
   const { data: session } = useSession();
   const role = (session?.user as { role?: Role } | undefined)?.role;
 
-  const [users, setUsers] = useState<User[]>([]);
-  const [loading, setLoading] = useState(true);
+  const isAdmin = role === "ADMIN";
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState<User | null>(null);
-  const [vehiculos, setVehiculos] = useState<VehiculoOperativo[]>([]);
-  const [transportistasOperativos, setTransportistasOperativos] = useState<TransportistaOperativo[]>([]);
-  const [loadingCatalogos, setLoadingCatalogos] = useState(true);
   const toastCtx = useToast();
+
+  // ── Lecturas SWR (solo ADMIN; key null desactiva la petición) ──────────────
+  const { data: usersData, isLoading: loading, mutate: mutateUsers } = useApi<{ data: User[] }>(isAdmin ? "/api/users" : null);
+  const users = useMemo(() => usersData?.data ?? [], [usersData]);
+  const { data: vehData, isLoading: loadingVeh, mutate: mutateVeh } = useApi<{ data: VehiculoOperativo[] }>(isAdmin ? "/api/users/vehiculos" : null);
+  const vehiculos = useMemo(() => vehData?.data ?? [], [vehData]);
+  const { data: transData, isLoading: loadingTrans, mutate: mutateTrans } = useApi<{ data: TransportistaOperativo[] }>(isAdmin ? "/api/users/transportistas-operativos" : null);
+  const transportistasOperativos = useMemo(() => transData?.data ?? [], [transData]);
+  const loadingCatalogos = loadingVeh || loadingTrans;
+  const load = useCallback(() => { void mutateUsers(); }, [mutateUsers]);
+  const loadCatalogos = useCallback(() => { void mutateVeh(); void mutateTrans(); }, [mutateVeh, mutateTrans]);
   const [searchQ, setSearchQ] = useState("");
   const [sortCol, setSortCol] = useState<"name" | "role" | "active">("name");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
@@ -93,53 +103,10 @@ export default function UsuariosPage() {
     else { setSortCol(col); setSortDir("asc"); }
   }
 
-  async function load() {
-    setLoading(true);
-    try {
-      const res = await fetch("/api/users");
-      const json = await res.json();
-      if (json.success) setUsers(json.data);
-    } catch { showToast("Error al cargar", true); }
-    finally { setLoading(false); }
-  }
-
-  async function loadCatalogos() {
-    setLoadingCatalogos(true);
-    try {
-      const [vehiculosRes, transportistasRes] = await Promise.all([
-        fetch("/api/users/vehiculos"),
-        fetch("/api/users/transportistas-operativos"),
-      ]);
-      const [vehiculosJson, transportistasJson] = await Promise.all([
-        vehiculosRes.json(),
-        transportistasRes.json(),
-      ]);
-      if (vehiculosJson.success) setVehiculos(vehiculosJson.data);
-      if (transportistasJson.success) setTransportistasOperativos(transportistasJson.data);
-    } catch {
-      showToast("Error al cargar conductores y vehículos", true);
-    } finally {
-      setLoadingCatalogos(false);
-    }
-  }
-
-  useEffect(() => {
-    if (role === "ADMIN") {
-      load();
-      loadCatalogos();
-    } else {
-      setLoading(false);
-      setLoadingCatalogos(false);
-    }
-  }, [role]);
-
   const autoRefresh = useAutoRefresh({
-    enabled: role === "ADMIN",
+    enabled: isAdmin,
     pause: Boolean(showForm || editing),
-    onRefresh: async () => {
-      await load();
-      await loadCatalogos();
-    },
+    onRefresh: () => { load(); loadCatalogos(); },
   });
 
   const filteredUsers = useMemo(() => {
@@ -289,23 +256,14 @@ function CatalogosPreoperacional({
     }
     setSavingVehiculo(true);
     try {
-      const res = await fetch("/api/users/vehiculos", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ placa, tipo, capacidadKg: capacidadKg ? Number(capacidadKg) : null, estado: "ACTIVO" }),
-      });
-      const json = await res.json();
-      if (!json.success) {
-        onToast(json.error || "Error al crear vehículo", true);
-        return;
-      }
+      await apiPost("/api/users/vehiculos", { placa, tipo, capacidadKg: capacidadKg ? Number(capacidadKg) : null, estado: "ACTIVO" });
       setPlaca("");
       setTipo("CAMION");
       setCapacidadKg("");
       onReload();
       onToast("Vehículo creado");
-    } catch {
-      onToast("Error de conexión", true);
+    } catch (e) {
+      onToast(getErrorMessage(e, "Error al crear vehículo"), true);
     } finally {
       setSavingVehiculo(false);
     }
@@ -318,23 +276,14 @@ function CatalogosPreoperacional({
     }
     setSavingTransportista(true);
     try {
-      const res = await fetch("/api/users/transportistas-operativos", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ nombre, telefono: telefono || null, vehiculoId: vehiculoId || null }),
-      });
-      const json = await res.json();
-      if (!json.success) {
-        onToast(json.error || "Error al crear transportista", true);
-        return;
-      }
+      await apiPost("/api/users/transportistas-operativos", { nombre, telefono: telefono || null, vehiculoId: vehiculoId || null });
       setNombre("");
       setTelefono("");
       setVehiculoId("");
       onReload();
       onToast("Transportista operativo creado");
-    } catch {
-      onToast("Error de conexión", true);
+    } catch (e) {
+      onToast(getErrorMessage(e, "Error al crear transportista"), true);
     } finally {
       setSavingTransportista(false);
     }
@@ -343,20 +292,11 @@ function CatalogosPreoperacional({
   async function asignarVehiculo(transportistaId: string, nextVehiculoId: string) {
     setUpdatingId(transportistaId);
     try {
-      const res = await fetch("/api/users/transportistas-operativos", {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id: transportistaId, vehiculoId: nextVehiculoId || null }),
-      });
-      const json = await res.json();
-      if (!json.success) {
-        onToast(json.error || "Error al asignar vehículo", true);
-        return;
-      }
+      await apiPatch("/api/users/transportistas-operativos", { id: transportistaId, vehiculoId: nextVehiculoId || null });
       onReload();
       onToast("Vehículo asignado");
-    } catch {
-      onToast("Error de conexión", true);
+    } catch (e) {
+      onToast(getErrorMessage(e, "Error al asignar vehículo"), true);
     } finally {
       setUpdatingId(null);
     }
@@ -369,17 +309,12 @@ function CatalogosPreoperacional({
     try {
       const form = new FormData();
       form.append("file", file);
-      const res = await fetch("/api/productos-maestro/importar", { method: "POST", body: form });
-      const json = await res.json();
-      if (!json.success) {
-        onToast(json.error || "Error al importar maestro", true);
-        return;
-      }
+      const json = await apiUpload<{ data: { importados: number; actualizados: number; ignorados: number } }>("/api/productos-maestro/importar", form);
       const data = json.data;
       setResultadoMaestro(`${data.importados} importados, ${data.actualizados} actualizados, ${data.ignorados} ignorados`);
       onToast("Maestro PLU importado");
-    } catch {
-      onToast("Error de conexión", true);
+    } catch (e) {
+      onToast(getErrorMessage(e, "Error al importar maestro"), true);
     } finally {
       setImportandoMaestro(false);
     }
@@ -486,10 +421,9 @@ function FormNuevo({ onClose, onSaved, onError }: { onClose: () => void; onSaved
 
     let cancelled = false;
     setLoadingTransportistas(true);
-    fetch("/api/users/transportistas-disponibles")
-      .then((res) => res.json())
+    apiGet<{ data: TransportistaDisponible[] }>("/api/users/transportistas-disponibles")
       .then((json) => {
-        if (!cancelled) setTransportistas(json.success ? json.data : []);
+        if (!cancelled) setTransportistas(json.data ?? []);
       })
       .catch(() => {
         if (!cancelled) {
@@ -520,25 +454,18 @@ function FormNuevo({ onClose, onSaved, onError }: { onClose: () => void; onSaved
     }
     setSaving(true);
     try {
-      const res = await fetch("/api/users", {
-        method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          name: name.trim(),
-          email: email.trim(),
-          password,
-          role,
-          transportistaId: role === "TRANSPORTISTA" ? transportistaId : undefined,
-        }),
+      await apiPost("/api/users", {
+        name: name.trim(),
+        email: email.trim(),
+        password,
+        role,
+        transportistaId: role === "TRANSPORTISTA" ? transportistaId : undefined,
       });
-      const json = await res.json();
-      if (json.success) onSaved(); else {
-        const msg = json.error || "Error al crear";
-        setFormError(msg);
-        onError(msg);
-      }
-    } catch {
-      setFormError("Error de conexión");
-      onError("Error de conexión");
+      onSaved();
+    } catch (e) {
+      const msg = getErrorMessage(e, "Error al crear");
+      setFormError(msg);
+      onError(msg);
     }
     finally { setSaving(false); }
   }
@@ -630,10 +557,9 @@ function ModalEditar({ u, selfId, onClose, onSaved, onError }: { u: User; selfId
     const body: Record<string, unknown> = { name: name.trim(), role, active };
     if (password) body.password = password;
     try {
-      const res = await fetch(`/api/users/${u.id}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
-      const json = await res.json();
-      if (json.success) onSaved(); else onError(json.error || "Error al actualizar");
-    } catch { onError("Error de conexión"); }
+      await apiPut(`/api/users/${u.id}`, body);
+      onSaved();
+    } catch (e) { onError(getErrorMessage(e, "Error al actualizar")); }
     finally { setSaving(false); }
   }
 
