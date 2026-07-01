@@ -55,7 +55,7 @@ function AlertaRow({ level, count, title, context, href }: {
 }) {
   const COLOR = level === "critical" ? "var(--error)" : level === "warning" ? "var(--warning)" : "var(--brand)";
   const BG    = level === "critical" ? "var(--error-tint)" : level === "warning" ? "var(--warning-tint)" : "var(--brand-tint)";
-  const BORDER = level === "critical" ? "rgba(220, 38, 38, 0.22)" : level === "warning" ? "rgba(217, 119, 6, 0.22)" : "rgba(37, 99, 235, 0.22)";
+  const BORDER = `color-mix(in srgb, ${COLOR} 22%, transparent)`;
 
   return (
     <Link href={href} style={{ textDecoration: "none" }}>
