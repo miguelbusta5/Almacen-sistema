@@ -9,6 +9,7 @@ export const maxDuration = 30;
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
   const session = await auth();
   if (!session) redirect("/login");
+  if (session.user?.mustChangePassword) redirect("/cambiar-password");
 
   return (
     <div className="g-shell" style={{ background: "var(--bg)" }}>

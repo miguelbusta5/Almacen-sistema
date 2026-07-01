@@ -41,7 +41,12 @@ export async function PUT(
   if (d.name !== undefined) data.name = d.name;
   if (d.role !== undefined) data.role = d.role;
   if (d.active !== undefined) data.active = d.active;
-  if (d.password) data.password = await bcrypt.hash(d.password, 12);
+  if (d.password) {
+    data.password = await bcrypt.hash(d.password, 12);
+    // Un reseteo de contraseña por ADMIN también es temporal — se obliga el
+    // cambio en el próximo login.
+    data.mustChangePassword = true;
+  }
 
   const user = await prisma.user.update({
     where: { id },

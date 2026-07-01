@@ -15,6 +15,7 @@ export interface User {
   name: string;
   role: Role;
   active: boolean;
+  mustChangePassword?: boolean;
   createdAt?: string;
 }
 
@@ -103,11 +104,18 @@ export function UsuariosTable({
       testId: "estado-cell",
       debugLabel: "Estado",
       render: (u) => (
-        <Badge
-          label={u.active ? "Activo" : "Inactivo"}
-          variant={u.active ? "success" : "muted"}
-          dot={false}
-        />
+        <span style={{ display: "flex", alignItems: "center", gap: 5, flexWrap: "wrap" }}>
+          <Badge
+            label={u.active ? "Activo" : "Inactivo"}
+            variant={u.active ? "success" : "muted"}
+            dot={false}
+          />
+          {u.mustChangePassword && (
+            <span data-testid="badge-cambio-pendiente">
+              <Badge label="Cambio pendiente" variant="warning" dot={false} />
+            </span>
+          )}
+        </span>
       ),
     },
     {

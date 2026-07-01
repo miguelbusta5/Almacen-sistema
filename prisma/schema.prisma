@@ -99,6 +99,7 @@ model User {
   password  String
   role      Role     @default(OPERADOR)
   active    Boolean  @default(true)
+  mustChangePassword Boolean @default(false) @map("must_change_password")
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 

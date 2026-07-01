@@ -1,8 +1,9 @@
 "use client";
 
 import { signOut } from "next-auth/react";
-import { Bell, ChevronDown, Clock3, LogOut, Search, ShieldCheck, Wifi } from "lucide-react";
+import { Bell, ChevronDown, Clock3, KeyRound, LogOut, Search, ShieldCheck, Wifi } from "lucide-react";
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import Logo from "./Logo";
 import { ThemeToggle } from "./ThemeToggle";
 import { useApi } from "@/hooks/useApi";
@@ -44,6 +45,7 @@ function UserInitials({ name }: { name: string }) {
 }
 
 export default function Header({ user }: HeaderProps) {
+  const router = useRouter();
   const isMobile = useIsMobile();
   const [menuOpen, setMenuOpen] = useState(false);
   const { open: openPalette } = useCommandPalette();
@@ -239,6 +241,27 @@ export default function Header({ user }: HeaderProps) {
                     <Clock3 size={11} />{user?.email}
                   </div>
                 </div>
+                <button
+                  onClick={() => { setMenuOpen(false); router.push("/cambiar-password"); }}
+                  style={{
+                    width: "100%",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 8,
+                    padding: "8px 10px",
+                    background: "none",
+                    border: "none",
+                    borderRadius: 8,
+                    fontSize: 13,
+                    color: "var(--muted2)",
+                    cursor: "pointer",
+                    textAlign: "left",
+                  }}
+                  onMouseEnter={(e) => (e.currentTarget.style.background = "var(--surface3)")}
+                  onMouseLeave={(e) => (e.currentTarget.style.background = "none")}
+                >
+                  <KeyRound size={14} />Cambiar contraseña
+                </button>
                 <button
                   onClick={() => signOut({ callbackUrl: "/login" })}
                   style={{

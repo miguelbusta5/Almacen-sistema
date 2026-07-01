@@ -1,14 +1,24 @@
 "use client";
 
-import { useState } from "react";
+import { Suspense, useState } from "react";
 import { signIn } from "next-auth/react";
-import { useRouter } from "next/navigation";
-import { ArrowRight, Eye, EyeOff, Loader2, ShieldCheck, Wifi } from "lucide-react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { ArrowRight, CheckCircle2, Eye, EyeOff, Loader2, ShieldCheck, Wifi } from "lucide-react";
 import Logo from "@/components/common/Logo";
 import { PRODUCT } from "@/config/product";
 
 export default function LoginPage() {
+  return (
+    <Suspense fallback={null}>
+      <LoginPageInner />
+    </Suspense>
+  );
+}
+
+function LoginPageInner() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const passwordChanged = searchParams.get("passwordChanged") === "1";
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPass, setShowPass] = useState(false);
@@ -165,6 +175,12 @@ export default function LoginPage() {
               Ingresa con tu cuenta corporativa para continuar.
             </p>
           </div>
+
+          {passwordChanged && (
+            <div style={{ background: "var(--success-tint)", border: "1px solid color-mix(in srgb, var(--success) 26%, transparent)", borderRadius: 10, padding: "10px 12px", fontSize: 13, color: "var(--success)", fontWeight: 600, marginBottom: 16, display: "flex", alignItems: "center", gap: 8 }}>
+              <CheckCircle2 size={15} />Contraseña actualizada. Inicia sesión con tu nueva contraseña.
+            </div>
+          )}
 
           <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: 16 }}>
             <label style={{ display: "grid", gap: 6, fontSize: 12, fontWeight: 700, color: "var(--muted2)" }}>

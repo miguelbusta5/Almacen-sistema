@@ -47,3 +47,6 @@ next-env.d.ts
 
 .vercel
 .env*
+
+# credenciales temporales generadas por scripts/import-usuarios.mjs — nunca commitear
+/scripts/output/

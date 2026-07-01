@@ -39,7 +39,7 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: "No autorizado" }, { status: 403 });
   }
   const users = await prisma.user.findMany({
-    select: { id: true, email: true, name: true, role: true, active: true, createdAt: true },
+    select: { id: true, email: true, name: true, role: true, active: true, mustChangePassword: true, createdAt: true },
     orderBy: { createdAt: "desc" },
   });
   return NextResponse.json({ success: true, data: users });
@@ -82,7 +82,9 @@ export async function POST(req: NextRequest) {
   const hashed = await bcrypt.hash(parsed.data.password, 12);
   const user = await prisma.$transaction(async (tx) => {
     const created = await tx.user.create({
-      data: { ...userData, email, password: hashed },
+      // Toda cuenta nueva empieza con contraseña temporal — se obliga el
+      // cambio en el primer login (ver src/app/(dashboard)/dashboard/layout.tsx).
+      data: { ...userData, email, password: hashed, mustChangePassword: true },
       select: { id: true, email: true, name: true, role: true, active: true },
     });
 

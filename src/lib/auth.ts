@@ -7,15 +7,17 @@ import bcrypt from "bcryptjs";
 declare module "next-auth" {
   interface User {
     role?: string;
+    mustChangePassword?: boolean;
   }
   interface Session {
-    user: { id?: string; role?: string } & DefaultSession["user"];
+    user: { id?: string; role?: string; mustChangePassword?: boolean } & DefaultSession["user"];
   }
 }
 declare module "@auth/core/jwt" {
   interface JWT {
     id?: string;
     role?: string;
+    mustChangePassword?: boolean;
   }
 }
 
@@ -39,7 +41,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         const valid = await bcrypt.compare(password, user.password);
         if (!valid) return null;
 
-        return { id: user.id, email: user.email, name: user.name, role: user.role };
+        return { id: user.id, email: user.email, name: user.name, role: user.role, mustChangePassword: user.mustChangePassword };
       },
     }),
   ],
@@ -48,6 +50,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       if (user) {
         token.role = user.role;
         token.id = user.id;
+        token.mustChangePassword = user.mustChangePassword;
       }
       return token;
     },
@@ -55,6 +58,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       if (session.user) {
         session.user.role = token.role;
         if (token.id) session.user.id = token.id;
+        session.user.mustChangePassword = token.mustChangePassword;
       }
       return session;
     },

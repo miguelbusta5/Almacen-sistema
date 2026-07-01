@@ -101,6 +101,18 @@ describe("UsuariosTable — estructura (Fase U1)", () => {
     expect(text(row2, "estado-cell")).toBe("Inactivo");
   });
 
+  it("no muestra el badge de cambio de contraseña pendiente por defecto", () => {
+    expect(cellHtml("estado-cell", firstRow)).not.toContain("badge-cambio-pendiente");
+  });
+
+  it("muestra 'Cambio pendiente' cuando mustChangePassword es true", () => {
+    const html2 = renderTable({ users: [{ ...mockUser, id: "user-2", mustChangePassword: true }] });
+    const tbody2 = html2.split("<tbody>")[1]?.split("</tbody>")[0] ?? "";
+    const row2 = tbody2.split("</tr>").find((r) => r.includes("<td")) ?? "";
+    expect(cellHtml("estado-cell", row2)).toContain('data-testid="badge-cambio-pendiente"');
+    expect(text(row2, "estado-cell")).toContain("Cambio pendiente");
+  });
+
   it("acciones-cell contiene el botón Editar", () => {
     expect(cellHtml("acciones-cell", firstRow)).toContain("<button");
   });
