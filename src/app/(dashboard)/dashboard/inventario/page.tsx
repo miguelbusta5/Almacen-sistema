@@ -5,11 +5,14 @@
 // Objetivo: registrar novedad en < 20 segundos, una sola mano
 // ═══════════════════════════════════════════════════════════
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useSession } from "next-auth/react";
 import { can } from "@/lib/permissions";
 import { useAutoRefresh } from "@/hooks/useAutoRefresh";
+import { useApi } from "@/hooks/useApi";
+import { apiPost, apiPut, apiUpload } from "@/lib/apiClient";
+import { getErrorMessage } from "@/lib/errors";
 import {
   Plus, X, Camera, Search, RefreshCw,
   CheckCircle2, Minus, Package, ChevronDown,
@@ -306,21 +309,12 @@ function NuevaNovedadSheet({ onClose, onCreada, existingPlus, existingPosiciones
     try {
       const fd = new FormData();
       fd.append("foto", file);
-      const r = await fetch("/api/uploads/foto", { method: "POST", body: fd });
-      const j = await r.json();
-      if (j.success && j.url) {
-        setFoto((prev) =>
-          prev.phase !== "idle"
-            ? { phase: "ready", file: prev.file, dataUrl: prev.dataUrl, url: j.url }
-            : prev
-        );
-      } else {
-        setFoto((prev) =>
-          prev.phase !== "idle"
-            ? { phase: "error", file: prev.file, dataUrl: prev.dataUrl }
-            : prev
-        );
-      }
+      const j = await apiUpload<{ url: string }>("/api/uploads/foto", fd);
+      setFoto((prev) =>
+        prev.phase !== "idle"
+          ? { phase: "ready", file: prev.file, dataUrl: prev.dataUrl, url: j.url }
+          : prev
+      );
     } catch {
       setFoto((prev) =>
         prev.phase !== "idle"
@@ -346,32 +340,24 @@ function NuevaNovedadSheet({ onClose, onCreada, existingPlus, existingPosiciones
     setSaving(true);
     try {
       // 1. Crear la novedad
-      const r = await fetch("/api/novedades", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          plu: plu.trim().toUpperCase(),
-          posicion: posicion.trim().toUpperCase(),
-          fecha: todayISO(),
-          cantidad,
-          estado: "PENDIENTE",
-          tipoNovedad: tipo,
-        }),
+      const j = await apiPost<{ data: Novedad }>("/api/novedades", {
+        plu: plu.trim().toUpperCase(),
+        posicion: posicion.trim().toUpperCase(),
+        fecha: todayISO(),
+        cantidad,
+        estado: "PENDIENTE",
+        tipoNovedad: tipo,
       });
-      const j = await r.json();
-      if (!j.success) { alert(j.error || "Error al registrar"); return; }
 
       // 2. Agregar foto si está lista
       if (foto.phase === "ready" && foto.url) {
-        await fetch(`/api/novedades/${j.data.id}`, {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ imagenUrl: foto.url }),
-        });
+        await apiPut(`/api/novedades/${j.data.id}`, { imagenUrl: foto.url });
         j.data.imagenUrl = foto.url;
       }
 
       onCreada(j.data);
+    } catch (e) {
+      alert(getErrorMessage(e, "Error al registrar"));
     } finally {
       setSaving(false);
     }
@@ -616,17 +602,10 @@ function DetalleSheet({ item, onClose, onUpdated, canEdit }: {
   async function cambiarEstado(estado: EstadoNovedad) {
     setSaving(true);
     try {
-      const r = await fetch(`/api/novedades/${item.id}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ estado }),
-      });
-      const j = await r.json();
-      if (j.success) {
-        onUpdated({ ...item, estado, resueltoAt: estado === "SOLUCIONADO" ? new Date().toISOString() : item.resueltoAt });
-        onClose();
-      }
-    } finally { setSaving(false); }
+      await apiPut(`/api/novedades/${item.id}`, { estado });
+      onUpdated({ ...item, estado, resueltoAt: estado === "SOLUCIONADO" ? new Date().toISOString() : item.resueltoAt });
+      onClose();
+    } catch { /* noop */ } finally { setSaving(false); }
   }
 
   async function agregarFoto(file: File) {
@@ -634,18 +613,11 @@ function DetalleSheet({ item, onClose, onUpdated, canEdit }: {
     try {
       const fd = new FormData();
       fd.append("foto", file);
-      const r = await fetch("/api/uploads/foto", { method: "POST", body: fd });
-      const j = await r.json();
-      if (j.success && j.url) {
-        await fetch(`/api/novedades/${item.id}`, {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ imagenUrl: j.url }),
-        });
-        onUpdated({ ...item, imagenUrl: j.url });
-        onClose();
-      }
-    } finally { setFotoPhase("idle"); }
+      const j = await apiUpload<{ url: string }>("/api/uploads/foto", fd);
+      await apiPut(`/api/novedades/${item.id}`, { imagenUrl: j.url });
+      onUpdated({ ...item, imagenUrl: j.url });
+      onClose();
+    } catch { /* noop */ } finally { setFotoPhase("idle"); }
   }
 
   const tipoColor = item.tipoNovedad
@@ -763,9 +735,8 @@ export default function InventarioMobilePage() {
   const canEdit = can(role, "edit");
   const canCreate = can(role, "create");
 
-  const [novedades, setNovedades] = useState<Novedad[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
+  const { data: novData, isLoading: loading, isValidating: refreshing, mutate: mutateNovedades } = useApi<{ data: Novedad[] }>("/api/novedades?pageSize=500");
+  const novedades = useMemo(() => novData?.data ?? [], [novData]);
   const [filter, setFilter] = useState<"" | EstadoNovedad>("");
   const [search, setSearch] = useState("");
   const [searchOpen, setSearchOpen] = useState(false);
@@ -773,22 +744,9 @@ export default function InventarioMobilePage() {
   const [selected, setSelected] = useState<Novedad | null>(null);
   const [toast, setToast] = useState<{ msg: string; ok?: boolean } | null>(null);
 
-  async function load(silent = false) {
-    if (!silent) setLoading(true);
-    else setRefreshing(true);
-    try {
-      const r = await fetch("/api/novedades?pageSize=500");
-      const j = await r.json();
-      if (j.success) setNovedades(j.data ?? []);
-    } catch { /* noop */ }
-    finally { setLoading(false); setRefreshing(false); }
-  }
-
-  useEffect(() => { load(); }, []);
-
   const autoRefresh = useAutoRefresh({
     pause: Boolean(sheet),
-    onRefresh: () => load(true),
+    onRefresh: () => { void mutateNovedades(); },
   });
 
   function showToast(msg: string, ok = true) {
@@ -881,7 +839,7 @@ export default function InventarioMobilePage() {
             </div>
             <div style={{ display: "flex", gap: 8 }}>
               <button
-                onClick={() => load(true)}
+                onClick={() => mutateNovedades()}
                 disabled={refreshing || autoRefresh.refreshing}
                 style={{ width: 38, height: 38, borderRadius: 10, background: "var(--surface2)", border: "none", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}
               >
@@ -986,7 +944,7 @@ export default function InventarioMobilePage() {
         <NuevaNovedadSheet
           onClose={() => setSheet(null)}
           onCreada={(n) => {
-            setNovedades((prev) => [n, ...prev]);
+            void mutateNovedades((current) => ({ data: [n, ...(current?.data ?? [])] }), { revalidate: false });
             setSheet(null);
             showToast("Novedad registrada ✓");
           }}
@@ -1000,7 +958,7 @@ export default function InventarioMobilePage() {
           item={selected}
           onClose={() => { setSheet(null); setSelected(null); }}
           onUpdated={(updated) => {
-            setNovedades((prev) => prev.map((n) => n.id === updated.id ? updated : n));
+            void mutateNovedades((current) => ({ data: (current?.data ?? []).map((n) => n.id === updated.id ? updated : n) }), { revalidate: false });
             setSelected(updated);
           }}
           canEdit={canEdit}
