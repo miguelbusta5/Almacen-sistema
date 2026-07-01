@@ -14,6 +14,8 @@ import { useListDetailScroll } from "@/hooks/useListDetailScroll";
 import type { ResultadoInspeccion } from "@/lib/preoperacional";
 import { getModuleColor, getModuleCssVars } from "@/lib/moduleTheme";
 import { useAutoRefresh } from "@/hooks/useAutoRefresh";
+import { useApi } from "@/hooks/useApi";
+import { apiPost, apiUpload, apiDelete } from "@/lib/apiClient";
 import { useToast } from "@/contexts/ToastContext";
 import { HistorialPreoperacionalTable } from "./_components";
 
@@ -146,11 +148,9 @@ function ConductorView() {
   const role = (session?.user as { role?: string } | undefined)?.role;
   const isMobile = useIsMobile();
 
-  const [data, setData] = useState<ConductorData | null>(null);
   const [items, setItems] = useState<FormItem[]>([]);
   const [kilometraje, setKilometraje] = useState("");
   const [observaciones, setObservaciones] = useState("");
-  const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const toastCtx = useToast();
 
@@ -158,31 +158,32 @@ function ConductorView() {
     err ? toastCtx.error(msg) : toastCtx.success(msg);
   };
 
-  async function load() {
-    setLoading(true);
-    try {
-      const res = await fetch("/api/preoperacional");
-      const json = await res.json();
-      if (!json.success) throw new Error(json.error || "Error");
-      setData(json);
-      setItems((json.checklist ?? []).map((i: ChecklistItem) => ({
-        ...i,
-        resultado: "CONFORME" as ResultadoInspeccion,
-        observacion: "",
-        fotoUrl: null,
-      })));
-    } catch (e) {
-      showToast(errMsg(e, "No se pudo cargar preoperacional"), true);
-    } finally {
-      setLoading(false);
-    }
-  }
+  // La respuesta de este endpoint no sigue el patrón {success,data}: trae los
+  // campos directamente (checklist, transportista, vehiculo, ...).
+  const { data, isLoading: loading, error: loadError, mutate: mutateData } = useApi<ConductorData>("/api/preoperacional");
 
-  useEffect(() => { load(); }, []);
+  // Reinicializa el formulario cuando llega un nuevo checklist. Solo ocurre en
+  // el fetch inicial y tras un mutate() explícito (submit / refresh manual);
+  // el auto-refresh se pausa mientras el formulario tiene cambios sin guardar,
+  // así que esto nunca pisa una edición en curso.
+  useEffect(() => {
+    if (!data) return;
+    setItems((data.checklist ?? []).map((i) => ({
+      ...i,
+      resultado: "CONFORME" as ResultadoInspeccion,
+      observacion: "",
+      fotoUrl: null,
+    })));
+  }, [data]);
+
+  useEffect(() => {
+    if (loadError) showToast(errMsg(loadError, "No se pudo cargar preoperacional"), true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loadError]);
 
   const autoRefresh = useAutoRefresh({
     pause: Boolean(saving || kilometraje || observaciones || items.some((item) => item.resultado !== "CONFORME" || item.observacion || item.fotoUrl)),
-    onRefresh: () => load(),
+    onRefresh: () => { void mutateData(); },
   });
 
   const resumen = useMemo(() => {
@@ -205,9 +206,7 @@ function ConductorView() {
     try {
       const fd = new FormData();
       fd.append("foto", file);
-      const res = await fetch("/api/uploads/foto", { method: "POST", body: fd });
-      const json = await res.json();
-      if (!json.success) throw new Error(json.error || "No se pudo subir la foto");
+      const json = await apiUpload<{ url: string }>("/api/uploads/foto", fd);
       updateItem(index, { fotoUrl: json.url });
       showToast("Foto cargada");
     } catch (e) {
@@ -224,26 +223,20 @@ function ConductorView() {
 
     setSaving(true);
     try {
-      const res = await fetch("/api/preoperacional", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          kilometraje: kilometraje ? Number(kilometraje) : null,
-          observaciones: observaciones.trim() || null,
-          items: items.map((i) => ({
-            item: i.item,
-            resultado: i.resultado,
-            observacion: i.observacion.trim() || null,
-            fotoUrl: i.fotoUrl,
-          })),
-        }),
+      await apiPost("/api/preoperacional", {
+        kilometraje: kilometraje ? Number(kilometraje) : null,
+        observaciones: observaciones.trim() || null,
+        items: items.map((i) => ({
+          item: i.item,
+          resultado: i.resultado,
+          observacion: i.observacion.trim() || null,
+          fotoUrl: i.fotoUrl,
+        })),
       });
-      const json = await res.json();
-      if (!json.success) throw new Error(json.error || "No se pudo guardar");
       showToast("Preoperacional registrado");
       setKilometraje("");
       setObservaciones("");
-      await load();
+      await mutateData();
     } catch (e) {
       showToast(errMsg(e, "Error guardando"), true);
     } finally {
@@ -400,18 +393,11 @@ function ConductorView() {
 // ════════════════════════════════════════════════════════════════════════════
 
 function SupervisorView({ role }: { role: string }) {
-  const [rows, setRows]           = useState<HistorialRow[]>([]);
-  const [conductores, setConductores] = useState<{ id: string; nombre: string }[]>([]);
-  const [total, setTotal]         = useState(0);
-  const [pages, setPages]         = useState(1);
   const [page, setPage]           = useState(1);
-  const [loading, setLoading]     = useState(true);
   const [exporting, setExporting] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [selected,      setSelected]      = useState<HistorialRow | null>(null);
   useListDetailScroll(selected !== null);
-  const [detail,        setDetail]        = useState<InspeccionDetalle | null>(null);
-  const [loadingDetail, setLoadingDetail] = useState(false);
   const toastCtx = useToast();
   const [debugTable, setDebugTable] = useState(false);
 
@@ -427,6 +413,7 @@ function SupervisorView({ role }: { role: string }) {
     err ? toastCtx.error(msg) : toastCtx.success(msg);
   };
 
+  // Querystring de filtros (sin page/pageSize) — reusado por la key de la lista y por exportar().
   const buildParams = useCallback((extra?: Record<string, string>) => {
     const p = new URLSearchParams();
     if (fDesde)     p.set("fechaDesde",  fDesde);
@@ -437,30 +424,26 @@ function SupervisorView({ role }: { role: string }) {
     return p.toString();
   }, [fDesde, fHasta, fConductor, fEstado]);
 
-  const load = useCallback(async (p = 1) => {
-    setLoading(true);
-    try {
-      const qs = buildParams({ page: String(p), pageSize: "50" });
-      const res = await fetch(`/api/preoperacional/historial?${qs}`);
-      const json = await res.json();
-      if (!json.success) throw new Error(json.error || "Error al cargar");
-      setRows(json.data);
-      setTotal(json.total);
-      setPages(json.pages);
-      setPage(p);
-      if (json.conductores?.length) setConductores(json.conductores);
-    } catch (e) {
-      showToast(errMsg(e, "Error"), true);
-    } finally {
-      setLoading(false);
-    }
-  }, [buildParams]);
+  // Cambiar cualquier filtro vuelve a la página 1 (la key de SWR reacciona sola).
+  useEffect(() => { setPage(1); }, [fDesde, fHasta, fConductor, fEstado]);
 
-  useEffect(() => { load(1); }, [load]);
+  const listKey = `/api/preoperacional/historial?${buildParams({ page: String(page), pageSize: "50" })}`;
+  const { data: listData, isLoading: loading, error: listError, mutate: mutateList } = useApi<{
+    data: HistorialRow[]; total: number; pages: number; conductores?: { id: string; nombre: string }[];
+  }>(listKey);
+  const rows = listData?.data ?? [];
+  const total = listData?.total ?? 0;
+  const pages = listData?.pages ?? 1;
+  const conductores = listData?.conductores ?? [];
+
+  useEffect(() => {
+    if (listError) showToast(errMsg(listError, "Error"), true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [listError]);
 
   const autoRefresh = useAutoRefresh({
     pause: Boolean(selected || deletingId || exporting),
-    onRefresh: () => load(page),
+    onRefresh: () => { void mutateList(); },
   });
 
   async function exportar() {
@@ -483,25 +466,17 @@ function SupervisorView({ role }: { role: string }) {
     }
   }
 
-  async function openDetail(row: HistorialRow) {
-    setSelected(row);
-    setDetail(null);
-    setLoadingDetail(true);
-    try {
-      const res = await fetch(`/api/preoperacional/${row.id}`);
-      const json = await res.json();
-      if (json.success) setDetail(json.data);
-    } catch { /* panel abierto, ítems no cargaron */ }
-    finally { setLoadingDetail(false); }
-  }
+  // El detalle se carga vía useApi con key condicionada a `selected` (ver abajo).
+  const detailKey = selected ? `/api/preoperacional/${selected.id}` : null;
+  const { data: detailData, isLoading: loadingDetail } = useApi<{ data: InspeccionDetalle }>(detailKey);
+  const detail = detailData?.data ?? null;
 
   async function deleteRow(id: string) {
     try {
-      const res = await fetch(`/api/preoperacional/${id}`, { method: "DELETE" });
-      if (!res.ok) throw new Error("Error al eliminar");
+      await apiDelete(`/api/preoperacional/${id}`);
       showToast("Inspección eliminada");
       setDeletingId(null);
-      load(page);
+      void mutateList();
     } catch (e) {
       showToast(errMsg(e, "Error al eliminar"), true);
       setDeletingId(null);
@@ -533,7 +508,7 @@ function SupervisorView({ role }: { role: string }) {
           <button onClick={exportar} disabled={exporting} className="ds-btn ds-btn-primary" style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, opacity: exporting ? 0.7 : 1 }}>
             <Download size={14} />{exporting ? "Exportando..." : "Exportar Excel"}
           </button>
-          <button onClick={() => load(page)} className="ds-btn ds-btn-ghost" style={{ fontSize: 12 }}>
+          <button onClick={() => mutateList()} className="ds-btn ds-btn-ghost" style={{ fontSize: 12 }}>
             <RefreshCw size={14} />Actualizar
           </button>
         </>
@@ -544,7 +519,7 @@ function SupervisorView({ role }: { role: string }) {
       {selected ? (
         <ModuleDetailView
           testId="inspeccion-detalle-view"
-          onBack={() => { setSelected(null); setDetail(null); setDeletingId(null); }}
+          onBack={() => { setSelected(null); setDeletingId(null); }}
           title={`${selected.conductor?.nombre ?? "Inspector"} — ${selected.fecha}`}
           badge={<Badge label={ESTADO_LABEL[selected.estado]} variant={estadoBadge(selected.estado)} dot={false} color={ESTADO_COLOR[selected.estado]} />}
           moduleColor={ESTADO_COLOR[selected.estado]}
@@ -669,7 +644,7 @@ function SupervisorView({ role }: { role: string }) {
                 role={role}
                 loading={false}
                 deletingId={deletingId}
-                onRowClick={(r) => openDetail(r)}
+                onRowClick={(r) => setSelected(r)}
                 onDeleteStart={(id) => setDeletingId(id)}
                 onDeleteConfirm={(id) => deleteRow(id)}
                 onDeleteCancel={() => setDeletingId(null)}
@@ -679,11 +654,11 @@ function SupervisorView({ role }: { role: string }) {
               {/* Paginación */}
               {pages > 1 && (
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 12, padding: "0.75rem 1rem", borderTop: "1px solid var(--border)", fontSize: 13 }}>
-                  <button onClick={() => load(page - 1)} disabled={page <= 1} className="ds-btn ds-btn-ghost ds-btn-sm" style={{ opacity: page <= 1 ? 0.4 : 1 }}>
+                  <button onClick={() => setPage(page - 1)} disabled={page <= 1} className="ds-btn ds-btn-ghost ds-btn-sm" style={{ opacity: page <= 1 ? 0.4 : 1 }}>
                     <ChevronLeft size={14} />Anterior
                   </button>
                   <span style={{ color: "var(--muted)" }}>Página {page} de {pages}</span>
-                  <button onClick={() => load(page + 1)} disabled={page >= pages} className="ds-btn ds-btn-ghost ds-btn-sm" style={{ opacity: page >= pages ? 0.4 : 1 }}>
+                  <button onClick={() => setPage(page + 1)} disabled={page >= pages} className="ds-btn ds-btn-ghost ds-btn-sm" style={{ opacity: page >= pages ? 0.4 : 1 }}>
                     Siguiente<ChevronRight size={14} />
                   </button>
                 </div>
