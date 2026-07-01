@@ -77,7 +77,7 @@ export function ModuleSignalGrid({ modules, isMobile }: { modules: ControlModule
               <div className="op-record-card" style={{ "--module-color": color, padding: 14, minHeight: 112, display: "flex", flexDirection: "column", justifyContent: "space-between" } as React.CSSProperties}>
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
                   <div style={{ fontSize: 13, fontWeight: 700, color: "var(--text)" }}>{m.label}</div>
-                  <span style={{ width: 8, height: 8, borderRadius: "50%", background: controlStatusColor(m.status), boxShadow: `0 0 0 3px ${controlStatusColor(m.status)}22` }} />
+                  <span style={{ width: 8, height: 8, borderRadius: "50%", background: controlStatusColor(m.status), boxShadow: `0 0 0 3px color-mix(in srgb, ${controlStatusColor(m.status)} 13%, transparent)` }} />
                 </div>
                 <div>
                   <div style={{ fontSize: 24, fontWeight: 900, color: color, lineHeight: 1 }}>{m.count ?? "Activo"}</div>
