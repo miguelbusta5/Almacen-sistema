@@ -412,7 +412,7 @@ export function SolicitudDetailPanel({
                   <Field label="Motivo rechazo">
                     <textarea value={rejectText} onChange={(e) => setRejectText(e.target.value)} rows={2} style={{ ...inputStyle, height: "auto", padding: 10 }} />
                   </Field>
-                  <button data-testid="panel-rechazar" onClick={onRechazar} style={{ height: 36, border: "1px solid rgba(220,38,38,.35)", borderRadius: 8, background: "var(--error-tint)", color: "var(--error)", fontWeight: 700, cursor: "pointer" }}>Rechazar solicitud</button>
+                  <button data-testid="panel-rechazar" onClick={onRechazar} style={{ height: 36, border: "1px solid color-mix(in srgb, var(--error) 35%, transparent)", borderRadius: 8, background: "var(--error-tint)", color: "var(--error)", fontWeight: 700, cursor: "pointer" }}>Rechazar solicitud</button>
                 </div>
               )}
             </DetailSection>

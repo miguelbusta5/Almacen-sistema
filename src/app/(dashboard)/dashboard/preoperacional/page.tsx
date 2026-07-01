@@ -313,7 +313,7 @@ function ConductorView() {
 
             if (isMobile) {
               return (
-                <div key={item.item} style={{ display: "flex", flexDirection: "column", gap: 8, padding: "12px", border: "1px solid var(--border)", borderRadius: 8, background: bad ? "rgba(239,68,68,0.04)" : "var(--surface)" }}>
+                <div key={item.item} style={{ display: "flex", flexDirection: "column", gap: 8, padding: "12px", border: "1px solid var(--border)", borderRadius: 8, background: bad ? "color-mix(in srgb, var(--error) 4%, transparent)" : "var(--surface)" }}>
                   <div style={{ fontSize: 13, fontWeight: 700, color: "var(--text)" }}>{item.item}</div>
                   <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
                     <span style={{ fontSize: 11, color: "var(--muted)", textTransform: "capitalize" }}>{item.categoria}</span>
@@ -332,7 +332,7 @@ function ConductorView() {
             }
 
             return (
-              <div key={item.item} style={{ display: "grid", gridTemplateColumns: "1fr 150px 220px 120px", gap: 10, alignItems: "center", padding: "10px 12px", border: "1px solid var(--border)", borderRadius: 8, background: bad ? "rgba(239,68,68,0.04)" : "var(--surface)" }}>
+              <div key={item.item} style={{ display: "grid", gridTemplateColumns: "1fr 150px 220px 120px", gap: 10, alignItems: "center", padding: "10px 12px", border: "1px solid var(--border)", borderRadius: 8, background: bad ? "color-mix(in srgb, var(--error) 4%, transparent)" : "var(--surface)" }}>
                 <div style={{ minWidth: 0 }}>
                   <div style={{ fontSize: 13, fontWeight: 700, color: "var(--text)" }}>{item.item}</div>
                   <div style={{ display: "flex", gap: 8, alignItems: "center", marginTop: 3 }}>
@@ -554,7 +554,7 @@ function SupervisorView({ role }: { role: string }) {
                       <div key={itm.id} style={{
                         display: "flex", alignItems: "flex-start", gap: 10, padding: "8px 10px",
                         border: "1px solid var(--border)", borderRadius: 8,
-                        background: itm.resultado === "NO_CONFORME" ? "rgba(239,68,68,0.04)" : "var(--surface2)",
+                        background: itm.resultado === "NO_CONFORME" ? "color-mix(in srgb, var(--error) 4%, transparent)" : "var(--surface2)",
                       }}>
                         <div style={{ flex: 1, minWidth: 0 }}>
                           <div style={{ fontSize: 13, fontWeight: 600, color: "var(--text)", display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>

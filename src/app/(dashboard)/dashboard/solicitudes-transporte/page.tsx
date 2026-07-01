@@ -450,7 +450,7 @@ export default function SolicitudesTransportePage() {
           </div>
 
           {rechazadas.length > 0 && !isGestor && (
-            <div style={{ border: "1px solid rgba(220,38,38,.25)", background: "var(--error-tint)", borderRadius: 12, padding: 14 }}>
+            <div style={{ border: "1px solid color-mix(in srgb, var(--error) 25%, transparent)", background: "var(--error-tint)", borderRadius: 12, padding: 14 }}>
               <strong style={{ color: "var(--error)", fontSize: 13 }}>Solicitudes rechazadas por corregir</strong>
               <div style={{ display: "grid", gap: 8, marginTop: 10 }}>
                 {rechazadas.map((r) => (

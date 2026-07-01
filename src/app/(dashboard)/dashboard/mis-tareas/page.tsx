@@ -50,7 +50,7 @@ function TareaCard({ titulo, sub, badge, badgeColor, href, tiempo, alerta }: {
   return (
     <Link href={href} style={{ textDecoration: "none" }}>
       <div
-        style={{ display: "flex", alignItems: "flex-start", gap: 12, padding: "12px 16px", background: "var(--surface)", border: `1px solid ${alerta ? "rgba(239,68,68,0.3)" : "var(--border)"}`, borderRadius: 10, transition: "box-shadow .12s", cursor: "pointer" }}
+        style={{ display: "flex", alignItems: "flex-start", gap: 12, padding: "12px 16px", background: "var(--surface)", border: `1px solid ${alerta ? "color-mix(in srgb, var(--error) 30%, transparent)" : "var(--border)"}`, borderRadius: 10, transition: "box-shadow .12s", cursor: "pointer" }}
         onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.boxShadow = "var(--shadow-md)"; }}
         onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.boxShadow = "none"; }}
       >

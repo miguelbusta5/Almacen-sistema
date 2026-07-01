@@ -418,7 +418,7 @@ export default function CentroControlPage() {
             {alertas.totalWarning > 0 && (
               <span style={{
                 fontSize: 11, fontWeight: 700, padding: "3px 9px", borderRadius: 20,
-                background: "var(--warning-tint)", color: "var(--warning)", border: "1px solid rgba(71,85,105,.14)",
+                background: "var(--warning-tint)", color: "var(--warning)", border: "1px solid color-mix(in srgb, var(--warning) 14%, transparent)",
               }}>
                 {alertas.totalWarning} advertencia{alertas.totalWarning !== 1 ? "s" : ""}
               </span>
@@ -426,7 +426,7 @@ export default function CentroControlPage() {
             {!hasExcepctions && (
               <span style={{
                 fontSize: 11, fontWeight: 700, padding: "3px 9px", borderRadius: 20,
-                background: "var(--brand-tint)", color: "var(--brand)", border: "1px solid rgba(29,78,216,.15)",
+                background: "var(--brand-tint)", color: "var(--brand)", border: "1px solid color-mix(in srgb, var(--brand) 15%, transparent)",
               }}>
                 Sin excepciones
               </span>
@@ -438,7 +438,7 @@ export default function CentroControlPage() {
         {!hasExcepctions && alertas.info.length === 0 && (
           <div style={{
             display: "flex", alignItems: "center", gap: 10, padding: "14px 16px",
-            background: "var(--brand-tint)", borderRadius: 10, border: "1px solid rgba(29,78,216,.15)",
+            background: "var(--brand-tint)", borderRadius: 10, border: "1px solid color-mix(in srgb, var(--brand) 15%, transparent)",
           }}>
             <CheckCircle2 size={16} color="var(--brand)" />
             <span style={{ fontSize: 13, color: "var(--muted)" }}>

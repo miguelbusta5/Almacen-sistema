@@ -452,7 +452,7 @@ export default function TiendaPage() {
 
             {panelItem.motivoRechazo && (
               <DetailSection title="Motivo de rechazo" color={ESTADO_DESPACHO_COLOR.RECHAZADO}>
-                <div style={{ background: "rgba(239,68,68,0.06)", borderRadius: 8, padding: "10px 12px", fontSize: 13, color: "var(--error)", display: "flex", gap: 8, borderLeft: "3px solid var(--error)" }}>
+                <div style={{ background: "color-mix(in srgb, var(--error) 6%, transparent)", borderRadius: 8, padding: "10px 12px", fontSize: 13, color: "var(--error)", display: "flex", gap: 8, borderLeft: "3px solid var(--error)" }}>
                   <AlertTriangle size={14} style={{ flexShrink: 0, marginTop: 1 }} />
                   {panelItem.motivoRechazo}
                 </div>

@@ -271,7 +271,7 @@ export default function TransportePage() {
         <>
       {/* ── KPIs ── */}
       {!loading && pendientesTienda.length > 0 && (
-        <div className="ds-card" style={{ padding: 18, marginBottom: 22, borderColor: "rgba(29,78,216,.18)" }}>
+        <div className="ds-card" style={{ padding: 18, marginBottom: 22, borderColor: "color-mix(in srgb, var(--brand) 18%, var(--border))" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 9, marginBottom: 12 }}>
             <div style={{ width: 28, height: 28, borderRadius: 8, background: "var(--brand-tint)", display: "flex", alignItems: "center", justifyContent: "center" }}>
               <Truck size={15} color="var(--brand)" />
