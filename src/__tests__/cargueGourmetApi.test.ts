@@ -335,6 +335,33 @@ describe("POST /api/cargue-gourmet", () => {
       expect(res.status).toBe(201);
     }
   });
+
+  it.each(["CLIENTE", "cliente", "Cliente", "  cliente  "])(
+    "acepta codigoTienda %j como pedido directo a cliente sin consultar el maestro",
+    async (codigoTienda) => {
+      mocks.getSessionUser.mockResolvedValue(actor("OPERACIONES_GOURMET"));
+      mocks.pedidoCreate.mockResolvedValue({
+        id: "p1", ...validBody, codigoTienda: "CLIENTE", nombreTienda: "Cliente final", ciudadDestino: "CLIENTE",
+        estado: "BORRADOR", creadoPorId: "u_1", createdAt: new Date(), updatedAt: new Date(),
+      });
+
+      const res = await postPedido(postReq({ ...validBody, codigoTienda }));
+      const json = await res.json();
+
+      expect(res.status).toBe(201);
+      expect(mocks.maestroFindUnique).not.toHaveBeenCalled();
+      expect(mocks.pedidoCreate).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            codigoTienda: "CLIENTE",
+            nombreTienda: "Cliente final",
+            ciudadDestino: "CLIENTE",
+          }),
+        })
+      );
+      expect(json.data.codigoTienda).toBe("CLIENTE");
+    }
+  );
 });
 
 const FIXED_UPDATED_AT = new Date("2026-06-24T10:00:00.000Z");
@@ -601,6 +628,25 @@ describe("PUT /api/cargue-gourmet/[id]", () => {
           codigoTienda: "T002",
           nombreTienda: "Tienda Norte",
           ciudadDestino: "Medellín",
+        }),
+      })
+    );
+  });
+
+  it("acepta codigoTienda 'cliente' en minúscula como pedido directo a cliente sin consultar el maestro", async () => {
+    mocks.getSessionUser.mockResolvedValue(actor("OPERACIONES_GOURMET"));
+    mockCurrent("BORRADOR");
+    mocks.pedidoUpdate.mockResolvedValue(pedidoDetalleMock());
+
+    await putPedido(putReq("p1", { ...validUpdate, codigoTienda: "cliente" }), params);
+
+    expect(mocks.maestroFindUnique).not.toHaveBeenCalled();
+    expect(mocks.pedidoUpdate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          codigoTienda: "CLIENTE",
+          nombreTienda: "Cliente final",
+          ciudadDestino: "CLIENTE",
         }),
       })
     );

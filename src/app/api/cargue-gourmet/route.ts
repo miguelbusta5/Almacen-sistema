@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { z } from "zod";
 import type { Prisma } from "@prisma/client";
 import { derivarTipoOrden } from "@/lib/gourmetTipoOrden";
+import { CIUDAD_TIENDA_CLIENTE, CODIGO_TIENDA_CLIENTE, NOMBRE_TIENDA_CLIENTE, esCodigoTiendaCliente } from "@/lib/gourmetCliente";
 
 type PedidoListRow = Prisma.GourmetPedidoGetPayload<{
   include: { creadoPor: { select: { name: true } } };
@@ -112,14 +113,27 @@ export async function POST(req: NextRequest) {
   }
   const data = parsed.data;
 
-  const tienda = await prisma.maestroTiendaGourmet.findUnique({
-    where: { codigo: data.codigoTienda },
-  });
-  if (!tienda) {
-    return NextResponse.json({ error: "El código de tienda no existe en el maestro" }, { status: 400 });
-  }
-  if (!tienda.activo) {
-    return NextResponse.json({ error: "La tienda está inactiva en el maestro" }, { status: 400 });
+  let codigoTienda: string;
+  let nombreTienda: string;
+  let ciudadDestino: string;
+
+  if (esCodigoTiendaCliente(data.codigoTienda)) {
+    codigoTienda = CODIGO_TIENDA_CLIENTE;
+    nombreTienda = NOMBRE_TIENDA_CLIENTE;
+    ciudadDestino = CIUDAD_TIENDA_CLIENTE;
+  } else {
+    const tienda = await prisma.maestroTiendaGourmet.findUnique({
+      where: { codigo: data.codigoTienda },
+    });
+    if (!tienda) {
+      return NextResponse.json({ error: "El código de tienda no existe en el maestro" }, { status: 400 });
+    }
+    if (!tienda.activo) {
+      return NextResponse.json({ error: "La tienda está inactiva en el maestro" }, { status: 400 });
+    }
+    codigoTienda = tienda.codigo;
+    nombreTienda = tienda.tienda;
+    ciudadDestino = tienda.ciudad;
   }
 
   const tipoOrden = derivarTipoOrden(data.orden);
@@ -128,9 +142,9 @@ export async function POST(req: NextRequest) {
     data: {
       orden: data.orden,
       tipoOrden,
-      codigoTienda: data.codigoTienda,
-      nombreTienda: tienda.tienda,
-      ciudadDestino: tienda.ciudad,
+      codigoTienda,
+      nombreTienda,
+      ciudadDestino,
       cajasEsperadas: data.cajasEsperadas,
       estibasEsperadas: data.estibasEsperadas,
       estado: "BORRADOR",
@@ -145,7 +159,7 @@ export async function POST(req: NextRequest) {
       action: "CREATE",
       module: "cargue-gourmet",
       recordId: pedido.id,
-      details: `${tipoOrden} ${data.orden} — tienda ${tienda.tienda}`,
+      details: `${tipoOrden} ${data.orden} — tienda ${nombreTienda}`,
     },
   }).catch(() => {});
 

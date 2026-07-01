@@ -5,6 +5,7 @@ import { Modal } from "@/components/ui/Modal";
 import { useToast } from "@/contexts/ToastContext";
 import { apiGet, apiPut } from "@/lib/apiClient";
 import { getErrorMessage } from "@/lib/errors";
+import { CIUDAD_TIENDA_CLIENTE, CODIGO_TIENDA_CLIENTE, NOMBRE_TIENDA_CLIENTE, esCodigoTiendaCliente } from "@/lib/gourmetCliente";
 
 const SEARCH_DEBOUNCE_MS = 250;
 
@@ -84,10 +85,16 @@ export function EditarPedidoModal({
   }
 
   function onCodigoTiendaChange(value: string) {
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+
+    if (esCodigoTiendaCliente(value)) {
+      selectTienda({ codigo: CODIGO_TIENDA_CLIENTE, tienda: NOMBRE_TIENDA_CLIENTE, ciudad: CIUDAD_TIENDA_CLIENTE });
+      return;
+    }
+
     setForm((f) => ({ ...f, codigoTiendaQuery: value, tiendaSeleccionada: null }));
     setShowSuggestions(true);
 
-    if (debounceRef.current) clearTimeout(debounceRef.current);
     if (!value.trim()) {
       setSuggestions([]);
       return;
@@ -178,7 +185,7 @@ export function EditarPedidoModal({
             value={form.codigoTiendaQuery}
             onChange={(e) => onCodigoTiendaChange(e.target.value)}
             onFocus={() => setShowSuggestions(true)}
-            placeholder="Buscar por código, tienda o ciudad…"
+            placeholder="Buscar por código, tienda o ciudad… o escribe CLIENTE"
             style={inp}
             data-testid="editar-codigo-tienda-input"
             autoComplete="off"
