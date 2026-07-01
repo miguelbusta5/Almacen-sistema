@@ -324,14 +324,14 @@ function CatalogosPreoperacional({
     <section style={{ marginTop: "1.5rem", display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: 16 }}>
       <div style={{ gridColumn: "1/-1", background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 14, padding: "1rem", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          <Upload size={18} color="#14DBA0" />
+          <Upload size={18} color="var(--brand)" />
           <div>
             <h2 style={{ fontSize: 15, fontWeight: 800, color: "var(--text)" }}>Maestro PLU</h2>
             <p style={{ fontSize: 12, color: "var(--muted)", marginTop: 2 }}>Importa MAESTRO.xlsx para autollenar descripción, fabricante, marca y precio.</p>
             {resultadoMaestro && <p style={{ fontSize: 12, color: "var(--brand)", marginTop: 4, fontWeight: 800 }}>{resultadoMaestro}</p>}
           </div>
         </div>
-        <label style={{ ...btnPri, flex: "0 0 auto", background: "#14DBA0", minWidth: 160, textAlign: "center", opacity: importandoMaestro ? 0.7 : 1 }}>
+        <label style={{ ...btnPri, flex: "0 0 auto", background: "var(--brand)", minWidth: 160, textAlign: "center", opacity: importandoMaestro ? 0.7 : 1 }}>
           {importandoMaestro ? "Importando..." : "Importar Excel"}
           <input type="file" accept=".xlsx" disabled={importandoMaestro} onChange={(e) => importarMaestro(e.target.files?.[0] ?? null)} style={{ display: "none" }} />
         </label>
@@ -534,7 +534,7 @@ function FormNuevo({ onClose, onSaved, onError }: { onClose: () => void; onSaved
           </Field>
         )}
         {formError && (
-          <div style={{ border: "1px solid rgba(180,35,24,.20)", background: "var(--error-tint)", color: "var(--error)", borderRadius: 8, padding: "0.6rem 0.75rem", fontSize: 12, fontWeight: 700 }}>
+          <div style={{ border: "1px solid color-mix(in srgb, var(--error) 20%, transparent)", background: "var(--error-tint)", color: "var(--error)", borderRadius: 8, padding: "0.6rem 0.75rem", fontSize: 12, fontWeight: 700 }}>
             {formError}
           </div>
         )}
