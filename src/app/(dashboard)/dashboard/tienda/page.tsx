@@ -12,13 +12,13 @@ import {
   ESTADO_DESPACHO_COLOR, COLOR_TIENDA, estadoDespachoVariant,
   fmtFechaTienda, todayISO, ESTADOS_ACTIVOS,
 } from "@/lib/tienda";
-import { Badge, ModuleHero, ModuleDetailView, SkeletonLine, NetSuiteChip } from "@/components/ui";
+import { Alert, Badge, ModuleHero, ModuleDetailView, SkeletonLine, NetSuiteChip, TimelineItem } from "@/components/ui";
 import { usePrompt } from "@/components/ui/useDialogs";
 import { useListDetailScroll } from "@/hooks/useListDetailScroll";
 import { useToast } from "@/contexts/ToastContext";
 import { Modal, ConfirmModal } from "@/components/ui/Modal";
 import { AutoRefreshIndicator } from "@/components/ui/AutoRefreshIndicator";
-import { IntelBanner, DetailSection, DetailGrid, MiniHistory } from "@/components/ui/SlidePanel";
+import { IntelBanner, DetailSection, DetailGrid } from "@/components/ui/SlidePanel";
 import { insightsTienda, insightsPorDespacho } from "@/lib/inteligencia";
 import { useAutoRefresh } from "@/hooks/useAutoRefresh";
 import { useApi } from "@/hooks/useApi";
@@ -61,6 +61,13 @@ function ModalBase({ title, sub, children, onClose }: { title: string; sub?: str
       {children}
     </Modal>
   );
+}
+
+// Autocrece un textarea al alto de su contenido (tope en CSS .textareaGrow).
+function autoGrow(e: React.FormEvent<HTMLTextAreaElement>) {
+  const el = e.currentTarget;
+  el.style.height = "auto";
+  el.style.height = `${el.scrollHeight}px`;
 }
 
 // Entrada de historial de auditoría que devuelve GET /api/tienda/[id].
@@ -210,13 +217,21 @@ export default function TiendaPage() {
     });
   }, [items, fq, fEstado, fCC]);
 
-  // Historial timeline del panel
-  const historialItems = panelHistorial.map((h) => ({
-    label: h.details ?? h.action,
-    meta: h.userName ?? "Sistema",
-    time: h.createdAt ? new Date(h.createdAt).toLocaleString("es-CO", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" }) : "",
-    color: h.action === "CREATE" ? "var(--brand)" : h.action === "DELETE" ? "var(--error)" : "var(--muted2)",
-  }));
+  // Historial timeline del panel (dot semántico para TimelineItem compartido).
+  const historialItems = panelHistorial.map((h) => {
+    const texto = h.details ?? h.action;
+    const dot: "default" | "active" | "error" | "warning" =
+      h.action === "CREATE" ? "active"
+      : h.action === "DELETE" || /rechaz/i.test(texto) ? "error"
+      : /novedad/i.test(texto) ? "warning"
+      : "default";
+    return {
+      title: texto,
+      meta: h.userName ?? "Sistema",
+      time: h.createdAt ? new Date(h.createdAt).toLocaleString("es-CO", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" }) : "",
+      dot,
+    };
+  });
 
   return (
     <div className={`animate-fade-in ${styles.page}`} style={getModuleCssVars("tienda") as React.CSSProperties}>
@@ -258,6 +273,10 @@ export default function TiendaPage() {
             const target = globalInsights[0]?.recordId
               ? items.find((d) => d.id === globalInsights[0].recordId)
               : undefined;
+            if (target) abrirPanel(target);
+          }}
+          onOpenRecord={(recordId) => {
+            const target = items.find((d) => d.id === recordId);
             if (target) abrirPanel(target);
           }}
         />
@@ -308,7 +327,7 @@ export default function TiendaPage() {
           actions={
             <>
               {canChangeOperationalState && ESTADOS_ACTIVOS.includes(panelItem.estado) && (
-                <button className="ds-btn ds-btn-sm ds-btn-secondary" style={{ color: "var(--error)" }}
+                <button className="ds-btn ds-btn-sm ds-btn-danger-ghost"
                   onClick={async () => {
                     const novedad = await prompt({ title: "Registrar novedad", label: "Describe la novedad:", placeholder: "Detalle de la novedad", multiline: true, required: true, confirmLabel: "Registrar" });
                     if (novedad !== null) cambiarEstado(panelItem, "CON_NOVEDAD", { novedad });
@@ -317,7 +336,7 @@ export default function TiendaPage() {
                 </button>
               )}
               {canChangeOperationalState && panelItem.estado === "CREADO_TIENDA" && (
-                <button className="ds-btn ds-btn-sm ds-btn-secondary" style={{ color: "var(--error)" }}
+                <button className="ds-btn ds-btn-sm ds-btn-danger-ghost"
                   onClick={() => setRechazarItem(panelItem)}>
                   Rechazar
                 </button>
@@ -330,7 +349,7 @@ export default function TiendaPage() {
               )}
               {canEditBasic && (panelItem.estado === "RECHAZADO" || (panelItem.estado === "CREADO_TIENDA" && role !== "TIENDA") || canEdit) && <button className="ds-btn ds-btn-sm ds-btn-secondary" onClick={() => setEditing(panelItem)}><Pencil size={13} /></button>}
               {canDelete && (
-                <button className="ds-btn ds-btn-sm ds-btn-secondary" style={{ color: "var(--error)" }} onClick={() => setDeleting(panelItem)} title="Eliminar">
+                <button className="ds-btn ds-btn-sm ds-btn-danger-ghost" onClick={() => setDeleting(panelItem)} title="Eliminar">
                   <Trash2 size={13} />
                 </button>
               )}
@@ -369,10 +388,25 @@ export default function TiendaPage() {
           )}
           <>
             <DetailSection title="Flujo logístico" color={panelItem.estado === "RECHAZADO" ? ESTADO_DESPACHO_COLOR.RECHAZADO : COLOR_TIENDA}>
-              <DetailFlow estado={panelItem.estado} />
+              <DetailFlow despacho={panelItem} />
               {panelItem.estado === "CON_NOVEDAD" && (
-                <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 8, padding: "6px 10px", background: "var(--error-tint)", borderRadius: 8, fontSize: 12, color: "var(--error)", fontWeight: 600 }}>
-                  <AlertTriangle size={13} />Flujo interrumpido por novedad
+                <div style={{ marginTop: 10 }}>
+                  <Alert
+                    variant="warning"
+                    icon={<AlertTriangle size={14} />}
+                    title="Flujo interrumpido por novedad"
+                    description={panelItem.novedadAt ? `Registrada el ${new Date(panelItem.novedadAt).toLocaleString("es-CO", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" })}` : "Novedad registrada en este despacho"}
+                  />
+                </div>
+              )}
+              {panelItem.estado === "RECHAZADO" && (
+                <div style={{ marginTop: 10 }}>
+                  <Alert
+                    variant="error"
+                    icon={<AlertTriangle size={14} />}
+                    title="Solicitud rechazada"
+                    description={panelItem.rechazadoAt ? `Rechazada el ${new Date(panelItem.rechazadoAt).toLocaleString("es-CO", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" })}` : "El flujo quedó detenido hasta corregir y re-enviar"}
+                  />
                 </div>
               )}
             </DetailSection>
@@ -477,7 +511,11 @@ export default function TiendaPage() {
                     <SkeletonLine width="70%" />
                   </div>
                 ) : (
-                  <MiniHistory items={historialItems} />
+                  <div style={{ display: "flex", flexDirection: "column" }}>
+                    {historialItems.map((h, i) => (
+                      <TimelineItem key={i} title={h.title} meta={h.meta} time={h.time} dot={h.dot} />
+                    ))}
+                  </div>
                 )}
               </DetailSection>
             )}
@@ -573,18 +611,22 @@ function ModalRechazar({ despacho, onClose, onRechazado }: {
         <p style={{ fontSize: 13, color: "var(--muted)", margin: 0 }}>
           La factura será devuelta al área de tienda con el motivo indicado para que pueda ser corregida y re-enviada.
         </p>
-        <Field label="Motivo del rechazo *">
+        <Field
+          label="Motivo del rechazo *"
+          error={error || undefined}
+          hint={motivo.trim().length > 0 && motivo.trim().length < 5 ? `${motivo.trim().length}/5 caracteres mínimos` : undefined}
+        >
           <textarea
             value={motivo}
             onChange={(e) => { setMotivo(e.target.value); setError(""); }}
+            onInput={autoGrow}
             rows={4}
             required
             placeholder="Ej: Los PLUs no corresponden al documento, favor corregir antes de re-enviar..."
-            className={`ds-input${error ? " ds-input-error" : ""}`}
-            style={{ minHeight: 96, height: "auto", paddingTop: 10, resize: "vertical" }}
+            className={`ds-input ${styles.textareaGrow}${error ? " ds-input-error" : ""}`}
+            style={{ minHeight: 96, paddingTop: 10 }}
           />
         </Field>
-        {error && <p style={{ fontSize: 12, color: "var(--error)", margin: 0 }}>{error}</p>}
         <div style={{ display: "flex", gap: 8 }}>
           <button type="button" onClick={onClose} className="ds-btn ds-btn-secondary" style={{ flex: 1 }}>Cancelar</button>
           <button type="submit" disabled={saving} className="ds-btn"
@@ -634,8 +676,9 @@ function ModalAsignarGuardado({ despacho, onClose, onAsignado, onError }: {
               <textarea
                 value={nota}
                 onChange={(e) => setNota(e.target.value)}
+                onInput={autoGrow}
                 placeholder="Ubicación sugerida, instrucciones internas o contexto para el operario"
-                className="ds-input" style={{ minHeight: 80, height: "auto", paddingTop: 10, resize: "vertical" }}
+                className={`ds-input ${styles.textareaGrow}`} style={{ minHeight: 80, paddingTop: 10 }}
               />
             </Field>
             {despacho.notaEntrega && (
@@ -685,6 +728,20 @@ function ModalDespacho({ despacho, role, onClose, onSaved, onError }: {
     despacho?.plines?.map((p) => ({ plu: p.plu, descripcion: p.descripcion ?? "", unidades: String(p.unidades), status: "idle" })) ?? []
   );
   const [saving, setSaving] = useState(false);
+  const [touched, setTouched] = useState<Record<string, boolean>>({});
+
+  // Validación en vivo: el error de un campo obligatorio aparece al salir de él
+  // (onBlur), no al enviar. El submit queda deshabilitado mientras falten.
+  const requiredErrors: Record<string, string> = {
+    centroCostos:    centroCostos.trim()    ? "" : "Campo obligatorio",
+    numeroDocumento: numeroDocumento.trim() ? "" : "Campo obligatorio",
+    consecutivo:     consecutivo.trim()     ? "" : "Campo obligatorio",
+    clienteNombre:   clienteNombre.trim()   ? "" : "Campo obligatorio",
+  };
+  const missingRequired = Object.values(requiredErrors).some(Boolean);
+  const markTouched = (key: string) => setTouched((t) => (t[key] ? t : { ...t, [key]: true }));
+  const fieldError = (key: string) => (touched[key] && requiredErrors[key]) || undefined;
+  const fieldClass = (key: string) => `ds-input${fieldError(key) ? " ds-input-error" : ""}`;
 
   function addPlin() { setPlines((prev) => [...prev, { plu: "", descripcion: "", unidades: "1", status: "idle" }]); }
   function removePlin(i: number) { setPlines((prev) => prev.filter((_, j) => j !== i)); }
@@ -740,17 +797,17 @@ function ModalDespacho({ despacho, role, onClose, onSaved, onError }: {
       <form onSubmit={submit} className={styles.form}>
         <FormSection title="Información de la factura" icon={<Store size={14} />}>
           <div className={styles.grid2}>
-            <Field label="Centro de costos *"><input value={centroCostos} onChange={(e) => setCC(e.target.value)} placeholder="CC-001" className="ds-input" /></Field>
+            <Field label="Centro de costos *" error={fieldError("centroCostos")}><input value={centroCostos} onChange={(e) => setCC(e.target.value)} onBlur={() => markTouched("centroCostos")} placeholder="CC-001" className={fieldClass("centroCostos")} /></Field>
             <Field label="Fecha creación *"><input type="date" value={fechaCreacion} onChange={(e) => setFecha(e.target.value)} className="ds-input" /></Field>
           </div>
           <div className={styles.gridDoc}>
-            <Field label="N° Documento *"><input value={numeroDocumento} onChange={(e) => setDoc(e.target.value)} placeholder="FAC-0001" className="ds-input" /></Field>
-            <Field label="Consecutivo *"><input value={consecutivo} onChange={(e) => setCons(e.target.value)} placeholder="001" className="ds-input" /></Field>
+            <Field label="N° Documento *" error={fieldError("numeroDocumento")}><input value={numeroDocumento} onChange={(e) => setDoc(e.target.value)} onBlur={() => markTouched("numeroDocumento")} placeholder="FAC-0001" className={fieldClass("numeroDocumento")} /></Field>
+            <Field label="Consecutivo *" error={fieldError("consecutivo")}><input value={consecutivo} onChange={(e) => setCons(e.target.value)} onBlur={() => markTouched("consecutivo")} placeholder="001" className={fieldClass("consecutivo")} /></Field>
           </div>
         </FormSection>
 
         <FormSection title="Cliente y entrega" icon={<Truck size={14} />}>
-          <Field label="Nombre del cliente *"><input value={clienteNombre} onChange={(e) => setCN(e.target.value)} className="ds-input" /></Field>
+          <Field label="Nombre del cliente *" error={fieldError("clienteNombre")}><input value={clienteNombre} onChange={(e) => setCN(e.target.value)} onBlur={() => markTouched("clienteNombre")} className={fieldClass("clienteNombre")} /></Field>
           <div className={styles.grid2}>
             <Field label="Documento cliente"><input value={clienteDocumento} onChange={(e) => setCD(e.target.value)} className="ds-input" /></Field>
             <Field label="Teléfono cliente"><input value={clienteTelefono} onChange={(e) => setCT(e.target.value)} placeholder="300..." className="ds-input" /></Field>
@@ -769,8 +826,9 @@ function ModalDespacho({ despacho, role, onClose, onSaved, onError }: {
             <textarea
               value={notaEntrega}
               onChange={(e) => setNotaEntrega(e.target.value)}
+              onInput={autoGrow}
               placeholder="Dirección, contacto, observaciones o instrucciones de entrega"
-              className="ds-input" style={{ minHeight: 96, height: "auto", paddingTop: 10, resize: "vertical" }}
+              className={`ds-input ${styles.textareaGrow}`} style={{ minHeight: 96, paddingTop: 10 }}
             />
           </Field>
         </FormSection>
@@ -788,7 +846,7 @@ function ModalDespacho({ despacho, role, onClose, onSaved, onError }: {
               <div className={styles.pluRow}>
                 <input value={p.plu} onChange={(e) => { updatePlin(i, "plu", e.target.value); updatePlin(i, "status", "idle"); }} onBlur={() => lookupPlinMaestro(i)} placeholder="PLU" className="ds-input" />
                 <input value={p.descripcion} onChange={(e) => updatePlin(i, "descripcion", e.target.value)} disabled={!!p.maestro && !p.override} placeholder="Descripción (opc.)" className="ds-input" style={{ opacity: p.maestro && !p.override ? 0.7 : 1 }} />
-                <input type="number" value={p.unidades} onChange={(e) => updatePlin(i, "unidades", e.target.value)} min="1" placeholder="Uds." className="ds-input" />
+                <input type="number" value={p.unidades} onChange={(e) => updatePlin(i, "unidades", e.target.value)} min="1" placeholder="Uds." title={p.plu.trim() && !(parseInt(p.unidades) > 0) ? "Las unidades deben ser 1 o más" : undefined} className={`ds-input${p.plu.trim() && !(parseInt(p.unidades) > 0) ? " ds-input-error" : ""}`} />
                 <button type="button" className="ds-btn ds-btn-danger ds-btn-sm" onClick={() => removePlin(i)} style={{ width: 34, padding: 0, justifyContent: "center" }}>
                   <Minus size={12} />
                 </button>
@@ -813,7 +871,13 @@ function ModalDespacho({ despacho, role, onClose, onSaved, onError }: {
 
         <div className={styles.modalActions}>
           <button type="button" className="ds-btn ds-btn-secondary" onClick={onClose}>Cancelar</button>
-          <button type="submit" className="ds-btn ds-btn-primary" disabled={saving} style={{ background: COLOR_TIENDA }}>
+          <button
+            type="submit"
+            className="ds-btn ds-btn-primary"
+            disabled={saving || missingRequired}
+            title={missingRequired ? "Completa los campos obligatorios (*)" : undefined}
+            style={{ background: COLOR_TIENDA }}
+          >
             {saving ? "Guardando..." : isEdit ? "Guardar cambios" : "Registrar Factura"}
           </button>
         </div>

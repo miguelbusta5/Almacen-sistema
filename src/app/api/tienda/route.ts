@@ -190,5 +190,25 @@ export async function POST(req: NextRequest) {
     data: { userId: actor.id, action: "CREATE", module: "tienda", recordId: row!.id, details: `${d.numeroDocumento} · ${d.clienteNombre} · ${d.centroCostos}` },
   }).catch(() => {});
 
+  // Notifica a los responsables de recogida (mismo patrón que revertir-estado:
+  // Set de destinatarios, excluye al actor, createMany tolerante a fallos).
+  const responsables = await prisma.user.findMany({
+    where: { active: true, role: { in: ["SUPERVISOR_TRANSPORTE", "GERENTE", "ADMIN"] } },
+    select: { id: true },
+  }).catch(() => []);
+  const destinatariosIds = new Set(responsables.map((u) => u.id));
+  destinatariosIds.delete(actor.id);
+  if (destinatariosIds.size > 0) {
+    await prisma.notificacion.createMany({
+      data: Array.from(destinatariosIds).map((userId) => ({
+        userId,
+        titulo: "Nueva factura contado pendiente de recogida",
+        descripcion: `Doc. ${d.numeroDocumento} · ${d.clienteNombre} · ${d.centroCostos}`,
+        tipo: "TIENDA",
+        enlace: "/dashboard/tienda",
+      })),
+    }).catch(() => {});
+  }
+
   return NextResponse.json({ success: true, data: mapRow(row!) }, { status: 201 });
 }

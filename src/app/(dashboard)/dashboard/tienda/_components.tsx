@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import type { CSSProperties, ReactNode } from "react";
 import {
   AlertTriangle,
@@ -164,20 +165,29 @@ export function EstadoPipeline({
   );
 }
 
+const INSIGHT_LEVEL_COLOR: Record<string, string> = {
+  critical: "var(--error)",
+  warning:  "var(--warning)",
+  info:     "var(--info)",
+};
+
 export function FacturaIntelBanner({
   insights,
   onOpenFirst,
+  onOpenRecord,
 }: {
   insights: IntelInsight[];
   onOpenFirst?: () => void;
+  onOpenRecord?: (recordId: string) => void;
 }) {
   if (insights.length === 0) return null;
-  const first = insights[0];
+  const [first, ...rest] = insights;
   return (
     <section className={styles.intelligence}>
       <div className={styles.sectionLabel}>
         <AlertTriangle size={14} color="var(--error)" />
         Inteligencia operacional
+        {insights.length > 1 && <span className={styles.intelCount}>{insights.length} alertas</span>}
       </div>
       <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) auto", gap: 14, alignItems: "center" }}>
         <div>
@@ -190,9 +200,55 @@ export function FacturaIntelBanner({
           </button>
         )}
       </div>
+      {rest.length > 0 && (
+        <div className={styles.intelChips}>
+          {rest.map((ins) => {
+            const color = INSIGHT_LEVEL_COLOR[ins.level] ?? "var(--info)";
+            const clickable = Boolean(onOpenRecord && ins.recordId);
+            const content = (
+              <>
+                <span className={styles.intelChipDot} />
+                {ins.message}
+              </>
+            );
+            return clickable ? (
+              <button
+                key={ins.id}
+                type="button"
+                className={`${styles.intelChip} ${styles.intelChipClickable}`}
+                style={{ "--chip-color": color } as CSSProperties}
+                title={ins.context ?? "Ver detalle"}
+                onClick={() => onOpenRecord?.(String(ins.recordId))}
+              >
+                {content}
+              </button>
+            ) : (
+              <span
+                key={ins.id}
+                className={styles.intelChip}
+                style={{ "--chip-color": color } as CSSProperties}
+                title={ins.context ?? undefined}
+              >
+                {content}
+              </span>
+            );
+          })}
+        </div>
+      )}
     </section>
   );
 }
+
+// "hace N h" / "hace N días" — para contextualizar cuánto lleva un rechazo sin corregir.
+function tiempoTranscurrido(iso: string): string {
+  const horas = horasDesde(iso);
+  if (horas < 1) return "hace menos de 1 h";
+  if (horas < 48) return `hace ${horas} h`;
+  return `hace ${Math.floor(horas / 24)} días`;
+}
+
+// Con más de N rechazadas, la cola colapsa para no desplazar la tabla principal.
+const REJECTED_COLLAPSE_THRESHOLD = 3;
 
 export function RejectedQueue({
   rejected,
@@ -205,20 +261,30 @@ export function RejectedQueue({
   onEdit: (d: DespachoTienda) => void;
   onResend: (id: string) => void;
 }) {
+  const [expanded, setExpanded] = useState(false);
   if (rejected.length === 0) return null;
+  const collapsible = rejected.length > REJECTED_COLLAPSE_THRESHOLD;
+  const visible = collapsible && !expanded ? rejected.slice(0, REJECTED_COLLAPSE_THRESHOLD) : rejected;
   return (
     <section>
       <div className={styles.sectionLabel}>
         <AlertTriangle size={14} color="var(--error)" />
         {rejected.length} solicitud{rejected.length > 1 ? "es" : ""} rechazada{rejected.length > 1 ? "s" : ""} requiere{rejected.length > 1 ? "n" : ""} corrección
+        {collapsible && (
+          <button type="button" className="ds-btn ds-btn-ghost ds-btn-sm" onClick={() => setExpanded((v) => !v)}>
+            {expanded ? "Mostrar menos" : `Ver todas (${rejected.length})`}
+            <ChevronDown size={12} style={{ transform: expanded ? "rotate(180deg)" : undefined, transition: "transform 160ms ease" }} />
+          </button>
+        )}
       </div>
       <div className={styles.rejectedStack}>
-        {rejected.map((d) => (
+        {visible.map((d) => (
           <article key={d.id} className={styles.rejectedCard}>
             <div>
               <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 5, flexWrap: "wrap" }}>
                 <span className={styles.docCode}>{d.numeroDocumento}</span>
                 <Badge label="Rechazado" variant="error" />
+                {d.rechazadoAt && <span className={styles.rejectedAge}>Rechazada {tiempoTranscurrido(d.rechazadoAt)}</span>}
               </div>
               <div className={styles.mutedLine}>
                 {d.clienteNombre} · {d.centroCostos}
@@ -365,13 +431,20 @@ export function FacturasTable({
       testId: "fecha-cell",
       debugLabel: "Fecha",
       render: (d) => {
-        const critico = d.estado === "CREADO_TIENDA" && horasDesde(d.createdAt) >= 24;
+        const horas = horasDesde(d.createdAt);
+        const critico = d.estado === "CREADO_TIENDA" && horas >= 24;
+        const conNovedad = d.estado === "CON_NOVEDAD";
+        const alertLabel = critico
+          ? `Sin recoger hace ${horas} h`
+          : conNovedad
+            ? "Con novedad registrada"
+            : "";
         return (
           <span className={styles.monoText} style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
             <span style={{ width: 14, flexShrink: 0, display: "inline-flex" }}>
-              {critico && (
-                <AlertTriangle size={14} color="var(--error)" role="img" aria-label="Creado hace más de 24 horas sin recogida">
-                  <title>Creado hace más de 24 horas sin recogida</title>
+              {(critico || conNovedad) && (
+                <AlertTriangle size={14} color={critico ? "var(--error)" : "var(--state-alert)"} role="img" aria-label={alertLabel}>
+                  <title>{alertLabel}</title>
                 </AlertTriangle>
               )}
             </span>
@@ -494,7 +567,21 @@ export function FacturasTable({
   );
 }
 
-export function DetailFlow({ estado }: { estado: EstadoDespacho }) {
+// Hora corta de un hito del flujo ("19 jun, 10:32") o "—" si aún no ocurre.
+function fmtHito(iso: string | null | undefined): string {
+  if (!iso) return "—";
+  return new Date(iso).toLocaleString("es-CO", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" });
+}
+
+export function DetailFlow({ despacho }: { despacho: DespachoTienda }) {
+  const estado = despacho.estado;
+  // Timestamp real de cada paso del flujo lineal (mismos campos del detalle).
+  const hitos: Partial<Record<EstadoDespacho, string | null>> = {
+    CREADO_TIENDA:   despacho.createdAt,
+    RECOGIDO_TIENDA: despacho.recibidoAt,
+    ENTREGADO_CEDI:  despacho.entregadoCediAt,
+    ENVIADO_CLIENTE: despacho.despachadoAt,
+  };
   return (
     <div className={styles.detailFlow}>
       {FLUJO_ESTADOS.map((step, index) => {
@@ -510,6 +597,7 @@ export function DetailFlow({ estado }: { estado: EstadoDespacho }) {
           >
             <span className={styles.flowDot}>{done ? <CheckCircle2 size={14} /> : active ? <span style={{ width: 8, height: 8, borderRadius: 99, background: "#fff" }} /> : null}</span>
             <span>{ESTADO_DESPACHO_LABEL[step].split(" ")[0]}</span>
+            <span className={styles.flowTimestamp}>{fmtHito(hitos[step])}</span>
           </div>
         );
       })}
@@ -544,11 +632,16 @@ export function FormSection({ title, icon, children }: { title: string; icon?: R
   );
 }
 
-export function Field({ label, children }: { label: string; children: ReactNode }) {
+export function Field({ label, error, hint, children }: { label: string; error?: string; hint?: string; children: ReactNode }) {
   return (
     <div className={styles.field}>
       <label>{label}</label>
       {children}
+      {error
+        ? <span className={styles.fieldError} role="alert">{error}</span>
+        : hint
+          ? <span className={styles.fieldHint}>{hint}</span>
+          : null}
     </div>
   );
 }

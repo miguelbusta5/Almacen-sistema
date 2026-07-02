@@ -300,6 +300,44 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
       }).catch(() => {});
     }
 
+    // Novedad registrada → avisa al creador y a supervisión de tienda
+    // (mismo patrón de destinatarios que revertir-estado; excluye al actor).
+    if (estadoCambia && d.estado === "CON_NOVEDAD") {
+      const destinatariosIds = new Set<string>();
+      if (current.creadoPorId) destinatariosIds.add(current.creadoPorId);
+      const supervisores = await prisma.user.findMany({
+        where: { active: true, role: { in: ["SUPERVISOR_TIENDA"] } },
+        select: { id: true },
+      }).catch(() => []);
+      supervisores.forEach((u) => destinatariosIds.add(u.id));
+      destinatariosIds.delete(actor.id);
+      if (destinatariosIds.size > 0) {
+        await prisma.notificacion.createMany({
+          data: Array.from(destinatariosIds).map((userId) => ({
+            userId,
+            titulo: "Novedad registrada en factura",
+            descripcion: `Doc. ${current.numeroDocumento}: ${(d.novedad ?? "").substring(0, 200)}`,
+            tipo: "TIENDA",
+            enlace: "/dashboard/tienda",
+          })),
+        }).catch(() => {});
+      }
+    }
+
+    // Enviado al cliente → cierre de ciclo para quien creó la factura.
+    if (estadoCambia && d.estado === "ENVIADO_CLIENTE" && current.creadoPorId && current.creadoPorId !== actor.id) {
+      await prisma.notificacion.create({
+        data: {
+          userId: current.creadoPorId,
+          titulo: "Factura enviada al cliente",
+          descripcion: `Doc. ${current.numeroDocumento} completó el flujo CEDI`,
+          tipo: "TIENDA",
+          enlace: "/dashboard/tienda",
+          leida: false,
+        },
+      }).catch(() => {});
+    }
+
     return NextResponse.json({ success: true, data: mapRow(updatedRow) });
   } catch (e) {
     if (getErrorCode(e) === "P2025") {

@@ -85,6 +85,12 @@
   --state-sent:     #5B9DFF;
   --state-rejected: #FF6B6B;
   --state-alert:    #FFC53D;
+  /* Estados del flujo Facturas Contado (namespace propio: la semántica de
+     color difiere de --state-* compartido con Solicitudes Transporte) */
+  --state-tienda-created: #FF6B6B;
+  --state-tienda-picked:  #F97316;
+  --state-tienda-cedi:    #FFC53D;
+  --state-tienda-sent:    #2EE6A6;
   /* Tonos para ModuleHero / métricas */
   --state-success: #2EE6A6;
   --state-warning: #FFC53D;
@@ -196,6 +202,10 @@ html[data-theme="light"] {
   --state-sent:     #2E6FE0;
   --state-rejected: #D64545;
   --state-alert:    #B5790A;
+  --state-tienda-created: #D64545;
+  --state-tienda-picked:  #C2570B;
+  --state-tienda-cedi:    #B5790A;
+  --state-tienda-sent:    #0FA968;
   --state-success: #0FA968;
   --state-warning: #B5790A;
   --state-danger:  #D64545;
@@ -684,6 +694,11 @@ body {
 
 .g-btn-danger, .ds-btn-danger { background: var(--error-tint); color: var(--error); border-color: color-mix(in srgb, var(--error) 26%, transparent); }
 .g-btn-danger:hover:not(:disabled), .ds-btn-danger:hover:not(:disabled) { background: var(--error); color: var(--text-on-error); border-color: var(--error); }
+
+/* Peligro discreto: chrome de secundario con texto de error, para acciones
+   destructivas de menor jerarquía que ds-btn-danger (ej. Novedad/Rechazar). */
+.ds-btn-danger-ghost { background: var(--surface2); color: var(--error); border-color: var(--border-strong); box-shadow: var(--shadow-xs); }
+.ds-btn-danger-ghost:hover:not(:disabled) { background: var(--error-tint); border-color: color-mix(in srgb, var(--error) 30%, var(--border-strong)); }
 
 .g-btn-success, .ds-btn-success { background: var(--success-tint); color: var(--success); border-color: color-mix(in srgb, var(--success) 26%, transparent); }
 .g-btn-success:hover:not(:disabled), .ds-btn-success:hover:not(:disabled) { background: var(--success); color: var(--text-on-success); }

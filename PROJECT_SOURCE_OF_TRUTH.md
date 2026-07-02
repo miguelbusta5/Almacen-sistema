@@ -938,6 +938,32 @@ y decisión de producto separada):
 Ninguna de estas cuatro opciones se ejecuta en esta sesión — solo se deja documentado el estado para
 que el dueño decida cuál retomar primero.
 
+## 19.13 Mejora visual/UX — Facturas Contado, 6 fases (2026-07-02)
+
+**Ejecutado en código; QA visual del dueño pendiente en `:3100` (dark + light + mobile 760px).**
+Detalle completo en `docs/cerebro/decisiones.md` (2026-07-02). Resumen:
+
+- **F1 Tokens:** nuevos `--state-tienda-{created,picked,cedi,sent}` en `globals.css` (dark + light);
+  `ESTADO_DESPACHO_COLOR` (`src/lib/tienda.ts`) ya no usa hex literales → **el modo claro ahora
+  adapta los colores de estado del módulo**. Nueva clase DS `ds-btn-danger-ghost` (peligro discreto).
+- **F2 Micro-interacciones:** keyframes locales en `tienda.module.css` (entrada escalonada de KPIs,
+  pulso único del paso activo del flujo, entrada de banners). Anuladas por `prefers-reduced-motion`.
+- **F3 Formularios:** `Field` con `error`/`hint` + validación en vivo `onBlur` en `ModalDespacho`
+  (submit deshabilitado si faltan obligatorios); textareas con autogrow (`.textareaGrow`, tope 40vh);
+  contador de mínimo en `ModalRechazar`.
+- **F4 Alertas en lista:** `FacturaIntelBanner` con alerta destacada + chips por nivel clicables
+  (`recordId`) + contador; indicador por fila también para `CON_NOVEDAD` con horas exactas en tooltip
+  (dentro de `fecha-cell`, invariante 7 columnas intacto); `RejectedQueue` con antigüedad y colapso >3.
+- **F5 Detalle:** `DetailFlow` muestra hora real por hito; historial con `TimelineItem` compartido
+  (dot semántico); `Alert` sobre el flujo para RECHAZADO/CON_NOVEDAD.
+- **F6 Notificaciones (backend, tabla `Notificacion` existente — sin schema ni endpoints nuevos):**
+  matriz evento→destinatarios: creación → SUPERVISOR_TRANSPORTE/GERENTE/ADMIN · guardado asignado →
+  operario (`enlace: /dashboard/transporte`) · CON_NOVEDAD → creador + SUPERVISOR_TIENDA ·
+  ENVIADO_CLIENTE → creador. Siempre excluye al actor. Rechazo/reversión ya existían, sin cambios.
+- **Tests nuevos:** `tiendaFormValidation.test.tsx` · `facturaIntelBanner.test.tsx` ·
+  `detailFlow.render.test.tsx` · `tiendaNotificaciones.test.ts`. Validación al cierre: `tsc` limpio,
+  **938 tests** en verde, `build` exitoso, 0 `tr::before/after`.
+
 ## 19. Cómo auditar un módulo antes de tocarlo
 
 Para cada módulo, antes de cualquier cambio, documentar:

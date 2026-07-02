@@ -20,6 +20,28 @@
   min-height: 42px;
 }
 
+/* ── Animaciones del módulo ────────────────────────────────────────────────
+   Mismas curvas/duración que las utilidades del DS (globals.css); keyframes
+   locales para que el scope del módulo no dependa de nombres globales.
+   `prefers-reduced-motion` ya las anula globalmente (globals.css, selector *). */
+@keyframes tiendaFadeIn {
+  from { opacity: 0; transform: translateY(5px); }
+  to   { opacity: 1; transform: none; }
+}
+
+@keyframes tiendaPulseRing {
+  0% {
+    box-shadow:
+      0 0 16px color-mix(in srgb, var(--flow-color) 40%, transparent),
+      0 0 0 0 color-mix(in srgb, var(--flow-color) 45%, transparent);
+  }
+  100% {
+    box-shadow:
+      0 0 16px color-mix(in srgb, var(--flow-color) 40%, transparent),
+      0 0 0 14px transparent;
+  }
+}
+
 /* ── KPIs ──────────────────────────────────────────────────────────────── */
 .kpiGrid {
   display: grid;
@@ -29,6 +51,13 @@
 }
 
 /* KPIs migrados a <Stat> compartido (C2). El grid sigue siendo el layout. */
+
+/* Entrada escalonada (aplica igual a skeletons y stats reales). */
+.kpiGrid > * { animation: tiendaFadeIn 0.28s cubic-bezier(0.16, 1, 0.3, 1) both; }
+.kpiGrid > *:nth-child(2) { animation-delay: 40ms; }
+.kpiGrid > *:nth-child(3) { animation-delay: 80ms; }
+.kpiGrid > *:nth-child(4) { animation-delay: 120ms; }
+.kpiGrid > *:nth-child(5) { animation-delay: 160ms; }
 
 /* ── Pipeline ──────────────────────────────────────────────────────────── */
 .pipeline {
@@ -52,7 +81,11 @@
   color: var(--muted);
   text-align: left;
   cursor: pointer;
-  transition: background 160ms ease, color 160ms ease;
+  transition: background 160ms ease, color 160ms ease, transform 160ms ease;
+}
+
+.pipelineStep:hover {
+  transform: translateY(-1px);
 }
 
 .pipelineStep:last-child {
@@ -66,6 +99,12 @@
   height: 3px;
   background: var(--step-color);
   opacity: 0.8;
+  transition: height 160ms ease, opacity 160ms ease;
+}
+
+.pipelineStepActive::before {
+  height: 4px;
+  opacity: 1;
 }
 
 .pipelineStep:hover,
@@ -97,6 +136,7 @@
   background: color-mix(in srgb, var(--error) 8%, var(--surface));
   padding: 16px;
   box-shadow: var(--shadow-sm);
+  animation: tiendaFadeIn 0.28s cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 
 .sectionLabel {
@@ -111,9 +151,68 @@
   text-transform: uppercase;
 }
 
+.intelCount {
+  margin-left: auto;
+  border: 1px solid color-mix(in srgb, var(--error) 30%, transparent);
+  border-radius: 999px;
+  padding: 2px 9px;
+  color: var(--error);
+  background: color-mix(in srgb, var(--error) 10%, transparent);
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.02em;
+  text-transform: none;
+}
+
+.intelChips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 12px;
+}
+
+.intelChip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid color-mix(in srgb, var(--chip-color) 32%, transparent);
+  border-radius: 999px;
+  padding: 4px 11px;
+  color: var(--chip-color);
+  background: color-mix(in srgb, var(--chip-color) 10%, transparent);
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1.3;
+  text-align: left;
+}
+
+.intelChipClickable {
+  cursor: pointer;
+  transition: background 160ms ease, transform 160ms ease;
+}
+
+.intelChipClickable:hover {
+  background: color-mix(in srgb, var(--chip-color) 18%, transparent);
+  transform: translateY(-1px);
+}
+
+.intelChipDot {
+  width: 7px;
+  height: 7px;
+  border-radius: 999px;
+  background: currentColor;
+  flex-shrink: 0;
+}
+
 .rejectedStack {
   display: grid;
   gap: 10px;
+}
+
+.rejectedAge {
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 600;
 }
 
 .rejectedCard {
@@ -126,6 +225,7 @@
   border-radius: var(--r-md);
   background: color-mix(in srgb, var(--error) 8%, var(--surface));
   padding: 14px;
+  animation: tiendaFadeIn 0.28s cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 
 .rejectedActions {
@@ -307,12 +407,25 @@
   color: var(--flow-color);
 }
 
+/* Hora del hito bajo cada paso ("—" si aún no ocurre). */
+.flowTimestamp {
+  color: var(--muted);
+  font-family: var(--mono);
+  font-size: 10px;
+  font-weight: 500;
+}
+
 .detailFlowStepActive .flowDot,
 .detailFlowStepDone .flowDot {
   border-color: var(--flow-color);
   background: var(--flow-color);
   color: var(--text-on-accent);
   box-shadow: 0 0 16px color-mix(in srgb, var(--flow-color) 40%, transparent);
+}
+
+/* Pulso único al entrar el paso activo (feedback de cambio de estado). */
+.detailFlowStepActive .flowDot {
+  animation: tiendaPulseRing 0.9s cubic-bezier(0.16, 1, 0.3, 1) 1;
 }
 
 .pluList {
@@ -378,6 +491,24 @@
   color: var(--muted2);
   font-size: 12px;
   font-weight: 700;
+}
+
+.fieldError {
+  color: var(--error);
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.fieldHint {
+  color: var(--muted);
+  font-size: 11px;
+}
+
+/* Textarea que crece con el contenido (altura la fija autoGrow en JS). */
+.textareaGrow {
+  overflow-y: auto;
+  max-height: 40vh;
+  resize: none;
 }
 
 .grid2 {
@@ -461,6 +592,8 @@
 @media (max-width: 760px) {
   .page { gap: 14px; }
   .kpiGrid, .pipeline, .toolbar, .grid2, .gridDoc { grid-template-columns: 1fr; }
+  .toolbar { padding: 10px; }
+  .searchInput { min-height: 42px; }
   .pipeline { overflow: visible; }
   .pipelineStep { border-right: 0; border-bottom: 1px solid var(--border); }
   .pipelineStep:last-child { border-bottom: 0; }

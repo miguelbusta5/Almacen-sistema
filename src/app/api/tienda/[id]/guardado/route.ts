@@ -67,6 +67,21 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     },
   }).catch(() => {});
 
+  // Notifica al operario asignado. El enlace va a Guardados (transporte):
+  // el rol TRANSPORTE no tiene acceso al módulo tienda.
+  if (operario.id !== actor.id) {
+    await prisma.notificacion.create({
+      data: {
+        userId: operario.id,
+        titulo: "Te asignaron un guardado",
+        descripcion: `Doc. ${despacho.numeroDocumento} · ${despacho.clienteNombre}${parsed.data.nota ? ` · ${parsed.data.nota.substring(0, 120)}` : ""}`,
+        tipo: "TIENDA",
+        enlace: "/dashboard/transporte",
+        leida: false,
+      },
+    }).catch(() => {});
+  }
+
   return NextResponse.json({
     success: true,
     data: {

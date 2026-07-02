@@ -114,14 +114,15 @@ export const ESTADO_DESPACHO_LABEL: Record<EstadoDespacho, string> = {
   CON_NOVEDAD:        "Con novedad",
 };
 
-// Colores propios del módulo (hex directo, no `--state-*` compartido con
-// Solicitudes Transporte) para no afectar el color de otros módulos.
+// Colores propios del módulo vía tokens `--state-tienda-*` (namespace propio,
+// no el `--state-*` compartido con Solicitudes Transporte, para no afectar el
+// color de otros módulos). Ambos temas los definen en globals.css.
 export const ESTADO_DESPACHO_COLOR: Record<EstadoDespacho, string> = {
-  CREADO_TIENDA:      "#FF6B6B", // rojo — pendiente recogida
+  CREADO_TIENDA:      "var(--state-tienda-created)", // rojo — pendiente recogida
   RECHAZADO:          "var(--state-rejected)",
-  RECOGIDO_TIENDA:    "#F97316", // naranja — recogido en CEDI
-  ENTREGADO_CEDI:     "#FFC53D", // amarillo — entregado en CEDI
-  ENVIADO_CLIENTE:    "#2EE6A6", // verde — enviado al cliente
+  RECOGIDO_TIENDA:    "var(--state-tienda-picked)",  // naranja — recogido en CEDI
+  ENTREGADO_CEDI:     "var(--state-tienda-cedi)",    // amarillo — entregado en CEDI
+  ENVIADO_CLIENTE:    "var(--state-tienda-sent)",    // verde — enviado al cliente
   CON_NOVEDAD:        "var(--state-alert)",
 };
 

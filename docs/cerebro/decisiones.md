@@ -1,5 +1,42 @@
 # Decisiones de Arquitectura y Producto
 
+## 2026-07-02 - Facturas Contado: mejora visual/UX en 6 fases (auditoría + ejecución)
+
+**Decisión:**
+- Se ejecuta la mejora visual/UX del módulo Facturas Contado (`/dashboard/tienda`) en 6 fases,
+  priorizando frontend, UX, notificaciones/alertas e interactividad. Fue el primer módulo patrón
+  y estaba rezagado frente a mejoras posteriores del DS.
+
+**Implementación:**
+1. **Tokens (arregla modo claro):** `ESTADO_DESPACHO_COLOR` deja los hex literales y usa los nuevos
+   tokens `--state-tienda-{created,picked,cedi,sent}` (definidos en dark y light en `globals.css`).
+   Nueva clase `ds-btn-danger-ghost` (peligro discreto) reemplaza los `style={{ color: var(--error) }}`
+   inline de Novedad/Rechazar/Eliminar. Padding del toolbar móvil ≤760px.
+2. **Micro-interacciones:** keyframes locales `tiendaFadeIn`/`tiendaPulseRing` en `tienda.module.css`
+   (entrada escalonada de KPIs, hover del pipeline, entrada de IntelBanner/RejectedQueue, pulso único
+   del paso activo del flujo). `prefers-reduced-motion` las anula (regla global).
+3. **Formularios:** `Field` acepta `error`/`hint`; validación en vivo `onBlur` + submit deshabilitado
+   en `ModalDespacho`; `autoGrow` + `.textareaGrow` (tope 40vh) en los 3 textareas; contador "mín. 5"
+   en `ModalRechazar`; unidades PLU inválidas marcan `ds-input-error`.
+4. **Alertas en lista:** `FacturaIntelBanner` muestra 1.ª alerta destacada + chips por nivel
+   (clicables si traen `recordId`) + contador; icono por fila también para `CON_NOVEDAD` y tooltip
+   con horas exactas (siempre dentro de `fecha-cell` — invariante 7 columnas intacto);
+   `RejectedQueue` muestra "Rechazada hace N" y colapsa con >3 tarjetas.
+5. **Detalle:** `DetailFlow` recibe el despacho y muestra hora por hito ("—" si pendiente);
+   `MiniHistory` → `TimelineItem` compartido con dot semántico; `Alert` (error/warning) sobre el
+   flujo para RECHAZADO/CON_NOVEDAD con su timestamp.
+6. **Notificaciones persistentes (backend, tabla `Notificacion` existente, cero schema/endpoints
+   nuevos):** creación → SUPERVISOR_TRANSPORTE/GERENTE/ADMIN activos; guardado asignado → operario
+   (enlace `/dashboard/transporte`, porque TRANSPORTE no ve tienda); CON_NOVEDAD → creador +
+   SUPERVISOR_TIENDA; ENVIADO_CLIENTE → creador. Siempre se excluye al actor. Rechazo y reversión
+   ya existían y no se tocaron.
+
+**Tests nuevos:** `tiendaFormValidation.test.tsx`, `facturaIntelBanner.test.tsx`,
+`detailFlow.render.test.tsx`, `tiendaNotificaciones.test.ts` (19 casos en total).
+
+**Validación:** `tsc` limpio, **938 tests** en verde (`facturasTable.render` y `cssTableGuard`
+sin modificar), `build` exitoso. QA visual del dueño pendiente en `:3100` (dark + light + 760px).
+
 ## 2026-06-30 - Cargue Gourmet: se elimina "Enviar a Transporte" (cargue directo)
 
 **Decisión:**
