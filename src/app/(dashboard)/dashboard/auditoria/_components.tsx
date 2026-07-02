@@ -18,6 +18,7 @@ export const ACTION_META: Record<string, { label: string; color: string }> = {
   CREATE: { label: "Creó", color: "var(--brand)" },
   UPDATE: { label: "Editó", color: "var(--info)" },
   DELETE: { label: "Eliminó", color: "var(--error)" },
+  MOVE: { label: "Movió", color: "var(--warning)" },
 };
 export const MODULE_META: Record<string, { label: string; color: string }> = {
   muebles: { label: "Muebles", color: "var(--info)" },

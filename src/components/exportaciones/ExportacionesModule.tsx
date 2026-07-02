@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useSession } from "next-auth/react";
-import { BarChart3, CheckCircle2, ChevronDown, ChevronUp, Clock, Download, Pencil, RefreshCw, Search, Tags, Trash2 } from "lucide-react";
+import { ArrowRightLeft, BarChart3, CheckCircle2, ChevronDown, ChevronUp, Clock, Download, Pencil, RefreshCw, Search, Tags, Trash2 } from "lucide-react";
 import { EmptyState, ModuleHero, SkeletonTable } from "@/components/ui";
 import { useConfirm } from "@/components/ui/useDialogs";
 import { Modal } from "@/components/ui/Modal";
@@ -15,7 +15,7 @@ import { useApi } from "@/hooks/useApi";
 import { apiGet, apiPost, apiPatch, apiDelete, buildQuery } from "@/lib/apiClient";
 import { getErrorMessage } from "@/lib/errors";
 import type { ApiListResponse } from "@/types";
-import type { PaisConfig } from "@/lib/exportaciones/paises";
+import { PAISES_EXPORT_LIST, type PaisConfig, type PaisExport } from "@/lib/exportaciones/paises";
 import { RegistrosTable, ProductividadTable, fmtTime, type Exportacion, type UserStat } from "@/app/(dashboard)/dashboard/exportaciones/_components";
 
 function hoyBogota(): string {
@@ -61,6 +61,7 @@ export default function ExportacionesModule({ cfg }: { cfg: PaisConfig }) {
   const isMobile = useIsMobile();
   const canUse = puedeUsarExportaciones(role);
   const canManage = puedeGestionarExportaciones(role);
+  const isAdmin = role === "ADMIN";
 
   const { confirm, confirmModal } = useConfirm();
   const PAGE_SIZE = 40;
@@ -102,9 +103,17 @@ export default function ExportacionesModule({ cfg }: { cfg: PaisConfig }) {
   const [editing, setEditing] = useState<Exportacion | null>(null);
   const [editForm, setEditForm] = useState({ numeroCaja: "", plu: "", descripcion: "", unidadEmpaque: "1", horaInicio: "", horaFinalizacion: "", motivoCorreccion: "" });
   const [debugTable, setDebugTable] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const destinosDisponibles = useMemo(() => PAISES_EXPORT_LIST.filter((p) => p.pais !== cfg.pais), [cfg.pais]);
+  const [moving, setMoving] = useState(false);
+  const [showMoveModal, setShowMoveModal] = useState(false);
+  const [moveForm, setMoveForm] = useState({ destinoPais: destinosDisponibles[0]?.pais as PaisExport, motivo: "" });
 
   // Modo debug de tabla: ?debugTable=1 (diagnóstico de mapeo de columnas).
   useEffect(() => { setDebugTable(new URLSearchParams(window.location.search).get("debugTable") === "1"); }, []);
+
+  // Limpia la selección al cambiar de página o filtros para evitar mover ids fuera de vista.
+  useEffect(() => { setSelectedIds(new Set()); }, [applied, page]);
 
   const openItem = useMemo(() => items.find((item) => !item.horaFinalizacion) ?? null, [items]);
   const formDirty = Boolean(form.numeroCaja.trim() || form.plu.trim() || form.descripcion.trim());
@@ -247,6 +256,45 @@ export default function ExportacionesModule({ cfg }: { cfg: PaisConfig }) {
     }
   }
 
+  function toggleSelect(id: string) {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  }
+
+  function toggleSelectAll() {
+    setSelectedIds((prev) => (prev.size === items.length ? new Set() : new Set(items.map((i) => i.id))));
+  }
+
+  function openMoveModal() {
+    if (selectedIds.size === 0 || !destinosDisponibles[0]) return;
+    setMoveForm({ destinoPais: destinosDisponibles[0].pais, motivo: "" });
+    setShowMoveModal(true);
+  }
+
+  async function saveMove(e: React.FormEvent) {
+    e.preventDefault();
+    setMoving(true);
+    setError("");
+    try {
+      await apiPost("/api/exportaciones/mover", {
+        ids: Array.from(selectedIds),
+        origenPais: cfg.pais,
+        destinoPais: moveForm.destinoPais,
+        motivo: moveForm.motivo,
+      });
+      setShowMoveModal(false);
+      setSelectedIds(new Set());
+      await mutateList();
+    } catch (err) {
+      setError(getErrorMessage(err, "No se pudo mover los registros"));
+    } finally {
+      setMoving(false);
+    }
+  }
+
   if (!session) return <SkeletonTable rows={6} cols={4} />;
   if (!canUse) return <EmptyState icon={<Tags size={28} />} title="Sin acceso" description={`Tu rol no tiene acceso al modulo ${cfg.label}.`} />;
 
@@ -326,7 +374,17 @@ export default function ExportacionesModule({ cfg }: { cfg: PaisConfig }) {
       {items.map((item) => (
         <article key={item.id} className="op-record-card" style={{ "--module-color": COLOR, padding: 14 } as React.CSSProperties}>
           <div style={{ display: "flex", justifyContent: "space-between", gap: 10 }}>
-            <strong>Caja {item.numeroCaja}</strong>
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              {isAdmin && (
+                <input
+                  type="checkbox"
+                  aria-label={`Seleccionar caja ${item.numeroCaja}`}
+                  checked={selectedIds.has(item.id)}
+                  onChange={() => toggleSelect(item.id)}
+                />
+              )}
+              <strong>Caja {item.numeroCaja}</strong>
+            </div>
             <span style={{ color: item.horaFinalizacion ? "var(--muted2)" : COLOR, fontSize: 12, fontWeight: 800 }}>{item.horaFinalizacion ? "Finalizado" : "En curso"}</span>
           </div>
           <div style={{ marginTop: 8, color: "var(--muted)", fontSize: 13, lineHeight: 1.6 }}>
@@ -346,6 +404,10 @@ export default function ExportacionesModule({ cfg }: { cfg: PaisConfig }) {
       onEdit={startEdit}
       onDelete={remove}
       debug={debugTable}
+      selectable={isAdmin}
+      selectedIds={selectedIds}
+      onToggleSelect={toggleSelect}
+      onToggleSelectAll={toggleSelectAll}
     />
   );
 
@@ -491,6 +553,19 @@ export default function ExportacionesModule({ cfg }: { cfg: PaisConfig }) {
             <Clock size={20} color={COLOR} />
           </div>
         </div>
+        {isAdmin && selectedIds.size > 0 && (
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, flexWrap: "wrap", border: `1px solid ${COLOR}44`, background: `${COLOR}10`, borderRadius: 10, padding: "8px 12px", marginBottom: 12 }}>
+            <span style={{ fontSize: 13, fontWeight: 700, color: COLOR }}>{selectedIds.size} seleccionado{selectedIds.size === 1 ? "" : "s"}</span>
+            <div style={{ display: "flex", gap: 8 }}>
+              <button onClick={openMoveModal} className="ds-btn ds-btn-sm" style={{ background: COLOR, color: "white", border: "none" }}>
+                <ArrowRightLeft size={14} /> Mover a otro país
+              </button>
+              <button onClick={() => setSelectedIds(new Set())} className="ds-btn ds-btn-ghost ds-btn-sm">
+                Cancelar selección
+              </button>
+            </div>
+          </div>
+        )}
         {filters}
         {list}
         {pagination}
@@ -511,6 +586,38 @@ export default function ExportacionesModule({ cfg }: { cfg: PaisConfig }) {
             </div>
             {canManage && <Field label="Motivo correccion"><textarea value={editForm.motivoCorreccion} onChange={(e) => setEditForm((f) => ({ ...f, motivoCorreccion: e.target.value }))} rows={3} className="ds-input" style={{ height: "auto", padding: 10 }} /></Field>}
             <button disabled={saving} className="ds-btn ds-btn-primary" style={{ background: COLOR }}>Guardar cambios</button>
+          </form>
+        </Modal>
+      )}
+
+      {showMoveModal && (
+        <Modal open onClose={() => setShowMoveModal(false)} title="Mover registros a otro país" subtitle={`${selectedIds.size} registro${selectedIds.size === 1 ? "" : "s"} seleccionado${selectedIds.size === 1 ? "" : "s"} · ${cfg.label}`}>
+          <form onSubmit={saveMove} style={{ display: "grid", gap: 12 }}>
+            <Field label="País destino">
+              <select
+                required
+                value={moveForm.destinoPais}
+                onChange={(e) => setMoveForm((f) => ({ ...f, destinoPais: e.target.value as PaisExport }))}
+                className="ds-input"
+              >
+                {destinosDisponibles.map((p) => <option key={p.pais} value={p.pais}>{p.paisLabel}</option>)}
+              </select>
+            </Field>
+            <Field label="Motivo del traslado">
+              <textarea
+                required
+                minLength={5}
+                value={moveForm.motivo}
+                onChange={(e) => setMoveForm((f) => ({ ...f, motivo: e.target.value }))}
+                rows={3}
+                placeholder="Ej: se capturó por error en el país equivocado"
+                className="ds-input"
+                style={{ height: "auto", padding: 10 }}
+              />
+            </Field>
+            <button disabled={moving} className="ds-btn ds-btn-primary" style={{ background: COLOR }}>
+              {moving ? "Moviendo..." : `Mover ${selectedIds.size} registro${selectedIds.size === 1 ? "" : "s"}`}
+            </button>
           </form>
         </Modal>
       )}

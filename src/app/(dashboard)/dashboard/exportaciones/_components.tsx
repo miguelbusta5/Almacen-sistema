@@ -38,6 +38,10 @@ export function RegistrosTable({
   onEdit,
   onDelete,
   debug = false,
+  selectable = false,
+  selectedIds,
+  onToggleSelect,
+  onToggleSelectAll,
 }: {
   loading: boolean;
   items: Exportacion[];
@@ -46,8 +50,35 @@ export function RegistrosTable({
   onEdit: (item: Exportacion) => void;
   onDelete: (item: Exportacion) => void;
   debug?: boolean;
+  selectable?: boolean;
+  selectedIds?: Set<string>;
+  onToggleSelect?: (id: string) => void;
+  onToggleSelectAll?: () => void;
 }) {
   const columns: Column<Exportacion>[] = [
+    ...(selectable ? [{
+      key: "seleccion",
+      header: (
+        <input
+          type="checkbox"
+          aria-label="Seleccionar todos"
+          checked={items.length > 0 && items.every((item) => selectedIds?.has(item.id))}
+          onChange={() => onToggleSelectAll?.()}
+        />
+      ),
+      width: "4%",
+      testId: "seleccion-cell",
+      debugLabel: "Sel.",
+      render: (item: Exportacion) => (
+        <input
+          type="checkbox"
+          aria-label={`Seleccionar caja ${item.numeroCaja}`}
+          checked={selectedIds?.has(item.id) ?? false}
+          onChange={() => onToggleSelect?.(item.id)}
+          onClick={(e) => e.stopPropagation()}
+        />
+      ),
+    } as Column<Exportacion>] : []),
     {
       key: "fecha",
       header: "Fecha",
