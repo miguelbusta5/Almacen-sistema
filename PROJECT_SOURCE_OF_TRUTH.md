@@ -89,7 +89,7 @@ verdad en base de datos; acceso desde móvil y escritorio.
 |---|---|---|---|
 | `inventario` | `/dashboard/inventario` (alias `/muebles`) | Novedades Inventario | INVENTARIO, SUPERVISOR_INVENTARIO, GERENTE, ADMIN, OPERADOR |
 | `tienda` | `/dashboard/tienda` | Facturas Contado | TIENDA, SUPERVISOR_TIENDA, SUPERVISOR_TRANSPORTE, GERENTE, ADMIN |
-| `transporte` | `/dashboard/transporte` | Guardados | TRANSPORTE, SUPERVISOR_TRANSPORTE, GERENTE, ADMIN, OPERADOR |
+| `transporte` | `/dashboard/transporte` | Guardados | TRANSPORTE, SUPERVISOR_TRANSPORTE, GERENTE, ADMIN, OPERADOR — ⚠️ desde 2026-07-03 la ruta la sirve el piloto Vue/Nuxt (`nuxt-app/`), no la página React; ver `docs/cerebro/decisiones.md` |
 | `solicitudes-transporte` | `/dashboard/solicitudes-transporte` | Solicitudes Transporte | Todos excepto TRANSPORTISTA, ETIQUETADO, SUPERVISOR_ALMACENAMIENTO |
 | `integracion` | `/dashboard/integracion` | Integración Pedidos | OPERACIONES_MUEBLES, OPERACIONES_GOURMET, ADMIN, GERENTE, SUPERVISOR_TRANSPORTE, TRANSPORTE |
 | `exportaciones` | `/dashboard/exportaciones` | Exportaciones | ETIQUETADO, SUPERVISOR_ALMACENAMIENTO, GERENTE, ADMIN |

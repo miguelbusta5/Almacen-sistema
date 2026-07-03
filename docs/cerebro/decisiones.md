@@ -1,5 +1,32 @@
 # Decisiones de Arquitectura y Producto
 
+## 2026-07-03 (tarde/noche) - Piloto Guardados: go-live real en producción + 3 bugs de despliegue
+
+**Decisión:** activar `NUXT_PILOT_URL` en **Production** de `almacen-sistema` — `/dashboard/transporte`
+ya sirve el piloto Vue/Nuxt a **todos los usuarios reales**, reemplazando la página React (que se
+conserva en el repo como fallback, sin recibir tráfico mientras la variable esté activa). Ver [[bugs]]
+BUG-004 para el detalle técnico de los 3 problemas de despliegue encontrados y resueltos en el camino.
+
+**Verificado en producción con sesión real (no demo):**
+- Lectura: 58 registros reales, KPIs correctos, estilos de marca cargando bien.
+- Escritura: creación de guardado nuevo + registro de contacto, ambos persistidos en la DB real y
+  visibles en el timeline con el usuario/fecha correctos. Registro de prueba borrado por el usuario
+  desde la propia UI del piloto (confirma que `DELETE` también funciona).
+- Comportamiento sin sesión **sin cambios**: `/dashboard/transporte` sigue redirigiendo a `/login`
+  (lo maneja el middleware de Next.js por presencia de cookie, antes de llegar al rewrite).
+
+**Pendiente de validar** (no bloqueante para el uso diario, pero sin confirmar aún):
+- Paridad 1:1 exhaustiva de todos los flujos del piloto plan original (editar fecha de entrega,
+  convertir pendiente-tienda, exportar CSV, gráficos/insights, revertir estado, permisos finos por
+  rol distintos de ADMIN).
+- No se ha decidido si/cuándo retirar la página React (`src/app/(dashboard)/dashboard/transporte/`)
+  del repo — se deja como está hasta tener más kilometraje del piloto en producción.
+
+**Siguiente paso acordado con el usuario:** replicar el mismo patrón (Nuxt/Nitro + rewrite condicional)
+en el módulo **Facturas Contado** (`tienda`, `/dashboard/tienda`).
+
+---
+
 ## 2026-07-03 - Piloto Guardados en Vue/Nuxt: primer paso de migración de stack
 
 **Decisión:**

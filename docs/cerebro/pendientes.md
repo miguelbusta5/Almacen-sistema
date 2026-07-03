@@ -6,6 +6,21 @@
 
 ## Tareas pendientes
 
+### Piloto Guardados Vue/Nuxt — go-live en producción (2026-07-03)
+
+- [x] **Go-live real:** `NUXT_PILOT_URL` activo en Production de `almacen-sistema`;
+  `/dashboard/transporte` sirve el piloto Nuxt a todos los usuarios. Ver [[decisiones]] y
+  [[bugs]] BUG-004 (3 causas raíz encadenadas: import de `PrismaClient`, `postinstall` sin
+  `prisma generate`, `app.baseURL`/rewrite). Verificado con sesión real: lectura, creación,
+  registro de contacto y borrado, todo contra la DB real.
+- [ ] Paridad 1:1 completa contra el plan original: editar fecha de entrega, convertir
+  pendiente-tienda, exportar CSV, gráficos/insights, revertir estado, permisos finos por rol
+  (solo se probó con una sesión ADMIN).
+- [ ] Decidir cuándo retirar `src/app/(dashboard)/dashboard/transporte/` (React, ahora fallback
+  sin tráfico) del repo — dejarlo un tiempo como red de seguridad antes de borrar.
+- [ ] **Siguiente módulo a migrar (acordado con el usuario): Facturas Contado (`tienda`)** —
+  replicar el mismo patrón (Nitro/Nuxt + rewrite condicional `beforeFiles` + `app.baseURL`).
+
 ### Cargue Gourmet — anti-duplicados y edición de ubicación (2026-07-03)
 
 - [x] **BUG-003 (ver [[bugs]])**: `POST`/`PUT /api/cargue-gourmet` rechazan con `409 ORDEN_DUPLICADA` una

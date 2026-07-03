@@ -33,6 +33,13 @@ Aplicación web operativa interna de **Grupo Ambiente** para gestionar inventari
 **URL producción:** `matec-cedi.vercel.app`
 **Rama principal:** `master` → push = deploy automático
 
+> ⚠️ **Excepción de stack (desde 2026-07-03):** `/dashboard/transporte` (Guardados) ya **no**
+> sirve la página React de arriba — Next.js la reescribe (`next.config.ts`, `beforeFiles`,
+> gateado por `NUXT_PILOT_URL`) hacia una app **Vue/Nuxt 4 + Nitro** independiente en
+> `nuxt-app/` (proyecto Vercel aparte: `nuxt-app-chi-ivory.vercel.app`), primer piloto de una
+> migración completa de stack. Comparte la misma DB (Railway) y la misma cookie JWT de
+> Auth.js v5. Ver [[decisiones]] (2026-07-03) para el detalle completo y [[modulos]].
+
 ---
 
 ## Arquitectura clave

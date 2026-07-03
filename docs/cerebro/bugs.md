@@ -12,6 +12,50 @@
 
 ## Bugs resueltos
 
+## [BUG-004] Piloto Guardados (Nuxt): 500 y luego CSS/datos rotos al activar en producción
+
+- **Fecha detectado:** 2026-07-03
+- **Módulo:** transporte (piloto Vue/Nuxt, `nuxt-app/`)
+- **Severidad:** 🔴 Alta (bloqueaba el go-live del piloto en producción)
+- **Reportado por:** Continuación de sesión anterior (quedó a medias por límite de tokens) + QA visual
+  del usuario en producción ("se ve fatal")
+- **Descripción:** al intentar activar el piloto Nuxt en producción se encontraron 3 problemas
+  encadenados, cada uno tapando al siguiente.
+- **Diagnóstico y solución (3 causas raíz distintas):**
+  1. **`PrismaClient` undefined en el bundle serverless** — `nuxt-app/server/utils/prisma.ts` hacía
+     `import { PrismaClient } from '@prisma/client'`. El entrypoint de Prisma 7 (`default.js`) hace
+     `module.exports = { ...require(...) }` (spread dinámico), que el bundler de Nitro/esbuild no
+     puede analizar de forma estática para exports con nombre → `PrismaClient` llegaba `undefined` →
+     500 en cualquier `/api/*` antes de llegar a la verificación de auth. **Fix:** import por defecto
+     del paquete completo + `import type` aparte solo para el tipo (se elide en el bundle).
+  2. **`.prisma/client` no generado en el build de Vercel** — tras el fix anterior, el error cambió a
+     `Cannot find module '.prisma/client/default'`. `nuxt-app/package.json` no tenía ningún script que
+     corriera `prisma generate`; en local funcionaba porque alguien lo había corrido a mano una vez,
+     pero el `npm install` limpio de Vercel nunca lo generaba. **Fix:** `postinstall": "prisma generate
+     && nuxt prepare"`.
+  3. **Assets y `$fetch` interno escapando del proxy** — con los dos anteriores resueltos, el piloto
+     cargaba pero "se veía fatal" (CSS roto, texto negro sobre fondo negro) y mostraba "0 registros".
+     Causa: Nuxt generaba sus assets (`/_nuxt/*.css`) y llamaba a su propia API (`$fetch('/api/...')`)
+     con **rutas absolutas de raíz**, pero el rewrite de `next.config.ts` solo reescribe
+     `/dashboard/transporte(/*)` — esas peticiones a `/_nuxt/*` y `/api/*` se iban directo al dominio
+     `matec-cedi.vercel.app` (404 en assets; `/api/transporte` incluso coincidía por accidente con la
+     API **vieja** de React, mismo path, devolviendo datos de un backend distinto al esperado). **Fix:**
+     `app.baseURL: '/dashboard/transporte/'` en `nuxt-app/nuxt.config.ts` (el `$fetch` global de Nuxt
+     usa ese baseURL automáticamente — confirmado en el propio código fuente de Nuxt,
+     `dollarFetchTemplate` en `node_modules/nuxt/dist/index.mjs`) + el destino del rewrite en
+     `next.config.ts` ajustado para preservar `/dashboard/transporte` en vez de mandar a la raíz del
+     dominio de `nuxt-app`.
+- **Archivo(s) afectado(s):**
+  - `nuxt-app/server/utils/prisma.ts`
+  - `nuxt-app/package.json` (script `postinstall`)
+  - `nuxt-app/nuxt.config.ts` (`app.baseURL`)
+  - `next.config.ts` (destino del rewrite)
+- **Estado:** ✅ Resuelto
+- **Validado:** cada fix se probó contra producción real (`nuxt-app-chi-ivory.vercel.app` y luego
+  `matec-cedi.vercel.app/dashboard/transporte`) con `curl` y con QA visual + funcional del usuario
+  (lectura, creación de guardado, registro de contacto, todo persistiendo en la DB real).
+- **Fecha resolución:** 2026-07-03
+
 ## [BUG-003] Pedidos Gourmet duplicados al "corregir" un error de captura
 
 - **Fecha detectado:** 2026-07-03

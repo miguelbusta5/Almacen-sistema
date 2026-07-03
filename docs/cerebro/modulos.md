@@ -14,7 +14,7 @@
 | ModuleKey | URL | Roles que lo ven | Descripción |
 |---|---|---|---|
 | `inventario` | `/dashboard/inventario` `/dashboard/muebles` | ADMIN, GERENTE, SUPERVISOR_INV, INVENTARIO, OPERADOR | Novedades de inventario (diferencias de PLU, posición, cantidad) |
-| `transporte` | `/dashboard/transporte` | ADMIN, GERENTE, SUPERVISOR_TRA, TRANSPORTE, OPERADOR | Guardados en custodia del almacén |
+| `transporte` | `/dashboard/transporte` | ADMIN, GERENTE, SUPERVISOR_TRA, TRANSPORTE, OPERADOR | Guardados en custodia del almacén — ⚠️ **desde 2026-07-03 sirve el piloto Vue/Nuxt** (`nuxt-app/`), no la página React; ver [[decisiones]] |
 | `solicitudes-transporte` | `/dashboard/solicitudes-transporte` | Todos excepto TRANSPORTISTA | Solicitudes internas de transporte y gestion por lider transporte |
 | `exportaciones` | `/dashboard/exportaciones` | ETIQUETADO, SUPERVISOR_ALMACENAMIENTO, ADMIN, GERENTE | Etiquetado de cajas de exportacion con PLU maestro |
 | `tienda` | `/dashboard/tienda` | ADMIN, GERENTE, SUPERVISOR_TRA, SUPERVISOR_TIE, TIENDA | Despachos desde tienda hasta cliente |
