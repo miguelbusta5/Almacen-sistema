@@ -30,7 +30,12 @@ const ROLES_ELIMINAN = ["ADMIN", "GERENTE"] as const;
 // nunca una vez el pedido entró en el flujo operativo de Transporte).
 const ESTADOS_EDITABLES = ["BORRADOR", "UBICACION_ASIGNADA", "CON_NOVEDAD"] as const;
 
-function mapDetalle(r: PedidoDetalle) {
+// `iniciadoPorId`/`finalizadoPorId` (cargues), `escaneadoPorId` (escaneos) y
+// `registradaPorId`/`resueltaPorId` (novedades) son columnas planas sin
+// relación de Prisma a `User` (a diferencia de `creadoPorId`, que sí la
+// tiene) — se resuelven a nombre con un solo `findMany` por id, no con
+// relaciones en el schema.
+function mapDetalle(r: PedidoDetalle, nombrePorId: Map<string, string> = new Map()) {
   return {
     id: r.id,
     orden: r.orden,
@@ -62,8 +67,10 @@ function mapDetalle(r: PedidoDetalle) {
     cargues: (r.cargues ?? []).map((c) => ({
       id: c.id,
       iniciadoPorId: c.iniciadoPorId,
+      iniciadoPorNombre: nombrePorId.get(c.iniciadoPorId) ?? null,
       iniciadoAt: c.iniciadoAt,
       finalizadoPorId: c.finalizadoPorId,
+      finalizadoPorNombre: c.finalizadoPorId ? nombrePorId.get(c.finalizadoPorId) ?? null : null,
       finalizadoAt: c.finalizadoAt,
       tipoCierre: c.tipoCierre,
       cantidadEsperada: c.cantidadEsperada,
@@ -72,9 +79,16 @@ function mapDetalle(r: PedidoDetalle) {
       motivoCierreManual: c.motivoCierreManual,
       observacion: c.observacion,
       estado: c.estado,
-      escaneos: c.escaneos ?? [],
+      escaneos: (c.escaneos ?? []).map((e) => ({
+        ...e,
+        escaneadoPorNombre: nombrePorId.get(e.escaneadoPorId) ?? null,
+      })),
     })),
-    novedades: r.novedades ?? [],
+    novedades: (r.novedades ?? []).map((n) => ({
+      ...n,
+      registradaPorNombre: nombrePorId.get(n.registradaPorId) ?? null,
+      resueltaPorNombre: n.resueltaPorId ? nombrePorId.get(n.resueltaPorId) ?? null : null,
+    })),
   };
 }
 
@@ -101,7 +115,22 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
   });
   if (!row) return NextResponse.json({ error: "No encontrado" }, { status: 404 });
 
-  return NextResponse.json({ success: true, data: mapDetalle(row) });
+  const actorIds = new Set<string>();
+  for (const c of row.cargues) {
+    actorIds.add(c.iniciadoPorId);
+    if (c.finalizadoPorId) actorIds.add(c.finalizadoPorId);
+    for (const e of c.escaneos) actorIds.add(e.escaneadoPorId);
+  }
+  for (const n of row.novedades) {
+    actorIds.add(n.registradaPorId);
+    if (n.resueltaPorId) actorIds.add(n.resueltaPorId);
+  }
+  const actores = actorIds.size > 0
+    ? await prisma.user.findMany({ where: { id: { in: [...actorIds] } }, select: { id: true, name: true } })
+    : [];
+  const nombrePorId = new Map(actores.map((u) => [u.id, u.name]));
+
+  return NextResponse.json({ success: true, data: mapDetalle(row, nombrePorId) });
 }
 
 const updateSchema = z.object({

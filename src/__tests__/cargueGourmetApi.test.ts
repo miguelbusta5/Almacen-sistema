@@ -508,6 +508,60 @@ describe("GET /api/cargue-gourmet/[id]", () => {
     expect(json.data.creadoPorNombre).toBe("Usuario Test");
   });
 
+  it("resuelve el nombre de iniciadoPor/finalizadoPor/escaneadoPor/registradaPor/resueltaPor con un solo findMany de User", async () => {
+    mocks.getSessionUser.mockResolvedValue(actor("SUPERVISOR_TRANSPORTE"));
+    mocks.pedidoFindUnique.mockResolvedValue(
+      pedidoDetalleMock({
+        cargues: [
+          {
+            id: "cg1",
+            iniciadoPorId: "u_transporte",
+            iniciadoAt: new Date(),
+            finalizadoPorId: "u_admin",
+            finalizadoAt: new Date(),
+            tipoCierre: null,
+            cantidadEsperada: 5,
+            cantidadEscaneada: 5,
+            cantidadContadaManual: null,
+            motivoCierreManual: null,
+            observacion: null,
+            estado: "CARGUE_COMPLETO",
+            escaneos: [{ id: "s1", codigoEscaneado: "X", resultado: "VALIDO", escaneadoPorId: "u_transporte", createdAt: new Date() }],
+          },
+        ],
+        novedades: [{ id: "n1", tipo: "CAJA_AJENA", estado: "RESUELTA", registradaPorId: "u_transporte", resueltaPorId: "u_admin", createdAt: new Date() }],
+      })
+    );
+    mocks.userFindMany.mockResolvedValue([
+      { id: "u_transporte", name: "Juan Pérez" },
+      { id: "u_admin", name: "Ana Gómez" },
+    ]);
+
+    const res = await getPedidoDetalle(getReq("p1"), { params: Promise.resolve({ id: "p1" }) });
+    const json = await res.json();
+
+    expect(res.status).toBe(200);
+    expect(json.data.cargues[0].iniciadoPorNombre).toBe("Juan Pérez");
+    expect(json.data.cargues[0].finalizadoPorNombre).toBe("Ana Gómez");
+    expect(json.data.cargues[0].escaneos[0].escaneadoPorNombre).toBe("Juan Pérez");
+    expect(json.data.novedades[0].registradaPorNombre).toBe("Juan Pérez");
+    expect(json.data.novedades[0].resueltaPorNombre).toBe("Ana Gómez");
+    expect(mocks.userFindMany).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { id: { in: expect.arrayContaining(["u_transporte", "u_admin"]) } } })
+    );
+  });
+
+  it("nombre queda null si el actor no se encuentra (p. ej. usuario eliminado)", async () => {
+    mocks.getSessionUser.mockResolvedValue(actor("SUPERVISOR_TRANSPORTE"));
+    mocks.pedidoFindUnique.mockResolvedValue(pedidoDetalleMock());
+    mocks.userFindMany.mockResolvedValue([]);
+
+    const res = await getPedidoDetalle(getReq("p1"), { params: Promise.resolve({ id: "p1" }) });
+    const json = await res.json();
+
+    expect(json.data.cargues[0].iniciadoPorNombre).toBeNull();
+  });
+
   it("404 si no existe", async () => {
     mocks.getSessionUser.mockResolvedValue(actor("ADMIN"));
     mocks.pedidoFindUnique.mockResolvedValue(null);

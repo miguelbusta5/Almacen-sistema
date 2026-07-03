@@ -237,8 +237,8 @@ export function PedidoDetalleContent({
                           { label: "Cantidad esperada", value: c.cantidadEsperada },
                           { label: "Cantidad escaneada", value: c.cantidadEscaneada },
                           { label: "Tipo cierre", value: c.tipoCierre ?? "—" },
-                          { label: "Iniciado por", value: c.iniciadoPorId },
-                          { label: "Finalizado por", value: c.finalizadoPorId ?? "—" },
+                          { label: "Iniciado por", value: c.iniciadoPorNombre ?? c.iniciadoPorId },
+                          { label: "Finalizado por", value: c.finalizadoPorNombre ?? c.finalizadoPorId ?? "—" },
                           { label: "Iniciado", value: fmtFechaHora(c.iniciadoAt) },
                           { label: "Finalizado", value: fmtFechaHora(c.finalizadoAt) },
                         ]}
@@ -260,7 +260,7 @@ export function PedidoDetalleContent({
                     <TimelineItem
                       key={e.id}
                       title={e.codigoEscaneado}
-                      meta={`${e.resultado}${e.escaneadoPorId ? ` · ${e.escaneadoPorId}` : ""}`}
+                      meta={`${e.resultado}${e.escaneadoPorNombre ? ` · ${e.escaneadoPorNombre}` : e.escaneadoPorId ? ` · ${e.escaneadoPorId}` : ""}`}
                       time={fmtFechaHora(e.createdAt)}
                       dot={RESULTADO_DOT[e.resultado] ?? "default"}
                     />
@@ -287,8 +287,8 @@ export function PedidoDetalleContent({
                       </div>
                       <p style={{ fontSize: 13, color: "var(--text)", margin: "0 0 4px" }}>{n.descripcion}</p>
                       <p style={{ fontSize: 11, color: "var(--muted)", margin: 0 }}>
-                        Registrada por {n.registradaPorId} · {fmtFechaHora(n.createdAt)}
-                        {n.resueltaPorId && ` · Resuelta por ${n.resueltaPorId}`}
+                        Registrada por {n.registradaPorNombre ?? n.registradaPorId} · {fmtFechaHora(n.createdAt)}
+                        {n.resueltaPorId && ` · Resuelta por ${n.resueltaPorNombre ?? n.resueltaPorId}`}
                       </p>
                     </div>
                   ))}

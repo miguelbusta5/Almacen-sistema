@@ -18,6 +18,7 @@ export interface EscaneoDetalle {
   codigoEscaneado: string;
   resultado: string;
   escaneadoPorId?: string;
+  escaneadoPorNombre?: string | null;
   createdAt: string;
 }
 
@@ -28,8 +29,10 @@ export interface CargueDetalle {
   cantidadEscaneada: number;
   tipoCierre: string | null;
   iniciadoPorId: string;
+  iniciadoPorNombre: string | null;
   iniciadoAt: string;
   finalizadoPorId: string | null;
+  finalizadoPorNombre: string | null;
   finalizadoAt: string | null;
   escaneos: EscaneoDetalle[];
 }
@@ -40,7 +43,9 @@ export interface NovedadDetalle {
   estado: string;
   descripcion: string;
   registradaPorId: string;
+  registradaPorNombre: string | null;
   resueltaPorId: string | null;
+  resueltaPorNombre: string | null;
   resueltaAt: string | null;
   createdAt: string;
 }

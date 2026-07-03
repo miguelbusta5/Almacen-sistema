@@ -40,8 +40,12 @@ const mockPedido: PedidoDetalle = {
       cantidadEscaneada: 1,
       tipoCierre: null,
       iniciadoPorId: "u_transporte",
+      // null a propósito: simula un usuario que ya no existe / nombre no
+      // resuelto — el render debe caer de vuelta al id (ver tests abajo).
+      iniciadoPorNombre: null,
       iniciadoAt: "2026-06-24T10:00:00.000Z",
       finalizadoPorId: null,
+      finalizadoPorNombre: null,
       finalizadoAt: null,
       escaneos: [
         { id: "s1", codigoEscaneado: "TSDM98761-CAJA-01", resultado: "VALIDO", escaneadoPorId: "u_transporte", createdAt: "2026-06-24T10:05:00.000Z" },
@@ -55,7 +59,9 @@ const mockPedido: PedidoDetalle = {
       estado: "ABIERTA",
       descripcion: "Esta caja no pertenece a este pedido.",
       registradaPorId: "u_transporte",
+      registradaPorNombre: null,
       resueltaPorId: null,
+      resueltaPorNombre: null,
       resueltaAt: null,
       createdAt: "2026-06-24T10:06:00.000Z",
     },
@@ -120,6 +126,22 @@ describe("PedidoDetallePanel — cargues", () => {
     expect(html).toContain("u_transporte");
   });
 
+  it("muestra el nombre en vez del id cuando el backend lo resuelve", () => {
+    const html = renderPanel({
+      pedido: {
+        ...mockPedido,
+        cargues: [{
+          ...mockPedido.cargues[0],
+          iniciadoPorNombre: "Juan Pérez",
+          finalizadoPorId: "u_admin",
+          finalizadoPorNombre: "Ana Gómez",
+        }],
+      },
+    });
+    expect(html).toContain("Juan Pérez");
+    expect(html).toContain("Ana Gómez");
+  });
+
   it("muestra EmptyState cuando no hay cargues", () => {
     const html = renderPanel({ pedido: { ...mockPedido, cargues: [] } });
     expect(html).toContain("Sin cargues registrados");
@@ -145,6 +167,22 @@ describe("PedidoDetallePanel — novedades", () => {
     expect(html).toContain('data-testid="novedad-n1"');
     expect(html).toContain("Caja ajena");
     expect(html).toContain("Esta caja no pertenece a este pedido.");
+  });
+
+  it("muestra el nombre de quien registró/resolvió en vez del id cuando el backend lo resuelve", () => {
+    const html = renderPanel({
+      pedido: {
+        ...mockPedido,
+        novedades: [{
+          ...mockPedido.novedades[0],
+          registradaPorNombre: "Carlos Ruiz",
+          resueltaPorId: "u_admin",
+          resueltaPorNombre: "Ana Gómez",
+        }],
+      },
+    });
+    expect(html).toContain("Carlos Ruiz");
+    expect(html).toContain("Ana Gómez");
   });
 
   it("muestra EmptyState cuando no hay novedades", () => {
