@@ -41,6 +41,11 @@ const ROLES_CIERRE_MANUAL = ["SUPERVISOR_TRANSPORTE", "OPERACIONES_GOURMET", "AD
 // Eliminar pedidos y revertir un cargue accidental — acciones de supervisión,
 // coincide con ROLES_ELIMINAN de /[id] (DELETE) y de /revertir-cargue.
 const ROLES_ADMIN_GERENTE = ["ADMIN", "GERENTE"];
+// Despacho masivo sin verificación de cajas — deliberadamente NO es un rol
+// completo: solo ADMIN y un único usuario nombrado (Diego Zapata, auxiliar de
+// transporte), coincide con la restricción del backend en
+// /api/cargue-gourmet/despacho-masivo.
+const EMAIL_DESPACHO_MASIVO = "auxiliar-transporte@gmail.com";
 
 const RESULTADO_TOAST_ERROR: Record<ResultadoEscaneo, string> = {
   VALIDO: "",
@@ -58,6 +63,7 @@ const inp: React.CSSProperties = {
 export default function CargueGourmetPage() {
   const { data: session } = useSession();
   const role = (session?.user as { role?: string } | undefined)?.role;
+  const userEmail = (session?.user as { email?: string } | undefined)?.email ?? "";
   const toast = useToast();
 
   const [page, setPage] = useState(1);
@@ -95,6 +101,11 @@ export default function CargueGourmetPage() {
 
   const [showRevertirConfirm, setShowRevertirConfirm] = useState(false);
   const [revirtiendo, setRevirtiendo] = useState(false);
+
+  const [despachoMasivoMode, setDespachoMasivoMode] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [showDespachoMasivoConfirm, setShowDespachoMasivoConfirm] = useState(false);
+  const [despachandoMasivo, setDespachandoMasivo] = useState(false);
 
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -294,6 +305,47 @@ export default function CargueGourmetPage() {
     }
   }
 
+  function toggleSelect(id: string) {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  }
+
+  function toggleSelectAll(ids: string[]) {
+    setSelectedIds((prev) => {
+      const todasSeleccionadas = ids.length > 0 && ids.every((id) => prev.has(id));
+      return todasSeleccionadas ? new Set() : new Set(ids);
+    });
+  }
+
+  function cancelarDespachoMasivo() {
+    setDespachoMasivoMode(false);
+    setSelectedIds(new Set());
+  }
+
+  async function confirmarDespachoMasivo() {
+    if (selectedIds.size === 0 || despachandoMasivo) return;
+    setDespachandoMasivo(true);
+    try {
+      const json = await apiPost<{ data: { actualizados: string[]; omitidos: { id: string; motivo: string }[] } }>(
+        "/api/cargue-gourmet/despacho-masivo",
+        { ids: Array.from(selectedIds) },
+      );
+      const { actualizados, omitidos } = json.data;
+      if (actualizados.length > 0) toast.success(`${actualizados.length} pedido${actualizados.length !== 1 ? "s" : ""} despachado${actualizados.length !== 1 ? "s" : ""} sin verificación`);
+      if (omitidos.length > 0) toast.error(`${omitidos.length} pedido${omitidos.length !== 1 ? "s" : ""} no se pudo${omitidos.length !== 1 ? "ron" : ""} despachar`);
+      setShowDespachoMasivoConfirm(false);
+      cancelarDespachoMasivo();
+      load();
+    } catch (e) {
+      toast.error(getErrorMessage(e, "No se pudo completar el despacho masivo"));
+    } finally {
+      setDespachandoMasivo(false);
+    }
+  }
+
   if (role && !canSeeModule(role, "cargue-gourmet")) {
     return (
       <div className="g-panel g-empty animate-fade-in">
@@ -311,6 +363,7 @@ export default function CargueGourmetPage() {
   const puedeCierreManual = !!role && ROLES_CIERRE_MANUAL.includes(role);
   const puedeEliminar = !!role && ROLES_ADMIN_GERENTE.includes(role);
   const puedeRevertirCargue = puedeEliminar;
+  const puedeDespachoMasivo = role === "ADMIN" || userEmail.toLowerCase() === EMAIL_DESPACHO_MASIVO;
   // La vista de detalle a ancho completo reemplaza al listado (todos los
   // tamaños de pantalla) — ya no hay overlay/SlidePanel.
   const showDetailView = selectedId !== null;
@@ -323,11 +376,22 @@ export default function CargueGourmetPage() {
         title="Cargue Gourmet"
         description={`${total} pedido${total !== 1 ? "s" : ""} · ubicación y cargue verificado de pedidos Gourmet.`}
         actions={
-          puedeCrear && (
-            <button onClick={() => setShowCrear(true)} className="g-btn g-btn-primary">
-              <Plus size={14} />Nuevo pedido
-            </button>
-          )
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+            {puedeDespachoMasivo && !showDetailView && (
+              <button
+                onClick={() => despachoMasivoMode ? cancelarDespachoMasivo() : setDespachoMasivoMode(true)}
+                className={despachoMasivoMode ? "g-btn g-btn-secondary" : "g-btn g-btn-secondary"}
+                data-testid="btn-toggle-despacho-masivo"
+              >
+                {despachoMasivoMode ? "Cancelar despacho masivo" : "Despacho masivo"}
+              </button>
+            )}
+            {puedeCrear && (
+              <button onClick={() => setShowCrear(true)} className="g-btn g-btn-primary">
+                <Plus size={14} />Nuevo pedido
+              </button>
+            )}
+          </div>
         }
       />
 
@@ -401,7 +465,33 @@ export default function CargueGourmetPage() {
             )}
           </div>
 
-          <CargueGourmetTable rows={pedidos} loading={loading} debug={debugTable} onView={openDetalle} />
+          {despachoMasivoMode && (
+            <div className="g-panel" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "0.6rem 1rem", marginBottom: "0.75rem", gap: 8, flexWrap: "wrap" }}>
+              <span style={{ fontSize: 12, color: "var(--muted)" }}>
+                {selectedIds.size} pedido{selectedIds.size !== 1 ? "s" : ""} seleccionado{selectedIds.size !== 1 ? "s" : ""} — se marcarán como despachados sin verificación de cajas.
+              </span>
+              <button
+                type="button"
+                onClick={() => setShowDespachoMasivoConfirm(true)}
+                disabled={selectedIds.size === 0}
+                className="g-btn g-btn-danger g-btn-sm"
+                data-testid="btn-confirmar-despacho-masivo"
+              >
+                Despachar seleccionados
+              </button>
+            </div>
+          )}
+
+          <CargueGourmetTable
+            rows={pedidos}
+            loading={loading}
+            debug={debugTable}
+            onView={despachoMasivoMode ? undefined : openDetalle}
+            selectable={despachoMasivoMode}
+            selectedIds={selectedIds}
+            onToggleSelect={toggleSelect}
+            onToggleSelectAll={toggleSelectAll}
+          />
 
           {/* Paginación */}
           {!loading && pedidos.length > 0 && (
@@ -468,6 +558,17 @@ export default function CargueGourmetPage() {
         confirmLabel={eliminando ? "Eliminando…" : "Eliminar"}
         tone="danger"
         loading={eliminando}
+      />
+
+      <ConfirmModal
+        open={showDespachoMasivoConfirm}
+        onClose={() => { if (!despachandoMasivo) setShowDespachoMasivoConfirm(false); }}
+        onConfirm={confirmarDespachoMasivo}
+        title="Despacho masivo sin verificación"
+        message={`¿Confirmas marcar ${selectedIds.size} pedido${selectedIds.size !== 1 ? "s" : ""} como despachado${selectedIds.size !== 1 ? "s" : ""}? Esta acción salta el escaneo de cajas y no se puede deshacer.`}
+        confirmLabel={despachandoMasivo ? "Despachando…" : "Despachar seleccionados"}
+        tone="danger"
+        loading={despachandoMasivo}
       />
 
       <ConfirmModal

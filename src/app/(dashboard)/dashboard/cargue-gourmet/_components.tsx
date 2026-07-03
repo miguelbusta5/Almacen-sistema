@@ -114,18 +114,61 @@ function EstadoBadge({ estado }: { estado: EstadoPedidoGourmet | string }) {
   );
 }
 
+// Estados desde los que un pedido puede incluirse en el despacho masivo (no
+// terminales — ya despachados/cancelados quedan fuera de la selección).
+const ESTADOS_NO_DESPACHABLES_MASIVO: EstadoPedidoGourmet[] = ["CARGUE_COMPLETO", "CARGUE_COMPLETO_MANUAL", "CANCELADO"];
+
 export function CargueGourmetTable({
   rows,
   loading,
   debug = false,
   onView,
+  selectable = false,
+  selectedIds,
+  onToggleSelect,
+  onToggleSelectAll,
 }: {
   rows: GourmetPedidoRow[];
   loading: boolean;
   debug?: boolean;
   onView?: (row: GourmetPedidoRow) => void;
+  /** Activa la columna de checkbox para despacho masivo (solo ADMIN / usuario autorizado). */
+  selectable?: boolean;
+  selectedIds?: Set<string>;
+  onToggleSelect?: (id: string) => void;
+  onToggleSelectAll?: (ids: string[]) => void;
 }) {
+  const seleccionables = rows.filter((r) => !ESTADOS_NO_DESPACHABLES_MASIVO.includes(r.estado));
+  const todasSeleccionadas = seleccionables.length > 0 && seleccionables.every((r) => selectedIds?.has(r.id));
+
   const columns: Column<GourmetPedidoRow>[] = [
+    ...(selectable
+      ? [
+          {
+            key: "__select",
+            header: (
+              <input
+                type="checkbox"
+                checked={todasSeleccionadas}
+                onChange={() => onToggleSelectAll?.(seleccionables.map((r) => r.id))}
+                aria-label="Seleccionar todos los pedidos despachables"
+              />
+            ),
+            width: "4%",
+            testId: "select-cell",
+            render: (r: GourmetPedidoRow) =>
+              ESTADOS_NO_DESPACHABLES_MASIVO.includes(r.estado) ? null : (
+                <input
+                  type="checkbox"
+                  checked={selectedIds?.has(r.id) ?? false}
+                  onClick={(e) => e.stopPropagation()}
+                  onChange={() => onToggleSelect?.(r.id)}
+                  aria-label={`Seleccionar pedido ${r.orden}`}
+                />
+              ),
+          } as Column<GourmetPedidoRow>,
+        ]
+      : []),
     {
       key: "orden",
       header: "Orden",
