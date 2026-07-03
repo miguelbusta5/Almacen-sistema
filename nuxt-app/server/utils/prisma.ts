@@ -1,6 +1,14 @@
-import { PrismaClient } from '@prisma/client'
+import PrismaClientPkg from '@prisma/client'
+import type { PrismaClient } from '@prisma/client'
 import { PrismaPg } from '@prisma/adapter-pg'
 import { Pool } from 'pg'
+
+// @prisma/client (v7) expone su entrypoint como `module.exports = { ...require(...) }`
+// (spread dinámico), que los bundlers de Nitro/esbuild no pueden analizar de forma
+// estática para exports con nombre. El import por defecto (solo valor, en runtime)
+// evita que PrismaClient llegue `undefined` en el bundle serverless de Vercel; el
+// `import type` aparte se elide en el bundle y solo aporta el tipo.
+const PrismaClientCtor = PrismaClientPkg.PrismaClient
 
 // Cliente Prisma singleton para Nitro. Reutiliza la misma DB (Railway) que la
 // app Next.js — mismo schema, mismas tablas. Espejo de src/lib/prisma.ts.
@@ -22,7 +30,7 @@ function create(): PrismaClient {
   pool.on('error', (err) => console.error('[pg pool error]', err.message))
 
   const adapter = new PrismaPg(pool)
-  return new PrismaClient({ adapter, log: ['error', 'warn'] })
+  return new PrismaClientCtor({ adapter, log: ['error', 'warn'] })
 }
 
 export const prisma = g._prisma ?? create()
