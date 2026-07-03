@@ -1,5 +1,50 @@
 # Decisiones de Arquitectura y Producto
 
+## 2026-07-03 - Piloto Guardados en Vue/Nuxt: primer paso de migración de stack
+
+**Decisión:**
+- Se decide migrar la app completa de Next.js/React a **Vue/Nuxt**, tomando **Guardados
+  Transporte** como piloto. Se aprovecha la migración para rediseñar el módulo desde cero
+  (lenguaje visual "Aurora"), que servirá de modelo para los demás módulos.
+- El piloto vive en `nuxt-app/` (app Nuxt 4 independiente), **sin tocar** la app Next.js
+  existente. Corre en su propio puerto (3001) durante desarrollo.
+
+**Implementación:**
+1. **Datos:** el piloto usa **la misma base de datos** (mismo `prisma/schema.prisma`,
+   copiado a `nuxt-app/prisma/`). Sin migrations nuevas.
+2. **API:** los endpoints de `/api/transporte/*` se portaron 1:1 a Nitro
+   (`nuxt-app/server/api/transporte/*`), misma lógica de negocio (Zod + Prisma + ActivityLog),
+   mismos códigos de error.
+3. **Auth compartida:** `nuxt-app/server/utils/auth.ts` decodifica y verifica la **misma
+   cookie JWT de Auth.js v5** (`NEXTAUTH_SECRET` compartido) para reconstruir la sesión sin
+   necesidad de un login separado. Si no hay sesión/credenciales válidas, el piloto cae
+   automáticamente a **modo demo** (datos de ejemplo, sin escribir en la DB real).
+4. **Coexistencia (Fase 5):** se agregó un rewrite **condicional** en `next.config.ts` —
+   `/dashboard/transporte-piloto` → proxy hacia `NUXT_PILOT_URL`. Si esa variable de entorno
+   no está definida (caso de producción hoy), `rewrites()` devuelve `[]` y **no se agrega
+   ninguna ruta nueva**: cero impacto en la app actual. La ruta piloto queda protegida por el
+   mismo middleware de sesión que el resto de `/dashboard/*` (verificado: mismo redirect 307
+   a `/login` sin cookie; con cookie, el HTML servido es efectivamente el del piloto Nuxt).
+5. **Patrón para futuros módulos:** cada módulo que se vaya migrando repite el mismo patrón:
+   nueva app Nuxt (o mismo `nuxt-app/` ampliado) + endpoints Nitro que reutilizan `src/lib/*`
+   como referencia + rewrite condicional propio en `next.config.ts` bajo su propia ruta
+   `-piloto`. Cuando un módulo esté validado, su rewrite pasa a ser incondicional y la página
+   Next.js equivalente se retira.
+
+**Contexto:**
+- El usuario pidió una reestructuración visual completa de Guardados como piloto de un
+  cambio de framework, con libertad total de identidad (no atado a la marca "Dark Elegant"
+  actual) para este experimento puntual.
+
+**Consecuencias:**
+- Nuevo directorio `nuxt-app/` (ver `nuxt-app/README.md` para cómo correrlo y conectar
+  datos reales).
+- `tsconfig.json` raíz excluye `nuxt-app/` (proyecto TypeScript independiente).
+- `next.config.ts` gana un rewrite condicional gateado por `NUXT_PILOT_URL` (sin efecto si
+  no está definida).
+
+---
+
 ## 2026-07-02 - Facturas Contado: mejora visual/UX en 6 fases (auditoría + ejecución)
 
 **Decisión:**
