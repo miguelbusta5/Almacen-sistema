@@ -3,7 +3,7 @@ import { reactive, ref, computed } from 'vue'
 import { Store, MapPin, User, Package, Plus, Trash2, Search } from '@lucide/vue'
 import { todayISO, CIUDAD_OPTIONS, type Despacho } from '~/utils/despacho'
 
-const props = defineProps<{ despacho?: Despacho | null }>()
+const props = defineProps<{ despacho?: Despacho | null; saving?: boolean }>()
 const emit = defineEmits<{ (e: 'close'): void; (e: 'saved', payload: Record<string, unknown>): void }>()
 
 const isEdit = computed(() => !!props.despacho)
@@ -44,6 +44,7 @@ async function lookupPlin(i: number) {
 }
 
 function submit() {
+  if (props.saving) return
   touched.value = true
   if (missing.value) return
   const payload: Record<string, unknown> = { ...f }
@@ -138,8 +139,11 @@ function submit() {
       </section>
 
       <div class="factions">
-        <button type="button" class="btn" @click="emit('close')">Cancelar</button>
-        <button type="submit" class="btn btn-primary" :disabled="touched && missing">{{ isEdit ? 'Guardar cambios' : 'Registrar factura' }}</button>
+        <button type="button" class="btn" :disabled="saving" @click="emit('close')">Cancelar</button>
+        <button type="submit" class="btn btn-primary" :disabled="saving || (touched && missing)">
+          <Spinner v-if="saving" />
+          {{ saving ? 'Guardando…' : (isEdit ? 'Guardar cambios' : 'Registrar factura') }}
+        </button>
       </div>
     </form>
   </ModalShell>

@@ -8,7 +8,7 @@ import {
 
 interface HistorialEntry { action: string; details: string | null; userName: string | null; createdAt: string }
 
-const props = defineProps<{ d: Despacho; historial: HistorialEntry[]; role: string; canDelete: boolean }>()
+const props = defineProps<{ d: Despacho; historial: HistorialEntry[]; role: string; canDelete: boolean; busy?: string | null }>()
 const emit = defineEmits<{
   (e: 'back'): void
   (e: 'transicion', destino: string): void
@@ -25,6 +25,8 @@ const esRechazado = computed(() => props.d.estado === 'RECHAZADO')
 const esNovedad = computed(() => props.d.estado === 'CON_NOVEDAD')
 
 function puede(destino: string) { return rolPuedeTransicionar(props.role, props.d.estado, destino as any) }
+// Spinner en el botón de transición que está en curso (busy = 'transicion:DESTINO').
+function enCurso(destino: string) { return props.busy === `transicion:${destino}` }
 
 const detalle = computed(() => [
   { label: 'Centro de costos', value: props.d.centroCostos },
@@ -51,32 +53,39 @@ const detalle = computed(() => [
         <div class="dsub">{{ d.consecutivo }} · {{ d.centroCostos }}</div>
       </div>
       <div class="dactions">
-        <button v-if="canDelete" class="btn btn-sm" @click="emit('edit')"><Pencil :size="14" /> Editar</button>
-        <button v-if="canDelete" class="btn btn-danger btn-sm" @click="emit('del')"><Trash2 :size="14" /></button>
+        <button v-if="canDelete" class="btn btn-sm" :disabled="!!busy" @click="emit('edit')"><Pencil :size="14" /> Editar</button>
+        <button v-if="canDelete" class="btn btn-danger btn-sm" :disabled="!!busy" @click="emit('del')">
+          <Spinner v-if="busy === 'del'" /><Trash2 v-else :size="14" />
+        </button>
 
-        <button v-if="esRechazado && puede('CREADO_TIENDA')" class="btn btn-primary btn-sm" @click="emit('transicion', 'CREADO_TIENDA')">
-          <Send :size="14" /> Reenviar
+        <button v-if="esRechazado && puede('CREADO_TIENDA')" class="btn btn-primary btn-sm" :disabled="!!busy" @click="emit('transicion', 'CREADO_TIENDA')">
+          <Spinner v-if="enCurso('CREADO_TIENDA')" /><Send v-else :size="14" />
+          {{ enCurso('CREADO_TIENDA') ? 'Reenviando…' : 'Reenviar' }}
         </button>
-        <button v-if="d.estado === 'CREADO_TIENDA' && puede('RECOGIDO_TIENDA')" class="btn btn-primary btn-sm" @click="emit('transicion', 'RECOGIDO_TIENDA')">
-          <Truck :size="14" /> Recoger en CEDI
+        <button v-if="d.estado === 'CREADO_TIENDA' && puede('RECOGIDO_TIENDA')" class="btn btn-primary btn-sm" :disabled="!!busy" @click="emit('transicion', 'RECOGIDO_TIENDA')">
+          <Spinner v-if="enCurso('RECOGIDO_TIENDA')" /><Truck v-else :size="14" />
+          {{ enCurso('RECOGIDO_TIENDA') ? 'Guardando…' : 'Recoger en CEDI' }}
         </button>
-        <button v-if="d.estado === 'CREADO_TIENDA' && puede('RECHAZADO')" class="btn btn-sm rej" @click="emit('rechazar')">
+        <button v-if="d.estado === 'CREADO_TIENDA' && puede('RECHAZADO')" class="btn btn-sm rej" :disabled="!!busy" @click="emit('rechazar')">
           <XCircle :size="14" /> Rechazar
         </button>
-        <button v-if="d.estado === 'RECOGIDO_TIENDA' && puede('ENTREGADO_CEDI')" class="btn btn-primary btn-sm" @click="emit('transicion', 'ENTREGADO_CEDI')">
-          <PackageCheck :size="14" /> Entregar en CEDI
+        <button v-if="d.estado === 'RECOGIDO_TIENDA' && puede('ENTREGADO_CEDI')" class="btn btn-primary btn-sm" :disabled="!!busy" @click="emit('transicion', 'ENTREGADO_CEDI')">
+          <Spinner v-if="enCurso('ENTREGADO_CEDI')" /><PackageCheck v-else :size="14" />
+          {{ enCurso('ENTREGADO_CEDI') ? 'Guardando…' : 'Entregar en CEDI' }}
         </button>
-        <button v-if="d.estado === 'ENTREGADO_CEDI' && puede('ENVIADO_CLIENTE')" class="btn btn-primary btn-sm" @click="emit('transicion', 'ENVIADO_CLIENTE')">
-          <Send :size="14" /> Enviar al cliente
+        <button v-if="d.estado === 'ENTREGADO_CEDI' && puede('ENVIADO_CLIENTE')" class="btn btn-primary btn-sm" :disabled="!!busy" @click="emit('transicion', 'ENVIADO_CLIENTE')">
+          <Spinner v-if="enCurso('ENVIADO_CLIENTE')" /><Send v-else :size="14" />
+          {{ enCurso('ENVIADO_CLIENTE') ? 'Enviando…' : 'Enviar al cliente' }}
         </button>
-        <button v-if="d.estado === 'ENTREGADO_CEDI' && puedeAsignarGuardado(role) && !d.guardadoPendiente" class="btn btn-sm" @click="emit('asignarGuardado')">
+        <button v-if="d.estado === 'ENTREGADO_CEDI' && puedeAsignarGuardado(role) && !d.guardadoPendiente" class="btn btn-sm" :disabled="!!busy" @click="emit('asignarGuardado')">
           <UserPlus :size="14" /> Asignar guardado
         </button>
-        <button v-if="!esNovedad && d.estado !== 'ENVIADO_CLIENTE' && rolPuedeTransicionar(role, d.estado, 'CON_NOVEDAD')" class="btn btn-sm nov" @click="emit('novedad')">
+        <button v-if="!esNovedad && d.estado !== 'ENVIADO_CLIENTE' && rolPuedeTransicionar(role, d.estado, 'CON_NOVEDAD')" class="btn btn-sm nov" :disabled="!!busy" @click="emit('novedad')">
           <TriangleAlert :size="14" /> Marcar novedad
         </button>
-        <button v-if="puedeRevertir(role) && d.estado !== 'CREADO_TIENDA' && !d.guardadoPendiente" class="btn btn-sm rev" @click="emit('revertir')">
-          <RotateCcw :size="14" /> Revertir
+        <button v-if="puedeRevertir(role) && d.estado !== 'CREADO_TIENDA' && !d.guardadoPendiente" class="btn btn-sm rev" :disabled="!!busy" @click="emit('revertir')">
+          <Spinner v-if="busy === 'revertir'" /><RotateCcw v-else :size="14" />
+          {{ busy === 'revertir' ? 'Revirtiendo…' : 'Revertir' }}
         </button>
       </div>
     </header>

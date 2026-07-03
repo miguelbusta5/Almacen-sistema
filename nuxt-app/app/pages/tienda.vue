@@ -79,6 +79,16 @@ function apiErr(e: any, fallback: string) {
   return e?.data?.statusMessage || e?.statusMessage || e?.data?.message || fallback
 }
 
+// ── Feedback async: una sola acción de escritura a la vez ──────────────────
+// `busy` guarda la clave de la acción en curso; los botones muestran spinner
+// cuando su clave coincide y todos quedan deshabilitados mientras haya una.
+const busy = ref<string | null>(null)
+async function run(key: string, fn: () => Promise<void>) {
+  if (busy.value) return
+  busy.value = key
+  try { await fn() } finally { busy.value = null }
+}
+
 async function refreshPanel() {
   if (!panelItem.value) return
   try {
@@ -88,44 +98,50 @@ async function refreshPanel() {
   } catch { /* ignore */ }
 }
 
-async function transicion(destino: string) {
-  const d = panelItem.value
-  if (!d) return
-  if (demo.value) { d.estado = destino as Despacho['estado']; showToast('Estado actualizado ✓'); return }
-  try {
-    await $fetch(`/api/tienda/${d.id}`, { method: 'PUT', body: { estado: destino, updatedAt: d.updatedAt } })
-    await loadAll(); await refreshPanel(); showToast('Estado actualizado ✓')
-  } catch (e) { showToast(apiErr(e, 'No se pudo actualizar el estado'), true) }
+function transicion(destino: string) {
+  return run(`transicion:${destino}`, async () => {
+    const d = panelItem.value
+    if (!d) return
+    if (demo.value) { d.estado = destino as Despacho['estado']; showToast('Estado actualizado ✓'); return }
+    try {
+      await $fetch(`/api/tienda/${d.id}`, { method: 'PUT', body: { estado: destino, updatedAt: d.updatedAt } })
+      await loadAll(); await refreshPanel(); showToast('Estado actualizado ✓')
+    } catch (e) { showToast(apiErr(e, 'No se pudo actualizar el estado'), true) }
+  })
 }
 
 // Modal rechazar
 const showRechazar = ref(false)
 const motivoRechazo = ref('')
 function abrirRechazar() { motivoRechazo.value = ''; showRechazar.value = true }
-async function confirmarRechazar() {
-  const d = panelItem.value
-  if (!d || motivoRechazo.value.trim().length < 5) return
-  if (demo.value) { d.estado = 'RECHAZADO'; showRechazar.value = false; showToast('Despacho rechazado'); return }
-  try {
-    await $fetch(`/api/tienda/${d.id}`, { method: 'PUT', body: { estado: 'RECHAZADO', motivoRechazo: motivoRechazo.value.trim(), updatedAt: d.updatedAt } })
-    showRechazar.value = false
-    await loadAll(); await refreshPanel(); showToast('Despacho rechazado')
-  } catch (e) { showToast(apiErr(e, 'No se pudo rechazar'), true) }
+function confirmarRechazar() {
+  return run('rechazar', async () => {
+    const d = panelItem.value
+    if (!d || motivoRechazo.value.trim().length < 5) return
+    if (demo.value) { d.estado = 'RECHAZADO'; showRechazar.value = false; showToast('Despacho rechazado'); return }
+    try {
+      await $fetch(`/api/tienda/${d.id}`, { method: 'PUT', body: { estado: 'RECHAZADO', motivoRechazo: motivoRechazo.value.trim(), updatedAt: d.updatedAt } })
+      showRechazar.value = false
+      await loadAll(); await refreshPanel(); showToast('Despacho rechazado')
+    } catch (e) { showToast(apiErr(e, 'No se pudo rechazar'), true) }
+  })
 }
 
 // Modal novedad
 const showNovedad = ref(false)
 const novedadTexto = ref('')
 function abrirNovedad() { novedadTexto.value = ''; showNovedad.value = true }
-async function confirmarNovedad() {
-  const d = panelItem.value
-  if (!d || novedadTexto.value.trim().length < 5) return
-  if (demo.value) { d.estado = 'CON_NOVEDAD'; d.novedad = novedadTexto.value.trim(); showNovedad.value = false; showToast('Novedad registrada'); return }
-  try {
-    await $fetch(`/api/tienda/${d.id}`, { method: 'PUT', body: { estado: 'CON_NOVEDAD', novedad: novedadTexto.value.trim(), updatedAt: d.updatedAt } })
-    showNovedad.value = false
-    await loadAll(); await refreshPanel(); showToast('Novedad registrada')
-  } catch (e) { showToast(apiErr(e, 'No se pudo registrar la novedad'), true) }
+function confirmarNovedad() {
+  return run('novedad', async () => {
+    const d = panelItem.value
+    if (!d || novedadTexto.value.trim().length < 5) return
+    if (demo.value) { d.estado = 'CON_NOVEDAD'; d.novedad = novedadTexto.value.trim(); showNovedad.value = false; showToast('Novedad registrada'); return }
+    try {
+      await $fetch(`/api/tienda/${d.id}`, { method: 'PUT', body: { estado: 'CON_NOVEDAD', novedad: novedadTexto.value.trim(), updatedAt: d.updatedAt } })
+      showNovedad.value = false
+      await loadAll(); await refreshPanel(); showToast('Novedad registrada')
+    } catch (e) { showToast(apiErr(e, 'No se pudo registrar la novedad'), true) }
+  })
 }
 
 // Modal asignar guardado
@@ -143,56 +159,64 @@ async function abrirAsignar() {
   }
   showAsignar.value = true
 }
-async function confirmarAsignar() {
-  const d = panelItem.value
-  if (!d || !asignadoAId.value) return
-  if (demo.value) { showAsignar.value = false; showToast('Guardado asignado ✓'); return }
-  try {
-    await $fetch(`/api/tienda/${d.id}/guardado`, { method: 'POST', body: { asignadoAId: asignadoAId.value, nota: notaAsignacion.value.trim() || null } })
-    showAsignar.value = false
-    await loadAll(); await refreshPanel(); showToast('Guardado asignado ✓')
-  } catch (e) { showToast(apiErr(e, 'No se pudo asignar'), true) }
+function confirmarAsignar() {
+  return run('asignar', async () => {
+    const d = panelItem.value
+    if (!d || !asignadoAId.value) return
+    if (demo.value) { showAsignar.value = false; showToast('Guardado asignado ✓'); return }
+    try {
+      await $fetch(`/api/tienda/${d.id}/guardado`, { method: 'POST', body: { asignadoAId: asignadoAId.value, nota: notaAsignacion.value.trim() || null } })
+      showAsignar.value = false
+      await loadAll(); await refreshPanel(); showToast('Guardado asignado ✓')
+    } catch (e) { showToast(apiErr(e, 'No se pudo asignar'), true) }
+  })
 }
 
 // Revertir
-async function revertir() {
-  const d = panelItem.value
-  if (!d) return
-  if (demo.value) { showToast('Estado revertido ✓'); return }
-  try {
-    await $fetch(`/api/tienda/${d.id}/revertir-estado`, { method: 'POST', body: { updatedAt: d.updatedAt } })
-    await loadAll(); await refreshPanel(); showToast('Estado revertido ✓')
-  } catch (e) { showToast(apiErr(e, 'No se pudo revertir'), true) }
+function revertir() {
+  return run('revertir', async () => {
+    const d = panelItem.value
+    if (!d) return
+    if (demo.value) { showToast('Estado revertido ✓'); return }
+    try {
+      await $fetch(`/api/tienda/${d.id}/revertir-estado`, { method: 'POST', body: { updatedAt: d.updatedAt } })
+      await loadAll(); await refreshPanel(); showToast('Estado revertido ✓')
+    } catch (e) { showToast(apiErr(e, 'No se pudo revertir'), true) }
+  })
 }
 
-async function delDespacho() {
-  const d = panelItem.value
-  if (!d) return
-  if (demo.value) { despachos.value = despachos.value.filter(x => x.id !== d.id); panelItem.value = null; showToast('Eliminado'); return }
-  try {
-    await $fetch(`/api/tienda/${d.id}`, { method: 'DELETE' })
-    panelItem.value = null; await loadAll(); showToast('Eliminado')
-  } catch (e) { showToast(apiErr(e, 'No se pudo eliminar'), true) }
+function delDespacho() {
+  return run('del', async () => {
+    const d = panelItem.value
+    if (!d) return
+    if (demo.value) { despachos.value = despachos.value.filter(x => x.id !== d.id); panelItem.value = null; showToast('Eliminado'); return }
+    try {
+      await $fetch(`/api/tienda/${d.id}`, { method: 'DELETE' })
+      panelItem.value = null; await loadAll(); showToast('Eliminado')
+    } catch (e) { showToast(apiErr(e, 'No se pudo eliminar'), true) }
+  })
 }
 
 function openEdit() { editing.value = panelItem.value; showForm.value = true }
 
-async function onSaved(payload: Record<string, unknown>) {
-  const wasEdit = !!editing.value
-  if (demo.value) {
-    showForm.value = false; editing.value = null
-    showToast(wasEdit ? 'Factura actualizada ✓' : 'Factura registrada ✓')
-    return
-  }
-  try {
-    if (wasEdit) {
-      await $fetch(`/api/tienda/${editing.value!.id}`, { method: 'PUT', body: payload })
-    } else {
-      await $fetch('/api/tienda', { method: 'POST', body: payload })
+function onSaved(payload: Record<string, unknown>) {
+  return run('save', async () => {
+    const wasEdit = !!editing.value
+    if (demo.value) {
+      showForm.value = false; editing.value = null
+      showToast(wasEdit ? 'Factura actualizada ✓' : 'Factura registrada ✓')
+      return
     }
-    showForm.value = false; editing.value = null
-    await loadAll(); await refreshPanel(); showToast(wasEdit ? 'Factura actualizada ✓' : 'Factura registrada ✓')
-  } catch (e) { showToast(apiErr(e, 'No se pudo guardar'), true) }
+    try {
+      if (wasEdit) {
+        await $fetch(`/api/tienda/${editing.value!.id}`, { method: 'PUT', body: payload })
+      } else {
+        await $fetch('/api/tienda', { method: 'POST', body: payload })
+      }
+      showForm.value = false; editing.value = null
+      await loadAll(); await refreshPanel(); showToast(wasEdit ? 'Factura actualizada ✓' : 'Factura registrada ✓')
+    } catch (e) { showToast(apiErr(e, 'No se pudo guardar'), true) }
+  })
 }
 
 const pendCount = computed(() => despachos.value.filter(d => d.estado === 'CREADO_TIENDA').length)
@@ -218,28 +242,32 @@ const pendCount = computed(() => despachos.value.filter(d => d.estado === 'CREAD
       <div v-if="!panelItem" key="list">
         <TiendaKpiRail :key="refreshKey" :items="despachos" style="margin-bottom: 18px" @filter="onKpiFilter" />
         <TiendaToolbar v-model:q="q" v-model:estado="fEstado" :count="filtered.length" :total="despachos.length" style="margin-bottom: 14px" @clear="clearFilters" />
-        <Transition name="fade" mode="out-in">
-          <ListSkeleton v-if="loading" key="sk" />
-          <TiendaDespachosList v-else key="list-real" :items="filtered" :has-filters="hasFilters" @open="openDetail" @clear="clearFilters" @new="showForm = true" />
-        </Transition>
+        <!-- Sin <Transition>: una transición CSS aquí queda colgada si la pestaña
+             está en segundo plano (rAF congelado) y la lista nunca reemplaza al
+             skeleton. Las filas ya animan su entrada escalonada por su cuenta. -->
+        <ListSkeleton v-if="loading" />
+        <TiendaDespachosList v-else :items="filtered" :has-filters="hasFilters" @open="openDetail" @clear="clearFilters" @new="showForm = true" />
       </div>
 
       <TiendaDespachoDetail
-        v-else key="detail" :d="panelItem" :historial="historial" :role="me?.role ?? ''" :can-delete="canEdit"
+        v-else key="detail" :d="panelItem" :historial="historial" :role="me?.role ?? ''" :can-delete="canEdit" :busy="busy"
         @back="panelItem = null" @transicion="transicion" @rechazar="abrirRechazar" @novedad="abrirNovedad"
         @asignar-guardado="abrirAsignar" @revertir="revertir" @edit="openEdit" @del="delDespacho"
       />
     </Transition>
 
-    <TiendaDespachoModal v-if="showForm" :despacho="editing" @close="showForm = false; editing = null" @saved="onSaved" />
+    <TiendaDespachoModal v-if="showForm" :despacho="editing" :saving="busy === 'save'" @close="showForm = false; editing = null" @saved="onSaved" />
 
     <ModalShell v-if="showRechazar && panelItem" title="Rechazar despacho" :sub="panelItem.numeroDocumento" @close="showRechazar = false">
       <div class="mform">
         <label class="flabel">Motivo del rechazo (mínimo 5 caracteres)</label>
         <textarea v-model="motivoRechazo" rows="3" class="field" placeholder="Explica por qué se rechaza…" />
         <div class="mactions">
-          <button class="btn" @click="showRechazar = false">Cancelar</button>
-          <button class="btn btn-danger" :disabled="motivoRechazo.trim().length < 5" @click="confirmarRechazar">Rechazar</button>
+          <button class="btn" :disabled="busy === 'rechazar'" @click="showRechazar = false">Cancelar</button>
+          <button class="btn btn-danger" :disabled="busy === 'rechazar' || motivoRechazo.trim().length < 5" @click="confirmarRechazar">
+            <Spinner v-if="busy === 'rechazar'" />
+            {{ busy === 'rechazar' ? 'Rechazando…' : 'Rechazar' }}
+          </button>
         </div>
       </div>
     </ModalShell>
@@ -249,8 +277,11 @@ const pendCount = computed(() => despachos.value.filter(d => d.estado === 'CREAD
         <label class="flabel">Descripción de la novedad (mínimo 5 caracteres)</label>
         <textarea v-model="novedadTexto" rows="3" class="field" placeholder="Describe la novedad…" />
         <div class="mactions">
-          <button class="btn" @click="showNovedad = false">Cancelar</button>
-          <button class="btn btn-primary" :disabled="novedadTexto.trim().length < 5" @click="confirmarNovedad">Registrar</button>
+          <button class="btn" :disabled="busy === 'novedad'" @click="showNovedad = false">Cancelar</button>
+          <button class="btn btn-primary" :disabled="busy === 'novedad' || novedadTexto.trim().length < 5" @click="confirmarNovedad">
+            <Spinner v-if="busy === 'novedad'" />
+            {{ busy === 'novedad' ? 'Guardando…' : 'Registrar' }}
+          </button>
         </div>
       </div>
     </ModalShell>
@@ -265,8 +296,11 @@ const pendCount = computed(() => despachos.value.filter(d => d.estado === 'CREAD
         <label class="flabel">Nota (opcional)</label>
         <input v-model="notaAsignacion" class="field" placeholder="Notas para el operario…">
         <div class="mactions">
-          <button class="btn" @click="showAsignar = false">Cancelar</button>
-          <button class="btn btn-primary" :disabled="!asignadoAId" @click="confirmarAsignar">Asignar</button>
+          <button class="btn" :disabled="busy === 'asignar'" @click="showAsignar = false">Cancelar</button>
+          <button class="btn btn-primary" :disabled="busy === 'asignar' || !asignadoAId" @click="confirmarAsignar">
+            <Spinner v-if="busy === 'asignar'" />
+            {{ busy === 'asignar' ? 'Asignando…' : 'Asignar' }}
+          </button>
         </div>
       </div>
     </ModalShell>

@@ -6,7 +6,7 @@ import {
   type Guardado, type ContactoGuardado,
 } from '~/utils/guardado'
 
-const props = defineProps<{ g: Guardado; contactos: ContactoGuardado[]; canEdit?: boolean; canDelete?: boolean }>()
+const props = defineProps<{ g: Guardado; contactos: ContactoGuardado[]; canEdit?: boolean; canDelete?: boolean; busy?: string | null }>()
 const emit = defineEmits<{
   (e: 'back'): void; (e: 'despachar'): void; (e: 'editFecha'): void
   (e: 'edit'): void; (e: 'del'): void; (e: 'revertir'): void; (e: 'nuevoContacto'): void
@@ -41,11 +41,19 @@ const detalle = computed(() => [
         <div class="dsub">{{ g.ubicacion }}</div>
       </div>
       <div class="dactions">
-        <button v-if="!despachado" class="btn btn-sm" @click="emit('editFecha')"><Calendar :size="14" /> Fecha</button>
-        <button v-if="canEdit" class="btn btn-sm" @click="emit('edit')"><Pencil :size="14" /> Editar</button>
-        <button v-if="canDelete" class="btn btn-danger btn-sm" @click="emit('del')"><Trash2 :size="14" /></button>
-        <button v-if="!despachado" class="btn btn-primary" @click="emit('despachar')"><CheckCircle2 :size="15" /> Marcar como enviado</button>
-        <button v-else-if="canDelete" class="btn btn-sm rev" @click="emit('revertir')"><RotateCcw :size="14" /> Revertir</button>
+        <button v-if="!despachado" class="btn btn-sm" :disabled="!!busy" @click="emit('editFecha')"><Calendar :size="14" /> Fecha</button>
+        <button v-if="canEdit" class="btn btn-sm" :disabled="!!busy" @click="emit('edit')"><Pencil :size="14" /> Editar</button>
+        <button v-if="canDelete" class="btn btn-danger btn-sm" :disabled="!!busy" @click="emit('del')">
+          <Spinner v-if="busy === 'del'" /><Trash2 v-else :size="14" />
+        </button>
+        <button v-if="!despachado" class="btn btn-primary" :disabled="!!busy" @click="emit('despachar')">
+          <Spinner v-if="busy === 'despachar'" :size="15" /><CheckCircle2 v-else :size="15" />
+          {{ busy === 'despachar' ? 'Enviando…' : 'Marcar como enviado' }}
+        </button>
+        <button v-else-if="canDelete" class="btn btn-sm rev" :disabled="!!busy" @click="emit('revertir')">
+          <Spinner v-if="busy === 'revertir'" /><RotateCcw v-else :size="14" />
+          {{ busy === 'revertir' ? 'Revirtiendo…' : 'Revertir' }}
+        </button>
       </div>
     </header>
 

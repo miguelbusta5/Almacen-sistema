@@ -3,7 +3,7 @@ import { reactive, ref, computed } from 'vue'
 import { Package, MapPin, FileText, Info } from '@lucide/vue'
 import { todayISO, type Guardado } from '~/utils/guardado'
 
-const props = defineProps<{ guardado?: Guardado | null }>()
+const props = defineProps<{ guardado?: Guardado | null; saving?: boolean }>()
 const emit = defineEmits<{ (e: 'close'): void; (e: 'saved', g: Partial<Guardado>): void }>()
 
 const isEdit = computed(() => !!props.guardado)
@@ -23,6 +23,7 @@ const missing = computed(() => !f.fecha || !f.documento.trim() || !f.ubicacion.t
 const CIUDADES = ['Bogotá', 'Medellín', 'Cali', 'Barranquilla', 'Pereira', 'Bucaramanga', 'Cartagena']
 
 function submit() {
+  if (props.saving) return
   touched.value = true
   if (missing.value) return
   emit('saved', { ...f } as Partial<Guardado>)
@@ -84,8 +85,11 @@ function submit() {
       </section>
 
       <div class="factions">
-        <button type="button" class="btn" @click="emit('close')">Cancelar</button>
-        <button type="submit" class="btn btn-primary" :disabled="touched && missing">{{ isEdit ? 'Guardar cambios' : 'Registrar guardado' }}</button>
+        <button type="button" class="btn" :disabled="saving" @click="emit('close')">Cancelar</button>
+        <button type="submit" class="btn btn-primary" :disabled="saving || (touched && missing)">
+          <Spinner v-if="saving" />
+          {{ saving ? 'Guardando…' : (isEdit ? 'Guardar cambios' : 'Registrar guardado') }}
+        </button>
       </div>
     </form>
   </ModalShell>

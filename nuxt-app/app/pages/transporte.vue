@@ -116,89 +116,111 @@ function apiErr(e: any, fallback: string) {
   return e?.data?.statusMessage || e?.statusMessage || e?.data?.message || fallback
 }
 
-async function despachar() {
-  const g = panelItem.value
-  if (!g) return
-  if (demo.value) { g.estado = 'DESPACHADO'; g.fechaDespacho = todayISO(); showToast('Marcado como enviado ✓'); return }
-  try {
-    await $fetch(`/api/transporte/${encodeURIComponent(g.clientId)}/acciones`, { method: 'POST', body: { tipo: 'despachar' } })
-    g.estado = 'DESPACHADO'; g.fechaDespacho = todayISO()
-    await loadAll(); showToast('Marcado como enviado ✓')
-  } catch (e) { showToast(apiErr(e, 'No se pudo despachar'), true) }
+// ── Feedback async: una sola acción de escritura a la vez ──────────────────
+// `busy` guarda la clave de la acción en curso; los botones muestran spinner
+// cuando su clave coincide y todos quedan deshabilitados mientras haya una.
+const busy = ref<string | null>(null)
+async function run(key: string, fn: () => Promise<void>) {
+  if (busy.value) return
+  busy.value = key
+  try { await fn() } finally { busy.value = null }
 }
 
-async function revertir() {
-  const g = panelItem.value
-  if (!g) return
-  if (demo.value) { g.estado = 'PENDIENTE DESPACHO'; g.fechaDespacho = null; showToast('Revertido a Pendiente Despacho ✓'); return }
-  try {
-    await $fetch(`/api/transporte/${encodeURIComponent(g.clientId)}`, { method: 'PUT', body: { estado: 'PENDIENTE DESPACHO' } })
-    g.estado = 'PENDIENTE DESPACHO'; g.fechaDespacho = null
-    await loadAll(); showToast('Revertido a Pendiente Despacho ✓')
-  } catch (e) { showToast(apiErr(e, 'No se pudo revertir'), true) }
+function despachar() {
+  return run('despachar', async () => {
+    const g = panelItem.value
+    if (!g) return
+    if (demo.value) { g.estado = 'DESPACHADO'; g.fechaDespacho = todayISO(); showToast('Marcado como enviado ✓'); return }
+    try {
+      await $fetch(`/api/transporte/${encodeURIComponent(g.clientId)}/acciones`, { method: 'POST', body: { tipo: 'despachar' } })
+      g.estado = 'DESPACHADO'; g.fechaDespacho = todayISO()
+      await loadAll(); showToast('Marcado como enviado ✓')
+    } catch (e) { showToast(apiErr(e, 'No se pudo despachar'), true) }
+  })
 }
 
-async function delGuardado() {
-  const g = panelItem.value
-  if (!g) return
-  if (demo.value) { guardados.value = guardados.value.filter(x => x.clientId !== g.clientId); panelItem.value = null; showToast('Eliminado'); return }
-  try {
-    await $fetch(`/api/transporte/${encodeURIComponent(g.clientId)}`, { method: 'DELETE' })
-    panelItem.value = null; await loadAll(); showToast('Eliminado')
-  } catch (e) { showToast(apiErr(e, 'No se pudo eliminar'), true) }
+function revertir() {
+  return run('revertir', async () => {
+    const g = panelItem.value
+    if (!g) return
+    if (demo.value) { g.estado = 'PENDIENTE DESPACHO'; g.fechaDespacho = null; showToast('Revertido a Pendiente Despacho ✓'); return }
+    try {
+      await $fetch(`/api/transporte/${encodeURIComponent(g.clientId)}`, { method: 'PUT', body: { estado: 'PENDIENTE DESPACHO' } })
+      g.estado = 'PENDIENTE DESPACHO'; g.fechaDespacho = null
+      await loadAll(); showToast('Revertido a Pendiente Despacho ✓')
+    } catch (e) { showToast(apiErr(e, 'No se pudo revertir'), true) }
+  })
+}
+
+function delGuardado() {
+  return run('del', async () => {
+    const g = panelItem.value
+    if (!g) return
+    if (demo.value) { guardados.value = guardados.value.filter(x => x.clientId !== g.clientId); panelItem.value = null; showToast('Eliminado'); return }
+    try {
+      await $fetch(`/api/transporte/${encodeURIComponent(g.clientId)}`, { method: 'DELETE' })
+      panelItem.value = null; await loadAll(); showToast('Eliminado')
+    } catch (e) { showToast(apiErr(e, 'No se pudo eliminar'), true) }
+  })
 }
 
 function openEdit() { editing.value = panelItem.value; showForm.value = true }
 
-async function onSaved(payload: Partial<Guardado>) {
-  const wasEdit = !!editing.value
-  if (demo.value) {
-    showForm.value = false; editing.value = null
-    showToast(wasEdit ? 'Guardado actualizado ✓' : 'Guardado registrado ✓')
-    return
-  }
-  const body: any = { ...payload }
-  if (!body.fechaDespacho) body.fechaDespacho = null
-  if (body.ciudad === '') body.ciudad = null
-  if (body.nota === '') body.nota = null
-  try {
-    if (wasEdit) {
-      // Solo enviar la fecha de ingreso si realmente cambió (evita 403 no-ADMIN).
-      if (body.fecha === editing.value!.fecha) delete body.fecha
-      await $fetch(`/api/transporte/${encodeURIComponent(editing.value!.clientId)}`, { method: 'PUT', body })
-    } else {
-      await $fetch('/api/transporte', { method: 'POST', body })
+function onSaved(payload: Partial<Guardado>) {
+  return run('save', async () => {
+    const wasEdit = !!editing.value
+    if (demo.value) {
+      showForm.value = false; editing.value = null
+      showToast(wasEdit ? 'Guardado actualizado ✓' : 'Guardado registrado ✓')
+      return
     }
-    showForm.value = false; editing.value = null
-    await loadAll(); showToast(wasEdit ? 'Guardado actualizado ✓' : 'Guardado registrado ✓')
-  } catch (e) { showToast(apiErr(e, 'No se pudo guardar'), true) }
+    const body: any = { ...payload }
+    if (!body.fechaDespacho) body.fechaDespacho = null
+    if (body.ciudad === '') body.ciudad = null
+    if (body.nota === '') body.nota = null
+    try {
+      if (wasEdit) {
+        // Solo enviar la fecha de ingreso si realmente cambió (evita 403 no-ADMIN).
+        if (body.fecha === editing.value!.fecha) delete body.fecha
+        await $fetch(`/api/transporte/${encodeURIComponent(editing.value!.clientId)}`, { method: 'PUT', body })
+      } else {
+        await $fetch('/api/transporte', { method: 'POST', body })
+      }
+      showForm.value = false; editing.value = null
+      await loadAll(); showToast(wasEdit ? 'Guardado actualizado ✓' : 'Guardado registrado ✓')
+    } catch (e) { showToast(apiErr(e, 'No se pudo guardar'), true) }
+  })
 }
 
-async function registrarPendiente(p: PendienteTienda) {
-  if (demo.value) { pendientes.value = pendientes.value.filter(x => x.id !== p.id); showToast('Guardado creado desde despacho tienda ✓'); return }
-  const ubicacion = window.prompt(`Ubicación para guardar ${p.numeroDocumento}:`)
-  if (!ubicacion || !ubicacion.trim()) return
-  try {
-    await $fetch('/api/transporte/pendientes-tienda', { method: 'POST', body: { pendienteId: p.id, ubicacion: ubicacion.trim(), nota: null } })
-    await loadAll(); showToast('Guardado creado desde despacho tienda ✓')
-  } catch (e) { showToast(apiErr(e, 'No se pudo convertir'), true) }
+function registrarPendiente(p: PendienteTienda) {
+  return run(`pendiente:${p.id}`, async () => {
+    if (demo.value) { pendientes.value = pendientes.value.filter(x => x.id !== p.id); showToast('Guardado creado desde despacho tienda ✓'); return }
+    const ubicacion = window.prompt(`Ubicación para guardar ${p.numeroDocumento}:`)
+    if (!ubicacion || !ubicacion.trim()) return
+    try {
+      await $fetch('/api/transporte/pendientes-tienda', { method: 'POST', body: { pendienteId: p.id, ubicacion: ubicacion.trim(), nota: null } })
+      await loadAll(); showToast('Guardado creado desde despacho tienda ✓')
+    } catch (e) { showToast(apiErr(e, 'No se pudo convertir'), true) }
+  })
 }
 
 // Registrar contacto (modal)
-async function guardarContacto() {
-  const g = panelItem.value
-  if (!g) return
-  if (demo.value) { showContacto.value = false; showToast('Contacto registrado ✓'); return }
-  try {
-    await $fetch(`/api/transporte/${encodeURIComponent(g.clientId)}/contactos`, {
-      method: 'POST',
-      body: { tipo: cTipo.value, resultado: cResultado.value, fechaCompromiso: cFecha.value || null, nota: cNota.value.trim() || null },
-    })
-    showContacto.value = false
-    const res = await $fetch<{ data: ContactoGuardado[] }>(`/api/transporte/${encodeURIComponent(g.clientId)}/contactos`)
-    contactosPanel.value = res.data
-    showToast('Contacto registrado ✓')
-  } catch (e) { showToast(apiErr(e, 'No se pudo registrar'), true) }
+function guardarContacto() {
+  return run('contacto', async () => {
+    const g = panelItem.value
+    if (!g) return
+    if (demo.value) { showContacto.value = false; showToast('Contacto registrado ✓'); return }
+    try {
+      await $fetch(`/api/transporte/${encodeURIComponent(g.clientId)}/contactos`, {
+        method: 'POST',
+        body: { tipo: cTipo.value, resultado: cResultado.value, fechaCompromiso: cFecha.value || null, nota: cNota.value.trim() || null },
+      })
+      showContacto.value = false
+      const res = await $fetch<{ data: ContactoGuardado[] }>(`/api/transporte/${encodeURIComponent(g.clientId)}/contactos`)
+      contactosPanel.value = res.data
+      showToast('Contacto registrado ✓')
+    } catch (e) { showToast(apiErr(e, 'No se pudo registrar'), true) }
+  })
 }
 
 // Editar fecha de entrega (modal)
@@ -208,15 +230,17 @@ function openFecha() {
   fechaEntrega.value = parseEntrega(panelItem.value.nota) ?? todayISO()
   showFecha.value = true
 }
-async function guardarFecha() {
-  const g = panelItem.value
-  if (!g) return
-  if (demo.value) { showFecha.value = false; showToast('Fecha de entrega actualizada ✓'); return }
-  try {
-    const res = await $fetch<{ nota: string }>(`/api/transporte/${encodeURIComponent(g.clientId)}/acciones`, { method: 'POST', body: { tipo: 'fecha_entrega', fecha: fechaEntrega.value } })
-    g.nota = res.nota
-    showFecha.value = false; showToast('Fecha de entrega actualizada ✓')
-  } catch (e) { showToast(apiErr(e, 'No se pudo actualizar'), true) }
+function guardarFecha() {
+  return run('fecha', async () => {
+    const g = panelItem.value
+    if (!g) return
+    if (demo.value) { showFecha.value = false; showToast('Fecha de entrega actualizada ✓'); return }
+    try {
+      const res = await $fetch<{ nota: string }>(`/api/transporte/${encodeURIComponent(g.clientId)}/acciones`, { method: 'POST', body: { tipo: 'fecha_entrega', fecha: fechaEntrega.value } })
+      g.nota = res.nota
+      showFecha.value = false; showToast('Fecha de entrega actualizada ✓')
+    } catch (e) { showToast(apiErr(e, 'No se pudo actualizar'), true) }
+  })
 }
 
 const pendCount = computed(() => guardados.value.filter(g => g.estado === 'PENDIENTE DESPACHO').length)
@@ -242,36 +266,40 @@ const pendCount = computed(() => guardados.value.filter(g => g.estado === 'PENDI
     <Transition name="view" mode="out-in">
       <!-- Vista lista -->
       <div v-if="!panelItem" key="list">
-        <PendientesBanner :items="pendientes" class="fade-in" style="margin-bottom: 18px" @registrar="registrarPendiente" />
+        <PendientesBanner :items="pendientes" :busy="busy" class="fade-in" style="margin-bottom: 18px" @registrar="registrarPendiente" />
         <KpiRail :key="refreshKey" :items="guardados" style="margin-bottom: 18px" @filter="onKpiFilter" />
         <Toolbar
           v-model:q="q" v-model:estado="fEstado" v-model:tipo="fTipo" v-model:alerta="fAlerta" v-model:density="density"
           :count="filtered.length" :total="guardados.length" style="margin-bottom: 14px" @clear="clearFilters"
         />
-        <Transition name="fade" mode="out-in">
-          <ListSkeleton v-if="loading" key="sk" />
-          <GuardadosList v-else key="list-real" :items="filtered" :has-filters="hasFilters" :density="density" @open="openDetail" @clear="clearFilters" @new="showForm = true" />
-        </Transition>
+        <!-- Sin <Transition>: una transición CSS aquí queda colgada si la pestaña
+             está en segundo plano (rAF congelado) y la lista nunca reemplaza al
+             skeleton. Las filas ya animan su entrada escalonada por su cuenta. -->
+        <ListSkeleton v-if="loading" />
+        <GuardadosList v-else :items="filtered" :has-filters="hasFilters" :density="density" @open="openDetail" @clear="clearFilters" @new="showForm = true" />
       </div>
 
       <!-- Detalle -->
       <DetailView
-        v-else key="detail" :g="panelItem" :contactos="contactosPanel" :can-edit="canEdit" :can-delete="canDelete"
+        v-else key="detail" :g="panelItem" :contactos="contactosPanel" :can-edit="canEdit" :can-delete="canDelete" :busy="busy"
         @back="panelItem = null" @despachar="despachar" @edit-fecha="openFecha"
         @edit="openEdit" @del="delGuardado" @revertir="revertir" @nuevo-contacto="abrirContacto"
       />
     </Transition>
 
     <!-- Modales -->
-    <GuardadoModal v-if="showForm" :guardado="editing" @close="showForm = false; editing = null" @saved="onSaved" />
+    <GuardadoModal v-if="showForm" :guardado="editing" :saving="busy === 'save'" @close="showForm = false; editing = null" @saved="onSaved" />
 
     <ModalShell v-if="showFecha && panelItem" title="Fecha de entrega" :sub="`${panelItem.documento} · ${panelItem.ubicacion}`" @close="showFecha = false">
       <div class="fecha-form">
         <label class="flabel">Fecha comprometida</label>
         <input v-model="fechaEntrega" type="date" class="field">
         <div class="fecha-actions">
-          <button class="btn" @click="showFecha = false">Cancelar</button>
-          <button class="btn btn-primary" @click="guardarFecha"><Calendar :size="14" /> Guardar fecha</button>
+          <button class="btn" :disabled="busy === 'fecha'" @click="showFecha = false">Cancelar</button>
+          <button class="btn btn-primary" :disabled="busy === 'fecha'" @click="guardarFecha">
+            <Spinner v-if="busy === 'fecha'" /><Calendar v-else :size="14" />
+            {{ busy === 'fecha' ? 'Guardando…' : 'Guardar fecha' }}
+          </button>
         </div>
       </div>
     </ModalShell>
@@ -293,8 +321,11 @@ const pendCount = computed(() => guardados.value.filter(g => g.estado === 'PENDI
           <input v-model="cNota" class="field" placeholder="Notas del contacto (opcional)…">
         </label>
         <div class="fecha-actions">
-          <button class="btn" @click="showContacto = false">Cancelar</button>
-          <button class="btn btn-primary" @click="guardarContacto">Registrar contacto</button>
+          <button class="btn" :disabled="busy === 'contacto'" @click="showContacto = false">Cancelar</button>
+          <button class="btn btn-primary" :disabled="busy === 'contacto'" @click="guardarContacto">
+            <Spinner v-if="busy === 'contacto'" />
+            {{ busy === 'contacto' ? 'Guardando…' : 'Registrar contacto' }}
+          </button>
         </div>
       </div>
     </ModalShell>

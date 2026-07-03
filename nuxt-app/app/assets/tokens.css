@@ -130,6 +130,11 @@ button { font-family: inherit; }
 .btn-ghost:hover { background: var(--surface-3); color: var(--ink-2); }
 .btn-danger { color: var(--error); border-color: var(--border-strong); background: var(--surface); }
 .btn-danger:hover { background: var(--error-tint); border-color: var(--error); }
+.btn:disabled { opacity: .55; cursor: not-allowed; pointer-events: none; transform: none; }
+
+/* Spinner de acción (icono girando dentro de botones) */
+.spin-anim { animation: spinGlobal .8s linear infinite; }
+@keyframes spinGlobal { to { transform: rotate(360deg); } }
 
 /* Inputs base */
 .field {

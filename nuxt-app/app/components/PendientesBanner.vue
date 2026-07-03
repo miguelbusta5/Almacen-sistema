@@ -2,7 +2,7 @@
 import { PackageCheck, Truck } from '@lucide/vue'
 import type { PendienteTienda } from '~/utils/sampleData'
 
-defineProps<{ items: PendienteTienda[] }>()
+defineProps<{ items: PendienteTienda[]; busy?: string | null }>()
 const emit = defineEmits<{ (e: 'registrar', p: PendienteTienda): void }>()
 </script>
 
@@ -21,8 +21,9 @@ const emit = defineEmits<{ (e: 'registrar', p: PendienteTienda): void }>()
           <div class="doc"><span class="mono">{{ p.numeroDocumento }}</span> · {{ p.clienteNombre }}</div>
           <div class="meta">{{ p.centroCostos }}<template v-if="p.numeroCajas"> · {{ p.numeroCajas }} cajas</template><template v-if="p.nota"> · {{ p.nota }}</template></div>
         </div>
-        <button class="btn btn-primary btn-sm" @click="emit('registrar', p)">
-          <PackageCheck :size="14" /> Registrar guardado
+        <button class="btn btn-primary btn-sm" :disabled="!!busy" @click="emit('registrar', p)">
+          <Spinner v-if="busy === `pendiente:${p.id}`" /><PackageCheck v-else :size="14" />
+          {{ busy === `pendiente:${p.id}` ? 'Registrando…' : 'Registrar guardado' }}
         </button>
       </div>
     </div>
