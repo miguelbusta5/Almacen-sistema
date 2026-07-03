@@ -7,7 +7,7 @@ import { ESTADO_LABEL, fmtFechaHora } from "../_components";
 import { GourmetAccionesBar } from "./GourmetAccionesBar";
 import { TransporteAccionesBar } from "./TransporteAccionesBar";
 import { EscaneoCajasPanel, type ProgresoEscaneo, type UltimoResultadoEscaneo } from "./EscaneoCajasPanel";
-import { decodeEstibaObservacion } from "./AsignarUbicacionModal";
+import { decodeEstibaObservacion } from "./estibasCajasForm";
 import type { PedidoDetalle } from "./PedidoDetalleTypes";
 
 // Respiración consistente entre secciones del detalle, dentro de la vista a

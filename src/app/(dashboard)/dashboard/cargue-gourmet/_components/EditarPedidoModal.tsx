@@ -3,9 +3,22 @@
 import { useEffect, useRef, useState } from "react";
 import { Modal } from "@/components/ui/Modal";
 import { useToast } from "@/contexts/ToastContext";
-import { apiGet, apiPut } from "@/lib/apiClient";
+import { apiGet, apiPost, apiPut } from "@/lib/apiClient";
 import { getErrorMessage } from "@/lib/errors";
 import { CIUDAD_TIENDA_CLIENTE, CODIGO_TIENDA_CLIENTE, NOMBRE_TIENDA_CLIENTE, esCodigoTiendaCliente } from "@/lib/gourmetCliente";
+import { EstibasCajasFieldset } from "./EstibasCajasFieldset";
+import {
+  type EstibaForm, type CajaForm, type PedidoConEstibasCajas,
+  estibasFromPedido, cajasFromPedido, parseEstibasCajas,
+} from "./estibasCajasForm";
+
+// Estados desde los que se permite (re)asignar ubicaciones — coincide con las
+// transiciones que acepta `POST /api/cargue-gourmet/[id]/ubicacion`
+// (`assertTransicionGourmet`, ver `gourmetCargueFlow.ts`): una vez el pedido
+// avanza más allá de UBICACION_ASIGNADA esa acción deja de estar disponible
+// para todos los roles, incluido ADMIN/GERENTE — no se puede reubicar cajas
+// que ya están en cargue o cerradas.
+const ESTADOS_CON_UBICACION_EDITABLE = ["BORRADOR", "UBICACION_ASIGNADA"] as const;
 
 const SEARCH_DEBOUNCE_MS = 250;
 
@@ -15,10 +28,11 @@ interface TiendaOption {
   ciudad: string;
 }
 
-export interface PedidoEditable {
+export interface PedidoEditable extends PedidoConEstibasCajas {
   id: string;
   orden: string;
   tipoOrden: string;
+  estado: string;
   codigoTienda: string;
   nombreTienda: string;
   ciudadDestino: string;
@@ -61,8 +75,14 @@ export function EditarPedidoModal({
 }) {
   const toast = useToast();
   const [form, setForm] = useState(formFromPedido(pedido));
+  const [estibas, setEstibas] = useState<EstibaForm[]>(estibasFromPedido(pedido));
+  const [cajas, setCajas] = useState<CajaForm[]>(cajasFromPedido(pedido));
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+
+  // Una vez el pedido avanza más allá de UBICACION_ASIGNADA, reubicar cajas
+  // deja de tener sentido operativo (ver nota de `ESTADOS_CON_UBICACION_EDITABLE`).
+  const puedeEditarUbicacion = !!pedido && (ESTADOS_CON_UBICACION_EDITABLE as readonly string[]).includes(pedido.estado);
 
   const [suggestions, setSuggestions] = useState<TiendaOption[]>([]);
   const [searchLoading, setSearchLoading] = useState(false);
@@ -73,6 +93,8 @@ export function EditarPedidoModal({
   useEffect(() => {
     if (open) {
       setForm(formFromPedido(pedido));
+      setEstibas(estibasFromPedido(pedido));
+      setCajas(cajasFromPedido(pedido));
       setError("");
       setSuggestions([]);
       setShowSuggestions(false);
@@ -127,21 +149,41 @@ export function EditarPedidoModal({
 
     if (!form.orden.trim()) { setError("La orden es obligatoria"); return; }
     if (!form.tiendaSeleccionada) { setError("Selecciona una tienda válida de la lista"); return; }
-    const cajas = parseInt(form.cajasEsperadas, 10);
-    if (!Number.isInteger(cajas) || cajas <= 0) { setError("Cajas esperadas debe ser un entero mayor a 0"); return; }
-    const estibas = parseInt(form.estibasEsperadas, 10);
-    if (!Number.isInteger(estibas) || estibas <= 0) { setError("Estibas esperadas debe ser un entero mayor a 0"); return; }
+    const cajasEsperadas = parseInt(form.cajasEsperadas, 10);
+    if (!Number.isInteger(cajasEsperadas) || cajasEsperadas <= 0) { setError("Cajas esperadas debe ser un entero mayor a 0"); return; }
+    const estibasEsperadas = parseInt(form.estibasEsperadas, 10);
+    if (!Number.isInteger(estibasEsperadas) || estibasEsperadas <= 0) { setError("Estibas esperadas debe ser un entero mayor a 0"); return; }
+
+    // Se valida la ubicación con la cantidad de cajas del formulario (no la
+    // original del pedido): si el usuario está corrigiendo cajasEsperadas en
+    // este mismo guardado, la suma por estiba debe cuadrar contra el valor
+    // nuevo, no contra el que se está corrigiendo.
+    let ubicacionPayload: { estibas: { secuencia: number; ubicacion: string; observacion?: string }[]; cajas: { codigoCaja?: string; numeroSecuencia?: number }[] } | undefined;
+    if (puedeEditarUbicacion) {
+      const parsed = parseEstibasCajas(estibas, cajas, cajasEsperadas);
+      if ("error" in parsed) { setError(parsed.error); return; }
+      ubicacionPayload = parsed.data;
+    }
 
     setSaving(true);
     try {
-      await apiPut(`/api/cargue-gourmet/${pedido.id}`, {
+      const putRes = await apiPut<{ data: { updatedAt: string } }>(`/api/cargue-gourmet/${pedido.id}`, {
         orden: form.orden.trim(),
         codigoTienda: form.tiendaSeleccionada.codigo,
-        cajasEsperadas: cajas,
-        estibasEsperadas: estibas,
+        cajasEsperadas,
+        estibasEsperadas,
         updatedAt: pedido.updatedAt,
       });
-      toast.success("Pedido actualizado");
+
+      if (ubicacionPayload) {
+        await apiPost(`/api/cargue-gourmet/${pedido.id}/ubicacion`, {
+          estibas: ubicacionPayload.estibas,
+          cajas: ubicacionPayload.cajas.length > 0 ? ubicacionPayload.cajas : undefined,
+          updatedAt: putRes.data.updatedAt,
+        });
+      }
+
+      toast.success(ubicacionPayload ? "Pedido y ubicación actualizados" : "Pedido actualizado");
       onUpdated();
       onClose();
     } catch (e) {
@@ -157,6 +199,7 @@ export function EditarPedidoModal({
       onClose={handleClose}
       title="Editar pedido Gourmet"
       subtitle={pedido ? `${pedido.tipoOrden} ${pedido.orden}` : undefined}
+      size="lg"
       footer={
         <>
           <button type="button" onClick={handleClose} className="g-btn g-btn-ghost" disabled={saving}>Cancelar</button>
@@ -246,6 +289,19 @@ export function EditarPedidoModal({
             />
           </div>
         </div>
+
+        {puedeEditarUbicacion && (
+          <div style={{ borderTop: "1px solid var(--border)", paddingTop: 14, marginTop: 2 }}>
+            <label style={{ ...label, marginBottom: 10 }}>Ubicaciones (estibas y cajas)</label>
+            <EstibasCajasFieldset
+              estibas={estibas}
+              setEstibas={setEstibas}
+              cajas={cajas}
+              setCajas={setCajas}
+              cajasEsperadas={parseInt(form.cajasEsperadas, 10) || null}
+            />
+          </div>
+        )}
 
         {error && <p style={{ fontSize: 13, color: "var(--error)", margin: 0 }} data-testid="editar-pedido-error">{error}</p>}
       </form>

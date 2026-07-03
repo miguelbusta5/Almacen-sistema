@@ -127,7 +127,7 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
 
   const current = await prisma.gourmetPedido.findUnique({
     where: { id },
-    select: { estado: true, updatedAt: true, codigoTienda: true },
+    select: { estado: true, updatedAt: true, codigoTienda: true, orden: true },
   });
   if (!current) return NextResponse.json({ error: "No encontrado" }, { status: 404 });
 
@@ -150,6 +150,31 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
 
   const data: Record<string, unknown> = {};
   if (d.orden !== undefined) {
+    // Evita que editar deje dos pedidos con la misma orden (p. ej. el usuario
+    // corrige la cantidad pero, por error, en realidad crea un pedido nuevo
+    // aparte y luego intenta "unificar" cambiando la orden de este) — mismo
+    // chequeo case-insensitive que en POST, excluyendo el propio registro.
+    const ordenTrim = d.orden.trim();
+    if (ordenTrim.toLowerCase() !== current.orden.trim().toLowerCase()) {
+      const duplicado = await prisma.gourmetPedido.findFirst({
+        where: {
+          id: { not: id },
+          orden: { equals: ordenTrim, mode: "insensitive" },
+          estado: { not: "CANCELADO" },
+        },
+        select: { id: true, estado: true },
+      });
+      if (duplicado) {
+        return NextResponse.json(
+          {
+            error: `Ya existe otro pedido con la orden "${ordenTrim}" (estado: ${duplicado.estado}).`,
+            code: "ORDEN_DUPLICADA",
+            data: { id: duplicado.id, estado: duplicado.estado },
+          },
+          { status: 409 }
+        );
+      }
+    }
     data.orden = d.orden;
     data.tipoOrden = derivarTipoOrden(d.orden);
   }

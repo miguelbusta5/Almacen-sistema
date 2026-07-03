@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Modal } from "@/components/ui/Modal";
 import { useToast } from "@/contexts/ToastContext";
-import { apiGet, apiPost } from "@/lib/apiClient";
+import { apiGet, apiPost, ApiError } from "@/lib/apiClient";
 import { getErrorMessage } from "@/lib/errors";
 import { CIUDAD_TIENDA_CLIENTE, CODIGO_TIENDA_CLIENTE, NOMBRE_TIENDA_CLIENTE, esCodigoTiendaCliente } from "@/lib/gourmetCliente";
 
@@ -40,15 +40,21 @@ export function CrearPedidoModal({
   open,
   onClose,
   onCreated,
+  onVerExistente,
 }: {
   open: boolean;
   onClose: () => void;
   onCreated: () => void;
+  // Se llama cuando el backend responde "orden duplicada" (código
+  // ORDEN_DUPLICADA), con el id del pedido ya existente. El caller decide qué
+  // hacer (p. ej. abrir su detalle/edición) en vez de crear uno nuevo.
+  onVerExistente?: (id: string) => void;
 }) {
   const toast = useToast();
   const [form, setForm] = useState(emptyForm());
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+  const [duplicadoId, setDuplicadoId] = useState<string | null>(null);
 
   const [suggestions, setSuggestions] = useState<TiendaOption[]>([]);
   const [searchLoading, setSearchLoading] = useState(false);
@@ -60,6 +66,7 @@ export function CrearPedidoModal({
     if (!open) {
       setForm(emptyForm());
       setError("");
+      setDuplicadoId(null);
       setSuggestions([]);
       setShowSuggestions(false);
     }
@@ -110,6 +117,7 @@ export function CrearPedidoModal({
     e.preventDefault();
     if (saving) return;
     setError("");
+    setDuplicadoId(null);
 
     if (!form.orden.trim()) { setError("La orden es obligatoria"); return; }
     if (!form.tiendaSeleccionada) { setError("Selecciona una tienda válida de la lista"); return; }
@@ -130,6 +138,10 @@ export function CrearPedidoModal({
       onCreated();
       onClose();
     } catch (e) {
+      if (e instanceof ApiError && e.code === "ORDEN_DUPLICADA") {
+        const info = e.data as { id?: string } | undefined;
+        if (info?.id) setDuplicadoId(info.id);
+      }
       setError(getErrorMessage(e, "No se pudo crear el pedido"));
     } finally {
       setSaving(false);
@@ -240,7 +252,22 @@ export function CrearPedidoModal({
           </div>
         </div>
 
-        {error && <p style={{ fontSize: 13, color: "var(--error)", margin: 0 }} data-testid="crear-pedido-error">{error}</p>}
+        {error && (
+          <div>
+            <p style={{ fontSize: 13, color: "var(--error)", margin: 0 }} data-testid="crear-pedido-error">{error}</p>
+            {duplicadoId && onVerExistente && (
+              <button
+                type="button"
+                onClick={() => { onVerExistente(duplicadoId); onClose(); }}
+                className="g-btn g-btn-secondary g-btn-sm"
+                style={{ marginTop: 8 }}
+                data-testid="crear-pedido-ver-existente"
+              >
+                Editar el pedido existente
+              </button>
+            )}
+          </div>
+        )}
       </form>
     </Modal>
   );

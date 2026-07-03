@@ -131,4 +131,6 @@ describe("EditarPedidoModal / AsignarUbicacionModal — contrato mínimo (Modal 
   it.todo("EditarPedidoModal precarga orden/tipo/tienda/cajas/estibas del pedido (requiere jsdom)");
   it.todo("AsignarUbicacionModal permite agregar/quitar filas de estibas y cajas (requiere jsdom)");
   it.todo("AsignarUbicacionModal rechaza secuencias de estiba duplicadas antes de enviar (requiere jsdom)");
+  it.todo("EditarPedidoModal muestra el fieldset de ubicaciones solo en BORRADOR/UBICACION_ASIGNADA (requiere jsdom)");
+  it.todo("EditarPedidoModal: al guardar con ubicaciones, encadena PUT + POST /ubicacion con el updatedAt fresco del PUT (requiere jsdom)");
 });

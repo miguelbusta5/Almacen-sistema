@@ -8,6 +8,7 @@ const mocks = vi.hoisted(() => ({
   pedidoCount: vi.fn(),
   pedidoFindMany: vi.fn(),
   pedidoCreate: vi.fn(),
+  pedidoFindFirst: vi.fn(),
   pedidoFindUnique: vi.fn(),
   pedidoUpdate: vi.fn(),
   pedidoDelete: vi.fn(),
@@ -65,6 +66,7 @@ vi.mock("@/lib/prisma", () => ({
       count: mocks.pedidoCount,
       findMany: mocks.pedidoFindMany,
       create: mocks.pedidoCreate,
+      findFirst: mocks.pedidoFindFirst,
       findUnique: mocks.pedidoFindUnique,
       update: mocks.pedidoUpdate,
       delete: mocks.pedidoDelete,
@@ -106,6 +108,7 @@ beforeEach(() => {
   mocks.userFindMany.mockResolvedValue([]);
   mocks.notificacionCreateMany.mockResolvedValue({ count: 0 });
   mocks.cargueFindFirst.mockResolvedValue(null);
+  mocks.pedidoFindFirst.mockResolvedValue(null);
   mocks.escaneoCreate.mockImplementation((args: { data: Record<string, unknown> }) =>
     Promise.resolve({ id: "esc1", createdAt: new Date(), ...args.data })
   );
@@ -302,6 +305,53 @@ describe("POST /api/cargue-gourmet", () => {
     expect(mocks.pedidoCreate).not.toHaveBeenCalled();
   });
 
+  it("rechaza una orden duplicada (activa) con 409 y no crea el pedido", async () => {
+    mocks.getSessionUser.mockResolvedValue(actor("OPERACIONES_GOURMET"));
+    mocks.maestroFindUnique.mockResolvedValue({ codigo: "T001", tienda: "Tienda Centro", ciudad: "Bogotá", activo: true });
+    mocks.pedidoFindFirst.mockResolvedValue({ id: "p_existente", estado: "BORRADOR" });
+
+    const res = await postPedido(postReq(validBody));
+    const json = await res.json();
+
+    expect(res.status).toBe(409);
+    expect(json.code).toBe("ORDEN_DUPLICADA");
+    expect(json.data).toEqual({ id: "p_existente", estado: "BORRADOR" });
+    expect(mocks.pedidoCreate).not.toHaveBeenCalled();
+  });
+
+  it("la comparación de orden duplicada es insensible a mayúsculas/espacios", async () => {
+    mocks.getSessionUser.mockResolvedValue(actor("OPERACIONES_GOURMET"));
+    mocks.maestroFindUnique.mockResolvedValue({ codigo: "T001", tienda: "Tienda Centro", ciudad: "Bogotá", activo: true });
+    mocks.pedidoFindFirst.mockResolvedValue({ id: "p_existente", estado: "EN_CARGUE" });
+
+    const res = await postPedido(postReq({ ...validBody, orden: "  tsdm98761  " }));
+    expect(res.status).toBe(409);
+    expect(mocks.pedidoFindFirst).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          orden: { equals: "tsdm98761", mode: "insensitive" },
+          estado: { not: "CANCELADO" },
+        }),
+      })
+    );
+  });
+
+  it("permite crear si no hay ninguna orden activa coincidente (p. ej. la anterior está CANCELADA)", async () => {
+    mocks.getSessionUser.mockResolvedValue(actor("OPERACIONES_GOURMET"));
+    mocks.maestroFindUnique.mockResolvedValue({ codigo: "T001", tienda: "Tienda Centro", ciudad: "Bogotá", activo: true });
+    mocks.pedidoFindFirst.mockResolvedValue(null);
+    mocks.pedidoCreate.mockResolvedValue({
+      id: "p2", ...validBody, nombreTienda: "Tienda Centro", ciudadDestino: "Bogotá",
+      estado: "BORRADOR", creadoPorId: "u_1", createdAt: new Date(), updatedAt: new Date(),
+    });
+
+    const res = await postPedido(postReq(validBody));
+    expect(res.status).toBe(201);
+    expect(mocks.pedidoFindFirst).toHaveBeenCalledWith(
+      expect.objectContaining({ where: expect.objectContaining({ estado: { not: "CANCELADO" } }) })
+    );
+  });
+
   it("rechaza cajasEsperadas <= 0", async () => {
     mocks.getSessionUser.mockResolvedValue(actor("OPERACIONES_GOURMET"));
     const res = await postPedido(postReq({ ...validBody, cajasEsperadas: 0 }));
@@ -488,8 +538,8 @@ describe("PUT /api/cargue-gourmet/[id]", () => {
     updatedAt: FIXED_UPDATED_AT.toISOString(),
   };
 
-  function mockCurrent(estado: string, codigoTienda = "T001") {
-    mocks.pedidoFindUnique.mockResolvedValue({ estado, updatedAt: FIXED_UPDATED_AT, codigoTienda });
+  function mockCurrent(estado: string, codigoTienda = "T001", orden = "TSDM98761") {
+    mocks.pedidoFindUnique.mockResolvedValue({ estado, updatedAt: FIXED_UPDATED_AT, codigoTienda, orden });
   }
 
   it("edita correctamente en estado BORRADOR", async () => {
@@ -594,6 +644,47 @@ describe("PUT /api/cargue-gourmet/[id]", () => {
     expect(res1.status).toBe(400);
     const res2 = await putPedido(putReq("p1", { ...validUpdate, estibasEsperadas: 0 }), params);
     expect(res2.status).toBe(400);
+  });
+
+  it("rechaza con 409 si la nueva orden ya la tiene otro pedido activo", async () => {
+    mocks.getSessionUser.mockResolvedValue(actor("OPERACIONES_GOURMET"));
+    mockCurrent("BORRADOR");
+    mocks.pedidoFindFirst.mockResolvedValue({ id: "p_otro", estado: "EN_CARGUE" });
+
+    const res = await putPedido(putReq("p1", validUpdate), params);
+    const json = await res.json();
+
+    expect(res.status).toBe(409);
+    expect(json.code).toBe("ORDEN_DUPLICADA");
+    expect(json.data).toEqual({ id: "p_otro", estado: "EN_CARGUE" });
+    expect(mocks.pedidoUpdate).not.toHaveBeenCalled();
+    // Excluye el propio pedido de la búsqueda de duplicados.
+    expect(mocks.pedidoFindFirst).toHaveBeenCalledWith(
+      expect.objectContaining({ where: expect.objectContaining({ id: { not: "p1" } }) })
+    );
+  });
+
+  it("no consulta duplicados si la orden no cambia", async () => {
+    mocks.getSessionUser.mockResolvedValue(actor("OPERACIONES_GOURMET"));
+    mockCurrent("BORRADOR", "T001", "TSDM98761-B");
+    mocks.pedidoUpdate.mockResolvedValue(pedidoDetalleMock());
+
+    const res = await putPedido(putReq("p1", validUpdate), params);
+    expect(res.status).toBe(200);
+    expect(mocks.pedidoFindFirst).not.toHaveBeenCalled();
+  });
+
+  it("permite reasignar una orden si el único choque está CANCELADO", async () => {
+    mocks.getSessionUser.mockResolvedValue(actor("OPERACIONES_GOURMET"));
+    mockCurrent("BORRADOR");
+    mocks.pedidoFindFirst.mockResolvedValue(null);
+    mocks.pedidoUpdate.mockResolvedValue(pedidoDetalleMock());
+
+    const res = await putPedido(putReq("p1", validUpdate), params);
+    expect(res.status).toBe(200);
+    expect(mocks.pedidoFindFirst).toHaveBeenCalledWith(
+      expect.objectContaining({ where: expect.objectContaining({ estado: { not: "CANCELADO" } }) })
+    );
   });
 
   it("TRANSPORTE no puede editar (403)", async () => {

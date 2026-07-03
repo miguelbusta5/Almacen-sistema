@@ -154,6 +154,26 @@ export async function POST(req: NextRequest) {
   }
 
   const tipoOrden = derivarTipoOrden(data.orden);
+  const ordenTrim = data.orden.trim();
+
+  // Evita duplicar un pedido por error de captura: si ya existe un pedido con
+  // la misma orden (case-insensitive) y no está CANCELADO, se bloquea y se
+  // indica el pedido existente para que el usuario lo edite en vez de crear
+  // uno nuevo. CANCELADO libera la orden porque representa un pedido anulado.
+  const duplicado = await prisma.gourmetPedido.findFirst({
+    where: { orden: { equals: ordenTrim, mode: "insensitive" }, estado: { not: "CANCELADO" } },
+    select: { id: true, estado: true },
+  });
+  if (duplicado) {
+    return NextResponse.json(
+      {
+        error: `Ya existe un pedido con la orden "${ordenTrim}" (estado: ${duplicado.estado}). Si fue un error de captura, edita ese pedido en vez de crear uno nuevo.`,
+        code: "ORDEN_DUPLICADA",
+        data: { id: duplicado.id, estado: duplicado.estado },
+      },
+      { status: 409 }
+    );
+  }
 
   const pedido = await prisma.gourmetPedido.create({
     data: {

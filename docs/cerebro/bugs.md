@@ -12,6 +12,50 @@
 
 ## Bugs resueltos
 
+## [BUG-003] Pedidos Gourmet duplicados al "corregir" un error de captura
+
+- **Fecha detectado:** 2026-07-03
+- **Módulo:** cargue-gourmet
+- **Severidad:** 🟡 Media (genera pedidos fantasma, no pérdida de datos)
+- **Reportado por:** Operación (usuarios del módulo Cargue Gourmet)
+- **Descripción:**
+  Cuando el operador se equivoca al capturar un pedido (p. ej. registra 1 caja en vez
+  de 6) y luego intenta "corregirlo", en algunos casos termina apareciendo un segundo
+  pedido con la misma orden en vez de quedar corregido el original.
+- **Diagnóstico:**
+  - `PUT /api/cargue-gourmet/[id]` (editar) **no puede duplicar** un registro: actualiza
+    por `id`, nunca crea uno nuevo. El bug no estaba ahí.
+  - Causa raíz real: `POST /api/cargue-gourmet` (crear) **no validaba si la orden ya
+    existía**. El botón "Nuevo pedido" está siempre visible en el encabezado de la lista,
+    mientras que "Editar pedido" solo aparece dentro del detalle de un pedido ya abierto
+    (`GourmetAccionesBar.tsx`) — un paso adicional. Bajo presión operativa, es fácil que
+    el operador use "Nuevo pedido" para corregir en vez de abrir el pedido y editarlo,
+    y como no había ningún control de duplicados por `orden`, el sistema lo permitía
+    silenciosamente, dejando dos filas con la misma orden (una con el dato erróneo).
+- **Archivo(s) afectado(s):**
+  - `src/app/api/cargue-gourmet/route.ts` (POST)
+  - `src/app/api/cargue-gourmet/[id]/route.ts` (PUT)
+  - `src/lib/apiClient.ts` (`ApiError` ahora propaga `data` del backend)
+  - `src/app/(dashboard)/dashboard/cargue-gourmet/_components/CrearPedidoModal.tsx`
+  - `src/app/(dashboard)/dashboard/cargue-gourmet/page.tsx`
+  - `src/__tests__/cargueGourmetApi.test.ts`
+- **Estado:** ✅ Resuelto
+- **Solución aplicada:**
+  - `POST` ahora rechaza con `409 ORDEN_DUPLICADA` si ya existe un pedido con la misma
+    `orden` (comparación case-insensitive, trim) en cualquier estado distinto de
+    `CANCELADO`, devolviendo `data: { id, estado }` del pedido en conflicto.
+  - `PUT` aplica el mismo chequeo cuando el body cambia `orden` a un valor que ya usa
+    **otro** pedido (excluye el propio `id`).
+  - En el modal "Nuevo pedido Gourmet", si el backend responde `ORDEN_DUPLICADA`, se
+    muestra el error y un botón **"Editar el pedido existente"** que abre directamente
+    ese pedido en modo edición (`abrirExistenteYEditar` en `page.tsx`) — así la
+    corrección se hace sobre el registro real en vez de crear uno nuevo.
+  - `CANCELADO` libera la orden a propósito: un pedido anulado no debe bloquear que se
+    vuelva a crear la misma orden si de verdad hace falta.
+  - Validado: `tsc` + suite completa (944 tests) verdes. Sin verificación manual en
+    navegador en esta sesión (dev server de otra sesión ya ocupaba el puerto).
+- **Fecha resolución:** 2026-07-03
+
 ## [BUG-002] "Sin coincidencias" al buscar tienda en Nuevo pedido Gourmet
 
 - **Fecha detectado:** 2026-06-25

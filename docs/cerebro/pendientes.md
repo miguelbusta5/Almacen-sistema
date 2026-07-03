@@ -6,6 +6,20 @@
 
 ## Tareas pendientes
 
+### Cargue Gourmet — anti-duplicados y edición de ubicación (2026-07-03)
+
+- [x] **BUG-003 (ver [[bugs]])**: `POST`/`PUT /api/cargue-gourmet` rechazan con `409 ORDEN_DUPLICADA` una
+  orden que ya existe en otro pedido no `CANCELADO`; el modal "Nuevo pedido" ofrece abrir/editar el
+  existente en vez de dejar crear un duplicado.
+- [x] **Editar pedido ahora incluye ubicaciones**: `EditarPedidoModal` (antes solo orden/tienda/cantidades)
+  ganó el mismo fieldset de estibas+cajas que `AsignarUbicacionModal` (extraído a
+  `estibasCajasForm.ts` + `EstibasCajasFieldset.tsx`, compartido por ambos modales). Al guardar, si el
+  pedido está en `BORRADOR`/`UBICACION_ASIGNADA`, encadena `PUT` (datos básicos) + `POST /ubicacion`
+  (estibas/cajas) usando el `updatedAt` fresco que devuelve el `PUT` para el segundo `POST`. Permite
+  añadir más filas de estiba/caja si sube `cajasEsperadas`/`estibasEsperadas` en la misma edición.
+  `tsc` + 958 tests verdes. **QA visual del usuario pendiente** (no se pudo levantar el dev server en
+  la sesión — puerto ocupado por otra sesión).
+
 ### Reescritura frontend Dark Elegant (2026-06-19)
 
 - [x] **EPIC D — Eliminar módulos sin uso** (Conteo, Contar, Studio, Indicadores): borrados de UI/API/tipos/tests (37 archivos) + limpieza de referencias en `modulePermissions`, `moduleTheme`, `permissions` (acciones huérfanas), `Sidebar`, `homeActions`, `CommandPalette`, `controlLogistico/resumen`, home y `login`; `vercel.json` cron vaciado; `vitest.config` excluye worktrees. `tsc`+271 tests+`build` verdes. Ver [[decisiones]]. — 2026-06-19

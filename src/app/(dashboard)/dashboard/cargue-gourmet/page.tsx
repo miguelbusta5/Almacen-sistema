@@ -144,11 +144,30 @@ export default function CargueGourmetPage() {
   }, []);
 
   function openDetalle(row: GourmetPedidoRow) {
-    setSelectedId(row.id);
+    abrirDetallePorId(row.id);
+  }
+
+  function abrirDetallePorId(id: string) {
+    setSelectedId(id);
     setDetalle(null);
     setDetalleError(null);
     setUltimoResultadoEscaneo(null);
-    loadDetalle(row.id);
+    loadDetalle(id);
+  }
+
+  // Cuando "Nuevo pedido" detecta que la orden ya existe (ORDEN_DUPLICADA),
+  // en vez de dejar que se cree un segundo pedido se abre el existente
+  // directamente en modo edición — así se corrige el dato (p. ej. cajas
+  // esperadas) sobre el mismo registro en lugar de duplicarlo. Se espera a
+  // que cargue el detalle para que el modal de edición abra con los datos
+  // reales, no en blanco.
+  async function abrirExistenteYEditar(id: string) {
+    setSelectedId(id);
+    setDetalle(null);
+    setDetalleError(null);
+    setUltimoResultadoEscaneo(null);
+    await loadDetalle(id);
+    setShowEditar(true);
   }
 
   function closeDetalle() {
@@ -316,6 +335,7 @@ export default function CargueGourmetPage() {
         open={showCrear}
         onClose={() => setShowCrear(false)}
         onCreated={() => { setPage(1); load(); }}
+        onVerExistente={abrirExistenteYEditar}
       />
 
       {showDetailView ? (

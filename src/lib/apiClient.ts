@@ -18,11 +18,16 @@ export type QueryParams = Record<string, string | number | boolean | null | unde
 export class ApiError extends Error {
   readonly status: number;
   readonly code?: string;
-  constructor(message: string, status: number, code?: string) {
+  // Payload de negocio opcional que algunos endpoints adjuntan a errores 409
+  // (p. ej. el pedido en conflicto), para que el call-site pueda ofrecer una
+  // acción sin volver a pedir datos al backend.
+  readonly data?: unknown;
+  constructor(message: string, status: number, code?: string, data?: unknown) {
     super(message);
     this.name = "ApiError";
     this.status = status;
     this.code = code;
+    this.data = data;
   }
 }
 
@@ -51,9 +56,10 @@ async function parseApiResponse<T>(res: Response): Promise<T> {
     success?: boolean;
     error?: string;
     code?: string;
+    data?: unknown;
   };
   if (!res.ok || obj.success === false) {
-    throw new ApiError(obj.error ?? "Error en la solicitud", res.status, obj.code);
+    throw new ApiError(obj.error ?? "Error en la solicitud", res.status, obj.code, obj.data);
   }
   return body as T;
 }
