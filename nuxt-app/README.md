@@ -26,13 +26,19 @@ de ejemplo, tag ámbar "Modo demo" visible en el header). No escribe nada en la 
 3. Reinicia `npm run dev`. El tag "Modo demo" desaparece; los datos y las acciones
    (crear/editar/despachar/eliminar/contactos) leen y escriben en la base real.
 
-## Coexistencia con la app Next.js (`next.config.ts`)
+## Reemplazo de la ruta real (`next.config.ts`)
 
-La app Next.js tiene un rewrite **condicional**: solo existe si la variable de entorno
-`NUXT_PILOT_URL` está definida. Sin ella (caso normal de producción hoy), `rewrites()`
-devuelve `[]` — no se agrega ninguna ruta y no hay ningún cambio de comportamiento.
+La app Next.js tiene un rewrite **condicional** que reemplaza `/dashboard/transporte`
+(la ruta real, no una de preview) por este piloto: solo se activa si la variable de entorno
+`NUXT_PILOT_URL` está definida. Sin ella (caso normal hoy), no se agrega ningún rewrite y la
+página React original (`src/app/(dashboard)/dashboard/transporte/page.tsx`) sigue sirviendo
+normalmente — cero cambio de comportamiento.
 
-Para probar la coexistencia en local:
+Usa la forma `beforeFiles` a propósito: un array de rewrites simple se evalúa *después* de
+las páginas del filesystem, así que la página React seguiría ganando siempre. Con
+`beforeFiles`, el proxy intercepta la petición antes de que Next.js resuelva la página.
+
+Para probar en local:
 
 ```bash
 # Terminal 1 — piloto Nuxt
@@ -42,18 +48,28 @@ npm run dev --prefix nuxt-app        # puerto 3001
 NUXT_PILOT_URL=http://localhost:3001 npm run dev
 ```
 
-Con eso, `http://localhost:3000/dashboard/transporte-piloto` sirve el piloto Nuxt **a
-través** de la app Next.js — mismo dominio, mismo middleware de autenticación
-(`src/middleware.ts` ya protege `/dashboard/:path*`, incluida esta ruta), sin afectar
-`/dashboard/transporte` (la página React original sigue intacta como fallback).
+Con eso, `http://localhost:3000/dashboard/transporte` sirve el piloto Nuxt (Aurora) en vez de
+la página React — mismo dominio, mismo middleware de autenticación (`src/middleware.ts` ya
+protege `/dashboard/:path*`).
+
+### Activar en producción
+
+1. Desplegar `nuxt-app/` como proyecto Vercel propio (ya hecho:
+   `nuxt-app-chi-ivory.vercel.app`).
+2. En ese proyecto, configurar `DATABASE_URL` y `NEXTAUTH_SECRET` — **los mismos valores**
+   que usa el proyecto principal (Settings → Environment Variables → copiar). Sin esto, los
+   usuarios reales verían datos de ejemplo (modo demo) en vez de sus guardados reales.
+3. En el proyecto principal (`almacen-sistema`), configurar `NUXT_PILOT_URL` apuntando a la
+   URL del paso 1, y redeploy.
+4. Verificar con datos reales antes de dar por completado el reemplazo. Revertir es
+   instantáneo: basta con borrar `NUXT_PILOT_URL` del proyecto principal.
 
 ### Patrón para migrar los siguientes módulos
 
 1. Construir el módulo en Nuxt (UI + endpoints Nitro que porten la lógica de `src/lib/*`).
-2. Agregar su propio rewrite condicional en `next.config.ts` bajo una ruta `-piloto`.
-3. Validar en paralelo contra la misma base de datos que la versión Next.js.
-4. Cuando el módulo esté aprobado: el rewrite pasa a ser incondicional (o se apunta a la
-   URL de producción del deploy Nuxt) y la página Next.js equivalente se retira.
+2. Agregar su propio rewrite `beforeFiles` condicional en `next.config.ts` sobre su ruta real.
+3. Desplegarlo como proyecto Vercel propio y validarlo contra la misma base de datos.
+4. Activar su variable de entorno en producción cuando esté verificado con datos reales.
 
 ## Estructura
 

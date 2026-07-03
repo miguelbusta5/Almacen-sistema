@@ -226,12 +226,14 @@ async function guardarFecha() {
   } catch (e) { showToast(apiErr(e, 'No se pudo actualizar'), true) }
 }
 
+// Enlaces reales: al ser un rewrite bajo el mismo dominio, navegan de vuelta
+// a la app Next.js con recarga completa (no hay SPA compartida entre stacks).
 const nav = [
-  { icon: Store, label: 'Despachos Tienda' },
-  { icon: Boxes, label: 'Novedades Inventario' },
-  { icon: Truck, label: 'Guardados Transporte', active: true },
-  { icon: ClipboardCheck, label: 'Preoperacional' },
-  { icon: Users, label: 'Usuarios' },
+  { icon: Store, label: 'Despachos Tienda', href: '/dashboard/tienda' },
+  { icon: Boxes, label: 'Novedades Inventario', href: '/dashboard/inventario' },
+  { icon: Truck, label: 'Guardados Transporte', href: '/dashboard/transporte', active: true },
+  { icon: ClipboardCheck, label: 'Preoperacional', href: '/dashboard/preoperacional' },
+  { icon: Users, label: 'Usuarios', href: '/dashboard/usuarios' },
 ]
 
 const pendCount = computed(() => guardados.value.filter(g => g.estado === 'PENDIENTE DESPACHO').length)
@@ -252,13 +254,13 @@ const userInitials = computed(() => {
         <span class="brand-name">Grupo Ambiente</span>
       </div>
       <nav class="nav">
-        <a v-for="n in nav" :key="n.label" class="nav-item" :class="{ active: n.active }">
+        <a v-for="n in nav" :key="n.label" :href="n.href" class="nav-item" :class="{ active: n.active }">
           <component :is="n.icon" :size="17" />
           <span>{{ n.label }}</span>
         </a>
       </nav>
       <div class="side-foot">
-        <div class="pilot-tag"><LayoutGrid :size="12" /> Piloto Aurora · Vue</div>
+        <a href="/dashboard" class="nav-item"><LayoutGrid :size="17" /><span>Volver al dashboard</span></a>
       </div>
     </aside>
 

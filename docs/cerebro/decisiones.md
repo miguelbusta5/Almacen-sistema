@@ -19,17 +19,33 @@
    cookie JWT de Auth.js v5** (`NEXTAUTH_SECRET` compartido) para reconstruir la sesión sin
    necesidad de un login separado. Si no hay sesión/credenciales válidas, el piloto cae
    automáticamente a **modo demo** (datos de ejemplo, sin escribir en la DB real).
-4. **Coexistencia (Fase 5):** se agregó un rewrite **condicional** en `next.config.ts` —
-   `/dashboard/transporte-piloto` → proxy hacia `NUXT_PILOT_URL`. Si esa variable de entorno
-   no está definida (caso de producción hoy), `rewrites()` devuelve `[]` y **no se agrega
-   ninguna ruta nueva**: cero impacto en la app actual. La ruta piloto queda protegida por el
-   mismo middleware de sesión que el resto de `/dashboard/*` (verificado: mismo redirect 307
-   a `/login` sin cookie; con cookie, el HTML servido es efectivamente el del piloto Nuxt).
-5. **Patrón para futuros módulos:** cada módulo que se vaya migrando repite el mismo patrón:
-   nueva app Nuxt (o mismo `nuxt-app/` ampliado) + endpoints Nitro que reutilizan `src/lib/*`
-   como referencia + rewrite condicional propio en `next.config.ts` bajo su propia ruta
-   `-piloto`. Cuando un módulo esté validado, su rewrite pasa a ser incondicional y la página
-   Next.js equivalente se retira.
+4. **Reemplazo de la ruta real (Fase 5, revisado 2026-07-03 tarde):** en vez de una ruta de
+   preview `-piloto`, se decidió que el Vue/Nuxt **reemplace directamente** `/dashboard/transporte`
+   para los usuarios. El rewrite en `next.config.ts` usa la forma `beforeFiles` (no un array
+   simple) — necesario porque un array de rewrites se evalúa *después* de las páginas del
+   filesystem, y la página React en
+   `src/app/(dashboard)/dashboard/transporte/page.tsx` seguiría ganando siempre. Con
+   `beforeFiles`, el proxy intercepta la ruta antes de que Next.js resuelva la página.
+   El rewrite sigue siendo **condicional** a `NUXT_PILOT_URL`: sin esa variable (caso de
+   producción hoy) no se agrega ninguna ruta y la página React sigue sirviendo normalmente
+   — cero impacto hasta que se decida activar el reemplazo.
+   Verificado en local: sin cookie de sesión, mismo redirect 307 a `/login`; con cookie
+   presente, `/dashboard/transporte` sirve efectivamente el HTML de Aurora (Nuxt), no la
+   página React, aunque el archivo `page.tsx` sigue existiendo en el repo.
+5. **Deploy del piloto:** `nuxt-app/` se desplegó como proyecto Vercel aparte
+   (`nuxt-app-chi-ivory.vercel.app`). Antes de activar `NUXT_PILOT_URL` en producción del
+   proyecto principal, ese proyecto necesita sus propias `DATABASE_URL`/`NEXTAUTH_SECRET`
+   (mismos valores que el proyecto principal) — si no, los usuarios reales verían datos de
+   ejemplo (modo demo) en vez de sus guardados reales.
+6. **Navegación:** el sidebar de Aurora usa enlaces reales (`<a href="/dashboard/...">`) a los
+   demás módulos y a "Volver al dashboard" — al ser un proxy bajo el mismo dominio, el navegador
+   hace una navegación completa de vuelta a la app Next.js (no hay SPA compartida entre stacks).
+7. **Patrón para futuros módulos:** cada módulo que se vaya migrando repite el mismo patrón:
+   nueva app Nuxt (o el mismo `nuxt-app/` ampliado) + endpoints Nitro que reutilizan `src/lib/*`
+   como referencia + rewrite condicional `beforeFiles` en `next.config.ts` sobre su propia ruta
+   real. Cuando un módulo esté validado y con datos reales verificados, se activa su variable de
+   entorno en producción y —opcionalmente, más adelante— se retira la página Next.js equivalente
+   del repo.
 
 **Contexto:**
 - El usuario pidió una reestructuración visual completa de Guardados como piloto de un
