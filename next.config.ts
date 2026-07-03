@@ -14,8 +14,12 @@ const nextConfig: NextConfig = {
     if (!NUXT_PILOT_URL) return { beforeFiles: [], afterFiles: [], fallback: [] };
     return {
       beforeFiles: [
-        { source: "/dashboard/transporte", destination: `${NUXT_PILOT_URL}/` },
-        { source: "/dashboard/transporte/:path*", destination: `${NUXT_PILOT_URL}/:path*` },
+        // El destino preserva /dashboard/transporte porque la app Nuxt tiene
+        // app.baseURL: '/dashboard/transporte/' (nuxt.config.ts) — sus assets
+        // (/_nuxt/*) y su $fetch interno a /api/* ya asumen vivir bajo ese
+        // prefijo, así que el proxy debe mantenerlo en vez de mandar a la raíz.
+        { source: "/dashboard/transporte", destination: `${NUXT_PILOT_URL}/dashboard/transporte` },
+        { source: "/dashboard/transporte/:path*", destination: `${NUXT_PILOT_URL}/dashboard/transporte/:path*` },
       ],
       afterFiles: [],
       fallback: [],
