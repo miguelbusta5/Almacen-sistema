@@ -1,0 +1,72 @@
+<script setup lang="ts">
+import { Search, X, TriangleAlert, Rows3, Rows4 } from '@lucide/vue'
+
+defineProps<{
+  q: string; estado: string; tipo: string; alerta: boolean
+  count: number; total: number; density: 'comodo' | 'compacto'
+}>()
+const emit = defineEmits<{
+  (e: 'update:q', v: string): void
+  (e: 'update:estado', v: string): void
+  (e: 'update:tipo', v: string): void
+  (e: 'update:alerta', v: boolean): void
+  (e: 'update:density', v: 'comodo' | 'compacto'): void
+  (e: 'clear'): void
+}>()
+</script>
+
+<template>
+  <div class="toolbar">
+    <div class="search">
+      <Search :size="16" />
+      <input
+        :value="q" @input="emit('update:q', ($event.target as HTMLInputElement).value)"
+        class="field" placeholder="Buscar documento o ubicación…"
+      >
+    </div>
+    <select :value="estado" @change="emit('update:estado', ($event.target as HTMLSelectElement).value)" class="field sel">
+      <option value="">Todos los estados</option>
+      <option value="PENDIENTE DESPACHO">Pendiente despacho</option>
+      <option value="DESPACHADO">Despachado</option>
+    </select>
+    <select :value="tipo" @change="emit('update:tipo', ($event.target as HTMLSelectElement).value)" class="field sel">
+      <option value="">Todos los tipos</option>
+      <option value="COMUN">Común</option>
+      <option value="ECOMMERCE">Ecommerce</option>
+    </select>
+    <button class="btn btn-sm" :class="{ on: alerta }" @click="emit('update:alerta', !alerta)">
+      <TriangleAlert :size="14" /> Solo alertas
+    </button>
+    <button v-if="q || estado || tipo || alerta" class="btn btn-ghost btn-sm" @click="emit('clear')">
+      <X :size="13" /> Limpiar
+    </button>
+
+    <div class="right">
+      <span class="count mono">{{ count }} de {{ total }}</span>
+      <div class="density" role="group" aria-label="Densidad">
+        <button class="dbtn" :class="{ on: density === 'comodo' }" title="Cómodo" @click="emit('update:density', 'comodo')"><Rows3 :size="15" /></button>
+        <button class="dbtn" :class="{ on: density === 'compacto' }" title="Compacto" @click="emit('update:density', 'compacto')"><Rows4 :size="15" /></button>
+      </div>
+    </div>
+  </div>
+</template>
+
+<style scoped>
+.toolbar {
+  display: flex; gap: 10px; align-items: center; flex-wrap: wrap;
+  padding: 12px; border: 1px solid var(--border); border-radius: var(--r-md);
+  background: var(--surface); box-shadow: var(--shadow-xs);
+}
+.search { position: relative; flex: 1; min-width: 220px; }
+.search svg { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: var(--faint); pointer-events: none; }
+.search .field { padding-left: 38px; }
+.search:focus-within svg { color: var(--brand); }
+.sel { width: auto; min-width: 150px; cursor: pointer; }
+.btn.on { color: var(--u-critico); border-color: var(--u-critico); background: var(--u-critico-tint); }
+.right { margin-left: auto; display: flex; align-items: center; gap: 12px; }
+.count { font-size: 12px; color: var(--muted); white-space: nowrap; }
+.density { display: inline-flex; padding: 3px; gap: 2px; background: var(--surface-3); border-radius: var(--r-sm); }
+.dbtn { display: grid; place-items: center; width: 30px; height: 28px; border: none; background: transparent; border-radius: var(--r-xs); color: var(--muted); cursor: pointer; transition: background .12s, color .12s; }
+.dbtn:hover { color: var(--ink-2); }
+.dbtn.on { background: var(--surface); color: var(--brand-deep); box-shadow: var(--shadow-xs); }
+</style>

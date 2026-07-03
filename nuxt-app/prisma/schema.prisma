@@ -1,0 +1,995 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ═══════════════════════════════════════════
+// TABLAS EXISTENTES (no modificar)
+// ═══════════════════════════════════════════
+
+model Novedad {
+  id              Int       @id @default(autoincrement())
+  plu             String    @db.VarChar(255)
+  posicion        String    @db.VarChar(255)
+  fecha           DateTime  @db.Date
+  estado          String    @default("PENDIENTE") @db.VarChar(50)
+  descripcion     String?
+  cantidad        Int?
+  fabricante      String?   @db.VarChar(255)
+  costoUnitario   Int?      @map("costo_unitario")
+  costoIncidencia Int?      @map("costo_incidencia")
+  created_at      DateTime? @default(now()) @db.Timestamp(6)
+  updated_at      DateTime? @default(now()) @db.Timestamp(6)
+
+  // ── SLA ──
+  fechaCompromiso DateTime? @map("fecha_compromiso") @db.Date
+
+  // ── Campos operativos (Iniciativa 1) ──
+  tipoNovedad   String?   @map("tipo_novedad") @db.VarChar(30)
+  // SOBRANTE | FALTANTE | DAÑADO | MAL_UBICADO | ERROR_SISTEMA | ERROR_PROVEEDOR | ERROR_DESPACHO
+  causaRaiz     String?   @map("causa_raiz") @db.VarChar(30)
+  // HUMANO | SISTEMA | PROVEEDOR | DANIO | HURTO | UBICACION | DESPACHO
+  turno         String?   @db.VarChar(10) // MAÑANA | TARDE | NOCHE
+  zonaBodega    String?   @map("zona_bodega") @db.VarChar(100)
+  asignadoA     String?   @map("asignado_a")
+  asignadoUser  User?     @relation("NovedadesAsignadas", fields: [asignadoA], references: [id], onDelete: SetNull)
+  resueltoAt    DateTime? @map("resuelto_at")
+  netsuiteAjust Boolean   @default(false) @map("netsuite_ajust")
+  netsuiteId    String?   @map("netsuite_id") // ID interno de NetSuite (futuro)
+  imagenUrl     String?   @map("imagen_url")
+
+  @@unique([plu, posicion, fecha])
+  @@index([plu, posicion, fecha], map: "idx_plu_posicion_fecha")
+  @@index([estado, asignadoA])
+  @@index([tipoNovedad, causaRaiz])
+  @@map("novedades")
+}
+
+model ProductoMaestro {
+  id          String   @id @default(cuid())
+  plu         String   @unique @db.VarChar(100)
+  descripcion String?
+  fabricante  String?  @db.VarChar(255)
+  precio      Decimal? @db.Decimal(12, 2)
+  marca       String?  @db.VarChar(255)
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  @@index([plu])
+  @@map("productos_maestro")
+}
+
+model TransporteGuardado {
+  id             Int       @id @default(autoincrement())
+  client_id      String    @unique @db.VarChar(100)
+  fecha          DateTime  @db.Date
+  documento      String    @db.VarChar(255)
+  ubicacion      String
+  estado         String    @default("PENDIENTE DESPACHO") @db.VarChar(60)
+  tipo           String    @default("COMUN") @db.VarChar(20) // COMUN | ECOMMERCE
+  fecha_despacho DateTime? @db.Date
+  nota           String?
+  ciudad         String?   @db.VarChar(100) // Ciudad de destino (opcional)
+  netsuiteId     String?   @map("netsuite_id") // ID interno de NetSuite (futuro)
+  created_at     DateTime? @default(now()) @db.Timestamp(6)
+  updated_at     DateTime? @default(now()) @db.Timestamp(6)
+
+  @@index([client_id], map: "idx_transporte_client_id")
+  @@map("transporte_guardados")
+}
+
+model TransporteDeleted {
+  client_id  String    @id @db.VarChar(100)
+  deleted_at DateTime? @default(now()) @db.Timestamp(6)
+
+  @@map("transporte_deleted")
+}
+
+// ═══════════════════════════════════════════
+// NUEVAS TABLAS - AUTH & AUDITORIA
+// ═══════════════════════════════════════════
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  name      String
+  password  String
+  role      Role     @default(OPERADOR)
+  active    Boolean  @default(true)
+  mustChangePassword Boolean @default(false) @map("must_change_password")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  activityLogs                   ActivityLog[]
+  transportista                  Transportista?
+  novedadesAsign                 Novedad[]                      @relation("NovedadesAsignadas")
+  contactosGuard                 ContactoGuardado[]
+  despachosTienda                DespachoTienda[]               @relation("DespachosCreadosPor")
+  historialDespachos             HistorialDespacho[]            @relation("HistorialDespachoUsuario")
+  inspecciones                   InspeccionPreoperacional[]     @relation("InspeccionesRealizadas")
+  notificaciones                 Notificacion[]
+  guardadosPendientes            GuardadoPendienteTienda[]      @relation("GuardadosPendientesAsignados")
+  integracionesCreadoras         IntegracionPedido[]            @relation("integracionesCreadoras")
+  integracionesCompletadas       IntegracionPedido[]            @relation("integracionesCompletadas")
+  solicitudesTransporte          SolicitudTransporte[]          @relation("SolicitudesTransporteCreadas")
+  solicitudesGestionadas         SolicitudTransporte[]          @relation("SolicitudesTransporteGestionadas")
+  historialSolicitudesTransporte HistorialSolicitudTransporte[] @relation("HistorialSolicitudTransporteUsuario")
+  exportacionesEtiquetado        EtiquetadoExportacion[]        @relation("ExportacionesEtiquetadoCreadas")
+  exportacionesActualizadas      EtiquetadoExportacion[]        @relation("ExportacionesEtiquetadoActualizadas")
+  exportacionesMexicoCreadas     EtiquetadoExportacionMexico[]  @relation("ExportacionesMexicoEtiquetadoCreadas")
+  exportacionesMexicoActualizadas EtiquetadoExportacionMexico[] @relation("ExportacionesMexicoEtiquetadoActualizadas")
+  exportacionesEeuuCreadas       EtiquetadoExportacionEeuu[]    @relation("ExportacionesEeuuEtiquetadoCreadas")
+  exportacionesEeuuActualizadas  EtiquetadoExportacionEeuu[]    @relation("ExportacionesEeuuEtiquetadoActualizadas")
+  gourmetPedidosCreados          GourmetPedido[]                @relation("GourmetPedidosCreados")
+
+  @@index([email])
+  @@map("users")
+}
+
+enum Role {
+  ADMIN
+  GERENTE
+  OPERADOR
+  TRANSPORTISTA
+  INVENTARIO // Operario de inventario — solo módulos de inventario
+  TRANSPORTE // Operario de transporte — guardados + pendientes asignados
+  SUPERVISOR_INVENTARIO // Supervisor inventario — inventario + análisis
+  SUPERVISOR_TRANSPORTE // Supervisor transporte — tienda + guardados + KPIs
+  TIENDA // Operario de tienda — solo módulo tienda
+  SUPERVISOR_TIENDA // Supervisor tienda — tienda + análisis + Centro de Control
+  OPERACIONES_MUEBLES // Operario Operaciones Muebles — solo módulo integración
+  OPERACIONES_GOURMET // Operario Operaciones Gourmet — solo módulo integración
+  ETIQUETADO // Operario etiquetado exportaciones — solo módulo exportaciones
+  SUPERVISOR_ALMACENAMIENTO // Supervisor almacenamiento — gestiona exportaciones
+}
+
+enum EstadoDespacho {
+  CREADO_TIENDA // Tienda registra el despacho
+  RECHAZADO // Transporte rechaza — espera corrección por tienda
+  RECOGIDO_TIENDA // Supervisor transporte confirma recogida en tienda
+  ENTREGADO_CEDI // Mercancía llega al CEDI
+  ENVIADO_CLIENTE // CEDI despacha/envía al cliente
+  CON_NOVEDAD // Incidencia en cualquier etapa
+}
+
+enum EstadoInspeccion {
+  APROBADA
+  APROBADA_CON_OBSERVACIONES
+  BLOQUEADA
+}
+
+enum EstadoIntegracion {
+  PENDIENTE_AREA2
+  LISTA_TRANSPORTE
+  COMPLETADA
+}
+
+enum EstadoSolicitudTransporte {
+  PENDIENTE
+  RECHAZADA
+  REENVIADA
+  PROGRAMADA
+  EFECTUADA
+  CANCELADA
+}
+
+enum StellaEstado {
+  PENDIENTE
+  PROGRAMADO
+  EFECTUADO
+  CANCELADO
+}
+
+enum PrioridadSolicitudTransporte {
+  ALTO
+  MEDIO
+  BAJO
+}
+
+enum SemaforoSolicitudTransporte {
+  SIN_FECHA
+  VENCIDO
+  ALERTA
+  NORMAL
+  EFECTUADO
+  CANCELADO
+}
+
+enum ResultadoInspeccion {
+  CONFORME
+  NO_CONFORME
+  NO_APLICA
+}
+
+// ═══════════════════════════════════════════
+// NOTIFICACIONES INTERNAS
+// ═══════════════════════════════════════════
+
+model Notificacion {
+  id          String   @id @default(cuid())
+  userId      String   @map("user_id")
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  titulo      String   @db.VarChar(255)
+  descripcion String?
+  tipo        String   @db.VarChar(50)
+  // ASIGNACION | SLA_VENCIDO | GUARDADO_CRITICO | INCIDENCIA | NOVEDAD | TIENDA
+  leida       Boolean  @default(false)
+  enlace      String?  @db.VarChar(500)
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  @@index([userId, leida, createdAt])
+  @@map("notificaciones")
+}
+
+// ═══════════════════════════════════════════
+// MÓDULO TIENDA
+// ═══════════════════════════════════════════
+
+model DespachoTienda {
+  id               String         @id @default(cuid())
+  centroCostos     String         @map("centro_costos") @db.VarChar(100)
+  numeroDocumento  String         @map("numero_documento") @db.VarChar(100)
+  consecutivo      String         @db.VarChar(50)
+  clienteNombre    String         @map("cliente_nombre") @db.VarChar(255)
+  clienteDocumento String?        @map("cliente_documento") @db.VarChar(50)
+  clienteTelefono  String?        @map("cliente_telefono") @db.VarChar(30)
+  estado           EstadoDespacho @default(CREADO_TIENDA)
+  fechaCreacion    DateTime       @map("fecha_creacion") @db.Date
+
+  // Timestamps por estado
+  recibidoAt      DateTime? @map("recibido_at") // RECOGIDO_TIENDA
+  entregadoCediAt DateTime? @map("entregado_cedi_at") // ENTREGADO_CEDI
+  despachadoAt    DateTime? @map("despachado_at") // ENVIADO_CLIENTE
+  novedadAt       DateTime? @map("novedad_at") // CON_NOVEDAD
+  rechazadoAt     DateTime? @map("rechazado_at") // RECHAZADO
+  motivoRechazo   String?   @map("motivo_rechazo")
+
+  novedad                  String?
+  notaEntrega              String?   @map("nota_entrega")
+  fechaEntregaComprometida DateTime? @map("fecha_entrega_comprometida") @db.Date
+  numeroCajas              Int?      @map("numero_cajas")
+  netsuiteId               String?   @map("netsuite_id")
+
+  // Dirección de entrega
+  direccionEntrega String? @map("direccion_entrega")
+  barrio           String?
+  ciudad           String?
+  departamento     String?
+  latitud          Float?
+  longitud         Float?
+
+  // Contacto de entrega
+  contactoEntrega String? @map("contacto_entrega")
+  telefonoEntrega String? @map("telefono_entrega")
+
+  // Evidencias por etapa
+  fotoRecogidaUrl String? @map("foto_recogida_url")
+  fotoCediUrl     String? @map("foto_cedi_url")
+  recibidoPorCedi String? @map("recibido_por_cedi")
+
+  observacionEntrega String?   @map("observacion_entrega")
+  fechaEntregaReal   DateTime? @map("fecha_entrega_real")
+
+  creadoPorId String   @map("creado_por_id")
+  creadoPor   User     @relation("DespachosCreadosPor", fields: [creadoPorId], references: [id])
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  plines            PlinDespacho[]
+  historial         HistorialDespacho[]
+  guardadoPendiente GuardadoPendienteTienda?
+
+  @@index([estado])
+  @@index([estado, createdAt])
+  @@index([createdAt, estado])
+  @@index([centroCostos, fechaCreacion])
+  @@index([fechaCreacion])
+  @@map("despachos_tienda")
+}
+
+model GuardadoPendienteTienda {
+  id               String         @id @default(cuid())
+  despachoId       String         @unique @map("despacho_id")
+  despacho         DespachoTienda @relation(fields: [despachoId], references: [id], onDelete: Cascade)
+  asignadoAId      String         @map("asignado_a_id")
+  asignadoA        User           @relation("GuardadosPendientesAsignados", fields: [asignadoAId], references: [id])
+  asignadoPorId    String         @map("asignado_por_id")
+  estado           String         @default("PENDIENTE") @db.VarChar(20)
+  guardadoClientId String?        @map("guardado_client_id") @db.VarChar(100)
+  nota             String?
+  createdAt        DateTime       @default(now()) @map("created_at")
+  completadoAt     DateTime?      @map("completado_at")
+
+  @@index([asignadoAId, estado])
+  @@index([despachoId])
+  @@map("guardados_pendientes_tienda")
+}
+
+model HistorialDespacho {
+  id             String         @id @default(cuid())
+  despachoId     String         @map("despacho_id")
+  despacho       DespachoTienda @relation(fields: [despachoId], references: [id], onDelete: Cascade)
+  estadoAnterior EstadoDespacho @map("estado_anterior")
+  estadoNuevo    EstadoDespacho @map("estado_nuevo")
+  observacion    String?
+  usuarioId      String         @map("usuario_id")
+  usuario        User           @relation("HistorialDespachoUsuario", fields: [usuarioId], references: [id])
+  createdAt      DateTime       @default(now()) @map("created_at")
+
+  @@index([despachoId, createdAt])
+  @@index([usuarioId])
+  @@map("historial_despachos")
+}
+
+model PlinDespacho {
+  id          String         @id @default(cuid())
+  despachoId  String         @map("despacho_id")
+  despacho    DespachoTienda @relation(fields: [despachoId], references: [id], onDelete: Cascade)
+  plu         String         @db.VarChar(100)
+  descripcion String?        @db.VarChar(255)
+  unidades    Int
+  createdAt   DateTime       @default(now()) @map("created_at")
+
+  @@index([despachoId])
+  @@map("plines_despacho")
+}
+
+// ═══════════════════════════════════════════
+// MÓDULO GUARDADOS — Log de gestión de cliente
+// ═══════════════════════════════════════════
+
+model ContactoGuardado {
+  id                String    @id @default(cuid())
+  guardadoClientId  String    @map("guardado_client_id") @db.VarChar(100)
+  // Tipos: LLAMADA | MENSAJE | EMAIL | VISITA | ESCALACION
+  tipo              String    @db.VarChar(20)
+  // Resultados: NO_CONTESTA | CONFIRMO_FECHA | CANCELO | ESCALADO | OTRO
+  resultado         String    @db.VarChar(30)
+  fechaCompromiso   DateTime? @map("fecha_compromiso")
+  nota              String?
+  registradoPor     String    @map("registrado_por")
+  registradoPorUser User      @relation(fields: [registradoPor], references: [id])
+  createdAt         DateTime  @default(now()) @map("created_at")
+
+  @@index([guardadoClientId])
+  @@map("contactos_guardado")
+}
+
+// ═══════════════════════════════════════════
+// MÓDULO LOGÍSTICA
+// ═══════════════════════════════════════════
+
+model Vehiculo {
+  id          String   @id @default(cuid())
+  placa       String   @unique @db.VarChar(20)
+  tipo        String   @db.VarChar(20) // CAMION | FURGON | VAN | MOTO
+  capacidadKg Int?     @map("capacidad_kg")
+  estado      String   @default("ACTIVO") @db.VarChar(20) // ACTIVO | MANTENIMIENTO | INACTIVO
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  transportistas Transportista[]
+  inspecciones   InspeccionPreoperacional[]
+
+  @@map("vehiculos")
+}
+
+model Transportista {
+  id         String    @id @default(cuid())
+  nombre     String    @db.VarChar(255)
+  telefono   String?   @db.VarChar(30)
+  vehiculoId String?   @map("vehiculo_id")
+  vehiculo   Vehiculo? @relation(fields: [vehiculoId], references: [id], onDelete: SetNull)
+  userId     String?   @unique @map("user_id")
+  user       User?     @relation(fields: [userId], references: [id], onDelete: SetNull)
+  activo     Boolean   @default(true)
+  createdAt  DateTime  @default(now()) @map("created_at")
+  updatedAt  DateTime  @updatedAt @map("updated_at")
+
+  rutas        Ruta[]
+  ubicaciones  UbicacionGps[]
+  inspecciones InspeccionPreoperacional[] @relation("InspeccionesConductor")
+
+  @@map("transportistas")
+}
+
+model Ruta {
+  id                 String                    @id @default(cuid())
+  nombre             String                    @db.VarChar(255)
+  fecha              DateTime                  @db.Date
+  transportistaId    String                    @map("transportista_id")
+  transportista      Transportista             @relation(fields: [transportistaId], references: [id])
+  estado             String                    @default("PENDIENTE") @db.VarChar(20) // PENDIENTE | EN_CURSO | FINALIZADA | CANCELADA
+  notas              String?
+  netsuiteId         String?                   @map("netsuite_id")
+  kilometrajeSalida  Int?                      @map("kilometraje_salida")
+  kilometrajeLlegada Int?                      @map("kilometraje_llegada")
+  inspeccionId       String?                   @map("inspeccion_id")
+  inspeccion         InspeccionPreoperacional? @relation("RutaInspeccion", fields: [inspeccionId], references: [id], onDelete: SetNull)
+  createdAt          DateTime                  @default(now()) @map("created_at")
+  updatedAt          DateTime                  @updatedAt @map("updated_at")
+
+  paradas     Parada[]
+  ubicaciones UbicacionGps[]
+
+  @@index([fecha])
+  @@index([transportistaId, estado])
+  @@map("rutas")
+}
+
+model Parada {
+  id            String    @id @default(cuid())
+  rutaId        String    @map("ruta_id")
+  ruta          Ruta      @relation(fields: [rutaId], references: [id], onDelete: Cascade)
+  orden         Int
+  direccion     String
+  lat           Float?
+  lng           Float?
+  pedidoId      String?   @map("pedido_id")
+  estado        String    @default("PENDIENTE") @db.VarChar(20) // PENDIENTE | ENTREGADO | NO_ENTREGADO
+  observaciones String?
+  fotoTomada    Boolean   @default(false) @map("foto_tomada")
+  fotoUrl       String?   @map("foto_url")
+  latEntrega    Float?    @map("lat_entrega")
+  lngEntrega    Float?    @map("lng_entrega")
+  entregadoAt   DateTime? @map("entregado_at")
+  createdAt     DateTime  @default(now()) @map("created_at")
+  updatedAt     DateTime  @updatedAt @map("updated_at")
+
+  incidencias IncidenciaRuta[]
+
+  @@index([rutaId, orden])
+  @@map("paradas")
+}
+
+model UbicacionGps {
+  id              Int           @id @default(autoincrement())
+  transportistaId String        @map("transportista_id")
+  transportista   Transportista @relation(fields: [transportistaId], references: [id], onDelete: Cascade)
+  rutaId          String?       @map("ruta_id")
+  ruta            Ruta?         @relation(fields: [rutaId], references: [id], onDelete: SetNull)
+  lat             Float
+  lng             Float
+  registradoAt    DateTime      @default(now()) @map("registrado_at")
+
+  @@index([transportistaId, registradoAt])
+  @@map("ubicaciones_gps")
+}
+
+model IncidenciaRuta {
+  id              String   @id @default(cuid())
+  paradaId        String   @map("parada_id")
+  parada          Parada   @relation(fields: [paradaId], references: [id], onDelete: Cascade)
+  rutaId          String   @map("ruta_id")
+  transportistaId String   @map("transportista_id")
+  // INC-01 CLIENTE_AUSENTE | INC-02 NEGOCIO_CERRADO | INC-03 DIRECCION_INCORRECTA
+  // INC-04 CLIENTE_RECHAZO | INC-05 MERCANCIA_DAÑADA | INC-06 TRAFICO
+  // INC-07 VEHICULO_AVERIA | INC-08 ACCESO_NEGADO
+  tipo            String   @db.VarChar(30)
+  descripcion     String?
+  fotoUrl         String?  @map("foto_url")
+  createdAt       DateTime @default(now()) @map("created_at")
+
+  @@index([rutaId])
+  @@index([transportistaId, createdAt])
+  @@map("incidencias_ruta")
+}
+
+model ActivityLog {
+  id        String   @id @default(cuid())
+  userId    String   @map("user_id")
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  action    String
+  module    String
+  recordId  String   @map("record_id")
+  details   String?
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@index([userId, createdAt])
+  @@index([module, createdAt])
+  @@map("activity_logs")
+}
+
+// ═══════════════════════════════════════════
+// MÓDULO PREOPERACIONAL
+// ═══════════════════════════════════════════
+
+model InspeccionPreoperacional {
+  id             String           @id @default(cuid())
+  vehiculoId     String           @map("vehiculo_id")
+  vehiculo       Vehiculo         @relation(fields: [vehiculoId], references: [id])
+  conductorId    String           @map("conductor_id")
+  conductor      Transportista    @relation("InspeccionesConductor", fields: [conductorId], references: [id])
+  realizadoPorId String           @map("realizado_por_id")
+  realizadoPor   User             @relation("InspeccionesRealizadas", fields: [realizadoPorId], references: [id])
+  fecha          DateTime         @db.Date
+  kilometraje    Int?
+  observaciones  String?
+  estado         EstadoInspeccion @default(APROBADA)
+  vigente        Boolean          @default(true)
+
+  rutas     Ruta[]           @relation("RutaInspeccion")
+  items     ItemInspeccion[]
+  createdAt DateTime         @default(now()) @map("created_at")
+  updatedAt DateTime         @updatedAt @map("updated_at")
+
+  @@index([vehiculoId, fecha])
+  @@index([conductorId, fecha])
+  @@index([estado, fecha])
+  @@index([vehiculoId, fecha, vigente])
+  @@map("inspecciones_preoperacionales")
+}
+
+model ItemInspeccion {
+  id           String                   @id @default(cuid())
+  inspeccionId String                   @map("inspeccion_id")
+  inspeccion   InspeccionPreoperacional @relation(fields: [inspeccionId], references: [id], onDelete: Cascade)
+  categoria    String                   @db.VarChar(30)
+  item         String                   @db.VarChar(100)
+  resultado    ResultadoInspeccion
+  esCritico    Boolean                  @default(false) @map("es_critico")
+  fotoUrl      String?                  @map("foto_url")
+  observacion  String?
+
+  @@index([inspeccionId])
+  @@map("items_inspeccion")
+}
+
+// ═══════════════════════════════════════════
+// MÓDULO INTEGRACIÓN DE PEDIDOS
+// ═══════════════════════════════════════════
+
+model IntegracionPedido {
+  id              String            @id @default(cuid())
+  numeroDocumento String            @db.VarChar(100)
+  tipoDocumento   String            @db.VarChar(10) // "OVDM" | "TSDM"
+  fecha           DateTime          @db.Date
+  estado          EstadoIntegracion @default(PENDIENTE_AREA2)
+
+  areaIniciadora   String   @db.VarChar(20) // "MUEBLES" | "GOURMET"
+  numeroCajasArea1 Int?
+  creadoPorId      String
+  creadoPor        User     @relation("integracionesCreadoras", fields: [creadoPorId], references: [id])
+  creadoAt         DateTime @default(now())
+
+  numeroCajasArea2 Int?
+  completadoPorId  String?
+  completadoPor    User?     @relation("integracionesCompletadas", fields: [completadoPorId], references: [id])
+  completadoAt     DateTime?
+
+  entregadoATransporteAt DateTime?
+  marcadoCompletadoPorId String?
+  marcadoCompletadoAt    DateTime?
+
+  observaciones String?
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  plines PlinIntegracion[]
+
+  @@index([numeroDocumento])
+  @@index([estado, createdAt])
+  @@map("integraciones_pedidos")
+}
+
+model PlinIntegracion {
+  id            String            @id @default(cuid())
+  integracionId String            @map("integracion_id")
+  integracion   IntegracionPedido @relation(fields: [integracionId], references: [id], onDelete: Cascade)
+  area          String            @db.VarChar(20) // "MUEBLES" | "GOURMET"
+  plu           String            @db.VarChar(100)
+  descripcion   String?           @db.VarChar(255)
+  unidades      Int
+  createdAt     DateTime          @default(now()) @map("created_at")
+
+  @@index([integracionId])
+  @@map("plines_integracion")
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// MODULO SOLICITUDES DE TRANSPORTE
+// ═══════════════════════════════════════════════════════════════════
+
+model SolicitudTransporte {
+  id String @id @default(cuid())
+
+  fechaSolicitud      DateTime @map("fecha_solicitud") @db.Date
+  areaSolicitante     String   @map("area_solicitante") @db.VarChar(80)
+  areaOtro            String?  @map("area_otro") @db.VarChar(120)
+  solicitanteNombre   String   @map("solicitante_nombre") @db.VarChar(255)
+  solicitanteCorreo   String   @map("solicitante_correo") @db.VarChar(255)
+  solicitanteTelefono String?  @map("solicitante_telefono") @db.VarChar(40)
+
+  tipoVenta          String?  @map("tipo_venta") @db.VarChar(40)
+  numeroPedido       String?  @map("numero_pedido") @db.VarChar(120)
+  facturaIntegracion String?  @map("factura_integracion") @db.VarChar(120)
+  cobroFlete         Boolean? @map("cobro_flete")
+  valorFlete         Decimal? @map("valor_flete") @db.Decimal(12, 2)
+  unidades           Int?
+  volumenEstimado    String?  @map("volumen_estimado") @db.VarChar(30)
+  tipoMercancia      String?  @map("tipo_mercancia") @db.VarChar(40)
+
+  ciudadOrigen      String  @map("ciudad_origen") @db.VarChar(80)
+  zonaRecogida      String? @map("zona_recogida") @db.VarChar(20)
+  direccionRecogida String? @map("direccion_recogida")
+  puntoRecogida     String? @map("punto_recogida") @db.VarChar(255)
+  puntoRecogidaOtro String? @map("punto_recogida_otro") @db.VarChar(255)
+
+  ciudadEntrega    String  @map("ciudad_entrega") @db.VarChar(80)
+  direccionEntrega String  @map("direccion_entrega")
+  zonaEntrega      String? @map("zona_entrega") @db.VarChar(20)
+
+  fechaPromesaEntrega    DateTime? @map("fecha_promesa_entrega") @db.Date
+  ventanaEntrega         String?   @map("ventana_entrega") @db.VarChar(40)
+  restriccionHoraria     Boolean?  @map("restriccion_horaria")
+  descripcionRestriccion String?   @map("descripcion_restriccion")
+
+  tipoServicio             String? @map("tipo_servicio") @db.VarChar(80)
+  tipoServicioOtro         String? @map("tipo_servicio_otro") @db.VarChar(120)
+  observacionesSolicitante String? @map("observaciones_solicitante")
+
+  estado                EstadoSolicitudTransporte @default(PENDIENTE)
+  stellaEstado          StellaEstado              @default(PENDIENTE) @map("stella_estado")
+  documentoNetSuite     String?                   @map("documento_netsuite") @db.VarChar(120)
+  transportadora        String?                   @db.VarChar(120)
+  numeroGuia            String?                   @map("numero_guia") @db.VarChar(120)
+  fechaProgramacion     DateTime?                 @map("fecha_programacion") @db.Date
+  observacionTransporte String?                   @map("observacion_transporte")
+
+  prioridad    PrioridadSolicitudTransporte? @map("prioridad")
+  semaforo     SemaforoSolicitudTransporte   @default(SIN_FECHA)
+  mesSolicitud String?                       @map("mes_solicitud") @db.VarChar(20)
+
+  motivoRechazo String?   @map("motivo_rechazo")
+  rechazadoAt   DateTime? @map("rechazado_at")
+  reenviadoAt   DateTime? @map("reenviado_at")
+
+  creadoPorId     String  @map("creado_por_id")
+  creadoPor       User    @relation("SolicitudesTransporteCreadas", fields: [creadoPorId], references: [id])
+  gestionadoPorId String? @map("gestionado_por_id")
+  gestionadoPor   User?   @relation("SolicitudesTransporteGestionadas", fields: [gestionadoPorId], references: [id])
+
+  deletedAt    DateTime? @map("deleted_at")
+  deletedById  String?   @map("deleted_by_id")
+  deleteReason String?   @map("delete_reason")
+
+  plines    PluSolicitudTransporte[]
+  historial HistorialSolicitudTransporte[]
+  createdAt DateTime                       @default(now()) @map("created_at")
+  updatedAt DateTime                       @updatedAt @map("updated_at")
+
+  @@index([estado, createdAt])
+  @@index([deletedAt])
+  @@index([semaforo, fechaPromesaEntrega])
+  @@index([prioridad, fechaPromesaEntrega])
+  @@index([creadoPorId, estado])
+  @@index([areaSolicitante, estado])
+  @@map("solicitudes_transporte")
+}
+
+model HistorialSolicitudTransporte {
+  id             String                     @id @default(cuid())
+  solicitudId    String                     @map("solicitud_id")
+  solicitud      SolicitudTransporte        @relation(fields: [solicitudId], references: [id], onDelete: Cascade)
+  estadoAnterior EstadoSolicitudTransporte? @map("estado_anterior")
+  estadoNuevo    EstadoSolicitudTransporte  @map("estado_nuevo")
+  observacion    String?
+  usuarioId      String                     @map("usuario_id")
+  usuario        User                       @relation("HistorialSolicitudTransporteUsuario", fields: [usuarioId], references: [id])
+  createdAt      DateTime                   @default(now()) @map("created_at")
+
+  @@index([solicitudId, createdAt])
+  @@index([usuarioId])
+  @@map("historial_solicitudes_transporte")
+}
+
+model PluSolicitudTransporte {
+  id          String              @id @default(cuid())
+  solicitudId String              @map("solicitud_id")
+  solicitud   SolicitudTransporte @relation(fields: [solicitudId], references: [id], onDelete: Cascade)
+  plu         String              @db.VarChar(100)
+  descripcion String              @db.VarChar(255)
+  unidades    Int
+  createdAt   DateTime            @default(now()) @map("created_at")
+
+  @@index([solicitudId])
+  @@index([plu])
+  @@map("plus_solicitud_transporte")
+}
+
+model EtiquetadoExportacion {
+  id               String    @id @default(cuid())
+  numeroCaja       String    @map("numero_caja") @db.VarChar(100)
+  plu              String    @db.VarChar(100)
+  descripcion      String    @db.VarChar(255)
+  unidadEmpaque    Int       @map("unidad_empaque")
+  fecha            DateTime  @db.Date
+  horaInicio       DateTime  @map("hora_inicio")
+  horaFinalizacion DateTime? @map("hora_finalizacion")
+  motivoCorreccion String?   @map("motivo_correccion")
+  hayReguero       Boolean   @default(false) @map("hay_reguero")
+  cantidadReguero  Int?      @map("cantidad_reguero")
+  deletedAt        DateTime? @map("deleted_at")
+
+  creadoPorId      String  @map("creado_por_id")
+  creadoPor        User    @relation("ExportacionesEtiquetadoCreadas", fields: [creadoPorId], references: [id])
+  actualizadoPorId String? @map("actualizado_por_id")
+  actualizadoPor   User?   @relation("ExportacionesEtiquetadoActualizadas", fields: [actualizadoPorId], references: [id])
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([creadoPorId, deletedAt])
+  @@index([fecha])
+  @@index([plu])
+  @@index([numeroCaja])
+  @@index([horaFinalizacion])
+  @@map("etiquetado_exportaciones")
+}
+
+model EtiquetadoExportacionMexico {
+  id               String    @id @default(cuid())
+  numeroCaja       String    @map("numero_caja") @db.VarChar(100)
+  plu              String    @db.VarChar(100)
+  descripcion      String    @db.VarChar(255)
+  unidadEmpaque    Int       @map("unidad_empaque")
+  fecha            DateTime  @db.Date
+  horaInicio       DateTime  @map("hora_inicio")
+  horaFinalizacion DateTime? @map("hora_finalizacion")
+  motivoCorreccion String?   @map("motivo_correccion")
+  hayReguero       Boolean   @default(false) @map("hay_reguero")
+  cantidadReguero  Int?      @map("cantidad_reguero")
+  deletedAt        DateTime? @map("deleted_at")
+
+  creadoPorId      String  @map("creado_por_id")
+  creadoPor        User    @relation("ExportacionesMexicoEtiquetadoCreadas", fields: [creadoPorId], references: [id])
+  actualizadoPorId String? @map("actualizado_por_id")
+  actualizadoPor   User?   @relation("ExportacionesMexicoEtiquetadoActualizadas", fields: [actualizadoPorId], references: [id])
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([creadoPorId, deletedAt])
+  @@index([fecha])
+  @@index([plu])
+  @@index([numeroCaja])
+  @@index([horaFinalizacion])
+  @@map("etiquetado_exportaciones_mexico")
+}
+
+model EtiquetadoExportacionEeuu {
+  id               String    @id @default(cuid())
+  numeroCaja       String    @map("numero_caja") @db.VarChar(100)
+  plu              String    @db.VarChar(100)
+  descripcion      String    @db.VarChar(255)
+  unidadEmpaque    Int       @map("unidad_empaque")
+  fecha            DateTime  @db.Date
+  horaInicio       DateTime  @map("hora_inicio")
+  horaFinalizacion DateTime? @map("hora_finalizacion")
+  motivoCorreccion String?   @map("motivo_correccion")
+  hayReguero       Boolean   @default(false) @map("hay_reguero")
+  cantidadReguero  Int?      @map("cantidad_reguero")
+  deletedAt        DateTime? @map("deleted_at")
+
+  creadoPorId      String  @map("creado_por_id")
+  creadoPor        User    @relation("ExportacionesEeuuEtiquetadoCreadas", fields: [creadoPorId], references: [id])
+  actualizadoPorId String? @map("actualizado_por_id")
+  actualizadoPor   User?   @relation("ExportacionesEeuuEtiquetadoActualizadas", fields: [actualizadoPorId], references: [id])
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([creadoPorId, deletedAt])
+  @@index([fecha])
+  @@index([plu])
+  @@index([numeroCaja])
+  @@index([horaFinalizacion])
+  @@map("etiquetado_exportaciones_eeuu")
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// MÓDULO CARGUE GOURMET (diseño G1, aún no expuesto en UI/endpoints)
+// ═══════════════════════════════════════════════════════════════════
+
+enum EstadoPedidoGourmet {
+  BORRADOR
+  UBICACION_ASIGNADA
+  ENVIADO_A_TRANSPORTE
+  EN_CARGUE
+  CARGUE_COMPLETO
+  CARGUE_COMPLETO_MANUAL
+  CON_NOVEDAD
+  CANCELADO
+}
+
+enum TipoCierreCargue {
+  NORMAL
+  MANUAL
+}
+
+enum ResultadoEscaneoGourmet {
+  VALIDO
+  DUPLICADO
+  CAJA_AJENA
+  FORMATO_INVALIDO
+  EXCEDE_CANTIDAD
+}
+
+enum TipoNovedadGourmet {
+  CAJA_FALTANTE
+  CAJA_DUPLICADA
+  CAJA_AJENA
+  CIERRE_MANUAL
+  DIFERENCIA_CANTIDAD
+  OTRA
+}
+
+enum EstadoNovedadGourmet {
+  ABIERTA
+  RESUELTA
+}
+
+model MaestroTiendaGourmet {
+  id        String   @id @default(cuid())
+  codigo    String   @unique @db.VarChar(50)
+  tienda    String   @db.VarChar(255)
+  ciudad    String   @db.VarChar(80)
+  activo    Boolean  @default(true)
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("maestro_tiendas_gourmet")
+}
+
+model GourmetPedido {
+  id               String              @id @default(cuid())
+  orden            String              @db.VarChar(100)
+  tipoOrden        String              @map("tipo_orden") @db.VarChar(10) // "OVDM" | "TSDM"
+  codigoTienda     String              @map("codigo_tienda") @db.VarChar(50)
+  nombreTienda     String              @map("nombre_tienda") @db.VarChar(255)
+  ciudadDestino    String              @map("ciudad_destino") @db.VarChar(80)
+  cajasEsperadas   Int                 @map("cajas_esperadas")
+  estibasEsperadas Int                 @map("estibas_esperadas")
+  estado           EstadoPedidoGourmet @default(BORRADOR)
+
+  creadoPorId String   @map("creado_por_id")
+  creadoPor   User     @relation("GourmetPedidosCreados", fields: [creadoPorId], references: [id])
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  // Transición: ubicación asignada
+  ubicacionAsignadaAt    DateTime? @map("ubicacion_asignada_at")
+  ubicacionAsignadaPorId String?   @map("ubicacion_asignada_por_id")
+
+  // Transición: enviado a Transporte
+  enviadoTransporteAt    DateTime? @map("enviado_transporte_at")
+  enviadoTransportePorId String?   @map("enviado_transporte_por_id")
+
+  // Transición: cargue iniciado
+  cargueIniciadoAt    DateTime? @map("cargue_iniciado_at")
+  cargueIniciadoPorId String?   @map("cargue_iniciado_por_id")
+
+  // Transición: cargue completado (normal o manual)
+  cargueCompletadoAt    DateTime? @map("cargue_completado_at")
+  cargueCompletadoPorId String?   @map("cargue_completado_por_id")
+
+  // Cierre manual de contingencia
+  esCierreManual          Boolean @default(false) @map("es_cierre_manual")
+  cantidadContadaManual   Int?    @map("cantidad_contada_manual")
+  motivoCierreManual      String? @map("motivo_cierre_manual")
+  observacionCierreManual String? @map("observacion_cierre_manual")
+
+  estibas   GourmetPedidoEstiba[]
+  cajas     GourmetPedidoCaja[]
+  cargues   GourmetCargue[]
+  novedades GourmetCargueNovedad[]
+
+  @@index([orden])
+  @@index([tipoOrden])
+  @@index([codigoTienda])
+  @@index([ciudadDestino])
+  @@index([estado, createdAt])
+  @@index([createdAt])
+  @@index([enviadoTransporteAt])
+  @@index([cargueIniciadoAt])
+  @@map("gourmet_pedidos")
+}
+
+model GourmetPedidoEstiba {
+  id          String        @id @default(cuid())
+  pedidoId    String        @map("pedido_id")
+  pedido      GourmetPedido @relation(fields: [pedidoId], references: [id], onDelete: Cascade)
+  secuencia   Int
+  ubicacion   String        @db.VarChar(120)
+  observacion String?
+  createdAt   DateTime      @default(now()) @map("created_at")
+
+  @@unique([pedidoId, secuencia])
+  @@index([pedidoId])
+  @@map("gourmet_pedido_estibas")
+}
+
+model GourmetPedidoCaja {
+  id                 String        @id @default(cuid())
+  pedidoId           String        @map("pedido_id")
+  pedido             GourmetPedido @relation(fields: [pedidoId], references: [id], onDelete: Cascade)
+  codigoCaja         String?       @map("codigo_caja") @db.VarChar(150)
+  numeroSecuencia    Int?          @map("numero_secuencia")
+  generadaPorEscaneo Boolean       @default(false) @map("generada_por_escaneo")
+  estado             String?       @db.VarChar(20)
+  createdAt          DateTime      @default(now()) @map("created_at")
+  updatedAt          DateTime      @updatedAt @map("updated_at")
+
+  @@index([pedidoId])
+  @@index([codigoCaja])
+  @@index([pedidoId, numeroSecuencia])
+  @@map("gourmet_pedido_cajas")
+}
+
+model GourmetCargue {
+  id       String        @id @default(cuid())
+  pedidoId String        @map("pedido_id")
+  pedido   GourmetPedido @relation(fields: [pedidoId], references: [id], onDelete: Cascade)
+
+  iniciadoPorId   String    @map("iniciado_por_id")
+  iniciadoAt      DateTime  @default(now()) @map("iniciado_at")
+  finalizadoPorId String?   @map("finalizado_por_id")
+  finalizadoAt    DateTime? @map("finalizado_at")
+
+  tipoCierre            TipoCierreCargue? @map("tipo_cierre")
+  cantidadEsperada      Int               @map("cantidad_esperada")
+  cantidadEscaneada     Int               @default(0) @map("cantidad_escaneada")
+  cantidadContadaManual Int?              @map("cantidad_contada_manual")
+  motivoCierreManual    String?           @map("motivo_cierre_manual")
+  observacion           String?
+
+  estado EstadoPedidoGourmet @default(EN_CARGUE)
+
+  escaneos  GourmetCargueEscaneo[]
+  novedades GourmetCargueNovedad[]
+
+  @@index([pedidoId, iniciadoAt])
+  @@index([estado])
+  @@map("gourmet_cargues")
+}
+
+model GourmetCargueEscaneo {
+  id              String                  @id @default(cuid())
+  cargueId        String                  @map("cargue_id")
+  cargue          GourmetCargue           @relation(fields: [cargueId], references: [id], onDelete: Cascade)
+  pedidoId        String                  @map("pedido_id")
+  codigoEscaneado String                  @map("codigo_escaneado") @db.VarChar(150)
+  resultado       ResultadoEscaneoGourmet
+  escaneadoPorId  String                  @map("escaneado_por_id")
+  observacion     String?
+  createdAt       DateTime                @default(now()) @map("created_at")
+
+  @@index([cargueId])
+  @@index([cargueId, codigoEscaneado])
+  @@index([codigoEscaneado])
+  @@index([pedidoId])
+  @@map("gourmet_cargue_escaneos")
+}
+
+model GourmetCargueNovedad {
+  id              String               @id @default(cuid())
+  cargueId        String               @map("cargue_id")
+  cargue          GourmetCargue        @relation(fields: [cargueId], references: [id], onDelete: Cascade)
+  pedidoId        String               @map("pedido_id")
+  pedido          GourmetPedido        @relation(fields: [pedidoId], references: [id], onDelete: Cascade)
+  tipo            TipoNovedadGourmet
+  descripcion     String
+  estado          EstadoNovedadGourmet @default(ABIERTA)
+  registradaPorId String               @map("registrada_por_id")
+  resueltaPorId   String?              @map("resuelta_por_id")
+  resueltaAt      DateTime?            @map("resuelta_at")
+  createdAt       DateTime             @default(now()) @map("created_at")
+
+  @@index([cargueId])
+  @@index([pedidoId])
+  @@index([estado])
+  @@map("gourmet_cargue_novedades")
+}
