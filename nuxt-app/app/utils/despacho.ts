@@ -1,0 +1,125 @@
+export type EstadoDespacho =
+  | 'CREADO_TIENDA'
+  | 'RECHAZADO'
+  | 'RECOGIDO_TIENDA'
+  | 'ENTREGADO_CEDI'
+  | 'ENVIADO_CLIENTE'
+  | 'CON_NOVEDAD'
+
+export interface PlinDespacho {
+  id: string
+  despachoId: string
+  plu: string
+  descripcion: string | null
+  unidades: number
+}
+
+export interface GuardadoPendienteInfo {
+  id: string
+  estado: string
+  asignadoAId: string
+  asignadoANombre: string | null
+  guardadoClientId: string | null
+}
+
+export interface Despacho {
+  id: string
+  centroCostos: string
+  numeroDocumento: string
+  consecutivo: string
+  clienteNombre: string
+  clienteDocumento: string | null
+  clienteTelefono: string | null
+  estado: EstadoDespacho
+  fechaCreacion: string
+  fechaEntregaComprometida: string | null
+  numeroCajas: number | null
+  netsuiteId: string | null
+  recibidoAt: string | null
+  entregadoCediAt: string | null
+  despachadoAt: string | null
+  novedadAt: string | null
+  rechazadoAt: string | null
+  motivoRechazo: string | null
+  notaEntrega: string | null
+  guardadoPendiente: GuardadoPendienteInfo | null
+  direccionEntrega: string | null
+  barrio: string | null
+  ciudad: string | null
+  departamento: string | null
+  contactoEntrega: string | null
+  telefonoEntrega: string | null
+  novedad: string | null
+  creadoPorId: string
+  creadoPorNombre?: string
+  createdAt: string
+  updatedAt: string
+  plines: PlinDespacho[]
+}
+
+export const ESTADO_LABEL: Record<EstadoDespacho, string> = {
+  CREADO_TIENDA: 'Pendiente recogida',
+  RECHAZADO: 'Rechazado',
+  RECOGIDO_TIENDA: 'Recogido en CEDI',
+  ENTREGADO_CEDI: 'Entregado en CEDI',
+  ENVIADO_CLIENTE: 'Enviado al cliente',
+  CON_NOVEDAD: 'Con novedad',
+}
+
+export const ESTADO_TONE: Record<EstadoDespacho, string> = {
+  CREADO_TIENDA: 'var(--u-critico)',
+  RECHAZADO: 'var(--u-critico)',
+  RECOGIDO_TIENDA: 'var(--u-aviso)',
+  ENTREGADO_CEDI: 'var(--info)',
+  ENVIADO_CLIENTE: 'var(--u-ok)',
+  CON_NOVEDAD: 'var(--u-critico)',
+}
+
+export const FLUJO_ESTADOS: EstadoDespacho[] = ['CREADO_TIENDA', 'RECOGIDO_TIENDA', 'ENTREGADO_CEDI', 'ENVIADO_CLIENTE']
+
+export function pasoEnFlujo(estado: EstadoDespacho): number {
+  const idx = FLUJO_ESTADOS.indexOf(estado)
+  if (idx >= 0) return idx
+  return -1
+}
+
+// Espejo de nuxt-app/server/utils/tiendaFlow.ts — solo para gatear botones en
+// la UI (el servidor siempre revalida; ver requireCan/PUT /api/tienda/[id]).
+const ROLES_POR_TRANSICION: Record<string, string[]> = {
+  'CREADO_TIENDA-RECOGIDO_TIENDA': ['SUPERVISOR_TRANSPORTE', 'GERENTE', 'ADMIN'],
+  'CREADO_TIENDA-RECHAZADO': ['SUPERVISOR_TRANSPORTE', 'GERENTE', 'ADMIN'],
+  'RECHAZADO-CREADO_TIENDA': ['TIENDA', 'SUPERVISOR_TIENDA', 'SUPERVISOR_TRANSPORTE', 'GERENTE', 'ADMIN'],
+  'RECOGIDO_TIENDA-ENTREGADO_CEDI': ['SUPERVISOR_TRANSPORTE', 'GERENTE', 'ADMIN'],
+  'ENTREGADO_CEDI-ENVIADO_CLIENTE': ['SUPERVISOR_TRANSPORTE', 'GERENTE', 'ADMIN'],
+}
+export function rolPuedeTransicionar(role: string, origen: EstadoDespacho, destino: EstadoDespacho): boolean {
+  if (destino === 'CON_NOVEDAD') return ['SUPERVISOR_TRANSPORTE', 'GERENTE', 'ADMIN'].includes(role)
+  return ROLES_POR_TRANSICION[`${origen}-${destino}`]?.includes(role) ?? false
+}
+export function puedeAsignarGuardado(role: string): boolean {
+  return ['SUPERVISOR_TRANSPORTE', 'GERENTE', 'ADMIN'].includes(role)
+}
+export function puedeRevertir(role: string): boolean {
+  return ['ADMIN', 'GERENTE'].includes(role)
+}
+
+export function todayISO(): string {
+  return new Date().toISOString().slice(0, 10)
+}
+
+export function fmtFecha(iso: string | null): string {
+  if (!iso) return '—'
+  const [y, m, d] = iso.slice(0, 10).split('-')
+  return `${d}/${m}/${y}`
+}
+
+export function horasDesde(iso: string): number {
+  return Math.floor((Date.now() - new Date(iso).getTime()) / 3_600_000)
+}
+
+export const CIUDAD_OPTIONS = [
+  'Bogota D.C.', 'Medellin', 'Cali', 'Barranquilla', 'Cartagena', 'Bucaramanga',
+  'Pereira', 'Manizales', 'Armenia', 'Cucuta', 'Ibague', 'Santa Marta',
+  'Villavicencio', 'Pasto', 'Monteria', 'Sincelejo', 'Valledupar', 'Neiva',
+  'Tunja', 'Popayan', 'Riohacha',
+]

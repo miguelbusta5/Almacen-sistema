@@ -52,3 +52,11 @@ export async function requireCan(event: H3Event, action: Action): Promise<Sessio
   }
   return user
 }
+
+export async function requireRole(event: H3Event, roles: readonly string[]): Promise<SessionUser> {
+  const user = await requireAuth(event)
+  if (!roles.includes(user.role)) {
+    throw createError({ statusCode: 403, statusMessage: 'No tienes permisos para realizar esta acción' })
+  }
+  return user
+}
