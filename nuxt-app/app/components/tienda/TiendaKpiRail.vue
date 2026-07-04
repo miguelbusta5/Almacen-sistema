@@ -15,11 +15,11 @@ const k = computed(() => {
 })
 
 const cards = computed(() => [
-  { key: 'total', label: 'Total facturas', value: k.value.total, tone: 'var(--ink)', icon: Boxes, filter: '' },
-  { key: 'pend', label: 'Pendientes recogida', value: k.value.pendRecogida, tone: 'var(--u-critico)', icon: Clock, filter: 'CREADO_TIENDA' },
-  { key: 'transito', label: 'En tránsito CEDI', value: k.value.enTransito, tone: 'var(--u-aviso)', icon: Truck, filter: '' },
-  { key: 'completados', label: 'Enviadas al cliente', value: k.value.completados, tone: 'var(--u-ok)', icon: CheckCircle2, filter: 'ENVIADO_CLIENTE' },
-  { key: 'atencion', label: 'Requieren atención', value: k.value.atencion, tone: k.value.atencion ? 'var(--u-critico)' : 'var(--u-ok)', icon: TriangleAlert, filter: 'CON_NOVEDAD' },
+  { key: 'total', label: 'Total facturas', value: k.value.total, tone: 'var(--ink)', icon: Boxes, filter: '', hint: 'registradas' },
+  { key: 'pend', label: 'Pendientes recogida', value: k.value.pendRecogida, tone: 'var(--u-critico)', icon: Clock, filter: 'CREADO_TIENDA', hint: 'por recoger' },
+  { key: 'transito', label: 'En tránsito CEDI', value: k.value.enTransito, tone: 'var(--u-aviso)', icon: Truck, filter: '', hint: 'en camino' },
+  { key: 'completados', label: 'Enviadas al cliente', value: k.value.completados, tone: 'var(--u-ok)', icon: CheckCircle2, filter: 'ENVIADO_CLIENTE', hint: 'completadas' },
+  { key: 'atencion', label: 'Requieren atención', value: k.value.atencion, tone: k.value.atencion ? 'var(--u-critico)' : 'var(--u-ok)', icon: TriangleAlert, filter: 'CON_NOVEDAD', hint: 'requieren acción' },
 ])
 </script>
 
@@ -29,6 +29,7 @@ const cards = computed(() => [
       <span class="kpi-bar" />
       <div class="kpi-top">
         <span class="kpi-ic"><component :is="c.icon" :size="16" /></span>
+        <span class="kpi-hint">{{ c.hint }}</span>
       </div>
       <span class="kpi-value tnum"><CountUp :value="c.value" /></span>
       <span class="kpi-label">{{ c.label }}</span>
@@ -53,6 +54,7 @@ const cards = computed(() => [
 .kpi-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
 .kpi-ic { width: 30px; height: 30px; border-radius: 9px; display: grid; place-items: center; color: var(--c); background: color-mix(in srgb, var(--c) 12%, transparent); transition: transform .2s cubic-bezier(.34,1.56,.64,1); }
 .kpi:hover .kpi-ic { transform: scale(1.1) rotate(-4deg); }
+.kpi-hint { font-size: 10px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; color: var(--faint); }
 .kpi-value { display: block; font-family: var(--display); font-size: 28px; font-weight: 800; letter-spacing: -.035em; color: var(--c); line-height: 1.05; }
 .kpi-label { display: block; font-size: 12px; font-weight: 600; color: var(--muted); margin-top: 3px; }
 .kpi-bar { position: absolute; left: 0; top: 0; bottom: 0; width: 3px; background: linear-gradient(var(--c), color-mix(in srgb, var(--c) 55%, transparent)); }
