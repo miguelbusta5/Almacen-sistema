@@ -57,11 +57,13 @@ export interface Despacho {
   plines: PlinDespacho[]
 }
 
+// Flujo simplificado a 3 estados: Pendiente recogida → En CEDI → Enviado al
+// cliente. RECOGIDO_TIENDA es legado y se muestra igual que "En CEDI".
 export const ESTADO_LABEL: Record<EstadoDespacho, string> = {
   CREADO_TIENDA: 'Pendiente recogida',
   RECHAZADO: 'Rechazado',
-  RECOGIDO_TIENDA: 'Recogido en CEDI',
-  ENTREGADO_CEDI: 'Entregado en CEDI',
+  RECOGIDO_TIENDA: 'En CEDI',
+  ENTREGADO_CEDI: 'En CEDI',
   ENVIADO_CLIENTE: 'Enviado al cliente',
   CON_NOVEDAD: 'Con novedad',
 }
@@ -69,15 +71,17 @@ export const ESTADO_LABEL: Record<EstadoDespacho, string> = {
 export const ESTADO_TONE: Record<EstadoDespacho, string> = {
   CREADO_TIENDA: 'var(--u-critico)',
   RECHAZADO: 'var(--u-critico)',
-  RECOGIDO_TIENDA: 'var(--u-aviso)',
+  RECOGIDO_TIENDA: 'var(--info)',
   ENTREGADO_CEDI: 'var(--info)',
   ENVIADO_CLIENTE: 'var(--u-ok)',
   CON_NOVEDAD: 'var(--u-critico)',
 }
 
-export const FLUJO_ESTADOS: EstadoDespacho[] = ['CREADO_TIENDA', 'RECOGIDO_TIENDA', 'ENTREGADO_CEDI', 'ENVIADO_CLIENTE']
+export const FLUJO_ESTADOS: EstadoDespacho[] = ['CREADO_TIENDA', 'ENTREGADO_CEDI', 'ENVIADO_CLIENTE']
 
 export function pasoEnFlujo(estado: EstadoDespacho): number {
+  // RECOGIDO_TIENDA (legado) ocupa el mismo paso que ENTREGADO_CEDI ("En CEDI").
+  if (estado === 'RECOGIDO_TIENDA') return FLUJO_ESTADOS.indexOf('ENTREGADO_CEDI')
   const idx = FLUJO_ESTADOS.indexOf(estado)
   if (idx >= 0) return idx
   return -1
@@ -86,11 +90,13 @@ export function pasoEnFlujo(estado: EstadoDespacho): number {
 // Espejo de nuxt-app/server/utils/tiendaFlow.ts — solo para gatear botones en
 // la UI (el servidor siempre revalida; ver requireCan/PUT /api/tienda/[id]).
 const ROLES_POR_TRANSICION: Record<string, string[]> = {
-  'CREADO_TIENDA-RECOGIDO_TIENDA': ['SUPERVISOR_TRANSPORTE', 'GERENTE', 'ADMIN'],
+  'CREADO_TIENDA-ENTREGADO_CEDI': ['SUPERVISOR_TRANSPORTE', 'GERENTE', 'ADMIN'],
   'CREADO_TIENDA-RECHAZADO': ['SUPERVISOR_TRANSPORTE', 'GERENTE', 'ADMIN'],
   'RECHAZADO-CREADO_TIENDA': ['TIENDA', 'SUPERVISOR_TIENDA', 'SUPERVISOR_TRANSPORTE', 'GERENTE', 'ADMIN'],
-  'RECOGIDO_TIENDA-ENTREGADO_CEDI': ['SUPERVISOR_TRANSPORTE', 'GERENTE', 'ADMIN'],
   'ENTREGADO_CEDI-ENVIADO_CLIENTE': ['SUPERVISOR_TRANSPORTE', 'GERENTE', 'ADMIN'],
+  // Legado
+  'RECOGIDO_TIENDA-ENTREGADO_CEDI': ['SUPERVISOR_TRANSPORTE', 'GERENTE', 'ADMIN'],
+  'RECOGIDO_TIENDA-ENVIADO_CLIENTE': ['SUPERVISOR_TRANSPORTE', 'GERENTE', 'ADMIN'],
 }
 export function rolPuedeTransicionar(role: string, origen: EstadoDespacho, destino: EstadoDespacho): boolean {
   if (destino === 'CON_NOVEDAD') return ['SUPERVISOR_TRANSPORTE', 'GERENTE', 'ADMIN'].includes(role)

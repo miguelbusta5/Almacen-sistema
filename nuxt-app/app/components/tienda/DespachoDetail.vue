@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-import { ArrowLeft, Pencil, Trash2, Truck, PackageCheck, Send, TriangleAlert, XCircle, RotateCcw, UserPlus, Link2 } from '@lucide/vue'
+import { ArrowLeft, Pencil, Trash2, PackageCheck, Send, TriangleAlert, XCircle, RotateCcw, UserPlus, Link2 } from '@lucide/vue'
 import {
   ESTADO_LABEL, ESTADO_TONE, FLUJO_ESTADOS, pasoEnFlujo, fmtFecha,
   rolPuedeTransicionar, puedeAsignarGuardado, puedeRevertir, type Despacho,
@@ -23,6 +23,8 @@ const emit = defineEmits<{
 const paso = computed(() => pasoEnFlujo(props.d.estado))
 const esRechazado = computed(() => props.d.estado === 'RECHAZADO')
 const esNovedad = computed(() => props.d.estado === 'CON_NOVEDAD')
+// "En CEDI" = estado canónico ENTREGADO_CEDI o el legado RECOGIDO_TIENDA.
+const enCedi = computed(() => props.d.estado === 'ENTREGADO_CEDI' || props.d.estado === 'RECOGIDO_TIENDA')
 
 // Fecha del evento de la rama alternativa (rechazo o novedad).
 const sevFecha = computed(() => {
@@ -69,22 +71,18 @@ const detalle = computed(() => [
           <Spinner v-if="enCurso('CREADO_TIENDA')" /><Send v-else :size="14" />
           {{ enCurso('CREADO_TIENDA') ? 'Reenviando…' : 'Reenviar' }}
         </button>
-        <button v-if="d.estado === 'CREADO_TIENDA' && puede('RECOGIDO_TIENDA')" class="btn btn-primary btn-sm" :disabled="!!busy" @click="emit('transicion', 'RECOGIDO_TIENDA')">
-          <Spinner v-if="enCurso('RECOGIDO_TIENDA')" /><Truck v-else :size="14" />
-          {{ enCurso('RECOGIDO_TIENDA') ? 'Guardando…' : 'Recoger en CEDI' }}
+        <button v-if="d.estado === 'CREADO_TIENDA' && puede('ENTREGADO_CEDI')" class="btn btn-primary btn-sm" :disabled="!!busy" @click="emit('transicion', 'ENTREGADO_CEDI')">
+          <Spinner v-if="enCurso('ENTREGADO_CEDI')" /><PackageCheck v-else :size="14" />
+          {{ enCurso('ENTREGADO_CEDI') ? 'Guardando…' : 'Marcar en CEDI' }}
         </button>
         <button v-if="d.estado === 'CREADO_TIENDA' && puede('RECHAZADO')" class="btn btn-sm rej" :disabled="!!busy" @click="emit('rechazar')">
           <XCircle :size="14" /> Rechazar
         </button>
-        <button v-if="d.estado === 'RECOGIDO_TIENDA' && puede('ENTREGADO_CEDI')" class="btn btn-primary btn-sm" :disabled="!!busy" @click="emit('transicion', 'ENTREGADO_CEDI')">
-          <Spinner v-if="enCurso('ENTREGADO_CEDI')" /><PackageCheck v-else :size="14" />
-          {{ enCurso('ENTREGADO_CEDI') ? 'Guardando…' : 'Entregar en CEDI' }}
-        </button>
-        <button v-if="d.estado === 'ENTREGADO_CEDI' && puede('ENVIADO_CLIENTE')" class="btn btn-primary btn-sm" :disabled="!!busy" @click="emit('transicion', 'ENVIADO_CLIENTE')">
+        <button v-if="enCedi && puede('ENVIADO_CLIENTE')" class="btn btn-primary btn-sm" :disabled="!!busy" @click="emit('transicion', 'ENVIADO_CLIENTE')">
           <Spinner v-if="enCurso('ENVIADO_CLIENTE')" /><Send v-else :size="14" />
           {{ enCurso('ENVIADO_CLIENTE') ? 'Enviando…' : 'Enviar al cliente' }}
         </button>
-        <button v-if="d.estado === 'ENTREGADO_CEDI' && puedeAsignarGuardado(role) && !d.guardadoPendiente" class="btn btn-sm" :disabled="!!busy" @click="emit('asignarGuardado')">
+        <button v-if="enCedi && puedeAsignarGuardado(role) && !d.guardadoPendiente" class="btn btn-sm" :disabled="!!busy" @click="emit('asignarGuardado')">
           <UserPlus :size="14" /> Asignar guardado
         </button>
         <button v-if="!esNovedad && d.estado !== 'ENVIADO_CLIENTE' && rolPuedeTransicionar(role, d.estado, 'CON_NOVEDAD')" class="btn btn-sm nov" :disabled="!!busy" @click="emit('novedad')">

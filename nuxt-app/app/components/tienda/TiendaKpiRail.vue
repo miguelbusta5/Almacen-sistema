@@ -17,7 +17,7 @@ const k = computed(() => {
 const cards = computed(() => [
   { key: 'total', label: 'Total facturas', value: k.value.total, tone: 'var(--ink)', icon: Boxes, filter: '', hint: 'registradas' },
   { key: 'pend', label: 'Pendientes recogida', value: k.value.pendRecogida, tone: 'var(--u-critico)', icon: Clock, filter: 'CREADO_TIENDA', hint: 'por recoger' },
-  { key: 'transito', label: 'En tránsito CEDI', value: k.value.enTransito, tone: 'var(--u-aviso)', icon: Truck, filter: '', hint: 'en camino' },
+  { key: 'transito', label: 'En CEDI', value: k.value.enTransito, tone: 'var(--info)', icon: Truck, filter: 'ENTREGADO_CEDI', hint: 'en el CEDI' },
   { key: 'completados', label: 'Enviadas al cliente', value: k.value.completados, tone: 'var(--u-ok)', icon: CheckCircle2, filter: 'ENVIADO_CLIENTE', hint: 'completadas' },
   { key: 'atencion', label: 'Requieren atención', value: k.value.atencion, tone: k.value.atencion ? 'var(--u-critico)' : 'var(--u-ok)', icon: TriangleAlert, filter: 'CON_NOVEDAD', hint: 'requieren acción' },
 ])
