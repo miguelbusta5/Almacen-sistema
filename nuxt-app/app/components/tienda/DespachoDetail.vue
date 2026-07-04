@@ -24,6 +24,13 @@ const paso = computed(() => pasoEnFlujo(props.d.estado))
 const esRechazado = computed(() => props.d.estado === 'RECHAZADO')
 const esNovedad = computed(() => props.d.estado === 'CON_NOVEDAD')
 
+// Fecha del evento de la rama alternativa (rechazo o novedad).
+const sevFecha = computed(() => {
+  const iso = esRechazado.value ? props.d.rechazadoAt : esNovedad.value ? props.d.novedadAt : null
+  if (!iso) return null
+  return new Date(iso).toLocaleDateString('es-CO', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })
+})
+
 function puede(destino: string) { return rolPuedeTransicionar(props.role, props.d.estado, destino as any) }
 // Spinner en el botón de transición que está en curso (busy = 'transicion:DESTINO').
 function enCurso(destino: string) { return props.busy === `transicion:${destino}` }
@@ -101,10 +108,23 @@ const detalle = computed(() => [
               <span class="flabel-step">{{ ESTADO_LABEL[e] }}</span>
             </div>
           </div>
-          <div v-else class="flujo-alt">
-            <Badge :label="ESTADO_LABEL[d.estado]" :tone="ESTADO_TONE[d.estado]" solid />
-            <span v-if="esRechazado && d.motivoRechazo" class="fnota">{{ d.motivoRechazo }}</span>
-            <span v-if="esNovedad && d.novedad" class="fnota">{{ d.novedad }}</span>
+          <!-- Rama alternativa (rechazado / con novedad): tarjeta de severidad
+               con la rampa de urgencia, en vez de badge + texto gris. -->
+          <div v-else class="sev" :style="{ '--c': ESTADO_TONE[d.estado] }">
+            <span class="sev-ic">
+              <XCircle v-if="esRechazado" :size="18" />
+              <TriangleAlert v-else :size="18" />
+            </span>
+            <div class="sev-body">
+              <div class="sev-top">
+                <span class="sev-title">{{ ESTADO_LABEL[d.estado] }}</span>
+                <span v-if="sevFecha" class="sev-date mono">{{ sevFecha }}</span>
+              </div>
+              <p v-if="esRechazado && d.motivoRechazo" class="sev-msg">{{ d.motivoRechazo }}</p>
+              <p v-else-if="esNovedad && d.novedad" class="sev-msg">{{ d.novedad }}</p>
+              <p v-else class="sev-msg faint">Sin detalle registrado.</p>
+              <span class="sev-hint">{{ esRechazado ? 'La tienda puede corregir y reenviar la factura.' : 'Resolver la novedad para retomar el flujo.' }}</span>
+            </div>
           </div>
         </section>
 
@@ -203,8 +223,28 @@ const detalle = computed(() => [
 .fstep.active .fdot { background: var(--brand); box-shadow: 0 0 0 4px color-mix(in srgb, var(--brand) 22%, transparent); }
 .flabel-step { font-size: 10.5px; font-weight: 600; color: var(--muted); text-align: center; }
 .fstep.active .flabel-step { color: var(--ink); font-weight: 700; }
-.flujo-alt { display: flex; flex-direction: column; align-items: flex-start; gap: 8px; }
-.fnota { font-size: 13px; color: var(--muted); }
+/* Tarjeta de severidad (rechazado / con novedad) */
+.sev {
+  display: flex; gap: 13px; align-items: flex-start;
+  padding: 14px 16px; border-radius: var(--r-sm);
+  background: color-mix(in srgb, var(--c) 8%, var(--surface));
+  border: 1px solid color-mix(in srgb, var(--c) 28%, transparent);
+  border-left: 3px solid var(--c);
+  animation: sevEnter .4s cubic-bezier(.16,1,.3,1) both;
+}
+@keyframes sevEnter { from { opacity: 0; transform: translateX(-8px); } }
+.sev-ic {
+  width: 36px; height: 36px; border-radius: 10px; flex-shrink: 0;
+  display: grid; place-items: center; color: var(--c);
+  background: color-mix(in srgb, var(--c) 14%, transparent);
+}
+.sev-body { flex: 1; min-width: 0; }
+.sev-top { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
+.sev-title { font-size: 14px; font-weight: 800; color: color-mix(in srgb, var(--c) 75%, var(--ink)); }
+.sev-date { font-size: 10.5px; color: var(--faint); flex-shrink: 0; }
+.sev-msg { font-size: 13px; color: var(--ink-2); line-height: 1.5; margin: 5px 0 0; }
+.sev-msg.faint { color: var(--faint); }
+.sev-hint { display: block; font-size: 11.5px; color: var(--muted); margin-top: 7px; }
 
 .plu-tbl { width: 100%; border-collapse: collapse; font-size: 12.5px; }
 .plu-tbl th { text-align: left; padding: 6px 8px; color: var(--faint); font-weight: 700; text-transform: uppercase; font-size: 10.5px; border-bottom: 1px solid var(--border); }
