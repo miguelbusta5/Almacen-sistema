@@ -3,7 +3,7 @@ import { ref, computed } from 'vue'
 import { Store, MapPin, ChevronUp, ChevronDown, ChevronsUpDown } from '@lucide/vue'
 import { ESTADO_LABEL, ESTADO_TONE, fmtFecha, horasDesde, type Despacho } from '~/utils/despacho'
 
-const props = defineProps<{ items: Despacho[]; hasFilters: boolean }>()
+const props = defineProps<{ items: Despacho[]; hasFilters: boolean; density?: 'comodo' | 'compacto' }>()
 const emit = defineEmits<{ (e: 'open', d: Despacho): void; (e: 'clear'): void; (e: 'new'): void }>()
 
 type SortKey = 'estado' | 'documento' | 'cliente' | 'ciudad' | 'creacion'
@@ -50,7 +50,7 @@ function urgente(d: Despacho) {
 </script>
 
 <template>
-  <div class="panel card">
+  <div class="panel card" :class="`d-${density ?? 'comodo'}`">
     <table class="tbl">
       <thead>
         <tr>
@@ -126,6 +126,9 @@ function urgente(d: Despacho) {
 .row:last-child td { border-bottom: none; }
 .row:hover td { background: color-mix(in srgb, var(--rail) 5%, var(--surface)); }
 .row:hover td:first-child::before { top: 4px; bottom: 4px; box-shadow: 0 0 10px color-mix(in srgb, var(--rail) 45%, transparent); }
+/* Densidad */
+.d-compacto .row td { padding: 8px 16px; }
+.d-compacto .sub { margin-top: 1px; }
 
 .doc { font-size: 13px; font-weight: 700; color: var(--ink); }
 .cli { font-size: 13px; color: var(--ink-2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 100%; }

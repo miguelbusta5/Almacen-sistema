@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, computed, watch, onMounted } from 'vue'
 import { RefreshCw, Download, Plus } from '@lucide/vue'
-import { type Despacho } from '~/utils/despacho'
+import { tieneAlertaDespacho, type Despacho } from '~/utils/despacho'
 import { SAMPLE_DESPACHOS } from '~/utils/sampleDataTienda'
 import { ensureSession, useSessionState } from '~/composables/useSession'
 import { useToast } from '~/composables/useToast'
@@ -18,6 +18,8 @@ const canEdit = computed(() => demo.value || !!me.value?.can.edit)
 
 const q = ref('')
 const fEstado = ref('')
+const fAlerta = ref(false)
+const density = ref<'comodo' | 'compacto'>('comodo')
 const loading = ref(true)
 const refreshKey = ref(0)
 const refreshing = ref(false)
@@ -52,11 +54,12 @@ const filtered = computed(() => {
   return despachos.value.filter((d) => {
     if (query && !d.numeroDocumento.toLowerCase().includes(query) && !d.clienteNombre.toLowerCase().includes(query)) return false
     if (fEstado.value && d.estado !== fEstado.value) return false
+    if (fAlerta.value && !tieneAlertaDespacho(d)) return false
     return true
   })
 })
-const hasFilters = computed(() => !!(q.value || fEstado.value))
-function clearFilters() { q.value = ''; fEstado.value = '' }
+const hasFilters = computed(() => !!(q.value || fEstado.value || fAlerta.value))
+function clearFilters() { q.value = ''; fEstado.value = ''; fAlerta.value = false }
 function onKpiFilter(key: string) { fEstado.value = key }
 
 // panel + modales
@@ -241,12 +244,12 @@ const pendCount = computed(() => despachos.value.filter(d => d.estado === 'CREAD
     <Transition name="view" mode="out-in">
       <div v-if="!panelItem" key="list">
         <TiendaKpiRail :key="refreshKey" :items="despachos" style="margin-bottom: 18px" @filter="onKpiFilter" />
-        <TiendaToolbar v-model:q="q" v-model:estado="fEstado" :count="filtered.length" :total="despachos.length" style="margin-bottom: 14px" @clear="clearFilters" />
+        <TiendaToolbar v-model:q="q" v-model:estado="fEstado" v-model:alerta="fAlerta" v-model:density="density" :count="filtered.length" :total="despachos.length" style="margin-bottom: 14px" @clear="clearFilters" />
         <!-- Sin <Transition>: una transición CSS aquí queda colgada si la pestaña
              está en segundo plano (rAF congelado) y la lista nunca reemplaza al
              skeleton. Las filas ya animan su entrada escalonada por su cuenta. -->
         <ListSkeleton v-if="loading" />
-        <TiendaDespachosList v-else :items="filtered" :has-filters="hasFilters" @open="openDetail" @clear="clearFilters" @new="showForm = true" />
+        <TiendaDespachosList v-else :items="filtered" :has-filters="hasFilters" :density="density" @open="openDetail" @clear="clearFilters" @new="showForm = true" />
       </div>
 
       <TiendaDespachoDetail

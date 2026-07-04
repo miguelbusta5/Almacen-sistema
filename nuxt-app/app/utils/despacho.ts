@@ -117,6 +117,14 @@ export function horasDesde(iso: string): number {
   return Math.floor((Date.now() - new Date(iso).getTime()) / 3_600_000)
 }
 
+// Alerta operativa de una factura: lleva >24h sin recoger, o está en un
+// estado que requiere intervención (novedad/rechazo). Usado por el filtro
+// "Solo alertas" del toolbar.
+export function tieneAlertaDespacho(d: { estado: string; createdAt: string }): boolean {
+  if (d.estado === 'CON_NOVEDAD' || d.estado === 'RECHAZADO') return true
+  return d.estado === 'CREADO_TIENDA' && horasDesde(d.createdAt) >= 24
+}
+
 export const CIUDAD_OPTIONS = [
   'Bogota D.C.', 'Medellin', 'Cali', 'Barranquilla', 'Cartagena', 'Bucaramanga',
   'Pereira', 'Manizales', 'Armenia', 'Cucuta', 'Ibague', 'Santa Marta',
