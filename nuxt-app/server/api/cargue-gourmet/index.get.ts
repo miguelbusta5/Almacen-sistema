@@ -5,12 +5,15 @@ import { mapPedidoGourmet } from '../../utils/mapRow'
 
 const ROLES_VEN = ['ADMIN', 'GERENTE', 'OPERACIONES_GOURMET', 'TRANSPORTE', 'SUPERVISOR_TRANSPORTE']
 
-// GET /api/cargue-gourmet?page=1&pageSize=25&ciudad=&estado=&tipoOrden=&q=
+// GET /api/cargue-gourmet?page=1&pageSize=200&ciudad=&estado=&tipoOrden=&q=
+// El frontend Nuxt no pagina (pide todo con pageSize=500, igual que
+// tienda/transporte) — el cap es más alto que en la API Next.js original
+// (que sí pagina con botones Anterior/Siguiente y por eso limita a 50).
 export default defineEventHandler(async (event) => {
   await requireRole(event, ROLES_VEN)
   const sp = getQuery(event)
   const page = Math.max(1, parseInt(String(sp.page ?? '1')) || 1)
-  const pageSize = Math.min(50, Math.max(1, parseInt(String(sp.pageSize ?? '25')) || 25))
+  const pageSize = Math.min(500, Math.max(1, parseInt(String(sp.pageSize ?? '200')) || 200))
   const ciudad = String(sp.ciudad ?? '').trim()
   const estado = String(sp.estado ?? '').trim()
   const tipoOrden = String(sp.tipoOrden ?? '').trim()
