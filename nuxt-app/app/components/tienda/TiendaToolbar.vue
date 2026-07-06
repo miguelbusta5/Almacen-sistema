@@ -3,12 +3,13 @@ import { Search, X, TriangleAlert, Rows3, Rows4 } from '@lucide/vue'
 import { ESTADO_LABEL } from '~/utils/despacho'
 
 defineProps<{
-  q: string; estado: string; alerta: boolean
+  q: string; estado: string; centro: string; centros: string[]; alerta: boolean
   count: number; total: number; density: 'comodo' | 'compacto'
 }>()
 const emit = defineEmits<{
   (e: 'update:q', v: string): void
   (e: 'update:estado', v: string): void
+  (e: 'update:centro', v: string): void
   (e: 'update:alerta', v: boolean): void
   (e: 'update:density', v: 'comodo' | 'compacto'): void
   (e: 'clear'): void
@@ -25,10 +26,14 @@ const emit = defineEmits<{
       <option value="">Todos los estados</option>
       <option v-for="(label, key) in ESTADO_LABEL" :key="key" :value="key">{{ label }}</option>
     </select>
+    <select :value="centro" @change="emit('update:centro', ($event.target as HTMLSelectElement).value)" class="field sel">
+      <option value="">Todos los centros</option>
+      <option v-for="cc in centros" :key="cc" :value="cc">{{ cc }}</option>
+    </select>
     <button class="btn btn-sm" :class="{ on: alerta }" @click="emit('update:alerta', !alerta)">
       <TriangleAlert :size="14" /> Solo alertas
     </button>
-    <button v-if="q || estado || alerta" class="btn btn-ghost btn-sm" @click="emit('clear')"><X :size="13" /> Limpiar</button>
+    <button v-if="q || estado || centro || alerta" class="btn btn-ghost btn-sm" @click="emit('clear')"><X :size="13" /> Limpiar</button>
 
     <div class="right">
       <span class="count mono">{{ count }} de {{ total }}</span>

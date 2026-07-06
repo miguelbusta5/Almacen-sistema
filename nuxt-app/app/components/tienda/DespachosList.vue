@@ -2,17 +2,25 @@
 import { ref, computed } from 'vue'
 import { Store, MapPin, ChevronUp, ChevronDown, ChevronsUpDown } from '@lucide/vue'
 import { ESTADO_LABEL, ESTADO_TONE, fmtFecha, horasDesde, type Despacho } from '~/utils/despacho'
+import { nivelEntregaColorFecha } from '~/utils/guardado'
+
+const ENTREGA_COLOR: Record<string, string | undefined> = {
+  neutro: undefined, 'sin-fecha': 'var(--error)', vencida: 'var(--error)',
+  amarillo: 'var(--warning)', azul: 'var(--info)', verde: 'var(--success)',
+}
 
 const props = defineProps<{ items: Despacho[]; hasFilters: boolean; density?: 'comodo' | 'compacto' }>()
 const emit = defineEmits<{ (e: 'open', d: Despacho): void; (e: 'clear'): void; (e: 'new'): void }>()
 
-type SortKey = 'estado' | 'documento' | 'cliente' | 'ciudad' | 'creacion'
+type SortKey = 'estado' | 'documento' | 'centro' | 'cliente' | 'ciudad' | 'entrega' | 'creacion'
 const columns: { key: SortKey; label: string; w: string }[] = [
-  { key: 'estado', label: 'Estado', w: '18%' },
-  { key: 'documento', label: 'Documento', w: '20%' },
-  { key: 'cliente', label: 'Cliente', w: '26%' },
-  { key: 'ciudad', label: 'Destino', w: '18%' },
-  { key: 'creacion', label: 'Creado', w: '18%' },
+  { key: 'estado', label: 'Estado', w: '12%' },
+  { key: 'documento', label: 'Documento', w: '15%' },
+  { key: 'centro', label: 'Centro costos', w: '14%' },
+  { key: 'cliente', label: 'Cliente', w: '19%' },
+  { key: 'ciudad', label: 'Destino', w: '13%' },
+  { key: 'entrega', label: 'Entrega comprometida', w: '14%' },
+  { key: 'creacion', label: 'Creado', w: '13%' },
 ]
 const sortKey = ref<SortKey>('creacion')
 const sortDir = ref<'asc' | 'desc'>('desc')
@@ -26,8 +34,11 @@ function sortVal(d: Despacho, k: SortKey): number | string {
   switch (k) {
     case 'estado': return d.estado
     case 'documento': return d.numeroDocumento
+    case 'centro': return d.centroCostos
     case 'cliente': return d.clienteNombre
     case 'ciudad': return d.ciudad ?? ''
+    // Asc = entrega más próxima primero (vencidas arriba); sin fecha al final.
+    case 'entrega': return d.fechaEntregaComprometida ?? '9999-99-99'
     case 'creacion': return d.createdAt
   }
 }
@@ -73,13 +84,25 @@ function urgente(d: Despacho) {
           <td><Badge :label="ESTADO_LABEL[d.estado]" :tone="ESTADO_TONE[d.estado]" /></td>
           <td>
             <div class="doc mono">{{ d.numeroDocumento }}</div>
-            <div class="sub mono">{{ d.centroCostos }} · {{ d.numeroCajas ?? 0 }} caja(s)</div>
+            <div class="sub mono">#{{ d.consecutivo }}</div>
+          </td>
+          <td>
+            <div class="centro" :title="d.centroCostos">{{ d.centroCostos }}</div>
+            <div class="sub">{{ d.numeroCajas ?? 0 }} caja(s)</div>
           </td>
           <td>
             <div class="cli" :title="d.clienteNombre">{{ d.clienteNombre }}</div>
           </td>
           <td>
             <div class="sub city"><MapPin :size="11" />{{ d.ciudad || '—' }}</div>
+          </td>
+          <td>
+            <template v-if="d.fechaEntregaComprometida">
+              <span class="mono ent" :style="{ color: ENTREGA_COLOR[nivelEntregaColorFecha(d.fechaEntregaComprometida, d.estado === 'ENVIADO_CLIENTE')] }">
+                {{ fmtFecha(d.fechaEntregaComprometida) }}
+              </span>
+            </template>
+            <span v-else class="nofecha">Sin fecha</span>
           </td>
           <td>
             <div class="mono">{{ fmtFecha(d.fechaCreacion) }}</div>
@@ -131,10 +154,13 @@ function urgente(d: Despacho) {
 .d-compacto .sub { margin-top: 1px; }
 
 .doc { font-size: 13px; font-weight: 700; color: var(--ink); }
+.centro { font-size: 13px; font-weight: 600; color: var(--ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 100%; }
 .cli { font-size: 13px; color: var(--ink-2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 100%; }
 .sub { font-size: 11px; color: var(--muted); margin-top: 2px; }
 .city { display: inline-flex; align-items: center; gap: 3px; }
 .city svg { color: var(--faint); }
+.ent { font-size: 13px; font-weight: 700; }
+.nofecha { font-size: 11px; font-weight: 600; color: var(--error); }
 .urg { color: var(--u-critico); font-weight: 700; }
 .empty { display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 56px 20px; text-align: center; }
 .empty-ic { width: 56px; height: 56px; border-radius: 50%; background: var(--surface-3); display: grid; place-items: center; color: var(--faint); margin-bottom: 6px; }

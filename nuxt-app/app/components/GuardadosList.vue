@@ -17,13 +17,14 @@ const emit = defineEmits<{ (e: 'open', g: Guardado): void; (e: 'clear'): void; (
 
 function almOf(g: Guardado) { return calcAlmacenaje(g.fecha, g.estado === 'DESPACHADO' ? g.fechaDespacho : null) }
 
-type SortKey = 'urgencia' | 'documento' | 'entrega' | 'ubicacion' | 'almacenaje' | 'tipo'
+type SortKey = 'urgencia' | 'documento' | 'entrega' | 'ubicacion' | 'ciudad' | 'almacenaje' | 'tipo'
 const columns: { key: SortKey; label: string; w: string }[] = [
-  { key: 'urgencia', label: 'Urgencia', w: '20%' },
-  { key: 'documento', label: 'Documento', w: '19%' },
-  { key: 'entrega', label: 'Entrega', w: '14%' },
-  { key: 'ubicacion', label: 'Ubicación', w: '16%' },
-  { key: 'almacenaje', label: 'Almacenaje', w: '19%' },
+  { key: 'urgencia', label: 'Urgencia', w: '18%' },
+  { key: 'documento', label: 'Documento', w: '17%' },
+  { key: 'entrega', label: 'Entrega', w: '12%' },
+  { key: 'ubicacion', label: 'Ubicación', w: '13%' },
+  { key: 'ciudad', label: 'Ciudad destino', w: '11%' },
+  { key: 'almacenaje', label: 'Almacenaje', w: '17%' },
   { key: 'tipo', label: 'Tipo', w: '12%' },
 ]
 const sortKey = ref<SortKey>('urgencia')
@@ -40,6 +41,7 @@ function sortVal(g: Guardado, k: SortKey): number | string {
     case 'documento': return g.documento
     case 'entrega': return parseEntrega(g.nota) ?? '9999-99-99'
     case 'ubicacion': return g.ubicacion
+    case 'ciudad': return g.ciudad ?? ''
     case 'almacenaje': return almOf(g).costoAcumulado
     case 'tipo': return g.tipo
   }
@@ -99,6 +101,8 @@ function tipoIcon(g: Guardado) { return g.tipo === 'ECOMMERCE' ? ShoppingCart : 
           </td>
           <td>
             <div class="ubic" :title="g.ubicacion">{{ g.ubicacion }}</div>
+          </td>
+          <td>
             <div class="sub city"><MapPin :size="11" />{{ g.ciudad || '—' }}</div>
           </td>
           <td>

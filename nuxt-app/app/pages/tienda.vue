@@ -18,6 +18,7 @@ const canEdit = computed(() => demo.value || !!me.value?.can.edit)
 
 const q = ref('')
 const fEstado = ref('')
+const fCC = ref('')
 const fAlerta = ref(false)
 const density = ref<'comodo' | 'compacto'>('comodo')
 const loading = ref(true)
@@ -49,17 +50,22 @@ async function refresh() {
   showToast(demo.value ? 'Modo demo · datos de ejemplo' : 'Datos actualizados ✓')
 }
 
+const centrosCostos = computed(() =>
+  [...new Set(despachos.value.map((d) => d.centroCostos).filter(Boolean))].sort((a, b) => a.localeCompare(b))
+)
+
 const filtered = computed(() => {
   const query = q.value.toLowerCase()
   return despachos.value.filter((d) => {
     if (query && !d.numeroDocumento.toLowerCase().includes(query) && !d.clienteNombre.toLowerCase().includes(query)) return false
     if (fEstado.value && d.estado !== fEstado.value) return false
+    if (fCC.value && d.centroCostos !== fCC.value) return false
     if (fAlerta.value && !tieneAlertaDespacho(d)) return false
     return true
   })
 })
-const hasFilters = computed(() => !!(q.value || fEstado.value || fAlerta.value))
-function clearFilters() { q.value = ''; fEstado.value = ''; fAlerta.value = false }
+const hasFilters = computed(() => !!(q.value || fEstado.value || fCC.value || fAlerta.value))
+function clearFilters() { q.value = ''; fEstado.value = ''; fCC.value = ''; fAlerta.value = false }
 function onKpiFilter(key: string) { fEstado.value = key }
 
 // panel + modales
@@ -244,7 +250,10 @@ const pendCount = computed(() => despachos.value.filter(d => d.estado === 'CREAD
     <Transition name="view" mode="out-in">
       <div v-if="!panelItem" key="list">
         <TiendaKpiRail :key="refreshKey" :items="despachos" style="margin-bottom: 18px" @filter="onKpiFilter" />
-        <TiendaToolbar v-model:q="q" v-model:estado="fEstado" v-model:alerta="fAlerta" v-model:density="density" :count="filtered.length" :total="despachos.length" style="margin-bottom: 14px" @clear="clearFilters" />
+        <TiendaToolbar
+          v-model:q="q" v-model:estado="fEstado" v-model:centro="fCC" v-model:alerta="fAlerta" v-model:density="density"
+          :centros="centrosCostos" :count="filtered.length" :total="despachos.length" style="margin-bottom: 14px" @clear="clearFilters"
+        />
         <!-- Sin <Transition>: una transición CSS aquí queda colgada si la pestaña
              está en segundo plano (rAF congelado) y la lista nunca reemplaza al
              skeleton. Las filas ya animan su entrada escalonada por su cuenta. -->
