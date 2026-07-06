@@ -167,6 +167,8 @@ export function PedidoDetalleContent({
               ultimoResultado={ultimoResultadoEscaneo}
               enviando={enviandoEscaneo}
               onEscanear={onEscanear ?? (async () => false)}
+              onFinalizarCargue={onFinalizarCargue}
+              finalizando={finalizandoCargue}
             />
           </PanelBlock>
 

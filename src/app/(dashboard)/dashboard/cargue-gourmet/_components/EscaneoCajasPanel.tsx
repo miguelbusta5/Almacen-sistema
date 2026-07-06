@@ -46,6 +46,8 @@ export function EscaneoCajasPanel({
   ultimoResultado,
   enviando = false,
   onEscanear,
+  onFinalizarCargue,
+  finalizando = false,
 }: {
   estado: EstadoPedidoGourmet;
   puedeTransporte: boolean;
@@ -53,6 +55,11 @@ export function EscaneoCajasPanel({
   ultimoResultado: UltimoResultadoEscaneo | null;
   enviando?: boolean;
   onEscanear: (codigo: string) => Promise<boolean>;
+  // Al llegar al 100% del conteo se ofrece "Enviar" en el mismo panel, para
+  // que el operario no tenga que subir a "Acciones de cargue" a buscar el
+  // botón — reutiliza el mismo POST /finalizar que ese botón ya dispara.
+  onFinalizarCargue?: () => void;
+  finalizando?: boolean;
 }) {
   const [codigo, setCodigo] = useState("");
   const inputRef = useRef<HTMLInputElement>(null);
@@ -127,6 +134,28 @@ export function EscaneoCajasPanel({
         <div data-testid="ultimo-resultado-escaneo" style={{ marginTop: 10, display: "flex", alignItems: "center", gap: 8 }}>
           <Badge label={RESULTADO_LABEL[ultimoResultado.resultado]} variant={RESULTADO_VARIANT[ultimoResultado.resultado]} />
           <span style={{ fontSize: 12, color: "var(--muted)", fontFamily: "var(--mono)" }}>{ultimoResultado.codigo}</span>
+        </div>
+      )}
+
+      {completo && onFinalizarCargue && (
+        <div
+          data-testid="escaneo-completo-alerta"
+          style={{
+            marginTop: 12, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10,
+            padding: "10px 12px", borderRadius: 8, background: "var(--success-tint, var(--surface2))",
+            border: "1px solid var(--success)",
+          }}
+        >
+          <span style={{ fontSize: 13, fontWeight: 600, color: "var(--success)" }}>Escaneo completo ✓</span>
+          <button
+            type="button"
+            onClick={onFinalizarCargue}
+            disabled={finalizando}
+            className="g-btn g-btn-primary g-btn-sm"
+            data-testid="btn-enviar-escaneo-completo"
+          >
+            {finalizando ? "Enviando…" : "Enviar"}
+          </button>
         </div>
       )}
     </DetailSection>
