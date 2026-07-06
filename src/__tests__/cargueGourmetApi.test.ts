@@ -1488,6 +1488,16 @@ describe("POST /api/cargue-gourmet/[id]/escanear", () => {
     expect(json.resultado).not.toBe("DUPLICADO");
   });
 
+  it("pedido con una sola caja registrada usa QR_UNICO_CAJA (no QR_SOLO_ORDEN) — bug real: Set de 1 código no debe confundirse con el caso legacy de código repetido", async () => {
+    mocks.getSessionUser.mockResolvedValue(actor("TRANSPORTE"));
+    mockPedido("EN_CARGUE", [{ codigoCaja: "12345" }]);
+    mockCargueActivo(1, 0);
+
+    const res = await postEscanear(escanearPostReq("p1", { codigo: "12345" }), params);
+    const json = await res.json();
+    expect(json.resultado).toBe("VALIDO");
+  });
+
   it("modo SIN_CODIGOS_PREVIOS valida por orden", async () => {
     mocks.getSessionUser.mockResolvedValue(actor("TRANSPORTE"));
     mockPedido("EN_CARGUE", []);

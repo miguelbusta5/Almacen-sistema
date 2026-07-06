@@ -10,8 +10,15 @@ const bodySchema = z.object({
   codigo: z.string(),
 });
 
+// QR_SOLO_ORDEN es un caso legacy: alguien registró el mismo código repetido
+// en más de una caja como placeholder del código de orden (no códigos reales
+// por caja) — solo se puede detectar comparando ≥2 registros. Con 1 sola caja
+// registrada el Set también da tamaño 1, pero ahí SÍ es un código real de
+// caja (p. ej. pedidos de una sola caja creados con escaneo en G2+), así que
+// debe tratarse como QR_UNICO_CAJA y no confundirse con el caso legacy.
 function determinarModoCodigo(codigosCaja: string[]): ModoCodigoGourmet {
   if (codigosCaja.length === 0) return "SIN_CODIGOS_PREVIOS";
+  if (codigosCaja.length === 1) return "QR_UNICO_CAJA";
   return new Set(codigosCaja).size > 1 ? "QR_UNICO_CAJA" : "QR_SOLO_ORDEN";
 }
 
