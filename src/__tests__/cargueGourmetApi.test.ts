@@ -10,10 +10,15 @@ const mocks = vi.hoisted(() => ({
   pedidoCreate: vi.fn(),
   pedidoFindFirst: vi.fn(),
   pedidoFindUnique: vi.fn(),
+  pedidoFindUniqueOrThrow: vi.fn(),
   pedidoUpdate: vi.fn(),
   pedidoDelete: vi.fn(),
   estibaDeleteMany: vi.fn(),
   estibaCreateMany: vi.fn(),
+  // G2: estibas individuales (create/findMany/update) para escaneo inicial
+  estibaCreate: vi.fn(),
+  estibaFindMany: vi.fn(),
+  estibaUpdate: vi.fn(),
   cajaDeleteMany: vi.fn(),
   cajaCreateMany: vi.fn(),
   transaction: vi.fn(),
@@ -51,7 +56,13 @@ vi.mock("@/lib/authz", () => ({
 }));
 
 const tx = {
-  gourmetPedidoEstiba: { deleteMany: mocks.estibaDeleteMany, createMany: mocks.estibaCreateMany },
+  gourmetPedidoEstiba: {
+    deleteMany: mocks.estibaDeleteMany,
+    createMany: mocks.estibaCreateMany,
+    create: mocks.estibaCreate,
+    findMany: mocks.estibaFindMany,
+    update: mocks.estibaUpdate,
+  },
   gourmetPedidoCaja: { deleteMany: mocks.cajaDeleteMany, createMany: mocks.cajaCreateMany },
   gourmetPedido: { update: mocks.pedidoUpdate },
   gourmetCargue: { create: mocks.cargueCreate, update: mocks.cargueUpdate, delete: mocks.cargueDelete },
@@ -68,10 +79,17 @@ vi.mock("@/lib/prisma", () => ({
       create: mocks.pedidoCreate,
       findFirst: mocks.pedidoFindFirst,
       findUnique: mocks.pedidoFindUnique,
+      findUniqueOrThrow: mocks.pedidoFindUniqueOrThrow,
       update: mocks.pedidoUpdate,
       delete: mocks.pedidoDelete,
     },
-    gourmetPedidoEstiba: { deleteMany: mocks.estibaDeleteMany, createMany: mocks.estibaCreateMany },
+    gourmetPedidoEstiba: {
+      deleteMany: mocks.estibaDeleteMany,
+      createMany: mocks.estibaCreateMany,
+      create: mocks.estibaCreate,
+      findMany: mocks.estibaFindMany,
+      update: mocks.estibaUpdate,
+    },
     gourmetPedidoCaja: { deleteMany: mocks.cajaDeleteMany, createMany: mocks.cajaCreateMany },
     gourmetCargue: { findFirst: mocks.cargueFindFirst, create: mocks.cargueCreate, update: mocks.cargueUpdate, delete: mocks.cargueDelete },
     gourmetCargueEscaneo: { create: mocks.escaneoCreate },
@@ -103,8 +121,14 @@ beforeEach(() => {
   mocks.transaction.mockImplementation((cb: (tx: unknown) => unknown) => cb(tx));
   mocks.estibaDeleteMany.mockResolvedValue({ count: 0 });
   mocks.estibaCreateMany.mockResolvedValue({ count: 0 });
+  // G2: defaults para nuevos mocks de estiba/caja individual
+  mocks.estibaCreate.mockResolvedValue({ id: "est1", secuencia: 1, ubicacion: null });
+  mocks.estibaFindMany.mockResolvedValue([]);
+  mocks.estibaUpdate.mockResolvedValue({});
   mocks.cajaDeleteMany.mockResolvedValue({ count: 0 });
   mocks.cajaCreateMany.mockResolvedValue({ count: 0 });
+  // G2: pedidoFindUniqueOrThrow reusa el valor del último pedidoCreate
+  mocks.pedidoFindUniqueOrThrow.mockImplementation(() => mocks.pedidoCreate.mock.results.at(-1)?.value ?? Promise.resolve(null));
   mocks.userFindMany.mockResolvedValue([]);
   mocks.notificacionCreateMany.mockResolvedValue({ count: 0 });
   mocks.cargueFindFirst.mockResolvedValue(null);

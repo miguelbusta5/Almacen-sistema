@@ -44,12 +44,13 @@ function mapRow(r: PedidoListRow) {
     esCierreManual: r.esCierreManual,
     // Ubicaciones físicas de las estibas (una por estiba), ordenadas por
     // secuencia y sin repetir, unidas en un texto legible para la tabla.
+    // ubicacion es ahora nullable (G1): filtrar nulls antes de unir.
     ubicaciones: Array.from(
       new Set(
         (r.estibas ?? [])
           .slice()
           .sort((a, b) => a.secuencia - b.secuencia)
-          .map((e) => e.ubicacion.trim())
+          .map((e) => e.ubicacion?.trim() ?? "")
           .filter(Boolean)
       )
     ).join(", "),
@@ -111,11 +112,41 @@ export async function GET(req: NextRequest) {
   });
 }
 
+// Regex de validación para código de caja: solo dígitos (sin espacios ni letras).
+const RE_SOLO_NUMEROS = /^\d+$/;
+// Prefijos que identifican una orden (no una caja) — se rechazan con aviso.
+const PREFIJOS_ORDEN = ["TSDM", "OVDM"];
+
+function validarCodigoCaja(codigo: string): { ok: true } | { ok: false; error: string } {
+  const c = codigo.trim();
+  const upper = c.toUpperCase();
+  for (const p of PREFIJOS_ORDEN) {
+    if (upper.startsWith(p)) {
+      return { ok: false, error: `"${c}" parece un código de orden (${p}…), no de caja. Escanea solo el código de la caja física.` };
+    }
+  }
+  if (!RE_SOLO_NUMEROS.test(c)) {
+    return { ok: false, error: `"${c}" no es un código de caja válido — solo se permiten dígitos.` };
+  }
+  if (c.length === 0) {
+    return { ok: false, error: "El código de caja no puede estar vacío." };
+  }
+  return { ok: true };
+}
+
+const estibaInputSchema = z.object({
+  secuencia: z.number().int().min(1),
+  cajas: z.array(z.string().min(1).max(150)).min(1),
+});
+
 const createSchema = z.object({
   orden: z.string().min(1).max(100),
   codigoTienda: z.string().min(1).max(50),
   cajasEsperadas: z.number().int().min(1),
   estibasEsperadas: z.number().int().min(1),
+  // Estibas con cajas escaneadas (opcional — si no se manda, el pedido se
+  // crea en BORRADOR sin cajas, igual que antes de G2).
+  estibas: z.array(estibaInputSchema).optional(),
 });
 
 // POST /api/cargue-gourmet
@@ -175,7 +206,48 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const pedido = await prisma.gourmetPedido.create({
+  // ── Validación de estibas y cajas escaneadas (solo si se manda) ──────────
+  const estibasInput = data.estibas ?? [];
+  if (estibasInput.length > 0) {
+    // 1. Número de estibas debe coincidir con estibasEsperadas.
+    if (estibasInput.length !== data.estibasEsperadas) {
+      return NextResponse.json(
+        { error: `Se esperan ${data.estibasEsperadas} estiba(s) pero se enviaron ${estibasInput.length}.` },
+        { status: 400 }
+      );
+    }
+    // 2. Secuencias únicas.
+    const secs = estibasInput.map((e) => e.secuencia);
+    if (new Set(secs).size !== secs.length) {
+      return NextResponse.json({ error: "No se permiten estibas con la misma secuencia." }, { status: 400 });
+    }
+    // 3. Validar cada código de caja y colectar todos los códigos para chequeo global.
+    const todosLosCodigos: string[] = [];
+    for (const estiba of estibasInput) {
+      for (const rawCodigo of estiba.cajas) {
+        const r = validarCodigoCaja(rawCodigo);
+        if (!r.ok) return NextResponse.json({ error: r.error }, { status: 400 });
+        todosLosCodigos.push(rawCodigo.trim());
+      }
+    }
+    // 4. Sin duplicados entre todas las estibas.
+    if (new Set(todosLosCodigos).size !== todosLosCodigos.length) {
+      return NextResponse.json(
+        { error: "Hay códigos de caja repetidos entre estibas. Cada caja solo puede escanearse una vez." },
+        { status: 400 }
+      );
+    }
+    // 5. Total de cajas = cajasEsperadas.
+    if (todosLosCodigos.length !== data.cajasEsperadas) {
+      return NextResponse.json(
+        { error: `Se escanearon ${todosLosCodigos.length} caja(s) pero el pedido espera ${data.cajasEsperadas}. Completa el escaneo antes de crear el pedido.` },
+        { status: 400 }
+      );
+    }
+  }
+
+  // ── Crear pedido (fuera de transacción para compatibilidad con mocks) ────
+  const p = await prisma.gourmetPedido.create({
     data: {
       orden: data.orden,
       tipoOrden,
@@ -187,6 +259,37 @@ export async function POST(req: NextRequest) {
       estado: "BORRADOR",
       creadoPorId: actor.id,
     },
+  });
+
+  // ── Crear estibas + cajas en transacción (solo si se escanearon cajas) ───
+  if (estibasInput.length > 0) {
+    await prisma.$transaction(async (tx) => {
+      for (const estibaData of estibasInput) {
+        const estiba = await prisma.gourmetPedidoEstiba.create({
+          data: {
+            pedidoId: p.id,
+            secuencia: estibaData.secuencia,
+            // ubicacion se deja null hasta el paso "Asignar ubicación".
+            ubicacion: null,
+          },
+        });
+        if (estibaData.cajas.length > 0) {
+          await tx.gourmetPedidoCaja.createMany({
+            data: estibaData.cajas.map((codigo, idx) => ({
+              pedidoId: p.id,
+              estibaId: estiba.id,
+              codigoCaja: codigo.trim(),
+              numeroSecuencia: idx + 1,
+              generadaPorEscaneo: true,
+            })),
+          });
+        }
+      }
+    });
+  }
+
+  const pedido = await prisma.gourmetPedido.findUniqueOrThrow({
+    where: { id: p.id },
     include: {
       creadoPor: { select: { name: true } },
       estibas: { select: { ubicacion: true, secuencia: true } },
@@ -199,7 +302,7 @@ export async function POST(req: NextRequest) {
       action: "CREATE",
       module: "cargue-gourmet",
       recordId: pedido.id,
-      details: `${tipoOrden} ${data.orden} — tienda ${nombreTienda}`,
+      details: `${tipoOrden} ${data.orden} — tienda ${nombreTienda}${estibasInput.length > 0 ? ` (${estibasInput.length} estiba(s) escaneadas)` : ""}`,
     },
   }).catch(() => {});
 

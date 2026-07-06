@@ -96,26 +96,70 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     );
   }
 
-  const pedido = await prisma.$transaction(async (tx) => {
-    await tx.gourmetPedidoEstiba.deleteMany({ where: { pedidoId: id } });
-    await tx.gourmetPedidoEstiba.createMany({
-      data: d.estibas.map((e) => ({
-        pedidoId: id,
-        secuencia: e.secuencia,
-        ubicacion: e.ubicacion,
-        observacion: e.observacion ?? null,
-      })),
-    });
+  // Detectar si el pedido ya tiene estibas pre-escaneadas desde la creación
+  // (G2+): en ese caso, las estibas ya existen con sus cajas vinculadas;
+  // solo hay que actualizar la ubicación de cada estiba por secuencia, sin
+  // borrar las cajas. Si no hay estibas previas (pedido legacy), se hace el
+  // flujo clásico: delete+create completo.
+  // Se consulta fuera de la transacción para compatibilidad con mocks de tests.
+  const estibasPrevias = await prisma.gourmetPedidoEstiba.findMany({
+    where: { pedidoId: id },
+    select: { id: true, secuencia: true },
+  });
+  const tieneEscaneoInicial = estibasPrevias.length > 0;
 
-    await tx.gourmetPedidoCaja.deleteMany({ where: { pedidoId: id } });
-    if (cajas.length > 0) {
-      await tx.gourmetPedidoCaja.createMany({
-        data: cajas.map((c) => ({
+  const pedido = await prisma.$transaction(async (tx) => {
+
+    if (tieneEscaneoInicial) {
+      // Pedido G2+: actualizar ubicación de estibas existentes.
+      // Si llegan estibas nuevas sin correspondencia previa, se crean.
+      const secuenciaToId = new Map(estibasPrevias.map((e) => [e.secuencia, e.id]));
+      for (const e of d.estibas) {
+        const estibaId = secuenciaToId.get(e.secuencia);
+        if (estibaId) {
+          await tx.gourmetPedidoEstiba.update({
+            where: { id: estibaId },
+            data: { ubicacion: e.ubicacion ?? null, observacion: e.observacion ?? null },
+          });
+        } else {
+          // Estiba nueva (no escaneada previamente): crearla sin cajas.
+          await tx.gourmetPedidoEstiba.create({
+            data: { pedidoId: id, secuencia: e.secuencia, ubicacion: e.ubicacion ?? null, observacion: e.observacion ?? null },
+          });
+        }
+      }
+      // Las cajas pre-escaneadas se conservan intactas.
+      // Si se mandaron cajas adicionales en este paso, se agregan (flujo legacy).
+      if (cajas.length > 0) {
+        await tx.gourmetPedidoCaja.createMany({
+          data: cajas.map((c) => ({
+            pedidoId: id,
+            codigoCaja: c.codigoCaja ?? null,
+            numeroSecuencia: c.numeroSecuencia ?? null,
+          })),
+        });
+      }
+    } else {
+      // Pedido legacy: flujo clásico delete+create.
+      await tx.gourmetPedidoEstiba.deleteMany({ where: { pedidoId: id } });
+      await tx.gourmetPedidoEstiba.createMany({
+        data: d.estibas.map((e) => ({
           pedidoId: id,
-          codigoCaja: c.codigoCaja ?? null,
-          numeroSecuencia: c.numeroSecuencia ?? null,
+          secuencia: e.secuencia,
+          ubicacion: e.ubicacion ?? null,
+          observacion: e.observacion ?? null,
         })),
       });
+      await tx.gourmetPedidoCaja.deleteMany({ where: { pedidoId: id } });
+      if (cajas.length > 0) {
+        await tx.gourmetPedidoCaja.createMany({
+          data: cajas.map((c) => ({
+            pedidoId: id,
+            codigoCaja: c.codigoCaja ?? null,
+            numeroSecuencia: c.numeroSecuencia ?? null,
+          })),
+        });
+      }
     }
 
     return tx.gourmetPedido.update({
