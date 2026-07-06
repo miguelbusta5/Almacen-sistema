@@ -135,7 +135,7 @@ const resumen = computed(() => [
           </form>
           <label v-if="esMuebles" class="parte2">
             <input v-model="tieneParte2" type="checkbox">
-            Tiene parte 2 (permite repetir este número de caja y contarla como una caja más)
+            Esta caja tiene varias partes (marca esto en cada parte adicional — 2ª, 3ª, 4ª… — para repetir el número sin que quede como duplicado)
           </label>
           <div v-if="ultimoResultado" class="ultimo">
             <Badge :label="RESULTADO_LABEL[ultimoResultado.resultado] ?? ultimoResultado.resultado" :tone="RESULTADO_TONE[ultimoResultado.resultado] ?? 'var(--muted)'" />

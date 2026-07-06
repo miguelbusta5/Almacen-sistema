@@ -41,7 +41,8 @@ export default defineEventHandler(async (event) => {
   if (!pedido) throw createError({ statusCode: 404, statusMessage: 'No encontrado' })
 
   // Rompe a propósito la regla de "no repetir caja" — solo para pedidos
-  // MUEBLES y solo cuando el operario marca explícitamente "tiene parte 2".
+  // MUEBLES y solo cuando el operario marca explícitamente que esta caja es
+  // otra parte del mismo mueble (sin límite de partes: 2ª, 3ª, 4ª…).
   const permitirRepetirCaja = pedido.tipoPedido === 'MUEBLES' && tieneParte2 === true
 
   if (pedido.estado !== 'EN_CARGUE') {

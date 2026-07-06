@@ -28,11 +28,12 @@ export interface ClasificarEscaneoGourmetInput {
   escaneosValidosPrevios: string[]
   modoCodigo: ModoCodigoGourmet
   /**
-   * Solo aplica a pedidos de tipo MUEBLES: un mueble puede venir en más de
-   * una parte física con el mismo número de caja impreso — al marcar
-   * "tiene parte 2" se permite repetir el código sin marcarlo DUPLICADO,
-   * contando cada parte como una caja adicional. Rompe la regla de
-   * duplicados a propósito, solo para este escaneo puntual.
+   * Solo aplica a pedidos de tipo MUEBLES: un mueble puede venir en varias
+   * partes físicas (2, 3, 4…) con el mismo número de caja impreso — al
+   * marcar la opción en cada parte adicional se permite repetir el código
+   * sin marcarlo DUPLICADO, contando cada parte como una caja adicional.
+   * Rompe la regla de duplicados a propósito, solo para este escaneo
+   * puntual (no hay límite de repeticiones).
    */
   permitirRepetirCaja?: boolean
 }
@@ -79,7 +80,7 @@ export function clasificarEscaneoGourmet(input: ClasificarEscaneoGourmetInput): 
       return { resultado: 'DUPLICADO', debeCrearNovedad: true, tipoNovedadSugerido: 'CAJA_DUPLICADA', incrementaContador: false, mensaje: 'Esta caja ya fue escaneada antes en este cargue.' }
     }
     if (previosNorm.includes(codigoNorm) && permitirRepetirCaja) {
-      return { resultado: 'VALIDO', debeCrearNovedad: false, incrementaContador: true, mensaje: 'Caja válida — parte 2 del mueble, contada como caja adicional.' }
+      return { resultado: 'VALIDO', debeCrearNovedad: false, incrementaContador: true, mensaje: 'Caja válida — otra parte del mueble, contada como caja adicional.' }
     }
     return { resultado: 'VALIDO', debeCrearNovedad: false, incrementaContador: true, mensaje: 'Caja válida.' }
   }
