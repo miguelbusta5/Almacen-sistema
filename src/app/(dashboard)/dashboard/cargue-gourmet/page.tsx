@@ -41,11 +41,10 @@ const ROLES_CIERRE_MANUAL = ["SUPERVISOR_TRANSPORTE", "OPERACIONES_GOURMET", "AD
 // Eliminar pedidos y revertir un cargue accidental — acciones de supervisión,
 // coincide con ROLES_ELIMINAN de /[id] (DELETE) y de /revertir-cargue.
 const ROLES_ADMIN_GERENTE = ["ADMIN", "GERENTE"];
-// Despacho masivo sin verificación de cajas — deliberadamente NO es un rol
-// completo: solo ADMIN y un único usuario nombrado (Diego Zapata, auxiliar de
-// transporte), coincide con la restricción del backend en
+// Despacho masivo sin verificación de cajas — solo ADMIN (antes también
+// auxiliar-transporte@gmail.com por email; acceso retirado 2026-07-04, ver
+// docs/cerebro/pendientes.md). Coincide con la restricción del backend en
 // /api/cargue-gourmet/despacho-masivo.
-const EMAIL_DESPACHO_MASIVO = "auxiliar-transporte@gmail.com";
 
 const RESULTADO_TOAST_ERROR: Record<ResultadoEscaneo, string> = {
   VALIDO: "",
@@ -63,7 +62,6 @@ const inp: React.CSSProperties = {
 export default function CargueGourmetPage() {
   const { data: session } = useSession();
   const role = (session?.user as { role?: string } | undefined)?.role;
-  const userEmail = (session?.user as { email?: string } | undefined)?.email ?? "";
   const toast = useToast();
 
   const [page, setPage] = useState(1);
@@ -363,7 +361,7 @@ export default function CargueGourmetPage() {
   const puedeCierreManual = !!role && ROLES_CIERRE_MANUAL.includes(role);
   const puedeEliminar = !!role && ROLES_ADMIN_GERENTE.includes(role);
   const puedeRevertirCargue = puedeEliminar;
-  const puedeDespachoMasivo = role === "ADMIN" || userEmail.toLowerCase() === EMAIL_DESPACHO_MASIVO;
+  const puedeDespachoMasivo = role === "ADMIN";
   // La vista de detalle a ancho completo reemplaza al listado (todos los
   // tamaños de pantalla) — ya no hay overlay/SlidePanel.
   const showDetailView = selectedId !== null;

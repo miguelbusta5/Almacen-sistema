@@ -10,9 +10,9 @@ const ROLES_NOTIFICAR = ["ADMIN", "GERENTE"] as const;
 // Despacho masivo: bypass deliberado del flujo normal de cargue/escaneo de
 // cajas — cierra de una vez varios pedidos sin verificación física. Por eso
 // NO se apoya en `assertTransicionGourmet` (esa matriz es para el flujo
-// operativo normal) y se restringe a ADMIN + un único usuario nombrado
-// (Diego Zapata, auxiliar de transporte), no a un rol completo.
-const EMAIL_AUTORIZADO = "auxiliar-transporte@gmail.com";
+// operativo normal) y se restringe solo a ADMIN (antes también
+// auxiliar-transporte@gmail.com por email; acceso retirado 2026-07-04, ver
+// docs/cerebro/pendientes.md).
 const MOTIVO_DESPACHO_MASIVO = "DESPACHO_MASIVO";
 
 const bodySchema = z.object({
@@ -24,8 +24,7 @@ export async function POST(req: NextRequest) {
   const actor = await requireAuth();
   if (actor instanceof NextResponse) return actor;
 
-  const autorizado = actor.role === "ADMIN" || actor.email.toLowerCase() === EMAIL_AUTORIZADO;
-  if (!autorizado) {
+  if (actor.role !== "ADMIN") {
     return NextResponse.json({ error: "No tienes permisos para realizar esta acción" }, { status: 403 });
   }
 

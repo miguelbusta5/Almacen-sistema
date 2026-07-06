@@ -6,6 +6,33 @@
 
 ## Tareas pendientes
 
+### Cargue Gourmet — quitar despacho masivo a un usuario + probar escaneo de cajas (2026-07-04)
+
+- [x] **Quitar acceso a "Despacho masivo" a `auxiliar-transporte@gmail.com`** — hecho
+  2026-07-04. Se quitó la rama por email en `page.tsx` (`puedeDespachoMasivo`) y en
+  `despacho-masivo/route.ts` (gate de servidor); ambos quedan solo para `role === "ADMIN"`.
+  `tsc` + 962 tests verdes. Si más adelante se quiere dar esta opción a otro usuario/rol de
+  forma sostenible, conviene crear un rol dedicado o un mecanismo de permisos por usuario en
+  vez de otro hardcode de email (no existe hoy ningún mecanismo general de features por
+  usuario, solo por rol).
+- [ ] **Probar el escaneo de cajas (opcional) con el usuario ADMIN.** No requiere ningún
+  cambio de código: `ADMIN` ya está incluido en `ROLES_TRANSPORTE`
+  (`src/app/(dashboard)/dashboard/cargue-gourmet/page.tsx:37-40`), que es la única condición
+  que controla si se ve `EscaneoCajasPanel` — la otra condición es que el pedido esté en
+  estado `EN_CARGUE` (`ESTADO_ESCANEABLE`, `EscaneoCajasPanel.tsx:8`).
+  **Plan de prueba (operativo, sin tocar código):**
+  1. Crear o abrir un pedido Gourmet de prueba y asignarle ubicación (estibas/cajas) para
+     que quede en `UBICACION_ASIGNADA`.
+  2. Click **"Iniciar cargue"** (`iniciar-cargue/route.ts`) → pasa a `EN_CARGUE`. En ese
+     momento aparece el panel de escaneo para el ADMIN.
+  3. Escanear códigos de caja de prueba y verificar los 5 resultados posibles:
+     `VALIDO`, `DUPLICADO` (repetir un código), `CAJA_AJENA`, `FORMATO_INVALIDO`, y
+     `EXCEDE_CANTIDAD` (escanear más cajas de las esperadas).
+  4. Verificar que **Finalizar** (`finalizar/route.ts`) exige `cantidadEscaneada === cantidadEsperada`
+     y rechaza si no coincide.
+  5. Como comparación, probar también **Cierre manual** (bypass parcial, permite diferencia)
+     y — tras el punto anterior — confirmar que **Despacho masivo** solo aparece para ADMIN.
+
 ### Piloto Guardados Vue/Nuxt — go-live en producción (2026-07-03)
 
 - [x] **Go-live real:** `NUXT_PILOT_URL` activo en Production de `almacen-sistema`;
