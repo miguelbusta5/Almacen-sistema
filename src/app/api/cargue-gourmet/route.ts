@@ -5,6 +5,7 @@ import { z } from "zod";
 import type { Prisma } from "@prisma/client";
 import { derivarTipoOrden } from "@/lib/gourmetTipoOrden";
 import { CIUDAD_TIENDA_CLIENTE, CODIGO_TIENDA_CLIENTE, NOMBRE_TIENDA_CLIENTE, esCodigoTiendaCliente } from "@/lib/gourmetCliente";
+import { validarCodigoCaja } from "@/lib/gourmetCajaEscaneo";
 
 type PedidoListRow = Prisma.GourmetPedidoGetPayload<{
   include: {
@@ -110,28 +111,6 @@ export async function GET(req: NextRequest) {
     page,
     pageSize,
   });
-}
-
-// Regex de validación para código de caja: solo dígitos (sin espacios ni letras).
-const RE_SOLO_NUMEROS = /^\d+$/;
-// Prefijos que identifican una orden (no una caja) — se rechazan con aviso.
-const PREFIJOS_ORDEN = ["TSDM", "OVDM"];
-
-function validarCodigoCaja(codigo: string): { ok: true } | { ok: false; error: string } {
-  const c = codigo.trim();
-  const upper = c.toUpperCase();
-  for (const p of PREFIJOS_ORDEN) {
-    if (upper.startsWith(p)) {
-      return { ok: false, error: `"${c}" parece un código de orden (${p}…), no de caja. Escanea solo el código de la caja física.` };
-    }
-  }
-  if (!RE_SOLO_NUMEROS.test(c)) {
-    return { ok: false, error: `"${c}" no es un código de caja válido — solo se permiten dígitos.` };
-  }
-  if (c.length === 0) {
-    return { ok: false, error: "El código de caja no puede estar vacío." };
-  }
-  return { ok: true };
 }
 
 const estibaInputSchema = z.object({
