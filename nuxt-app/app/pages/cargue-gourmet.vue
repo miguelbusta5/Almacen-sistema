@@ -228,17 +228,17 @@ async function exportarExcel() {
 
     <Transition name="view" mode="out-in">
       <div v-if="!panelId" key="list">
-        <GourmetKpiRail :key="refreshKey" :items="pedidos" style="margin-bottom: 18px" @filter="onKpiFilter" />
-        <GourmetToolbar
+        <CargueGourmetKpiRail :key="refreshKey" :items="pedidos" style="margin-bottom: 18px" @filter="onKpiFilter" />
+        <CargueGourmetToolbar
           v-model:q="q" v-model:estado="fEstado" v-model:ciudad="fCiudad" v-model:tipo-orden="fTipoOrden" v-model:alerta="fAlerta" v-model:density="density"
           :ciudades="ciudades" :count="filtered.length" :total="pedidos.length" style="margin-bottom: 14px" @clear="clearFilters"
         />
         <ListSkeleton v-if="loading" />
-        <PedidosList v-else :items="filtered" :has-filters="hasFilters" :density="density" @open="openDetail" @clear="clearFilters" @new="showCrear = true" />
+        <CargueGourmetPedidosList v-else :items="filtered" :has-filters="hasFilters" :density="density" @open="openDetail" @clear="clearFilters" @new="showCrear = true" />
       </div>
 
       <div v-else-if="panelItem" key="detail">
-        <PedidoDetail
+        <CargueGourmetPedidoDetail
           :p="panelItem" :role="me?.role ?? ''" :busy="busy" :escaneando="busy === 'escanear'" :ultimo-resultado="ultimoResultado"
           @back="backToList" @edit="showEditar = true" @del="delPedido" @asignar-ubicacion="showUbicacion = true"
           @iniciar-cargue="iniciarCargue" @finalizar="finalizarCargue" @revertir="revertirCargue"
@@ -247,10 +247,10 @@ async function exportarExcel() {
       </div>
     </Transition>
 
-    <CrearPedidoModal v-if="showCrear" @close="showCrear = false" @created="onCreated" @ver-existente="onVerExistente" />
-    <EditarPedidoModal v-if="showEditar && panelItem" :p="panelItem" :saving="saving" @close="showEditar = false" @saved="guardarEdicion" />
-    <AsignarUbicacionModal v-if="showUbicacion && panelItem" :p="panelItem" :saving="saving" @close="showUbicacion = false" @saved="guardarUbicacion" />
-    <CierreManualModal v-if="showCierreManual && panelItem" :p="panelItem" :saving="saving" @close="showCierreManual = false" @saved="guardarCierreManual" />
+    <CargueGourmetCrearPedidoModal v-if="showCrear" @close="showCrear = false" @created="onCreated" @ver-existente="onVerExistente" />
+    <CargueGourmetEditarPedidoModal v-if="showEditar && panelItem" :p="panelItem" :saving="saving" @close="showEditar = false" @saved="guardarEdicion" />
+    <CargueGourmetAsignarUbicacionModal v-if="showUbicacion && panelItem" :p="panelItem" :saving="saving" @close="showUbicacion = false" @saved="guardarUbicacion" />
+    <CargueGourmetCierreManualModal v-if="showCierreManual && panelItem" :p="panelItem" :saving="saving" @close="showCierreManual = false" @saved="guardarCierreManual" />
   </div>
 </template>
 
