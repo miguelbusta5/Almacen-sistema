@@ -68,6 +68,117 @@ export function mapDespacho(r: any) {
   }
 }
 
+// Mapea la fila de GourmetPedido (listado) al shape del cliente — igual que
+// src/app/api/cargue-gourmet/route.ts.
+export function mapPedidoGourmet(r: any) {
+  const ubicaciones = Array.from(
+    new Set(
+      (r.estibas ?? [])
+        .slice()
+        .sort((a: any, b: any) => a.secuencia - b.secuencia)
+        .map((e: any) => (e.ubicacion ?? '').trim())
+        .filter(Boolean)
+    )
+  ).join(', ')
+  return {
+    id: r.id,
+    orden: r.orden,
+    tipoOrden: r.tipoOrden,
+    codigoTienda: r.codigoTienda,
+    nombreTienda: r.nombreTienda,
+    ciudadDestino: r.ciudadDestino,
+    cajasEsperadas: r.cajasEsperadas,
+    estibasEsperadas: r.estibasEsperadas,
+    estado: r.estado,
+    creadoPorId: r.creadoPorId,
+    creadoPorNombre: r.creadoPor?.name ?? null,
+    createdAt: r.createdAt.toISOString(),
+    updatedAt: r.updatedAt.toISOString(),
+    ubicacionAsignadaAt: r.ubicacionAsignadaAt ? r.ubicacionAsignadaAt.toISOString() : null,
+    enviadoTransporteAt: r.enviadoTransporteAt ? r.enviadoTransporteAt.toISOString() : null,
+    cargueIniciadoAt: r.cargueIniciadoAt ? r.cargueIniciadoAt.toISOString() : null,
+    cargueCompletadoAt: r.cargueCompletadoAt ? r.cargueCompletadoAt.toISOString() : null,
+    esCierreManual: r.esCierreManual,
+    ubicaciones,
+  }
+}
+
+// Mapea el detalle completo de GourmetPedido (con estibas/cajas/cargues/
+// escaneos/novedades) — igual que src/app/api/cargue-gourmet/[id]/route.ts.
+// `nombrePorId` resuelve los actores de cargues/escaneos/novedades (columnas
+// planas sin relación de Prisma a User).
+export function mapPedidoGourmetDetalle(r: any, nombrePorId: Map<string, string> = new Map()) {
+  return {
+    id: r.id,
+    orden: r.orden,
+    tipoOrden: r.tipoOrden,
+    codigoTienda: r.codigoTienda,
+    nombreTienda: r.nombreTienda,
+    ciudadDestino: r.ciudadDestino,
+    cajasEsperadas: r.cajasEsperadas,
+    estibasEsperadas: r.estibasEsperadas,
+    estado: r.estado,
+    creadoPorId: r.creadoPorId,
+    creadoPorNombre: r.creadoPor?.name ?? null,
+    createdAt: r.createdAt.toISOString(),
+    updatedAt: r.updatedAt.toISOString(),
+    ubicacionAsignadaAt: r.ubicacionAsignadaAt ? r.ubicacionAsignadaAt.toISOString() : null,
+    ubicacionAsignadaPorId: r.ubicacionAsignadaPorId ?? null,
+    enviadoTransporteAt: r.enviadoTransporteAt ? r.enviadoTransporteAt.toISOString() : null,
+    enviadoTransportePorId: r.enviadoTransportePorId ?? null,
+    cargueIniciadoAt: r.cargueIniciadoAt ? r.cargueIniciadoAt.toISOString() : null,
+    cargueIniciadoPorId: r.cargueIniciadoPorId ?? null,
+    cargueCompletadoAt: r.cargueCompletadoAt ? r.cargueCompletadoAt.toISOString() : null,
+    cargueCompletadoPorId: r.cargueCompletadoPorId ?? null,
+    esCierreManual: r.esCierreManual,
+    cantidadContadaManual: r.cantidadContadaManual ?? null,
+    motivoCierreManual: r.motivoCierreManual ?? null,
+    observacionCierreManual: r.observacionCierreManual ?? null,
+    estibas: (r.estibas ?? []).map((e: any) => ({
+      id: e.id, secuencia: e.secuencia, ubicacion: e.ubicacion, observacion: e.observacion ?? null,
+    })),
+    cajas: (r.cajas ?? []).map((c: any) => ({
+      id: c.id, numeroSecuencia: c.numeroSecuencia ?? null, codigoCaja: c.codigoCaja ?? null, estibaId: c.estibaId ?? null,
+    })),
+    cargues: (r.cargues ?? []).map((c: any) => ({
+      id: c.id,
+      iniciadoPorId: c.iniciadoPorId,
+      iniciadoPorNombre: nombrePorId.get(c.iniciadoPorId) ?? null,
+      iniciadoAt: c.iniciadoAt.toISOString(),
+      finalizadoPorId: c.finalizadoPorId ?? null,
+      finalizadoPorNombre: c.finalizadoPorId ? nombrePorId.get(c.finalizadoPorId) ?? null : null,
+      finalizadoAt: c.finalizadoAt ? c.finalizadoAt.toISOString() : null,
+      tipoCierre: c.tipoCierre ?? null,
+      cantidadEsperada: c.cantidadEsperada,
+      cantidadEscaneada: c.cantidadEscaneada,
+      cantidadContadaManual: c.cantidadContadaManual ?? null,
+      motivoCierreManual: c.motivoCierreManual ?? null,
+      observacion: c.observacion ?? null,
+      estado: c.estado,
+      escaneos: (c.escaneos ?? []).map((e: any) => ({
+        id: e.id,
+        codigoEscaneado: e.codigoEscaneado,
+        resultado: e.resultado,
+        escaneadoPorId: e.escaneadoPorId,
+        escaneadoPorNombre: nombrePorId.get(e.escaneadoPorId) ?? null,
+        createdAt: e.createdAt.toISOString(),
+      })),
+    })),
+    novedades: (r.novedades ?? []).map((n: any) => ({
+      id: n.id,
+      tipo: n.tipo,
+      estado: n.estado,
+      descripcion: n.descripcion,
+      registradaPorId: n.registradaPorId,
+      registradaPorNombre: nombrePorId.get(n.registradaPorId) ?? null,
+      resueltaPorId: n.resueltaPorId ?? null,
+      resueltaPorNombre: n.resueltaPorId ? nombrePorId.get(n.resueltaPorId) ?? null : null,
+      resueltaAt: n.resueltaAt ? n.resueltaAt.toISOString() : null,
+      createdAt: n.createdAt.toISOString(),
+    })),
+  }
+}
+
 // Flujo fusionado a 3 estados (ver docs/cerebro/decisiones.md): RECOGIDO_TIENDA
 // es legado y se etiqueta igual que ENTREGADO_CEDI ("En CEDI"). Usado solo en
 // mensajes de notificación/ActivityLog, no en la UI (ver app/utils/despacho.ts).

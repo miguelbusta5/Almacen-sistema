@@ -899,13 +899,16 @@ model GourmetPedido {
 }
 
 model GourmetPedidoEstiba {
-  id          String        @id @default(cuid())
-  pedidoId    String        @map("pedido_id")
-  pedido      GourmetPedido @relation(fields: [pedidoId], references: [id], onDelete: Cascade)
+  id          String              @id @default(cuid())
+  pedidoId    String              @map("pedido_id")
+  pedido      GourmetPedido       @relation(fields: [pedidoId], references: [id], onDelete: Cascade)
   secuencia   Int
-  ubicacion   String        @db.VarChar(120)
+  // ubicacion es nullable para permitir crear estibas durante el escaneo
+  // inicial (creación del pedido, G1), antes de asignarles ubicación física.
+  ubicacion   String?             @db.VarChar(120)
   observacion String?
-  createdAt   DateTime      @default(now()) @map("created_at")
+  createdAt   DateTime            @default(now()) @map("created_at")
+  cajas       GourmetPedidoCaja[]
 
   @@unique([pedidoId, secuencia])
   @@index([pedidoId])
@@ -913,17 +916,23 @@ model GourmetPedidoEstiba {
 }
 
 model GourmetPedidoCaja {
-  id                 String        @id @default(cuid())
-  pedidoId           String        @map("pedido_id")
-  pedido             GourmetPedido @relation(fields: [pedidoId], references: [id], onDelete: Cascade)
-  codigoCaja         String?       @map("codigo_caja") @db.VarChar(150)
-  numeroSecuencia    Int?          @map("numero_secuencia")
-  generadaPorEscaneo Boolean       @default(false) @map("generada_por_escaneo")
-  estado             String?       @db.VarChar(20)
-  createdAt          DateTime      @default(now()) @map("created_at")
-  updatedAt          DateTime      @updatedAt @map("updated_at")
+  id                 String               @id @default(cuid())
+  pedidoId           String               @map("pedido_id")
+  pedido             GourmetPedido        @relation(fields: [pedidoId], references: [id], onDelete: Cascade)
+  // Estiba a la que pertenece esta caja. Nullable para retro-compat: cajas
+  // creadas antes de G1 (vía "Asignar ubicación" sin estiba explícita) no
+  // tienen estibaId. Las creadas desde G2+ siempre lo tendrán.
+  estibaId           String?              @map("estiba_id")
+  estiba             GourmetPedidoEstiba? @relation(fields: [estibaId], references: [id], onDelete: SetNull)
+  codigoCaja         String?              @map("codigo_caja") @db.VarChar(150)
+  numeroSecuencia    Int?                 @map("numero_secuencia")
+  generadaPorEscaneo Boolean              @default(false) @map("generada_por_escaneo")
+  estado             String?              @db.VarChar(20)
+  createdAt          DateTime             @default(now()) @map("created_at")
+  updatedAt          DateTime             @updatedAt @map("updated_at")
 
   @@index([pedidoId])
+  @@index([estibaId])
   @@index([codigoCaja])
   @@index([pedidoId, numeroSecuencia])
   @@map("gourmet_pedido_cajas")
