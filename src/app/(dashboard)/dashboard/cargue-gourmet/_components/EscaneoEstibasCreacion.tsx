@@ -60,8 +60,7 @@ export function EscaneoEstibasCreacion({
   const totalEscaneado = estibas.reduce((sum, e) => sum + e.cajas.length, 0);
   const todosLosCodigos = estibas.flatMap((e) => e.cajas);
 
-  function agregarCodigo(e: React.FormEvent) {
-    e.preventDefault();
+  function agregarCodigo() {
     const valor = codigo.trim();
     if (!valor) return;
 
@@ -125,20 +124,30 @@ export function EscaneoEstibasCreacion({
         ))}
       </div>
 
-      <form onSubmit={agregarCodigo} style={{ display: "flex", gap: 8 }}>
+      {/* No es un <form>: este panel vive dentro del <form> de "Nuevo pedido"
+          y un <form> anidado es HTML inválido — su evento submit hace
+          bubbling y dispara también el submit del formulario exterior
+          (cerraba el modal sin guardar). Enter se maneja a mano. */}
+      <div style={{ display: "flex", gap: 8 }}>
         <input
           ref={inputRef}
           value={codigo}
           onChange={(e) => setCodigo(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") {
+              e.preventDefault();
+              agregarCodigo();
+            }
+          }}
           placeholder={`Escanea caja para Estiba ${activa.secuencia}…`}
           autoFocus
           data-testid="escaneo-creacion-input"
           style={inp}
         />
-        <button type="submit" disabled={!codigo.trim()} className="g-btn g-btn-primary g-btn-sm" data-testid="btn-escanear-creacion">
+        <button type="button" onClick={agregarCodigo} disabled={!codigo.trim()} className="g-btn g-btn-primary g-btn-sm" data-testid="btn-escanear-creacion">
           Agregar
         </button>
-      </form>
+      </div>
 
       {error && (
         <p data-testid="escaneo-creacion-error" style={{ fontSize: 12, color: "var(--error)", margin: 0 }}>{error}</p>
