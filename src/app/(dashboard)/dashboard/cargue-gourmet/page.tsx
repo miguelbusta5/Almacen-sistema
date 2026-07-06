@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useSession } from "next-auth/react";
-import { Plus } from "lucide-react";
+import { Plus, Download } from "lucide-react";
 import { ModuleHero } from "@/components/ui";
 import { useToast } from "@/contexts/ToastContext";
 import { canSeeModule } from "@/lib/modulePermissions";
@@ -73,6 +73,7 @@ export default function CargueGourmetPage() {
   const [estado, setEstado] = useState<EstadoPedidoGourmet | "">("");
   const [tipoOrden, setTipoOrden] = useState<"" | "OVDM" | "TSDM">("");
   const [showCrear, setShowCrear] = useState(false);
+  const [exporting, setExporting] = useState(false);
 
   const [selectedId, setSelectedId] = useState<string | null>(null);
   useListDetailScroll(selectedId !== null);
@@ -366,6 +367,27 @@ export default function CargueGourmetPage() {
   // tamaños de pantalla) — ya no hay overlay/SlidePanel.
   const showDetailView = selectedId !== null;
 
+  async function exportarExcel() {
+    if (exporting) return;
+    setExporting(true);
+    try {
+      const qs = buildQuery({ q: qDebounced || undefined, ciudad: ciudad || undefined, estado: estado || undefined, tipoOrden: tipoOrden || undefined });
+      const res = await fetch(`/api/cargue-gourmet/export${qs}`);
+      if (!res.ok) throw new Error("No se pudo exportar");
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `cargue-gourmet-${new Date().toISOString().slice(0, 10)}.xlsx`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch {
+      toast.error("No se pudo exportar a Excel");
+    } finally {
+      setExporting(false);
+    }
+  }
+
   return (
     <div className="animate-fade-in" style={getModuleCssVars("cargue-gourmet") as React.CSSProperties}>
       <ModuleHero
@@ -375,6 +397,16 @@ export default function CargueGourmetPage() {
         description={`${total} pedido${total !== 1 ? "s" : ""} · ubicación y cargue verificado de pedidos Gourmet.`}
         actions={
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+            {!showDetailView && (
+              <button
+                onClick={exportarExcel}
+                disabled={exporting}
+                className="g-btn g-btn-secondary"
+                data-testid="btn-exportar-excel"
+              >
+                <Download size={14} />{exporting ? "Exportando…" : "Exportar Excel"}
+              </button>
+            )}
             {puedeDespachoMasivo && !showDetailView && (
               <button
                 onClick={() => despachoMasivoMode ? cancelarDespachoMasivo() : setDespachoMasivoMode(true)}
