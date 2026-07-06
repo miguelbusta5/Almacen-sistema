@@ -31,8 +31,8 @@ describe("estibasFromPedido / cajasFromPedido", () => {
   it("ordena por secuencia y decodifica cantidadCajas/observación", () => {
     const rows = estibasFromPedido({
       estibas: [
-        { secuencia: 2, ubicacion: "B2", observacion: "[cajas:4] · frágil" },
-        { secuencia: 1, ubicacion: "A1", observacion: "[cajas:2]" },
+        { id: "e2", secuencia: 2, ubicacion: "B2", observacion: "[cajas:4] · frágil" },
+        { id: "e1", secuencia: 1, ubicacion: "A1", observacion: "[cajas:2]" },
       ],
       cajas: [],
     });
@@ -45,7 +45,7 @@ describe("estibasFromPedido / cajasFromPedido", () => {
   it("mapea cajas a strings, con vacío si faltan datos", () => {
     const rows = cajasFromPedido({
       estibas: [],
-      cajas: [{ numeroSecuencia: 1, codigoCaja: "CAJA-1" }, { numeroSecuencia: null, codigoCaja: null }],
+      cajas: [{ numeroSecuencia: 1, codigoCaja: "CAJA-1", estibaId: null }, { numeroSecuencia: null, codigoCaja: null, estibaId: null }],
     });
     expect(rows).toEqual([
       { codigoCaja: "CAJA-1", numeroSecuencia: "1" },

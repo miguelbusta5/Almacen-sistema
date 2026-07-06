@@ -9,8 +9,8 @@ export interface EstibaForm { ubicacion: string; cantidadCajas: string; observac
 export interface CajaForm { codigoCaja: string; numeroSecuencia: string; }
 
 export interface PedidoConEstibasCajas {
-  estibas: Array<{ secuencia: number; ubicacion: string; observacion: string | null }>;
-  cajas: Array<{ numeroSecuencia: number | null; codigoCaja: string | null }>;
+  estibas: Array<{ id: string; secuencia: number; ubicacion: string; observacion: string | null }>;
+  cajas: Array<{ numeroSecuencia: number | null; codigoCaja: string | null; estibaId: string | null }>;
 }
 
 // ── Codificación de "cajas por estiba" dentro de `observacion` ──────────────

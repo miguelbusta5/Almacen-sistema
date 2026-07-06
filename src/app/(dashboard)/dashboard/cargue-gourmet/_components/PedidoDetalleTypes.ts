@@ -11,6 +11,8 @@ export interface CajaDetalle {
   id: string;
   numeroSecuencia: number | null;
   codigoCaja: string | null;
+  // Estiba a la que pertenece (G2+). Nula en cajas legacy sin escaneo inicial.
+  estibaId: string | null;
 }
 
 export interface EscaneoDetalle {

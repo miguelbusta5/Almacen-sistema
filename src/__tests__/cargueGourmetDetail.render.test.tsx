@@ -30,7 +30,7 @@ const mockPedido: PedidoDetalle = {
     { id: "e2", secuencia: 2, ubicacion: "A2", observacion: "Cerca a la puerta" },
   ],
   cajas: [
-    { id: "c1", numeroSecuencia: 1, codigoCaja: "TSDM98761-CAJA-01" },
+    { id: "c1", numeroSecuencia: 1, codigoCaja: "TSDM98761-CAJA-01", estibaId: null },
   ],
   cargues: [
     {
