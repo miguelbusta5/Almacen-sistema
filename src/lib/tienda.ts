@@ -29,10 +29,12 @@ export const ESTADOS_ACTIVOS: EstadoDespacho[] = [
   "ENTREGADO_CEDI",
 ];
 
-// Flujo lineal para el pipeline visual (excluye CON_NOVEDAD)
+// Flujo lineal para el pipeline visual (excluye CON_NOVEDAD).
+// Simplificado a 3 pasos: Pendiente recogida → En CEDI → Enviado al cliente.
+// RECOGIDO_TIENDA es un estado LEGADO (ya no se produce; se muestra como "En
+// CEDI" y ocupa ese mismo paso). Ver docs/cerebro/decisiones.md.
 export const FLUJO_ESTADOS: EstadoDespacho[] = [
   "CREADO_TIENDA",
-  "RECOGIDO_TIENDA",
   "ENTREGADO_CEDI",
   "ENVIADO_CLIENTE",
 ];
@@ -108,8 +110,8 @@ export interface DespachoTienda {
 export const ESTADO_DESPACHO_LABEL: Record<EstadoDespacho, string> = {
   CREADO_TIENDA:      "Pendiente recogida",
   RECHAZADO:          "Rechazado",
-  RECOGIDO_TIENDA:    "Recogido en CEDI",
-  ENTREGADO_CEDI:     "Entregado en CEDI",
+  RECOGIDO_TIENDA:    "En CEDI",  // legado (se fusiona con ENTREGADO_CEDI)
+  ENTREGADO_CEDI:     "En CEDI",
   ENVIADO_CLIENTE:    "Enviado al cliente",
   CON_NOVEDAD:        "Con novedad",
 };
@@ -120,8 +122,8 @@ export const ESTADO_DESPACHO_LABEL: Record<EstadoDespacho, string> = {
 export const ESTADO_DESPACHO_COLOR: Record<EstadoDespacho, string> = {
   CREADO_TIENDA:      "var(--state-tienda-created)", // rojo — pendiente recogida
   RECHAZADO:          "var(--state-rejected)",
-  RECOGIDO_TIENDA:    "var(--state-tienda-picked)",  // naranja — recogido en CEDI
-  ENTREGADO_CEDI:     "var(--state-tienda-cedi)",    // amarillo — entregado en CEDI
+  RECOGIDO_TIENDA:    "var(--state-tienda-cedi)",    // legado — se muestra como En CEDI
+  ENTREGADO_CEDI:     "var(--state-tienda-cedi)",    // En CEDI
   ENVIADO_CLIENTE:    "var(--state-tienda-sent)",    // verde — enviado al cliente
   CON_NOVEDAD:        "var(--state-alert)",
 };

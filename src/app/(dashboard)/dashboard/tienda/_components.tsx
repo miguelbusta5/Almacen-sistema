@@ -145,7 +145,11 @@ export function EstadoPipeline({
   return (
     <div className={styles.pipeline}>
       {FLUJO_ESTADOS.map((estado) => {
-        const count = items.filter((d) => d.estado === estado).length;
+        // "En CEDI" (ENTREGADO_CEDI) también agrupa el legado RECOGIDO_TIENDA.
+        const count = items.filter((d) =>
+          d.estado === estado ||
+          (estado === "ENTREGADO_CEDI" && d.estado === "RECOGIDO_TIENDA")
+        ).length;
         const color = ESTADO_DESPACHO_COLOR[estado];
         const active = activeEstado === estado;
         return (
@@ -582,12 +586,14 @@ export function DetailFlow({ despacho }: { despacho: DespachoTienda }) {
     ENTREGADO_CEDI:  despacho.entregadoCediAt,
     ENVIADO_CLIENTE: despacho.despachadoAt,
   };
+  // RECOGIDO_TIENDA (legado) ocupa el mismo paso que "En CEDI" (ENTREGADO_CEDI).
+  const estadoNorm = estado === "RECOGIDO_TIENDA" ? "ENTREGADO_CEDI" : estado;
   return (
     <div className={styles.detailFlow}>
       {FLUJO_ESTADOS.map((step, index) => {
-        const currentIndex = FLUJO_ESTADOS.indexOf(estado);
+        const currentIndex = FLUJO_ESTADOS.indexOf(estadoNorm);
         const done = currentIndex > index;
-        const active = estado === step;
+        const active = estadoNorm === step;
         const color = ESTADO_DESPACHO_COLOR[step];
         return (
           <div

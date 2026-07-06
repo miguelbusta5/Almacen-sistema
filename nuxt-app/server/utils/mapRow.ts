@@ -68,11 +68,14 @@ export function mapDespacho(r: any) {
   }
 }
 
+// Flujo fusionado a 3 estados (ver docs/cerebro/decisiones.md): RECOGIDO_TIENDA
+// es legado y se etiqueta igual que ENTREGADO_CEDI ("En CEDI"). Usado solo en
+// mensajes de notificación/ActivityLog, no en la UI (ver app/utils/despacho.ts).
 export const ESTADO_DESPACHO_LABEL: Record<string, string> = {
-  CREADO_TIENDA: 'Creado en tienda',
+  CREADO_TIENDA: 'Pendiente recogida',
   RECHAZADO: 'Rechazado',
-  RECOGIDO_TIENDA: 'Recogido en tienda',
-  ENTREGADO_CEDI: 'Entregado en CEDI',
+  RECOGIDO_TIENDA: 'En CEDI',
+  ENTREGADO_CEDI: 'En CEDI',
   ENVIADO_CLIENTE: 'Enviado al cliente',
   CON_NOVEDAD: 'Con novedad',
 }

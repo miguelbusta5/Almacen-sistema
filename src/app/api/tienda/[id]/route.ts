@@ -55,8 +55,8 @@ const updateSchema = z.object({
 export const ESTADO_LABEL: Record<string, string> = {
   CREADO_TIENDA:      "Creado en tienda",
   RECHAZADO:          "Rechazado",
-  RECOGIDO_TIENDA:    "Recogido en tienda",
-  ENTREGADO_CEDI:     "Entregado en CEDI",
+  RECOGIDO_TIENDA:    "En CEDI",  // legado (fusionado con ENTREGADO_CEDI)
+  ENTREGADO_CEDI:     "En CEDI",
   ENVIADO_CLIENTE:    "Enviado al cliente",
   CON_NOVEDAD:        "Con novedad",
 };
