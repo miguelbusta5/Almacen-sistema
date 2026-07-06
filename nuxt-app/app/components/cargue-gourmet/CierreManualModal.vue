@@ -50,6 +50,6 @@ function submit() {
 .fw { display: flex; flex-direction: column; gap: 5px; }
 .fl { font-size: 12px; font-weight: 600; color: var(--ink-2); }
 .err-msg { font-size: 12px; color: var(--u-critico); margin: 0; }
-.factions { display: grid; grid-template-columns: 1fr 2fr; gap: 10px; padding-top: 6px; }
+.factions { position: sticky; bottom: 0; display: grid; grid-template-columns: 1fr 2fr; gap: 10px; padding-top: 6px; background: linear-gradient(180deg, transparent, var(--surface) 40%); }
 .factions .btn { justify-content: center; }
 </style>

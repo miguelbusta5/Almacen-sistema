@@ -31,7 +31,7 @@ const cards = computed(() => [
         <span class="kpi-ic"><component :is="c.icon" :size="15" /></span>
         <span class="kpi-label">{{ c.label }}</span>
       </div>
-      <div class="kpi-value">{{ c.value }}</div>
+      <div class="kpi-value tnum"><CountUp :value="c.value" /></div>
       <div class="kpi-hint">{{ c.hint }}</div>
     </button>
   </div>
@@ -41,12 +41,23 @@ const cards = computed(() => [
 .rail { display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px; }
 .kpi {
   position: relative; text-align: left; padding: 14px 16px; border-radius: var(--r-md);
-  background: var(--surface); border: 1px solid var(--border); box-shadow: var(--shadow-xs);
-  cursor: pointer; transition: transform .14s, box-shadow .14s; overflow: hidden;
+  background:
+    radial-gradient(120% 100% at 100% 0%, color-mix(in srgb, var(--c) 6%, transparent), transparent 60%),
+    var(--surface);
+  border: 1px solid var(--border); box-shadow: var(--shadow-xs);
+  cursor: pointer; overflow: hidden;
+  transition: transform .16s cubic-bezier(.16,1,.3,1), box-shadow .16s, border-color .16s;
+  animation: auroraFade .34s cubic-bezier(.16,1,.3,1) both;
 }
-.kpi:hover { transform: translateY(-2px); box-shadow: var(--shadow-sm); }
-.kpi-bar { position: absolute; left: 0; top: 0; bottom: 0; width: 3px; background: var(--c); }
+.kpi:nth-child(2){animation-delay:45ms}.kpi:nth-child(3){animation-delay:90ms}
+.kpi:nth-child(4){animation-delay:135ms}.kpi:nth-child(5){animation-delay:180ms}
+.kpi:hover { transform: translateY(-3px); box-shadow: var(--shadow); border-color: color-mix(in srgb, var(--c) 45%, var(--border)); }
+.kpi:active { transform: translateY(-1px); }
+.kpi:focus-visible { outline: none; box-shadow: var(--ring); }
+.kpi-bar { position: absolute; left: 0; top: 0; bottom: 0; width: 3px; background: linear-gradient(var(--c), color-mix(in srgb, var(--c) 55%, transparent)); }
 .kpi-top { display: flex; align-items: center; gap: 7px; color: var(--c); margin-bottom: 8px; }
+.kpi-ic { width: 26px; height: 26px; border-radius: 8px; display: grid; place-items: center; color: var(--c); background: color-mix(in srgb, var(--c) 12%, transparent); transition: transform .2s cubic-bezier(.34,1.56,.64,1); flex-shrink: 0; }
+.kpi:hover .kpi-ic { transform: scale(1.1) rotate(-4deg); }
 .kpi-label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); }
 .kpi-value { font-size: 26px; font-weight: 800; letter-spacing: -.02em; color: var(--ink); }
 .kpi-hint { font-size: 11.5px; color: var(--faint); margin-top: 2px; }

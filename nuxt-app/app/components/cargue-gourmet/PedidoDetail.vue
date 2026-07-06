@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
 import {
-  ArrowLeft, Pencil, Trash2, Truck, PackagePlus, CheckCircle2, RotateCcw, ShieldAlert,
+  ArrowLeft, Pencil, Trash2, Truck, PackagePlus, CheckCircle2, RotateCcw, ShieldAlert, TriangleAlert, XCircle,
 } from '@lucide/vue'
 import {
   ESTADO_LABEL, ESTADO_TONE, fmtFechaHora, rolPuedeTransicionarGourmet,
@@ -62,6 +62,33 @@ function submitEscaneo() {
   inputRef.value?.focus()
 }
 
+// Rama alterna del flujo (novedad abierta, cierre manual o cancelado) —
+// se muestra como tarjeta de severidad en vez del <Badge> plano, mismo
+// patrón que Facturas Contado (DespachoDetail.vue).
+const severidad = computed(() => {
+  if (props.p.estado === 'CON_NOVEDAD') {
+    const abierta = props.p.novedades?.find((n) => n.estado === 'ABIERTA')
+    return {
+      icono: TriangleAlert,
+      titulo: 'Con novedad',
+      mensaje: abierta?.descripcion ?? 'Hay una novedad registrada en el cargue.',
+      fecha: abierta ? fmtFechaHora(abierta.createdAt) : null,
+    }
+  }
+  if (props.p.estado === 'CARGUE_COMPLETO_MANUAL') {
+    return {
+      icono: ShieldAlert,
+      titulo: 'Cerrado manualmente',
+      mensaje: props.p.observacionCierreManual || `Cierre de contingencia — contadas manualmente: ${props.p.cantidadContadaManual ?? '—'}. Motivo: ${props.p.motivoCierreManual ?? '—'}.`,
+      fecha: fmtFechaHora(props.p.cargueCompletadoAt ?? null),
+    }
+  }
+  if (props.p.estado === 'CANCELADO') {
+    return { icono: XCircle, titulo: 'Cancelado', mensaje: 'Este pedido fue cancelado.', fecha: null }
+  }
+  return null
+})
+
 const resumen = computed(() => [
   { label: 'Código tienda', value: props.p.codigoTienda },
   { label: 'Ciudad destino', value: props.p.ciudadDestino },
@@ -113,6 +140,17 @@ const resumen = computed(() => [
 
     <div class="grid">
       <div class="col">
+        <div v-if="severidad" class="sev" :style="{ '--c': ESTADO_TONE[p.estado] }">
+          <span class="sev-ic"><component :is="severidad.icono" :size="18" /></span>
+          <div class="sev-body">
+            <div class="sev-top">
+              <span class="sev-title">{{ severidad.titulo }}</span>
+              <span v-if="severidad.fecha" class="sev-date mono">{{ severidad.fecha }}</span>
+            </div>
+            <p class="sev-msg">{{ severidad.mensaje }}</p>
+          </div>
+        </div>
+
         <section class="sec card">
           <h3>Resumen del pedido</h3>
           <div class="dgrid">
@@ -226,7 +264,37 @@ const resumen = computed(() => [
 .back { margin-bottom: 14px; }
 .dhead, .col > * { animation: dEnter .42s cubic-bezier(.16,1,.3,1) both; }
 .dhead { animation-delay: .02s; }
+.col:first-child > *:nth-child(1) { animation-delay: .06s; }
+.col:first-child > *:nth-child(2) { animation-delay: .10s; }
+.col:first-child > *:nth-child(3) { animation-delay: .14s; }
+.col:first-child > *:nth-child(4) { animation-delay: .18s; }
+.col:first-child > *:nth-child(5) { animation-delay: .22s; }
+.col:first-child > *:nth-child(6) { animation-delay: .26s; }
+.col:first-child > *:nth-child(7) { animation-delay: .30s; }
+.col.side { animation-delay: .16s; }
 @keyframes dEnter { from { opacity: 0; transform: translateY(12px); } }
+
+/* Tarjeta de severidad (novedad / cierre manual / cancelado) — mismo
+   patrón que Facturas Contado (DespachoDetail.vue). */
+.sev {
+  display: flex; gap: 13px; align-items: flex-start;
+  padding: 14px 16px; border-radius: var(--r-sm);
+  background: color-mix(in srgb, var(--c) 8%, var(--surface));
+  border: 1px solid color-mix(in srgb, var(--c) 28%, transparent);
+  border-left: 3px solid var(--c);
+  animation: sevEnter .4s cubic-bezier(.16,1,.3,1) both;
+}
+@keyframes sevEnter { from { opacity: 0; transform: translateX(-8px); } }
+.sev-ic {
+  width: 36px; height: 36px; border-radius: 10px; flex-shrink: 0;
+  display: grid; place-items: center; color: var(--c);
+  background: color-mix(in srgb, var(--c) 14%, transparent);
+}
+.sev-body { flex: 1; min-width: 0; }
+.sev-top { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
+.sev-title { font-size: 14px; font-weight: 800; color: color-mix(in srgb, var(--c) 75%, var(--ink)); }
+.sev-date { font-size: 10.5px; color: var(--faint); flex-shrink: 0; }
+.sev-msg { font-size: 13px; color: var(--ink-2); line-height: 1.5; margin: 5px 0 0; }
 .dhead { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; padding: 18px 20px; margin-bottom: 16px; flex-wrap: wrap; }
 .dtitle-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
 .dhead h1 { font-size: 22px; font-weight: 800; letter-spacing: -.02em; }

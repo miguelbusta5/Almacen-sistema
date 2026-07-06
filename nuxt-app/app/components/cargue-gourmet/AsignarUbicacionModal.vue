@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
-import { Plus, Trash2 } from '@lucide/vue'
+import { Plus, Trash2, MapPin } from '@lucide/vue'
 import type { PedidoGourmet } from '~/utils/gourmet'
 
 interface EstibaForm { ubicacion: string; cantidadCajas: string; observacion: string }
@@ -84,41 +84,44 @@ function submit() {
     wide @close="emit('close')"
   >
     <form class="form" @submit.prevent="submit">
-      <template v-if="simplificado">
-        <div class="rows">
-          <div v-for="row in filasSimplificadas" :key="row.secuencia" class="row">
-            <div class="row-top">
-              <span class="row-title">Estiba {{ row.secuencia }}</span>
-              <span class="mono faint">{{ row.cantidadCajas }} caja{{ row.cantidadCajas !== 1 ? 's' : '' }} escaneada{{ row.cantidadCajas !== 1 ? 's' : '' }}</span>
-            </div>
-            <input v-model="row.ubicacion" class="field" placeholder="Ubicación (ej. Pasillo B - Nivel 2)">
-            <input v-model="row.observacion" class="field small" placeholder="Observación (opcional)">
-          </div>
-        </div>
-      </template>
-
-      <template v-else>
-        <div class="rows-head">
-          <span class="fl">Estibas</span>
-          <button type="button" class="btn-link" @click="addEstiba"><Plus :size="12" /> Añadir estiba</button>
-        </div>
-        <div class="rows">
-          <div v-for="(row, i) in estibasClasico" :key="i" class="row">
-            <div class="row-top">
-              <span class="row-title">Estiba {{ i + 1 }}</span>
-              <button type="button" class="chip-x" @click="removeEstiba(i)"><Trash2 :size="12" /></button>
-            </div>
-            <div class="g2">
+      <section class="fsec">
+        <div class="fsec-title"><span class="fsec-ic"><MapPin :size="13" /></span> Ubicación por estiba</div>
+        <template v-if="simplificado">
+          <div class="rows">
+            <div v-for="row in filasSimplificadas" :key="row.secuencia" class="row">
+              <div class="row-top">
+                <span class="row-title">Estiba {{ row.secuencia }}</span>
+                <span class="mono faint">{{ row.cantidadCajas }} caja{{ row.cantidadCajas !== 1 ? 's' : '' }} escaneada{{ row.cantidadCajas !== 1 ? 's' : '' }}</span>
+              </div>
               <input v-model="row.ubicacion" class="field" placeholder="Ubicación (ej. Pasillo B - Nivel 2)">
-              <input v-model="row.cantidadCajas" type="number" min="1" class="field" placeholder="Cajas">
+              <input v-model="row.observacion" class="field small" placeholder="Observación (opcional)">
             </div>
-            <input v-model="row.observacion" class="field small" placeholder="Observación (opcional)">
           </div>
-        </div>
-        <div class="total-resumen" :class="{ ok: totalClasico === p.cajasEsperadas }">
-          Total asignado: {{ totalClasico }} cajas / {{ p.cajasEsperadas }} esperadas
-        </div>
-      </template>
+        </template>
+
+        <template v-else>
+          <div class="rows-head">
+            <span class="fl">Estibas</span>
+            <button type="button" class="btn-link" @click="addEstiba"><Plus :size="12" /> Añadir estiba</button>
+          </div>
+          <div class="rows">
+            <div v-for="(row, i) in estibasClasico" :key="i" class="row">
+              <div class="row-top">
+                <span class="row-title">Estiba {{ i + 1 }}</span>
+                <button type="button" class="chip-x" @click="removeEstiba(i)"><Trash2 :size="12" /></button>
+              </div>
+              <div class="g2">
+                <input v-model="row.ubicacion" class="field" placeholder="Ubicación (ej. Pasillo B - Nivel 2)">
+                <input v-model="row.cantidadCajas" type="number" min="1" class="field" placeholder="Cajas">
+              </div>
+              <input v-model="row.observacion" class="field small" placeholder="Observación (opcional)">
+            </div>
+          </div>
+          <div class="total-resumen" :class="{ ok: totalClasico === p.cajasEsperadas }">
+            Total asignado: {{ totalClasico }} cajas / {{ p.cajasEsperadas }} esperadas
+          </div>
+        </template>
+      </section>
 
       <p v-if="error" class="err-msg">{{ error }}</p>
 
@@ -134,6 +137,9 @@ function submit() {
 
 <style scoped>
 .form { display: flex; flex-direction: column; gap: 14px; }
+.fsec { display: flex; flex-direction: column; gap: 11px; padding: 14px 14px 15px; border: 1px solid var(--border); border-radius: var(--r-md); background: linear-gradient(180deg, var(--surface-2), var(--surface)); }
+.fsec-title { display: flex; align-items: center; gap: 9px; font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: .06em; color: var(--ink-2); }
+.fsec-ic { width: 24px; height: 24px; border-radius: 7px; display: grid; place-items: center; background: var(--brand-tint); color: var(--brand-deep); }
 .fl { font-size: 12px; font-weight: 600; color: var(--ink-2); }
 .rows-head { display: flex; align-items: center; justify-content: space-between; }
 .btn-link { display: inline-flex; align-items: center; gap: 4px; font-size: 12px; background: none; border: none; color: var(--brand); cursor: pointer; padding: 0; }
@@ -148,6 +154,6 @@ function submit() {
 .total-resumen { font-size: 12px; font-weight: 600; color: var(--u-critico); }
 .total-resumen.ok { color: var(--u-ok); }
 .err-msg { font-size: 12px; color: var(--u-critico); margin: 0; }
-.factions { display: grid; grid-template-columns: 1fr 2fr; gap: 10px; padding-top: 6px; }
+.factions { position: sticky; bottom: 0; display: grid; grid-template-columns: 1fr 2fr; gap: 10px; padding-top: 6px; background: linear-gradient(180deg, transparent, var(--surface) 40%); }
 .factions .btn { justify-content: center; }
 </style>

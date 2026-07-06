@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref } from 'vue'
+import { ClipboardList, Boxes } from '@lucide/vue'
 import type { PedidoGourmet } from '~/utils/gourmet'
 
 interface TiendaOption { codigo: string; tienda: string; ciudad: string }
@@ -63,25 +64,31 @@ function submit() {
 <template>
   <ModalShell title="Editar pedido Gourmet" :sub="`${p.tipoOrden} ${p.orden}`" wide @close="emit('close')">
     <form class="form" @submit.prevent="submit">
-      <label class="fw"><span class="fl">Orden <b>*</b></span><input v-model="orden" class="field" maxlength="100"></label>
+      <section class="fsec">
+        <div class="fsec-title"><span class="fsec-ic"><ClipboardList :size="13" /></span> Datos del pedido</div>
+        <label class="fw"><span class="fl">Orden <b>*</b></span><input v-model="orden" class="field" maxlength="100"></label>
 
-      <div class="fw autocomplete">
-        <span class="fl">Código tienda <b>*</b></span>
-        <input :value="codigoTiendaQuery" class="field" autocomplete="off" @input="onCodigoTiendaInput(($event.target as HTMLInputElement).value)" @focus="showSuggestions = true">
-        <div v-if="showSuggestions && codigoTiendaQuery && !tiendaSeleccionada" class="suggestions">
-          <div v-if="searchLoading" class="sugg-item faint">Buscando…</div>
-          <div v-else-if="suggestions.length === 0" class="sugg-item faint">Sin coincidencias</div>
-          <button v-for="t in suggestions" :key="t.codigo" type="button" class="sugg-item" @click="selectTienda(t)">
-            <strong>{{ t.codigo }}</strong> — {{ t.tienda }} <span class="faint">({{ t.ciudad }})</span>
-          </button>
+        <div class="fw autocomplete">
+          <span class="fl">Código tienda <b>*</b></span>
+          <input :value="codigoTiendaQuery" class="field" autocomplete="off" @input="onCodigoTiendaInput(($event.target as HTMLInputElement).value)" @focus="showSuggestions = true">
+          <div v-if="showSuggestions && codigoTiendaQuery && !tiendaSeleccionada" class="suggestions">
+            <div v-if="searchLoading" class="sugg-item faint">Buscando…</div>
+            <div v-else-if="suggestions.length === 0" class="sugg-item faint">Sin coincidencias</div>
+            <button v-for="t in suggestions" :key="t.codigo" type="button" class="sugg-item" @click="selectTienda(t)">
+              <strong>{{ t.codigo }}</strong> — {{ t.tienda }} <span class="faint">({{ t.ciudad }})</span>
+            </button>
+          </div>
+          <div v-if="tiendaSeleccionada" class="tienda-resuelta">{{ tiendaSeleccionada.tienda }} — {{ tiendaSeleccionada.ciudad }}</div>
         </div>
-        <div v-if="tiendaSeleccionada" class="tienda-resuelta">{{ tiendaSeleccionada.tienda }} — {{ tiendaSeleccionada.ciudad }}</div>
-      </div>
+      </section>
 
-      <div class="g2">
-        <label class="fw"><span class="fl">Cajas esperadas <b>*</b></span><input v-model="cajasEsperadas" type="number" min="1" class="field"></label>
-        <label class="fw"><span class="fl">Estibas esperadas <b>*</b></span><input v-model="estibasEsperadas" type="number" min="1" class="field"></label>
-      </div>
+      <section class="fsec">
+        <div class="fsec-title"><span class="fsec-ic"><Boxes :size="13" /></span> Cantidades</div>
+        <div class="g2">
+          <label class="fw"><span class="fl">Cajas esperadas <b>*</b></span><input v-model="cajasEsperadas" type="number" min="1" class="field"></label>
+          <label class="fw"><span class="fl">Estibas esperadas <b>*</b></span><input v-model="estibasEsperadas" type="number" min="1" class="field"></label>
+        </div>
+      </section>
 
       <p v-if="error" class="err-msg">{{ error }}</p>
 
@@ -97,6 +104,9 @@ function submit() {
 
 <style scoped>
 .form { display: flex; flex-direction: column; gap: 14px; }
+.fsec { display: flex; flex-direction: column; gap: 11px; padding: 14px 14px 15px; border: 1px solid var(--border); border-radius: var(--r-md); background: linear-gradient(180deg, var(--surface-2), var(--surface)); }
+.fsec-title { display: flex; align-items: center; gap: 9px; font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: .06em; color: var(--ink-2); }
+.fsec-ic { width: 24px; height: 24px; border-radius: 7px; display: grid; place-items: center; background: var(--brand-tint); color: var(--brand-deep); }
 .fw { display: flex; flex-direction: column; gap: 5px; position: relative; }
 .fl { font-size: 12px; font-weight: 600; color: var(--ink-2); }
 .fl b { color: var(--u-critico); font-weight: 700; }
@@ -108,7 +118,7 @@ function submit() {
 .tienda-resuelta { font-size: 12px; color: var(--muted); margin-top: 4px; }
 .faint { color: var(--faint); font-size: 12px; }
 .err-msg { font-size: 12px; color: var(--u-critico); margin: 0; }
-.factions { display: grid; grid-template-columns: 1fr 2fr; gap: 10px; padding-top: 6px; }
+.factions { position: sticky; bottom: 0; display: grid; grid-template-columns: 1fr 2fr; gap: 10px; padding-top: 6px; background: linear-gradient(180deg, transparent, var(--surface) 40%); }
 .factions .btn { justify-content: center; }
 @media (max-width: 560px) { .g2 { grid-template-columns: 1fr; } }
 </style>

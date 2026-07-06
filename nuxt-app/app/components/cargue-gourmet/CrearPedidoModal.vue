@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { reactive, ref, computed, watch } from 'vue'
-import { Trash2 } from '@lucide/vue'
+import { Trash2, ClipboardList, Boxes, ScanLine } from '@lucide/vue'
 import { validarCodigoCaja, type TipoPedidoGourmet } from '~/utils/gourmet'
 
 interface TiendaOption { codigo: string; tienda: string; ciudad: string }
@@ -141,68 +141,77 @@ async function submit() {
 <template>
   <ModalShell title="Nuevo pedido Gourmet" sub="Se creará sin ubicación asignada" wide @close="handleClose">
     <form class="form" @submit.prevent="submit">
-      <div class="fw">
-        <span class="fl">Tipo de pedido</span>
-        <div class="tipo-toggle">
-          <button type="button" class="tipo-btn" :class="{ active: tipoPedido === 'GOURMET' }" @click="tipoPedido = 'GOURMET'">Gourmet</button>
-          <button type="button" class="tipo-btn" :class="{ active: tipoPedido === 'MUEBLES' }" @click="tipoPedido = 'MUEBLES'">Muebles</button>
-        </div>
-      </div>
-
-      <label class="fw">
-        <span class="fl">Orden <b>*</b></span>
-        <input v-model="orden" class="field" placeholder="Ej. TSDM123456" maxlength="100">
-      </label>
-
-      <div class="fw autocomplete">
-        <span class="fl">Código tienda <b>*</b></span>
-        <input
-          :value="codigoTiendaQuery" class="field" autocomplete="off"
-          placeholder="Buscar por código, tienda o ciudad… o escribe CLIENTE"
-          @input="onCodigoTiendaInput(($event.target as HTMLInputElement).value)"
-          @focus="showSuggestions = true"
-        >
-        <div v-if="showSuggestions && codigoTiendaQuery && !tiendaSeleccionada" class="suggestions">
-          <div v-if="searchLoading" class="sugg-item faint">Buscando…</div>
-          <div v-else-if="suggestions.length === 0" class="sugg-item faint">Sin coincidencias</div>
-          <button v-for="t in suggestions" :key="t.codigo" type="button" class="sugg-item" @click="selectTienda(t)">
-            <strong>{{ t.codigo }}</strong> — {{ t.tienda }} <span class="faint">({{ t.ciudad }})</span>
-          </button>
-        </div>
-        <div v-if="tiendaSeleccionada" class="tienda-resuelta">{{ tiendaSeleccionada.tienda }} — {{ tiendaSeleccionada.ciudad }}</div>
-      </div>
-
-      <div class="g2">
-        <label class="fw"><span class="fl">Cajas esperadas <b>*</b></span><input v-model="cajasEsperadas" type="number" min="1" class="field"></label>
-        <label class="fw"><span class="fl">Estibas esperadas <b>*</b></span><input v-model="estibasEsperadas" type="number" min="1" class="field"></label>
-      </div>
-
-      <div v-if="estibas.length > 0" class="escaneo">
-        <div class="escaneo-head">
-          <span class="fl">Escaneo de cajas por estiba</span>
-          <span class="mono total" :class="{ ok: escaneoCompleto }">{{ totalEscaneado }}{{ cajasEsperadasValidas ? ` / ${cajasEsperadasNum}` : '' }}</span>
-        </div>
-        <div class="tabs">
-          <button v-for="(e, i) in estibas" :key="e.secuencia" type="button" class="tab" :class="{ active: i === tabActivo }" @click="tabActivo = i; escaneoError = ''">
-            Estiba {{ e.secuencia }} ({{ e.cajas.length }})
-          </button>
-        </div>
-        <div class="scan-row">
-          <input
-            v-model="codigoInput" class="field mono" :placeholder="`Escanea caja para Estiba ${estibaActiva?.secuencia}…`"
-            @keydown.enter.prevent="agregarCaja"
-          >
-          <button type="button" class="btn btn-primary btn-sm" :disabled="!codigoInput.trim()" @click="agregarCaja">Agregar</button>
-        </div>
-        <p v-if="escaneoError" class="err-msg">{{ escaneoError }}</p>
-        <div class="cajas-lista">
-          <p v-if="!estibaActiva?.cajas.length" class="faint">Sin cajas escaneadas en esta estiba.</p>
-          <div v-for="(c, ci) in estibaActiva?.cajas" :key="`${c}-${ci}`" class="caja-chip">
-            <span class="mono">{{ c }}</span>
-            <button type="button" class="chip-x" @click="quitarCaja(tabActivo, ci)"><Trash2 :size="11" /></button>
+      <section class="fsec">
+        <div class="fsec-title"><span class="fsec-ic"><ClipboardList :size="13" /></span> Datos del pedido</div>
+        <div class="fw">
+          <span class="fl">Tipo de pedido</span>
+          <div class="tipo-toggle">
+            <button type="button" class="tipo-btn" :class="{ active: tipoPedido === 'GOURMET' }" @click="tipoPedido = 'GOURMET'">Gourmet</button>
+            <button type="button" class="tipo-btn" :class="{ active: tipoPedido === 'MUEBLES' }" @click="tipoPedido = 'MUEBLES'">Muebles</button>
           </div>
         </div>
-      </div>
+
+        <label class="fw">
+          <span class="fl">Orden <b>*</b></span>
+          <input v-model="orden" class="field" placeholder="Ej. TSDM123456" maxlength="100">
+        </label>
+
+        <div class="fw autocomplete">
+          <span class="fl">Código tienda <b>*</b></span>
+          <input
+            :value="codigoTiendaQuery" class="field" autocomplete="off"
+            placeholder="Buscar por código, tienda o ciudad… o escribe CLIENTE"
+            @input="onCodigoTiendaInput(($event.target as HTMLInputElement).value)"
+            @focus="showSuggestions = true"
+          >
+          <div v-if="showSuggestions && codigoTiendaQuery && !tiendaSeleccionada" class="suggestions">
+            <div v-if="searchLoading" class="sugg-item faint">Buscando…</div>
+            <div v-else-if="suggestions.length === 0" class="sugg-item faint">Sin coincidencias</div>
+            <button v-for="t in suggestions" :key="t.codigo" type="button" class="sugg-item" @click="selectTienda(t)">
+              <strong>{{ t.codigo }}</strong> — {{ t.tienda }} <span class="faint">({{ t.ciudad }})</span>
+            </button>
+          </div>
+          <div v-if="tiendaSeleccionada" class="tienda-resuelta">{{ tiendaSeleccionada.tienda }} — {{ tiendaSeleccionada.ciudad }}</div>
+        </div>
+      </section>
+
+      <section class="fsec">
+        <div class="fsec-title"><span class="fsec-ic"><Boxes :size="13" /></span> Cantidades</div>
+        <div class="g2">
+          <label class="fw"><span class="fl">Cajas esperadas <b>*</b></span><input v-model="cajasEsperadas" type="number" min="1" class="field"></label>
+          <label class="fw"><span class="fl">Estibas esperadas <b>*</b></span><input v-model="estibasEsperadas" type="number" min="1" class="field"></label>
+        </div>
+      </section>
+
+      <section v-if="estibas.length > 0" class="fsec">
+        <div class="fsec-title"><span class="fsec-ic"><ScanLine :size="13" /></span> Escaneo de cajas por estiba</div>
+        <div class="escaneo">
+          <div class="escaneo-head">
+            <span class="fl">Progreso</span>
+            <span class="mono total" :class="{ ok: escaneoCompleto }">{{ totalEscaneado }}{{ cajasEsperadasValidas ? ` / ${cajasEsperadasNum}` : '' }}</span>
+          </div>
+          <div class="tabs">
+            <button v-for="(e, i) in estibas" :key="e.secuencia" type="button" class="tab" :class="{ active: i === tabActivo }" @click="tabActivo = i; escaneoError = ''">
+              Estiba {{ e.secuencia }} ({{ e.cajas.length }})
+            </button>
+          </div>
+          <div class="scan-row">
+            <input
+              v-model="codigoInput" class="field mono" :placeholder="`Escanea caja para Estiba ${estibaActiva?.secuencia}…`"
+              @keydown.enter.prevent="agregarCaja"
+            >
+            <button type="button" class="btn btn-primary btn-sm" :disabled="!codigoInput.trim()" @click="agregarCaja">Agregar</button>
+          </div>
+          <p v-if="escaneoError" class="err-msg">{{ escaneoError }}</p>
+          <div class="cajas-lista">
+            <p v-if="!estibaActiva?.cajas.length" class="faint">Sin cajas escaneadas en esta estiba.</p>
+            <div v-for="(c, ci) in estibaActiva?.cajas" :key="`${c}-${ci}`" class="caja-chip">
+              <span class="mono">{{ c }}</span>
+              <button type="button" class="chip-x" @click="quitarCaja(tabActivo, ci)"><Trash2 :size="11" /></button>
+            </div>
+          </div>
+        </div>
+      </section>
 
       <div v-if="error" class="error-block">
         <p class="err-msg">{{ error }}</p>
@@ -221,6 +230,9 @@ async function submit() {
 
 <style scoped>
 .form { display: flex; flex-direction: column; gap: 14px; }
+.fsec { display: flex; flex-direction: column; gap: 11px; padding: 14px 14px 15px; border: 1px solid var(--border); border-radius: var(--r-md); background: linear-gradient(180deg, var(--surface-2), var(--surface)); }
+.fsec-title { display: flex; align-items: center; gap: 9px; font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: .06em; color: var(--ink-2); }
+.fsec-ic { width: 24px; height: 24px; border-radius: 7px; display: grid; place-items: center; background: var(--brand-tint); color: var(--brand-deep); }
 .fw { display: flex; flex-direction: column; gap: 5px; position: relative; }
 .fl { font-size: 12px; font-weight: 600; color: var(--ink-2); }
 .fl b { color: var(--u-critico); font-weight: 700; }
@@ -250,7 +262,7 @@ async function submit() {
 .chip-x { width: 22px; height: 22px; border-radius: 6px; border: none; background: var(--u-critico-tint); color: var(--u-critico); cursor: pointer; display: grid; place-items: center; }
 
 .error-block { display: flex; flex-direction: column; gap: 8px; }
-.factions { display: grid; grid-template-columns: 1fr 2fr; gap: 10px; padding-top: 6px; }
+.factions { position: sticky; bottom: 0; display: grid; grid-template-columns: 1fr 2fr; gap: 10px; padding-top: 6px; background: linear-gradient(180deg, transparent, var(--surface) 40%); }
 .factions .btn { justify-content: center; }
 @media (max-width: 560px) { .g2 { grid-template-columns: 1fr; } }
 </style>
