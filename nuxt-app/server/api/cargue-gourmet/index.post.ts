@@ -86,7 +86,9 @@ export default defineEventHandler(async (event) => {
         todosLosCodigos.push(rawCodigo.trim())
       }
     }
-    if (new Set(todosLosCodigos).size !== todosLosCodigos.length) {
+    // Para MUEBLES un mueble puede venir en varias partes con el mismo
+    // número de caja impreso — no se exige unicidad en ese caso.
+    if (data.tipoPedido === 'GOURMET' && new Set(todosLosCodigos).size !== todosLosCodigos.length) {
       throw createError({ statusCode: 400, statusMessage: 'Hay códigos de caja repetidos entre estibas. Cada caja solo puede escanearse una vez.' })
     }
     if (todosLosCodigos.length !== data.cajasEsperadas) {

@@ -81,7 +81,12 @@ function agregarCaja() {
   if (!valor) return
   const r = validarCodigoCaja(valor)
   if (!r.ok) { escaneoError.value = r.error; return }
-  if (todosLosCodigos.value.includes(valor)) { escaneoError.value = `"${valor}" ya fue escaneado en otra caja de este pedido.`; return }
+  // Para MUEBLES un mueble puede venir en varias partes con el mismo
+  // número de caja impreso — no se exige unicidad en ese caso.
+  if (tipoPedido.value === 'GOURMET' && todosLosCodigos.value.includes(valor)) {
+    escaneoError.value = `"${valor}" ya fue escaneado en otra caja de este pedido.`
+    return
+  }
   if (cajasEsperadasValidas.value && totalEscaneado.value >= cajasEsperadasNum.value) { escaneoError.value = `Ya se escanearon las ${cajasEsperadasNum.value} cajas esperadas.`; return }
 
   const idx = Math.min(tabActivo.value, estibas.value.length - 1)
