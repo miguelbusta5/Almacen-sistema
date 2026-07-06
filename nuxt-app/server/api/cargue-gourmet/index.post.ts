@@ -18,6 +18,9 @@ const createSchema = z.object({
   codigoTienda: z.string().min(1).max(50),
   cajasEsperadas: z.number().int().min(1),
   estibasEsperadas: z.number().int().min(1),
+  // GOURMET por defecto — MUEBLES habilita "tiene parte 2" al escanear
+  // (permite repetir un número de caja y contarlo como caja adicional).
+  tipoPedido: z.enum(['GOURMET', 'MUEBLES']).optional().default('GOURMET'),
   // Estibas con cajas escaneadas (opcional — si no se manda, el pedido se
   // crea en BORRADOR sin cajas, igual que en la app Next.js).
   estibas: z.array(estibaInputSchema).optional(),
@@ -100,6 +103,7 @@ export default defineEventHandler(async (event) => {
       ciudadDestino,
       cajasEsperadas: data.cajasEsperadas,
       estibasEsperadas: data.estibasEsperadas,
+      tipoPedido: data.tipoPedido,
       estado: 'BORRADOR',
       creadoPorId: actor.id,
     },

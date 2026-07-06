@@ -805,6 +805,15 @@ enum EstadoPedidoGourmet {
   CANCELADO
 }
 
+// Tipo de carga del pedido — GOURMET (por defecto) exige códigos de caja
+// únicos sin repetir; MUEBLES permite repetir un número de caja cuando el
+// mueble viene en más de una parte física (ver "tiene parte 2" en el
+// escaneo), contando cada parte como una caja adicional.
+enum TipoPedidoGourmet {
+  GOURMET
+  MUEBLES
+}
+
 enum TipoCierreCargue {
   NORMAL
   MANUAL
@@ -854,6 +863,7 @@ model GourmetPedido {
   cajasEsperadas   Int                 @map("cajas_esperadas")
   estibasEsperadas Int                 @map("estibas_esperadas")
   estado           EstadoPedidoGourmet @default(BORRADOR)
+  tipoPedido       TipoPedidoGourmet   @default(GOURMET) @map("tipo_pedido")
 
   creadoPorId String   @map("creado_por_id")
   creadoPor   User     @relation("GourmetPedidosCreados", fields: [creadoPorId], references: [id])

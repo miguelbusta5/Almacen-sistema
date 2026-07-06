@@ -135,11 +135,11 @@ function iniciarCargue() {
   })
 }
 
-async function escanear(codigo: string) {
+async function escanear(codigo: string, tieneParte2: boolean) {
   if (!panelItem.value || busy.value) return
   busy.value = 'escanear'
   try {
-    const res = await $fetch<{ resultado: string; novedadCreada: boolean }>(`/api/cargue-gourmet/${panelItem.value.id}/escanear`, { method: 'POST', body: { codigo } })
+    const res = await $fetch<{ resultado: string; novedadCreada: boolean }>(`/api/cargue-gourmet/${panelItem.value.id}/escanear`, { method: 'POST', body: { codigo, tieneParte2 } })
     ultimoResultado.value = { codigo, resultado: res.resultado }
     await loadDetalle(panelItem.value.id)
   } catch (e) {

@@ -1,13 +1,16 @@
 <script setup lang="ts">
 import { reactive, ref, computed, watch } from 'vue'
 import { Trash2 } from '@lucide/vue'
-import { validarCodigoCaja } from '~/utils/gourmet'
+import { validarCodigoCaja, type TipoPedidoGourmet } from '~/utils/gourmet'
 
 interface TiendaOption { codigo: string; tienda: string; ciudad: string }
 interface EstibaEscaneada { secuencia: number; cajas: string[] }
 
 const emit = defineEmits<{ (e: 'close'): void; (e: 'created'): void; (e: 'verExistente', id: string): void }>()
 
+// GOURMET por defecto — MUEBLES habilita "tiene parte 2" al escanear cajas
+// durante el cargue (permite repetir un número de caja).
+const tipoPedido = ref<TipoPedidoGourmet>('GOURMET')
 const orden = ref('')
 const codigoTiendaQuery = ref('')
 const tiendaSeleccionada = ref<TiendaOption | null>(null)
@@ -114,6 +117,7 @@ async function submit() {
         codigoTienda: tiendaSeleccionada.value.codigo,
         cajasEsperadas: cajas,
         estibasEsperadas: estibasCount,
+        tipoPedido: tipoPedido.value,
         estibas: estibas.value.map((e) => ({ secuencia: e.secuencia, cajas: e.cajas })),
       },
     })
@@ -132,6 +136,14 @@ async function submit() {
 <template>
   <ModalShell title="Nuevo pedido Gourmet" sub="Se creará sin ubicación asignada" wide @close="handleClose">
     <form class="form" @submit.prevent="submit">
+      <div class="fw">
+        <span class="fl">Tipo de pedido</span>
+        <div class="tipo-toggle">
+          <button type="button" class="tipo-btn" :class="{ active: tipoPedido === 'GOURMET' }" @click="tipoPedido = 'GOURMET'">Gourmet</button>
+          <button type="button" class="tipo-btn" :class="{ active: tipoPedido === 'MUEBLES' }" @click="tipoPedido = 'MUEBLES'">Muebles</button>
+        </div>
+      </div>
+
       <label class="fw">
         <span class="fl">Orden <b>*</b></span>
         <input v-model="orden" class="field" placeholder="Ej. TSDM123456" maxlength="100">
@@ -207,6 +219,9 @@ async function submit() {
 .fw { display: flex; flex-direction: column; gap: 5px; position: relative; }
 .fl { font-size: 12px; font-weight: 600; color: var(--ink-2); }
 .fl b { color: var(--u-critico); font-weight: 700; }
+.tipo-toggle { display: inline-flex; padding: 3px; gap: 2px; background: var(--surface-3); border-radius: var(--r-sm); width: fit-content; }
+.tipo-btn { padding: 6px 14px; border: none; border-radius: var(--r-xs); background: transparent; color: var(--muted); font-size: 13px; font-weight: 600; cursor: pointer; }
+.tipo-btn.active { background: var(--surface); color: var(--brand-deep); box-shadow: var(--shadow-xs); }
 .g2 { display: grid; grid-template-columns: 1fr 1fr; gap: 11px; }
 .autocomplete { position: relative; }
 .suggestions { position: absolute; z-index: 20; top: 100%; left: 0; right: 0; margin-top: 4px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--r-sm); max-height: 200px; overflow-y: auto; box-shadow: var(--shadow-md); }

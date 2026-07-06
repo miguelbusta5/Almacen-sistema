@@ -33,8 +33,11 @@ const emit = defineEmits<{
   (e: 'finalizar'): void
   (e: 'revertir'): void
   (e: 'cierreManual'): void
-  (e: 'escanear', codigo: string): void
+  (e: 'escanear', codigo: string, tieneParte2: boolean): void
 }>()
+
+const esMuebles = computed(() => props.p.tipoPedido === 'MUEBLES')
+const tieneParte2 = ref(false)
 
 const puedeIniciar = computed(() => puedeTransporte(props.role) && ESTADOS_INICIABLES_TRANSPORTE.includes(props.p.estado))
 const puedeFinalizarCargue = computed(() => puedeTransporte(props.role) && ESTADOS_FINALIZABLES_TRANSPORTE.includes(props.p.estado))
@@ -53,8 +56,9 @@ const inputRef = ref<HTMLInputElement | null>(null)
 function submitEscaneo() {
   const v = codigo.value.trim()
   if (!v || props.escaneando) return
-  emit('escanear', v)
+  emit('escanear', v, tieneParte2.value)
   codigo.value = ''
+  tieneParte2.value = false
   inputRef.value?.focus()
 }
 
@@ -80,6 +84,7 @@ const resumen = computed(() => [
         <div class="dtitle-row">
           <h1 class="mono">{{ p.tipoOrden }} {{ p.orden }}</h1>
           <Badge :label="ESTADO_LABEL[p.estado]" :tone="ESTADO_TONE[p.estado]" solid />
+          <Badge v-if="esMuebles" label="Muebles" tone="var(--info)" />
           <span v-if="p.estado === 'CARGUE_COMPLETO_MANUAL'" title="Cierre de contingencia — cantidad contada manualmente" class="manual-ic">⚠</span>
         </div>
         <div class="dsub">{{ p.nombreTienda }} — {{ p.ciudadDestino }}</div>
@@ -128,6 +133,10 @@ const resumen = computed(() => [
             <input ref="inputRef" v-model="codigo" class="field mono" placeholder="Escanea o escribe el código de la caja…" autofocus :disabled="escaneando">
             <button type="submit" class="btn btn-primary btn-sm" :disabled="escaneando || !codigo.trim()">{{ escaneando ? 'Registrando…' : 'Registrar' }}</button>
           </form>
+          <label v-if="esMuebles" class="parte2">
+            <input v-model="tieneParte2" type="checkbox">
+            Tiene parte 2 (permite repetir este número de caja y contarla como una caja más)
+          </label>
           <div v-if="ultimoResultado" class="ultimo">
             <Badge :label="RESULTADO_LABEL[ultimoResultado.resultado] ?? ultimoResultado.resultado" :tone="RESULTADO_TONE[ultimoResultado.resultado] ?? 'var(--muted)'" />
             <span class="mono ultimo-cod">{{ ultimoResultado.codigo }}</span>
@@ -241,6 +250,7 @@ const resumen = computed(() => [
 .prog-num { font-size: 18px; font-weight: 700; color: var(--ink); }
 .escan-form { display: flex; gap: 8px; }
 .escan-form .field { flex: 1; }
+.parte2 { display: flex; align-items: center; gap: 8px; margin-top: 8px; font-size: 12px; color: var(--muted); cursor: pointer; }
 .ultimo { display: flex; align-items: center; gap: 8px; margin-top: 10px; }
 .ultimo-cod { font-size: 12px; color: var(--muted); }
 .completo-alerta { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: 12px; padding: 10px 12px; border-radius: var(--r-sm); background: var(--u-ok-tint); border: 1px solid color-mix(in srgb, var(--u-ok) 40%, transparent); }

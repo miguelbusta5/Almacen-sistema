@@ -27,6 +27,14 @@ export interface ClasificarEscaneoGourmetInput {
   /** Códigos que ya tuvieron un escaneo VALIDO en este cargue. */
   escaneosValidosPrevios: string[]
   modoCodigo: ModoCodigoGourmet
+  /**
+   * Solo aplica a pedidos de tipo MUEBLES: un mueble puede venir en más de
+   * una parte física con el mismo número de caja impreso — al marcar
+   * "tiene parte 2" se permite repetir el código sin marcarlo DUPLICADO,
+   * contando cada parte como una caja adicional. Rompe la regla de
+   * duplicados a propósito, solo para este escaneo puntual.
+   */
+  permitirRepetirCaja?: boolean
 }
 
 export interface ClasificarEscaneoGourmetResultado {
@@ -50,7 +58,7 @@ function perteneceAOrden(codigo: string, ordenPedido: string): boolean {
 }
 
 export function clasificarEscaneoGourmet(input: ClasificarEscaneoGourmetInput): ClasificarEscaneoGourmetResultado {
-  const { codigo, ordenPedido, cajasEsperadas, codigosCajaEsperados, escaneosValidosPrevios, modoCodigo } = input
+  const { codigo, ordenPedido, cajasEsperadas, codigosCajaEsperados, escaneosValidosPrevios, modoCodigo, permitirRepetirCaja } = input
 
   if (!formatoValido(codigo)) {
     return { resultado: 'FORMATO_INVALIDO', debeCrearNovedad: false, incrementaContador: false, mensaje: 'Código vacío o ilegible — vuelve a escanear.' }
@@ -67,8 +75,11 @@ export function clasificarEscaneoGourmet(input: ClasificarEscaneoGourmetInput): 
     if (!perteneceAlPedido) {
       return { resultado: 'CAJA_AJENA', debeCrearNovedad: true, tipoNovedadSugerido: 'CAJA_AJENA', incrementaContador: false, mensaje: 'Esta caja no pertenece a este pedido.' }
     }
-    if (previosNorm.includes(codigoNorm)) {
+    if (previosNorm.includes(codigoNorm) && !permitirRepetirCaja) {
       return { resultado: 'DUPLICADO', debeCrearNovedad: true, tipoNovedadSugerido: 'CAJA_DUPLICADA', incrementaContador: false, mensaje: 'Esta caja ya fue escaneada antes en este cargue.' }
+    }
+    if (previosNorm.includes(codigoNorm) && permitirRepetirCaja) {
+      return { resultado: 'VALIDO', debeCrearNovedad: false, incrementaContador: true, mensaje: 'Caja válida — parte 2 del mueble, contada como caja adicional.' }
     }
     return { resultado: 'VALIDO', debeCrearNovedad: false, incrementaContador: true, mensaje: 'Caja válida.' }
   }

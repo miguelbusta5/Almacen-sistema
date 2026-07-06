@@ -6,7 +6,13 @@ import { clasificarEscaneoGourmet, type ModoCodigoGourmet } from '../../../utils
 
 const ROLES_PERMITIDOS = ['TRANSPORTE', 'SUPERVISOR_TRANSPORTE', 'OPERACIONES_GOURMET', 'ADMIN', 'GERENTE']
 
-const bodySchema = z.object({ codigo: z.string() })
+const bodySchema = z.object({
+  codigo: z.string(),
+  // Solo relevante para pedidos MUEBLES: el mueble viene en más de una
+  // parte física con el mismo número de caja impreso — permite repetir el
+  // código sin marcarlo DUPLICADO, contando cada parte como una caja más.
+  tieneParte2: z.boolean().optional(),
+})
 
 // QR_SOLO_ORDEN es un caso legacy: alguien registró el mismo código repetido
 // en más de una caja como placeholder del código de orden (no códigos reales
@@ -26,13 +32,17 @@ export default defineEventHandler(async (event) => {
   const body = await readBody(event)
   const parsed = bodySchema.safeParse(body)
   if (!parsed.success) throw createError({ statusCode: 400, statusMessage: 'El campo codigo es obligatorio' })
-  const { codigo } = parsed.data
+  const { codigo, tieneParte2 } = parsed.data
 
   const pedido = await prisma.gourmetPedido.findUnique({
     where: { id },
-    select: { id: true, orden: true, estado: true, cajas: { select: { codigoCaja: true } } },
+    select: { id: true, orden: true, estado: true, tipoPedido: true, cajas: { select: { codigoCaja: true } } },
   })
   if (!pedido) throw createError({ statusCode: 404, statusMessage: 'No encontrado' })
+
+  // Rompe a propósito la regla de "no repetir caja" — solo para pedidos
+  // MUEBLES y solo cuando el operario marca explícitamente "tiene parte 2".
+  const permitirRepetirCaja = pedido.tipoPedido === 'MUEBLES' && tieneParte2 === true
 
   if (pedido.estado !== 'EN_CARGUE') {
     throw createError({ statusCode: 409, statusMessage: `No se puede escanear: el pedido está en estado ${pedido.estado}`, data: { code: 'ESTADO_INVALIDO' } })
@@ -54,6 +64,7 @@ export default defineEventHandler(async (event) => {
     codigosCajaEsperados: codigosCaja,
     escaneosValidosPrevios: cargue.escaneos.map((e) => e.codigoEscaneado),
     modoCodigo,
+    permitirRepetirCaja,
   })
 
   const tipoNovedad = clasificacion.tipoNovedadSugerido

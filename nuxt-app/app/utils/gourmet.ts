@@ -56,6 +56,8 @@ export interface NovedadGourmet {
   createdAt: string
 }
 
+export type TipoPedidoGourmet = 'GOURMET' | 'MUEBLES'
+
 export interface PedidoGourmet {
   id: string
   orden: string
@@ -66,6 +68,8 @@ export interface PedidoGourmet {
   cajasEsperadas: number
   estibasEsperadas: number
   estado: EstadoPedidoGourmet
+  // GOURMET por defecto — MUEBLES habilita "tiene parte 2" al escanear.
+  tipoPedido: TipoPedidoGourmet
   creadoPorId: string
   creadoPorNombre: string | null
   createdAt: string
