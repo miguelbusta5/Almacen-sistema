@@ -130,8 +130,8 @@ function tipoIcon(g: Guardado) { return g.tipo === 'ECOMMERCE' ? ShoppingCart : 
 </template>
 
 <style scoped>
-.panel { overflow: hidden; }
-.tbl { width: 100%; border-collapse: collapse; }
+.panel { overflow-x: auto; overflow-y: hidden; }
+.tbl { width: 100%; min-width: 960px; border-collapse: collapse; }
 .tbl thead th { text-align: left; padding: 0; background: var(--surface-2); border-bottom: 1px solid var(--border); }
 .th-btn {
   display: inline-flex; align-items: center; gap: 5px; width: 100%;
