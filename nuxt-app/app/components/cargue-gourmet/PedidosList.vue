@@ -6,14 +6,15 @@ import { ESTADO_LABEL, ESTADO_TONE, fmtFechaHora, horasDesde, type PedidoGourmet
 const props = defineProps<{ items: PedidoGourmet[]; hasFilters: boolean; density?: 'comodo' | 'compacto' }>()
 const emit = defineEmits<{ (e: 'open', p: PedidoGourmet): void; (e: 'clear'): void; (e: 'new'): void }>()
 
-type SortKey = 'estado' | 'orden' | 'tienda' | 'ciudad' | 'ubicaciones' | 'creacion'
+type SortKey = 'estado' | 'orden' | 'tienda' | 'ciudad' | 'ubicaciones' | 'tipo' | 'creacion'
 const columns: { key: SortKey; label: string; w: string }[] = [
-  { key: 'estado', label: 'Estado', w: '13%' },
-  { key: 'orden', label: 'Orden', w: '17%' },
-  { key: 'tienda', label: 'Tienda', w: '22%' },
-  { key: 'ciudad', label: 'Destino', w: '13%' },
-  { key: 'ubicaciones', label: 'Ubicación', w: '17%' },
-  { key: 'creacion', label: 'Creado', w: '18%' },
+  { key: 'estado', label: 'Estado', w: '11%' },
+  { key: 'orden', label: 'Orden', w: '15%' },
+  { key: 'tienda', label: 'Tienda', w: '19%' },
+  { key: 'ciudad', label: 'Destino', w: '11%' },
+  { key: 'ubicaciones', label: 'Ubicación', w: '15%' },
+  { key: 'tipo', label: 'Tipo', w: '10%' },
+  { key: 'creacion', label: 'Creado', w: '19%' },
 ]
 const sortKey = ref<SortKey>('creacion')
 const sortDir = ref<'asc' | 'desc'>('desc')
@@ -30,6 +31,7 @@ function sortVal(p: PedidoGourmet, k: SortKey): number | string {
     case 'tienda': return p.nombreTienda
     case 'ciudad': return p.ciudadDestino
     case 'ubicaciones': return p.ubicaciones ?? ''
+    case 'tipo': return p.tipoPedido
     case 'creacion': return p.createdAt
   }
 }
@@ -84,6 +86,11 @@ function urgente(p: PedidoGourmet) {
           <td><div class="cli" :title="p.nombreTienda">{{ p.nombreTienda }}</div></td>
           <td><div class="sub city"><MapPin :size="11" />{{ p.ciudadDestino || '—' }}</div></td>
           <td><div class="ubic" :title="p.ubicaciones">{{ p.ubicaciones || '—' }}</div></td>
+          <td>
+            <Badge :label="p.tipoPedido === 'MUEBLES' ? 'Muebles' : 'Gourmet'" :tone="p.tipoPedido === 'MUEBLES' ? 'var(--u-aviso)' : 'var(--brand)'">
+              <MapPin :size="11" />
+            </Badge>
+          </td>
           <td>
             <div class="mono">{{ fmtFechaHora(p.createdAt) }}</div>
             <div v-if="urgente(p)" class="sub urg">{{ horasDesde(p.createdAt) }}h sin ubicar</div>
