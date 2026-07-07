@@ -139,26 +139,30 @@ function despachar() {
   })
 }
 
+const showConfirmRevertir = ref(false)
 function revertir() {
   return run('revertir', async () => {
     const g = panelItem.value
     if (!g) return
-    if (demo.value) { g.estado = 'PENDIENTE DESPACHO'; g.fechaDespacho = null; showToast('Revertido a Pendiente Despacho ✓'); return }
+    if (demo.value) { g.estado = 'PENDIENTE DESPACHO'; g.fechaDespacho = null; showConfirmRevertir.value = false; showToast('Revertido a Pendiente Despacho ✓'); return }
     try {
       await $fetch(`/api/transporte/${encodeURIComponent(g.clientId)}`, { method: 'PUT', body: { estado: 'PENDIENTE DESPACHO' } })
       g.estado = 'PENDIENTE DESPACHO'; g.fechaDespacho = null
+      showConfirmRevertir.value = false
       await loadAll(); showToast('Revertido a Pendiente Despacho ✓')
     } catch (e) { showToast(apiErr(e, 'No se pudo revertir'), true) }
   })
 }
 
+const showConfirmDel = ref(false)
 function delGuardado() {
   return run('del', async () => {
     const g = panelItem.value
     if (!g) return
-    if (demo.value) { guardados.value = guardados.value.filter(x => x.clientId !== g.clientId); panelItem.value = null; showToast('Eliminado'); return }
+    if (demo.value) { guardados.value = guardados.value.filter(x => x.clientId !== g.clientId); panelItem.value = null; showConfirmDel.value = false; showToast('Eliminado'); return }
     try {
       await $fetch(`/api/transporte/${encodeURIComponent(g.clientId)}`, { method: 'DELETE' })
+      showConfirmDel.value = false
       panelItem.value = null; await loadAll(); showToast('Eliminado')
     } catch (e) { showToast(apiErr(e, 'No se pudo eliminar'), true) }
   })
@@ -192,13 +196,26 @@ function onSaved(payload: Partial<Guardado>) {
   })
 }
 
-function registrarPendiente(p: PendienteTienda) {
-  return run(`pendiente:${p.id}`, async () => {
-    if (demo.value) { pendientes.value = pendientes.value.filter(x => x.id !== p.id); showToast('Guardado creado desde despacho tienda ✓'); return }
-    const ubicacion = window.prompt(`Ubicación para guardar ${p.numeroDocumento}:`)
-    if (!ubicacion || !ubicacion.trim()) return
+// Modal "Ubicación para guardar" — reemplaza un window.prompt() nativo
+// (bloqueante, no estilizable, sin feedback en caso de error) por un modal
+// consistente con el resto de la app.
+const showUbicacionPendiente = ref(false)
+const pendienteActual = ref<PendienteTienda | null>(null)
+const ubicacionPendiente = ref('')
+function abrirUbicacionPendiente(p: PendienteTienda) {
+  if (demo.value) { pendientes.value = pendientes.value.filter(x => x.id !== p.id); showToast('Guardado creado desde despacho tienda ✓'); return }
+  pendienteActual.value = p
+  ubicacionPendiente.value = ''
+  showUbicacionPendiente.value = true
+}
+function confirmarUbicacionPendiente() {
+  return run(`pendiente:${pendienteActual.value?.id}`, async () => {
+    const p = pendienteActual.value
+    const ubicacion = ubicacionPendiente.value.trim()
+    if (!p || !ubicacion) return
     try {
-      await $fetch('/api/transporte/pendientes-tienda', { method: 'POST', body: { pendienteId: p.id, ubicacion: ubicacion.trim(), nota: null } })
+      await $fetch('/api/transporte/pendientes-tienda', { method: 'POST', body: { pendienteId: p.id, ubicacion, nota: null } })
+      showUbicacionPendiente.value = false
       await loadAll(); showToast('Guardado creado desde despacho tienda ✓')
     } catch (e) { showToast(apiErr(e, 'No se pudo convertir'), true) }
   })
@@ -266,7 +283,7 @@ const pendCount = computed(() => guardados.value.filter(g => g.estado === 'PENDI
     <Transition name="view" mode="out-in">
       <!-- Vista lista -->
       <div v-if="!panelItem" key="list">
-        <PendientesBanner :items="pendientes" :busy="busy" class="fade-in" style="margin-bottom: 18px" @registrar="registrarPendiente" />
+        <PendientesBanner :items="pendientes" :busy="busy" class="fade-in" style="margin-bottom: 18px" @registrar="abrirUbicacionPendiente" />
         <KpiRail :key="refreshKey" :items="guardados" style="margin-bottom: 18px" @filter="onKpiFilter" />
         <Toolbar
           v-model:q="q" v-model:estado="fEstado" v-model:tipo="fTipo" v-model:alerta="fAlerta" v-model:density="density"
@@ -283,12 +300,39 @@ const pendCount = computed(() => guardados.value.filter(g => g.estado === 'PENDI
       <DetailView
         v-else key="detail" :g="panelItem" :contactos="contactosPanel" :can-edit="canEdit" :can-delete="canDelete" :busy="busy"
         @back="panelItem = null" @despachar="despachar" @edit-fecha="openFecha"
-        @edit="openEdit" @del="delGuardado" @revertir="revertir" @nuevo-contacto="abrirContacto"
+        @edit="openEdit" @del="showConfirmDel = true" @revertir="showConfirmRevertir = true" @nuevo-contacto="abrirContacto"
       />
     </Transition>
 
     <!-- Modales -->
     <GuardadoModal v-if="showForm" :guardado="editing" :saving="busy === 'save'" @close="showForm = false; editing = null" @saved="onSaved" />
+
+    <ConfirmModal
+      v-if="showConfirmDel && panelItem" title="Eliminar guardado"
+      :message="`¿Eliminar el guardado ${panelItem.documento}? Esta acción no se puede deshacer.`"
+      confirm-label="Eliminar" confirming-label="Eliminando…" :confirming="busy === 'del'"
+      @close="showConfirmDel = false" @confirm="delGuardado"
+    />
+    <ConfirmModal
+      v-if="showConfirmRevertir && panelItem" title="Revertir a pendiente despacho"
+      :message="`¿Revertir ${panelItem.documento} a Pendiente Despacho?`"
+      confirm-label="Revertir" confirming-label="Revirtiendo…" :confirming="busy === 'revertir'"
+      @close="showConfirmRevertir = false" @confirm="revertir"
+    />
+
+    <ModalShell v-if="showUbicacionPendiente && pendienteActual" title="Ubicación para guardar" :sub="pendienteActual.numeroDocumento" @close="showUbicacionPendiente = false">
+      <div class="fecha-form">
+        <label class="flabel">Ubicación</label>
+        <input v-model="ubicacionPendiente" class="field" placeholder="Ej. Pasillo B - Nivel 2" @keydown.enter="confirmarUbicacionPendiente">
+        <div class="fecha-actions">
+          <button class="btn" :disabled="!!busy" @click="showUbicacionPendiente = false">Cancelar</button>
+          <button class="btn btn-primary" :disabled="!!busy || !ubicacionPendiente.trim()" @click="confirmarUbicacionPendiente">
+            <Spinner v-if="busy?.startsWith('pendiente:')" />
+            {{ busy?.startsWith('pendiente:') ? 'Guardando…' : 'Guardar' }}
+          </button>
+        </div>
+      </div>
+    </ModalShell>
 
     <ModalShell v-if="showFecha && panelItem" title="Fecha de entrega" :sub="`${panelItem.documento} · ${panelItem.ubicacion}`" @close="showFecha = false">
       <div class="fecha-form">

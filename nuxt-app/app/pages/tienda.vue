@@ -113,7 +113,7 @@ function transicion(destino: string) {
     if (!d) return
     if (demo.value) { d.estado = destino as Despacho['estado']; showToast('Estado actualizado ✓'); return }
     try {
-      await $fetch(`/api/tienda/${d.id}`, { method: 'PUT', body: { estado: destino, updatedAt: d.updatedAt } })
+      await $fetch(`/api/tienda/${d.id}` as string, { method: 'PUT', body: { estado: destino, updatedAt: d.updatedAt } })
       await loadAll(); await refreshPanel(); showToast('Estado actualizado ✓')
     } catch (e) { showToast(apiErr(e, 'No se pudo actualizar el estado'), true) }
   })
@@ -129,7 +129,7 @@ function confirmarRechazar() {
     if (!d || motivoRechazo.value.trim().length < 5) return
     if (demo.value) { d.estado = 'RECHAZADO'; showRechazar.value = false; showToast('Despacho rechazado'); return }
     try {
-      await $fetch(`/api/tienda/${d.id}`, { method: 'PUT', body: { estado: 'RECHAZADO', motivoRechazo: motivoRechazo.value.trim(), updatedAt: d.updatedAt } })
+      await $fetch(`/api/tienda/${d.id}` as string, { method: 'PUT', body: { estado: 'RECHAZADO', motivoRechazo: motivoRechazo.value.trim(), updatedAt: d.updatedAt } })
       showRechazar.value = false
       await loadAll(); await refreshPanel(); showToast('Despacho rechazado')
     } catch (e) { showToast(apiErr(e, 'No se pudo rechazar'), true) }
@@ -146,7 +146,7 @@ function confirmarNovedad() {
     if (!d || novedadTexto.value.trim().length < 5) return
     if (demo.value) { d.estado = 'CON_NOVEDAD'; d.novedad = novedadTexto.value.trim(); showNovedad.value = false; showToast('Novedad registrada'); return }
     try {
-      await $fetch(`/api/tienda/${d.id}`, { method: 'PUT', body: { estado: 'CON_NOVEDAD', novedad: novedadTexto.value.trim(), updatedAt: d.updatedAt } })
+      await $fetch(`/api/tienda/${d.id}` as string, { method: 'PUT', body: { estado: 'CON_NOVEDAD', novedad: novedadTexto.value.trim(), updatedAt: d.updatedAt } })
       showNovedad.value = false
       await loadAll(); await refreshPanel(); showToast('Novedad registrada')
     } catch (e) { showToast(apiErr(e, 'No se pudo registrar la novedad'), true) }
@@ -182,25 +182,29 @@ function confirmarAsignar() {
 }
 
 // Revertir
+const showConfirmRevertir = ref(false)
 function revertir() {
   return run('revertir', async () => {
     const d = panelItem.value
     if (!d) return
-    if (demo.value) { showToast('Estado revertido ✓'); return }
+    if (demo.value) { showConfirmRevertir.value = false; showToast('Estado revertido ✓'); return }
     try {
       await $fetch(`/api/tienda/${d.id}/revertir-estado`, { method: 'POST', body: { updatedAt: d.updatedAt } })
+      showConfirmRevertir.value = false
       await loadAll(); await refreshPanel(); showToast('Estado revertido ✓')
     } catch (e) { showToast(apiErr(e, 'No se pudo revertir'), true) }
   })
 }
 
+const showConfirmDel = ref(false)
 function delDespacho() {
   return run('del', async () => {
     const d = panelItem.value
     if (!d) return
-    if (demo.value) { despachos.value = despachos.value.filter(x => x.id !== d.id); panelItem.value = null; showToast('Eliminado'); return }
+    if (demo.value) { despachos.value = despachos.value.filter(x => x.id !== d.id); panelItem.value = null; showConfirmDel.value = false; showToast('Eliminado'); return }
     try {
-      await $fetch(`/api/tienda/${d.id}`, { method: 'DELETE' })
+      await $fetch(`/api/tienda/${d.id}` as string, { method: 'DELETE' })
+      showConfirmDel.value = false
       panelItem.value = null; await loadAll(); showToast('Eliminado')
     } catch (e) { showToast(apiErr(e, 'No se pudo eliminar'), true) }
   })
@@ -218,7 +222,7 @@ function onSaved(payload: Record<string, unknown>) {
     }
     try {
       if (wasEdit) {
-        await $fetch(`/api/tienda/${editing.value!.id}`, { method: 'PUT', body: payload })
+        await $fetch(`/api/tienda/${editing.value!.id}` as string, { method: 'PUT', body: payload })
       } else {
         await $fetch('/api/tienda', { method: 'POST', body: payload })
       }
@@ -229,6 +233,19 @@ function onSaved(payload: Record<string, unknown>) {
 }
 
 const pendCount = computed(() => despachos.value.filter(d => d.estado === 'CREADO_TIENDA').length)
+
+function exportarExcel() {
+  if (demo.value) { showToast('Exportar Excel no está disponible en modo demo', true); return }
+  const qs = new URLSearchParams()
+  if (q.value) qs.set('q', q.value)
+  if (fEstado.value) qs.set('estado', fEstado.value)
+  if (fCC.value) qs.set('centroCostos', fCC.value)
+  const url = `/api/tienda/export${qs.toString() ? `?${qs}` : ''}`
+  const a = document.createElement('a')
+  a.href = url
+  a.download = `facturas-contado-${new Date().toISOString().slice(0, 10)}.xlsx`
+  a.click()
+}
 </script>
 
 <template>
@@ -242,7 +259,7 @@ const pendCount = computed(() => despachos.value.filter(d => d.estado === 'CREAD
       <div class="hero-actions">
         <span v-if="demo" class="demo-tag" title="Sin sesión activa: mostrando datos de ejemplo."><span class="demo-dot" /> Modo demo</span>
         <button class="btn btn-sm refresh" :class="{ spin: refreshing }" @click="refresh"><RefreshCw :size="14" /> {{ refreshing ? 'Actualizando…' : 'Actualizar' }}</button>
-        <button class="btn btn-sm"><Download :size="14" /> Excel</button>
+        <button class="btn btn-sm" @click="exportarExcel"><Download :size="14" /> Excel</button>
         <button v-if="canCreate" class="btn btn-primary btn-sm" @click="editing = null; showForm = true"><Plus :size="14" /> Nueva factura</button>
       </div>
     </section>
@@ -264,11 +281,24 @@ const pendCount = computed(() => despachos.value.filter(d => d.estado === 'CREAD
       <TiendaDespachoDetail
         v-else key="detail" :d="panelItem" :historial="historial" :role="me?.role ?? ''" :can-delete="canEdit" :busy="busy"
         @back="panelItem = null" @transicion="transicion" @rechazar="abrirRechazar" @novedad="abrirNovedad"
-        @asignar-guardado="abrirAsignar" @revertir="revertir" @edit="openEdit" @del="delDespacho"
+        @asignar-guardado="abrirAsignar" @revertir="showConfirmRevertir = true" @edit="openEdit" @del="showConfirmDel = true"
       />
     </Transition>
 
     <TiendaDespachoModal v-if="showForm" :despacho="editing" :saving="busy === 'save'" @close="showForm = false; editing = null" @saved="onSaved" />
+
+    <ConfirmModal
+      v-if="showConfirmDel && panelItem" title="Eliminar factura"
+      :message="`¿Eliminar la factura ${panelItem.numeroDocumento} de ${panelItem.clienteNombre}? Esta acción no se puede deshacer.`"
+      confirm-label="Eliminar" confirming-label="Eliminando…" :confirming="busy === 'del'"
+      @close="showConfirmDel = false" @confirm="delDespacho"
+    />
+    <ConfirmModal
+      v-if="showConfirmRevertir && panelItem" title="Revertir estado" danger
+      :message="`¿Revertir el estado de la factura ${panelItem.numeroDocumento}?`"
+      confirm-label="Revertir" confirming-label="Revirtiendo…" :confirming="busy === 'revertir'"
+      @close="showConfirmRevertir = false" @confirm="revertir"
+    />
 
     <ModalShell v-if="showRechazar && panelItem" title="Rechazar despacho" :sub="panelItem.numeroDocumento" @close="showRechazar = false">
       <div class="mform">

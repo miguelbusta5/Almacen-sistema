@@ -160,11 +160,13 @@ function finalizarCargue() {
   })
 }
 
+const showConfirmRevertir = ref(false)
 function revertirCargue() {
   return run('revertir', async () => {
     if (!panelItem.value) return
     try {
       await $fetch(`/api/cargue-gourmet/${panelItem.value.id}/revertir-cargue`, { method: 'POST', body: { updatedAt: panelItem.value.updatedAt } })
+      showConfirmRevertir.value = false
       await loadAll(); await loadDetalle(panelItem.value.id)
       showToast('Cargue revertido ✓')
     } catch (e) { showToast(apiErr(e, 'No se pudo revertir'), true) }
@@ -186,11 +188,13 @@ async function guardarCierreManual(payload: Record<string, unknown>) {
 }
 
 // ── Eliminar ─────────────────────────────────────────────────────────────
+const showConfirmDel = ref(false)
 function delPedido() {
   return run('del', async () => {
     if (!panelItem.value) return
     try {
       await $fetch(`/api/cargue-gourmet/${panelItem.value.id}`, { method: 'DELETE' })
+      showConfirmDel.value = false
       backToList(); await loadAll()
       showToast('Pedido eliminado')
     } catch (e) { showToast(apiErr(e, 'No se pudo eliminar'), true) }
@@ -240,8 +244,8 @@ async function exportarExcel() {
       <div v-else-if="panelItem" key="detail">
         <CargueGourmetPedidoDetail
           :p="panelItem" :role="me?.role ?? ''" :busy="busy" :escaneando="busy === 'escanear'" :ultimo-resultado="ultimoResultado"
-          @back="backToList" @edit="showEditar = true" @del="delPedido" @asignar-ubicacion="showUbicacion = true"
-          @iniciar-cargue="iniciarCargue" @finalizar="finalizarCargue" @revertir="revertirCargue"
+          @back="backToList" @edit="showEditar = true" @del="showConfirmDel = true" @asignar-ubicacion="showUbicacion = true"
+          @iniciar-cargue="iniciarCargue" @finalizar="finalizarCargue" @revertir="showConfirmRevertir = true"
           @cierre-manual="showCierreManual = true" @escanear="escanear"
         />
       </div>
@@ -251,6 +255,19 @@ async function exportarExcel() {
     <CargueGourmetEditarPedidoModal v-if="showEditar && panelItem" :p="panelItem" :saving="saving" @close="showEditar = false" @saved="guardarEdicion" />
     <CargueGourmetAsignarUbicacionModal v-if="showUbicacion && panelItem" :p="panelItem" :saving="saving" @close="showUbicacion = false" @saved="guardarUbicacion" />
     <CargueGourmetCierreManualModal v-if="showCierreManual && panelItem" :p="panelItem" :saving="saving" @close="showCierreManual = false" @saved="guardarCierreManual" />
+
+    <ConfirmModal
+      v-if="showConfirmDel && panelItem" title="Eliminar pedido"
+      :message="`¿Eliminar el pedido ${panelItem.tipoOrden} ${panelItem.orden}? Esta acción no se puede deshacer.`"
+      confirm-label="Eliminar" confirming-label="Eliminando…" :confirming="busy === 'del'"
+      @close="showConfirmDel = false" @confirm="delPedido"
+    />
+    <ConfirmModal
+      v-if="showConfirmRevertir && panelItem" title="Revertir cargue"
+      :message="`¿Revertir el cargue de ${panelItem.tipoOrden} ${panelItem.orden}? Se perderán los escaneos registrados en este cargue.`"
+      confirm-label="Revertir" confirming-label="Revirtiendo…" :confirming="busy === 'revertir'"
+      @close="showConfirmRevertir = false" @confirm="revertirCargue"
+    />
   </div>
 </template>
 
