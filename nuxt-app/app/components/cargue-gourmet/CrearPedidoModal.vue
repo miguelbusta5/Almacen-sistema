@@ -79,7 +79,7 @@ const estibaActiva = computed(() => estibas.value[Math.min(tabActivo.value, esti
 function agregarCaja() {
   const valor = codigoInput.value.trim()
   if (!valor) return
-  const r = validarCodigoCaja(valor)
+  const r = validarCodigoCaja(valor, { permitirLetras: tipoPedido.value === 'MUEBLES' })
   if (!r.ok) { escaneoError.value = r.error; return }
   // Para MUEBLES un mueble puede venir en varias partes con el mismo
   // número de caja impreso — no se exige unicidad en ese caso.

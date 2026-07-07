@@ -81,7 +81,7 @@ export default defineEventHandler(async (event) => {
     const todosLosCodigos: string[] = []
     for (const estiba of estibasInput) {
       for (const rawCodigo of estiba.cajas) {
-        const r = validarCodigoCaja(rawCodigo)
+        const r = validarCodigoCaja(rawCodigo, { permitirLetras: data.tipoPedido === 'MUEBLES' })
         if (!r.ok) throw createError({ statusCode: 400, statusMessage: r.error })
         todosLosCodigos.push(rawCodigo.trim())
       }

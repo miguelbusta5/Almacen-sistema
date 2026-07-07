@@ -152,13 +152,16 @@ export function tieneAlertaGourmet(p: PedidoGourmet): boolean {
 // cliente antes de llamar al servidor (que siempre revalida).
 const RE_SOLO_NUMEROS = /^\d+$/
 const PREFIJOS_ORDEN = ['TSDM', 'OVDM']
-export function validarCodigoCaja(codigo: string): { ok: true } | { ok: false; error: string } {
+// `permitirLetras`: los códigos de caja de MUEBLES empiezan con letras (a
+// diferencia de GOURMET, que son solo dígitos). El código de orden
+// (TSDM/OVDM) nunca se permite, sin importar el tipo de pedido.
+export function validarCodigoCaja(codigo: string, opts?: { permitirLetras?: boolean }): { ok: true } | { ok: false; error: string } {
   const c = codigo.trim()
   if (c.length === 0) return { ok: false, error: 'El código de caja no puede estar vacío.' }
   const upper = c.toUpperCase()
   for (const p of PREFIJOS_ORDEN) {
     if (upper.startsWith(p)) return { ok: false, error: `"${c}" parece un código de orden (${p}…), no de caja. Escanea solo el código de la caja física.` }
   }
-  if (!RE_SOLO_NUMEROS.test(c)) return { ok: false, error: `"${c}" no es un código de caja válido — solo se permiten dígitos.` }
+  if (!opts?.permitirLetras && !RE_SOLO_NUMEROS.test(c)) return { ok: false, error: `"${c}" no es un código de caja válido — solo se permiten dígitos.` }
   return { ok: true }
 }
