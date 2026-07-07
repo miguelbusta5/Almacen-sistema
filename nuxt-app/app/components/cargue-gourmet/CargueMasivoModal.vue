@@ -1,9 +1,17 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
+import { Search } from '@lucide/vue'
 import { ESTADO_LABEL, ESTADO_TONE, type PedidoGourmet } from '~/utils/gourmet'
 
 const props = defineProps<{ items: PedidoGourmet[]; saving?: boolean }>()
 const emit = defineEmits<{ (e: 'close'): void; (e: 'confirm', ids: string[]): void }>()
+
+const q = ref('')
+const filtrados = computed(() => {
+  const query = q.value.trim().toLowerCase()
+  if (!query) return props.items
+  return props.items.filter((p) => p.orden.toLowerCase().includes(query) || p.nombreTienda.toLowerCase().includes(query))
+})
 
 const seleccionados = ref<Set<string>>(new Set())
 function toggle(id: string) {
@@ -12,9 +20,15 @@ function toggle(id: string) {
   // Set no es reactivo por referencia — se fuerza el trigger con una copia.
   seleccionados.value = new Set(seleccionados.value)
 }
-const todosSeleccionados = computed(() => props.items.length > 0 && seleccionados.value.size === props.items.length)
+// "Seleccionar todos" opera sobre los resultados filtrados por el buscador,
+// no sobre el total — con cientos de pedidos, marcar "todos" sin filtrar
+// sería casi siempre un error del usuario.
+const todosSeleccionados = computed(() => filtrados.value.length > 0 && filtrados.value.every((p) => seleccionados.value.has(p.id)))
 function toggleTodos() {
-  seleccionados.value = todosSeleccionados.value ? new Set() : new Set(props.items.map((p) => p.id))
+  const next = new Set(seleccionados.value)
+  if (todosSeleccionados.value) filtrados.value.forEach((p) => next.delete(p.id))
+  else filtrados.value.forEach((p) => next.add(p.id))
+  seleccionados.value = next
 }
 
 function submit() {
@@ -33,17 +47,23 @@ function submit() {
         cajas. Úsala solo cuando la verificación física ya se hizo por fuera del sistema.
       </div>
 
+      <div class="search">
+        <Search :size="15" />
+        <input v-model="q" class="field" placeholder="Buscar orden o tienda…">
+      </div>
+
       <div class="listhead">
         <label class="check-all">
-          <input type="checkbox" :checked="todosSeleccionados" :disabled="!items.length" @change="toggleTodos">
-          Seleccionar todos
+          <input type="checkbox" :checked="todosSeleccionados" :disabled="!filtrados.length" @change="toggleTodos">
+          Seleccionar {{ q ? 'resultados' : 'todos' }}
         </label>
-        <span class="count mono">{{ seleccionados.size }} de {{ items.length }} seleccionado(s)</span>
+        <span class="count mono">{{ seleccionados.size }} de {{ items.length }} seleccionado(s){{ q ? ` · ${filtrados.length} en la búsqueda` : '' }}</span>
       </div>
 
       <div v-if="!items.length" class="empty">No hay pedidos pendientes de completar.</div>
+      <div v-else-if="!filtrados.length" class="empty">Sin resultados para "{{ q }}".</div>
       <div v-else class="list">
-        <label v-for="p in items" :key="p.id" class="row" :class="{ on: seleccionados.has(p.id) }">
+        <label v-for="p in filtrados" :key="p.id" class="row" :class="{ on: seleccionados.has(p.id) }">
           <input type="checkbox" :checked="seleccionados.has(p.id)" @change="toggle(p.id)">
           <div class="info">
             <div class="doc mono">{{ p.orden }}</div>
@@ -66,7 +86,11 @@ function submit() {
 <style scoped>
 .form { display: flex; flex-direction: column; gap: 14px; }
 .advertencia { font-size: 13px; color: var(--u-aviso); background: var(--u-aviso-tint); border: 1px solid var(--u-aviso); border-radius: var(--r-sm); padding: 10px 12px; }
-.listhead { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.search { position: relative; }
+.search svg { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: var(--faint); pointer-events: none; }
+.search .field { padding-left: 38px; }
+.search:focus-within svg { color: var(--brand); }
+.listhead { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
 .check-all { display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 600; color: var(--ink-2); cursor: pointer; }
 .count { font-size: 12px; color: var(--muted); }
 .empty { font-size: 13px; color: var(--faint); text-align: center; padding: 20px 0; }
