@@ -59,6 +59,11 @@ const sorted = computed(() => {
   return arr
 })
 
+// calcAlmacenaje() se calcula una sola vez por fila aquí (antes se llamaba
+// hasta 4 veces por fila: sortVal, las dos referencias en el template y de
+// nuevo dentro de StorageMeter) y se pasa ya resuelto a StorageMeter.
+const rows = computed(() => sorted.value.map((g) => ({ g, alm: almOf(g) })))
+
 function tipoIcon(g: Guardado) { return g.tipo === 'ECOMMERCE' ? ShoppingCart : Package }
 </script>
 
@@ -79,7 +84,7 @@ function tipoIcon(g: Guardado) { return g.tipo === 'ECOMMERCE' ? ShoppingCart : 
       </thead>
       <TransitionGroup tag="tbody" name="row" appear>
         <tr
-          v-for="(g, i) in sorted" :key="g.clientId"
+          v-for="({ g, alm: a }, i) in rows" :key="g.clientId"
           class="row" :style="{ '--rail': g.estado === 'DESPACHADO' ? 'var(--border-strong)' : TIER_COLOR[alertaTier(g)], '--d': `${i * 32}ms` }"
           @click="emit('open', g)"
         >
@@ -107,9 +112,9 @@ function tipoIcon(g: Guardado) { return g.tipo === 'ECOMMERCE' ? ShoppingCart : 
           </td>
           <td>
             <div class="alm">
-              <StorageMeter :fecha="g.fecha" :end-date="g.estado === 'DESPACHADO' ? g.fechaDespacho : null" mode="mini" />
-              <span class="alm-cost mono" :class="{ gracia: almOf(g).fase === 'gracia' }">
-                {{ almOf(g).fase === 'gracia' ? 'En gracia' : fmtCOP(almOf(g).costoAcumulado) }}
+              <StorageMeter :fecha="g.fecha" :end-date="g.estado === 'DESPACHADO' ? g.fechaDespacho : null" :alm="a" mode="mini" />
+              <span class="alm-cost mono" :class="{ gracia: a.fase === 'gracia' }">
+                {{ a.fase === 'gracia' ? 'En gracia' : fmtCOP(a.costoAcumulado) }}
               </span>
             </div>
           </td>

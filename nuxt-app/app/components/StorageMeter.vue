@@ -7,9 +7,12 @@ const props = defineProps<{
   fecha: string
   endDate?: string | null
   mode?: 'mini' | 'full'
+  // Si el padre ya calculó calcAlmacenaje() para esta fila (p. ej. para
+  // ordenar la tabla), se lo pasa aquí y evitamos recalcularlo.
+  alm?: ReturnType<typeof calcAlmacenaje>
 }>()
 
-const alm = computed(() => calcAlmacenaje(props.fecha, props.endDate ?? null))
+const alm = computed(() => props.alm ?? calcAlmacenaje(props.fecha, props.endDate ?? null))
 
 interface Seg { kind: 'gracia' | 'charged' | 'current' | 'next'; fill: number; active?: boolean }
 

@@ -1,8 +1,10 @@
 <script setup lang="ts">
+import { ref, watch } from 'vue'
+import { useDebounceFn } from '@vueuse/core'
 import { Search, X, TriangleAlert, Rows3, Rows4 } from '@lucide/vue'
 import { ESTADO_LABEL } from '~/utils/gourmet'
 
-defineProps<{
+const props = defineProps<{
   q: string; estado: string; ciudad: string; ciudades: string[]; tipoOrden: string; alerta: boolean
   count: number; total: number; density: 'comodo' | 'compacto'
 }>()
@@ -15,13 +17,22 @@ const emit = defineEmits<{
   (e: 'update:density', v: 'comodo' | 'compacto'): void
   (e: 'clear'): void
 }>()
+
+// Ver Toolbar.vue: input instantáneo, filtrado del padre debounced 250ms.
+const localQ = ref(props.q)
+watch(() => props.q, (v) => { if (v !== localQ.value) localQ.value = v })
+const emitQ = useDebounceFn((v: string) => emit('update:q', v), 250)
+function onInput(e: Event) {
+  localQ.value = (e.target as HTMLInputElement).value
+  emitQ(localQ.value)
+}
 </script>
 
 <template>
   <div class="toolbar">
     <div class="search">
       <Search :size="16" />
-      <input :value="q" @input="emit('update:q', ($event.target as HTMLInputElement).value)" class="field" placeholder="Buscar orden, tienda…">
+      <input :value="localQ" @input="onInput" class="field" placeholder="Buscar orden, tienda…">
     </div>
     <select :value="estado" @change="emit('update:estado', ($event.target as HTMLSelectElement).value)" class="field sel">
       <option value="">Todos los estados</option>
@@ -39,7 +50,7 @@ const emit = defineEmits<{
     <button class="btn btn-sm" :class="{ on: alerta }" @click="emit('update:alerta', !alerta)">
       <TriangleAlert :size="14" /> Solo alertas
     </button>
-    <button v-if="q || estado || ciudad || tipoOrden || alerta" class="btn btn-ghost btn-sm" @click="emit('clear')"><X :size="13" /> Limpiar</button>
+    <button v-if="localQ || estado || ciudad || tipoOrden || alerta" class="btn btn-ghost btn-sm" @click="localQ = ''; emit('clear')"><X :size="13" /> Limpiar</button>
 
     <div class="right">
       <span class="count mono">{{ count }} de {{ total }}</span>
