@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, computed, watch, onMounted } from 'vue'
-import { RefreshCw, Download, Plus } from '@lucide/vue'
-import { tieneAlertaGourmet, type PedidoGourmet } from '~/utils/gourmet'
+import { RefreshCw, Download, Plus, PackageCheck } from '@lucide/vue'
+import { tieneAlertaGourmet, ESTADOS_NO_DESPACHABLES_MASIVO, type PedidoGourmet } from '~/utils/gourmet'
 import { ensureSession, useSessionState } from '~/composables/useSession'
 import { useToast } from '~/composables/useToast'
 
@@ -16,6 +16,7 @@ const canCreate = computed(() => !!me.value?.role && ['OPERACIONES_GOURMET', 'AD
 const q = ref('')
 const fEstado = ref('')
 const fCiudad = ref('')
+const fTienda = ref('')
 const fTipoOrden = ref('')
 const fAlerta = ref(false)
 const density = ref<'comodo' | 'compacto'>('comodo')
@@ -47,6 +48,7 @@ async function refresh() {
 }
 
 const ciudades = computed(() => [...new Set(pedidos.value.map((p) => p.ciudadDestino).filter(Boolean))].sort((a, b) => a.localeCompare(b)))
+const tiendas = computed(() => [...new Set(pedidos.value.map((p) => p.nombreTienda).filter(Boolean))].sort((a, b) => a.localeCompare(b)))
 
 const filtered = computed(() => {
   const query = q.value.toLowerCase()
@@ -54,13 +56,14 @@ const filtered = computed(() => {
     if (query && !p.orden.toLowerCase().includes(query) && !p.nombreTienda.toLowerCase().includes(query) && !p.codigoTienda.toLowerCase().includes(query)) return false
     if (fEstado.value && p.estado !== fEstado.value) return false
     if (fCiudad.value && p.ciudadDestino !== fCiudad.value) return false
+    if (fTienda.value && p.nombreTienda !== fTienda.value) return false
     if (fTipoOrden.value && p.tipoOrden !== fTipoOrden.value) return false
     if (fAlerta.value && !tieneAlertaGourmet(p)) return false
     return true
   })
 })
-const hasFilters = computed(() => !!(q.value || fEstado.value || fCiudad.value || fTipoOrden.value || fAlerta.value))
-function clearFilters() { q.value = ''; fEstado.value = ''; fCiudad.value = ''; fTipoOrden.value = ''; fAlerta.value = false }
+const hasFilters = computed(() => !!(q.value || fEstado.value || fCiudad.value || fTienda.value || fTipoOrden.value || fAlerta.value))
+function clearFilters() { q.value = ''; fEstado.value = ''; fCiudad.value = ''; fTienda.value = ''; fTipoOrden.value = ''; fAlerta.value = false }
 function onKpiFilter(key: string) { fEstado.value = key }
 
 // ── Detalle ──────────────────────────────────────────────────────────────
@@ -283,6 +286,30 @@ function delPedido() {
   })
 }
 
+// ── Cargue masivo (solo ADMIN) ──────────────────────────────────────────
+// Bypass deliberado del flujo normal de escaneo — cierra varios pedidos de
+// una vez sin verificación física. El backend ya restringe esto a ADMIN
+// (ver despacho-masivo.post.ts); aquí solo se ofrece la selección.
+const showCargueMasivo = ref(false)
+const pedidosPendientesMasivo = computed(() => pedidos.value.filter((p) => !ESTADOS_NO_DESPACHABLES_MASIVO.includes(p.estado)))
+async function confirmarCargueMasivo(ids: string[]) {
+  return run('cargue-masivo', async () => {
+    try {
+      const res = await $fetch<{ data: { actualizados: string[]; omitidos: { id: string; motivo: string }[] } }>(
+        '/api/cargue-gourmet/despacho-masivo', { method: 'POST', body: { ids } },
+      )
+      showCargueMasivo.value = false
+      await loadAll()
+      const { actualizados, omitidos } = res.data
+      if (omitidos.length > 0) {
+        showToast(`${actualizados.length} completado(s) · ${omitidos.length} omitido(s) — ${omitidos[0]!.motivo}`, actualizados.length === 0)
+      } else {
+        showToast(`${actualizados.length} pedido(s) completado(s) ✓`)
+      }
+    } catch (e) { showToast(apiErr(e, 'No se pudo completar el cargue masivo'), true) }
+  })
+}
+
 async function exportarExcel() {
   const qs = new URLSearchParams()
   if (q.value) qs.set('q', q.value)
@@ -308,6 +335,7 @@ async function exportarExcel() {
       <div class="hero-actions">
         <button class="btn btn-sm refresh" :class="{ spin: refreshing }" @click="refresh"><RefreshCw :size="14" /> {{ refreshing ? 'Actualizando…' : 'Actualizar' }}</button>
         <button class="btn btn-sm" @click="exportarExcel"><Download :size="14" /> Exportar Excel</button>
+        <button v-if="me?.role === 'ADMIN'" class="btn btn-sm" @click="showCargueMasivo = true"><PackageCheck :size="14" /> Cargue masivo</button>
         <button v-if="canCreate" class="btn btn-primary btn-sm" @click="showCrear = true"><Plus :size="14" /> Nuevo pedido</button>
       </div>
     </section>
@@ -316,8 +344,8 @@ async function exportarExcel() {
       <div v-if="!panelId" key="list">
         <CargueGourmetKpiRail :key="refreshKey" :items="pedidos" style="margin-bottom: 18px" @filter="onKpiFilter" />
         <CargueGourmetToolbar
-          v-model:q="q" v-model:estado="fEstado" v-model:ciudad="fCiudad" v-model:tipo-orden="fTipoOrden" v-model:alerta="fAlerta" v-model:density="density"
-          :ciudades="ciudades" :count="filtered.length" :total="pedidos.length" style="margin-bottom: 14px" @clear="clearFilters"
+          v-model:q="q" v-model:estado="fEstado" v-model:ciudad="fCiudad" v-model:tienda="fTienda" v-model:tipo-orden="fTipoOrden" v-model:alerta="fAlerta" v-model:density="density"
+          :ciudades="ciudades" :tiendas="tiendas" :count="filtered.length" :total="pedidos.length" style="margin-bottom: 14px" @clear="clearFilters"
         />
         <ListSkeleton v-if="loading" />
         <CargueGourmetPedidosList v-else :items="filtered" :has-filters="hasFilters" :density="density" @open="openDetail" @clear="clearFilters" @new="showCrear = true" />
@@ -338,6 +366,10 @@ async function exportarExcel() {
     <CargueGourmetEditarPedidoModal v-if="showEditar && panelItem" :p="panelItem" :saving="saving" @close="showEditar = false" @saved="guardarEdicion" />
     <CargueGourmetAsignarUbicacionModal v-if="showUbicacion && panelItem" :p="panelItem" :saving="saving" @close="showUbicacion = false" @saved="guardarUbicacion" />
     <CargueGourmetCierreManualModal v-if="showCierreManual && panelItem" :p="panelItem" :saving="saving" @close="showCierreManual = false" @saved="guardarCierreManual" />
+    <CargueGourmetCargueMasivoModal
+      v-if="showCargueMasivo" :items="pedidosPendientesMasivo" :saving="busy === 'cargue-masivo'"
+      @close="showCargueMasivo = false" @confirm="confirmarCargueMasivo"
+    />
 
     <ConfirmModal
       v-if="showConfirmDel && panelItem" title="Eliminar pedido"

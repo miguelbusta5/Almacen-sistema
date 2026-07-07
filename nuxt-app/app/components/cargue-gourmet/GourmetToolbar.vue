@@ -5,13 +5,14 @@ import { Search, X, TriangleAlert, Rows3, Rows4 } from '@lucide/vue'
 import { ESTADO_LABEL } from '~/utils/gourmet'
 
 const props = defineProps<{
-  q: string; estado: string; ciudad: string; ciudades: string[]; tipoOrden: string; alerta: boolean
+  q: string; estado: string; ciudad: string; ciudades: string[]; tienda: string; tiendas: string[]; tipoOrden: string; alerta: boolean
   count: number; total: number; density: 'comodo' | 'compacto'
 }>()
 const emit = defineEmits<{
   (e: 'update:q', v: string): void
   (e: 'update:estado', v: string): void
   (e: 'update:ciudad', v: string): void
+  (e: 'update:tienda', v: string): void
   (e: 'update:tipoOrden', v: string): void
   (e: 'update:alerta', v: boolean): void
   (e: 'update:density', v: 'comodo' | 'compacto'): void
@@ -42,6 +43,10 @@ function onInput(e: Event) {
       <option value="">Todas las ciudades</option>
       <option v-for="c in ciudades" :key="c" :value="c">{{ c }}</option>
     </select>
+    <select :value="tienda" @change="emit('update:tienda', ($event.target as HTMLSelectElement).value)" class="field sel">
+      <option value="">Todas las tiendas</option>
+      <option v-for="t in tiendas" :key="t" :value="t">{{ t }}</option>
+    </select>
     <select :value="tipoOrden" @change="emit('update:tipoOrden', ($event.target as HTMLSelectElement).value)" class="field sel">
       <option value="">Todos los tipos</option>
       <option value="TSDM">TSDM</option>
@@ -50,7 +55,7 @@ function onInput(e: Event) {
     <button class="btn btn-sm" :class="{ on: alerta }" @click="emit('update:alerta', !alerta)">
       <TriangleAlert :size="14" /> Solo alertas
     </button>
-    <button v-if="localQ || estado || ciudad || tipoOrden || alerta" class="btn btn-ghost btn-sm" @click="localQ = ''; emit('clear')"><X :size="13" /> Limpiar</button>
+    <button v-if="localQ || estado || ciudad || tienda || tipoOrden || alerta" class="btn btn-ghost btn-sm" @click="localQ = ''; emit('clear')"><X :size="13" /> Limpiar</button>
 
     <div class="right">
       <span class="count mono">{{ count }} de {{ total }}</span>
