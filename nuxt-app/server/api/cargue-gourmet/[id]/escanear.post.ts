@@ -49,28 +49,45 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 409, statusMessage: `No se puede escanear: el pedido está en estado ${pedido.estado}`, data: { code: 'ESTADO_INVALIDO' } })
   }
 
-  const cargue = await prisma.gourmetCargue.findFirst({
+  const cargueActivo = await prisma.gourmetCargue.findFirst({
     where: { pedidoId: id, estado: 'EN_CARGUE' },
-    include: { escaneos: { where: { resultado: 'VALIDO' }, select: { codigoEscaneado: true } } },
+    select: { id: true },
   })
-  if (!cargue) throw createError({ statusCode: 409, statusMessage: 'No hay un cargue activo para este pedido' })
+  if (!cargueActivo) throw createError({ statusCode: 409, statusMessage: 'No hay un cargue activo para este pedido' })
 
   const codigosCaja = pedido.cajas.map((c) => c.codigoCaja).filter((c): c is string => !!c)
   const modoCodigo = determinarModoCodigo(codigosCaja)
 
-  const clasificacion = clasificarEscaneoGourmet({
-    codigo,
-    ordenPedido: pedido.orden,
-    cajasEsperadas: cargue.cantidadEsperada,
-    codigosCajaEsperados: codigosCaja,
-    escaneosValidosPrevios: cargue.escaneos.map((e) => e.codigoEscaneado),
-    modoCodigo,
-    permitirRepetirCaja,
-  })
+  // La clasificación (¿es duplicado?) y la escritura van juntas dentro de la
+  // misma transacción, con el cargue bloqueado (FOR UPDATE) — así dos
+  // escaneos casi simultáneos del mismo código (doble tap, reintento de
+  // red) se serializan: el segundo espera a que el primero termine y
+  // entonces sí ve el escaneo recién insertado al leer `escaneosValidosPrevios`.
+  // Antes esta lectura ocurría fuera de la transacción y ambos requests
+  // podían leer la lista "vacía" al mismo tiempo, contando dos veces una
+  // caja que debía rechazarse la segunda vez. La fórmula de
+  // `permitirRepetirCaja` (MUEBLES + "tiene varias partes") no cambia —
+  // sigue siendo la única razón por la que un código repetido cuenta como
+  // VALIDO en vez de DUPLICADO.
+  const { escaneo, novedad, cantidadEscaneada, cantidadEsperada, resultado } = await prisma.$transaction(async (tx) => {
+    await tx.$queryRaw`SELECT id FROM gourmet_cargues WHERE id = ${cargueActivo.id} FOR UPDATE`
 
-  const tipoNovedad = clasificacion.tipoNovedadSugerido
+    const cargue = await tx.gourmetCargue.findUniqueOrThrow({
+      where: { id: cargueActivo.id },
+      include: { escaneos: { where: { resultado: 'VALIDO' }, select: { codigoEscaneado: true } } },
+    })
 
-  const { escaneo, novedad, cantidadEscaneada } = await prisma.$transaction(async (tx) => {
+    const clasificacion = clasificarEscaneoGourmet({
+      codigo,
+      ordenPedido: pedido.orden,
+      cajasEsperadas: cargue.cantidadEsperada,
+      codigosCajaEsperados: codigosCaja,
+      escaneosValidosPrevios: cargue.escaneos.map((e) => e.codigoEscaneado),
+      modoCodigo,
+      permitirRepetirCaja,
+    })
+    const tipoNovedad = clasificacion.tipoNovedadSugerido
+
     const nuevoEscaneo = await tx.gourmetCargueEscaneo.create({
       data: { cargueId: cargue.id, pedidoId: pedido.id, codigoEscaneado: codigo, resultado: clasificacion.resultado, escaneadoPorId: actor.id, observacion: clasificacion.mensaje },
     })
@@ -90,13 +107,13 @@ export default defineEventHandler(async (event) => {
       })
     }
 
-    return { escaneo: nuevoEscaneo, novedad: nuevaNovedad, cantidadEscaneada: nuevaCantidad }
+    return { escaneo: nuevoEscaneo, novedad: nuevaNovedad, cantidadEscaneada: nuevaCantidad, cantidadEsperada: cargue.cantidadEsperada, resultado: clasificacion.resultado }
   })
 
   return {
     success: true,
-    resultado: clasificacion.resultado,
-    progreso: { escaneados: cantidadEscaneada, esperados: cargue.cantidadEsperada },
+    resultado,
+    progreso: { escaneados: cantidadEscaneada, esperados: cantidadEsperada },
     novedadCreada: !!novedad,
     data: {
       escaneo: { id: escaneo.id, codigoEscaneado: escaneo.codigoEscaneado, resultado: escaneo.resultado, createdAt: escaneo.createdAt.toISOString() },
