@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
 import { Store, FileText, MapPin, ChevronUp, ChevronDown, ChevronsUpDown } from '@lucide/vue'
-import { ESTADO_LABEL, ESTADO_TONE, fmtFecha, horasDesde, type Despacho } from '~/utils/despacho'
-import { nivelEntregaColorFecha } from '~/utils/guardado'
+import { alertaTierDespacho, fmtFecha, type Despacho } from '~/utils/despacho'
+import { nivelEntregaColorFecha, TIER_COLOR } from '~/utils/guardado'
 
 const ENTREGA_COLOR: Record<string, string | undefined> = {
   neutro: undefined, 'sin-fecha': 'var(--error)', vencida: 'var(--error)',
@@ -55,9 +55,6 @@ const sorted = computed(() => {
   return arr
 })
 
-function urgente(d: Despacho) {
-  return d.estado === 'CREADO_TIENDA' && horasDesde(d.createdAt) >= 24
-}
 </script>
 
 <template>
@@ -82,10 +79,10 @@ function urgente(d: Despacho) {
         <tr
           v-for="(d, i) in sorted" :key="d.id" class="row"
           tabindex="0" role="button" :aria-label="`Ver despacho ${d.numeroDocumento}`"
-          :style="{ '--rail': urgente(d) ? 'var(--u-critico)' : ESTADO_TONE[d.estado], '--d': `${i * 32}ms` }"
+          :style="{ '--rail': d.estado === 'ENVIADO_CLIENTE' ? 'var(--border-strong)' : TIER_COLOR[alertaTierDespacho(d)], '--d': `${i * 32}ms` }"
           @click="emit('open', d)" @keydown.enter="emit('open', d)" @keydown.space.prevent="emit('open', d)"
         >
-          <td><Badge :label="ESTADO_LABEL[d.estado]" :tone="ESTADO_TONE[d.estado]" /></td>
+          <td><TiendaUrgencyPill :d="d" /></td>
           <td>
             <div class="doc-row">
               <span class="doc-ic"><FileText :size="13" /></span>
@@ -115,7 +112,6 @@ function urgente(d: Despacho) {
           </td>
           <td>
             <div class="mono">{{ fmtFecha(d.fechaCreacion) }}</div>
-            <div v-if="urgente(d)" class="sub urg">{{ horasDesde(d.createdAt) }}h sin recoger</div>
           </td>
         </tr>
       </TransitionGroup>
@@ -162,10 +158,11 @@ function urgente(d: Despacho) {
 /* Densidad */
 .d-compacto .row td { padding: 8px 16px; }
 .d-compacto .sub { margin-top: 1px; }
+.d-compacto :deep(.pill) { padding: 3px 9px 3px 7px; }
+.d-compacto .doc-ic { display: none; }
 
 .doc-row { display: flex; align-items: center; gap: 10px; }
 .doc-ic { width: 28px; height: 28px; border-radius: 8px; flex-shrink: 0; display: grid; place-items: center; background: var(--surface-3); color: var(--muted); }
-.d-compacto .doc-ic { display: none; }
 .doc { font-size: 13px; font-weight: 700; color: var(--ink); }
 .centro { font-size: 13px; font-weight: 600; color: var(--ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 100%; }
 .cli { font-size: 13px; color: var(--ink-2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 100%; }
@@ -174,7 +171,6 @@ function urgente(d: Despacho) {
 .city svg { color: var(--faint); }
 .ent { font-size: 13px; font-weight: 700; }
 .nofecha { font-size: 11px; font-weight: 600; color: var(--error); }
-.urg { color: var(--u-critico); font-weight: 700; }
 .empty { display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 56px 20px; text-align: center; }
 .empty-ic { width: 56px; height: 56px; border-radius: 50%; background: var(--surface-3); display: grid; place-items: center; color: var(--faint); margin-bottom: 6px; }
 .empty-title { font-family: var(--display); font-size: 16px; font-weight: 700; }

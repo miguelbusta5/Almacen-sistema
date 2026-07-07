@@ -1,4 +1,5 @@
 import dayjs from 'dayjs'
+import { nivelEntregaColorFecha, type AlertaTier } from './guardado'
 
 export type EstadoDespacho =
   | 'CREADO_TIENDA'
@@ -130,6 +131,29 @@ export function horasDesde(iso: string): number {
 export function tieneAlertaDespacho(d: { estado: string; createdAt: string }): boolean {
   if (d.estado === 'CON_NOVEDAD' || d.estado === 'RECHAZADO') return true
   return d.estado === 'CREADO_TIENDA' && horasDesde(d.createdAt) >= 24
+}
+
+// Tier de urgencia para el pill de la lista — mismo lenguaje visual que
+// alertaTier() de Guardados (guardado.ts), adaptado al ciclo de vida de un
+// despacho: rechazado/con novedad siempre es crítico; pendiente de recogida
+// escala por horas sin recoger; en CEDI escala por proximidad de la entrega
+// comprometida (nivelEntregaColorFecha ya usado en la lista).
+export function alertaTierDespacho(d: { estado: EstadoDespacho; createdAt: string; fechaEntregaComprometida: string | null }): AlertaTier {
+  if (d.estado === 'CON_NOVEDAD' || d.estado === 'RECHAZADO') return 'critico'
+  if (d.estado === 'CREADO_TIENDA') {
+    const h = horasDesde(d.createdAt)
+    if (h >= 72) return 'critico'
+    if (h >= 48) return 'alerta'
+    if (h >= 24) return 'aviso'
+    return 'ok'
+  }
+  if (d.estado === 'ENTREGADO_CEDI' || d.estado === 'RECOGIDO_TIENDA') {
+    const nivel = nivelEntregaColorFecha(d.fechaEntregaComprometida, false)
+    if (nivel === 'vencida') return 'critico'
+    if (nivel === 'amarillo') return 'aviso'
+    return 'ok'
+  }
+  return 'ok'
 }
 
 export const CIUDAD_OPTIONS = [

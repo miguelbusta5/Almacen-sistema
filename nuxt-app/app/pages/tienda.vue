@@ -63,6 +63,8 @@ const centrosCostos = computed(() =>
   [...new Set(despachos.value.map((d) => d.centroCostos).filter(Boolean))].sort((a, b) => a.localeCompare(b))
 )
 
+const atencionItems = computed(() => despachos.value.filter((d) => d.estado === 'CON_NOVEDAD' || d.estado === 'RECHAZADO'))
+
 const filtered = computed(() => {
   const query = q.value.toLowerCase()
   return despachos.value.filter((d) => {
@@ -282,6 +284,7 @@ function exportarExcel() {
 
     <Transition name="view" mode="out-in">
       <div v-if="!panelItem" key="list">
+        <AtencionBanner :items="atencionItems" class="fade-in" style="margin-bottom: 18px" @open="openDetail" />
         <TiendaKpiRail :key="refreshKey" :items="despachos" style="margin-bottom: 18px" @filter="onKpiFilter" />
         <TiendaToolbar
           v-model:q="q" v-model:estado="fEstado" v-model:centro="fCC" v-model:alerta="fAlerta" v-model:density="density"
