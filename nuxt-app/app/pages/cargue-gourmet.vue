@@ -80,6 +80,16 @@ async function loadDetalle(id: string) {
 async function openDetail(p: PedidoGourmet) { panelId.value = p.id; ultimoResultado.value = null; await loadDetalle(p.id) }
 function backToList() { panelId.value = null; panelItem.value = null }
 
+// Parcha una fila del listado en memoria en vez de recargar las 500 filas
+// del servidor — esto es lo que elimina el round-trip pesado en cada
+// mutación (crear/editar/ubicación/cargue/eliminar solo tocan 1 fila).
+function patchListado(id: string, patch: Partial<PedidoGourmet>) {
+  const idx = pedidos.value.findIndex((p) => p.id === id)
+  if (idx !== -1) pedidos.value[idx] = { ...pedidos.value[idx], ...patch, id } as PedidoGourmet
+}
+function agregarAListado(p: PedidoGourmet) { pedidos.value = [p, ...pedidos.value] }
+function quitarDeListado(id: string) { pedidos.value = pedidos.value.filter((p) => p.id !== id) }
+
 function apiErr(e: any, fallback: string) { return e?.data?.statusMessage || e?.statusMessage || fallback }
 
 const busy = ref<string | null>(null)
@@ -94,16 +104,18 @@ const showCrear = ref(false)
 const showEditar = ref(false)
 const saving = ref(false)
 
-function onCreated() { loadAll() }
+function onCreated(p: PedidoGourmet) { agregarAListado(p) }
 function onVerExistente(id: string) { openDetail({ id } as PedidoGourmet) }
 
 async function guardarEdicion(payload: Record<string, unknown>) {
   if (!panelItem.value) return
+  const id = panelItem.value.id
   saving.value = true
   try {
-    await $fetch(`/api/cargue-gourmet/${panelItem.value.id}`, { method: 'PUT', body: payload })
+    const res = await $fetch<{ data: PedidoGourmet }>(`/api/cargue-gourmet/${id}`, { method: 'PUT', body: payload })
     showEditar.value = false
-    await loadAll(); await loadDetalle(panelItem.value.id)
+    patchListado(id, res.data)
+    await loadDetalle(id)
     showToast('Pedido actualizado ✓')
   } catch (e) { showToast(apiErr(e, 'No se pudo guardar'), true) }
   finally { saving.value = false }
@@ -113,35 +125,69 @@ async function guardarEdicion(payload: Record<string, unknown>) {
 const showUbicacion = ref(false)
 async function guardarUbicacion(payload: Record<string, unknown>) {
   if (!panelItem.value) return
+  const id = panelItem.value.id
   saving.value = true
   try {
-    await $fetch(`/api/cargue-gourmet/${panelItem.value.id}/ubicacion`, { method: 'POST', body: payload })
+    const res = await $fetch<{ data: PedidoGourmet }>(`/api/cargue-gourmet/${id}/ubicacion`, { method: 'POST', body: payload })
     showUbicacion.value = false
-    await loadAll(); await loadDetalle(panelItem.value.id)
+    patchListado(id, res.data)
+    await loadDetalle(id)
     showToast('Ubicación asignada ✓')
   } catch (e) { showToast(apiErr(e, 'No se pudo guardar la ubicación'), true) }
   finally { saving.value = false }
 }
 
 // ── Ciclo de cargue ──────────────────────────────────────────────────────
+// Nota de alcance (Fase 4): estas acciones patchean el LISTADO en memoria
+// (evita el refetch de las 500 filas) pero siguen usando loadDetalle(id)
+// — un solo GET liviano — para refrescar el panel. Reconstruir a mano los
+// arreglos anidados (cargues/escaneos/novedades) desde las respuestas
+// parciales de cada endpoint es frágil (fácil dejar el detalle
+// inconsistente); un GET puntual por id es mucho más barato que el
+// loadAll() de 500 filas que sí eliminamos, así que el balance
+// riesgo/beneficio no lo justifica aquí.
 function iniciarCargue() {
   return run('iniciarCargue', async () => {
     if (!panelItem.value) return
+    const id = panelItem.value.id
     try {
-      await $fetch(`/api/cargue-gourmet/${panelItem.value.id}/iniciar-cargue`, { method: 'POST', body: { updatedAt: panelItem.value.updatedAt } })
-      await loadAll(); await loadDetalle(panelItem.value.id)
+      const res = await $fetch<{ data: { pedido: PedidoGourmet } }>(`/api/cargue-gourmet/${id}/iniciar-cargue`, { method: 'POST', body: { updatedAt: panelItem.value.updatedAt } })
+      patchListado(id, res.data.pedido)
+      await loadDetalle(id)
       showToast('Cargue iniciado ✓')
-    } catch (e) { showToast(apiErr(e, 'No se pudo iniciar el cargue'), true); if (panelItem.value) await loadDetalle(panelItem.value.id) }
+    } catch (e) { showToast(apiErr(e, 'No se pudo iniciar el cargue'), true); await loadDetalle(id) }
   })
 }
 
+// El escaneo es la acción de mayor frecuencia (varias por segundo durante
+// un cargue) — aquí sí vale la pena parchear el detalle localmente en vez
+// de pedir loadDetalle() completo en cada caja escaneada.
 async function escanear(codigo: string, tieneParte2: boolean) {
   if (!panelItem.value || busy.value) return
   busy.value = 'escanear'
   try {
-    const res = await $fetch<{ resultado: string; novedadCreada: boolean }>(`/api/cargue-gourmet/${panelItem.value.id}/escanear`, { method: 'POST', body: { codigo, tieneParte2 } })
+    const res = await $fetch<{
+      resultado: string; novedadCreada: boolean; progreso: { escaneados: number; esperados: number }
+      data: { escaneo: { id: string; codigoEscaneado: string; resultado: string; createdAt: string }; novedad?: { id: string; tipo: string; estado: string; descripcion: string } }
+    }>(`/api/cargue-gourmet/${panelItem.value.id}/escanear`, { method: 'POST', body: { codigo, tieneParte2 } })
     ultimoResultado.value = { codigo, resultado: res.resultado }
-    await loadDetalle(panelItem.value.id)
+
+    const p = panelItem.value
+    const cargues = (p.cargues ?? []).map((c) => {
+      if (c.estado !== 'EN_CARGUE') return c
+      return {
+        ...c,
+        cantidadEscaneada: res.progreso.escaneados,
+        escaneos: [
+          { ...res.data.escaneo, escaneadoPorId: me.value?.id ?? '', escaneadoPorNombre: me.value?.name ?? null },
+          ...c.escaneos,
+        ],
+      }
+    })
+    const novedades = res.data.novedad
+      ? [{ id: res.data.novedad.id, tipo: res.data.novedad.tipo, estado: res.data.novedad.estado, descripcion: res.data.novedad.descripcion, registradaPorId: me.value?.id ?? '', registradaPorNombre: me.value?.name ?? null, resueltaPorId: null, resueltaPorNombre: null, resueltaAt: null, createdAt: res.data.escaneo.createdAt }, ...(p.novedades ?? [])]
+      : (p.novedades ?? [])
+    panelItem.value = { ...p, cargues, novedades }
   } catch (e) {
     showToast(apiErr(e, 'No se pudo registrar el escaneo'), true)
   } finally {
@@ -152,11 +198,13 @@ async function escanear(codigo: string, tieneParte2: boolean) {
 function finalizarCargue() {
   return run('finalizar', async () => {
     if (!panelItem.value) return
+    const id = panelItem.value.id
     try {
-      await $fetch(`/api/cargue-gourmet/${panelItem.value.id}/finalizar`, { method: 'POST', body: { updatedAt: panelItem.value.updatedAt } })
-      await loadAll(); await loadDetalle(panelItem.value.id)
+      const res = await $fetch<{ data: { pedido: PedidoGourmet } }>(`/api/cargue-gourmet/${id}/finalizar`, { method: 'POST', body: { updatedAt: panelItem.value.updatedAt } })
+      patchListado(id, res.data.pedido)
+      await loadDetalle(id)
       showToast('Cargue finalizado ✓')
-    } catch (e) { showToast(apiErr(e, 'No se pudo finalizar el cargue'), true); if (panelItem.value) await loadDetalle(panelItem.value.id) }
+    } catch (e) { showToast(apiErr(e, 'No se pudo finalizar el cargue'), true); await loadDetalle(id) }
   })
 }
 
@@ -164,10 +212,12 @@ const showConfirmRevertir = ref(false)
 function revertirCargue() {
   return run('revertir', async () => {
     if (!panelItem.value) return
+    const id = panelItem.value.id
     try {
-      await $fetch(`/api/cargue-gourmet/${panelItem.value.id}/revertir-cargue`, { method: 'POST', body: { updatedAt: panelItem.value.updatedAt } })
+      const res = await $fetch<{ data: { pedido: PedidoGourmet } }>(`/api/cargue-gourmet/${id}/revertir-cargue`, { method: 'POST', body: { updatedAt: panelItem.value.updatedAt } })
       showConfirmRevertir.value = false
-      await loadAll(); await loadDetalle(panelItem.value.id)
+      patchListado(id, res.data.pedido)
+      await loadDetalle(id)
       showToast('Cargue revertido ✓')
     } catch (e) { showToast(apiErr(e, 'No se pudo revertir'), true) }
   })
@@ -177,11 +227,13 @@ function revertirCargue() {
 const showCierreManual = ref(false)
 async function guardarCierreManual(payload: Record<string, unknown>) {
   if (!panelItem.value) return
+  const id = panelItem.value.id
   saving.value = true
   try {
-    await $fetch(`/api/cargue-gourmet/${panelItem.value.id}/cierre-manual`, { method: 'POST', body: payload })
+    const res = await $fetch<{ data: { pedido: PedidoGourmet } }>(`/api/cargue-gourmet/${id}/cierre-manual`, { method: 'POST', body: payload })
     showCierreManual.value = false
-    await loadAll(); await loadDetalle(panelItem.value.id)
+    patchListado(id, res.data.pedido)
+    await loadDetalle(id)
     showToast('Cargue cerrado manualmente ✓')
   } catch (e) { showToast(apiErr(e, 'No se pudo cerrar manualmente'), true) }
   finally { saving.value = false }
@@ -192,10 +244,12 @@ const showConfirmDel = ref(false)
 function delPedido() {
   return run('del', async () => {
     if (!panelItem.value) return
+    const id = panelItem.value.id
     try {
-      await $fetch(`/api/cargue-gourmet/${panelItem.value.id}`, { method: 'DELETE' })
+      await $fetch(`/api/cargue-gourmet/${id}`, { method: 'DELETE' })
       showConfirmDel.value = false
-      backToList(); await loadAll()
+      quitarDeListado(id)
+      backToList()
       showToast('Pedido eliminado')
     } catch (e) { showToast(apiErr(e, 'No se pudo eliminar'), true) }
   })

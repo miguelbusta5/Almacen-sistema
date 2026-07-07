@@ -52,6 +52,15 @@ async function loadAll() {
 
 onMounted(async () => { ensureSession(); await loadAll(); loading.value = false })
 
+// Parcha una fila del listado en memoria en vez de recargar las 500 filas
+// del servidor tras cada mutación.
+function patchListado(clientId: string, patch: Partial<Guardado>) {
+  const idx = guardados.value.findIndex((g) => g.clientId === clientId)
+  if (idx !== -1) guardados.value[idx] = { ...guardados.value[idx], ...patch, clientId } as Guardado
+}
+function agregarAListado(g: Guardado) { guardados.value = [g, ...guardados.value] }
+function quitarDeListado(clientId: string) { guardados.value = guardados.value.filter((x) => x.clientId !== clientId) }
+
 async function refresh() {
   if (refreshing.value) return
   refreshing.value = true
@@ -134,7 +143,7 @@ function despachar() {
     try {
       await $fetch(`/api/transporte/${encodeURIComponent(g.clientId)}/acciones`, { method: 'POST', body: { tipo: 'despachar' } })
       g.estado = 'DESPACHADO'; g.fechaDespacho = todayISO()
-      await loadAll(); showToast('Marcado como enviado ✓')
+      showToast('Marcado como enviado ✓')
     } catch (e) { showToast(apiErr(e, 'No se pudo despachar'), true) }
   })
 }
@@ -149,7 +158,7 @@ function revertir() {
       await $fetch(`/api/transporte/${encodeURIComponent(g.clientId)}`, { method: 'PUT', body: { estado: 'PENDIENTE DESPACHO' } })
       g.estado = 'PENDIENTE DESPACHO'; g.fechaDespacho = null
       showConfirmRevertir.value = false
-      await loadAll(); showToast('Revertido a Pendiente Despacho ✓')
+      showToast('Revertido a Pendiente Despacho ✓')
     } catch (e) { showToast(apiErr(e, 'No se pudo revertir'), true) }
   })
 }
@@ -163,7 +172,7 @@ function delGuardado() {
     try {
       await $fetch(`/api/transporte/${encodeURIComponent(g.clientId)}`, { method: 'DELETE' })
       showConfirmDel.value = false
-      panelItem.value = null; await loadAll(); showToast('Eliminado')
+      panelItem.value = null; quitarDeListado(g.clientId); showToast('Eliminado')
     } catch (e) { showToast(apiErr(e, 'No se pudo eliminar'), true) }
   })
 }
@@ -186,12 +195,17 @@ function onSaved(payload: Partial<Guardado>) {
       if (wasEdit) {
         // Solo enviar la fecha de ingreso si realmente cambió (evita 403 no-ADMIN).
         if (body.fecha === editing.value!.fecha) delete body.fecha
-        await $fetch(`/api/transporte/${encodeURIComponent(editing.value!.clientId)}`, { method: 'PUT', body })
+        const clientId = editing.value!.clientId
+        await $fetch(`/api/transporte/${encodeURIComponent(clientId)}`, { method: 'PUT', body })
+        // El PUT no devuelve la fila actualizada: se parchea con el mismo
+        // payload enviado (campos planos, sin valores derivados/cacheados).
+        patchListado(clientId, body)
       } else {
-        await $fetch('/api/transporte', { method: 'POST', body })
+        const res = await $fetch<{ data: Guardado }>('/api/transporte', { method: 'POST', body })
+        agregarAListado(res.data)
       }
       showForm.value = false; editing.value = null
-      await loadAll(); showToast(wasEdit ? 'Guardado actualizado ✓' : 'Guardado registrado ✓')
+      showToast(wasEdit ? 'Guardado actualizado ✓' : 'Guardado registrado ✓')
     } catch (e) { showToast(apiErr(e, 'No se pudo guardar'), true) }
   })
 }

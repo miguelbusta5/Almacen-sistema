@@ -40,6 +40,15 @@ async function loadAll() {
 
 onMounted(async () => { ensureSession(); await loadAll(); loading.value = false })
 
+// Parcha una fila del listado en memoria en vez de recargar las 500 filas
+// del servidor tras cada mutación.
+function patchListado(id: string, patch: Partial<Despacho>) {
+  const idx = despachos.value.findIndex((d) => d.id === id)
+  if (idx !== -1) despachos.value[idx] = { ...despachos.value[idx], ...patch, id } as Despacho
+}
+function agregarAListado(d: Despacho) { despachos.value = [d, ...despachos.value] }
+function quitarDeListado(id: string) { despachos.value = despachos.value.filter((x) => x.id !== id) }
+
 async function refresh() {
   if (refreshing.value) return
   refreshing.value = true
@@ -113,8 +122,9 @@ function transicion(destino: string) {
     if (!d) return
     if (demo.value) { d.estado = destino as Despacho['estado']; showToast('Estado actualizado ✓'); return }
     try {
-      await $fetch(`/api/tienda/${d.id}` as string, { method: 'PUT', body: { estado: destino, updatedAt: d.updatedAt } })
-      await loadAll(); await refreshPanel(); showToast('Estado actualizado ✓')
+      const res = await $fetch<{ data: Despacho }>(`/api/tienda/${d.id}` as string, { method: 'PUT', body: { estado: destino, updatedAt: d.updatedAt } })
+      patchListado(d.id, res.data)
+      await refreshPanel(); showToast('Estado actualizado ✓')
     } catch (e) { showToast(apiErr(e, 'No se pudo actualizar el estado'), true) }
   })
 }
@@ -129,9 +139,10 @@ function confirmarRechazar() {
     if (!d || motivoRechazo.value.trim().length < 5) return
     if (demo.value) { d.estado = 'RECHAZADO'; showRechazar.value = false; showToast('Despacho rechazado'); return }
     try {
-      await $fetch(`/api/tienda/${d.id}` as string, { method: 'PUT', body: { estado: 'RECHAZADO', motivoRechazo: motivoRechazo.value.trim(), updatedAt: d.updatedAt } })
+      const res = await $fetch<{ data: Despacho }>(`/api/tienda/${d.id}` as string, { method: 'PUT', body: { estado: 'RECHAZADO', motivoRechazo: motivoRechazo.value.trim(), updatedAt: d.updatedAt } })
       showRechazar.value = false
-      await loadAll(); await refreshPanel(); showToast('Despacho rechazado')
+      patchListado(d.id, res.data)
+      await refreshPanel(); showToast('Despacho rechazado')
     } catch (e) { showToast(apiErr(e, 'No se pudo rechazar'), true) }
   })
 }
@@ -146,9 +157,10 @@ function confirmarNovedad() {
     if (!d || novedadTexto.value.trim().length < 5) return
     if (demo.value) { d.estado = 'CON_NOVEDAD'; d.novedad = novedadTexto.value.trim(); showNovedad.value = false; showToast('Novedad registrada'); return }
     try {
-      await $fetch(`/api/tienda/${d.id}` as string, { method: 'PUT', body: { estado: 'CON_NOVEDAD', novedad: novedadTexto.value.trim(), updatedAt: d.updatedAt } })
+      const res = await $fetch<{ data: Despacho }>(`/api/tienda/${d.id}` as string, { method: 'PUT', body: { estado: 'CON_NOVEDAD', novedad: novedadTexto.value.trim(), updatedAt: d.updatedAt } })
       showNovedad.value = false
-      await loadAll(); await refreshPanel(); showToast('Novedad registrada')
+      patchListado(d.id, res.data)
+      await refreshPanel(); showToast('Novedad registrada')
     } catch (e) { showToast(apiErr(e, 'No se pudo registrar la novedad'), true) }
   })
 }
@@ -176,7 +188,7 @@ function confirmarAsignar() {
     try {
       await $fetch(`/api/tienda/${d.id}/guardado`, { method: 'POST', body: { asignadoAId: asignadoAId.value, nota: notaAsignacion.value.trim() || null } })
       showAsignar.value = false
-      await loadAll(); await refreshPanel(); showToast('Guardado asignado ✓')
+      await refreshPanel(); showToast('Guardado asignado ✓')
     } catch (e) { showToast(apiErr(e, 'No se pudo asignar'), true) }
   })
 }
@@ -189,9 +201,10 @@ function revertir() {
     if (!d) return
     if (demo.value) { showConfirmRevertir.value = false; showToast('Estado revertido ✓'); return }
     try {
-      await $fetch(`/api/tienda/${d.id}/revertir-estado`, { method: 'POST', body: { updatedAt: d.updatedAt } })
+      const res = await $fetch<{ data: Despacho }>(`/api/tienda/${d.id}/revertir-estado`, { method: 'POST', body: { updatedAt: d.updatedAt } })
       showConfirmRevertir.value = false
-      await loadAll(); await refreshPanel(); showToast('Estado revertido ✓')
+      patchListado(d.id, res.data)
+      await refreshPanel(); showToast('Estado revertido ✓')
     } catch (e) { showToast(apiErr(e, 'No se pudo revertir'), true) }
   })
 }
@@ -205,7 +218,7 @@ function delDespacho() {
     try {
       await $fetch(`/api/tienda/${d.id}` as string, { method: 'DELETE' })
       showConfirmDel.value = false
-      panelItem.value = null; await loadAll(); showToast('Eliminado')
+      panelItem.value = null; quitarDeListado(d.id); showToast('Eliminado')
     } catch (e) { showToast(apiErr(e, 'No se pudo eliminar'), true) }
   })
 }
@@ -222,12 +235,15 @@ function onSaved(payload: Record<string, unknown>) {
     }
     try {
       if (wasEdit) {
-        await $fetch(`/api/tienda/${editing.value!.id}` as string, { method: 'PUT', body: payload })
+        const res = await $fetch<{ data: Despacho }>(`/api/tienda/${editing.value!.id}` as string, { method: 'PUT', body: payload })
+        patchListado(editing.value!.id, res.data)
+        await refreshPanel()
       } else {
-        await $fetch('/api/tienda', { method: 'POST', body: payload })
+        const res = await $fetch<{ data: Despacho }>('/api/tienda', { method: 'POST', body: payload })
+        agregarAListado(res.data)
       }
       showForm.value = false; editing.value = null
-      await loadAll(); await refreshPanel(); showToast(wasEdit ? 'Factura actualizada ✓' : 'Factura registrada ✓')
+      showToast(wasEdit ? 'Factura actualizada ✓' : 'Factura registrada ✓')
     } catch (e) { showToast(apiErr(e, 'No se pudo guardar'), true) }
   })
 }

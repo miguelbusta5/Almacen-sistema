@@ -1,12 +1,12 @@
 <script setup lang="ts">
 import { reactive, ref, computed, watch } from 'vue'
 import { Trash2, ClipboardList, Boxes, ScanLine } from '@lucide/vue'
-import { validarCodigoCaja, type TipoPedidoGourmet } from '~/utils/gourmet'
+import { validarCodigoCaja, type TipoPedidoGourmet, type PedidoGourmet } from '~/utils/gourmet'
 
 interface TiendaOption { codigo: string; tienda: string; ciudad: string }
 interface EstibaEscaneada { secuencia: number; cajas: string[] }
 
-const emit = defineEmits<{ (e: 'close'): void; (e: 'created'): void; (e: 'verExistente', id: string): void }>()
+const emit = defineEmits<{ (e: 'close'): void; (e: 'created', p: PedidoGourmet): void; (e: 'verExistente', id: string): void }>()
 
 // GOURMET por defecto — MUEBLES habilita "tiene parte 2" al escanear cajas
 // durante el cargue (permite repetir un número de caja).
@@ -115,7 +115,7 @@ async function submit() {
 
   saving.value = true
   try {
-    await $fetch('/api/cargue-gourmet', {
+    const res = await $fetch<{ data: PedidoGourmet }>('/api/cargue-gourmet', {
       method: 'POST',
       body: {
         orden: orden.value.trim(),
@@ -126,7 +126,7 @@ async function submit() {
         estibas: estibas.value.map((e) => ({ secuencia: e.secuencia, cajas: e.cajas })),
       },
     })
-    emit('created')
+    emit('created', res.data)
     emit('close')
   } catch (e: any) {
     const data = e?.data?.data
