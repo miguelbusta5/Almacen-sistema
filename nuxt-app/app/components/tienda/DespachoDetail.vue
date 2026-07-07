@@ -189,6 +189,12 @@ const detalle = computed(() => [
 .back { margin-bottom: 14px; }
 .dhead, .col > * { animation: dEnter .42s cubic-bezier(.16,1,.3,1) both; }
 .dhead { animation-delay: .02s; }
+.col:first-child > *:nth-child(1) { animation-delay: .08s; }
+.col:first-child > *:nth-child(2) { animation-delay: .14s; }
+.col:first-child > *:nth-child(3) { animation-delay: .20s; }
+.col:first-child > *:nth-child(4) { animation-delay: .26s; }
+.col:first-child > *:nth-child(5) { animation-delay: .32s; }
+.col.side { animation-delay: .16s; }
 @keyframes dEnter { from { opacity: 0; transform: translateY(12px); } }
 .dhead { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; padding: 18px 20px; margin-bottom: 16px; flex-wrap: wrap; }
 .dtitle-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }

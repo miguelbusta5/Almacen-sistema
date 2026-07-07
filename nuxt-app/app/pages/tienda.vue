@@ -320,6 +320,9 @@ function exportarExcel() {
       <div class="mform">
         <label class="flabel">Motivo del rechazo (mínimo 5 caracteres)</label>
         <textarea v-model="motivoRechazo" rows="3" class="field" placeholder="Explica por qué se rechaza…" />
+        <span v-if="motivoRechazo.trim().length > 0 && motivoRechazo.trim().length < 5" class="fe scale-in">
+          Faltan {{ 5 - motivoRechazo.trim().length }} caracter(es)
+        </span>
         <div class="mactions">
           <button class="btn" :disabled="busy === 'rechazar'" @click="showRechazar = false">Cancelar</button>
           <button class="btn btn-danger" :disabled="busy === 'rechazar' || motivoRechazo.trim().length < 5" @click="confirmarRechazar">
@@ -334,6 +337,9 @@ function exportarExcel() {
       <div class="mform">
         <label class="flabel">Descripción de la novedad (mínimo 5 caracteres)</label>
         <textarea v-model="novedadTexto" rows="3" class="field" placeholder="Describe la novedad…" />
+        <span v-if="novedadTexto.trim().length > 0 && novedadTexto.trim().length < 5" class="fe scale-in">
+          Faltan {{ 5 - novedadTexto.trim().length }} caracter(es)
+        </span>
         <div class="mactions">
           <button class="btn" :disabled="busy === 'novedad'" @click="showNovedad = false">Cancelar</button>
           <button class="btn btn-primary" :disabled="busy === 'novedad' || novedadTexto.trim().length < 5" @click="confirmarNovedad">
@@ -386,6 +392,7 @@ function exportarExcel() {
 
 .mform { display: flex; flex-direction: column; gap: 12px; }
 .flabel { font-size: 12px; font-weight: 600; color: var(--ink-2); }
+.fe { font-size: 11px; font-weight: 600; color: var(--u-critico); margin-top: -6px; }
 .mactions { display: grid; grid-template-columns: 1fr 2fr; gap: 10px; margin-top: 4px; }
 .mactions .btn { justify-content: center; }
 </style>

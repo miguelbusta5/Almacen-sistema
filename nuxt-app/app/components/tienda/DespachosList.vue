@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
-import { Store, MapPin, ChevronUp, ChevronDown, ChevronsUpDown } from '@lucide/vue'
+import { Store, FileText, MapPin, ChevronUp, ChevronDown, ChevronsUpDown } from '@lucide/vue'
 import { ESTADO_LABEL, ESTADO_TONE, fmtFecha, horasDesde, type Despacho } from '~/utils/despacho'
 import { nivelEntregaColorFecha } from '~/utils/guardado'
 
@@ -87,8 +87,13 @@ function urgente(d: Despacho) {
         >
           <td><Badge :label="ESTADO_LABEL[d.estado]" :tone="ESTADO_TONE[d.estado]" /></td>
           <td>
-            <div class="doc mono">{{ d.numeroDocumento }}</div>
-            <div class="sub mono">#{{ d.consecutivo }}</div>
+            <div class="doc-row">
+              <span class="doc-ic"><FileText :size="13" /></span>
+              <div>
+                <div class="doc mono">{{ d.numeroDocumento }}</div>
+                <div class="sub mono">#{{ d.consecutivo }}</div>
+              </div>
+            </div>
           </td>
           <td>
             <div class="centro" :title="d.centroCostos">{{ d.centroCostos }}</div>
@@ -158,6 +163,9 @@ function urgente(d: Despacho) {
 .d-compacto .row td { padding: 8px 16px; }
 .d-compacto .sub { margin-top: 1px; }
 
+.doc-row { display: flex; align-items: center; gap: 10px; }
+.doc-ic { width: 28px; height: 28px; border-radius: 8px; flex-shrink: 0; display: grid; place-items: center; background: var(--surface-3); color: var(--muted); }
+.d-compacto .doc-ic { display: none; }
 .doc { font-size: 13px; font-weight: 700; color: var(--ink); }
 .centro { font-size: 13px; font-weight: 600; color: var(--ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 100%; }
 .cli { font-size: 13px; color: var(--ink-2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 100%; }

@@ -50,6 +50,7 @@ const cards = computed(() => [
 .kpi:nth-child(2){animation-delay:45ms}.kpi:nth-child(3){animation-delay:90ms}
 .kpi:nth-child(4){animation-delay:135ms}.kpi:nth-child(5){animation-delay:180ms}
 .kpi:hover { transform: translateY(-3px); box-shadow: var(--shadow); border-color: color-mix(in srgb, var(--c) 45%, var(--border)); }
+.kpi:active { transform: translateY(-1px); }
 .kpi:focus-visible { outline: none; box-shadow: var(--ring); }
 .kpi-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
 .kpi-ic { width: 30px; height: 30px; border-radius: 9px; display: grid; place-items: center; color: var(--c); background: color-mix(in srgb, var(--c) 12%, transparent); transition: transform .2s cubic-bezier(.34,1.56,.64,1); }

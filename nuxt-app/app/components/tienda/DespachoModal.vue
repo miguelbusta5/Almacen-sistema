@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { reactive, ref, computed } from 'vue'
-import { Store, MapPin, User, Package, Plus, Trash2, Search } from '@lucide/vue'
+import { Store, MapPin, User, Package, Plus, Trash2, Search, Info } from '@lucide/vue'
 import { todayISO, CIUDAD_OPTIONS, type Despacho } from '~/utils/despacho'
 
 const props = defineProps<{ despacho?: Despacho | null; saving?: boolean }>()
@@ -25,21 +25,26 @@ const f = reactive({
 const touched = ref(false)
 const missing = computed(() => !f.centroCostos.trim() || !f.numeroDocumento.trim() || !f.consecutivo.trim() || !f.clienteNombre.trim())
 
-interface PlinDraft { plu: string; descripcion: string; unidades: string; looked: boolean }
-const plines = ref<PlinDraft[]>(isEdit.value ? [] : [{ plu: '', descripcion: '', unidades: '1', looked: false }])
-function addPlin() { plines.value.push({ plu: '', descripcion: '', unidades: '1', looked: false }) }
+interface PlinDraft { plu: string; descripcion: string; unidades: string; looked: boolean; looking: boolean; notFound: boolean }
+const plines = ref<PlinDraft[]>(isEdit.value ? [] : [{ plu: '', descripcion: '', unidades: '1', looked: false, looking: false, notFound: false }])
+function addPlin() { plines.value.push({ plu: '', descripcion: '', unidades: '1', looked: false, looking: false, notFound: false }) }
 function removePlin(i: number) { plines.value.splice(i, 1) }
 async function lookupPlin(i: number) {
   const row = plines.value[i]
   if (!row) return
   const plu = row.plu.trim()
   if (!plu) return
+  row.looking = true
+  row.notFound = false
   try {
     const res = await $fetch<{ data: { descripcion: string | null } }>(`/api/productos-maestro/${encodeURIComponent(plu)}`)
     row.descripcion = res.data.descripcion ?? row.descripcion
     row.looked = true
   } catch {
     row.looked = false
+    row.notFound = true
+  } finally {
+    row.looking = false
   }
 }
 
@@ -79,16 +84,19 @@ function submit() {
           <label class="fw">
             <span class="fl">Centro de costos <b>*</b></span>
             <input v-model="f.centroCostos" class="field" :class="{ err: touched && !f.centroCostos.trim() }">
+            <span v-if="touched && !f.centroCostos.trim()" class="fe">El centro de costos es obligatorio</span>
           </label>
           <label class="fw">
             <span class="fl">N° Documento <b>*</b></span>
             <input v-model="f.numeroDocumento" class="field" :class="{ err: touched && !f.numeroDocumento.trim() }">
+            <span v-if="touched && !f.numeroDocumento.trim()" class="fe">El número de documento es obligatorio</span>
           </label>
         </div>
         <div class="g2">
           <label class="fw">
             <span class="fl">Consecutivo <b>*</b></span>
             <input v-model="f.consecutivo" class="field" :class="{ err: touched && !f.consecutivo.trim() }">
+            <span v-if="touched && !f.consecutivo.trim()" class="fe">El consecutivo es obligatorio</span>
           </label>
           <label class="fw">
             <span class="fl">N° de cajas</span>
@@ -102,6 +110,7 @@ function submit() {
         <label class="fw">
           <span class="fl">Nombre <b>*</b></span>
           <input v-model="f.clienteNombre" class="field" :class="{ err: touched && !f.clienteNombre.trim() }">
+          <span v-if="touched && !f.clienteNombre.trim()" class="fe">El nombre del cliente es obligatorio</span>
         </label>
         <div class="g2">
           <label class="fw"><span class="fl">Documento</span><input v-model="f.clienteDocumento" class="field"></label>
@@ -128,14 +137,20 @@ function submit() {
 
       <section v-if="!isEdit" class="fsec">
         <div class="fsec-title"><span class="fsec-ic"><Package :size="13" /></span> Productos (opcional)</div>
-        <div v-for="(p, i) in plines" :key="i" class="plin-row">
-          <input v-model="p.plu" class="field plu" placeholder="PLU" @blur="lookupPlin(i)">
-          <input v-model="p.descripcion" class="field desc" placeholder="Descripción" :class="{ looked: p.looked }">
-          <input v-model="p.unidades" type="number" min="1" class="field uni" placeholder="Uds.">
-          <button type="button" class="btn-icon" @click="lookupPlin(i)"><Search :size="14" /></button>
-          <button type="button" class="btn-icon danger" @click="removePlin(i)"><Trash2 :size="14" /></button>
+        <div v-for="(p, i) in plines" :key="i">
+          <div class="plin-row">
+            <input v-model="p.plu" class="field plu" placeholder="PLU" @blur="lookupPlin(i)">
+            <input v-model="p.descripcion" class="field desc" placeholder="Descripción" :class="{ looked: p.looked, err: p.notFound }">
+            <input v-model="p.unidades" type="number" min="1" class="field uni" placeholder="Uds.">
+            <button type="button" class="btn-icon" :disabled="p.looking" @click="lookupPlin(i)">
+              <Spinner v-if="p.looking" /><Search v-else :size="14" />
+            </button>
+            <button type="button" class="btn-icon danger" @click="removePlin(i)"><Trash2 :size="14" /></button>
+          </div>
+          <span v-if="p.notFound" class="fe plu-fe">PLU no encontrado en el maestro — puedes escribir la descripción manualmente</span>
         </div>
         <button type="button" class="btn btn-sm add-plin" @click="addPlin"><Plus :size="14" /> Agregar producto</button>
+        <div class="hint"><Info :size="12" /> Al escribir un PLU y salir del campo, la descripción se autocompleta desde el maestro de productos.</div>
       </section>
 
       <div class="factions">
@@ -158,11 +173,15 @@ function submit() {
 .fw { display: flex; flex-direction: column; gap: 5px; }
 .fl { font-size: 12px; font-weight: 600; color: var(--ink-2); }
 .fl b { color: var(--u-critico); font-weight: 700; }
+.fe { font-size: 11px; font-weight: 600; color: var(--u-critico); }
 .field.err { border-color: var(--u-critico); box-shadow: 0 0 0 3px var(--u-critico-tint); }
 .field.looked { border-color: var(--u-ok); }
 .plin-row { display: grid; grid-template-columns: 90px 1fr 70px auto auto; gap: 8px; align-items: center; }
+.plu-fe { display: block; margin: 4px 0 0; }
+.hint { display: flex; align-items: center; gap: 6px; font-size: 11px; color: var(--muted); margin-top: 2px; }
 .btn-icon { display: grid; place-items: center; width: 32px; height: 32px; border-radius: var(--r-sm); border: 1px solid var(--border); background: var(--surface); color: var(--muted); cursor: pointer; }
 .btn-icon:hover { background: var(--surface-3); color: var(--ink); }
+.btn-icon:disabled { opacity: .6; cursor: default; }
 .btn-icon.danger:hover { color: var(--u-critico); border-color: var(--u-critico); }
 .add-plin { align-self: flex-start; }
 .factions { position: sticky; bottom: 0; display: grid; grid-template-columns: 1fr 2fr; gap: 10px; padding-top: 6px; background: linear-gradient(180deg, transparent, var(--surface) 40%); }
