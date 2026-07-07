@@ -3,6 +3,8 @@
 // src/lib/gourmetCargueFlow.ts). Solo para etiquetas/colores/visibilidad de
 // botones en el cliente — el servidor (server/utils/gourmetFlow.ts) siempre
 // revalida cada escritura.
+import dayjs from 'dayjs'
+
 export type EstadoPedidoGourmet =
   | 'BORRADOR'
   | 'UBICACION_ASIGNADA'
@@ -102,7 +104,7 @@ export function fmtFechaHora(iso: string | null): string {
 }
 
 export function horasDesde(iso: string): number {
-  return Math.floor((Date.now() - new Date(iso).getTime()) / 3_600_000)
+  return dayjs().diff(dayjs(iso), 'hour')
 }
 
 // Espejo de server/utils/gourmetFlow.ts — solo para gatear botones en la UI

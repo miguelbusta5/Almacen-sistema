@@ -1,3 +1,5 @@
+import dayjs from 'dayjs'
+
 export type EstadoDespacho =
   | 'CREADO_TIENDA'
   | 'RECHAZADO'
@@ -110,17 +112,16 @@ export function puedeRevertir(role: string): boolean {
 }
 
 export function todayISO(): string {
-  return new Date().toISOString().slice(0, 10)
+  return dayjs().format('YYYY-MM-DD')
 }
 
 export function fmtFecha(iso: string | null): string {
   if (!iso) return '—'
-  const [y, m, d] = iso.slice(0, 10).split('-')
-  return `${d}/${m}/${y}`
+  return dayjs(iso).format('DD/MM/YYYY')
 }
 
 export function horasDesde(iso: string): number {
-  return Math.floor((Date.now() - new Date(iso).getTime()) / 3_600_000)
+  return dayjs().diff(dayjs(iso), 'hour')
 }
 
 // Alerta operativa de una factura: lleva >24h sin recoger, o está en un

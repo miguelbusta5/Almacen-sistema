@@ -1,6 +1,7 @@
 // ════════════════════════════════════════════════
 // TIPOS Y UTILIDADES — portado desde la app Next.js (transporte.ts)
 // ════════════════════════════════════════════════
+import dayjs from 'dayjs';
 import { calcAlmacenaje } from './almacenaje';
 
 export type EstadoTransporte = 'PENDIENTE DESPACHO' | 'DESPACHADO';
@@ -26,14 +27,13 @@ export function fmtCOP(n: number): string {
 }
 export function fmtFecha(iso: string | null): string {
   if (!iso) return '—';
-  const [y, m, d] = iso.split('-');
-  return `${d}/${m}/${y}`;
+  return dayjs(iso).format('DD/MM/YYYY');
 }
 export function todayISO(): string {
-  return new Date().toISOString().slice(0, 10);
+  return dayjs().format('YYYY-MM-DD');
 }
 export function diasEnBodega(g: { fecha: string }): number {
-  return Math.floor((Date.now() - new Date(g.fecha + 'T00:00:00').getTime()) / 86_400_000);
+  return dayjs().startOf('day').diff(dayjs(g.fecha).startOf('day'), 'day');
 }
 
 export function parseEntrega(nota: string | null): string | null {
@@ -53,8 +53,7 @@ export function urgencia(g: { estado: string; nota: string | null }): Urgencia {
   if (g.estado === 'DESPACHADO') return null;
   const entrega = parseEntrega(g.nota);
   if (!entrega) return null;
-  const diff = new Date(todayISO()).getTime() - new Date(entrega).getTime();
-  const dNum = Math.floor(diff / 86400000);
+  const dNum = dayjs(todayISO()).diff(dayjs(entrega), 'day');
   if (dNum > 0) return { tipo: 'vencida', dias: dNum, entrega };
   if (dNum >= -5) return { tipo: 'proxima', dias: -dNum, entrega };
   return { tipo: 'ok', dias: -dNum, entrega };
@@ -64,7 +63,7 @@ export type EntregaColorNivel = 'neutro' | 'sin-fecha' | 'vencida' | 'amarillo' 
 export function nivelEntregaColorFecha(fechaEntrega: string | null, neutro: boolean): EntregaColorNivel {
   if (!fechaEntrega) return 'sin-fecha';
   if (neutro) return 'neutro';
-  const diasRestantes = Math.floor((new Date(fechaEntrega).getTime() - new Date(todayISO()).getTime()) / 86_400_000);
+  const diasRestantes = dayjs(fechaEntrega).diff(dayjs(todayISO()), 'day');
   if (diasRestantes < 0) return 'vencida';
   if (diasRestantes <= 10) return 'amarillo';
   if (diasRestantes <= 15) return 'azul';

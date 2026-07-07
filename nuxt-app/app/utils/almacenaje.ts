@@ -2,6 +2,7 @@
 // LÓGICA DE ALMACENAJE — portada 1:1 desde la app Next.js
 // Gracia días 0-30 → $0. Cada bloque de 30 días después → 1 cobro de $150.000.
 // ════════════════════════════════════════════════
+import dayjs from 'dayjs';
 
 export const TARIFA_ALM = 150_000;
 
@@ -24,32 +25,21 @@ export interface Almacenaje {
   proximaCarga: string;
 }
 
-function addDays(date: Date, n: number): Date {
-  const d = new Date(date);
-  d.setDate(d.getDate() + n);
-  return d;
-}
-function toISO(d: Date): string {
-  return d.toISOString().slice(0, 10);
-}
-
 export function calcAlmacenaje(fechaInicio: string, endDate?: string | null): Almacenaje {
-  const inicio = new Date(fechaInicio + 'T00:00:00');
-  const fin = new Date((endDate ?? new Date().toISOString().slice(0, 10)) + 'T00:00:00');
-  inicio.setHours(0, 0, 0, 0);
-  fin.setHours(0, 0, 0, 0);
+  const inicio = dayjs(fechaInicio).startOf('day');
+  const fin = dayjs(endDate ?? dayjs().format('YYYY-MM-DD')).startOf('day');
 
-  const diasTranscurridos = Math.max(0, Math.floor((fin.getTime() - inicio.getTime()) / 86_400_000));
+  const diasTranscurridos = Math.max(0, fin.diff(inicio, 'day'));
   const diasGraciaRestantes = Math.max(0, 30 - diasTranscurridos);
-  const fechaFinGracia = addDays(inicio, 30);
-  const fechaPrimerCobro = addDays(inicio, 31);
+  const fechaFinGracia = inicio.add(30, 'day');
+  const fechaPrimerCobro = inicio.add(31, 'day');
 
   const cobrosGenerados = diasTranscurridos <= 30 ? 0 : Math.floor((diasTranscurridos - 31) / 30) + 1;
   const costoAcumulado = cobrosGenerados * TARIFA_ALM;
 
   const diaProximoCobro = 31 + cobrosGenerados * 30;
   const diasHastaProximoCobro = diaProximoCobro - diasTranscurridos;
-  const fechaProximoCobro = addDays(fin, diasHastaProximoCobro);
+  const fechaProximoCobro = fin.add(diasHastaProximoCobro, 'day');
 
   const diasEnPeriodo = diasTranscurridos <= 30 ? diasTranscurridos : ((diasTranscurridos - 31) % 30) + 1;
   const fase: 'gracia' | 'cobro' = diasTranscurridos <= 30 ? 'gracia' : 'cobro';
@@ -59,17 +49,17 @@ export function calcAlmacenaje(fechaInicio: string, endDate?: string | null): Al
     diasGraciaRestantes,
     cobrosGenerados,
     costoAcumulado,
-    fechaPrimerCobro: toISO(fechaPrimerCobro),
-    fechaProximoCobro: toISO(fechaProximoCobro),
+    fechaPrimerCobro: fechaPrimerCobro.format('YYYY-MM-DD'),
+    fechaProximoCobro: fechaProximoCobro.format('YYYY-MM-DD'),
     diasHastaProximoCobro,
     fase,
     costo: costoAcumulado,
     meses: cobrosGenerados,
-    finGracia: toISO(fechaFinGracia),
+    finGracia: fechaFinGracia.format('YYYY-MM-DD'),
     diasRestantes: diasGraciaRestantes,
     costoProximo: (cobrosGenerados + 1) * TARIFA_ALM,
     diasHastaProxima: diasHastaProximoCobro,
     diasEnPeriodo,
-    proximaCarga: toISO(fechaProximoCobro),
+    proximaCarga: fechaProximoCobro.format('YYYY-MM-DD'),
   };
 }
