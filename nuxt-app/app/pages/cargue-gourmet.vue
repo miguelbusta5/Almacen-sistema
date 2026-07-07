@@ -195,6 +195,34 @@ async function escanear(codigo: string, tieneParte2: boolean) {
   }
 }
 
+// Corrección de cajas (ADMIN/OPERACIONES_GOURMET) — eliminar una caja mal
+// registrada y agregar la correcta a mano, sin pasar por el flujo de escaneo.
+async function eliminarCaja(cajaId: string) {
+  if (!panelItem.value || busy.value) return
+  const id = panelItem.value.id
+  busy.value = `del-caja:${cajaId}`
+  try {
+    const res = await $fetch<{ data: PedidoGourmet }>(`/api/cargue-gourmet/${id}/cajas/${cajaId}`, { method: 'DELETE' })
+    panelItem.value = res.data
+    patchListado(id, res.data)
+    showToast('Caja eliminada ✓')
+  } catch (e) { showToast(apiErr(e, 'No se pudo eliminar la caja'), true) }
+  finally { busy.value = null }
+}
+
+async function agregarCajaManual(estibaId: string, codigo: string) {
+  if (!panelItem.value || busy.value) return
+  const id = panelItem.value.id
+  busy.value = 'add-caja'
+  try {
+    const res = await $fetch<{ data: PedidoGourmet }>(`/api/cargue-gourmet/${id}/cajas`, { method: 'POST', body: { estibaId, codigoCaja: codigo } })
+    panelItem.value = res.data
+    patchListado(id, res.data)
+    showToast('Caja agregada ✓')
+  } catch (e) { showToast(apiErr(e, 'No se pudo agregar la caja'), true) }
+  finally { busy.value = null }
+}
+
 function finalizarCargue() {
   return run('finalizar', async () => {
     if (!panelItem.value) return
@@ -301,6 +329,7 @@ async function exportarExcel() {
           @back="backToList" @edit="showEditar = true" @del="showConfirmDel = true" @asignar-ubicacion="showUbicacion = true"
           @iniciar-cargue="iniciarCargue" @finalizar="finalizarCargue" @revertir="showConfirmRevertir = true"
           @cierre-manual="showCierreManual = true" @escanear="escanear"
+          @eliminar-caja="eliminarCaja" @agregar-caja-manual="agregarCajaManual"
         />
       </div>
     </Transition>

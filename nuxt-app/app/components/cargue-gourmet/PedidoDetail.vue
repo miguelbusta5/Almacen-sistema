@@ -1,12 +1,12 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
 import {
-  ArrowLeft, Pencil, Trash2, Truck, PackagePlus, CheckCircle2, RotateCcw, ShieldAlert, TriangleAlert, XCircle,
+  ArrowLeft, Pencil, Trash2, Truck, PackagePlus, CheckCircle2, RotateCcw, ShieldAlert, TriangleAlert, XCircle, Plus,
 } from '@lucide/vue'
 import {
   ESTADO_LABEL, ESTADO_TONE, fmtFechaHora, rolPuedeTransicionarGourmet,
-  puedeGourmet, puedeTransporte, puedeCierreManual, puedeEliminarGourmet,
-  ESTADOS_INICIABLES_TRANSPORTE, ESTADOS_FINALIZABLES_TRANSPORTE, ESTADOS_CIERRE_MANUAL,
+  puedeGourmet, puedeTransporte, puedeCierreManual, puedeEliminarGourmet, puedeEditarCajas,
+  ESTADOS_INICIABLES_TRANSPORTE, ESTADOS_FINALIZABLES_TRANSPORTE, ESTADOS_CIERRE_MANUAL, ESTADOS_EDITABLES_CAJAS,
   validarCodigoCaja, type PedidoGourmet,
 } from '~/utils/gourmet'
 
@@ -34,6 +34,8 @@ const emit = defineEmits<{
   (e: 'revertir'): void
   (e: 'cierreManual'): void
   (e: 'escanear', codigo: string, tieneParte2: boolean): void
+  (e: 'eliminarCaja', cajaId: string): void
+  (e: 'agregarCajaManual', estibaId: string, codigo: string): void
 }>()
 
 const esMuebles = computed(() => props.p.tipoPedido === 'MUEBLES')
@@ -46,6 +48,20 @@ const puedeRevertir = computed(() => puedeEliminarGourmet(props.role) && props.p
 const puedeEditar = computed(() => puedeGourmet(props.role))
 const puedeBorrar = computed(() => puedeEliminarGourmet(props.role))
 const enCargue = computed(() => props.p.estado === 'EN_CARGUE')
+
+// Corregir la lista de cajas (eliminar una mal registrada + agregar la
+// correcta a mano) — solo ADMIN/OPERACIONES_GOURMET, y solo antes de que
+// el pedido entre al flujo de transporte.
+const puedeEditarListaCajas = computed(() => puedeEditarCajas(props.role) && ESTADOS_EDITABLES_CAJAS.includes(props.p.estado))
+const nuevaCajaEstibaId = ref('')
+const nuevaCajaCodigo = ref('')
+function submitAgregarCaja() {
+  const estibaId = nuevaCajaEstibaId.value
+  const codigo = nuevaCajaCodigo.value.trim()
+  if (!estibaId || !codigo || props.busy) return
+  emit('agregarCajaManual', estibaId, codigo)
+  nuevaCajaCodigo.value = ''
+}
 
 const cargueActivo = computed(() => props.p.cargues?.find((c) => c.estado === 'EN_CARGUE') ?? null)
 const progreso = computed(() => cargueActivo.value ? { escaneados: cargueActivo.value.cantidadEscaneada, esperados: cargueActivo.value.cantidadEsperada } : null)
@@ -207,8 +223,25 @@ const resumen = computed(() => [
             <div v-for="c in p.cajas" :key="c.id" class="mono caja-row">
               <strong v-if="c.numeroSecuencia != null">#{{ c.numeroSecuencia }}</strong>
               <span v-if="c.codigoCaja">{{ c.codigoCaja }}</span>
+              <button
+                v-if="puedeEditarListaCajas" type="button" class="btn-icon danger" title="Eliminar esta caja"
+                :disabled="busy === `del-caja:${c.id}`" @click="emit('eliminarCaja', c.id)"
+              >
+                <Spinner v-if="busy === `del-caja:${c.id}`" /><Trash2 v-else :size="13" />
+              </button>
             </div>
           </div>
+
+          <form v-if="puedeEditarListaCajas && p.estibas?.length" class="add-caja" @submit.prevent="submitAgregarCaja">
+            <select v-model="nuevaCajaEstibaId" class="field sel">
+              <option value="">Estiba…</option>
+              <option v-for="e in [...(p.estibas ?? [])].sort((a, b) => a.secuencia - b.secuencia)" :key="e.id" :value="e.id">Estiba {{ e.secuencia }}</option>
+            </select>
+            <input v-model="nuevaCajaCodigo" class="field mono" placeholder="Código de la caja correcta…">
+            <button type="submit" class="btn btn-sm" :disabled="busy === 'add-caja' || !nuevaCajaEstibaId || !nuevaCajaCodigo.trim()">
+              <Spinner v-if="busy === 'add-caja'" /><Plus v-else :size="13" /> Agregar
+            </button>
+          </form>
         </section>
 
         <section class="sec card">
@@ -326,7 +359,15 @@ const resumen = computed(() => [
 
 .estibas, .cajas, .cargues { display: flex; flex-direction: column; gap: 10px; }
 .estiba-row { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; font-size: 13px; padding: 8px 10px; border-radius: var(--r-sm); background: var(--surface-2); }
-.caja-row { display: flex; gap: 8px; font-size: 13px; padding: 4px 0; }
+.caja-row { display: flex; align-items: center; gap: 8px; font-size: 13px; padding: 4px 0; }
+.caja-row .btn-icon { margin-left: auto; }
+.btn-icon { display: grid; place-items: center; width: 26px; height: 26px; border-radius: var(--r-sm); border: 1px solid var(--border); background: var(--surface); color: var(--muted); cursor: pointer; flex-shrink: 0; }
+.btn-icon:hover { background: var(--surface-3); color: var(--ink); }
+.btn-icon.danger:hover { color: var(--u-critico); border-color: var(--u-critico); }
+.btn-icon:disabled { opacity: .6; cursor: default; }
+.add-caja { display: flex; gap: 8px; margin-top: 12px; padding-top: 12px; border-top: 1px dashed var(--border); }
+.add-caja .sel { width: auto; min-width: 110px; flex-shrink: 0; }
+.add-caja input { flex: 1; }
 .cargue-item { padding: 12px; border-radius: var(--r-sm); background: var(--surface-2); }
 
 .hist, .novedades { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 14px; }

@@ -135,12 +135,18 @@ export function puedeGourmet(role: string): boolean { return ROLES_GOURMET.inclu
 export function puedeTransporte(role: string): boolean { return ROLES_TRANSPORTE.includes(role) }
 export function puedeCierreManual(role: string): boolean { return ROLES_CIERRE_MANUAL.includes(role) }
 export function puedeEliminarGourmet(role: string): boolean { return ['ADMIN', 'GERENTE'].includes(role) }
+// Corregir la lista de cajas de un pedido ya creado (eliminar una caja mal
+// registrada y agregar la correcta a mano) — solo ADMIN y OPERACIONES_GOURMET.
+export function puedeEditarCajas(role: string): boolean { return ['ADMIN', 'OPERACIONES_GOURMET'].includes(role) }
 export function puedeDespachoMasivo(role: string): boolean { return role === 'ADMIN' }
 
 export const ESTADOS_INICIABLES_TRANSPORTE: EstadoPedidoGourmet[] = ['UBICACION_ASIGNADA', 'ENVIADO_A_TRANSPORTE']
 export const ESTADOS_FINALIZABLES_TRANSPORTE: EstadoPedidoGourmet[] = ['EN_CARGUE']
 export const ESTADOS_CIERRE_MANUAL: EstadoPedidoGourmet[] = ['EN_CARGUE', 'CON_NOVEDAD']
 export const ESTADOS_NO_DESPACHABLES_MASIVO: EstadoPedidoGourmet[] = ['CARGUE_COMPLETO', 'CARGUE_COMPLETO_MANUAL', 'CANCELADO']
+// Mismos estados en los que ya se puede editar la cabecera del pedido —
+// una vez enviado a transporte, la lista de cajas queda fija.
+export const ESTADOS_EDITABLES_CAJAS: EstadoPedidoGourmet[] = ['BORRADOR', 'UBICACION_ASIGNADA', 'CON_NOVEDAD']
 
 // Alerta operativa simple para el KPI "Requieren atención": con novedad o
 // más de 24h sin ubicación asignada.
