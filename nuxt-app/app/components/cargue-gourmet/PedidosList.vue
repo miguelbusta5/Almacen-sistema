@@ -56,7 +56,10 @@ function urgente(p: PedidoGourmet) {
     <table class="tbl">
       <thead>
         <tr>
-          <th v-for="c in columns" :key="c.key" :style="{ width: c.w }">
+          <th
+            v-for="c in columns" :key="c.key" :style="{ width: c.w }"
+            :aria-sort="sortKey === c.key ? (sortDir === 'asc' ? 'ascending' : 'descending') : 'none'"
+          >
             <button class="th-btn" :class="{ active: sortKey === c.key }" @click="toggleSort(c.key)">
               {{ c.label }}
               <ChevronUp v-if="sortKey === c.key && sortDir === 'asc'" :size="13" class="th-arrow" />
@@ -69,8 +72,9 @@ function urgente(p: PedidoGourmet) {
       <TransitionGroup tag="tbody" name="row" appear>
         <tr
           v-for="(p, i) in sorted" :key="p.id" class="row"
+          tabindex="0" role="button" :aria-label="`Ver pedido ${p.orden}`"
           :style="{ '--rail': urgente(p) ? 'var(--u-critico)' : ESTADO_TONE[p.estado], '--d': `${i * 32}ms` }"
-          @click="emit('open', p)"
+          @click="emit('open', p)" @keydown.enter="emit('open', p)" @keydown.space.prevent="emit('open', p)"
         >
           <td><Badge :label="ESTADO_LABEL[p.estado]" :tone="ESTADO_TONE[p.estado]" /></td>
           <td>
@@ -116,6 +120,7 @@ function urgente(p: PedidoGourmet) {
 .th-btn:hover .th-arrow.idle { opacity: .5; }
 
 .row { cursor: pointer; transition: background .14s; }
+.row:focus-visible { outline: 2px solid var(--brand); outline-offset: -2px; }
 .row td { padding: 15px 16px; border-bottom: 1px solid var(--border); vertical-align: middle; transition: background .14s; }
 .row td:first-child { position: relative; }
 .row td:first-child::before {
