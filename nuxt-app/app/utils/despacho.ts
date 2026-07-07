@@ -133,6 +133,33 @@ export function tieneAlertaDespacho(d: { estado: string; createdAt: string }): b
   return d.estado === 'CREADO_TIENDA' && horasDesde(d.createdAt) >= 24
 }
 
+export interface SlaProgreso {
+  diasTotales: number
+  diasTranscurridos: number
+  diasRestantes: number
+  fase: 'ok' | 'proximo' | 'vencido'
+  progreso: number
+}
+
+// Progreso hacia la entrega comprometida — mismo lenguaje visual que
+// calcAlmacenaje() (almacenaje.ts) pero para una sola ventana de tiempo
+// (creación → entrega comprometida) en vez de bloques de facturación
+// recurrentes.
+export function calcSla(createdAt: string, fechaEntregaComprometida: string): SlaProgreso {
+  const inicio = dayjs(createdAt).startOf('day')
+  const fin = dayjs(fechaEntregaComprometida).startOf('day')
+  const hoy = dayjs().startOf('day')
+
+  const diasTotales = Math.max(1, fin.diff(inicio, 'day'))
+  const diasTranscurridos = hoy.diff(inicio, 'day')
+  const diasRestantes = fin.diff(hoy, 'day')
+
+  const fase: SlaProgreso['fase'] = diasRestantes < 0 ? 'vencido' : diasRestantes <= 2 ? 'proximo' : 'ok'
+  const progreso = Math.min(1, Math.max(0, diasTranscurridos / diasTotales))
+
+  return { diasTotales, diasTranscurridos, diasRestantes, fase, progreso }
+}
+
 // Tier de urgencia para el pill de la lista — mismo lenguaje visual que
 // alertaTier() de Guardados (guardado.ts), adaptado al ciclo de vida de un
 // despacho: rechazado/con novedad siempre es crítico; pendiente de recogida

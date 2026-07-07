@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-import { ArrowLeft, Pencil, Trash2, PackageCheck, Send, TriangleAlert, XCircle, RotateCcw, UserPlus, Link2 } from '@lucide/vue'
+import { ArrowLeft, Pencil, Trash2, PackageCheck, Send, TriangleAlert, XCircle, RotateCcw, UserPlus, Link2, FilePlus2 } from '@lucide/vue'
 import {
   ESTADO_LABEL, ESTADO_TONE, FLUJO_ESTADOS, pasoEnFlujo, fmtFecha,
   rolPuedeTransicionar, puedeAsignarGuardado, puedeRevertir, type Despacho,
@@ -36,6 +36,32 @@ const sevFecha = computed(() => {
 function puede(destino: string) { return rolPuedeTransicionar(props.role, props.d.estado, destino as any) }
 // Spinner en el botón de transición que está en curso (busy = 'transicion:DESTINO').
 function enCurso(destino: string) { return props.busy === `transicion:${destino}` }
+
+// Icono + color por tipo de acción del historial (activityLog solo registra
+// CREATE/UPDATE/DELETE/ASSIGN_GUARDADO — el texto de "details" distingue las
+// transiciones de estado dentro de UPDATE).
+function historialIcon(h: HistorialEntry) {
+  if (h.action === 'CREATE') return FilePlus2
+  if (h.action === 'DELETE') return Trash2
+  if (h.action === 'ASSIGN_GUARDADO') return UserPlus
+  const txt = (h.details ?? '').toLowerCase()
+  if (txt.includes('rechazado')) return XCircle
+  if (txt.includes('novedad')) return TriangleAlert
+  if (txt.includes('revertido')) return RotateCcw
+  return Pencil
+}
+function historialTone(h: HistorialEntry) {
+  if (h.action === 'DELETE') return 'var(--u-critico)'
+  if (h.action === 'CREATE') return 'var(--u-ok)'
+  if (h.action === 'ASSIGN_GUARDADO') return 'var(--info)'
+  const txt = (h.details ?? '').toLowerCase()
+  if (txt.includes('rechazado') || txt.includes('novedad')) return 'var(--u-critico)'
+  if (txt.includes('revertido')) return 'var(--u-aviso)'
+  return 'var(--brand-deep)'
+}
+function historialFecha(iso: string) {
+  return new Date(iso).toLocaleDateString('es-CO', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })
+}
 
 const detalle = computed(() => [
   { label: 'Centro de costos', value: props.d.centroCostos },
@@ -97,6 +123,8 @@ const detalle = computed(() => [
 
     <div class="grid">
       <div class="col">
+        <SlaMeter v-if="d.fechaEntregaComprometida && d.estado !== 'ENVIADO_CLIENTE'" :created-at="d.createdAt" :fecha-entrega-comprometida="d.fechaEntregaComprometida" />
+
         <!-- Pipeline visual -->
         <section class="sec card">
           <h3>Flujo</h3>
@@ -170,15 +198,20 @@ const detalle = computed(() => [
 
       <div class="col side card">
         <h3>Historial</h3>
-        <ul v-if="historial.length" class="hist">
-          <li v-for="(h, i) in historial" :key="i" class="hitem">
-            <div class="hdot" />
-            <div>
-              <div class="haction">{{ h.details || h.action }}</div>
-              <div class="hmeta">{{ h.userName || 'Sistema' }} · {{ new Date(h.createdAt).toLocaleString('es-CO') }}</div>
+        <ol v-if="historial.length" class="timeline">
+          <li v-for="(h, i) in historial" :key="i" class="ev">
+            <span class="ev-ic" :style="{ '--c': historialTone(h) }"><component :is="historialIcon(h)" :size="13" /></span>
+            <div class="ev-body">
+              <div class="ev-top">
+                <span class="ev-tipo">{{ h.details || h.action }}</span>
+                <span class="ev-date mono">{{ historialFecha(h.createdAt) }}</span>
+              </div>
+              <div class="ev-by">
+                <span class="ev-avatar">{{ (h.userName || 'S').slice(0, 1) }}</span>{{ h.userName || 'Sistema' }}
+              </div>
             </div>
           </li>
-        </ul>
+        </ol>
         <p v-else class="faint">Sin actividad registrada aún.</p>
       </div>
     </div>
@@ -194,6 +227,7 @@ const detalle = computed(() => [
 .col:first-child > *:nth-child(3) { animation-delay: .20s; }
 .col:first-child > *:nth-child(4) { animation-delay: .26s; }
 .col:first-child > *:nth-child(5) { animation-delay: .32s; }
+.col:first-child > *:nth-child(6) { animation-delay: .38s; }
 .col.side { animation-delay: .16s; }
 @keyframes dEnter { from { opacity: 0; transform: translateY(12px); } }
 .dhead { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; padding: 18px 20px; margin-bottom: 16px; flex-wrap: wrap; }
@@ -255,10 +289,16 @@ const detalle = computed(() => [
 .plu-tbl td { padding: 7px 8px; border-bottom: 1px solid var(--border); }
 .plu-tbl tr:last-child td { border-bottom: none; }
 
-.hist { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 14px; }
-.hitem { display: flex; gap: 10px; }
-.hdot { width: 8px; height: 8px; border-radius: 50%; background: var(--brand); margin-top: 5px; flex-shrink: 0; }
-.haction { font-size: 12.5px; font-weight: 600; color: var(--ink-2); }
-.hmeta { font-size: 11px; color: var(--faint); margin-top: 2px; }
+.timeline { list-style: none; margin: 0; padding: 0; position: relative; }
+.timeline::before { content: ''; position: absolute; left: 13px; top: 8px; bottom: 14px; width: 2px; background: linear-gradient(180deg, var(--border-strong), var(--border) 80%, transparent); }
+.ev { position: relative; display: flex; gap: 13px; padding: 2px 0 16px; }
+.ev:last-child { padding-bottom: 0; }
+.ev-ic { position: relative; z-index: 1; width: 28px; height: 28px; border-radius: 50%; flex-shrink: 0; display: grid; place-items: center; background: color-mix(in srgb, var(--c) 14%, var(--surface)); color: var(--c); border: 1.5px solid color-mix(in srgb, var(--c) 42%, transparent); box-shadow: 0 0 0 3px var(--surface); }
+.ev-body { flex: 1; min-width: 0; padding-top: 1px; }
+.ev-top { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
+.ev-tipo { font-size: 12.5px; font-weight: 700; color: var(--ink-2); }
+.ev-date { font-size: 10.5px; color: var(--faint); flex-shrink: 0; }
+.ev-by { display: flex; align-items: center; gap: 6px; font-size: 11px; color: var(--faint); margin-top: 6px; }
+.ev-avatar { width: 17px; height: 17px; border-radius: 50%; background: var(--surface-3); color: var(--muted); display: grid; place-items: center; font-size: 9px; font-weight: 800; }
 @media (max-width: 940px) { .grid { grid-template-columns: 1fr; } }
 </style>
