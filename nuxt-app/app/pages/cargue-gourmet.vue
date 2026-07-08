@@ -72,16 +72,24 @@ const panelItem = ref<PedidoGourmet | null>(null)
 const panelLoading = ref(false)
 const ultimoResultado = ref<{ codigo: string; resultado: string } | null>(null)
 
+// Contador de secuencia del panel abierto — cada apertura/cierre lo
+// incrementa. Toda respuesta tardía (de un loadDetalle o de una mutación)
+// que llegue después de que el usuario ya navegó a otro pedido (o volvió
+// a la lista) queda con un `mySeq` desactualizado y se descarta en vez de
+// escribirse sobre el pedido equivocado.
+let panelSeq = 0
+
 async function loadDetalle(id: string) {
+  const mySeq = panelSeq
   panelLoading.value = true
   try {
     const res = await $fetch<{ data: PedidoGourmet }>(`/api/cargue-gourmet/${id}`)
-    panelItem.value = res.data
+    if (panelSeq === mySeq) panelItem.value = res.data
   } catch { /* se mantiene el detalle previo si falla el refresh */ }
-  finally { panelLoading.value = false }
+  finally { if (panelSeq === mySeq) panelLoading.value = false }
 }
-async function openDetail(p: PedidoGourmet) { panelId.value = p.id; ultimoResultado.value = null; await loadDetalle(p.id) }
-function backToList() { panelId.value = null; panelItem.value = null }
+async function openDetail(p: PedidoGourmet) { panelSeq++; panelId.value = p.id; panelItem.value = null; ultimoResultado.value = null; await loadDetalle(p.id) }
+function backToList() { panelSeq++; panelId.value = null; panelItem.value = null }
 
 // Parcha una fila del listado en memoria en vez de recargar las 500 filas
 // del servidor — esto es lo que elimina el round-trip pesado en cada
@@ -167,12 +175,14 @@ function iniciarCargue() {
 // de pedir loadDetalle() completo en cada caja escaneada.
 async function escanear(codigo: string, tieneParte2: boolean) {
   if (!panelItem.value || busy.value) return
+  const mySeq = panelSeq
   busy.value = 'escanear'
   try {
     const res = await $fetch<{
       resultado: string; novedadCreada: boolean; progreso: { escaneados: number; esperados: number }
       data: { escaneo: { id: string; codigoEscaneado: string; resultado: string; createdAt: string }; novedad?: { id: string; tipo: string; estado: string; descripcion: string } }
     }>(`/api/cargue-gourmet/${panelItem.value.id}/escanear`, { method: 'POST', body: { codigo, tieneParte2 } })
+    if (panelSeq !== mySeq) return
     ultimoResultado.value = { codigo, resultado: res.resultado }
 
     const p = panelItem.value
@@ -203,10 +213,11 @@ async function escanear(codigo: string, tieneParte2: boolean) {
 async function eliminarCaja(cajaId: string) {
   if (!panelItem.value || busy.value) return
   const id = panelItem.value.id
+  const mySeq = panelSeq
   busy.value = `del-caja:${cajaId}`
   try {
     const res = await $fetch<{ data: PedidoGourmet }>(`/api/cargue-gourmet/${id}/cajas/${cajaId}`, { method: 'DELETE' })
-    panelItem.value = res.data
+    if (panelSeq === mySeq) panelItem.value = res.data
     patchListado(id, res.data)
     showToast('Caja eliminada ✓')
   } catch (e) { showToast(apiErr(e, 'No se pudo eliminar la caja'), true) }
@@ -216,10 +227,11 @@ async function eliminarCaja(cajaId: string) {
 async function agregarCajaManual(estibaId: string, codigo: string) {
   if (!panelItem.value || busy.value) return
   const id = panelItem.value.id
+  const mySeq = panelSeq
   busy.value = 'add-caja'
   try {
     const res = await $fetch<{ data: PedidoGourmet }>(`/api/cargue-gourmet/${id}/cajas`, { method: 'POST', body: { estibaId, codigoCaja: codigo } })
-    panelItem.value = res.data
+    if (panelSeq === mySeq) panelItem.value = res.data
     patchListado(id, res.data)
     showToast('Caja agregada ✓')
   } catch (e) { showToast(apiErr(e, 'No se pudo agregar la caja'), true) }
@@ -229,10 +241,11 @@ async function agregarCajaManual(estibaId: string, codigo: string) {
 async function resolverNovedad(novedadId: string) {
   if (!panelItem.value || busy.value) return
   const id = panelItem.value.id
+  const mySeq = panelSeq
   busy.value = `resolver-novedad:${novedadId}`
   try {
     const res = await $fetch<{ data: PedidoGourmet }>(`/api/cargue-gourmet/${id}/novedades/${novedadId}/resolver`, { method: 'POST' })
-    panelItem.value = res.data
+    if (panelSeq === mySeq) panelItem.value = res.data
     patchListado(id, res.data)
     showToast('Novedad resuelta ✓')
   } catch (e) { showToast(apiErr(e, 'No se pudo resolver la novedad'), true) }
@@ -372,6 +385,9 @@ async function exportarExcel() {
           @cierre-manual="showCierreManual = true" @escanear="escanear"
           @eliminar-caja="eliminarCaja" @agregar-caja-manual="agregarCajaManual" @resolver-novedad="resolverNovedad"
         />
+      </div>
+      <div v-else-if="panelLoading" key="detail-loading">
+        <ListSkeleton />
       </div>
     </Transition>
 

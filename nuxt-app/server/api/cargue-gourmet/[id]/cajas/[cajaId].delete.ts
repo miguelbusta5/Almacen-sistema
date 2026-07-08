@@ -44,13 +44,33 @@ export default defineEventHandler(async (event) => {
         creadoPor: { select: { name: true } },
         estibas: { orderBy: { secuencia: 'asc' } },
         cajas: { orderBy: [{ numeroSecuencia: 'asc' }, { createdAt: 'asc' }] },
+        cargues: { orderBy: { iniciadoAt: 'desc' }, include: { escaneos: { orderBy: { createdAt: 'desc' } } } },
+        novedades: { orderBy: { createdAt: 'desc' } },
       },
     })
   })
+
+  // cargues/novedades no traían nombres de usuario resueltos (columnas
+  // planas sin relación Prisma) — sin este mapa, el panel abierto perdía
+  // el historial de cargue/novedades después de corregir una caja.
+  const actorIds = new Set<string>()
+  for (const c of pedidoActualizado.cargues) {
+    actorIds.add(c.iniciadoPorId)
+    if (c.finalizadoPorId) actorIds.add(c.finalizadoPorId)
+    for (const e of c.escaneos) actorIds.add(e.escaneadoPorId)
+  }
+  for (const n of pedidoActualizado.novedades) {
+    actorIds.add(n.registradaPorId)
+    if (n.resueltaPorId) actorIds.add(n.resueltaPorId)
+  }
+  const actores = actorIds.size > 0
+    ? await prisma.user.findMany({ where: { id: { in: [...actorIds] } }, select: { id: true, name: true } })
+    : []
+  const nombrePorId = new Map(actores.map((u) => [u.id, u.name]))
 
   await prisma.activityLog.create({
     data: { userId: actor.id, action: 'UPDATE', module: 'cargue-gourmet', recordId: id, details: `Caja eliminada — código ${caja.codigoCaja ?? '(sin código)'} (${pedido.tipoOrden} ${pedido.orden})` },
   }).catch(() => {})
 
-  return { success: true, data: mapPedidoGourmetDetalle(pedidoActualizado) }
+  return { success: true, data: mapPedidoGourmetDetalle(pedidoActualizado, nombrePorId) }
 })

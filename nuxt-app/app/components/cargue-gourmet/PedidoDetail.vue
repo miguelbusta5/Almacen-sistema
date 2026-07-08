@@ -57,10 +57,17 @@ const puedeEditarListaCajas = computed(() => puedeEditarCajas(props.role) && EST
 const puedeResolver = computed(() => puedeResolverNovedades(props.role))
 const nuevaCajaEstibaId = ref('')
 const nuevaCajaCodigo = ref('')
+const nuevaCajaError = ref('')
 function submitAgregarCaja() {
+  nuevaCajaError.value = ''
   const estibaId = nuevaCajaEstibaId.value
   const codigo = nuevaCajaCodigo.value.trim()
   if (!estibaId || !codigo || props.busy) return
+  // Mismo chequeo que ya aplica el servidor — mostrarlo aquí evita un
+  // viaje de ida y vuelta solo para descubrir un código con formato
+  // inválido (ej. un código de orden TSDM/OVDM en vez de una caja).
+  const r = validarCodigoCaja(codigo, { permitirLetras: props.p.tipoPedido === 'MUEBLES' })
+  if (!r.ok) { nuevaCajaError.value = r.error; return }
   emit('agregarCajaManual', estibaId, codigo)
   nuevaCajaCodigo.value = ''
 }
@@ -122,7 +129,7 @@ const resumen = computed(() => [
 
 <template>
   <div class="detail fade-in">
-    <button class="btn btn-ghost btn-sm back" @click="emit('back')"><ArrowLeft :size="15" /> Volver a la lista</button>
+    <button class="btn btn-ghost btn-sm back" :disabled="!!busy" @click="emit('back')"><ArrowLeft :size="15" /> Volver a la lista</button>
 
     <header class="dhead card">
       <div class="dhead-main">
@@ -244,6 +251,7 @@ const resumen = computed(() => [
               <Spinner v-if="busy === 'add-caja'" /><Plus v-else :size="13" /> Agregar
             </button>
           </form>
+          <span v-if="nuevaCajaError" class="fe add-caja-fe">{{ nuevaCajaError }}</span>
         </section>
 
         <section class="sec card">
@@ -377,6 +385,8 @@ const resumen = computed(() => [
 .add-caja { display: flex; gap: 8px; margin-top: 12px; padding-top: 12px; border-top: 1px dashed var(--border); }
 .add-caja .sel { width: auto; min-width: 110px; flex-shrink: 0; }
 .add-caja input { flex: 1; }
+.fe { font-size: 11px; font-weight: 600; color: var(--u-critico); }
+.add-caja-fe { display: block; margin-top: 6px; }
 .cargue-item { padding: 12px; border-radius: var(--r-sm); background: var(--surface-2); }
 
 .hist, .novedades { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 14px; }

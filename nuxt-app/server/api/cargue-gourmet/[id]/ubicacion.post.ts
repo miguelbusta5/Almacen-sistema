@@ -24,6 +24,18 @@ const ubicacionSchema = z.object({
 })
 
 function mapPedido(r: any) {
+  // Igual que mapPedidoGourmet (listado) — sin este campo, el parche local
+  // de la lista tras asignar ubicación nunca actualizaba la columna
+  // "Ubicación", que solo se corregía con un refresco completo.
+  const ubicaciones = Array.from(
+    new Set(
+      (r.estibas ?? [])
+        .slice()
+        .sort((a: any, b: any) => a.secuencia - b.secuencia)
+        .map((e: any) => (e.ubicacion ?? '').trim())
+        .filter(Boolean)
+    )
+  ).join(', ')
   return {
     id: r.id,
     orden: r.orden,
@@ -43,6 +55,7 @@ function mapPedido(r: any) {
     cargueCompletadoAt: r.cargueCompletadoAt ? r.cargueCompletadoAt.toISOString() : null,
     estibas: r.estibas ?? [],
     cajas: r.cajas ?? [],
+    ubicaciones,
   }
 }
 
