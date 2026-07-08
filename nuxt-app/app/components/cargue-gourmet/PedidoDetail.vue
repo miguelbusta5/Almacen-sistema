@@ -199,7 +199,7 @@ const resumen = computed(() => [
           </div>
         </section>
 
-        <CameraScanner v-if="mostrarCamara" :ultimo-resultado="ultimoResultado" @close="mostrarCamara = false" @detectado="onDetectadoCamara" />
+        <CargueGourmetCameraScanner v-if="mostrarCamara" :ultimo-resultado="ultimoResultado" @close="mostrarCamara = false" @detectado="onDetectadoCamara" />
 
         <section v-if="enCargue" class="sec card">
           <h3>Escaneo de cajas</h3>
