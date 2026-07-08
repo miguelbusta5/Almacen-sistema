@@ -143,7 +143,12 @@ const resumen = computed(() => [
       </div>
       <div class="dactions">
         <button v-if="puedeEditar" class="btn btn-sm" :disabled="!!busy" @click="emit('edit')"><Pencil :size="14" /> Editar</button>
-        <button v-if="puedeEditar && p.estado === 'BORRADOR'" class="btn btn-sm" :disabled="!!busy" @click="emit('asignarUbicacion')"><PackagePlus :size="14" /> Asignar ubicación</button>
+        <button
+          v-if="puedeEditar && (p.estado === 'BORRADOR' || p.estado === 'UBICACION_ASIGNADA')"
+          class="btn btn-sm" :disabled="!!busy" @click="emit('asignarUbicacion')"
+        >
+          <PackagePlus :size="14" /> {{ p.estado === 'BORRADOR' ? 'Asignar ubicación' : 'Trasladar ubicación' }}
+        </button>
         <button v-if="puedeIniciar" class="btn btn-primary btn-sm" :disabled="!!busy" @click="emit('iniciarCargue')">
           <Spinner v-if="busy === 'iniciarCargue'" /><Truck v-else :size="14" />
           {{ busy === 'iniciarCargue' ? 'Iniciando…' : 'Iniciar cargue' }}
