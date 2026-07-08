@@ -33,7 +33,6 @@ export default defineEventHandler(async (event) => {
     select: {
       estado: true, tipoPedido: true, tipoOrden: true, orden: true,
       estibas: { select: { id: true } },
-      cajas: { select: { codigoCaja: true } },
     },
   })
   if (!pedido) throw createError({ statusCode: 404, statusMessage: 'No encontrado' })
@@ -49,16 +48,26 @@ export default defineEventHandler(async (event) => {
   if (!r.ok) throw createError({ statusCode: 400, statusMessage: r.error })
 
   const codigoTrim = codigoCaja.trim()
-  // Igual que en la creación del pedido: MUEBLES permite repetir el número
-  // de caja (varias partes del mismo mueble); GOURMET no.
-  if (pedido.tipoPedido === 'GOURMET') {
-    const yaExiste = pedido.cajas.some((c) => c.codigoCaja?.trim().toLowerCase() === codigoTrim.toLowerCase())
-    if (yaExiste) throw createError({ statusCode: 409, statusMessage: `Ya existe una caja con el código "${codigoTrim}" en este pedido.`, data: { code: 'CODIGO_DUPLICADO' } })
-  }
 
-  const cajasEnEstiba = await prisma.gourmetPedidoCaja.count({ where: { estibaId } })
-
+  // El chequeo de duplicado (solo aplica a GOURMET) y la inserción van
+  // juntos dentro de la misma transacción, con el pedido bloqueado (FOR
+  // UPDATE) — así dos solicitudes casi simultáneas (doble clic, reintento
+  // de red) se serializan: la segunda sí ve la caja que la primera acaba
+  // de insertar. Antes esta lectura ocurría fuera de la transacción y
+  // ambas requests podían leer "no existe todavía" a la vez, dejando dos
+  // cajas idénticas en un pedido GOURMET (donde nunca debería haber
+  // códigos duplicados) — eso fue justo lo que disparó el bug de "Caja
+  // ajena" reportado en TSDM100536.
   const pedidoActualizado = await prisma.$transaction(async (tx) => {
+    await tx.$queryRaw`SELECT id FROM gourmet_pedidos WHERE id = ${id} FOR UPDATE`
+
+    if (pedido.tipoPedido === 'GOURMET') {
+      const cajasActuales = await tx.gourmetPedidoCaja.findMany({ where: { pedidoId: id }, select: { codigoCaja: true } })
+      const yaExiste = cajasActuales.some((c) => c.codigoCaja?.trim().toLowerCase() === codigoTrim.toLowerCase())
+      if (yaExiste) throw createError({ statusCode: 409, statusMessage: `Ya existe una caja con el código "${codigoTrim}" en este pedido.`, data: { code: 'CODIGO_DUPLICADO' } })
+    }
+
+    const cajasEnEstiba = await tx.gourmetPedidoCaja.count({ where: { estibaId } })
     await tx.gourmetPedidoCaja.create({
       data: { pedidoId: id, estibaId, codigoCaja: codigoTrim, numeroSecuencia: cajasEnEstiba + 1, generadaPorEscaneo: false },
     })

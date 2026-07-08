@@ -7,7 +7,7 @@ import {
   ESTADO_LABEL, ESTADO_TONE, fmtFechaHora, rolPuedeTransicionarGourmet,
   puedeGourmet, puedeTransporte, puedeCierreManual, puedeEliminarGourmet, puedeEditarCajas, puedeResolverNovedades,
   ESTADOS_INICIABLES_TRANSPORTE, ESTADOS_FINALIZABLES_TRANSPORTE, ESTADOS_CIERRE_MANUAL, ESTADOS_EDITABLES_CAJAS,
-  validarCodigoCaja, type PedidoGourmet,
+  validarCodigoCaja, decodeEstibaObservacion, type PedidoGourmet,
 } from '~/utils/gourmet'
 
 const RESULTADO_LABEL: Record<string, string> = {
@@ -211,9 +211,9 @@ const resumen = computed(() => [
           <div v-else class="estibas">
             <div v-for="e in [...(p.estibas ?? [])].sort((a, b) => a.secuencia - b.secuencia)" :key="e.id" class="estiba-row">
               <span><strong>Estiba {{ e.secuencia }}</strong> — {{ e.ubicacion || 'Sin ubicación asignada' }}
-                <span v-if="e.observacion" class="faint"> ({{ e.observacion }})</span>
+                <span v-if="decodeEstibaObservacion(e.observacion).observacion" class="faint"> ({{ decodeEstibaObservacion(e.observacion).observacion }})</span>
               </span>
-              <span class="faint">{{ (p.cajas ?? []).filter((c) => c.estibaId === e.id).length }} cajas</span>
+              <span class="faint">{{ (p.cajas ?? []).filter((c) => c.estibaId === e.id).length || decodeEstibaObservacion(e.observacion).cantidadCajas || 0 }} cajas</span>
             </div>
           </div>
         </section>

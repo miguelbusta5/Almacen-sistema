@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
 import { Plus, Trash2, MapPin } from '@lucide/vue'
-import type { PedidoGourmet } from '~/utils/gourmet'
+import { decodeEstibaObservacion, type PedidoGourmet } from '~/utils/gourmet'
 
 interface EstibaForm { ubicacion: string; cantidadCajas: string; observacion: string }
 
@@ -25,18 +25,11 @@ const filasSimplificadas = ref<FilaSimplificada[]>(
 )
 
 // ── Clásico (legacy): estibas con cantidad + ubicación libres ──
-const CAJAS_TAG_RE = /^\[cajas:(\d+)\]\s*(?:·\s*(.*))?$/
-function decodeObs(raw: string | null): { cantidadCajas: number | null; observacion: string } {
-  if (!raw) return { cantidadCajas: null, observacion: '' }
-  const m = raw.match(CAJAS_TAG_RE)
-  if (!m) return { cantidadCajas: null, observacion: raw }
-  return { cantidadCajas: parseInt(m[1]!, 10), observacion: m[2] ?? '' }
-}
 const estibasClasico = ref<EstibaForm[]>(
   (props.p.estibas?.length ?? 0) === 0
     ? [{ ubicacion: '', cantidadCajas: '', observacion: '' }]
     : [...(props.p.estibas ?? [])].sort((a, b) => a.secuencia - b.secuencia).map((e) => {
-        const { cantidadCajas, observacion } = decodeObs(e.observacion)
+        const { cantidadCajas, observacion } = decodeEstibaObservacion(e.observacion)
         return { ubicacion: e.ubicacion ?? '', cantidadCajas: cantidadCajas != null ? String(cantidadCajas) : '', observacion }
       })
 )

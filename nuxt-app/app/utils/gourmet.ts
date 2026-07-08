@@ -150,6 +150,19 @@ export const ESTADOS_NO_DESPACHABLES_MASIVO: EstadoPedidoGourmet[] = ['CARGUE_CO
 // una vez enviado a transporte, la lista de cajas queda fija.
 export const ESTADOS_EDITABLES_CAJAS: EstadoPedidoGourmet[] = ['BORRADOR', 'UBICACION_ASIGNADA', 'CON_NOVEDAD']
 
+// El flujo "clásico" de asignar ubicación (sin escaneo inicial) codifica la
+// cantidad de cajas de la estiba dentro de su observación como texto
+// literal "[cajas:N]" (o "[cajas:N] · nota"), para poder reconstruirla al
+// reabrir el modal de edición — se decodifica aquí para mostrarla legible
+// en vez de cruda (ver PedidoDetail.vue, sección "Ubicación / Estibas").
+const CAJAS_TAG_RE = /^\[cajas:(\d+)\]\s*(?:·\s*(.*))?$/
+export function decodeEstibaObservacion(raw: string | null): { cantidadCajas: number | null; observacion: string } {
+  if (!raw) return { cantidadCajas: null, observacion: '' }
+  const m = raw.match(CAJAS_TAG_RE)
+  if (!m) return { cantidadCajas: null, observacion: raw }
+  return { cantidadCajas: parseInt(m[1]!, 10), observacion: m[2] ?? '' }
+}
+
 // Alerta operativa simple para el KPI "Requieren atención": con novedad o
 // más de 24h sin ubicación asignada.
 export function tieneAlertaGourmet(p: PedidoGourmet): boolean {
