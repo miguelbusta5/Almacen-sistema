@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
 import {
-  ArrowLeft, Pencil, Trash2, Truck, PackagePlus, CheckCircle2, RotateCcw, ShieldAlert, TriangleAlert, XCircle, Plus, Check,
+  ArrowLeft, Pencil, Trash2, Truck, PackagePlus, CheckCircle2, RotateCcw, ShieldAlert, TriangleAlert, XCircle, Plus, Check, Camera,
 } from '@lucide/vue'
 import {
   ESTADO_LABEL, ESTADO_TONE, fmtFechaHora, rolPuedeTransicionarGourmet,
@@ -85,6 +85,14 @@ function submitEscaneo() {
   codigo.value = ''
   tieneParte2.value = false
   inputRef.value?.focus()
+}
+
+// Escaneo con cámara: mismo camino que el campo de texto (emit 'escanear'),
+// solo cambia el método de captura — sin duplicar lógica de negocio.
+const mostrarCamara = ref(false)
+function onDetectadoCamara(v: string) {
+  if (props.escaneando) return
+  emit('escanear', v, tieneParte2.value)
 }
 
 // Rama alterna del flujo (novedad abierta, cierre manual o cancelado) —
@@ -191,6 +199,8 @@ const resumen = computed(() => [
           </div>
         </section>
 
+        <CameraScanner v-if="mostrarCamara" :ultimo-resultado="ultimoResultado" @close="mostrarCamara = false" @detectado="onDetectadoCamara" />
+
         <section v-if="enCargue" class="sec card">
           <h3>Escaneo de cajas</h3>
           <div class="prog" :style="{ '--c': completo ? 'var(--u-ok)' : 'var(--u-critico)' }">
@@ -200,6 +210,7 @@ const resumen = computed(() => [
           <form class="escan-form" @submit.prevent="submitEscaneo">
             <input ref="inputRef" v-model="codigo" class="field mono" placeholder="Escanea o escribe el código de la caja…" autofocus :disabled="escaneando">
             <button type="submit" class="btn btn-primary btn-sm" :disabled="escaneando || !codigo.trim()">{{ escaneando ? 'Registrando…' : 'Registrar' }}</button>
+            <button type="button" class="btn btn-sm" :disabled="escaneando" title="Escanear con la cámara" @click="mostrarCamara = true"><Camera :size="14" /></button>
           </form>
           <label v-if="esMuebles" class="parte2">
             <input v-model="tieneParte2" type="checkbox">
