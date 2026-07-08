@@ -19,9 +19,19 @@ const bodySchema = z.object({
 // por caja) — solo se puede detectar comparando ≥2 registros. Con 1 sola caja
 // registrada el Set también da tamaño 1, pero ahí SÍ es un código real de
 // caja, así que debe tratarse como QR_UNICO_CAJA (mismo fix que Next.js).
-function determinarModoCodigo(codigosCaja: string[]): ModoCodigoGourmet {
+//
+// Ese heurístico de "todas iguales ⇒ legacy" dejó de ser seguro para
+// MUEBLES: hoy es un caso legítimo que un pedido MUEBLES tenga 2+ cajas
+// registradas con el mismo código real (varias partes del mismo mueble,
+// permitido a propósito tanto al crear el pedido como al agregar una caja
+// manualmente — ver validarCodigoCaja / POST cajas). Sin este caso especial,
+// esas cajas reales se marcaban "Caja ajena" al escanear porque el código no
+// contiene el número de orden. Para GOURMET el servidor nunca permite
+// códigos duplicados al registrar cajas, así que ahí el heurístico legacy
+// sigue aplicando sin riesgo.
+function determinarModoCodigo(codigosCaja: string[], tipoPedido: string): ModoCodigoGourmet {
   if (codigosCaja.length === 0) return 'SIN_CODIGOS_PREVIOS'
-  if (codigosCaja.length === 1) return 'QR_UNICO_CAJA'
+  if (codigosCaja.length === 1 || tipoPedido === 'MUEBLES') return 'QR_UNICO_CAJA'
   return new Set(codigosCaja).size > 1 ? 'QR_UNICO_CAJA' : 'QR_SOLO_ORDEN'
 }
 
@@ -56,7 +66,7 @@ export default defineEventHandler(async (event) => {
   if (!cargueActivo) throw createError({ statusCode: 409, statusMessage: 'No hay un cargue activo para este pedido' })
 
   const codigosCaja = pedido.cajas.map((c) => c.codigoCaja).filter((c): c is string => !!c)
-  const modoCodigo = determinarModoCodigo(codigosCaja)
+  const modoCodigo = determinarModoCodigo(codigosCaja, pedido.tipoPedido)
 
   // La clasificación (¿es duplicado?) y la escritura van juntas dentro de la
   // misma transacción, con el cargue bloqueado (FOR UPDATE) — así dos
