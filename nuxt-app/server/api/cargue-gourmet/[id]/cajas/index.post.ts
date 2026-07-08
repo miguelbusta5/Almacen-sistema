@@ -71,6 +71,14 @@ export default defineEventHandler(async (event) => {
     await tx.gourmetPedidoCaja.create({
       data: { pedidoId: id, estibaId, codigoCaja: codigoTrim, numeroSecuencia: cajasEnEstiba + 1, generadaPorEscaneo: false },
     })
+
+    // cajasEsperadas se recalcula al conteo real tras agregar una caja —
+    // si no, el encabezado queda desincronizado del número real de cajas
+    // registradas y "Finalizar" rechaza por conteo distinto sin ninguna
+    // explicación clara para el operario.
+    const totalCajas = await tx.gourmetPedidoCaja.count({ where: { pedidoId: id } })
+    await tx.gourmetPedido.update({ where: { id }, data: { cajasEsperadas: totalCajas } })
+
     return tx.gourmetPedido.findUniqueOrThrow({
       where: { id },
       include: {

@@ -30,6 +30,14 @@ export default defineEventHandler(async (event) => {
 
   const pedidoActualizado = await prisma.$transaction(async (tx) => {
     await tx.gourmetPedidoCaja.delete({ where: { id: cajaId } })
+
+    // cajasEsperadas se recalcula al conteo real tras eliminar una caja —
+    // mismo motivo que en el POST hermano: si no, el encabezado queda
+    // desincronizado y "Finalizar" rechaza por conteo distinto sin
+    // explicación clara.
+    const totalCajas = await tx.gourmetPedidoCaja.count({ where: { pedidoId: id } })
+    await tx.gourmetPedido.update({ where: { id }, data: { cajasEsperadas: totalCajas } })
+
     return tx.gourmetPedido.findUniqueOrThrow({
       where: { id },
       include: {

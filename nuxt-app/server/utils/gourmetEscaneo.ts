@@ -10,7 +10,6 @@ export type ResultadoEscaneoGourmet =
 
 export type ModoCodigoGourmet =
   | 'QR_UNICO_CAJA'
-  | 'QR_SOLO_ORDEN'
   | 'SIN_CODIGOS_PREVIOS'
 
 export type TipoNovedadSugeridoGourmet =
@@ -79,20 +78,18 @@ export function clasificarEscaneoGourmet(input: ClasificarEscaneoGourmetInput): 
     if (previosNorm.includes(codigoNorm) && !permitirRepetirCaja) {
       return { resultado: 'DUPLICADO', debeCrearNovedad: true, tipoNovedadSugerido: 'CAJA_DUPLICADA', incrementaContador: false, mensaje: 'Esta caja ya fue escaneada antes en este cargue.' }
     }
+    // Antes esta comprobación no existía en este modo (a diferencia de los
+    // otros dos) — un pedido con más códigos de caja registrados que
+    // cajasEsperadas (por edición del encabezado o corrección de cajas)
+    // podía escanear de más sin ninguna alerta, y el error solo aparecía
+    // después, de forma opaca, al intentar finalizar.
+    if (cantidadValidaPrevia >= cajasEsperadas) {
+      return { resultado: 'EXCEDE_CANTIDAD', debeCrearNovedad: true, tipoNovedadSugerido: 'DIFERENCIA_CANTIDAD', incrementaContador: false, mensaje: 'Ya se alcanzó la cantidad esperada de cajas para este pedido.' }
+    }
     if (previosNorm.includes(codigoNorm) && permitirRepetirCaja) {
       return { resultado: 'VALIDO', debeCrearNovedad: false, incrementaContador: true, mensaje: 'Caja válida — otra parte del mueble, contada como caja adicional.' }
     }
     return { resultado: 'VALIDO', debeCrearNovedad: false, incrementaContador: true, mensaje: 'Caja válida.' }
-  }
-
-  if (modoCodigo === 'QR_SOLO_ORDEN') {
-    if (!perteneceAOrden(codigoNorm, ordenPedido)) {
-      return { resultado: 'CAJA_AJENA', debeCrearNovedad: true, tipoNovedadSugerido: 'CAJA_AJENA', incrementaContador: false, mensaje: 'El código no corresponde a la orden de este pedido.' }
-    }
-    if (cantidadValidaPrevia >= cajasEsperadas) {
-      return { resultado: 'EXCEDE_CANTIDAD', debeCrearNovedad: true, tipoNovedadSugerido: 'DIFERENCIA_CANTIDAD', incrementaContador: false, mensaje: 'Ya se alcanzó la cantidad esperada de cajas para esta orden.' }
-    }
-    return { resultado: 'VALIDO', debeCrearNovedad: false, incrementaContador: true, mensaje: 'Escaneo válido (código de orden, no certifica caja física única).' }
   }
 
   // SIN_CODIGOS_PREVIOS — el pedido no registró códigos de caja al ubicar.
