@@ -65,24 +65,34 @@ export default defineEventHandler(async (event) => {
   })
   if (!pedido) throw createError({ statusCode: 404, statusMessage: 'No encontrado' })
 
-  const destino: EstadoPedidoGourmet = 'CARGUE_COMPLETO_MANUAL'
-  const origen = pedido.estado as EstadoPedidoGourmet
-  const check = assertTransicionGourmet(origen, destino, actor.role)
-  if (!check.ok) {
-    throw createError({ statusCode: check.motivo === 'SIN_PERMISO' ? 403 : 409, statusMessage: check.mensaje, data: { code: check.motivo } })
-  }
-
-  const cargue = await prisma.gourmetCargue.findFirst({ where: { pedidoId: id, estado: { in: [...ESTADOS_CARGUE_CERRABLES] } } })
-  if (!cargue) throw createError({ statusCode: 409, statusMessage: 'No hay un cargue válido para cerrar manualmente' })
-
-  if (new Date(d.updatedAt).getTime() !== pedido.updatedAt.getTime()) {
-    throw createError({ statusCode: 409, statusMessage: 'Conflicto: el pedido fue modificado por otro usuario', data: { code: 'CONFLICT' } })
-  }
-
-  const descripcion = `Cierre manual — esperadas: ${cargue.cantidadEsperada}, escaneadas: ${cargue.cantidadEscaneada}, ` +
-    `contadas manualmente: ${d.cantidadContadaManual}. Motivo: ${MOTIVO_CIERRE_MANUAL_AUTOMATICO}.`
-
+  // Igual que finalizar.post.ts: todas las comprobaciones + la escritura
+  // van juntas dentro de la misma transacción, con el cargue bloqueado
+  // (FOR UPDATE), para que un finalizar/cierre-manual/despacho-masivo
+  // concurrente sobre el mismo pedido no pueda pisar un cargue que ya se
+  // cerró por otra vía.
   const { pedido: pedidoActualizado, cargue: cargueActualizado, novedad } = await prisma.$transaction(async (tx) => {
+    const cargue = await tx.gourmetCargue.findFirst({ where: { pedidoId: id, estado: { in: [...ESTADOS_CARGUE_CERRABLES] } } })
+    if (!cargue) throw createError({ statusCode: 409, statusMessage: 'No hay un cargue válido para cerrar manualmente' })
+
+    await tx.$queryRaw`SELECT id FROM gourmet_cargues WHERE id = ${cargue.id} FOR UPDATE`
+
+    const pedidoActual = await tx.gourmetPedido.findUniqueOrThrow({ where: { id }, select: { estado: true, updatedAt: true } })
+    const destino: EstadoPedidoGourmet = 'CARGUE_COMPLETO_MANUAL'
+    const origen = pedidoActual.estado as EstadoPedidoGourmet
+    const check = assertTransicionGourmet(origen, destino, actor.role)
+    if (!check.ok) {
+      throw createError({ statusCode: check.motivo === 'SIN_PERMISO' ? 403 : 409, statusMessage: check.mensaje, data: { code: check.motivo } })
+    }
+    if (new Date(d.updatedAt).getTime() !== pedidoActual.updatedAt.getTime()) {
+      throw createError({ statusCode: 409, statusMessage: 'Conflicto: el pedido fue modificado por otro usuario', data: { code: 'CONFLICT' } })
+    }
+
+    // Releer el cargue ya bloqueado — sus cantidades pudieron cambiar
+    // entre el findFirst de arriba y adquirir el lock.
+    const cargueLocked = await tx.gourmetCargue.findUniqueOrThrow({ where: { id: cargue.id } })
+    const descripcion = `Cierre manual — esperadas: ${cargueLocked.cantidadEsperada}, escaneadas: ${cargueLocked.cantidadEscaneada}, ` +
+      `contadas manualmente: ${d.cantidadContadaManual}. Motivo: ${MOTIVO_CIERRE_MANUAL_AUTOMATICO}.`
+
     const novedadCreada = await tx.gourmetCargueNovedad.create({
       data: { cargueId: cargue.id, pedidoId: id, tipo: 'CIERRE_MANUAL', descripcion, estado: 'RESUELTA', registradaPorId: actor.id, resueltaPorId: actor.id, resueltaAt: new Date() },
     })

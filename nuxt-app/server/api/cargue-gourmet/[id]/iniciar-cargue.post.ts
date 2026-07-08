@@ -47,29 +47,39 @@ export default defineEventHandler(async (event) => {
   })
   if (!current) throw createError({ statusCode: 404, statusMessage: 'No encontrado' })
 
-  const destino: EstadoPedidoGourmet = 'EN_CARGUE'
-  const origen = current.estado as EstadoPedidoGourmet
-  const check = assertTransicionGourmet(origen, destino, actor.role)
-  if (!check.ok) {
-    throw createError({ statusCode: check.motivo === 'SIN_PERMISO' ? 403 : 409, statusMessage: check.mensaje, data: { code: check.motivo } })
-  }
-
-  if (new Date(d.updatedAt).getTime() !== current.updatedAt.getTime()) {
-    throw createError({ statusCode: 409, statusMessage: 'Conflicto: el pedido fue modificado por otro usuario', data: { code: 'CONFLICT' } })
-  }
-
   if (current._count.estibas < 1) {
     throw createError({ statusCode: 409, statusMessage: 'El pedido no tiene estibas registradas — no se puede iniciar el cargue' })
   }
   if (current.cajasEsperadas <= 0) throw createError({ statusCode: 409, statusMessage: 'cajasEsperadas debe ser mayor a 0' })
   if (current.estibasEsperadas <= 0) throw createError({ statusCode: 409, statusMessage: 'estibasEsperadas debe ser mayor a 0' })
 
-  const cargueActivo = await prisma.gourmetCargue.findFirst({ where: { pedidoId: id, estado: 'EN_CARGUE' }, select: { id: true } })
-  if (cargueActivo) {
-    throw createError({ statusCode: 409, statusMessage: 'Ya existe un cargue activo para este pedido', data: { code: 'CARGUE_ACTIVO_EXISTENTE' } })
-  }
-
+  // La comprobación de "¿hay ya un cargue activo?" y la creación van
+  // juntas dentro de la misma transacción, con el pedido bloqueado (FOR
+  // UPDATE) — así dos clics casi simultáneos en "Iniciar cargue" se
+  // serializan y el segundo ve el cargue que el primero acaba de crear,
+  // en vez de que ambos pasen la comprobación y queden dos cargues
+  // EN_CARGUE para el mismo pedido (mismo patrón ya usado en
+  // escanear.post.ts / cajas/index.post.ts).
   const { pedido, cargue } = await prisma.$transaction(async (tx) => {
+    await tx.$queryRaw`SELECT id FROM gourmet_pedidos WHERE id = ${id} FOR UPDATE`
+
+    const pedidoActual = await tx.gourmetPedido.findUniqueOrThrow({ where: { id }, select: { estado: true, updatedAt: true } })
+
+    const destino: EstadoPedidoGourmet = 'EN_CARGUE'
+    const origen = pedidoActual.estado as EstadoPedidoGourmet
+    const check = assertTransicionGourmet(origen, destino, actor.role)
+    if (!check.ok) {
+      throw createError({ statusCode: check.motivo === 'SIN_PERMISO' ? 403 : 409, statusMessage: check.mensaje, data: { code: check.motivo } })
+    }
+    if (new Date(d.updatedAt).getTime() !== pedidoActual.updatedAt.getTime()) {
+      throw createError({ statusCode: 409, statusMessage: 'Conflicto: el pedido fue modificado por otro usuario', data: { code: 'CONFLICT' } })
+    }
+
+    const cargueActivo = await tx.gourmetCargue.findFirst({ where: { pedidoId: id, estado: 'EN_CARGUE' }, select: { id: true } })
+    if (cargueActivo) {
+      throw createError({ statusCode: 409, statusMessage: 'Ya existe un cargue activo para este pedido', data: { code: 'CARGUE_ACTIVO_EXISTENTE' } })
+    }
+
     const nuevoCargue = await tx.gourmetCargue.create({
       data: { pedidoId: id, iniciadoPorId: actor.id, cantidadEsperada: current.cajasEsperadas, cantidadEscaneada: 0, estado: 'EN_CARGUE' },
     })

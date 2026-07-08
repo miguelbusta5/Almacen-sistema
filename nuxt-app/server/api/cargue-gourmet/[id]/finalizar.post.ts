@@ -43,34 +43,45 @@ export default defineEventHandler(async (event) => {
   })
   if (!pedido) throw createError({ statusCode: 404, statusMessage: 'No encontrado' })
 
-  const destino: EstadoPedidoGourmet = 'CARGUE_COMPLETO'
-  const origen = pedido.estado as EstadoPedidoGourmet
-  const check = assertTransicionGourmet(origen, destino, actor.role)
-  if (!check.ok) {
-    throw createError({ statusCode: check.motivo === 'SIN_PERMISO' ? 403 : 409, statusMessage: check.mensaje, data: { code: check.motivo } })
-  }
-
-  const cargue = await prisma.gourmetCargue.findFirst({ where: { pedidoId: id, estado: 'EN_CARGUE' } })
-  if (!cargue) throw createError({ statusCode: 409, statusMessage: 'No hay un cargue activo para este pedido' })
-
-  if (new Date(d.updatedAt).getTime() !== pedido.updatedAt.getTime()) {
-    throw createError({ statusCode: 409, statusMessage: 'Conflicto: el pedido fue modificado por otro usuario', data: { code: 'CONFLICT' } })
-  }
-
-  if (cargue.cantidadEscaneada !== cargue.cantidadEsperada) {
-    throw createError({
-      statusCode: 409,
-      statusMessage: `Cajas escaneadas (${cargue.cantidadEscaneada}) no coinciden con las esperadas (${cargue.cantidadEsperada})`,
-      data: { code: 'CANTIDAD_NO_COINCIDE' },
-    })
-  }
-
-  const novedadAbierta = await prisma.gourmetCargueNovedad.findFirst({ where: { cargueId: cargue.id, estado: 'ABIERTA' }, select: { id: true } })
-  if (novedadAbierta) {
-    throw createError({ statusCode: 409, statusMessage: 'Hay novedades abiertas — resuélvelas antes de finalizar el cargue', data: { code: 'NOVEDAD_ABIERTA' } })
-  }
-
+  // Todas las comprobaciones de negocio (transición válida, conflicto de
+  // edición, conteo correcto, sin novedades abiertas) y la escritura van
+  // juntas dentro de la misma transacción, con el cargue bloqueado (FOR
+  // UPDATE) — así un escaneo concurrente no puede colar una novedad o
+  // incrementar el conteo justo después de que estas comprobaciones ya
+  // pasaron, dejando un cargue "finalizado" que en realidad las violaba.
   const { pedido: pedidoActualizado, cargue: cargueActualizado } = await prisma.$transaction(async (tx) => {
+    const cargue = await tx.gourmetCargue.findFirst({ where: { pedidoId: id, estado: 'EN_CARGUE' } })
+    if (!cargue) throw createError({ statusCode: 409, statusMessage: 'No hay un cargue activo para este pedido' })
+
+    await tx.$queryRaw`SELECT id FROM gourmet_cargues WHERE id = ${cargue.id} FOR UPDATE`
+
+    const pedidoActual = await tx.gourmetPedido.findUniqueOrThrow({ where: { id }, select: { estado: true, updatedAt: true } })
+    const destino: EstadoPedidoGourmet = 'CARGUE_COMPLETO'
+    const origen = pedidoActual.estado as EstadoPedidoGourmet
+    const check = assertTransicionGourmet(origen, destino, actor.role)
+    if (!check.ok) {
+      throw createError({ statusCode: check.motivo === 'SIN_PERMISO' ? 403 : 409, statusMessage: check.mensaje, data: { code: check.motivo } })
+    }
+    if (new Date(d.updatedAt).getTime() !== pedidoActual.updatedAt.getTime()) {
+      throw createError({ statusCode: 409, statusMessage: 'Conflicto: el pedido fue modificado por otro usuario', data: { code: 'CONFLICT' } })
+    }
+
+    // Releer el cargue ya bloqueado — su cantidadEscaneada pudo cambiar
+    // entre el findFirst de arriba y adquirir el lock.
+    const cargueLocked = await tx.gourmetCargue.findUniqueOrThrow({ where: { id: cargue.id } })
+    if (cargueLocked.cantidadEscaneada !== cargueLocked.cantidadEsperada) {
+      throw createError({
+        statusCode: 409,
+        statusMessage: `Cajas escaneadas (${cargueLocked.cantidadEscaneada}) no coinciden con las esperadas (${cargueLocked.cantidadEsperada})`,
+        data: { code: 'CANTIDAD_NO_COINCIDE' },
+      })
+    }
+
+    const novedadAbierta = await tx.gourmetCargueNovedad.findFirst({ where: { cargueId: cargue.id, estado: 'ABIERTA' }, select: { id: true } })
+    if (novedadAbierta) {
+      throw createError({ statusCode: 409, statusMessage: 'Hay novedades abiertas — resuélvelas antes de finalizar el cargue', data: { code: 'NOVEDAD_ABIERTA' } })
+    }
+
     const cargueFinal = await tx.gourmetCargue.update({
       where: { id: cargue.id },
       data: { estado: 'CARGUE_COMPLETO', finalizadoAt: new Date(), finalizadoPorId: actor.id, tipoCierre: 'NORMAL' },

@@ -39,6 +39,11 @@ export default defineEventHandler(async (event) => {
     if (ESTADOS_TERMINALES_GOURMET.includes(estado)) { omitidos.push({ id, motivo: `Ya está en estado ${estado}` }); continue }
 
     await prisma.$transaction(async (tx) => {
+      // Bloquea el pedido antes de decidir si hay cargue activo — evita que
+      // un escaneo concurrente sobre el mismo pedido quede pisado a mitad
+      // de camino por este cierre masivo (mismo patrón de lock ya usado en
+      // el resto de acciones de cierre del módulo).
+      await tx.$queryRaw`SELECT id FROM gourmet_pedidos WHERE id = ${id} FOR UPDATE`
       const cargueActivo = await tx.gourmetCargue.findFirst({ where: { pedidoId: id, estado: 'EN_CARGUE' } })
 
       if (cargueActivo) {

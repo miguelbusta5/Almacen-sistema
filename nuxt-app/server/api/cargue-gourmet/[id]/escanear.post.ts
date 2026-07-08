@@ -3,11 +3,12 @@ import { z } from 'zod'
 import { prisma } from '../../../utils/prisma'
 import { requireRole } from '../../../utils/auth'
 import { clasificarEscaneoGourmet, type ModoCodigoGourmet } from '../../../utils/gourmetEscaneo'
+import { validarCodigoCaja } from '../../../utils/gourmetCaja'
 
 const ROLES_PERMITIDOS = ['TRANSPORTE', 'SUPERVISOR_TRANSPORTE', 'OPERACIONES_GOURMET', 'ADMIN', 'GERENTE']
 
 const bodySchema = z.object({
-  codigo: z.string(),
+  codigo: z.string().max(150),
   // Solo relevante para pedidos MUEBLES: el mueble viene en más de una
   // parte física con el mismo número de caja impreso — permite repetir el
   // código sin marcarlo DUPLICADO, contando cada parte como una caja más.
@@ -58,6 +59,13 @@ export default defineEventHandler(async (event) => {
   })
   if (!cargueActivo) throw createError({ statusCode: 409, statusMessage: 'No hay un cargue activo para este pedido' })
 
+  // Mismo rechazo de códigos de orden (TSDM/OVDM) que ya aplican la
+  // creación del pedido y "agregar caja manual" — sin esto, en modo
+  // SIN_CODIGOS_PREVIOS (pedido sin cajas registradas) escanear el propio
+  // código de la orden contaba como una caja válida repetible.
+  const codigoValidacion = validarCodigoCaja(codigo, { permitirLetras: pedido.tipoPedido === 'MUEBLES' })
+  if (!codigoValidacion.ok) throw createError({ statusCode: 400, statusMessage: codigoValidacion.error })
+
   const codigosCaja = pedido.cajas.map((c) => c.codigoCaja).filter((c): c is string => !!c)
   const modoCodigo = determinarModoCodigo(codigosCaja)
 
@@ -79,6 +87,14 @@ export default defineEventHandler(async (event) => {
       where: { id: cargueActivo.id },
       include: { escaneos: { where: { resultado: 'VALIDO' }, select: { codigoEscaneado: true } } },
     })
+
+    // Re-chequeo dentro del lock: entre la comprobación de arriba (fuera de
+    // la transacción) y este punto, `finalizar`/`cierre-manual`/
+    // `revertir-cargue` pudo haber cerrado este mismo cargue — sin esto, un
+    // escaneo en curso seguiría escribiendo sobre un cargue ya cerrado.
+    if (cargue.estado !== 'EN_CARGUE') {
+      throw createError({ statusCode: 409, statusMessage: 'El cargue ya no está activo — probablemente se finalizó o revirtió mientras escaneabas', data: { code: 'CARGUE_NO_ACTIVO' } })
+    }
 
     const clasificacion = clasificarEscaneoGourmet({
       codigo,
