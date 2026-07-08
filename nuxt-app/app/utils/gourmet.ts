@@ -138,6 +138,8 @@ export function puedeEliminarGourmet(role: string): boolean { return ['ADMIN', '
 // Corregir la lista de cajas de un pedido ya creado (eliminar una caja mal
 // registrada y agregar la correcta a mano) — solo ADMIN y OPERACIONES_GOURMET.
 export function puedeEditarCajas(role: string): boolean { return ['ADMIN', 'OPERACIONES_GOURMET'].includes(role) }
+// Resolver una novedad abierta desbloquea "Finalizar" en ese cargue — solo ADMIN.
+export function puedeResolverNovedades(role: string): boolean { return role === 'ADMIN' }
 export function puedeDespachoMasivo(role: string): boolean { return role === 'ADMIN' }
 
 export const ESTADOS_INICIABLES_TRANSPORTE: EstadoPedidoGourmet[] = ['UBICACION_ASIGNADA', 'ENVIADO_A_TRANSPORTE']

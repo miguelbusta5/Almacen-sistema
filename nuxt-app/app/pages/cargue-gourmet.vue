@@ -226,6 +226,19 @@ async function agregarCajaManual(estibaId: string, codigo: string) {
   finally { busy.value = null }
 }
 
+async function resolverNovedad(novedadId: string) {
+  if (!panelItem.value || busy.value) return
+  const id = panelItem.value.id
+  busy.value = `resolver-novedad:${novedadId}`
+  try {
+    const res = await $fetch<{ data: PedidoGourmet }>(`/api/cargue-gourmet/${id}/novedades/${novedadId}/resolver`, { method: 'POST' })
+    panelItem.value = res.data
+    patchListado(id, res.data)
+    showToast('Novedad resuelta ✓')
+  } catch (e) { showToast(apiErr(e, 'No se pudo resolver la novedad'), true) }
+  finally { busy.value = null }
+}
+
 function finalizarCargue() {
   return run('finalizar', async () => {
     if (!panelItem.value) return
@@ -357,7 +370,7 @@ async function exportarExcel() {
           @back="backToList" @edit="showEditar = true" @del="showConfirmDel = true" @asignar-ubicacion="showUbicacion = true"
           @iniciar-cargue="iniciarCargue" @finalizar="finalizarCargue" @revertir="showConfirmRevertir = true"
           @cierre-manual="showCierreManual = true" @escanear="escanear"
-          @eliminar-caja="eliminarCaja" @agregar-caja-manual="agregarCajaManual"
+          @eliminar-caja="eliminarCaja" @agregar-caja-manual="agregarCajaManual" @resolver-novedad="resolverNovedad"
         />
       </div>
     </Transition>

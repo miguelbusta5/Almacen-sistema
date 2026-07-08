@@ -1,11 +1,11 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
 import {
-  ArrowLeft, Pencil, Trash2, Truck, PackagePlus, CheckCircle2, RotateCcw, ShieldAlert, TriangleAlert, XCircle, Plus,
+  ArrowLeft, Pencil, Trash2, Truck, PackagePlus, CheckCircle2, RotateCcw, ShieldAlert, TriangleAlert, XCircle, Plus, Check,
 } from '@lucide/vue'
 import {
   ESTADO_LABEL, ESTADO_TONE, fmtFechaHora, rolPuedeTransicionarGourmet,
-  puedeGourmet, puedeTransporte, puedeCierreManual, puedeEliminarGourmet, puedeEditarCajas,
+  puedeGourmet, puedeTransporte, puedeCierreManual, puedeEliminarGourmet, puedeEditarCajas, puedeResolverNovedades,
   ESTADOS_INICIABLES_TRANSPORTE, ESTADOS_FINALIZABLES_TRANSPORTE, ESTADOS_CIERRE_MANUAL, ESTADOS_EDITABLES_CAJAS,
   validarCodigoCaja, type PedidoGourmet,
 } from '~/utils/gourmet'
@@ -36,6 +36,7 @@ const emit = defineEmits<{
   (e: 'escanear', codigo: string, tieneParte2: boolean): void
   (e: 'eliminarCaja', cajaId: string): void
   (e: 'agregarCajaManual', estibaId: string, codigo: string): void
+  (e: 'resolverNovedad', novedadId: string): void
 }>()
 
 const esMuebles = computed(() => props.p.tipoPedido === 'MUEBLES')
@@ -53,6 +54,7 @@ const enCargue = computed(() => props.p.estado === 'EN_CARGUE')
 // correcta a mano) — solo ADMIN/OPERACIONES_GOURMET, y solo antes de que
 // el pedido entre al flujo de transporte.
 const puedeEditarListaCajas = computed(() => puedeEditarCajas(props.role) && ESTADOS_EDITABLES_CAJAS.includes(props.p.estado))
+const puedeResolver = computed(() => puedeResolverNovedades(props.role))
 const nuevaCajaEstibaId = ref('')
 const nuevaCajaCodigo = ref('')
 function submitAgregarCaja() {
@@ -286,6 +288,13 @@ const resumen = computed(() => [
             <p class="nmeta">Registrada por {{ n.registradaPorNombre ?? n.registradaPorId }} · {{ fmtFechaHora(n.createdAt) }}
               <template v-if="n.resueltaPorId"> · Resuelta por {{ n.resueltaPorNombre ?? n.resueltaPorId }}</template>
             </p>
+            <button
+              v-if="n.estado === 'ABIERTA' && puedeResolver" type="button" class="btn btn-sm resolve"
+              :disabled="busy === `resolver-novedad:${n.id}`" @click="emit('resolverNovedad', n.id)"
+            >
+              <Spinner v-if="busy === `resolver-novedad:${n.id}`" /><Check v-else :size="13" />
+              {{ busy === `resolver-novedad:${n.id}` ? 'Resolviendo…' : 'Marcar como resuelta' }}
+            </button>
           </li>
         </ul>
       </div>
@@ -380,5 +389,6 @@ const resumen = computed(() => [
 .ntop { display: flex; align-items: center; gap: 8px; margin-bottom: 4px; }
 .nestado { font-size: 11px; color: var(--muted); }
 .ndesc { font-size: 13px; color: var(--ink-2); margin: 4px 0; }
+.resolve { margin-top: 8px; color: var(--u-ok); border-color: var(--u-ok); }
 @media (max-width: 940px) { .grid { grid-template-columns: 1fr; } }
 </style>
