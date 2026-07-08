@@ -1,6 +1,6 @@
 "use client";
 
-import { CheckCircle2, GitMerge, Trash2 } from "lucide-react";
+import { CheckCircle2, GitMerge, Pencil, Trash2 } from "lucide-react";
 import { Badge } from "@/components/ui";
 import { DataTable, type Column } from "@/components/ui/DataTable";
 
@@ -57,11 +57,13 @@ export function IntegracionTable({
   color,
   canCompleteArea2,
   canTransport,
+  canEdit,
   isAdmin,
   deletingIntId,
   onRowClick,
   onCompletar,
   onRecibido,
+  onEditar,
   onDeleteStart,
   onDeleteConfirm,
   onDeleteCancel,
@@ -74,11 +76,13 @@ export function IntegracionTable({
   color: string;
   canCompleteArea2: (item: Integracion) => boolean;
   canTransport: boolean;
+  canEdit: (item: Integracion) => boolean;
   isAdmin: boolean;
   deletingIntId: string | null;
   onRowClick: (item: Integracion) => void;
   onCompletar: (item: Integracion) => void;
   onRecibido: (item: Integracion) => void;
+  onEditar: (item: Integracion) => void;
   onDeleteStart: (id: string) => void;
   onDeleteConfirm: (id: string) => void;
   onDeleteCancel: () => void;
@@ -156,6 +160,16 @@ export function IntegracionTable({
       debugLabel: "Acciones",
       render: (item) => (
         <div style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap" }}>
+          {canEdit(item) && (
+            <button
+              onClick={(e) => { e.stopPropagation(); onEditar(item); }}
+              className="ds-btn ds-btn-ghost"
+              style={{ fontSize: 12, padding: "4px 8px", color: "var(--muted2)" }}
+              title="Editar integración"
+            >
+              <Pencil size={13} />
+            </button>
+          )}
           {canCompleteArea2(item) && (
             <button
               onClick={(e) => { e.stopPropagation(); onCompletar(item); }}

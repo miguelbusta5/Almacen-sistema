@@ -33,11 +33,13 @@ function renderTable(overrides: Partial<Integracion> = {}, extra: Partial<{ canC
       color="#14DBA0"
       canCompleteArea2={() => extra.canCompleteArea2 ?? false}
       canTransport={extra.canTransport ?? false}
+      canEdit={() => false}
       isAdmin={extra.isAdmin ?? false}
       deletingIntId={null}
       onRowClick={() => {}}
       onCompletar={() => {}}
       onRecibido={() => {}}
+      onEditar={() => {}}
       onDeleteStart={() => {}}
       onDeleteConfirm={() => {}}
       onDeleteCancel={() => {}}

@@ -382,6 +382,130 @@ function ModalMarcarRecibido({ integracion, onClose, onDone }: {
   );
 }
 
+// ── Modal: Editar integración (solo ADMIN/GERENTE) ─────────
+function ModalEditarIntegracion({ integracion, onClose, onSaved }: {
+  integracion: Integracion; onClose: () => void; onSaved: () => void;
+}) {
+  const isMobile = useIsMobile();
+  const areaContraria = integracion.areaIniciadora === "MUEBLES" ? "GOURMET" : "MUEBLES";
+
+  const [tipoDoc, setTipoDoc] = useState<"OVDM" | "TSDM">(integracion.tipoDocumento as "OVDM" | "TSDM");
+  const [numDoc, setNumDoc] = useState(integracion.numeroDocumento);
+  const [fecha, setFecha] = useState(integracion.fecha);
+  const [numCajas1, setNumCajas1] = useState(integracion.numeroCajasArea1 != null ? String(integracion.numeroCajasArea1) : "");
+  const [numCajas2, setNumCajas2] = useState(integracion.numeroCajasArea2 != null ? String(integracion.numeroCajasArea2) : "");
+  const [obs, setObs] = useState(integracion.observaciones ?? "");
+  const toPluRows = (area: string): PluRow[] => {
+    const rows = integracion.plines.filter((p) => p.area === area).map((p) => ({ plu: p.plu, descripcion: p.descripcion ?? "", unidades: p.unidades }));
+    return rows.length > 0 ? rows : [emptyPlu()];
+  };
+  const [plinesIniciadora, setPlinesIniciadora] = useState<PluRow[]>(toPluRows(integracion.areaIniciadora));
+  const [plinesContraria, setPlinesContraria] = useState<PluRow[]>(toPluRows(areaContraria));
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
+
+  async function submit(e: React.FormEvent) {
+    e.preventDefault();
+    setError("");
+    const validIniciadora = plinesIniciadora.filter((p) => p.plu.trim());
+    const validContraria = plinesContraria.filter((p) => p.plu.trim());
+    if (validIniciadora.length === 0 && validContraria.length === 0) { setError("Agrega al menos un PLU"); return; }
+
+    setSaving(true);
+    try {
+      const body = {
+        accion: "EDITAR",
+        numeroDocumento: numDoc.trim(),
+        tipoDocumento: tipoDoc,
+        fecha,
+        numeroCajasArea1: numCajas1 ? parseInt(numCajas1) : undefined,
+        numeroCajasArea2: numCajas2 ? parseInt(numCajas2) : undefined,
+        observaciones: obs.trim() || undefined,
+        plines: [
+          ...validIniciadora.map((p) => ({ area: integracion.areaIniciadora, plu: p.plu.trim(), descripcion: p.descripcion.trim() || undefined, unidades: p.unidades })),
+          ...validContraria.map((p) => ({ area: areaContraria, plu: p.plu.trim(), descripcion: p.descripcion.trim() || undefined, unidades: p.unidades })),
+        ],
+      };
+      await apiPut(`/api/integracion/${integracion.id}`, body);
+      onSaved();
+    } catch (e) {
+      setError(getErrorMessage(e, "Error al guardar"));
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  function pluBlock(label: string, rows: PluRow[], setRows: (r: PluRow[]) => void) {
+    return (
+      <div>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
+          <label style={{ fontSize: 12, fontWeight: 500, color: "var(--muted2)" }}>{label}</label>
+          <button type="button" onClick={() => setRows([...rows, emptyPlu()])} style={{ fontSize: 12, color: COLOR, background: "none", border: "none", cursor: "pointer", padding: "2px 6px" }}>+ Añadir fila</button>
+        </div>
+        <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+          {rows.map((row, i) => (
+            <PluRowInput key={i} row={row} isMobile={isMobile}
+              onChange={(r) => setRows(rows.map((x, j) => j === i ? r : x))}
+              onRemove={() => rows.length > 1 && setRows(rows.filter((_, j) => j !== i))}
+            />
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <ModalBase title={`Editar — ${integracion.tipoDocumento} ${integracion.numeroDocumento}`} sub="Edición completa (ADMIN/GERENTE)" onClose={onClose} maxWidth={620}>
+      <form onSubmit={submit} style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+        <div style={{ display: "grid", gridTemplateColumns: "120px 1fr", gap: 10 }}>
+          <div>
+            <label style={{ fontSize: 12, fontWeight: 500, color: "var(--muted2)", display: "block", marginBottom: 5 }}>Tipo doc.</label>
+            <select value={tipoDoc} onChange={(e) => setTipoDoc(e.target.value as "OVDM" | "TSDM")} style={{ ...inp }} {...focusProps}>
+              {TIPO_DOC_OPTIONS.map((t) => <option key={t}>{t}</option>)}
+            </select>
+          </div>
+          <div>
+            <label style={{ fontSize: 12, fontWeight: 500, color: "var(--muted2)", display: "block", marginBottom: 5 }}>N° documento</label>
+            <input required value={numDoc} onChange={(e) => setNumDoc(e.target.value)} style={{ ...inp }} {...focusProps} />
+          </div>
+        </div>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10 }}>
+          <div>
+            <label style={{ fontSize: 12, fontWeight: 500, color: "var(--muted2)", display: "block", marginBottom: 5 }}>Fecha</label>
+            <input type="date" required value={fecha} onChange={(e) => setFecha(e.target.value)} style={{ ...inp }} {...focusProps} />
+          </div>
+          <div>
+            <label style={{ fontSize: 12, fontWeight: 500, color: "var(--muted2)", display: "block", marginBottom: 5 }}>Cajas Área {integracion.areaIniciadora}</label>
+            <input type="number" min={1} value={numCajas1} onChange={(e) => setNumCajas1(e.target.value)} placeholder="Opcional" style={{ ...inp }} {...focusProps} />
+          </div>
+          <div>
+            <label style={{ fontSize: 12, fontWeight: 500, color: "var(--muted2)", display: "block", marginBottom: 5 }}>Cajas Área {areaContraria}</label>
+            <input type="number" min={1} value={numCajas2} onChange={(e) => setNumCajas2(e.target.value)} placeholder="Opcional" style={{ ...inp }} {...focusProps} />
+          </div>
+        </div>
+
+        {pluBlock(`PLUs — Área ${integracion.areaIniciadora} (iniciadora)`, plinesIniciadora, setPlinesIniciadora)}
+        {pluBlock(`PLUs — Área ${areaContraria}`, plinesContraria, setPlinesContraria)}
+
+        <div>
+          <label style={{ fontSize: 12, fontWeight: 500, color: "var(--muted2)", display: "block", marginBottom: 5 }}>Observaciones</label>
+          <textarea value={obs} onChange={(e) => setObs(e.target.value)} rows={2} placeholder="Opcional"
+            style={{ ...inp, height: "auto", padding: "8px 12px", resize: "vertical" }} {...focusProps} />
+        </div>
+
+        {error && <p style={{ fontSize: 13, color: "var(--error)", margin: 0 }}>{error}</p>}
+
+        <div style={{ display: "flex", gap: 10, justifyContent: "flex-end", paddingTop: 4 }}>
+          <button type="button" onClick={onClose} className="ds-btn ds-btn-ghost" style={{ fontSize: 14 }}>Cancelar</button>
+          <button type="submit" disabled={saving} className="ds-btn ds-btn-primary" style={{ fontSize: 14, background: saving ? "var(--muted)" : COLOR, border: "none" }}>
+            {saving ? "Guardando…" : "Guardar cambios"}
+          </button>
+        </div>
+      </form>
+    </ModalBase>
+  );
+}
+
 // ════════════════════════════════════════════════════════════
 // PAGE
 // ════════════════════════════════════════════════════════════
@@ -404,6 +528,7 @@ export default function IntegracionPage() {
   const [showNueva, setShowNueva] = useState(false);
   const [completarItem, setCompletarItem] = useState<Integracion | null>(null);
   const [recibidoItem, setRecibidoItem] = useState<Integracion | null>(null);
+  const [editandoItem, setEditandoItem] = useState<Integracion | null>(null);
   const [deletingIntId, setDeletingIntId] = useState<string | null>(null);
   const [debugTable, setDebugTable] = useState(false);
 
@@ -413,6 +538,9 @@ export default function IntegracionPage() {
   const canCreate = CREATOR_ROLES.includes(role);
   const canTransport = TRANSPORT_ROLES.includes(role);
   const isAdmin = role === "ADMIN";
+  // Edición completa: solo ADMIN/GERENTE, y solo mientras no esté COMPLETADA.
+  const puedeEditar = role === "ADMIN" || role === "GERENTE";
+  const puedeEditarItem = useCallback((item: Integracion) => puedeEditar && item.estado !== "COMPLETADA", [puedeEditar]);
 
   const areaFromRole = role === "OPERACIONES_MUEBLES" ? "MUEBLES" : role === "OPERACIONES_GOURMET" ? "GOURMET" : null;
 
@@ -434,7 +562,7 @@ export default function IntegracionPage() {
 
   const autoRefresh = useAutoRefresh({
     enabled: puedeVer,
-    pause: Boolean(selected || showNueva || completarItem || recibidoItem || deletingIntId),
+    pause: Boolean(selected || showNueva || completarItem || recibidoItem || editandoItem || deletingIntId),
     onRefresh: () => { void mutateList(); },
   });
 
@@ -448,7 +576,7 @@ export default function IntegracionPage() {
     );
   }, [integraciones, search]);
 
-  function refresh() { load(); setSelected(null); setCompletarItem(null); setRecibidoItem(null); }
+  function refresh() { load(); setSelected(null); setCompletarItem(null); setRecibidoItem(null); setEditandoItem(null); }
 
   async function deleteIntegracion(id: string) {
     try {
@@ -500,17 +628,25 @@ export default function IntegracionPage() {
           badge={<Badge variant={estadoVariant(selected.estado)} label={ESTADO_LABEL[selected.estado]} />}
           moduleColor={COLOR}
           actions={
-            canCompleteArea2(selected) ? (
-              <button onClick={() => { setCompletarItem(selected); setSelected(null); }}
-                className="ds-btn ds-btn-primary" style={{ fontSize: 13, background: COLOR, border: "none" }}>
-                Completar Área 2
-              </button>
-            ) : canTransport && selected.estado === "LISTA_TRANSPORTE" ? (
-              <button onClick={() => { setRecibidoItem(selected); setSelected(null); }}
-                className="ds-btn ds-btn-primary" style={{ fontSize: 13, background: "var(--success)", border: "none" }}>
-                Confirmar recepción
-              </button>
-            ) : undefined
+            <>
+              {puedeEditarItem(selected) && (
+                <button onClick={() => setEditandoItem(selected)}
+                  className="ds-btn ds-btn-ghost" style={{ fontSize: 13, border: `1px solid ${COLOR}40`, color: COLOR }}>
+                  Editar
+                </button>
+              )}
+              {canCompleteArea2(selected) ? (
+                <button onClick={() => { setCompletarItem(selected); setSelected(null); }}
+                  className="ds-btn ds-btn-primary" style={{ fontSize: 13, background: COLOR, border: "none" }}>
+                  Completar Área 2
+                </button>
+              ) : canTransport && selected.estado === "LISTA_TRANSPORTE" ? (
+                <button onClick={() => { setRecibidoItem(selected); setSelected(null); }}
+                  className="ds-btn ds-btn-primary" style={{ fontSize: 13, background: "var(--success)", border: "none" }}>
+                  Confirmar recepción
+                </button>
+              ) : undefined}
+            </>
           }
         >
             <DetailSection title="Información general">
@@ -624,11 +760,13 @@ export default function IntegracionPage() {
               color={COLOR}
               canCompleteArea2={canCompleteArea2}
               canTransport={canTransport}
+              canEdit={puedeEditarItem}
               isAdmin={isAdmin}
               deletingIntId={deletingIntId}
               onRowClick={(item) => setSelected(item)}
               onCompletar={(item) => setCompletarItem(item)}
               onRecibido={(item) => setRecibidoItem(item)}
+              onEditar={(item) => setEditandoItem(item)}
               onDeleteStart={(id) => setDeletingIntId(id)}
               onDeleteConfirm={(id) => deleteIntegracion(id)}
               onDeleteCancel={() => setDeletingIntId(null)}
@@ -662,6 +800,13 @@ export default function IntegracionPage() {
           integracion={recibidoItem}
           onClose={() => setRecibidoItem(null)}
           onDone={() => { setRecibidoItem(null); refresh(); }}
+        />
+      )}
+      {editandoItem && (
+        <ModalEditarIntegracion
+          integracion={editandoItem}
+          onClose={() => setEditandoItem(null)}
+          onSaved={() => { setEditandoItem(null); refresh(); }}
         />
       )}
     </div>

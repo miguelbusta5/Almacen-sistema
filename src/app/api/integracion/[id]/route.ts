@@ -90,7 +90,18 @@ const marcarCompletadaSchema = z.object({
   observaciones: z.string().nullable().optional(),
 });
 
-const putSchema = z.discriminatedUnion("accion", [completarArea2Schema, marcarCompletadaSchema]);
+const editarSchema = z.object({
+  accion: z.literal("EDITAR"),
+  numeroDocumento: z.string().min(1).max(100),
+  tipoDocumento: z.enum(["OVDM", "TSDM"]),
+  fecha: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  numeroCajasArea1: z.number().int().min(1).nullable().optional(),
+  numeroCajasArea2: z.number().int().min(1).nullable().optional(),
+  observaciones: z.string().nullable().optional(),
+  plines: z.array(plinSchema.extend({ area: z.enum(["MUEBLES", "GOURMET"]) })),
+});
+
+const putSchema = z.discriminatedUnion("accion", [completarArea2Schema, marcarCompletadaSchema, editarSchema]);
 
 export async function PUT(
   req: NextRequest,
@@ -221,6 +232,74 @@ export async function PUT(
         module: "integracion",
         recordId: id,
         details: `${rec.tipoDocumento} ${rec.numeroDocumento}`,
+      },
+    }).catch(() => {});
+
+    return NextResponse.json({ success: true, data: mapRow(updated) });
+  }
+
+  // ── EDITAR ───────────────────────────────────────────────────────
+  if (parsed.data.accion === "EDITAR") {
+    if (!(["ADMIN", "GERENTE"] as readonly string[]).includes(actor.role)) {
+      return NextResponse.json({ error: "Solo ADMIN o GERENTE pueden editar una integración" }, { status: 403 });
+    }
+    if (rec.estado === "COMPLETADA") {
+      return NextResponse.json({ error: "No se puede editar una integración completada" }, { status: 409 });
+    }
+
+    const d = parsed.data;
+
+    if (d.numeroDocumento !== rec.numeroDocumento || d.tipoDocumento !== rec.tipoDocumento) {
+      const duplicado = await prisma.integracionPedido.findFirst({
+        where: {
+          id: { not: id },
+          numeroDocumento: d.numeroDocumento,
+          estado: { in: ["PENDIENTE_AREA2", "LISTA_TRANSPORTE"] },
+        },
+      });
+      if (duplicado) {
+        return NextResponse.json({ error: "Ya existe otra integración activa con este número de documento" }, { status: 409 });
+      }
+    }
+
+    const updated = await prisma.$transaction(async (tx) => {
+      await tx.plinIntegracion.deleteMany({ where: { integracionId: id } });
+      if (d.plines.length > 0) {
+        await tx.plinIntegracion.createMany({
+          data: d.plines.map((p) => ({
+            integracionId: id,
+            area: p.area,
+            plu: p.plu,
+            descripcion: p.descripcion ?? null,
+            unidades: p.unidades,
+          })),
+        });
+      }
+      return tx.integracionPedido.update({
+        where: { id },
+        data: {
+          numeroDocumento: d.numeroDocumento,
+          tipoDocumento: d.tipoDocumento,
+          fecha: new Date(d.fecha),
+          numeroCajasArea1: d.numeroCajasArea1 ?? null,
+          numeroCajasArea2: d.numeroCajasArea2 ?? null,
+          observaciones: d.observaciones ?? null,
+        },
+        include: {
+          plines: true,
+          creadoPor: { select: { name: true } },
+          completadoPor: { select: { name: true } },
+        },
+      });
+    });
+
+    prisma.activityLog.create({
+      data: {
+        userId: actor.id,
+        action: "EDIT",
+        module: "integracion",
+        recordId: id,
+        details: `${updated.tipoDocumento} ${updated.numeroDocumento}`,
       },
     }).catch(() => {});
 
