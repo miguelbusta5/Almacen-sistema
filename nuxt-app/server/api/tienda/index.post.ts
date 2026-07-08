@@ -23,6 +23,7 @@ const createSchema = z.object({
   numeroCajas: z.number().int().min(1).nullable().optional(),
   notaEntrega: z.string().nullable().optional(),
   ciudad: z.string().max(100).nullable().optional(),
+  tiendaOrigenCodigo: z.string().min(1).max(50),
   plines: z.array(plinSchema).optional(),
 })
 
@@ -34,6 +35,12 @@ export default defineEventHandler(async (event) => {
   const parsed = createSchema.safeParse(body)
   if (!parsed.success) throw createError({ statusCode: 400, statusMessage: parsed.error.issues[0]!.message })
   const d = parsed.data
+
+  // Tienda origen — mismo catálogo compartido con Cargue Gourmet
+  // (MaestroTiendaGourmet); se denormaliza nombre/ciudad al crear.
+  const tiendaOrigen = await prisma.maestroTiendaGourmet.findUnique({ where: { codigo: d.tiendaOrigenCodigo } })
+  if (!tiendaOrigen) throw createError({ statusCode: 400, statusMessage: 'La tienda origen no existe en el maestro' })
+  if (!tiendaOrigen.activo) throw createError({ statusCode: 400, statusMessage: 'La tienda origen está inactiva en el maestro' })
 
   const row = await prisma.$transaction(async (tx) => {
     const despacho = await tx.despachoTienda.create({
@@ -49,6 +56,9 @@ export default defineEventHandler(async (event) => {
         numeroCajas: d.numeroCajas ?? null,
         notaEntrega: d.notaEntrega ?? null,
         ciudad: d.ciudad ?? null,
+        tiendaOrigenCodigo: tiendaOrigen.codigo,
+        tiendaOrigenNombre: tiendaOrigen.tienda,
+        ciudadOrigen: tiendaOrigen.ciudad,
         creadoPorId: actor.id,
       },
       include: { creadoPor: { select: { id: true, name: true } }, plines: true, guardadoPendiente: { include: { asignadoA: { select: { name: true } } } } },

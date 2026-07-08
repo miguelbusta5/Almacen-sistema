@@ -33,6 +33,7 @@ const updateSchema = z.object({
   longitud: z.number().nullable().optional(),
   contactoEntrega: z.string().nullable().optional(),
   telefonoEntrega: z.string().max(30).nullable().optional(),
+  tiendaOrigenCodigo: z.string().min(1).max(50).optional(),
 })
 
 const BASIC_EDIT_KEYS = [
@@ -40,6 +41,7 @@ const BASIC_EDIT_KEYS = [
   'clienteDocumento', 'clienteTelefono', 'fechaEntregaComprometida',
   'numeroCajas', 'notaEntrega', 'direccionEntrega', 'barrio', 'ciudad',
   'departamento', 'latitud', 'longitud', 'contactoEntrega', 'telefonoEntrega',
+  'tiendaOrigenCodigo',
 ] as const
 
 // PUT /api/tienda/[id]
@@ -87,6 +89,16 @@ export default defineEventHandler(async (event) => {
     }
   }
 
+  // Tienda origen — mismo catálogo compartido con Cargue Gourmet; si se
+  // manda un código nuevo, se re-resuelve nombre/ciudad contra el maestro.
+  let tiendaOrigen: { codigo: string; tienda: string; ciudad: string } | null = null
+  if (d.tiendaOrigenCodigo !== undefined) {
+    const encontrada = await prisma.maestroTiendaGourmet.findUnique({ where: { codigo: d.tiendaOrigenCodigo } })
+    if (!encontrada) throw createError({ statusCode: 400, statusMessage: 'La tienda origen no existe en el maestro' })
+    if (!encontrada.activo) throw createError({ statusCode: 400, statusMessage: 'La tienda origen está inactiva en el maestro' })
+    tiendaOrigen = { codigo: encontrada.codigo, tienda: encontrada.tienda, ciudad: encontrada.ciudad }
+  }
+
   const timestamps: Record<string, unknown> = {}
   if (d.estado === 'RECOGIDO_TIENDA') timestamps.recibidoAt = new Date()
   if (d.estado === 'ENTREGADO_CEDI') timestamps.entregadoCediAt = new Date()
@@ -129,6 +141,7 @@ export default defineEventHandler(async (event) => {
           ...(d.longitud !== undefined && { longitud: d.longitud }),
           ...(d.contactoEntrega !== undefined && { contactoEntrega: d.contactoEntrega }),
           ...(d.telefonoEntrega !== undefined && { telefonoEntrega: d.telefonoEntrega }),
+          ...(tiendaOrigen && { tiendaOrigenCodigo: tiendaOrigen.codigo, tiendaOrigenNombre: tiendaOrigen.tienda, ciudadOrigen: tiendaOrigen.ciudad }),
           ...timestamps,
         },
         include: {

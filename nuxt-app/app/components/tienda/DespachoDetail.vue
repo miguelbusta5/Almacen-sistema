@@ -65,6 +65,8 @@ function historialFecha(iso: string) {
 
 const detalle = computed(() => [
   { label: 'Centro de costos', value: props.d.centroCostos },
+  { label: 'Tienda origen', value: props.d.tiendaOrigenNombre || '—' },
+  { label: 'Ciudad origen', value: props.d.ciudadOrigen || '—' },
   { label: 'Cliente', value: props.d.clienteNombre },
   { label: 'Documento cliente', value: props.d.clienteDocumento || '—' },
   { label: 'Teléfono cliente', value: props.d.clienteTelefono || '—' },

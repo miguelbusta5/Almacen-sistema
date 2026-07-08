@@ -18,6 +18,7 @@ function base(over: Partial<Despacho>): Despacho {
     clienteNombre: 'Cliente demo', clienteDocumento: null, clienteTelefono: null,
     estado: 'CREADO_TIENDA', fechaCreacion: isoDaysAgo(1), fechaEntregaComprometida: null,
     numeroCajas: 1, netsuiteId: null,
+    tiendaOrigenCodigo: 'DEMO', tiendaOrigenNombre: 'Tienda demo', ciudadOrigen: 'Bogota D.C.',
     recibidoAt: null, entregadoCediAt: null, despachadoAt: null, novedadAt: null, rechazadoAt: null,
     motivoRechazo: null, notaEntrega: null, guardadoPendiente: null,
     direccionEntrega: null, barrio: null, ciudad: 'Bogota D.C.', departamento: null,

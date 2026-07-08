@@ -1,13 +1,15 @@
 import { defineEventHandler, getQuery } from 'h3'
 import { prisma } from '../../utils/prisma'
-import { requireRole } from '../../utils/auth'
+import { requireAuth } from '../../utils/auth'
 
-const ROLES_VEN = ['ADMIN', 'GERENTE', 'OPERACIONES_GOURMET', 'TRANSPORTE', 'SUPERVISOR_TRANSPORTE']
 const MAX_RESULTS = 50
 
 // GET /api/cargue-gourmet/maestro-tiendas?q=&codigo=&includeInactive=1
+// Catálogo de solo-lectura compartido entre módulos (Cargue Gourmet y
+// Facturas Contado usan las mismas tiendas) — cualquier usuario
+// autenticado puede consultarlo, igual que el lookup de PLU.
 export default defineEventHandler(async (event) => {
-  const actor = await requireRole(event, ROLES_VEN)
+  const actor = await requireAuth(event)
   const sp = getQuery(event)
   const codigo = String(sp.codigo ?? '').trim()
   const q = String(sp.q ?? '').trim()

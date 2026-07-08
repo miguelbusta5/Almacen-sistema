@@ -38,6 +38,9 @@ export interface Despacho {
   fechaEntregaComprometida: string | null
   numeroCajas: number | null
   netsuiteId: string | null
+  tiendaOrigenCodigo: string | null
+  tiendaOrigenNombre: string | null
+  ciudadOrigen: string | null
   recibidoAt: string | null
   entregadoCediAt: string | null
   despachadoAt: string | null

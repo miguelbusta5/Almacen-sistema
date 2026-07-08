@@ -23,7 +23,44 @@ const f = reactive({
   notaEntrega: props.despacho?.notaEntrega ?? '',
 })
 const touched = ref(false)
-const missing = computed(() => !f.centroCostos.trim() || !f.numeroDocumento.trim() || !f.consecutivo.trim() || !f.clienteNombre.trim())
+
+// Tienda origen — mismo catálogo/patrón de autocompletar de Cargue Gourmet
+// (CrearPedidoModal.vue): se busca por código/nombre/ciudad y al elegir se
+// resuelve el nombre + ciudad automáticamente.
+interface TiendaOption { codigo: string; tienda: string; ciudad: string }
+const codigoTiendaQuery = ref(props.despacho?.tiendaOrigenCodigo ?? '')
+const tiendaOrigenSeleccionada = ref<TiendaOption | null>(
+  props.despacho?.tiendaOrigenCodigo
+    ? { codigo: props.despacho.tiendaOrigenCodigo, tienda: props.despacho.tiendaOrigenNombre ?? '', ciudad: props.despacho.ciudadOrigen ?? '' }
+    : null,
+)
+const suggestions = ref<TiendaOption[]>([])
+const searchLoading = ref(false)
+const showSuggestions = ref(false)
+let debounceTimer: ReturnType<typeof setTimeout> | null = null
+
+function onCodigoTiendaInput(value: string) {
+  if (debounceTimer) clearTimeout(debounceTimer)
+  codigoTiendaQuery.value = value
+  tiendaOrigenSeleccionada.value = null
+  showSuggestions.value = true
+  if (!value.trim()) { suggestions.value = []; return }
+  debounceTimer = setTimeout(async () => {
+    searchLoading.value = true
+    try {
+      const res = await $fetch<{ data: TiendaOption[] }>(`/api/cargue-gourmet/maestro-tiendas?q=${encodeURIComponent(value.trim())}`)
+      suggestions.value = res.data ?? []
+    } catch { suggestions.value = [] }
+    finally { searchLoading.value = false }
+  }, 250)
+}
+function selectTiendaOrigen(t: TiendaOption) {
+  codigoTiendaQuery.value = t.codigo
+  tiendaOrigenSeleccionada.value = t
+  showSuggestions.value = false
+}
+
+const missing = computed(() => !f.centroCostos.trim() || !f.numeroDocumento.trim() || !f.consecutivo.trim() || !f.clienteNombre.trim() || !tiendaOrigenSeleccionada.value)
 
 interface PlinDraft { plu: string; descripcion: string; unidades: string; looked: boolean; looking: boolean; notFound: boolean }
 const plines = ref<PlinDraft[]>(isEdit.value ? [] : [{ plu: '', descripcion: '', unidades: '1', looked: false, looking: false, notFound: false }])
@@ -52,7 +89,7 @@ function submit() {
   if (props.saving) return
   touched.value = true
   if (missing.value) return
-  const payload: Record<string, unknown> = { ...f }
+  const payload: Record<string, unknown> = { ...f, tiendaOrigenCodigo: tiendaOrigenSeleccionada.value!.codigo }
   if (!payload.fechaEntregaComprometida) payload.fechaEntregaComprometida = null
   if (!payload.clienteDocumento) payload.clienteDocumento = null
   if (!payload.clienteTelefono) payload.clienteTelefono = null
@@ -103,6 +140,25 @@ function submit() {
             <input v-model.number="f.numeroCajas" type="number" min="1" class="field">
           </label>
         </div>
+        <label class="fw autocomplete">
+          <span class="fl">Tienda origen <b>*</b></span>
+          <input
+            :value="codigoTiendaQuery" class="field" autocomplete="off"
+            :class="{ err: touched && !tiendaOrigenSeleccionada }"
+            placeholder="Buscar por código, tienda o ciudad…"
+            @input="onCodigoTiendaInput(($event.target as HTMLInputElement).value)"
+            @focus="showSuggestions = true"
+          >
+          <div v-if="showSuggestions && codigoTiendaQuery && !tiendaOrigenSeleccionada" class="suggestions">
+            <div v-if="searchLoading" class="sugg-item faint">Buscando…</div>
+            <div v-else-if="suggestions.length === 0" class="sugg-item faint">Sin coincidencias</div>
+            <button v-for="t in suggestions" :key="t.codigo" type="button" class="sugg-item" @click="selectTiendaOrigen(t)">
+              <strong>{{ t.codigo }}</strong> — {{ t.tienda }} <span class="faint">({{ t.ciudad }})</span>
+            </button>
+          </div>
+          <div v-if="tiendaOrigenSeleccionada" class="tienda-resuelta">{{ tiendaOrigenSeleccionada.tienda }} — {{ tiendaOrigenSeleccionada.ciudad }}</div>
+          <span v-if="touched && !tiendaOrigenSeleccionada" class="fe">Selecciona una tienda origen válida de la lista</span>
+        </label>
       </section>
 
       <section class="fsec">
@@ -176,6 +232,12 @@ function submit() {
 .fe { font-size: 11px; font-weight: 600; color: var(--u-critico); }
 .field.err { border-color: var(--u-critico); box-shadow: 0 0 0 3px var(--u-critico-tint); }
 .field.looked { border-color: var(--u-ok); }
+.autocomplete { position: relative; }
+.suggestions { position: absolute; z-index: 20; top: 100%; left: 0; right: 0; margin-top: 4px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--r-sm); max-height: 200px; overflow-y: auto; box-shadow: var(--shadow-md); }
+.sugg-item { display: block; width: 100%; text-align: left; padding: 8px 12px; background: none; border: none; cursor: pointer; font-size: 13px; color: var(--ink-2); }
+.sugg-item:hover { background: var(--surface-2); }
+.tienda-resuelta { font-size: 12px; color: var(--muted); margin-top: 4px; }
+.faint { color: var(--faint); font-size: 12px; }
 .plin-row { display: grid; grid-template-columns: 90px 1fr 70px auto auto; gap: 8px; align-items: center; }
 .plu-fe { display: block; margin: 4px 0 0; }
 .hint { display: flex; align-items: center; gap: 6px; font-size: 11px; color: var(--muted); margin-top: 2px; }

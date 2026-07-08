@@ -253,6 +253,15 @@ model DespachoTienda {
   numeroCajas              Int?      @map("numero_cajas")
   netsuiteId               String?   @map("netsuite_id")
 
+  // Origen de la factura — código/nombre resueltos del mismo catálogo de
+  // tiendas usado por Cargue Gourmet (MaestroTiendaGourmet), denormalizados
+  // para que el histórico no cambie si el catálogo se edita después.
+  // Nullable a nivel de BD por las filas históricas ya existentes; se exige
+  // obligatorio a nivel de aplicación al crear una factura nueva.
+  tiendaOrigenCodigo String? @map("tienda_origen_codigo") @db.VarChar(50)
+  tiendaOrigenNombre String? @map("tienda_origen_nombre") @db.VarChar(255)
+  ciudadOrigen       String? @map("ciudad_origen") @db.VarChar(80)
+
   // Dirección de entrega
   direccionEntrega String? @map("direccion_entrega")
   barrio           String?
