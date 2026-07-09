@@ -19,6 +19,7 @@ const fEstado = ref('')
 const fCiudad = ref('')
 const fTienda = ref('')
 const fTipoOrden = ref('')
+const fTipoPedido = ref('')
 const fAlerta = ref(false)
 const density = ref<'comodo' | 'compacto'>('comodo')
 const loading = ref(true)
@@ -67,6 +68,7 @@ async function load() {
     if (fCiudad.value) query.ciudad = fCiudad.value
     if (fTienda.value) query.tienda = fTienda.value
     if (fTipoOrden.value) query.tipoOrden = fTipoOrden.value
+    if (fTipoPedido.value) query.tipoPedido = fTipoPedido.value
     if (fAlerta.value) query.alerta = '1'
     const res = await $fetch<{ data: PedidoGourmet[]; total: number }>('/api/cargue-gourmet', { query })
     pedidos.value = res.data
@@ -93,13 +95,13 @@ async function refresh() {
   showToast('Datos actualizados ✓')
 }
 
-const hasFilters = computed(() => !!(q.value || fEstado.value || fCiudad.value || fTienda.value || fTipoOrden.value || fAlerta.value))
-function clearFilters() { q.value = ''; fEstado.value = ''; fCiudad.value = ''; fTienda.value = ''; fTipoOrden.value = ''; fAlerta.value = false }
+const hasFilters = computed(() => !!(q.value || fEstado.value || fCiudad.value || fTienda.value || fTipoOrden.value || fTipoPedido.value || fAlerta.value))
+function clearFilters() { q.value = ''; fEstado.value = ''; fCiudad.value = ''; fTienda.value = ''; fTipoOrden.value = ''; fTipoPedido.value = ''; fAlerta.value = false }
 function onKpiFilter(key: string) { fEstado.value = key }
 
 // Cualquier cambio de filtro vuelve a la página 1 y recarga desde el
 // servidor — el buscador (q) ya llega debounced desde GourmetToolbar.
-watch([q, fEstado, fCiudad, fTienda, fTipoOrden, fAlerta], () => { page.value = 1; void load() })
+watch([q, fEstado, fCiudad, fTienda, fTipoOrden, fTipoPedido, fAlerta], () => { page.value = 1; void load() })
 watch(page, () => { void load() })
 
 // ── Detalle ──────────────────────────────────────────────────────────────
@@ -528,6 +530,7 @@ async function exportarExcel() {
   if (fCiudad.value) qs.set('ciudad', fCiudad.value)
   if (fEstado.value) qs.set('estado', fEstado.value)
   if (fTipoOrden.value) qs.set('tipoOrden', fTipoOrden.value)
+  if (fTipoPedido.value) qs.set('tipoPedido', fTipoPedido.value)
   const url = `/api/cargue-gourmet/export${qs.toString() ? `?${qs}` : ''}`
   const a = document.createElement('a')
   a.href = url
@@ -557,7 +560,7 @@ async function exportarExcel() {
       <div v-if="!panelId" key="list">
         <CargueGourmetKpiRail :key="refreshKey" :counts="kpiCounts" style="margin-bottom: 18px" @filter="onKpiFilter" />
         <CargueGourmetToolbar
-          v-model:q="q" v-model:estado="fEstado" v-model:ciudad="fCiudad" v-model:tienda="fTienda" v-model:tipo-orden="fTipoOrden" v-model:alerta="fAlerta" v-model:density="density"
+          v-model:q="q" v-model:estado="fEstado" v-model:ciudad="fCiudad" v-model:tienda="fTienda" v-model:tipo-orden="fTipoOrden" v-model:tipo-pedido="fTipoPedido" v-model:alerta="fAlerta" v-model:density="density"
           :ciudades="ciudadesCatalogo" :tiendas="tiendasCatalogo" :count="total" :total="kpiCounts.total" style="margin-bottom: 14px" @clear="clearFilters"
         />
         <ListSkeleton v-if="loading" />

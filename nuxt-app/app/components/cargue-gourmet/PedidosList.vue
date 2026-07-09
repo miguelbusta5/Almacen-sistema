@@ -6,22 +6,23 @@ import { ESTADO_LABEL, ESTADO_TONE, fmtFechaHora, horasDesde, type PedidoGourmet
 const props = defineProps<{ items: PedidoGourmet[]; hasFilters: boolean; density?: 'comodo' | 'compacto' }>()
 const emit = defineEmits<{ (e: 'open', p: PedidoGourmet): void; (e: 'clear'): void; (e: 'new'): void }>()
 
-type SortKey = 'estado' | 'orden' | 'tienda' | 'ciudad' | 'ubicaciones' | 'tipo' | 'creacion'
+type SortKey = 'estado' | 'orden' | 'tienda' | 'ciudad' | 'ubicaciones' | 'tipo' | 'creacion' | 'cargue'
 const columns: { key: SortKey; label: string; w: string }[] = [
-  { key: 'estado', label: 'Estado', w: '11%' },
-  { key: 'orden', label: 'Orden', w: '15%' },
-  { key: 'tienda', label: 'Tienda', w: '19%' },
-  { key: 'ciudad', label: 'Destino', w: '11%' },
-  { key: 'ubicaciones', label: 'Ubicación', w: '15%' },
-  { key: 'tipo', label: 'Tipo', w: '10%' },
-  { key: 'creacion', label: 'Creado', w: '19%' },
+  { key: 'estado', label: 'Estado', w: '10%' },
+  { key: 'orden', label: 'Orden', w: '13%' },
+  { key: 'tienda', label: 'Tienda', w: '17%' },
+  { key: 'ciudad', label: 'Destino', w: '10%' },
+  { key: 'ubicaciones', label: 'Ubicación', w: '13%' },
+  { key: 'tipo', label: 'Tipo', w: '9%' },
+  { key: 'creacion', label: 'Creado', w: '14%' },
+  { key: 'cargue', label: 'Cargue', w: '14%' },
 ]
 const sortKey = ref<SortKey>('creacion')
 const sortDir = ref<'asc' | 'desc'>('desc')
 
 function toggleSort(k: SortKey) {
   if (sortKey.value === k) sortDir.value = sortDir.value === 'asc' ? 'desc' : 'asc'
-  else { sortKey.value = k; sortDir.value = k === 'creacion' ? 'desc' : 'asc' }
+  else { sortKey.value = k; sortDir.value = k === 'creacion' || k === 'cargue' ? 'desc' : 'asc' }
 }
 
 function sortVal(p: PedidoGourmet, k: SortKey): number | string {
@@ -33,6 +34,7 @@ function sortVal(p: PedidoGourmet, k: SortKey): number | string {
     case 'ubicaciones': return p.ubicaciones ?? ''
     case 'tipo': return p.tipoPedido
     case 'creacion': return p.createdAt
+    case 'cargue': return p.cargueIniciadoAt ?? ''
   }
 }
 
@@ -95,6 +97,9 @@ function urgente(p: PedidoGourmet) {
             <div class="mono">{{ fmtFechaHora(p.createdAt) }}</div>
             <div v-if="urgente(p)" class="sub urg">{{ horasDesde(p.createdAt) }}h sin ubicar</div>
           </td>
+          <td>
+            <div class="mono">{{ p.cargueIniciadoAt ? fmtFechaHora(p.cargueIniciadoAt) : '—' }}</div>
+          </td>
         </tr>
       </TransitionGroup>
     </table>
@@ -112,7 +117,7 @@ function urgente(p: PedidoGourmet) {
 
 <style scoped>
 .panel { overflow-x: auto; overflow-y: hidden; }
-.tbl { width: 100%; min-width: 960px; border-collapse: collapse; }
+.tbl { width: 100%; min-width: 1080px; border-collapse: collapse; }
 .tbl thead th { text-align: left; padding: 0; background: var(--surface-2); border-bottom: 1px solid var(--border); }
 .th-btn {
   display: inline-flex; align-items: center; gap: 5px; width: 100%;

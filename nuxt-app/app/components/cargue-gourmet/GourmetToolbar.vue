@@ -5,7 +5,7 @@ import { Search, X, TriangleAlert, Rows3, Rows4 } from '@lucide/vue'
 import { ESTADO_LABEL } from '~/utils/gourmet'
 
 const props = defineProps<{
-  q: string; estado: string; ciudad: string; ciudades: string[]; tienda: string; tiendas: string[]; tipoOrden: string; alerta: boolean
+  q: string; estado: string; ciudad: string; ciudades: string[]; tienda: string; tiendas: string[]; tipoOrden: string; tipoPedido: string; alerta: boolean
   count: number; total: number; density: 'comodo' | 'compacto'
 }>()
 const emit = defineEmits<{
@@ -14,6 +14,7 @@ const emit = defineEmits<{
   (e: 'update:ciudad', v: string): void
   (e: 'update:tienda', v: string): void
   (e: 'update:tipoOrden', v: string): void
+  (e: 'update:tipoPedido', v: string): void
   (e: 'update:alerta', v: boolean): void
   (e: 'update:density', v: 'comodo' | 'compacto'): void
   (e: 'clear'): void
@@ -52,10 +53,15 @@ function onInput(e: Event) {
       <option value="TSDM">TSDM</option>
       <option value="OVDM">OVDM</option>
     </select>
+    <select :value="tipoPedido" @change="emit('update:tipoPedido', ($event.target as HTMLSelectElement).value)" class="field sel">
+      <option value="">Gourmet y Muebles</option>
+      <option value="GOURMET">Gourmet</option>
+      <option value="MUEBLES">Muebles</option>
+    </select>
     <button class="btn btn-sm" :class="{ on: alerta }" @click="emit('update:alerta', !alerta)">
       <TriangleAlert :size="14" /> Solo alertas
     </button>
-    <button v-if="localQ || estado || ciudad || tienda || tipoOrden || alerta" class="btn btn-ghost btn-sm" @click="localQ = ''; emit('clear')"><X :size="13" /> Limpiar</button>
+    <button v-if="localQ || estado || ciudad || tienda || tipoOrden || tipoPedido || alerta" class="btn btn-ghost btn-sm" @click="localQ = ''; emit('clear')"><X :size="13" /> Limpiar</button>
 
     <div class="right">
       <span class="count mono">{{ count }} de {{ total }}</span>

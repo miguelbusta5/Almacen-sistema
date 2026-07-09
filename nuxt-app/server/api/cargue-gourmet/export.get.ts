@@ -28,12 +28,14 @@ export default defineEventHandler(async (event) => {
   const ciudad = sp.ciudad ? String(sp.ciudad) : undefined
   const estado = sp.estado ? String(sp.estado) : undefined
   const tipoOrden = sp.tipoOrden ? String(sp.tipoOrden) : undefined
+  const tipoPedido = sp.tipoPedido ? String(sp.tipoPedido) : undefined
   const q = sp.q ? String(sp.q).trim() : undefined
 
   const where: any = {}
   if (ciudad) where.ciudadDestino = ciudad
   if (estado) where.estado = estado
   if (tipoOrden) where.tipoOrden = tipoOrden
+  if (tipoPedido === 'GOURMET' || tipoPedido === 'MUEBLES') where.tipoPedido = tipoPedido
   if (q) {
     where.OR = [
       { orden: { contains: q, mode: 'insensitive' } },

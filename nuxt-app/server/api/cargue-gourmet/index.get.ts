@@ -15,6 +15,9 @@ export default defineEventHandler(async (event) => {
   const estado = String(sp.estado ?? '').trim()
   const tienda = String(sp.tienda ?? '').trim()
   const tipoOrden = String(sp.tipoOrden ?? '').trim()
+  // Filtro por tipo de PEDIDO (GOURMET|MUEBLES) — distinto de tipoOrden
+  // (TSDM/OVDM), que es el tipo de la orden.
+  const tipoPedido = String(sp.tipoPedido ?? '').trim()
   const q = String(sp.q ?? '').trim()
   const alerta = sp.alerta === '1' || sp.alerta === 'true'
   // Usado solo por el modal de "Cargue masivo" para traer los pedidos aún
@@ -31,6 +34,7 @@ export default defineEventHandler(async (event) => {
   if (estado) where.estado = estado
   if (tienda) where.nombreTienda = tienda
   if (tipoOrden) where.tipoOrden = tipoOrden
+  if (tipoPedido === 'GOURMET' || tipoPedido === 'MUEBLES') where.tipoPedido = tipoPedido
   if (estadoNot.length) where.estado = { notIn: estadoNot }
   if (estadoIn.length) where.estado = { in: estadoIn }
   if (q) {
