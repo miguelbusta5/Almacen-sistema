@@ -78,6 +78,7 @@ model TransporteGuardado {
   updated_at     DateTime? @default(now()) @db.Timestamp(6)
 
   @@index([client_id], map: "idx_transporte_client_id")
+  @@index([estado, fecha], map: "idx_transporte_estado_fecha")
   @@map("transporte_guardados")
 }
 

@@ -6,16 +6,24 @@ import { requireAuth } from '../../utils/auth'
 export default defineEventHandler(async (event) => {
   await requireAuth(event)
 
-  const conContacto = await prisma.contactoGuardado.findMany({
-    select: { guardadoClientId: true }, distinct: ['guardadoClientId'],
-  })
-  const idsConContacto = new Set(conContacto.map((c: any) => c.guardadoClientId))
-
+  // Antes se traía TODO el histórico de contactoGuardado (crece para
+  // siempre) para armar el Set — ahora se acota primero a los guardados
+  // activos (pequeño, por estado) y solo se consulta el contacto de esos.
   const activos = await prisma.transporteGuardado.findMany({
     where: { estado: 'PENDIENTE DESPACHO' },
     select: { client_id: true, documento: true, fecha: true, ubicacion: true },
     orderBy: { fecha: 'asc' },
   })
+
+  const idsConContacto = activos.length
+    ? new Set(
+        (await prisma.contactoGuardado.findMany({
+          where: { guardadoClientId: { in: activos.map((g: any) => g.client_id) } },
+          select: { guardadoClientId: true },
+          distinct: ['guardadoClientId'],
+        })).map((c: any) => c.guardadoClientId),
+      )
+    : new Set<string>()
   const sinContacto = activos.filter((g: any) => !idsConContacto.has(g.client_id))
 
   return {

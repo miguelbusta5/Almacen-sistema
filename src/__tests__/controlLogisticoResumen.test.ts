@@ -5,6 +5,7 @@ const mocks = vi.hoisted(() => ({
   novedadCount: vi.fn(),
   transporteCount: vi.fn(),
   despachoCount: vi.fn(),
+  despachoGroupBy: vi.fn(),
   guardadoPendienteCount: vi.fn(),
   solicitudTransporteCount: vi.fn(),
   exportacionCount: vi.fn(),
@@ -19,7 +20,7 @@ vi.mock("@/lib/prisma", () => ({
   prisma: {
     novedad: { count: mocks.novedadCount },
     transporteGuardado: { count: mocks.transporteCount },
-    despachoTienda: { count: mocks.despachoCount },
+    despachoTienda: { count: mocks.despachoCount, groupBy: mocks.despachoGroupBy },
     guardadoPendienteTienda: { count: mocks.guardadoPendienteCount },
     solicitudTransporte: { count: mocks.solicitudTransporteCount },
     etiquetadoExportacion: { count: mocks.exportacionCount },
@@ -43,6 +44,7 @@ describe("buildControlLogisticoResumen", () => {
     mocks.novedadCount.mockResolvedValue(0);
     mocks.transporteCount.mockResolvedValue(0);
     mocks.despachoCount.mockResolvedValue(0);
+    mocks.despachoGroupBy.mockResolvedValue([]);
     mocks.guardadoPendienteCount.mockResolvedValue(0);
     mocks.solicitudTransporteCount.mockResolvedValue(0);
     mocks.exportacionCount.mockResolvedValue(0);
@@ -66,12 +68,13 @@ describe("buildControlLogisticoResumen", () => {
   });
 
   it("TIENDA recibe senales de tienda y tareas, sin transporte ni usuarios", async () => {
-    mocks.despachoCount
-      .mockResolvedValueOnce(3)
-      .mockResolvedValueOnce(1)
-      .mockResolvedValueOnce(2)
-      .mockResolvedValueOnce(4)
-      .mockResolvedValueOnce(5);
+    mocks.despachoGroupBy.mockResolvedValueOnce([
+      { estado: "CREADO_TIENDA", _count: { estado: 3 } },
+      { estado: "RECHAZADO", _count: { estado: 1 } },
+      { estado: "CON_NOVEDAD", _count: { estado: 2 } },
+      { estado: "ENTREGADO_CEDI", _count: { estado: 4 } },
+      { estado: "ENVIADO_CLIENTE", _count: { estado: 5 } },
+    ]);
     mocks.notificacionCount.mockResolvedValueOnce(7);
 
     const resumen = await buildControlLogisticoResumen(actor("TIENDA"));
@@ -88,12 +91,13 @@ describe("buildControlLogisticoResumen", () => {
 
   it("SUPERVISOR_TRANSPORTE combina tienda, transporte, centro-control e integracion permitida", async () => {
     mocks.transporteCount.mockResolvedValueOnce(6);
-    mocks.despachoCount
-      .mockResolvedValueOnce(2)
-      .mockResolvedValueOnce(0)
-      .mockResolvedValueOnce(1)
-      .mockResolvedValueOnce(4)
-      .mockResolvedValueOnce(8);
+    mocks.despachoGroupBy.mockResolvedValueOnce([
+      { estado: "CREADO_TIENDA", _count: { estado: 2 } },
+      { estado: "RECHAZADO", _count: { estado: 0 } },
+      { estado: "CON_NOVEDAD", _count: { estado: 1 } },
+      { estado: "ENTREGADO_CEDI", _count: { estado: 4 } },
+      { estado: "ENVIADO_CLIENTE", _count: { estado: 8 } },
+    ]);
     mocks.guardadoPendienteCount.mockResolvedValueOnce(3);
     mocks.integracionCount.mockResolvedValueOnce(5);
     mocks.inspeccionCount.mockResolvedValueOnce(1);

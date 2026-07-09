@@ -29,20 +29,36 @@ function moduleSignal(key: ModuleKey, count: number | undefined, status: Control
   };
 }
 
+// Cache corto en memoria por usuario — el dashboard se auto-refresca cada
+// 60s (useAutoRefresh) y puede haber varias pestañas abiertas del mismo
+// usuario; sin esto cada una dispara las mismas ~13 queries por separado.
+// No reemplaza datos borrados ni cambia el resultado, solo evita repetir
+// el cálculo dentro de la ventana de TTL en la misma instancia serverless.
+const RESUMEN_CACHE_TTL_MS = 15_000;
+const resumenCache = new Map<string, { data: ControlLogisticoResumen; expiresAt: number }>();
+
 export async function buildControlLogisticoResumen(actor: SessionUser): Promise<ControlLogisticoResumen> {
+  const cacheKey = `${actor.id}:${actor.role}`;
+  const cached = resumenCache.get(cacheKey);
+  if (cached && cached.expiresAt > Date.now()) return cached.data;
+
+  const data = await computeControlLogisticoResumen(actor);
+  resumenCache.set(cacheKey, { data, expiresAt: Date.now() + RESUMEN_CACHE_TTL_MS });
+  return data;
+}
+
+async function computeControlLogisticoResumen(actor: SessionUser): Promise<ControlLogisticoResumen> {
   const role = actor.role;
   const visibleModules = getVisibleModules(role);
   const see = (key: ModuleKey) => canSeeModule(role, key);
+
+  const ESTADOS_TIENDA = ["CREADO_TIENDA", "RECHAZADO", "CON_NOVEDAD", "ENTREGADO_CEDI", "ENVIADO_CLIENTE"] as const;
 
   const [
     novedadesPendientes,
     novedadesCriticas,
     guardadosPendientes,
-    tiendaCreados,
-    tiendaRechazados,
-    tiendaNovedad,
-    tiendaCedi,
-    tiendaEnviados,
+    tiendaPorEstado,
     pendientesGuardado,
     solicitudesPendientes,
     solicitudesAlertas,
@@ -61,11 +77,13 @@ export async function buildControlLogisticoResumen(actor: SessionUser): Promise<
       },
     }) : 0,
     see("transporte") ? prisma.transporteGuardado.count({ where: { estado: "PENDIENTE DESPACHO" } }) : 0,
-    see("tienda") ? prisma.despachoTienda.count({ where: { estado: "CREADO_TIENDA" } }) : 0,
-    see("tienda") ? prisma.despachoTienda.count({ where: { estado: "RECHAZADO" } }) : 0,
-    see("tienda") ? prisma.despachoTienda.count({ where: { estado: "CON_NOVEDAD" } }) : 0,
-    see("tienda") ? prisma.despachoTienda.count({ where: { estado: "ENTREGADO_CEDI" } }) : 0,
-    see("tienda") ? prisma.despachoTienda.count({ where: { estado: "ENVIADO_CLIENTE" } }) : 0,
+    // Antes eran 5 counts separados (uno por estado) — un solo groupBy
+    // hace el mismo trabajo en una sola consulta a la base de datos.
+    see("tienda") ? prisma.despachoTienda.groupBy({
+      by: ["estado"],
+      where: { estado: { in: [...ESTADOS_TIENDA] } },
+      _count: { estado: true },
+    }) : [],
     see("transporte") ? prisma.guardadoPendienteTienda.count({
       where: {
         estado: "PENDIENTE",
@@ -111,6 +129,14 @@ export async function buildControlLogisticoResumen(actor: SessionUser): Promise<
       },
     }) : 0,
   ]);
+
+  const tiendaCount = (estado: (typeof ESTADOS_TIENDA)[number]) =>
+    tiendaPorEstado.find((g) => g.estado === estado)?._count.estado ?? 0;
+  const tiendaCreados = tiendaCount("CREADO_TIENDA");
+  const tiendaRechazados = tiendaCount("RECHAZADO");
+  const tiendaNovedad = tiendaCount("CON_NOVEDAD");
+  const tiendaCedi = tiendaCount("ENTREGADO_CEDI");
+  const tiendaEnviados = tiendaCount("ENVIADO_CLIENTE");
 
   const priorities: ControlPriority[] = [];
 
