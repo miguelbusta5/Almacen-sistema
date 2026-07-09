@@ -735,14 +735,50 @@ export default function InventarioMobilePage() {
   const canEdit = can(role, "edit");
   const canCreate = can(role, "create");
 
-  const { data: novData, isLoading: loading, isValidating: refreshing, mutate: mutateNovedades } = useApi<{ data: Novedad[] }>("/api/novedades?pageSize=500");
-  const novedades = useMemo(() => novData?.data ?? [], [novData]);
   const [filter, setFilter] = useState<"" | EstadoNovedad>("");
   const [search, setSearch] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
   const [searchOpen, setSearchOpen] = useState(false);
   const [sheet, setSheet] = useState<"nueva" | "detalle" | null>(null);
   const [selected, setSelected] = useState<Novedad | null>(null);
   const [toast, setToast] = useState<{ msg: string; ok?: boolean } | null>(null);
+
+  // Ventana cargada — antes se traían hasta 500 novedades de una vez; ahora
+  // se pide un lote acotado y "Cargar más" lo va ampliando bajo demanda.
+  const [pageSize, setPageSize] = useState(30);
+
+  // Debounce de búsqueda: evita pedir al servidor en cada tecla.
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedSearch(search), 300);
+    return () => clearTimeout(t);
+  }, [search]);
+  // Cambiar filtro o búsqueda reinicia la ventana cargada.
+  useEffect(() => { setPageSize(30); }, [filter, debouncedSearch]);
+
+  const listKey = useMemo(() => {
+    const qs = new URLSearchParams({ pageSize: String(pageSize) });
+    if (filter) qs.set("estado", filter);
+    if (debouncedSearch) qs.set("q", debouncedSearch);
+    return `/api/novedades?${qs.toString()}`;
+  }, [pageSize, filter, debouncedSearch]);
+
+  const { data: novData, isLoading: loading, isValidating: refreshing, mutate: mutateNovedades } = useApi<{ data: Novedad[]; total: number }>(listKey);
+  const novedades = useMemo(() => novData?.data ?? [], [novData]);
+  const totalFiltrado = novData?.total ?? 0;
+  const hayMas = novedades.length < totalFiltrado;
+
+  // Contadores para chips de filtro — antes se calculaban filtrando el
+  // arreglo completo cargado en el cliente; ahora vienen de un endpoint
+  // de conteos aparte, independiente de la ventana cargada.
+  const { data: conteosData } = useApi<{ data: Record<string, number> }>("/api/novedades/conteos");
+  const counts = conteosData?.data ?? { "": 0, "PENDIENTE": 0, "EN PROCESO": 0, "SOLUCIONADO": 0 };
+
+  // Datos para autocomplete — antes se derivaban del arreglo completo
+  // cargado en el cliente; ahora vienen de un endpoint de valores
+  // distintos, acotado.
+  const { data: opcionesData } = useApi<{ data: { plus: string[]; posiciones: string[] } }>("/api/novedades/opciones");
+  const existingPlus = opcionesData?.data.plus ?? [];
+  const existingPosiciones = opcionesData?.data.posiciones ?? [];
 
   const autoRefresh = useAutoRefresh({
     pause: Boolean(sheet),
@@ -753,40 +789,6 @@ export default function InventarioMobilePage() {
     setToast({ msg, ok });
     setTimeout(() => setToast(null), 2500);
   }
-
-  // Lista filtrada
-  const filtered = useMemo(() => {
-    let list = [...novedades];
-    if (filter) list = list.filter((n) => n.estado === filter);
-    if (search) {
-      const q = search.toLowerCase();
-      list = list.filter((n) =>
-        n.plu.toLowerCase().includes(q) ||
-        n.posicion.toLowerCase().includes(q) ||
-        (n.fabricante ?? "").toLowerCase().includes(q)
-      );
-    }
-    return list.sort((a, b) => {
-      // Pendientes primero, luego más antiguos
-      if (a.estado !== b.estado) {
-        const order = ["PENDIENTE", "EN PROCESO", "SOLUCIONADO"];
-        return order.indexOf(a.estado) - order.indexOf(b.estado);
-      }
-      return a.fecha.localeCompare(b.fecha);
-    });
-  }, [novedades, filter, search]);
-
-  // Datos para autocomplete
-  const existingPlus = useMemo(() => [...new Set(novedades.map((n) => n.plu))], [novedades]);
-  const existingPosiciones = useMemo(() => [...new Set(novedades.map((n) => n.posicion))], [novedades]);
-
-  // Contadores para chips de filtro
-  const counts = useMemo(() => ({
-    "": novedades.length,
-    "PENDIENTE":  novedades.filter((n) => n.estado === "PENDIENTE").length,
-    "EN PROCESO": novedades.filter((n) => n.estado === "EN PROCESO").length,
-    "SOLUCIONADO":novedades.filter((n) => n.estado === "SOLUCIONADO").length,
-  }), [novedades]);
 
   const FILTROS: Array<{ val: "" | EstadoNovedad; label: string }> = [
     { val: "",            label: `Todas (${counts[""]})` },
@@ -834,7 +836,7 @@ export default function InventarioMobilePage() {
                 Inventario
               </h1>
               <div style={{ fontSize: 12, color: "rgba(226,232,240,0.76)", marginTop: 2 }}>
-                {loading ? "Cargando…" : `${filtered.length} novedad${filtered.length !== 1 ? "es" : ""}`}
+                {loading ? "Cargando…" : `${totalFiltrado} novedad${totalFiltrado !== 1 ? "es" : ""}`}
               </div>
             </div>
             <div style={{ display: "flex", gap: 8 }}>
@@ -893,7 +895,7 @@ export default function InventarioMobilePage() {
               <div key={i} className="skeleton" style={{ height: 72, borderRadius: 0, marginBottom: 1 }} />
             ))}
           </div>
-        ) : filtered.length === 0 ? (
+        ) : novedades.length === 0 ? (
           <div style={{ padding: 32 }}>
             <EmptyState
               icon={<Package size={36} />}
@@ -904,13 +906,28 @@ export default function InventarioMobilePage() {
           </div>
         ) : (
           <>
-            {filtered.map((item) => (
+            {novedades.map((item) => (
               <NovedadCard
                 key={item.id}
                 item={item}
                 onTap={() => { setSelected(item); setSheet("detalle"); }}
               />
             ))}
+            {hayMas && (
+              <div style={{ padding: "14px 16px", textAlign: "center" }}>
+                <button
+                  onClick={() => setPageSize((p) => p + 30)}
+                  disabled={refreshing}
+                  style={{
+                    padding: "10px 22px", borderRadius: 10, border: "1px solid var(--border)",
+                    background: "var(--surface2)", color: "var(--muted)", fontSize: 13, fontWeight: 700,
+                    cursor: "pointer", WebkitTapHighlightColor: "transparent",
+                  }}
+                >
+                  Cargar más
+                </button>
+              </div>
+            )}
             {/* Espacio extra para que el FAB no tape el último item */}
             <div style={{ height: 100 }} />
           </>
@@ -944,7 +961,7 @@ export default function InventarioMobilePage() {
         <NuevaNovedadSheet
           onClose={() => setSheet(null)}
           onCreada={(n) => {
-            void mutateNovedades((current) => ({ data: [n, ...(current?.data ?? [])] }), { revalidate: false });
+            void mutateNovedades((current) => ({ data: [n, ...(current?.data ?? [])], total: (current?.total ?? 0) + 1 }), { revalidate: false });
             setSheet(null);
             showToast("Novedad registrada ✓");
           }}
@@ -958,7 +975,7 @@ export default function InventarioMobilePage() {
           item={selected}
           onClose={() => { setSheet(null); setSelected(null); }}
           onUpdated={(updated) => {
-            void mutateNovedades((current) => ({ data: (current?.data ?? []).map((n) => n.id === updated.id ? updated : n) }), { revalidate: false });
+            void mutateNovedades((current) => ({ data: (current?.data ?? []).map((n) => n.id === updated.id ? updated : n), total: current?.total ?? 0 }), { revalidate: false });
             setSelected(updated);
           }}
           canEdit={canEdit}
