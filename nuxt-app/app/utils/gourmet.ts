@@ -60,6 +60,17 @@ export interface NovedadGourmet {
 
 export type TipoPedidoGourmet = 'GOURMET' | 'MUEBLES'
 
+// Etiquetas y colores por veredicto de escaneo — compartidos por el panel
+// de detalle, la cola visible y el overlay de veredicto a pantalla completa.
+export const RESULTADO_LABEL: Record<string, string> = {
+  VALIDO: 'Caja válida', DUPLICADO: 'Caja duplicada', CAJA_AJENA: 'Caja ajena',
+  FORMATO_INVALIDO: 'Formato inválido', EXCEDE_CANTIDAD: 'Excede cantidad esperada',
+}
+export const RESULTADO_TONE: Record<string, string> = {
+  VALIDO: 'var(--u-ok)', DUPLICADO: 'var(--u-aviso)', CAJA_AJENA: 'var(--u-critico)',
+  FORMATO_INVALIDO: 'var(--muted)', EXCEDE_CANTIDAD: 'var(--u-aviso)',
+}
+
 // Item de la cola local de escaneo: cada caja capturada (cámara, pistola o
 // teclado) entra a la cola al instante y se envía al servidor en orden —
 // así el operario escanea al ritmo de la cámara sin perder cajas mientras

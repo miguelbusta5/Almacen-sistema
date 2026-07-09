@@ -23,42 +23,20 @@ const COOLDOWN_MS = 1500
 let ultimoCodigo = ''
 let ultimoTs = 0
 
-function tono(freq: number, dur = 0.12, vol = 0.15) {
-  try {
-    const ctx = new (window.AudioContext || (window as any).webkitAudioContext)()
-    const osc = ctx.createOscillator()
-    const gain = ctx.createGain()
-    osc.frequency.value = freq
-    osc.connect(gain)
-    gain.connect(ctx.destination)
-    gain.gain.setValueAtTime(vol, ctx.currentTime)
-    osc.start()
-    osc.stop(ctx.currentTime + dur)
-    osc.onended = () => ctx.close().catch(() => {})
-  } catch {
-    // Sin audio disponible (autoplay bloqueado, navegador sin soporte) — el
-    // feedback visual (flash) sigue funcionando, no es crítico.
-  }
-}
-
-function beep(ok: boolean) { tono(ok ? 880 : 220) }
-// Bip corto neutro de "caja capturada" — suena al ENCOLAR (inmediato, sin
-// esperar la red). El veredicto real llega 1-2s después con su tono
-// verde/rojo de siempre (watch de ultimoResultado, abajo).
-function beepCaptura() { tono(600, 0.07, 0.1) }
-
+// Los sonidos y la vibración viven en el padre (utils/escaneoFeedback.ts,
+// disparados al encolar y al confirmar cada veredicto) para que suenen
+// igual con cámara, pistola o teclado — aquí solo queda el feedback
+// visual propio del modo cámara (flash de borde sobre el video).
 function onDetectado(codigo: string) {
   const now = Date.now()
   if (codigo === ultimoCodigo && now - ultimoTs < COOLDOWN_MS) return
   ultimoCodigo = codigo
   ultimoTs = now
-  beepCaptura()
   emit('detectado', codigo)
 }
 
 function mostrarFlash(ok: boolean) {
   flash.value = ok ? 'ok' : 'error'
-  beep(ok)
   if (flashTimeout) clearTimeout(flashTimeout)
   flashTimeout = setTimeout(() => { flash.value = null }, 400)
 }

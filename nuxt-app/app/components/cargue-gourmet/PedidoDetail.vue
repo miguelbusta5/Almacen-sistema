@@ -7,17 +7,9 @@ import {
   ESTADO_LABEL, ESTADO_TONE, fmtFechaHora, rolPuedeTransicionarGourmet,
   puedeGourmet, puedeTransporte, puedeCierreManual, puedeEliminarGourmet, puedeEditarCajas, puedeResolverNovedades,
   ESTADOS_INICIABLES_TRANSPORTE, ESTADOS_FINALIZABLES_TRANSPORTE, ESTADOS_CIERRE_MANUAL, ESTADOS_EDITABLES_CAJAS,
+  RESULTADO_LABEL, RESULTADO_TONE,
   validarCodigoCaja, decodeEstibaObservacion, type PedidoGourmet, type EscaneoEnCola,
 } from '~/utils/gourmet'
-
-const RESULTADO_LABEL: Record<string, string> = {
-  VALIDO: 'Caja válida', DUPLICADO: 'Caja duplicada', CAJA_AJENA: 'Caja ajena',
-  FORMATO_INVALIDO: 'Formato inválido', EXCEDE_CANTIDAD: 'Excede cantidad esperada',
-}
-const RESULTADO_TONE: Record<string, string> = {
-  VALIDO: 'var(--u-ok)', DUPLICADO: 'var(--u-aviso)', CAJA_AJENA: 'var(--u-critico)',
-  FORMATO_INVALIDO: 'var(--muted)', EXCEDE_CANTIDAD: 'var(--u-aviso)',
-}
 const NOVEDAD_TIPO_LABEL: Record<string, string> = {
   CAJA_FALTANTE: 'Caja faltante', CAJA_DUPLICADA: 'Caja duplicada', CAJA_AJENA: 'Caja ajena',
   CIERRE_MANUAL: 'Cierre manual', DIFERENCIA_CANTIDAD: 'Diferencia de cantidad', OTRA: 'Otra',

@@ -2,6 +2,7 @@
 import { ref, computed, watch, onMounted } from 'vue'
 import { RefreshCw, Download, Plus, PackageCheck } from '@lucide/vue'
 import { ESTADOS_NO_DESPACHABLES_MASIVO, type PedidoGourmet, type EscaneoEnCola } from '~/utils/gourmet'
+import { sonarCaptura, sonarVeredicto } from '~/utils/escaneoFeedback'
 import { ensureSession, useSessionState } from '~/composables/useSession'
 import { useToast } from '~/composables/useToast'
 
@@ -123,8 +124,8 @@ async function loadDetalle(id: string) {
   } catch { /* se mantiene el detalle previo si falla el refresh */ }
   finally { if (panelSeq === mySeq) panelLoading.value = false }
 }
-async function openDetail(p: PedidoGourmet) { panelSeq++; panelId.value = p.id; panelItem.value = null; ultimoResultado.value = null; colaEscaneos.value = []; await loadDetalle(p.id) }
-function backToList() { panelSeq++; panelId.value = null; panelItem.value = null; colaEscaneos.value = [] }
+async function openDetail(p: PedidoGourmet) { panelSeq++; panelId.value = p.id; panelItem.value = null; ultimoResultado.value = null; colaEscaneos.value = []; flashVeredicto.value = null; await loadDetalle(p.id) }
+function backToList() { panelSeq++; panelId.value = null; panelItem.value = null; colaEscaneos.value = []; flashVeredicto.value = null }
 
 // Parcha una fila del listado en memoria en vez de recargar las 500 filas
 // del servidor — esto es lo que elimina el round-trip pesado en cada
@@ -228,7 +229,23 @@ function escanear(codigo: string, tieneParte2: boolean) {
   // (MUEBLES) el código repetido es deliberado, así que no se filtra.
   if (!tieneParte2 && colaEscaneos.value.some((s) => (s.estado === 'pendiente' || s.estado === 'enviando') && s.codigo.toUpperCase() === codigoTrim.toUpperCase())) return
   colaEscaneos.value.push({ key: ++colaKey, codigo: codigoTrim, tieneParte2, estado: 'pendiente' })
+  // Bip/vibración de "capturada" — para TODOS los métodos (cámara, pistola,
+  // teclado); antes solo la cámara sonaba.
+  sonarCaptura()
   void procesarColaEscaneos()
+}
+
+// Veredicto visible a pantalla completa (problemas) o destello de borde
+// verde (válidas) — lo muestra VeredictoOverlay; aquí solo se controla qué
+// y por cuánto tiempo. Va acompañado de la melodía/vibración distintiva
+// por veredicto (escaneoFeedback.ts).
+const flashVeredicto = ref<{ resultado: string; codigo: string; mensaje?: string } | null>(null)
+let flashTimer: ReturnType<typeof setTimeout> | null = null
+function mostrarVeredicto(v: { resultado: string; codigo: string; mensaje?: string }) {
+  sonarVeredicto(v.resultado === 'ERROR_RED' ? 'ERROR_RED' : v.resultado)
+  flashVeredicto.value = v
+  if (flashTimer) clearTimeout(flashTimer)
+  flashTimer = setTimeout(() => { flashVeredicto.value = null }, v.resultado === 'VALIDO' ? 450 : 1700)
 }
 
 async function procesarColaEscaneos() {
@@ -252,6 +269,7 @@ async function procesarColaEscaneos() {
         // parche local (la cola se limpió al navegar) y se corta el worker.
         if (panelSeq !== mySeq) break
         ultimoResultado.value = { codigo: item.codigo, resultado: res.resultado }
+        mostrarVeredicto({ codigo: item.codigo, resultado: res.resultado })
 
         const p = panelItem.value
         const cargues = (p.cargues ?? []).map((c) => {
@@ -275,6 +293,7 @@ async function procesarColaEscaneos() {
         item.estado = 'error'
         item.error = apiErr(e, 'Error de red — reintenta')
         if (panelSeq !== mySeq) break
+        mostrarVeredicto({ codigo: item.codigo, resultado: 'ERROR_RED', mensaje: item.error })
       }
     }
   } finally {
@@ -514,6 +533,8 @@ async function exportarExcel() {
       confirm-label="Revertir" confirming-label="Revirtiendo…" :confirming="busy === 'revertir'"
       @close="showConfirmRevertir = false" @confirm="revertirCargue"
     />
+
+    <CargueGourmetVeredictoOverlay :v="flashVeredicto" />
   </div>
 </template>
 
