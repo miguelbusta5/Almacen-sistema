@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, computed, watch, onMounted } from 'vue'
-import { RefreshCw, Download, Plus, PackageCheck } from '@lucide/vue'
+import { RefreshCw, Download, Plus, PackageCheck, Undo2 } from '@lucide/vue'
 import { ESTADOS_NO_DESPACHABLES_MASIVO, type PedidoGourmet, type EscaneoEnCola } from '~/utils/gourmet'
 import { sonarCaptura, sonarVeredicto } from '~/utils/escaneoFeedback'
 import { ensureSession, useSessionState } from '~/composables/useSession'
@@ -456,6 +456,45 @@ async function confirmarCargueMasivo(ids: string[]) {
   })
 }
 
+// ── Reversa masiva (solo ADMIN) ─────────────────────────────────────────
+// Espejo del cargue masivo pero en sentido contrario: devuelve pedidos
+// completados por error a un estado anterior a elección (ver
+// reversa-masiva.post.ts). El backend restringe a ADMIN.
+const showReversaMasiva = ref(false)
+const reversaPedidos = ref<PedidoGourmet[]>([])
+const reversaLoading = ref(false)
+async function abrirReversaMasiva() {
+  reversaLoading.value = true
+  try {
+    const res = await $fetch<{ data: PedidoGourmet[] }>('/api/cargue-gourmet', {
+      query: { pageSize: 200, estadoIn: 'CARGUE_COMPLETO,CARGUE_COMPLETO_MANUAL' },
+    })
+    reversaPedidos.value = res.data
+    showReversaMasiva.value = true
+  } catch {
+    showToast('No se pudo cargar la lista de pedidos completados', true)
+  } finally {
+    reversaLoading.value = false
+  }
+}
+async function confirmarReversaMasiva(ids: string[], destino: string) {
+  return run('reversa-masiva', async () => {
+    try {
+      const res = await $fetch<{ data: { actualizados: string[]; omitidos: { id: string; motivo: string }[] } }>(
+        '/api/cargue-gourmet/reversa-masiva', { method: 'POST', body: { ids, destino } },
+      )
+      showReversaMasiva.value = false
+      await Promise.all([load(), loadConteos()])
+      const { actualizados, omitidos } = res.data
+      if (omitidos.length > 0) {
+        showToast(`${actualizados.length} reversado(s) · ${omitidos.length} omitido(s) — ${omitidos[0]!.motivo}`, actualizados.length === 0)
+      } else {
+        showToast(`${actualizados.length} pedido(s) reversado(s) ✓`)
+      }
+    } catch (e) { showToast(apiErr(e, 'No se pudo reversar'), true) }
+  })
+}
+
 async function exportarExcel() {
   const qs = new URLSearchParams()
   if (q.value) qs.set('q', q.value)
@@ -482,6 +521,7 @@ async function exportarExcel() {
         <button class="btn btn-sm refresh" :class="{ spin: refreshing }" @click="refresh"><RefreshCw :size="14" /> {{ refreshing ? 'Actualizando…' : 'Actualizar' }}</button>
         <button class="btn btn-sm" @click="exportarExcel"><Download :size="14" /> Exportar Excel</button>
         <button v-if="me?.role === 'ADMIN'" class="btn btn-sm" :disabled="masivoLoading" @click="abrirCargueMasivo"><PackageCheck :size="14" /> Cargue masivo</button>
+        <button v-if="me?.role === 'ADMIN'" class="btn btn-sm" :disabled="reversaLoading" @click="abrirReversaMasiva"><Undo2 :size="14" /> Reversa masiva</button>
         <button v-if="canCreate" class="btn btn-primary btn-sm" @click="showCrear = true"><Plus :size="14" /> Nuevo pedido</button>
       </div>
     </section>
@@ -519,6 +559,10 @@ async function exportarExcel() {
     <CargueGourmetCargueMasivoModal
       v-if="showCargueMasivo" :items="masivoPedidos" :saving="busy === 'cargue-masivo'"
       @close="showCargueMasivo = false" @confirm="confirmarCargueMasivo"
+    />
+    <CargueGourmetReversaMasivaModal
+      v-if="showReversaMasiva" :items="reversaPedidos" :saving="busy === 'reversa-masiva'"
+      @close="showReversaMasiva = false" @confirm="confirmarReversaMasiva"
     />
 
     <ConfirmModal

@@ -21,6 +21,9 @@ export default defineEventHandler(async (event) => {
   // despachables (excluye los ya completados/cancelados) sin depender del
   // listado paginado de la pantalla principal.
   const estadoNot = String(sp.estadoNot ?? '').trim().split(',').map((s) => s.trim()).filter(Boolean)
+  // Usado por el modal de "Reversa masiva" para traer solo los pedidos
+  // completados (CARGUE_COMPLETO,CARGUE_COMPLETO_MANUAL).
+  const estadoIn = String(sp.estadoIn ?? '').trim().split(',').map((s) => s.trim()).filter(Boolean)
 
   const where: any = {}
   const and: any[] = []
@@ -29,6 +32,7 @@ export default defineEventHandler(async (event) => {
   if (tienda) where.nombreTienda = tienda
   if (tipoOrden) where.tipoOrden = tipoOrden
   if (estadoNot.length) where.estado = { notIn: estadoNot }
+  if (estadoIn.length) where.estado = { in: estadoIn }
   if (q) {
     and.push({
       OR: [
