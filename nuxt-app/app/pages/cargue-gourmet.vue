@@ -257,17 +257,43 @@ async function procesarColaEscaneos() {
       if (!item || !panelItem.value) break
       const mySeq = panelSeq
       item.estado = 'enviando'
+      type RespuestaEscaneo = {
+        resultado: string; novedadCreada: boolean; progreso: { escaneados: number; esperados: number }
+        data: { escaneo: { id: string; codigoEscaneado: string; resultado: string; createdAt: string }; novedad?: { id: string; tipo: string; estado: string; descripcion: string } }
+      }
+      let res: RespuestaEscaneo
       try {
-        const res = await $fetch<{
-          resultado: string; novedadCreada: boolean; progreso: { escaneados: number; esperados: number }
-          data: { escaneo: { id: string; codigoEscaneado: string; resultado: string; createdAt: string }; novedad?: { id: string; tipo: string; estado: string; descripcion: string } }
-        }>(`/api/cargue-gourmet/${panelItem.value.id}/escanear`, { method: 'POST', body: { codigo: item.codigo, tieneParte2: item.tieneParte2 } })
-        item.estado = 'ok'
-        item.resultado = res.resultado
-        // Si el usuario navegó a otro pedido mientras esta caja viajaba, el
-        // escaneo YA quedó registrado en el servidor — solo se omite el
-        // parche local (la cola se limpió al navegar) y se corta el worker.
+        res = await $fetch<RespuestaEscaneo>(`/api/cargue-gourmet/${panelItem.value.id}/escanear`, { method: 'POST', body: { codigo: item.codigo, tieneParte2: item.tieneParte2 } })
+      } catch (e) {
+        // Fallas transitorias (red caída, timeout, 5xx) se reintentan solas
+        // UNA vez tras una pausa — un rechazo de negocio (4xx: estado
+        // inválido, formato, cargue cerrado) no, porque repetirlo daría lo
+        // mismo. Solo tras agotar el reintento queda "Error" con botón.
+        const status = (e as { statusCode?: number; status?: number })?.statusCode ?? (e as { status?: number })?.status
+        const esTransitoria = !status || status >= 500
+        if (esTransitoria && (item.intentos ?? 0) < 1) {
+          item.intentos = (item.intentos ?? 0) + 1
+          await new Promise((r) => setTimeout(r, 1200))
+          if (panelSeq !== mySeq) break
+          item.estado = 'pendiente'
+          continue
+        }
+        item.estado = 'error'
+        item.error = apiErr(e, 'Error de red — reintenta')
         if (panelSeq !== mySeq) break
+        mostrarVeredicto({ codigo: item.codigo, resultado: 'ERROR_RED', mensaje: item.error })
+        continue
+      }
+      // A partir de aquí el escaneo YA quedó registrado en el servidor — el
+      // item se marca ok pase lo que pase con el refresco local de abajo
+      // (antes, una excepción en el parche marcaba "Error" una caja que sí
+      // se había registrado, confundiendo al operario).
+      item.estado = 'ok'
+      item.resultado = res.resultado
+      // Si el usuario navegó a otro pedido mientras esta caja viajaba, solo
+      // se omite el parche local (la cola se limpió al navegar).
+      if (panelSeq !== mySeq) break
+      try {
         ultimoResultado.value = { codigo: item.codigo, resultado: res.resultado }
         mostrarVeredicto({ codigo: item.codigo, resultado: res.resultado })
 
@@ -279,7 +305,7 @@ async function procesarColaEscaneos() {
             cantidadEscaneada: res.progreso.escaneados,
             escaneos: [
               { ...res.data.escaneo, escaneadoPorId: me.value?.id ?? '', escaneadoPorNombre: me.value?.name ?? null },
-              ...c.escaneos,
+              ...(c.escaneos ?? []),
             ],
           }
         })
@@ -287,13 +313,10 @@ async function procesarColaEscaneos() {
           ? [{ id: res.data.novedad.id, tipo: res.data.novedad.tipo, estado: res.data.novedad.estado, descripcion: res.data.novedad.descripcion, registradaPorId: me.value?.id ?? '', registradaPorNombre: me.value?.name ?? null, resueltaPorId: null, resueltaPorNombre: null, resueltaAt: null, createdAt: res.data.escaneo.createdAt }, ...(p.novedades ?? [])]
           : (p.novedades ?? [])
         panelItem.value = { ...p, cargues, novedades }
-      } catch (e) {
-        // El item queda en la cola marcado con error y botón de reintento —
-        // nunca se pierde en silencio.
-        item.estado = 'error'
-        item.error = apiErr(e, 'Error de red — reintenta')
-        if (panelSeq !== mySeq) break
-        mostrarVeredicto({ codigo: item.codigo, resultado: 'ERROR_RED', mensaje: item.error })
+      } catch {
+        // El refresco local es cosmético: si falla, un loadDetalle puntual
+        // repara el panel sin tocar el estado del item (ya registrado).
+        void loadDetalle(panelItem.value.id)
       }
     }
   } finally {
@@ -306,6 +329,7 @@ function reintentarEscaneo(key: number) {
   if (item?.estado === 'error') {
     item.estado = 'pendiente'
     item.error = undefined
+    item.intentos = 0
     void procesarColaEscaneos()
   }
 }

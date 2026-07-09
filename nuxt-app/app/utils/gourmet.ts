@@ -84,6 +84,8 @@ export interface EscaneoEnCola {
   estado: 'pendiente' | 'enviando' | 'ok' | 'error'
   resultado?: string
   error?: string
+  /** Reintentos automáticos ya consumidos (fallas transitorias de red/5xx). */
+  intentos?: number
 }
 
 export interface PedidoGourmet {

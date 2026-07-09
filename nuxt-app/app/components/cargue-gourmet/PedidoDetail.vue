@@ -217,17 +217,21 @@ const resumen = computed(() => [
             Esta caja tiene varias partes (marca esto en cada parte adicional — 2ª, 3ª, 4ª… — para repetir el número sin que quede como duplicado)
           </label>
           <div v-if="colaVisible.length" class="cola">
-            <div v-for="s in colaVisible" :key="s.key" class="cola-row">
-              <Badge
-                v-if="s.estado === 'ok'"
-                :label="RESULTADO_LABEL[s.resultado ?? ''] ?? s.resultado ?? ''"
-                :tone="RESULTADO_TONE[s.resultado ?? ''] ?? 'var(--muted)'"
-              />
-              <Badge v-else-if="s.estado === 'error'" label="Error" tone="var(--u-critico)" />
-              <Badge v-else label="Registrando…" tone="var(--muted)" />
-              <span class="mono cola-cod">{{ s.codigo }}</span>
-              <Spinner v-if="s.estado === 'pendiente' || s.estado === 'enviando'" />
-              <button v-if="s.estado === 'error'" class="btn btn-sm cola-retry" :title="s.error" @click="emit('reintentarEscaneo', s.key)">Reintentar</button>
+            <div v-for="s in colaVisible" :key="s.key" class="cola-item">
+              <div class="cola-row">
+                <Badge
+                  v-if="s.estado === 'ok'"
+                  :label="RESULTADO_LABEL[s.resultado ?? ''] ?? s.resultado ?? ''"
+                  :tone="RESULTADO_TONE[s.resultado ?? ''] ?? 'var(--muted)'"
+                />
+                <Badge v-else-if="s.estado === 'error'" label="Error" tone="var(--u-critico)" />
+                <Badge v-else label="Registrando…" tone="var(--muted)" />
+                <span class="mono cola-cod">{{ s.codigo }}</span>
+                <Spinner v-if="s.estado === 'pendiente' || s.estado === 'enviando'" />
+                <button v-if="s.estado === 'error'" class="btn btn-sm cola-retry" @click="emit('reintentarEscaneo', s.key)">Reintentar</button>
+              </div>
+              <!-- El motivo visible en la fila — en celular no hay tooltips. -->
+              <div v-if="s.estado === 'error' && s.error" class="cola-motivo">{{ s.error }}</div>
             </div>
           </div>
           <div v-if="completo" class="completo-alerta">
@@ -396,9 +400,11 @@ const resumen = computed(() => [
 .escan-form .field { flex: 1; }
 .parte2 { display: flex; align-items: center; gap: 8px; margin-top: 8px; font-size: 12px; color: var(--muted); cursor: pointer; }
 .cola { display: flex; flex-direction: column; gap: 6px; margin-top: 10px; }
+.cola-item { display: flex; flex-direction: column; gap: 3px; }
 .cola-row { display: flex; align-items: center; gap: 8px; }
 .cola-cod { font-size: 12px; color: var(--muted); }
 .cola-retry { margin-left: auto; color: var(--u-critico); border-color: var(--u-critico); padding: 2px 10px; }
+.cola-motivo { font-size: 11.5px; color: var(--u-critico); padding-left: 2px; }
 .completo-alerta { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: 12px; padding: 10px 12px; border-radius: var(--r-sm); background: var(--u-ok-tint); border: 1px solid color-mix(in srgb, var(--u-ok) 40%, transparent); }
 .completo-txt { font-size: 13px; font-weight: 700; color: var(--u-ok); }
 
