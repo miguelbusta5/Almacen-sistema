@@ -164,6 +164,10 @@ export async function GET(req: NextRequest) {
   const hasta = searchParams.get("hasta");
   if (desde && /^\d{4}-\d{2}-\d{2}$/.test(desde)) fecha.gte = new Date(`${desde}T00:00:00.000Z`);
   if (hasta && /^\d{4}-\d{2}-\d{2}$/.test(hasta)) fecha.lte = new Date(`${hasta}T23:59:59.999Z`);
+  // Sin rango explícito, acota a los últimos 90 días — antes, sin filtro,
+  // cada adaptador escaneaba el histórico completo de su tabla en cada
+  // carga del mapa (las 4 fuentes solo crecen, nunca se borran).
+  if (!fecha.gte && !fecha.lte) fecha.gte = new Date(Date.now() - 90 * 86_400_000);
 
   const eventLists = await Promise.all(fuentes.map((f) => ADAPTERS[f](fecha)));
   const grouped = aggregate(eventLists.flat());
