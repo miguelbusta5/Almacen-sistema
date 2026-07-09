@@ -60,6 +60,21 @@ export interface NovedadGourmet {
 
 export type TipoPedidoGourmet = 'GOURMET' | 'MUEBLES'
 
+// Item de la cola local de escaneo: cada caja capturada (cámara, pistola o
+// teclado) entra a la cola al instante y se envía al servidor en orden —
+// así el operario escanea al ritmo de la cámara sin perder cajas mientras
+// la anterior viaja por la red. 'pendiente'/'enviando' → fila gris
+// "registrando…"; al confirmar, el veredicto real del servidor (VALIDO/
+// DUPLICADO/CAJA_AJENA/…) con sus colores/sonidos de siempre.
+export interface EscaneoEnCola {
+  key: number
+  codigo: string
+  tieneParte2: boolean
+  estado: 'pendiente' | 'enviando' | 'ok' | 'error'
+  resultado?: string
+  error?: string
+}
+
 export interface PedidoGourmet {
   id: string
   orden: string

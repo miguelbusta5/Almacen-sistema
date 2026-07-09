@@ -7,7 +7,7 @@ import {
   ESTADO_LABEL, ESTADO_TONE, fmtFechaHora, rolPuedeTransicionarGourmet,
   puedeGourmet, puedeTransporte, puedeCierreManual, puedeEliminarGourmet, puedeEditarCajas, puedeResolverNovedades,
   ESTADOS_INICIABLES_TRANSPORTE, ESTADOS_FINALIZABLES_TRANSPORTE, ESTADOS_CIERRE_MANUAL, ESTADOS_EDITABLES_CAJAS,
-  validarCodigoCaja, decodeEstibaObservacion, type PedidoGourmet,
+  validarCodigoCaja, decodeEstibaObservacion, type PedidoGourmet, type EscaneoEnCola,
 } from '~/utils/gourmet'
 
 const RESULTADO_LABEL: Record<string, string> = {
@@ -23,7 +23,7 @@ const NOVEDAD_TIPO_LABEL: Record<string, string> = {
   CIERRE_MANUAL: 'Cierre manual', DIFERENCIA_CANTIDAD: 'Diferencia de cantidad', OTRA: 'Otra',
 }
 
-const props = defineProps<{ p: PedidoGourmet; role: string; busy?: string | null; escaneando?: boolean; ultimoResultado?: { codigo: string; resultado: string } | null }>()
+const props = defineProps<{ p: PedidoGourmet; role: string; busy?: string | null; escaneando?: boolean; ultimoResultado?: { codigo: string; resultado: string } | null; cola?: EscaneoEnCola[] }>()
 const emit = defineEmits<{
   (e: 'back'): void
   (e: 'edit'): void
@@ -34,6 +34,7 @@ const emit = defineEmits<{
   (e: 'revertir'): void
   (e: 'cierreManual'): void
   (e: 'escanear', codigo: string, tieneParte2: boolean): void
+  (e: 'reintentarEscaneo', key: number): void
   (e: 'eliminarCaja', cajaId: string): void
   (e: 'agregarCajaManual', estibaId: string, codigo: string): void
   (e: 'resolverNovedad', novedadId: string): void
@@ -78,9 +79,12 @@ const completo = computed(() => !!progreso.value && progreso.value.esperados > 0
 
 const codigo = ref('')
 const inputRef = ref<HTMLInputElement | null>(null)
+// Ya no se bloquea mientras hay envíos en curso: cada captura entra a la
+// cola del padre al instante y se puede seguir escaneando sin esperar la
+// respuesta del servidor.
 function submitEscaneo() {
   const v = codigo.value.trim()
-  if (!v || props.escaneando) return
+  if (!v) return
   emit('escanear', v, tieneParte2.value)
   codigo.value = ''
   tieneParte2.value = false
@@ -91,9 +95,13 @@ function submitEscaneo() {
 // solo cambia el método de captura — sin duplicar lógica de negocio.
 const mostrarCamara = ref(false)
 function onDetectadoCamara(v: string) {
-  if (props.escaneando) return
   emit('escanear', v, tieneParte2.value)
 }
+
+// Últimos items de la cola, el más reciente primero — reemplaza el "último
+// resultado" único de antes: con escaneo en cadena hay varios en vuelo a
+// la vez y cada uno necesita mostrar su propio estado/veredicto.
+const colaVisible = computed(() => (props.cola ?? []).slice(-6).reverse())
 
 // Rama alterna del flujo (novedad abierta, cierre manual o cancelado) —
 // se muestra como tarjeta de severidad en vez del <Badge> plano, mismo
@@ -161,7 +169,7 @@ const resumen = computed(() => [
           <Spinner v-if="busy === 'iniciarCargue'" /><Truck v-else :size="14" />
           {{ busy === 'iniciarCargue' ? 'Iniciando…' : 'Iniciar cargue' }}
         </button>
-        <button v-if="puedeFinalizarCargue" class="btn btn-primary btn-sm" :disabled="!!busy || !completo" :title="!completo ? 'El cargue solo puede finalizar cuando el conteo esté completo' : ''" @click="emit('finalizar')">
+        <button v-if="puedeFinalizarCargue" class="btn btn-primary btn-sm" :disabled="!!busy || !completo || escaneando" :title="!completo ? 'El cargue solo puede finalizar cuando el conteo esté completo' : escaneando ? 'Espera a que terminen de registrarse los escaneos en curso' : ''" @click="emit('finalizar')">
           <Spinner v-if="busy === 'finalizar'" /><CheckCircle2 v-else :size="14" />
           {{ busy === 'finalizar' ? 'Finalizando…' : 'Finalizar cargue' }}
         </button>
@@ -208,21 +216,31 @@ const resumen = computed(() => [
             <Badge :label="completo ? 'Completo' : 'Incompleto'" :tone="completo ? 'var(--u-ok)' : 'var(--u-aviso)'" />
           </div>
           <form class="escan-form" @submit.prevent="submitEscaneo">
-            <input ref="inputRef" v-model="codigo" class="field mono" placeholder="Escanea o escribe el código de la caja…" autofocus :disabled="escaneando">
-            <button type="submit" class="btn btn-primary btn-sm" :disabled="escaneando || !codigo.trim()">{{ escaneando ? 'Registrando…' : 'Registrar' }}</button>
-            <button type="button" class="btn btn-sm" :disabled="escaneando" title="Escanear con la cámara" @click="mostrarCamara = true"><Camera :size="14" /></button>
+            <input ref="inputRef" v-model="codigo" class="field mono" placeholder="Escanea o escribe el código de la caja…" autofocus>
+            <button type="submit" class="btn btn-primary btn-sm" :disabled="!codigo.trim()">Registrar</button>
+            <button type="button" class="btn btn-sm" title="Escanear con la cámara" @click="mostrarCamara = true"><Camera :size="14" /></button>
           </form>
           <label v-if="esMuebles" class="parte2">
             <input v-model="tieneParte2" type="checkbox">
             Esta caja tiene varias partes (marca esto en cada parte adicional — 2ª, 3ª, 4ª… — para repetir el número sin que quede como duplicado)
           </label>
-          <div v-if="ultimoResultado" class="ultimo">
-            <Badge :label="RESULTADO_LABEL[ultimoResultado.resultado] ?? ultimoResultado.resultado" :tone="RESULTADO_TONE[ultimoResultado.resultado] ?? 'var(--muted)'" />
-            <span class="mono ultimo-cod">{{ ultimoResultado.codigo }}</span>
+          <div v-if="colaVisible.length" class="cola">
+            <div v-for="s in colaVisible" :key="s.key" class="cola-row">
+              <Badge
+                v-if="s.estado === 'ok'"
+                :label="RESULTADO_LABEL[s.resultado ?? ''] ?? s.resultado ?? ''"
+                :tone="RESULTADO_TONE[s.resultado ?? ''] ?? 'var(--muted)'"
+              />
+              <Badge v-else-if="s.estado === 'error'" label="Error" tone="var(--u-critico)" />
+              <Badge v-else label="Registrando…" tone="var(--muted)" />
+              <span class="mono cola-cod">{{ s.codigo }}</span>
+              <Spinner v-if="s.estado === 'pendiente' || s.estado === 'enviando'" />
+              <button v-if="s.estado === 'error'" class="btn btn-sm cola-retry" :title="s.error" @click="emit('reintentarEscaneo', s.key)">Reintentar</button>
+            </div>
           </div>
           <div v-if="completo" class="completo-alerta">
             <span class="completo-txt">Escaneo completo ✓</span>
-            <button class="btn btn-primary btn-sm" :disabled="!!busy" @click="emit('finalizar')">
+            <button class="btn btn-primary btn-sm" :disabled="!!busy || escaneando" :title="escaneando ? 'Espera a que terminen de registrarse los escaneos en curso' : ''" @click="emit('finalizar')">
               <Spinner v-if="busy === 'finalizar'" />{{ busy === 'finalizar' ? 'Enviando…' : 'Enviar' }}
             </button>
           </div>
@@ -385,8 +403,10 @@ const resumen = computed(() => [
 .escan-form { display: flex; gap: 8px; }
 .escan-form .field { flex: 1; }
 .parte2 { display: flex; align-items: center; gap: 8px; margin-top: 8px; font-size: 12px; color: var(--muted); cursor: pointer; }
-.ultimo { display: flex; align-items: center; gap: 8px; margin-top: 10px; }
-.ultimo-cod { font-size: 12px; color: var(--muted); }
+.cola { display: flex; flex-direction: column; gap: 6px; margin-top: 10px; }
+.cola-row { display: flex; align-items: center; gap: 8px; }
+.cola-cod { font-size: 12px; color: var(--muted); }
+.cola-retry { margin-left: auto; color: var(--u-critico); border-color: var(--u-critico); padding: 2px 10px; }
 .completo-alerta { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: 12px; padding: 10px 12px; border-radius: var(--r-sm); background: var(--u-ok-tint); border: 1px solid color-mix(in srgb, var(--u-ok) 40%, transparent); }
 .completo-txt { font-size: 13px; font-weight: 700; color: var(--u-ok); }
 

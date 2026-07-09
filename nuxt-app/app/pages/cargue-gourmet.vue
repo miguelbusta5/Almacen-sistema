@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, computed, watch, onMounted } from 'vue'
 import { RefreshCw, Download, Plus, PackageCheck } from '@lucide/vue'
-import { ESTADOS_NO_DESPACHABLES_MASIVO, type PedidoGourmet } from '~/utils/gourmet'
+import { ESTADOS_NO_DESPACHABLES_MASIVO, type PedidoGourmet, type EscaneoEnCola } from '~/utils/gourmet'
 import { ensureSession, useSessionState } from '~/composables/useSession'
 import { useToast } from '~/composables/useToast'
 
@@ -123,8 +123,8 @@ async function loadDetalle(id: string) {
   } catch { /* se mantiene el detalle previo si falla el refresh */ }
   finally { if (panelSeq === mySeq) panelLoading.value = false }
 }
-async function openDetail(p: PedidoGourmet) { panelSeq++; panelId.value = p.id; panelItem.value = null; ultimoResultado.value = null; await loadDetalle(p.id) }
-function backToList() { panelSeq++; panelId.value = null; panelItem.value = null }
+async function openDetail(p: PedidoGourmet) { panelSeq++; panelId.value = p.id; panelItem.value = null; ultimoResultado.value = null; colaEscaneos.value = []; await loadDetalle(p.id) }
+function backToList() { panelSeq++; panelId.value = null; panelItem.value = null; colaEscaneos.value = [] }
 
 // Parcha una fila del listado en memoria en vez de recargar las 500 filas
 // del servidor — esto es lo que elimina el round-trip pesado en cada
@@ -206,40 +206,88 @@ function iniciarCargue() {
 }
 
 // El escaneo es la acción de mayor frecuencia (varias por segundo durante
-// un cargue) — aquí sí vale la pena parchear el detalle localmente en vez
-// de pedir loadDetalle() completo en cada caja escaneada.
-async function escanear(codigo: string, tieneParte2: boolean) {
-  if (!panelItem.value || busy.value) return
-  const mySeq = panelSeq
-  busy.value = 'escanear'
-  try {
-    const res = await $fetch<{
-      resultado: string; novedadCreada: boolean; progreso: { escaneados: number; esperados: number }
-      data: { escaneo: { id: string; codigoEscaneado: string; resultado: string; createdAt: string }; novedad?: { id: string; tipo: string; estado: string; descripcion: string } }
-    }>(`/api/cargue-gourmet/${panelItem.value.id}/escanear`, { method: 'POST', body: { codigo, tieneParte2 } })
-    if (panelSeq !== mySeq) return
-    ultimoResultado.value = { codigo, resultado: res.resultado }
+// un cargue). Antes cada escaneo bloqueaba con `busy` y cualquier caja
+// capturada mientras la anterior viajaba al servidor se DESCARTABA en
+// silencio (ritmo máximo = 1 caja por round-trip). Ahora cada captura
+// entra a una cola local al instante y un worker único las envía en orden
+// (serial hacia el servidor — el lock FOR UPDATE ya serializa en DB de
+// todas formas): el operario escanea al ritmo de la cámara sin perder
+// ninguna, y el veredicto de cada caja llega 1-2s después con sus
+// colores/sonidos de siempre. Flujo acordado explícitamente con el usuario.
+const colaEscaneos = ref<EscaneoEnCola[]>([])
+let colaKey = 0
+let colaWorkerActivo = false
+const escaneandoCola = computed(() => colaEscaneos.value.some((s) => s.estado === 'pendiente' || s.estado === 'enviando'))
 
-    const p = panelItem.value
-    const cargues = (p.cargues ?? []).map((c) => {
-      if (c.estado !== 'EN_CARGUE') return c
-      return {
-        ...c,
-        cantidadEscaneada: res.progreso.escaneados,
-        escaneos: [
-          { ...res.data.escaneo, escaneadoPorId: me.value?.id ?? '', escaneadoPorNombre: me.value?.name ?? null },
-          ...c.escaneos,
-        ],
+function escanear(codigo: string, tieneParte2: boolean) {
+  if (!panelItem.value) return
+  const codigoTrim = codigo.trim()
+  if (!codigoTrim) return
+  // Duplicado local instantáneo: el mismo código aún en vuelo se ignora
+  // (complementa el cooldown de la cámara). Con "tiene varias partes"
+  // (MUEBLES) el código repetido es deliberado, así que no se filtra.
+  if (!tieneParte2 && colaEscaneos.value.some((s) => (s.estado === 'pendiente' || s.estado === 'enviando') && s.codigo.toUpperCase() === codigoTrim.toUpperCase())) return
+  colaEscaneos.value.push({ key: ++colaKey, codigo: codigoTrim, tieneParte2, estado: 'pendiente' })
+  void procesarColaEscaneos()
+}
+
+async function procesarColaEscaneos() {
+  if (colaWorkerActivo) return
+  colaWorkerActivo = true
+  try {
+    while (true) {
+      const item = colaEscaneos.value.find((s) => s.estado === 'pendiente')
+      if (!item || !panelItem.value) break
+      const mySeq = panelSeq
+      item.estado = 'enviando'
+      try {
+        const res = await $fetch<{
+          resultado: string; novedadCreada: boolean; progreso: { escaneados: number; esperados: number }
+          data: { escaneo: { id: string; codigoEscaneado: string; resultado: string; createdAt: string }; novedad?: { id: string; tipo: string; estado: string; descripcion: string } }
+        }>(`/api/cargue-gourmet/${panelItem.value.id}/escanear`, { method: 'POST', body: { codigo: item.codigo, tieneParte2: item.tieneParte2 } })
+        item.estado = 'ok'
+        item.resultado = res.resultado
+        // Si el usuario navegó a otro pedido mientras esta caja viajaba, el
+        // escaneo YA quedó registrado en el servidor — solo se omite el
+        // parche local (la cola se limpió al navegar) y se corta el worker.
+        if (panelSeq !== mySeq) break
+        ultimoResultado.value = { codigo: item.codigo, resultado: res.resultado }
+
+        const p = panelItem.value
+        const cargues = (p.cargues ?? []).map((c) => {
+          if (c.estado !== 'EN_CARGUE') return c
+          return {
+            ...c,
+            cantidadEscaneada: res.progreso.escaneados,
+            escaneos: [
+              { ...res.data.escaneo, escaneadoPorId: me.value?.id ?? '', escaneadoPorNombre: me.value?.name ?? null },
+              ...c.escaneos,
+            ],
+          }
+        })
+        const novedades = res.data.novedad
+          ? [{ id: res.data.novedad.id, tipo: res.data.novedad.tipo, estado: res.data.novedad.estado, descripcion: res.data.novedad.descripcion, registradaPorId: me.value?.id ?? '', registradaPorNombre: me.value?.name ?? null, resueltaPorId: null, resueltaPorNombre: null, resueltaAt: null, createdAt: res.data.escaneo.createdAt }, ...(p.novedades ?? [])]
+          : (p.novedades ?? [])
+        panelItem.value = { ...p, cargues, novedades }
+      } catch (e) {
+        // El item queda en la cola marcado con error y botón de reintento —
+        // nunca se pierde en silencio.
+        item.estado = 'error'
+        item.error = apiErr(e, 'Error de red — reintenta')
+        if (panelSeq !== mySeq) break
       }
-    })
-    const novedades = res.data.novedad
-      ? [{ id: res.data.novedad.id, tipo: res.data.novedad.tipo, estado: res.data.novedad.estado, descripcion: res.data.novedad.descripcion, registradaPorId: me.value?.id ?? '', registradaPorNombre: me.value?.name ?? null, resueltaPorId: null, resueltaPorNombre: null, resueltaAt: null, createdAt: res.data.escaneo.createdAt }, ...(p.novedades ?? [])]
-      : (p.novedades ?? [])
-    panelItem.value = { ...p, cargues, novedades }
-  } catch (e) {
-    showToast(apiErr(e, 'No se pudo registrar el escaneo'), true)
+    }
   } finally {
-    busy.value = null
+    colaWorkerActivo = false
+  }
+}
+
+function reintentarEscaneo(key: number) {
+  const item = colaEscaneos.value.find((s) => s.key === key)
+  if (item?.estado === 'error') {
+    item.estado = 'pendiente'
+    item.error = undefined
+    void procesarColaEscaneos()
   }
 }
 
@@ -433,10 +481,10 @@ async function exportarExcel() {
 
       <div v-else-if="panelItem" key="detail">
         <CargueGourmetPedidoDetail
-          :p="panelItem" :role="me?.role ?? ''" :busy="busy" :escaneando="busy === 'escanear'" :ultimo-resultado="ultimoResultado"
+          :p="panelItem" :role="me?.role ?? ''" :busy="busy" :escaneando="escaneandoCola" :ultimo-resultado="ultimoResultado" :cola="colaEscaneos"
           @back="backToList" @edit="showEditar = true" @del="showConfirmDel = true" @asignar-ubicacion="showUbicacion = true"
           @iniciar-cargue="iniciarCargue" @finalizar="finalizarCargue" @revertir="showConfirmRevertir = true"
-          @cierre-manual="showCierreManual = true" @escanear="escanear"
+          @cierre-manual="showCierreManual = true" @escanear="escanear" @reintentar-escaneo="reintentarEscaneo"
           @eliminar-caja="eliminarCaja" @agregar-caja-manual="agregarCajaManual" @resolver-novedad="resolverNovedad"
         />
       </div>

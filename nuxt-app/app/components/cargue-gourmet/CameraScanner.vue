@@ -3,6 +3,7 @@ import { onMounted, onUnmounted, ref, watch } from 'vue'
 import { Camera, X } from '@lucide/vue'
 import { BrowserMultiFormatReader } from '@zxing/browser'
 import type { IScannerControls } from '@zxing/browser'
+import { BarcodeFormat, DecodeHintType } from '@zxing/library'
 
 // Reutiliza el mismo resultado del último escaneo que ya calcula el padre
 // (VALIDO/DUPLICADO/CAJA_AJENA/...) para pintar el feedback — no duplica
@@ -22,17 +23,17 @@ const COOLDOWN_MS = 1500
 let ultimoCodigo = ''
 let ultimoTs = 0
 
-function beep(ok: boolean) {
+function tono(freq: number, dur = 0.12, vol = 0.15) {
   try {
     const ctx = new (window.AudioContext || (window as any).webkitAudioContext)()
     const osc = ctx.createOscillator()
     const gain = ctx.createGain()
-    osc.frequency.value = ok ? 880 : 220
+    osc.frequency.value = freq
     osc.connect(gain)
     gain.connect(ctx.destination)
-    gain.gain.setValueAtTime(0.15, ctx.currentTime)
+    gain.gain.setValueAtTime(vol, ctx.currentTime)
     osc.start()
-    osc.stop(ctx.currentTime + 0.12)
+    osc.stop(ctx.currentTime + dur)
     osc.onended = () => ctx.close().catch(() => {})
   } catch {
     // Sin audio disponible (autoplay bloqueado, navegador sin soporte) — el
@@ -40,11 +41,18 @@ function beep(ok: boolean) {
   }
 }
 
+function beep(ok: boolean) { tono(ok ? 880 : 220) }
+// Bip corto neutro de "caja capturada" — suena al ENCOLAR (inmediato, sin
+// esperar la red). El veredicto real llega 1-2s después con su tono
+// verde/rojo de siempre (watch de ultimoResultado, abajo).
+function beepCaptura() { tono(600, 0.07, 0.1) }
+
 function onDetectado(codigo: string) {
   const now = Date.now()
   if (codigo === ultimoCodigo && now - ultimoTs < COOLDOWN_MS) return
   ultimoCodigo = codigo
   ultimoTs = now
+  beepCaptura()
   emit('detectado', codigo)
 }
 
@@ -63,9 +71,21 @@ watch(() => props.ultimoResultado, (r) => {
 
 onMounted(async () => {
   try {
-    const reader = new BrowserMultiFormatReader()
+    // Restricción de formatos + intervalo de decodificación + resolución
+    // acotada: con los defaults, zxing intentaba TODOS los formatos de
+    // código sobre frames a resolución máxima de la cámara — la razón de
+    // que la detección se sintiera lenta. Los códigos reales de las cajas
+    // son de barras 1D (CODE_128/CODE_39, con EAN por si acaso) o QR.
+    const hints = new Map()
+    hints.set(DecodeHintType.POSSIBLE_FORMATS, [
+      BarcodeFormat.CODE_128, BarcodeFormat.CODE_39, BarcodeFormat.EAN_13, BarcodeFormat.QR_CODE,
+    ])
+    const reader = new BrowserMultiFormatReader(hints, {
+      delayBetweenScanAttempts: 100,
+      delayBetweenScanSuccess: 250,
+    })
     controls = await reader.decodeFromConstraints(
-      { video: { facingMode: 'environment' } },
+      { video: { facingMode: 'environment', width: { ideal: 1280 }, height: { ideal: 720 } } },
       videoEl.value!,
       (result) => {
         if (result) onDetectado(result.getText())

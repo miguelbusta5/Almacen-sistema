@@ -24,7 +24,16 @@ export interface ClasificarEscaneoGourmetInput {
   /** Solo relevante en modo QR_UNICO_CAJA: códigos de caja registrados al ubicar. */
   codigosCajaEsperados?: string[]
   /** Códigos que ya tuvieron un escaneo VALIDO en este cargue. */
-  escaneosValidosPrevios: string[]
+  escaneosValidosPrevios?: string[]
+  /**
+   * Alternativa a `escaneosValidosPrevios`, precomputada en la base de
+   * datos: con cargues grandes, cargar el arreglo completo de códigos
+   * previos dentro del lock FOR UPDATE crecía linealmente con cada caja
+   * escaneada. Solo se necesitan dos datos: si ESTE código ya tuvo un
+   * escaneo VALIDO, y cuántos escaneos VALIDOS hay en total (una
+   * consulta puntual indexada + el contador que el cargue ya mantiene).
+   */
+  previos?: { yaEscaneadoValido: boolean; cantidadValida: number }
   modoCodigo: ModoCodigoGourmet
   /**
    * Solo aplica a pedidos de tipo MUEBLES: un mueble puede venir en varias
@@ -58,15 +67,16 @@ function perteneceAOrden(codigo: string, ordenPedido: string): boolean {
 }
 
 export function clasificarEscaneoGourmet(input: ClasificarEscaneoGourmetInput): ClasificarEscaneoGourmetResultado {
-  const { codigo, ordenPedido, cajasEsperadas, codigosCajaEsperados, escaneosValidosPrevios, modoCodigo, permitirRepetirCaja } = input
+  const { codigo, ordenPedido, cajasEsperadas, codigosCajaEsperados, escaneosValidosPrevios, previos, modoCodigo, permitirRepetirCaja } = input
 
   if (!formatoValido(codigo)) {
     return { resultado: 'FORMATO_INVALIDO', debeCrearNovedad: false, incrementaContador: false, mensaje: 'Código vacío o ilegible — vuelve a escanear.' }
   }
 
   const codigoNorm = normalizar(codigo)
-  const previosNorm = escaneosValidosPrevios.map(normalizar)
-  const cantidadValidaPrevia = previosNorm.length
+  const previosNorm = (escaneosValidosPrevios ?? []).map(normalizar)
+  const yaEscaneadoValido = previos ? previos.yaEscaneadoValido : previosNorm.includes(codigoNorm)
+  const cantidadValidaPrevia = previos ? previos.cantidadValida : previosNorm.length
 
   if (modoCodigo === 'QR_UNICO_CAJA') {
     const esperados = (codigosCajaEsperados ?? []).map(normalizar)
@@ -75,7 +85,7 @@ export function clasificarEscaneoGourmet(input: ClasificarEscaneoGourmetInput): 
     if (!perteneceAlPedido) {
       return { resultado: 'CAJA_AJENA', debeCrearNovedad: true, tipoNovedadSugerido: 'CAJA_AJENA', incrementaContador: false, mensaje: 'Esta caja no pertenece a este pedido.' }
     }
-    if (previosNorm.includes(codigoNorm) && !permitirRepetirCaja) {
+    if (yaEscaneadoValido && !permitirRepetirCaja) {
       return { resultado: 'DUPLICADO', debeCrearNovedad: true, tipoNovedadSugerido: 'CAJA_DUPLICADA', incrementaContador: false, mensaje: 'Esta caja ya fue escaneada antes en este cargue.' }
     }
     // Antes esta comprobación no existía en este modo (a diferencia de los
@@ -86,7 +96,7 @@ export function clasificarEscaneoGourmet(input: ClasificarEscaneoGourmetInput): 
     if (cantidadValidaPrevia >= cajasEsperadas) {
       return { resultado: 'EXCEDE_CANTIDAD', debeCrearNovedad: true, tipoNovedadSugerido: 'DIFERENCIA_CANTIDAD', incrementaContador: false, mensaje: 'Ya se alcanzó la cantidad esperada de cajas para este pedido.' }
     }
-    if (previosNorm.includes(codigoNorm) && permitirRepetirCaja) {
+    if (yaEscaneadoValido && permitirRepetirCaja) {
       return { resultado: 'VALIDO', debeCrearNovedad: false, incrementaContador: true, mensaje: 'Caja válida — otra parte del mueble, contada como caja adicional.' }
     }
     return { resultado: 'VALIDO', debeCrearNovedad: false, incrementaContador: true, mensaje: 'Caja válida.' }

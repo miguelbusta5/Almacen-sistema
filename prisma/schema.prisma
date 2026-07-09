@@ -999,6 +999,7 @@ model GourmetCargueEscaneo {
 
   @@index([cargueId])
   @@index([cargueId, codigoEscaneado])
+  @@index([cargueId, resultado], map: "idx_gourmet_escaneo_cargue_resultado")
   @@index([codigoEscaneado])
   @@index([pedidoId])
   @@map("gourmet_cargue_escaneos")

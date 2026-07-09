@@ -38,9 +38,16 @@ export default defineEventHandler(async (event) => {
   if (!parsed.success) throw createError({ statusCode: 400, statusMessage: 'El campo codigo es obligatorio' })
   const { codigo, tieneParte2 } = parsed.data
 
+  // Pedido + sus códigos de caja + el cargue activo en UNA sola consulta —
+  // antes eran dos round-trips separados (findUnique + findFirst) por cada
+  // escaneo, y el escaneo es la ruta más caliente del módulo.
   const pedido = await prisma.gourmetPedido.findUnique({
     where: { id },
-    select: { id: true, orden: true, estado: true, tipoPedido: true, cajas: { select: { codigoCaja: true } } },
+    select: {
+      id: true, orden: true, estado: true, tipoPedido: true,
+      cajas: { select: { codigoCaja: true } },
+      cargues: { where: { estado: 'EN_CARGUE' }, select: { id: true }, take: 1 },
+    },
   })
   if (!pedido) throw createError({ statusCode: 404, statusMessage: 'No encontrado' })
 
@@ -53,10 +60,7 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 409, statusMessage: `No se puede escanear: el pedido está en estado ${pedido.estado}`, data: { code: 'ESTADO_INVALIDO' } })
   }
 
-  const cargueActivo = await prisma.gourmetCargue.findFirst({
-    where: { pedidoId: id, estado: 'EN_CARGUE' },
-    select: { id: true },
-  })
+  const cargueActivo = pedido.cargues[0]
   if (!cargueActivo) throw createError({ statusCode: 409, statusMessage: 'No hay un cargue activo para este pedido' })
 
   // Mismo rechazo de códigos de orden (TSDM/OVDM) que ya aplican la
@@ -73,19 +77,19 @@ export default defineEventHandler(async (event) => {
   // misma transacción, con el cargue bloqueado (FOR UPDATE) — así dos
   // escaneos casi simultáneos del mismo código (doble tap, reintento de
   // red) se serializan: el segundo espera a que el primero termine y
-  // entonces sí ve el escaneo recién insertado al leer `escaneosValidosPrevios`.
-  // Antes esta lectura ocurría fuera de la transacción y ambos requests
-  // podían leer la lista "vacía" al mismo tiempo, contando dos veces una
-  // caja que debía rechazarse la segunda vez. La fórmula de
-  // `permitirRepetirCaja` (MUEBLES + "tiene varias partes") no cambia —
-  // sigue siendo la única razón por la que un código repetido cuenta como
-  // VALIDO en vez de DUPLICADO.
+  // entonces sí ve el escaneo recién insertado. Antes esta lectura ocurría
+  // fuera de la transacción y ambos requests podían leer la lista "vacía"
+  // al mismo tiempo, contando dos veces una caja que debía rechazarse la
+  // segunda vez. La fórmula de `permitirRepetirCaja` (MUEBLES + "tiene
+  // varias partes") no cambia — sigue siendo la única razón por la que un
+  // código repetido cuenta como VALIDO en vez de DUPLICADO.
+  const codigoTrim = codigo.trim()
   const { escaneo, novedad, cantidadEscaneada, cantidadEsperada, resultado } = await prisma.$transaction(async (tx) => {
     await tx.$queryRaw`SELECT id FROM gourmet_cargues WHERE id = ${cargueActivo.id} FOR UPDATE`
 
     const cargue = await tx.gourmetCargue.findUniqueOrThrow({
       where: { id: cargueActivo.id },
-      include: { escaneos: { where: { resultado: 'VALIDO' }, select: { codigoEscaneado: true } } },
+      select: { id: true, estado: true, cantidadEscaneada: true, cantidadEsperada: true },
     })
 
     // Re-chequeo dentro del lock: entre la comprobación de arriba (fuera de
@@ -96,19 +100,31 @@ export default defineEventHandler(async (event) => {
       throw createError({ statusCode: 409, statusMessage: 'El cargue ya no está activo — probablemente se finalizó o revirtió mientras escaneabas', data: { code: 'CARGUE_NO_ACTIVO' } })
     }
 
+    // Antes aquí se cargaban TODOS los códigos con escaneo VALIDO del cargue
+    // (crecía linealmente con cada caja, dentro del lock — el punto más
+    // caliente de la latencia por escaneo). La clasificación solo necesita
+    // dos datos: si ESTE código ya fue escaneado VALIDO (consulta puntual,
+    // cubierta por el índice [cargueId, resultado] / [cargueId,
+    // codigoEscaneado]) y cuántos VALIDOS hay (cantidadEscaneada, que el
+    // propio cargue ya mantiene: solo incrementa con resultados VALIDO).
+    const escaneoValidoPrevio = await tx.gourmetCargueEscaneo.findFirst({
+      where: { cargueId: cargue.id, resultado: 'VALIDO', codigoEscaneado: { equals: codigoTrim, mode: 'insensitive' } },
+      select: { id: true },
+    })
+
     const clasificacion = clasificarEscaneoGourmet({
       codigo,
       ordenPedido: pedido.orden,
       cajasEsperadas: cargue.cantidadEsperada,
       codigosCajaEsperados: codigosCaja,
-      escaneosValidosPrevios: cargue.escaneos.map((e) => e.codigoEscaneado),
+      previos: { yaEscaneadoValido: !!escaneoValidoPrevio, cantidadValida: cargue.cantidadEscaneada },
       modoCodigo,
       permitirRepetirCaja,
     })
     const tipoNovedad = clasificacion.tipoNovedadSugerido
 
     const nuevoEscaneo = await tx.gourmetCargueEscaneo.create({
-      data: { cargueId: cargue.id, pedidoId: pedido.id, codigoEscaneado: codigo, resultado: clasificacion.resultado, escaneadoPorId: actor.id, observacion: clasificacion.mensaje },
+      data: { cargueId: cargue.id, pedidoId: pedido.id, codigoEscaneado: codigoTrim, resultado: clasificacion.resultado, escaneadoPorId: actor.id, observacion: clasificacion.mensaje },
     })
 
     let nuevaCantidad = cargue.cantidadEscaneada
