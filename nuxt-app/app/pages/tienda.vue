@@ -94,8 +94,9 @@ async function loadAll() {
 
 onMounted(async () => {
   ensureSession()
-  await loadAll()
-  await Promise.all([loadConteos(), loadAtencion(), loadCentrosCostos()])
+  // Las 4 cargas son independientes — en serie (lista primero, luego el
+  // resto) sumaban sus latencias en cada carga de la página.
+  await Promise.all([loadAll(), loadConteos(), loadAtencion(), loadCentrosCostos()])
   loading.value = false
 })
 

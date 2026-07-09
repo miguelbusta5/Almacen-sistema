@@ -16,7 +16,12 @@ export default defineEventHandler(async (event) => {
       creadoPor: { select: { name: true } },
       estibas: { orderBy: { secuencia: 'asc' } },
       cajas: { orderBy: [{ numeroSecuencia: 'asc' }, { createdAt: 'asc' }] },
-      cargues: { orderBy: { iniciadoAt: 'desc' }, include: { escaneos: { orderBy: { createdAt: 'desc' } } } },
+      // take: 50 — el historial de escaneos crecía sin límite y abrir un
+      // pedido con muchos escaneos bloqueaba el panel con un payload
+      // pesado. El panel muestra los recientes (y el escaneo en vivo se
+      // parchea localmente en el cliente); el historial completo sigue en
+      // la base de datos, no se borra nada.
+      cargues: { orderBy: { iniciadoAt: 'desc' }, include: { escaneos: { orderBy: { createdAt: 'desc' }, take: 50 } } },
       novedades: { orderBy: { createdAt: 'desc' } },
     },
   })

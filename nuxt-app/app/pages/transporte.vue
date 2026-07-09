@@ -82,8 +82,9 @@ async function loadAll() {
 
 onMounted(async () => {
   ensureSession()
-  await loadAll()
-  await loadConteos()
+  // Lista y conteos en paralelo — son independientes; en serie sumaban
+  // sus latencias en cada carga de la página.
+  await Promise.all([loadAll(), loadConteos()])
   loading.value = false
 })
 

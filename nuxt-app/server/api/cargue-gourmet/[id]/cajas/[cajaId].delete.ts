@@ -44,7 +44,7 @@ export default defineEventHandler(async (event) => {
         creadoPor: { select: { name: true } },
         estibas: { orderBy: { secuencia: 'asc' } },
         cajas: { orderBy: [{ numeroSecuencia: 'asc' }, { createdAt: 'asc' }] },
-        cargues: { orderBy: { iniciadoAt: 'desc' }, include: { escaneos: { orderBy: { createdAt: 'desc' } } } },
+        cargues: { orderBy: { iniciadoAt: 'desc' }, include: { escaneos: { orderBy: { createdAt: 'desc' }, take: 50 } } },
         novedades: { orderBy: { createdAt: 'desc' } },
       },
     })
