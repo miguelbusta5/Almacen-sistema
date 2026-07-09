@@ -2,7 +2,6 @@
 import { onMounted, onUnmounted, ref, watch } from 'vue'
 import { Camera, X, Flashlight } from '@lucide/vue'
 import { BrowserMultiFormatReader } from '@zxing/browser'
-import type { IScannerControls } from '@zxing/browser'
 import { BarcodeFormat, DecodeHintType } from '@zxing/library'
 
 // Reutiliza el mismo resultado del último escaneo que ya calcula el padre
@@ -15,7 +14,6 @@ const videoEl = ref<HTMLVideoElement | null>(null)
 const error = ref('')
 const flash = ref<'ok' | 'error' | null>(null)
 
-let controls: IScannerControls | null = null
 let stream: MediaStream | null = null
 let detectorTimer: ReturnType<typeof setInterval> | null = null
 let flashTimeout: ReturnType<typeof setTimeout> | null = null
@@ -103,54 +101,84 @@ async function crearDetectorNativo(): Promise<BarcodeDetectorLike | null> {
   }
 }
 
-async function iniciarNativo(detector: BarcodeDetectorLike) {
+// Indicador del motor activo — visible en el overlay: diagnóstico directo
+// cuando algún equipo del CEDI siga lento, sin adivinar qué vía usa.
+const motor = ref<'nativo' | 'compat' | null>(null)
+
+async function abrirStream(): Promise<HTMLVideoElement> {
   stream = await navigator.mediaDevices.getUserMedia({ video: VIDEO_CONSTRAINTS })
   const video = videoEl.value!
   video.srcObject = stream
   await video.play().catch(() => {})
   registrarTrack(stream.getVideoTracks()[0])
+  return video
+}
+
+async function iniciarNativo(detector: BarcodeDetectorLike) {
+  const video = await abrirStream()
   let detectando = false
   detectorTimer = setInterval(async () => {
-    if (detectando || !videoEl.value || videoEl.value.readyState < 2) return
+    if (detectando || video.readyState < 2) return
     detectando = true
     try {
-      const codigos = await detector.detect(videoEl.value)
+      const codigos = await detector.detect(video)
       for (const c of codigos) {
         if (c.rawValue) { onDetectado(c.rawValue); break }
       }
     } catch { /* frame no procesable — se reintenta en el próximo tick */ }
     finally { detectando = false }
-  }, 120)
+  }, 90)
 }
 
+// Respaldo zxing con recorte al recuadro guía: en vez de decodificar el
+// frame COMPLETO 1080p con TRY_HARDER (doble costo por el reintento
+// rotado 90°), se dibuja solo la región central del video (el área del
+// .cam-guide: inset 15% vertical / 10% horizontal) a un canvas y se
+// decodifica eso — ~60% menos píxeles por intento, detección notablemente
+// más rápida en equipos sin API nativa, y refuerza el "apunta dentro del
+// recuadro".
 async function iniciarZxing() {
   const hints = new Map()
   hints.set(DecodeHintType.POSSIBLE_FORMATS, [
     BarcodeFormat.CODE_128, BarcodeFormat.CODE_39, BarcodeFormat.EAN_13, BarcodeFormat.QR_CODE,
   ])
   // TRY_HARDER: reintenta cada frame rotado 90° (OneDReader) — necesario
-  // para leer códigos de barras con el celular en horizontal. Cuesta más
-  // CPU por intento, por eso el intervalo sube a 150ms.
+  // para leer códigos de barras con el celular en horizontal.
   hints.set(DecodeHintType.TRY_HARDER, true)
-  const reader = new BrowserMultiFormatReader(hints, {
-    delayBetweenScanAttempts: 150,
-    delayBetweenScanSuccess: 250,
-  })
-  controls = await reader.decodeFromConstraints(
-    { video: VIDEO_CONSTRAINTS },
-    videoEl.value!,
-    (result) => {
+  const reader = new BrowserMultiFormatReader(hints)
+
+  const video = await abrirStream()
+  const canvas = document.createElement('canvas')
+  const ctx = canvas.getContext('2d', { willReadFrequently: true })
+  let decodificando = false
+  detectorTimer = setInterval(() => {
+    if (decodificando || !ctx || video.readyState < 2 || !video.videoWidth) return
+    decodificando = true
+    try {
+      const sx = video.videoWidth * 0.10
+      const sy = video.videoHeight * 0.15
+      const sw = video.videoWidth * 0.80
+      const sh = video.videoHeight * 0.70
+      canvas.width = sw
+      canvas.height = sh
+      ctx.drawImage(video, sx, sy, sw, sh, 0, 0, sw, sh)
+      const result = reader.decodeFromCanvas(canvas)
       if (result) onDetectado(result.getText())
-    },
-  )
-  registrarTrack((videoEl.value?.srcObject as MediaStream | null)?.getVideoTracks()[0])
+    } catch { /* NotFoundException: no hay código en este frame — normal */ }
+    finally { decodificando = false }
+  }, 130)
 }
 
 onMounted(async () => {
   try {
     const detector = await crearDetectorNativo()
-    if (detector) await iniciarNativo(detector)
-    else await iniciarZxing()
+    if (detector) {
+      motor.value = 'nativo'
+      await iniciarNativo(detector)
+    } else {
+      motor.value = 'compat'
+      await iniciarZxing()
+    }
   } catch {
     error.value = 'No se pudo acceder a la cámara. Verifica el permiso o usa el campo de texto.'
   }
@@ -158,7 +186,6 @@ onMounted(async () => {
 
 onUnmounted(() => {
   if (detectorTimer) clearInterval(detectorTimer)
-  controls?.stop()
   stream?.getTracks().forEach((t) => t.stop())
   if (flashTimeout) clearTimeout(flashTimeout)
 })
@@ -179,7 +206,10 @@ onUnmounted(() => {
         <video ref="videoEl" class="cam-video" muted playsinline autoplay />
         <div class="cam-guide" />
         <p v-if="error" class="cam-error">{{ error }}</p>
-        <p v-else class="cam-hint">Apunta la cámara al código de la caja — se registra automáticamente.</p>
+        <p v-else class="cam-hint">
+          Apunta la cámara al código de la caja — se registra automáticamente.
+          <span v-if="motor" class="cam-motor">{{ motor === 'nativo' ? 'Detección nativa' : 'Modo compatibilidad' }}</span>
+        </p>
       </div>
 
       <div v-if="ultimoResultado" class="cam-ultimo">
@@ -210,6 +240,7 @@ onUnmounted(() => {
 .cam-guide { position: absolute; inset: 15% 10%; border: 2px solid rgba(255, 255, 255, .7); border-radius: var(--r-md); pointer-events: none; }
 .cam-hint, .cam-error { position: absolute; bottom: 18px; left: 16px; right: 16px; text-align: center; font-size: 13px; padding: 8px 12px; border-radius: var(--r-sm); background: rgba(0, 0, 0, .55); color: #fff; }
 .cam-error { color: var(--u-critico); }
+.cam-motor { display: block; margin-top: 2px; font-size: 10.5px; opacity: .65; }
 .cam-ultimo { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 12px 16px; background: rgba(0, 0, 0, .5); color: #fff; font-size: 13px; }
 .cam-ultimo .ok { color: var(--u-ok); font-weight: 700; }
 .cam-ultimo .bad { color: var(--u-critico); font-weight: 700; }

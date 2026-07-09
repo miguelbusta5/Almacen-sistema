@@ -220,15 +220,15 @@ let colaKey = 0
 let colaWorkerActivo = false
 const escaneandoCola = computed(() => colaEscaneos.value.some((s) => s.estado === 'pendiente' || s.estado === 'enviando'))
 
-function escanear(codigo: string, tieneParte2: boolean) {
+function escanear(codigo: string) {
   if (!panelItem.value) return
   const codigoTrim = codigo.trim()
   if (!codigoTrim) return
-  // Duplicado local instantáneo: el mismo código aún en vuelo se ignora
-  // (complementa el cooldown de la cámara). Con "tiene varias partes"
-  // (MUEBLES) el código repetido es deliberado, así que no se filtra.
-  if (!tieneParte2 && colaEscaneos.value.some((s) => (s.estado === 'pendiente' || s.estado === 'enviando') && s.codigo.toUpperCase() === codigoTrim.toUpperCase())) return
-  colaEscaneos.value.push({ key: ++colaKey, codigo: codigoTrim, tieneParte2, estado: 'pendiente' })
+  // Sin filtro local de "mismo código en cola": con la regla de
+  // multiplicidad, escanear dos veces seguidas el mismo código es
+  // legítimo (mueble en varias partes). El cooldown de la cámara evita el
+  // doble-decode del mismo cuadro y el servidor juzga el resto.
+  colaEscaneos.value.push({ key: ++colaKey, codigo: codigoTrim, estado: 'pendiente' })
   // Bip/vibración de "capturada" — para TODOS los métodos (cámara, pistola,
   // teclado); antes solo la cámara sonaba.
   sonarCaptura()
@@ -245,7 +245,10 @@ function mostrarVeredicto(v: { resultado: string; codigo: string; mensaje?: stri
   sonarVeredicto(v.resultado === 'ERROR_RED' ? 'ERROR_RED' : v.resultado)
   flashVeredicto.value = v
   if (flashTimer) clearTimeout(flashTimer)
-  flashTimer = setTimeout(() => { flashVeredicto.value = null }, v.resultado === 'VALIDO' ? 450 : 1700)
+  // Válida en pantalla completa igual que las demás (pedido del usuario),
+  // pero más breve para no estorbar el escaneo en cadena — el overlay no
+  // captura toques, así que nunca bloquea.
+  flashTimer = setTimeout(() => { flashVeredicto.value = null }, v.resultado === 'VALIDO' ? 900 : 1700)
 }
 
 async function procesarColaEscaneos() {
@@ -263,7 +266,7 @@ async function procesarColaEscaneos() {
       }
       let res: RespuestaEscaneo
       try {
-        res = await $fetch<RespuestaEscaneo>(`/api/cargue-gourmet/${panelItem.value.id}/escanear`, { method: 'POST', body: { codigo: item.codigo, tieneParte2: item.tieneParte2 } })
+        res = await $fetch<RespuestaEscaneo>(`/api/cargue-gourmet/${panelItem.value.id}/escanear`, { method: 'POST', body: { codigo: item.codigo } })
       } catch (e) {
         // Fallas transitorias (red caída, timeout, 5xx) se reintentan solas
         // UNA vez tras una pausa — un rechazo de negocio (4xx: estado

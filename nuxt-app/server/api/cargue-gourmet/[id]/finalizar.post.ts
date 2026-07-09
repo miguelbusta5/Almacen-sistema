@@ -82,6 +82,27 @@ export default defineEventHandler(async (event) => {
       throw createError({ statusCode: 409, statusMessage: 'Hay novedades abiertas — resuélvelas antes de finalizar el cargue', data: { code: 'NOVEDAD_ABIERTA' } })
     }
 
+    // Pedidos SIN cajas registradas en la creación (modo escaneo libre):
+    // las cajas escaneadas en este cargue se convierten automáticamente en
+    // las cajas asignadas del pedido al enviarlo — sin ningún paso extra
+    // del operario. `estibaId` queda null a propósito (el campo es
+    // nullable para este caso).
+    const cajasRegistradas = await tx.gourmetPedidoCaja.count({ where: { pedidoId: id } })
+    if (cajasRegistradas === 0) {
+      const escaneosValidos = await tx.gourmetCargueEscaneo.findMany({
+        where: { cargueId: cargue.id, resultado: 'VALIDO' },
+        orderBy: { createdAt: 'asc' },
+        select: { codigoEscaneado: true },
+      })
+      if (escaneosValidos.length > 0) {
+        await tx.gourmetPedidoCaja.createMany({
+          data: escaneosValidos.map((e, i) => ({
+            pedidoId: id, codigoCaja: e.codigoEscaneado, numeroSecuencia: i + 1, generadaPorEscaneo: true,
+          })),
+        })
+      }
+    }
+
     const cargueFinal = await tx.gourmetCargue.update({
       where: { id: cargue.id },
       data: { estado: 'CARGUE_COMPLETO', finalizadoAt: new Date(), finalizadoPorId: actor.id, tipoCierre: 'NORMAL' },

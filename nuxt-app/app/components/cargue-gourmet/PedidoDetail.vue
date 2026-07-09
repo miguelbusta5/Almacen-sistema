@@ -25,7 +25,7 @@ const emit = defineEmits<{
   (e: 'finalizar'): void
   (e: 'revertir'): void
   (e: 'cierreManual'): void
-  (e: 'escanear', codigo: string, tieneParte2: boolean): void
+  (e: 'escanear', codigo: string): void
   (e: 'reintentarEscaneo', key: number): void
   (e: 'eliminarCaja', cajaId: string): void
   (e: 'agregarCajaManual', estibaId: string, codigo: string): void
@@ -33,7 +33,6 @@ const emit = defineEmits<{
 }>()
 
 const esMuebles = computed(() => props.p.tipoPedido === 'MUEBLES')
-const tieneParte2 = ref(false)
 
 const puedeIniciar = computed(() => puedeTransporte(props.role) && ESTADOS_INICIABLES_TRANSPORTE.includes(props.p.estado))
 const puedeFinalizarCargue = computed(() => puedeTransporte(props.role) && ESTADOS_FINALIZABLES_TRANSPORTE.includes(props.p.estado))
@@ -73,13 +72,14 @@ const codigo = ref('')
 const inputRef = ref<HTMLInputElement | null>(null)
 // Ya no se bloquea mientras hay envíos en curso: cada captura entra a la
 // cola del padre al instante y se puede seguir escaneando sin esperar la
-// respuesta del servidor.
+// respuesta del servidor. Las cajas repetidas de MUEBLES ya no requieren
+// checkbox: el servidor las detecta solo por la multiplicidad de códigos
+// registrados al crear el pedido.
 function submitEscaneo() {
   const v = codigo.value.trim()
   if (!v) return
-  emit('escanear', v, tieneParte2.value)
+  emit('escanear', v)
   codigo.value = ''
-  tieneParte2.value = false
   inputRef.value?.focus()
 }
 
@@ -87,7 +87,7 @@ function submitEscaneo() {
 // solo cambia el método de captura — sin duplicar lógica de negocio.
 const mostrarCamara = ref(false)
 function onDetectadoCamara(v: string) {
-  emit('escanear', v, tieneParte2.value)
+  emit('escanear', v)
 }
 
 // Últimos items de la cola, el más reciente primero — reemplaza el "último
@@ -212,10 +212,6 @@ const resumen = computed(() => [
             <button type="submit" class="btn btn-primary btn-sm" :disabled="!codigo.trim()">Registrar</button>
             <button type="button" class="btn btn-sm" title="Escanear con la cámara" @click="mostrarCamara = true"><Camera :size="14" /></button>
           </form>
-          <label v-if="esMuebles" class="parte2">
-            <input v-model="tieneParte2" type="checkbox">
-            Esta caja tiene varias partes (marca esto en cada parte adicional — 2ª, 3ª, 4ª… — para repetir el número sin que quede como duplicado)
-          </label>
           <div v-if="colaVisible.length" class="cola">
             <div v-for="s in colaVisible" :key="s.key" class="cola-item">
               <div class="cola-row">
@@ -398,7 +394,6 @@ const resumen = computed(() => [
 .prog-num { font-size: 18px; font-weight: 700; color: var(--ink); }
 .escan-form { display: flex; gap: 8px; }
 .escan-form .field { flex: 1; }
-.parte2 { display: flex; align-items: center; gap: 8px; margin-top: 8px; font-size: 12px; color: var(--muted); cursor: pointer; }
 .cola { display: flex; flex-direction: column; gap: 6px; margin-top: 10px; }
 .cola-item { display: flex; flex-direction: column; gap: 3px; }
 .cola-row { display: flex; align-items: center; gap: 8px; }

@@ -80,7 +80,6 @@ export const RESULTADO_TONE: Record<string, string> = {
 export interface EscaneoEnCola {
   key: number
   codigo: string
-  tieneParte2: boolean
   estado: 'pendiente' | 'enviando' | 'ok' | 'error'
   resultado?: string
   error?: string

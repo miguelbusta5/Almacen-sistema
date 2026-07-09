@@ -2,12 +2,14 @@
 import { CheckCircle2, TriangleAlert, XCircle, WifiOff } from '@lucide/vue'
 import { RESULTADO_LABEL } from '~/utils/gourmet'
 
-// Overlay de veredicto de escaneo — pantalla completa para problemas
-// (duplicada/ajena/excede/error de red), un destello de borde verde breve
-// para válidas. Puramente presentacional y sin interacción (pointer-events
-// none): el padre controla cuándo aparece y lo limpia con un timer. Va por
-// encima del overlay de la cámara (z-index mayor) para que el operario lo
-// vea también en modo cámara.
+// Overlay de veredicto de escaneo — pantalla completa para TODOS los
+// veredictos, con el mismo formato: verde para válida (más breve, pedido
+// explícito del usuario: "la alerta de caja correcta debe ser como las
+// otras"), amarillo/rojo para problemas y error de red. Puramente
+// presentacional y sin interacción (pointer-events none): el padre
+// controla cuándo aparece y lo limpia con un timer. Va por encima del
+// overlay de la cámara (z-index mayor) para que el operario lo vea
+// también en modo cámara.
 const props = defineProps<{ v: { resultado: string; codigo: string; mensaje?: string } | null }>()
 
 const ICONO: Record<string, unknown> = {
@@ -24,10 +26,7 @@ const LABEL: Record<string, string> = { ...RESULTADO_LABEL, ERROR_RED: 'Error de
 <template>
   <Teleport to="body">
     <Transition name="veredicto">
-      <!-- Válida: solo un destello de borde, sin cubrir la pantalla -->
-      <div v-if="v && v.resultado === 'VALIDO'" key="ok" class="vignette" :style="{ '--c': COLOR.VALIDO }" />
-      <!-- Problema: pantalla completa con el motivo y el código en grande -->
-      <div v-else-if="v" :key="v.resultado + v.codigo" class="full" :style="{ '--c': COLOR[v.resultado] ?? 'var(--u-critico)' }">
+      <div v-if="v" :key="v.resultado + v.codigo" class="full" :style="{ '--c': COLOR[v.resultado] ?? 'var(--u-critico)' }">
         <component :is="ICONO[v.resultado] ?? TriangleAlert" :size="88" class="full-ic" />
         <div class="full-label">{{ LABEL[v.resultado] ?? v.resultado }}</div>
         <div class="full-cod mono">{{ v.codigo }}</div>
@@ -38,10 +37,6 @@ const LABEL: Record<string, string> = { ...RESULTADO_LABEL, ERROR_RED: 'Error de
 </template>
 
 <style scoped>
-.vignette {
-  position: fixed; inset: 0; z-index: 10000; pointer-events: none;
-  box-shadow: inset 0 0 0 10px var(--c), inset 0 0 60px 14px color-mix(in srgb, var(--c) 55%, transparent);
-}
 .full {
   position: fixed; inset: 0; z-index: 10000; pointer-events: none;
   display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px;
