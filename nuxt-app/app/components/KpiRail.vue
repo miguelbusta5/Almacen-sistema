@@ -1,19 +1,17 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { Boxes, Clock, CheckCircle2, TriangleAlert, Wallet } from '@lucide/vue'
-import { calcAlmacenaje } from '~/utils/almacenaje'
-import { tieneAlerta, fmtCOP, type Guardado } from '~/utils/guardado'
+import { fmtCOP } from '~/utils/guardado'
 
-const props = defineProps<{ items: Guardado[] }>()
+// Antes se calculaba filtrando el arreglo completo de guardados cargado
+// en el cliente — con la lista paginada de verdad eso solo reflejaría la
+// página visible. Los totales (incluido el costo de almacenaje, que
+// depende de la fecha de cada guardado activo) ahora vienen de
+// /api/transporte/conteos.
+const props = defineProps<{ counts: { total: number; pend: number; desp: number; alertas: number; costo: number } }>()
 const emit = defineEmits<{ (e: 'filter', key: string): void }>()
 
-const k = computed(() => {
-  const activos = props.items.filter(g => g.estado === 'PENDIENTE DESPACHO')
-  const desp = props.items.filter(g => g.estado === 'DESPACHADO').length
-  const alertas = props.items.filter(g => tieneAlerta(g)).length
-  const costo = activos.reduce((s, g) => s + calcAlmacenaje(g.fecha, null).costo, 0)
-  return { total: props.items.length, pend: activos.length, desp, alertas, costo }
-})
+const k = computed(() => props.counts)
 
 const cards = computed(() => [
   { key: 'total', label: 'Total registros', value: k.value.total, tone: 'var(--ink)', icon: Boxes, filter: '', hint: 'en custodia' },

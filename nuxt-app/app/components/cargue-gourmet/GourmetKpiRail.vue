@@ -1,18 +1,15 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { Boxes, PackageX, Truck, CheckCircle2, TriangleAlert } from '@lucide/vue'
-import type { PedidoGourmet } from '~/utils/gourmet'
 
-const props = defineProps<{ items: PedidoGourmet[] }>()
+// Antes se calculaba filtrando el arreglo completo de pedidos cargado en
+// el cliente — con la lista paginada de verdad eso solo reflejaría la
+// página visible. Los totales ahora vienen de un endpoint de conteos
+// aparte (/api/cargue-gourmet/conteos), independiente de la paginación.
+const props = defineProps<{ counts: { total: number; sinUbicacion: number; enCargue: number; completados: number; novedad: number } }>()
 const emit = defineEmits<{ (e: 'filter', key: string): void }>()
 
-const k = computed(() => {
-  const sinUbicacion = props.items.filter((p) => p.estado === 'BORRADOR').length
-  const enCargue = props.items.filter((p) => p.estado === 'EN_CARGUE').length
-  const completados = props.items.filter((p) => p.estado === 'CARGUE_COMPLETO' || p.estado === 'CARGUE_COMPLETO_MANUAL').length
-  const novedad = props.items.filter((p) => p.estado === 'CON_NOVEDAD').length
-  return { total: props.items.length, sinUbicacion, enCargue, completados, novedad }
-})
+const k = computed(() => props.counts)
 
 const cards = computed(() => [
   { key: 'total', label: 'Total pedidos', value: k.value.total, tone: 'var(--ink)', icon: Boxes, filter: '', hint: 'registrados' },

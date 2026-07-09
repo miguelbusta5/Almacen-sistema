@@ -30,13 +30,35 @@ const loading = ref(true)
 const refreshKey = ref(0)
 const refreshing = ref(false)
 
+// Paginación real del lado del servidor — antes se traía todo con
+// pageSize=500 y se filtraba/paginaba en el cliente.
+const page = ref(1)
+const pageSize = ref(30)
+const total = ref(0)
+const pages = computed(() => Math.max(1, Math.ceil(total.value / pageSize.value)))
+
+const kpiCounts = ref({ total: 0, pend: 0, desp: 0, alertas: 0, costo: 0 })
+async function loadConteos() {
+  if (demo.value) return
+  try {
+    const res = await $fetch<{ data: typeof kpiCounts.value }>('/api/transporte/conteos')
+    kpiCounts.value = res.data
+  } catch { /* deja los conteos previos si falla */ }
+}
+
 async function loadAll() {
   try {
+    const query: Record<string, string | number> = { page: page.value, pageSize: pageSize.value }
+    if (q.value) query.q = q.value
+    if (fEstado.value) query.estado = fEstado.value
+    if (fTipo.value) query.tipo = fTipo.value
+    if (fAlerta.value) query.alerta = '1'
     const [gRes, pRes] = await Promise.all([
-      $fetch<{ data: Guardado[] }>('/api/transporte?pageSize=500'),
+      $fetch<{ data: Guardado[]; total: number }>('/api/transporte', { query }),
       $fetch<{ data: any[] }>('/api/transporte/pendientes-tienda').catch(() => ({ data: [] as any[] })),
     ])
     guardados.value = gRes.data
+    total.value = gRes.total
     pendientes.value = (pRes.data ?? []).map((p: any) => ({
       id: p.id, numeroDocumento: p.despacho.numeroDocumento, clienteNombre: p.despacho.clienteNombre,
       centroCostos: p.despacho.centroCostos, numeroCajas: p.despacho.numeroCajas, nota: p.nota,
@@ -47,42 +69,52 @@ async function loadAll() {
     demo.value = true
     guardados.value = [...SAMPLE_GUARDADOS]
     pendientes.value = [...SAMPLE_PENDIENTES]
+    total.value = guardados.value.length
+    kpiCounts.value = {
+      total: guardados.value.length,
+      pend: guardados.value.filter((g) => g.estado === 'PENDIENTE DESPACHO').length,
+      desp: guardados.value.filter((g) => g.estado === 'DESPACHADO').length,
+      alertas: guardados.value.filter((g) => tieneAlerta(g)).length,
+      costo: 0,
+    }
   }
 }
 
-onMounted(async () => { ensureSession(); await loadAll(); loading.value = false })
+onMounted(async () => {
+  ensureSession()
+  await loadAll()
+  await loadConteos()
+  loading.value = false
+})
 
-// Parcha una fila del listado en memoria en vez de recargar las 500 filas
-// del servidor tras cada mutación.
+// Parcha una fila del listado en memoria en vez de recargar del servidor
+// tras cada mutación.
 function patchListado(clientId: string, patch: Partial<Guardado>) {
   const idx = guardados.value.findIndex((g) => g.clientId === clientId)
   if (idx !== -1) guardados.value[idx] = { ...guardados.value[idx], ...patch, clientId } as Guardado
+  void loadConteos()
 }
-function agregarAListado(g: Guardado) { guardados.value = [g, ...guardados.value] }
-function quitarDeListado(clientId: string) { guardados.value = guardados.value.filter((x) => x.clientId !== clientId) }
+function agregarAListado(g: Guardado) { guardados.value = [g, ...guardados.value]; total.value++; void loadConteos() }
+function quitarDeListado(clientId: string) { guardados.value = guardados.value.filter((x) => x.clientId !== clientId); total.value = Math.max(0, total.value - 1); void loadConteos() }
 
 async function refresh() {
   if (refreshing.value) return
   refreshing.value = true
   loading.value = true
   await loadAll()
+  await loadConteos()
   await new Promise((r) => setTimeout(r, 350))
   loading.value = false; refreshing.value = false; refreshKey.value++
   showToast(demo.value ? 'Modo demo · datos de ejemplo' : 'Datos actualizados ✓')
 }
 
-const filtered = computed(() => {
-  const query = q.value.toLowerCase()
-  return guardados.value.filter((g) => {
-    if (query && !g.documento.toLowerCase().includes(query) && !g.ubicacion.toLowerCase().includes(query)) return false
-    if (fEstado.value && g.estado !== fEstado.value) return false
-    if (fTipo.value && g.tipo !== fTipo.value) return false
-    if (fAlerta.value && !tieneAlerta(g)) return false
-    return true
-  })
-})
 const hasFilters = computed(() => !!(q.value || fEstado.value || fTipo.value || fAlerta.value))
 function clearFilters() { q.value = ''; fEstado.value = ''; fTipo.value = ''; fAlerta.value = false }
+
+// Cualquier cambio de filtro vuelve a la página 1 y recarga desde el
+// servidor — el buscador (q) ya llega debounced desde Toolbar.
+watch([q, fEstado, fTipo, fAlerta], () => { page.value = 1; void loadAll() })
+watch(page, () => { void loadAll() })
 
 // panel + modales
 const panelItem = ref<Guardado | null>(null)
@@ -143,6 +175,7 @@ function despachar() {
     try {
       await $fetch(`/api/transporte/${encodeURIComponent(g.clientId)}/acciones`, { method: 'POST', body: { tipo: 'despachar' } })
       g.estado = 'DESPACHADO'; g.fechaDespacho = todayISO()
+      void loadConteos()
       showToast('Marcado como enviado ✓')
     } catch (e) { showToast(apiErr(e, 'No se pudo despachar'), true) }
   })
@@ -158,6 +191,7 @@ function revertir() {
       await $fetch(`/api/transporte/${encodeURIComponent(g.clientId)}`, { method: 'PUT', body: { estado: 'PENDIENTE DESPACHO' } })
       g.estado = 'PENDIENTE DESPACHO'; g.fechaDespacho = null
       showConfirmRevertir.value = false
+      void loadConteos()
       showToast('Revertido a Pendiente Despacho ✓')
     } catch (e) { showToast(apiErr(e, 'No se pudo revertir'), true) }
   })
@@ -230,7 +264,7 @@ function confirmarUbicacionPendiente() {
     try {
       await $fetch('/api/transporte/pendientes-tienda', { method: 'POST', body: { pendienteId: p.id, ubicacion, nota: null } })
       showUbicacionPendiente.value = false
-      await loadAll(); showToast('Guardado creado desde despacho tienda ✓')
+      await loadAll(); void loadConteos(); showToast('Guardado creado desde despacho tienda ✓')
     } catch (e) { showToast(apiErr(e, 'No se pudo convertir'), true) }
   })
 }
@@ -274,7 +308,6 @@ function guardarFecha() {
   })
 }
 
-const pendCount = computed(() => guardados.value.filter(g => g.estado === 'PENDIENTE DESPACHO').length)
 </script>
 
 <template>
@@ -284,7 +317,7 @@ const pendCount = computed(() => guardados.value.filter(g => g.estado === 'PENDI
       <div class="hero-left">
         <div class="hero-kicker">Custodia y almacenaje</div>
         <h1 class="hero-title">Guardados Transporte</h1>
-        <p class="hero-desc">{{ guardados.length }} registros · {{ pendCount }} pendientes despacho</p>
+        <p class="hero-desc">{{ kpiCounts.total }} registros · {{ kpiCounts.pend }} pendientes despacho</p>
       </div>
       <div class="hero-actions">
         <span v-if="demo" class="demo-tag" title="Sin sesión activa: mostrando datos de ejemplo. Inicia sesión en la app principal para ver datos reales."><span class="demo-dot" /> Modo demo</span>
@@ -298,16 +331,17 @@ const pendCount = computed(() => guardados.value.filter(g => g.estado === 'PENDI
       <!-- Vista lista -->
       <div v-if="!panelItem" key="list">
         <PendientesBanner :items="pendientes" :busy="busy" class="fade-in" style="margin-bottom: 18px" @registrar="abrirUbicacionPendiente" />
-        <KpiRail :key="refreshKey" :items="guardados" style="margin-bottom: 18px" @filter="onKpiFilter" />
+        <KpiRail :key="refreshKey" :counts="kpiCounts" style="margin-bottom: 18px" @filter="onKpiFilter" />
         <Toolbar
           v-model:q="q" v-model:estado="fEstado" v-model:tipo="fTipo" v-model:alerta="fAlerta" v-model:density="density"
-          :count="filtered.length" :total="guardados.length" style="margin-bottom: 14px" @clear="clearFilters"
+          :count="total" :total="kpiCounts.total" style="margin-bottom: 14px" @clear="clearFilters"
         />
         <!-- Sin <Transition>: una transición CSS aquí queda colgada si la pestaña
              está en segundo plano (rAF congelado) y la lista nunca reemplaza al
              skeleton. Las filas ya animan su entrada escalonada por su cuenta. -->
         <ListSkeleton v-if="loading" />
-        <GuardadosList v-else :items="filtered" :has-filters="hasFilters" :density="density" @open="openDetail" @clear="clearFilters" @new="showForm = true" />
+        <GuardadosList v-else :items="guardados" :has-filters="hasFilters" :density="density" @open="openDetail" @clear="clearFilters" @new="showForm = true" />
+        <PageNav v-if="!loading && pages > 1" v-model:page="page" :pages="pages" style="margin-top: 14px" />
       </div>
 
       <!-- Detalle -->

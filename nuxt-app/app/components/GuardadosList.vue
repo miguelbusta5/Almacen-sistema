@@ -89,7 +89,7 @@ function tipoIcon(g: Guardado) { return g.tipo === 'ECOMMERCE' ? ShoppingCart : 
         <tr
           v-for="({ g, alm: a }, i) in rows" :key="g.clientId"
           class="row" tabindex="0" role="button" :aria-label="`Ver guardado ${g.documento}`"
-          :style="{ '--rail': g.estado === 'DESPACHADO' ? 'var(--border-strong)' : TIER_COLOR[alertaTier(g)], '--d': `${i * 32}ms` }"
+          :style="{ '--rail': g.estado === 'DESPACHADO' ? 'var(--border-strong)' : TIER_COLOR[alertaTier(g)], '--d': `${Math.min(i, 12) * 32}ms` }"
           @click="emit('open', g)" @keydown.enter="emit('open', g)" @keydown.space.prevent="emit('open', g)"
         >
           <td><UrgencyPill :g="g" /></td>

@@ -75,7 +75,7 @@ function urgente(p: PedidoGourmet) {
         <tr
           v-for="(p, i) in sorted" :key="p.id" class="row"
           tabindex="0" role="button" :aria-label="`Ver pedido ${p.orden}`"
-          :style="{ '--rail': urgente(p) ? 'var(--u-critico)' : ESTADO_TONE[p.estado], '--d': `${i * 32}ms` }"
+          :style="{ '--rail': urgente(p) ? 'var(--u-critico)' : ESTADO_TONE[p.estado], '--d': `${Math.min(i, 12) * 32}ms` }"
           @click="emit('open', p)" @keydown.enter="emit('open', p)" @keydown.space.prevent="emit('open', p)"
         >
           <td><Badge :label="ESTADO_LABEL[p.estado]" :tone="ESTADO_TONE[p.estado]" /></td>

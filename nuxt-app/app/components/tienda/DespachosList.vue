@@ -79,7 +79,7 @@ const sorted = computed(() => {
         <tr
           v-for="(d, i) in sorted" :key="d.id" class="row"
           tabindex="0" role="button" :aria-label="`Ver despacho ${d.numeroDocumento}`"
-          :style="{ '--rail': d.estado === 'ENVIADO_CLIENTE' ? 'var(--border-strong)' : TIER_COLOR[alertaTierDespacho(d)], '--d': `${i * 32}ms` }"
+          :style="{ '--rail': d.estado === 'ENVIADO_CLIENTE' ? 'var(--border-strong)' : TIER_COLOR[alertaTierDespacho(d)], '--d': `${Math.min(i, 12) * 32}ms` }"
           @click="emit('open', d)" @keydown.enter="emit('open', d)" @keydown.space.prevent="emit('open', d)"
         >
           <td><TiendaUrgencyPill :d="d" /></td>

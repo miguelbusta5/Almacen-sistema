@@ -1,18 +1,14 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { Boxes, Clock, Truck, CheckCircle2, TriangleAlert } from '@lucide/vue'
-import type { Despacho } from '~/utils/despacho'
 
-const props = defineProps<{ items: Despacho[] }>()
+// Antes se calculaba filtrando el arreglo completo de despachos cargado
+// en el cliente — con la lista paginada de verdad eso solo reflejaría la
+// página visible. Los totales ahora vienen de /api/tienda/conteos.
+const props = defineProps<{ counts: { total: number; pendRecogida: number; enTransito: number; completados: number; atencion: number } }>()
 const emit = defineEmits<{ (e: 'filter', key: string): void }>()
 
-const k = computed(() => {
-  const pendRecogida = props.items.filter(d => d.estado === 'CREADO_TIENDA').length
-  const enTransito = props.items.filter(d => d.estado === 'RECOGIDO_TIENDA' || d.estado === 'ENTREGADO_CEDI').length
-  const completados = props.items.filter(d => d.estado === 'ENVIADO_CLIENTE').length
-  const atencion = props.items.filter(d => d.estado === 'CON_NOVEDAD' || d.estado === 'RECHAZADO').length
-  return { total: props.items.length, pendRecogida, enTransito, completados, atencion }
-})
+const k = computed(() => props.counts)
 
 const cards = computed(() => [
   { key: 'total', label: 'Total facturas', value: k.value.total, tone: 'var(--ink)', icon: Boxes, filter: '', hint: 'registradas' },

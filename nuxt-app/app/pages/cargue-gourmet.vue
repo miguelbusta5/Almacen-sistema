@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, computed, watch, onMounted } from 'vue'
 import { RefreshCw, Download, Plus, PackageCheck } from '@lucide/vue'
-import { tieneAlertaGourmet, ESTADOS_NO_DESPACHABLES_MASIVO, type PedidoGourmet } from '~/utils/gourmet'
+import { ESTADOS_NO_DESPACHABLES_MASIVO, type PedidoGourmet } from '~/utils/gourmet'
 import { ensureSession, useSessionState } from '~/composables/useSession'
 import { useToast } from '~/composables/useToast'
 
@@ -25,46 +25,81 @@ const refreshKey = ref(0)
 const refreshing = ref(false)
 const loadError = ref(false)
 
-async function loadAll() {
+// Paginación real del lado del servidor — antes se traía todo con
+// pageSize=500 y se filtraba/paginaba en el cliente. El backend ya
+// soportaba filtros y paginación (ver index.get.ts); solo faltaba que el
+// frontend los usara.
+const page = ref(1)
+const pageSize = ref(30)
+const total = ref(0)
+const pages = computed(() => Math.max(1, Math.ceil(total.value / pageSize.value)))
+
+// Los KPIs del encabezado necesitan el total real (no solo lo que trae la
+// página actual) — vienen de un endpoint de conteos aparte, igual que el
+// resumen del dashboard de Inicio.
+const kpiCounts = ref({ total: 0, sinUbicacion: 0, enCargue: 0, completados: 0, novedad: 0 })
+async function loadConteos() {
   try {
-    const res = await $fetch<{ data: PedidoGourmet[] }>('/api/cargue-gourmet?pageSize=500')
+    const res = await $fetch<{ data: typeof kpiCounts.value }>('/api/cargue-gourmet/conteos')
+    kpiCounts.value = res.data
+  } catch { /* deja los conteos previos si falla */ }
+}
+
+// Catálogo de ciudades/tiendas para los selects de filtro — antes se
+// derivaban de las 500 filas cargadas, lo que con paginación real solo
+// mostraría las ciudades/tiendas de la página actual.
+const ciudadesCatalogo = ref<string[]>([])
+const tiendasCatalogo = ref<string[]>([])
+async function loadCatalogoTiendas() {
+  try {
+    const res = await $fetch<{ data: { tienda: string; ciudad: string }[] }>('/api/cargue-gourmet/maestro-tiendas', { query: { includeInactive: 1 } })
+    ciudadesCatalogo.value = [...new Set(res.data.map((t) => t.ciudad).filter(Boolean))].sort((a, b) => a.localeCompare(b))
+    tiendasCatalogo.value = [...new Set(res.data.map((t) => t.tienda).filter(Boolean))].sort((a, b) => a.localeCompare(b))
+  } catch { /* selects quedan vacíos si falla, no bloquea la lista */ }
+}
+
+async function load() {
+  try {
+    const query: Record<string, string | number> = { page: page.value, pageSize: pageSize.value }
+    if (q.value) query.q = q.value
+    if (fEstado.value) query.estado = fEstado.value
+    if (fCiudad.value) query.ciudad = fCiudad.value
+    if (fTienda.value) query.tienda = fTienda.value
+    if (fTipoOrden.value) query.tipoOrden = fTipoOrden.value
+    if (fAlerta.value) query.alerta = '1'
+    const res = await $fetch<{ data: PedidoGourmet[]; total: number }>('/api/cargue-gourmet', { query })
     pedidos.value = res.data
+    total.value = res.total
     loadError.value = false
   } catch {
     loadError.value = true
   }
 }
 
-onMounted(async () => { ensureSession(); await loadAll(); loading.value = false })
+onMounted(async () => {
+  ensureSession()
+  await Promise.all([load(), loadConteos(), loadCatalogoTiendas()])
+  loading.value = false
+})
 
 async function refresh() {
   if (refreshing.value) return
   refreshing.value = true
   loading.value = true
-  await loadAll()
+  await Promise.all([load(), loadConteos()])
   await new Promise((r) => setTimeout(r, 350))
   loading.value = false; refreshing.value = false; refreshKey.value++
   showToast('Datos actualizados ✓')
 }
 
-const ciudades = computed(() => [...new Set(pedidos.value.map((p) => p.ciudadDestino).filter(Boolean))].sort((a, b) => a.localeCompare(b)))
-const tiendas = computed(() => [...new Set(pedidos.value.map((p) => p.nombreTienda).filter(Boolean))].sort((a, b) => a.localeCompare(b)))
-
-const filtered = computed(() => {
-  const query = q.value.toLowerCase()
-  return pedidos.value.filter((p) => {
-    if (query && !p.orden.toLowerCase().includes(query) && !p.nombreTienda.toLowerCase().includes(query) && !p.codigoTienda.toLowerCase().includes(query)) return false
-    if (fEstado.value && p.estado !== fEstado.value) return false
-    if (fCiudad.value && p.ciudadDestino !== fCiudad.value) return false
-    if (fTienda.value && p.nombreTienda !== fTienda.value) return false
-    if (fTipoOrden.value && p.tipoOrden !== fTipoOrden.value) return false
-    if (fAlerta.value && !tieneAlertaGourmet(p)) return false
-    return true
-  })
-})
 const hasFilters = computed(() => !!(q.value || fEstado.value || fCiudad.value || fTienda.value || fTipoOrden.value || fAlerta.value))
 function clearFilters() { q.value = ''; fEstado.value = ''; fCiudad.value = ''; fTienda.value = ''; fTipoOrden.value = ''; fAlerta.value = false }
 function onKpiFilter(key: string) { fEstado.value = key }
+
+// Cualquier cambio de filtro vuelve a la página 1 y recarga desde el
+// servidor — el buscador (q) ya llega debounced desde GourmetToolbar.
+watch([q, fEstado, fCiudad, fTienda, fTipoOrden, fAlerta], () => { page.value = 1; void load() })
+watch(page, () => { void load() })
 
 // ── Detalle ──────────────────────────────────────────────────────────────
 const panelId = ref<string | null>(null)
@@ -98,8 +133,8 @@ function patchListado(id: string, patch: Partial<PedidoGourmet>) {
   const idx = pedidos.value.findIndex((p) => p.id === id)
   if (idx !== -1) pedidos.value[idx] = { ...pedidos.value[idx], ...patch, id } as PedidoGourmet
 }
-function agregarAListado(p: PedidoGourmet) { pedidos.value = [p, ...pedidos.value] }
-function quitarDeListado(id: string) { pedidos.value = pedidos.value.filter((p) => p.id !== id) }
+function agregarAListado(p: PedidoGourmet) { pedidos.value = [p, ...pedidos.value]; total.value++; void loadConteos() }
+function quitarDeListado(id: string) { pedidos.value = pedidos.value.filter((p) => p.id !== id); total.value = Math.max(0, total.value - 1); void loadConteos() }
 
 function apiErr(e: any, fallback: string) { return e?.data?.statusMessage || e?.statusMessage || fallback }
 
@@ -317,7 +352,25 @@ function delPedido() {
 // una vez sin verificación física. El backend ya restringe esto a ADMIN
 // (ver despacho-masivo.post.ts); aquí solo se ofrece la selección.
 const showCargueMasivo = ref(false)
-const pedidosPendientesMasivo = computed(() => pedidos.value.filter((p) => !ESTADOS_NO_DESPACHABLES_MASIVO.includes(p.estado)))
+const masivoPedidos = ref<PedidoGourmet[]>([])
+const masivoLoading = ref(false)
+// Este modal necesita TODOS los pedidos despachables, no solo la página
+// actual — se pide bajo demanda (solo al abrir el modal), en vez de
+// mantener siempre cargada la lista completa en la pantalla principal.
+async function abrirCargueMasivo() {
+  masivoLoading.value = true
+  try {
+    const res = await $fetch<{ data: PedidoGourmet[] }>('/api/cargue-gourmet', {
+      query: { pageSize: 200, estadoNot: ESTADOS_NO_DESPACHABLES_MASIVO.join(',') },
+    })
+    masivoPedidos.value = res.data
+    showCargueMasivo.value = true
+  } catch {
+    showToast('No se pudo cargar la lista de pedidos', true)
+  } finally {
+    masivoLoading.value = false
+  }
+}
 async function confirmarCargueMasivo(ids: string[]) {
   return run('cargue-masivo', async () => {
     try {
@@ -325,7 +378,7 @@ async function confirmarCargueMasivo(ids: string[]) {
         '/api/cargue-gourmet/despacho-masivo', { method: 'POST', body: { ids } },
       )
       showCargueMasivo.value = false
-      await loadAll()
+      await Promise.all([load(), loadConteos()])
       const { actualizados, omitidos } = res.data
       if (omitidos.length > 0) {
         showToast(`${actualizados.length} completado(s) · ${omitidos.length} omitido(s) — ${omitidos[0]!.motivo}`, actualizados.length === 0)
@@ -356,25 +409,26 @@ async function exportarExcel() {
       <div class="hero-left">
         <div class="hero-kicker">Gourmet · Transporte</div>
         <h1 class="hero-title">Cargue Gourmet</h1>
-        <p class="hero-desc">{{ pedidos.length }} pedido{{ pedidos.length !== 1 ? 's' : '' }} · ubicación y cargue verificado</p>
+        <p class="hero-desc">{{ kpiCounts.total }} pedido{{ kpiCounts.total !== 1 ? 's' : '' }} · ubicación y cargue verificado</p>
       </div>
       <div class="hero-actions">
         <button class="btn btn-sm refresh" :class="{ spin: refreshing }" @click="refresh"><RefreshCw :size="14" /> {{ refreshing ? 'Actualizando…' : 'Actualizar' }}</button>
         <button class="btn btn-sm" @click="exportarExcel"><Download :size="14" /> Exportar Excel</button>
-        <button v-if="me?.role === 'ADMIN'" class="btn btn-sm" @click="showCargueMasivo = true"><PackageCheck :size="14" /> Cargue masivo</button>
+        <button v-if="me?.role === 'ADMIN'" class="btn btn-sm" :disabled="masivoLoading" @click="abrirCargueMasivo"><PackageCheck :size="14" /> Cargue masivo</button>
         <button v-if="canCreate" class="btn btn-primary btn-sm" @click="showCrear = true"><Plus :size="14" /> Nuevo pedido</button>
       </div>
     </section>
 
     <Transition name="view" mode="out-in">
       <div v-if="!panelId" key="list">
-        <CargueGourmetKpiRail :key="refreshKey" :items="pedidos" style="margin-bottom: 18px" @filter="onKpiFilter" />
+        <CargueGourmetKpiRail :key="refreshKey" :counts="kpiCounts" style="margin-bottom: 18px" @filter="onKpiFilter" />
         <CargueGourmetToolbar
           v-model:q="q" v-model:estado="fEstado" v-model:ciudad="fCiudad" v-model:tienda="fTienda" v-model:tipo-orden="fTipoOrden" v-model:alerta="fAlerta" v-model:density="density"
-          :ciudades="ciudades" :tiendas="tiendas" :count="filtered.length" :total="pedidos.length" style="margin-bottom: 14px" @clear="clearFilters"
+          :ciudades="ciudadesCatalogo" :tiendas="tiendasCatalogo" :count="total" :total="kpiCounts.total" style="margin-bottom: 14px" @clear="clearFilters"
         />
         <ListSkeleton v-if="loading" />
-        <CargueGourmetPedidosList v-else :items="filtered" :has-filters="hasFilters" :density="density" @open="openDetail" @clear="clearFilters" @new="showCrear = true" />
+        <CargueGourmetPedidosList v-else :items="pedidos" :has-filters="hasFilters" :density="density" @open="openDetail" @clear="clearFilters" @new="showCrear = true" />
+        <PageNav v-if="!loading && pages > 1" v-model:page="page" :pages="pages" style="margin-top: 14px" />
       </div>
 
       <div v-else-if="panelItem" key="detail">
@@ -396,7 +450,7 @@ async function exportarExcel() {
     <CargueGourmetAsignarUbicacionModal v-if="showUbicacion && panelItem" :p="panelItem" :saving="saving" @close="showUbicacion = false" @saved="guardarUbicacion" />
     <CargueGourmetCierreManualModal v-if="showCierreManual && panelItem" :p="panelItem" :saving="saving" @close="showCierreManual = false" @saved="guardarCierreManual" />
     <CargueGourmetCargueMasivoModal
-      v-if="showCargueMasivo" :items="pedidosPendientesMasivo" :saving="busy === 'cargue-masivo'"
+      v-if="showCargueMasivo" :items="masivoPedidos" :saving="busy === 'cargue-masivo'"
       @close="showCargueMasivo = false" @confirm="confirmarCargueMasivo"
     />
 

@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, computed, watch, onMounted } from 'vue'
 import { RefreshCw, Download, Plus } from '@lucide/vue'
-import { tieneAlertaDespacho, type Despacho } from '~/utils/despacho'
+import type { Despacho } from '~/utils/despacho'
 import { SAMPLE_DESPACHOS } from '~/utils/sampleDataTienda'
 import { ensureSession, useSessionState } from '~/composables/useSession'
 import { useToast } from '~/composables/useToast'
@@ -27,57 +27,107 @@ const refreshing = ref(false)
 
 interface HistorialEntry { action: string; details: string | null; userName: string | null; createdAt: string }
 
+// Paginación real del lado del servidor — antes se traía todo con
+// pageSize=500 y se filtraba/paginaba en el cliente.
+const page = ref(1)
+const pageSize = ref(30)
+const total = ref(0)
+const pages = computed(() => Math.max(1, Math.ceil(total.value / pageSize.value)))
+
+const kpiCounts = ref({ total: 0, pendRecogida: 0, enTransito: 0, completados: 0, atencion: 0 })
+async function loadConteos() {
+  if (demo.value) return
+  try {
+    const res = await $fetch<{ data: typeof kpiCounts.value }>('/api/tienda/conteos')
+    kpiCounts.value = res.data
+  } catch { /* deja los conteos previos si falla */ }
+}
+
+// El banner de atención necesita TODOS los despachos con novedad/rechazo,
+// no solo la página visible — endpoint aparte, acotado.
+const atencionItems = ref<Despacho[]>([])
+async function loadAtencion() {
+  if (demo.value) return
+  try {
+    const res = await $fetch<{ data: Despacho[] }>('/api/tienda/atencion')
+    atencionItems.value = res.data
+  } catch { atencionItems.value = [] }
+}
+
+const centrosCostos = ref<string[]>([])
+async function loadCentrosCostos() {
+  if (demo.value) return
+  try {
+    const res = await $fetch<{ data: string[] }>('/api/tienda/centros-costos')
+    centrosCostos.value = res.data
+  } catch { /* select queda vacío si falla, no bloquea la lista */ }
+}
+
 async function loadAll() {
   try {
-    const res = await $fetch<{ data: Despacho[] }>('/api/tienda?pageSize=500')
+    const query: Record<string, string | number> = { page: page.value, pageSize: pageSize.value }
+    if (q.value) query.q = q.value
+    if (fEstado.value) query.estado = fEstado.value
+    if (fCC.value) query.centroCostos = fCC.value
+    if (fAlerta.value) query.alerta = '1'
+    const res = await $fetch<{ data: Despacho[]; total: number }>('/api/tienda', { query })
     despachos.value = res.data
+    total.value = res.total
     demo.value = false
   } catch {
     demo.value = true
     despachos.value = [...SAMPLE_DESPACHOS]
+    total.value = despachos.value.length
+    // Sin backend real, deriva conteos/atención/centros de los datos de
+    // muestra en vez de llamar a los endpoints (que fallarían igual).
+    kpiCounts.value = {
+      total: despachos.value.length,
+      pendRecogida: despachos.value.filter((d) => d.estado === 'CREADO_TIENDA').length,
+      enTransito: despachos.value.filter((d) => d.estado === 'RECOGIDO_TIENDA' || d.estado === 'ENTREGADO_CEDI').length,
+      completados: despachos.value.filter((d) => d.estado === 'ENVIADO_CLIENTE').length,
+      atencion: despachos.value.filter((d) => d.estado === 'CON_NOVEDAD' || d.estado === 'RECHAZADO').length,
+    }
+    atencionItems.value = despachos.value.filter((d) => d.estado === 'CON_NOVEDAD' || d.estado === 'RECHAZADO')
+    centrosCostos.value = [...new Set(despachos.value.map((d) => d.centroCostos).filter(Boolean))].sort((a, b) => a.localeCompare(b))
   }
 }
 
-onMounted(async () => { ensureSession(); await loadAll(); loading.value = false })
+onMounted(async () => {
+  ensureSession()
+  await loadAll()
+  await Promise.all([loadConteos(), loadAtencion(), loadCentrosCostos()])
+  loading.value = false
+})
 
-// Parcha una fila del listado en memoria en vez de recargar las 500 filas
-// del servidor tras cada mutación.
+// Parcha una fila del listado en memoria en vez de recargar del servidor
+// tras cada mutación.
 function patchListado(id: string, patch: Partial<Despacho>) {
   const idx = despachos.value.findIndex((d) => d.id === id)
   if (idx !== -1) despachos.value[idx] = { ...despachos.value[idx], ...patch, id } as Despacho
+  void loadConteos(); void loadAtencion()
 }
-function agregarAListado(d: Despacho) { despachos.value = [d, ...despachos.value] }
-function quitarDeListado(id: string) { despachos.value = despachos.value.filter((x) => x.id !== id) }
+function agregarAListado(d: Despacho) { despachos.value = [d, ...despachos.value]; total.value++; void loadConteos() }
+function quitarDeListado(id: string) { despachos.value = despachos.value.filter((x) => x.id !== id); total.value = Math.max(0, total.value - 1); void loadConteos() }
 
 async function refresh() {
   if (refreshing.value) return
   refreshing.value = true
   loading.value = true
   await loadAll()
+  await Promise.all([loadConteos(), loadAtencion()])
   await new Promise((r) => setTimeout(r, 350))
   loading.value = false; refreshing.value = false; refreshKey.value++
   showToast(demo.value ? 'Modo demo · datos de ejemplo' : 'Datos actualizados ✓')
 }
 
-const centrosCostos = computed(() =>
-  [...new Set(despachos.value.map((d) => d.centroCostos).filter(Boolean))].sort((a, b) => a.localeCompare(b))
-)
-
-const atencionItems = computed(() => despachos.value.filter((d) => d.estado === 'CON_NOVEDAD' || d.estado === 'RECHAZADO'))
-
-const filtered = computed(() => {
-  const query = q.value.toLowerCase()
-  return despachos.value.filter((d) => {
-    if (query && !d.numeroDocumento.toLowerCase().includes(query) && !d.clienteNombre.toLowerCase().includes(query)) return false
-    if (fEstado.value && d.estado !== fEstado.value) return false
-    if (fCC.value && d.centroCostos !== fCC.value) return false
-    if (fAlerta.value && !tieneAlertaDespacho(d)) return false
-    return true
-  })
-})
 const hasFilters = computed(() => !!(q.value || fEstado.value || fCC.value || fAlerta.value))
 function clearFilters() { q.value = ''; fEstado.value = ''; fCC.value = ''; fAlerta.value = false }
 function onKpiFilter(key: string) { fEstado.value = key }
+
+// Cualquier cambio de filtro vuelve a la página 1 y recarga desde el
+// servidor — el buscador (q) ya llega debounced desde TiendaToolbar.
+watch([q, fEstado, fCC, fAlerta], () => { page.value = 1; void loadAll() })
+watch(page, () => { void loadAll() })
 
 // panel + modales
 const panelItem = ref<Despacho | null>(null)
@@ -250,8 +300,6 @@ function onSaved(payload: Record<string, unknown>) {
   })
 }
 
-const pendCount = computed(() => despachos.value.filter(d => d.estado === 'CREADO_TIENDA').length)
-
 function exportarExcel() {
   if (demo.value) { showToast('Exportar Excel no está disponible en modo demo', true); return }
   const qs = new URLSearchParams()
@@ -272,7 +320,7 @@ function exportarExcel() {
       <div class="hero-left">
         <div class="hero-kicker">Tienda → CEDI → Cliente</div>
         <h1 class="hero-title">Facturas Contado</h1>
-        <p class="hero-desc">{{ despachos.length }} facturas · {{ pendCount }} pendientes de recogida</p>
+        <p class="hero-desc">{{ kpiCounts.total }} facturas · {{ kpiCounts.pendRecogida }} pendientes de recogida</p>
       </div>
       <div class="hero-actions">
         <span v-if="demo" class="demo-tag" title="Sin sesión activa: mostrando datos de ejemplo."><span class="demo-dot" /> Modo demo</span>
@@ -285,16 +333,17 @@ function exportarExcel() {
     <Transition name="view" mode="out-in">
       <div v-if="!panelItem" key="list">
         <AtencionBanner :items="atencionItems" class="fade-in" style="margin-bottom: 18px" @open="openDetail" />
-        <TiendaKpiRail :key="refreshKey" :items="despachos" style="margin-bottom: 18px" @filter="onKpiFilter" />
+        <TiendaKpiRail :key="refreshKey" :counts="kpiCounts" style="margin-bottom: 18px" @filter="onKpiFilter" />
         <TiendaToolbar
           v-model:q="q" v-model:estado="fEstado" v-model:centro="fCC" v-model:alerta="fAlerta" v-model:density="density"
-          :centros="centrosCostos" :count="filtered.length" :total="despachos.length" style="margin-bottom: 14px" @clear="clearFilters"
+          :centros="centrosCostos" :count="total" :total="kpiCounts.total" style="margin-bottom: 14px" @clear="clearFilters"
         />
         <!-- Sin <Transition>: una transición CSS aquí queda colgada si la pestaña
              está en segundo plano (rAF congelado) y la lista nunca reemplaza al
              skeleton. Las filas ya animan su entrada escalonada por su cuenta. -->
         <ListSkeleton v-if="loading" />
-        <TiendaDespachosList v-else :items="filtered" :has-filters="hasFilters" :density="density" @open="openDetail" @clear="clearFilters" @new="showForm = true" />
+        <TiendaDespachosList v-else :items="despachos" :has-filters="hasFilters" :density="density" @open="openDetail" @clear="clearFilters" @new="showForm = true" />
+        <PageNav v-if="!loading && pages > 1" v-model:page="page" :pages="pages" style="margin-top: 14px" />
       </div>
 
       <TiendaDespachoDetail
