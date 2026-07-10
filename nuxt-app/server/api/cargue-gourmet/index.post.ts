@@ -3,7 +3,7 @@ import { z } from 'zod'
 import { prisma } from '../../utils/prisma'
 import { requireRole } from '../../utils/auth'
 import { mapPedidoGourmet } from '../../utils/mapRow'
-import { derivarTipoOrden, esCodigoTiendaCliente, CODIGO_TIENDA_CLIENTE, NOMBRE_TIENDA_CLIENTE, CIUDAD_TIENDA_CLIENTE } from '../../utils/gourmetPedido'
+import { derivarTipoOrden, esCodigoTiendaCliente, CODIGO_TIENDA_CLIENTE, NOMBRE_TIENDA_CLIENTE, CIUDAD_TIENDA_CLIENTE, esCodigoTiendaInstitucional, CODIGO_TIENDA_INSTITUCIONAL, NOMBRE_TIENDA_INSTITUCIONAL, CIUDAD_TIENDA_INSTITUCIONAL } from '../../utils/gourmetPedido'
 import { validarCodigoCaja } from '../../utils/gourmetCaja'
 
 const ROLES_CREAN = ['OPERACIONES_GOURMET', 'ADMIN', 'GERENTE']
@@ -42,6 +42,10 @@ export default defineEventHandler(async (event) => {
     codigoTienda = CODIGO_TIENDA_CLIENTE
     nombreTienda = NOMBRE_TIENDA_CLIENTE
     ciudadDestino = CIUDAD_TIENDA_CLIENTE
+  } else if (esCodigoTiendaInstitucional(data.codigoTienda)) {
+    codigoTienda = CODIGO_TIENDA_INSTITUCIONAL
+    nombreTienda = NOMBRE_TIENDA_INSTITUCIONAL
+    ciudadDestino = CIUDAD_TIENDA_INSTITUCIONAL
   } else {
     const tienda = await prisma.maestroTiendaGourmet.findUnique({ where: { codigo: data.codigoTienda } })
     if (!tienda) throw createError({ statusCode: 400, statusMessage: 'El código de tienda no existe en el maestro' })

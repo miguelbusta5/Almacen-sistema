@@ -3,7 +3,7 @@ import { z } from 'zod'
 import { prisma } from '../../../utils/prisma'
 import { requireRole } from '../../../utils/auth'
 import { mapPedidoGourmetDetalle } from '../../../utils/mapRow'
-import { derivarTipoOrden, esCodigoTiendaCliente, CODIGO_TIENDA_CLIENTE, NOMBRE_TIENDA_CLIENTE, CIUDAD_TIENDA_CLIENTE } from '../../../utils/gourmetPedido'
+import { derivarTipoOrden, esCodigoTiendaCliente, CODIGO_TIENDA_CLIENTE, NOMBRE_TIENDA_CLIENTE, CIUDAD_TIENDA_CLIENTE, esCodigoTiendaInstitucional, CODIGO_TIENDA_INSTITUCIONAL, NOMBRE_TIENDA_INSTITUCIONAL, CIUDAD_TIENDA_INSTITUCIONAL } from '../../../utils/gourmetPedido'
 
 const ROLES_EDITAN = ['OPERACIONES_GOURMET', 'ADMIN', 'GERENTE']
 // Estados desde los que se puede editar la cabecera (antes/durante corrección,
@@ -71,6 +71,10 @@ export default defineEventHandler(async (event) => {
       data.codigoTienda = CODIGO_TIENDA_CLIENTE
       data.nombreTienda = NOMBRE_TIENDA_CLIENTE
       data.ciudadDestino = CIUDAD_TIENDA_CLIENTE
+    } else if (esCodigoTiendaInstitucional(d.codigoTienda)) {
+      data.codigoTienda = CODIGO_TIENDA_INSTITUCIONAL
+      data.nombreTienda = NOMBRE_TIENDA_INSTITUCIONAL
+      data.ciudadDestino = CIUDAD_TIENDA_INSTITUCIONAL
     } else {
       const tienda = await prisma.maestroTiendaGourmet.findUnique({ where: { codigo: d.codigoTienda } })
       if (!tienda) throw createError({ statusCode: 400, statusMessage: 'El código de tienda no existe en el maestro' })

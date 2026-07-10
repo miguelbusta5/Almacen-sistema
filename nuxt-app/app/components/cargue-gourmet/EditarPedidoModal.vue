@@ -29,6 +29,11 @@ function onCodigoTiendaInput(value: string) {
     showSuggestions.value = false
     return
   }
+  if (value.trim().toUpperCase() === 'INSTITUCIONAL') {
+    tiendaSeleccionada.value = { codigo: 'INSTITUCIONAL', tienda: 'Institucional', ciudad: 'Institucional' }
+    showSuggestions.value = false
+    return
+  }
   showSuggestions.value = true
   if (!value.trim()) { suggestions.value = []; return }
   debounceTimer = setTimeout(async () => {

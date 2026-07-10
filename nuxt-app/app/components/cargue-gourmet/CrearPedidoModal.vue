@@ -35,6 +35,11 @@ function onCodigoTiendaInput(value: string) {
     showSuggestions.value = false
     return
   }
+  if (value.trim().toUpperCase() === 'INSTITUCIONAL') {
+    tiendaSeleccionada.value = { codigo: 'INSTITUCIONAL', tienda: 'Institucional', ciudad: 'Institucional' }
+    showSuggestions.value = false
+    return
+  }
   showSuggestions.value = true
   if (!value.trim()) { suggestions.value = []; return }
   debounceTimer = setTimeout(async () => {
@@ -160,7 +165,7 @@ async function submit() {
           <span class="fl">Código tienda <b>*</b></span>
           <input
             :value="codigoTiendaQuery" class="field" autocomplete="off"
-            placeholder="Buscar por código, tienda o ciudad… o escribe CLIENTE"
+            placeholder="Buscar por código, tienda o ciudad… o escribe CLIENTE / INSTITUCIONAL"
             @input="onCodigoTiendaInput(($event.target as HTMLInputElement).value)"
             @focus="showSuggestions = true"
           >

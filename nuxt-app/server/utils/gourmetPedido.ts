@@ -20,3 +20,13 @@ export const CIUDAD_TIENDA_CLIENTE = 'CLIENTE'
 export function esCodigoTiendaCliente(codigo: string): boolean {
   return codigo.trim().toUpperCase() === CODIGO_TIENDA_CLIENTE
 }
+
+// Igual que CLIENTE: valor especial para pedidos institucionales, sin tienda
+// real asociada en MaestroTiendaGourmet.
+export const CODIGO_TIENDA_INSTITUCIONAL = 'INSTITUCIONAL'
+export const NOMBRE_TIENDA_INSTITUCIONAL = 'Institucional'
+export const CIUDAD_TIENDA_INSTITUCIONAL = 'Institucional'
+
+export function esCodigoTiendaInstitucional(codigo: string): boolean {
+  return codigo.trim().toUpperCase() === CODIGO_TIENDA_INSTITUCIONAL
+}
