@@ -5,9 +5,12 @@ import { mapPedidoGourmetDetalle } from '../../../../../utils/mapRow'
 
 // Resolver una novedad abierta desbloquea "Finalizar" en ese cargue (el
 // endpoint de finalizar rechaza mientras exista alguna novedad ABIERTA,
-// sin importar que el conteo de cajas ya coincida). Solo ADMIN, a pedido
-// explícito del usuario.
-const ROLES_PERMITIDOS = ['ADMIN']
+// sin importar que el conteo de cajas ya coincida). Originalmente solo
+// ADMIN; TRANSPORTE se agregó a pedido explícito del usuario para que el
+// operario en cargue pueda destrabar sus novedades y finalizar sin
+// depender del administrador. Deliberadamente NO se extendió al resto de
+// roles del ciclo de cargue.
+const ROLES_PERMITIDOS = ['TRANSPORTE', 'ADMIN']
 
 // POST /api/cargue-gourmet/[id]/novedades/[novedadId]/resolver
 export default defineEventHandler(async (event) => {
