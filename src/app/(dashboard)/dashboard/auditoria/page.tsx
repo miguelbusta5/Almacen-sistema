@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useSession } from "next-auth/react";
-import { ShieldAlert, ChevronLeft, ChevronRight, RefreshCw, Download } from "lucide-react";
+import { ShieldAlert, ChevronLeft, ChevronRight, RefreshCw, Download, X } from "lucide-react";
 import { useIsMobile } from "@/lib/useIsMobile";
 import { SkeletonTable, ModuleHero } from "@/components/ui";
 import { getModuleCssVars } from "@/lib/moduleTheme";
@@ -147,7 +147,18 @@ export default function AuditoriaPage() {
 
       {/* Filtros */}
       <div className="g-panel" style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center", padding: "0.75rem 1rem", marginBottom: "1rem" }}>
-        <input value={fq} onChange={e => setFq(e.target.value)} placeholder="Buscar en detalle o registro…" style={{ ...inp, flex: 1, minWidth: isMobile ? 120 : 180, width: isMobile ? "100%" : undefined }} />
+        <div style={{ position: "relative", flex: 1, minWidth: isMobile ? 120 : 180, width: isMobile ? "100%" : undefined }}>
+          <input value={fq} onChange={e => setFq(e.target.value)} placeholder="Buscar en detalle o registro…" style={{ ...inp, width: "100%", paddingRight: 32 }} />
+          {fq && (
+            <button
+              aria-label="Borrar búsqueda"
+              onClick={() => setFq("")}
+              style={{ position: "absolute", right: 4, top: "50%", transform: "translateY(-50%)", width: 28, height: 28, display: "grid", placeItems: "center", border: "none", background: "transparent", color: "var(--muted)", cursor: "pointer", borderRadius: 6 }}
+            >
+              <X size={14} />
+            </button>
+          )}
+        </div>
         <select value={fModule} onChange={e => setFModule(e.target.value)} style={inp}>
           <option value="">Todos los módulos</option>
           <option value="muebles">Muebles</option>

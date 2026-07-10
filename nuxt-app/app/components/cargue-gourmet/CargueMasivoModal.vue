@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
-import { Search } from '@lucide/vue'
+import { Search, X } from '@lucide/vue'
 import { ESTADO_LABEL, ESTADO_TONE, type PedidoGourmet } from '~/utils/gourmet'
 
 const props = defineProps<{ items: PedidoGourmet[]; saving?: boolean }>()
@@ -48,8 +48,9 @@ function submit() {
       </div>
 
       <div class="search">
-        <Search :size="15" />
+        <Search :size="15" class="search-ic" />
         <input v-model="q" class="field" placeholder="Buscar orden o tienda…">
+        <button v-if="q" class="clr" aria-label="Borrar búsqueda" @click="q = ''"><X :size="14" /></button>
       </div>
 
       <div class="listhead">
@@ -87,9 +88,16 @@ function submit() {
 .form { display: flex; flex-direction: column; gap: 14px; }
 .advertencia { font-size: 13px; color: var(--u-aviso); background: var(--u-aviso-tint); border: 1px solid var(--u-aviso); border-radius: var(--r-sm); padding: 10px 12px; }
 .search { position: relative; }
-.search svg { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: var(--faint); pointer-events: none; }
-.search .field { padding-left: 38px; }
-.search:focus-within svg { color: var(--brand); }
+.search .search-ic { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: var(--faint); pointer-events: none; }
+.search .field { padding-left: 38px; padding-right: 34px; }
+.search:focus-within .search-ic { color: var(--brand); }
+.clr {
+  position: absolute; right: 6px; top: 50%; transform: translateY(-50%);
+  display: grid; place-items: center; width: 26px; height: 26px;
+  border: none; background: transparent; border-radius: var(--r-xs);
+  color: var(--faint); cursor: pointer; transition: color .12s, background .12s;
+}
+.clr:hover { color: var(--ink-2); background: var(--surface-3); }
 .listhead { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
 .check-all { display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 600; color: var(--ink-2); cursor: pointer; }
 .count { font-size: 12px; color: var(--muted); }

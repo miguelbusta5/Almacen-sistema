@@ -466,7 +466,17 @@ export default function SolicitudesTransportePage() {
           <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
             <div style={{ position: "relative", flex: "1 1 260px" }}>
               <Search size={15} style={{ position: "absolute", left: 10, top: 10, color: "var(--muted)" }} />
-              <input value={query} onChange={(e) => setQuery(e.target.value)} onKeyDown={(e) => e.key === "Enter" && setAppliedQuery(query.trim())} placeholder="Buscar por solicitante, pedido, ciudad, guia..." style={{ ...inputStyle, paddingLeft: 32 }} />
+              <input value={query} onChange={(e) => setQuery(e.target.value)} onKeyDown={(e) => e.key === "Enter" && setAppliedQuery(query.trim())} placeholder="Buscar por solicitante, pedido, ciudad, guia..." style={{ ...inputStyle, paddingLeft: 32, paddingRight: 32 }} />
+              {/* Limpia también la búsqueda ya APLICADA con Enter, no solo el texto. */}
+              {query && (
+                <button
+                  aria-label="Borrar búsqueda"
+                  onClick={() => { setQuery(""); setAppliedQuery(""); }}
+                  style={{ position: "absolute", right: 4, top: "50%", transform: "translateY(-50%)", width: 28, height: 28, display: "grid", placeItems: "center", border: "none", background: "transparent", color: "var(--muted)", cursor: "pointer", borderRadius: 6 }}
+                >
+                  <X size={14} />
+                </button>
+              )}
             </div>
             <select value={estado} onChange={(e) => setEstado(e.target.value)} style={{ ...inputStyle, width: 190 }}>
               <option value="">Todos los estados</option>

@@ -815,13 +815,25 @@ export default function InventarioMobilePage() {
       }}>
         {searchOpen ? (
           <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 12 }}>
-            <input
-              autoFocus
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder="Buscar PLU, posición…"
-              className="ds-input ds-input-lg" style={{ flex: 1, height: 40, WebkitAppearance: "none" }}
-            />
+            <div style={{ position: "relative", flex: 1 }}>
+              <input
+                autoFocus
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Buscar PLU, posición…"
+                className="ds-input ds-input-lg" style={{ width: "100%", height: 40, WebkitAppearance: "none", paddingRight: 36 }}
+              />
+              {/* La X borra el texto sin cerrar la búsqueda; "Cancelar" sigue cerrando. */}
+              {search && (
+                <button
+                  aria-label="Borrar búsqueda"
+                  onClick={() => setSearch("")}
+                  style={{ position: "absolute", right: 4, top: "50%", transform: "translateY(-50%)", width: 32, height: 32, display: "grid", placeItems: "center", border: "none", background: "transparent", color: "var(--muted)", cursor: "pointer", borderRadius: 8 }}
+                >
+                  <X size={16} />
+                </button>
+              )}
+            </div>
             <button
               onClick={() => { setSearchOpen(false); setSearch(""); }}
               style={{ flexShrink: 0, background: "var(--surface2)", border: "none", borderRadius: 10, padding: "8px 14px", fontSize: 13, color: "var(--muted)", cursor: "pointer" }}

@@ -732,7 +732,16 @@ export default function IntegracionPage() {
             <div style={{ position: "relative", flex: "1 1 160px", minWidth: 140 }}>
               <Search size={14} style={{ position: "absolute", left: 10, top: "50%", transform: "translateY(-50%)", color: "var(--muted)", pointerEvents: "none" }} />
               <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Buscar documento…"
-                style={{ ...inp, paddingLeft: 32 }} {...focusProps} />
+                style={{ ...inp, paddingLeft: 32, paddingRight: 32 }} {...focusProps} />
+              {search && (
+                <button
+                  aria-label="Borrar búsqueda"
+                  onClick={() => setSearch("")}
+                  style={{ position: "absolute", right: 4, top: "50%", transform: "translateY(-50%)", width: 28, height: 28, display: "grid", placeItems: "center", border: "none", background: "transparent", color: "var(--muted)", cursor: "pointer", borderRadius: 6 }}
+                >
+                  <X size={14} />
+                </button>
+              )}
             </div>
             <select value={filterEstado} onChange={(e) => setFilterEstado(e.target.value)} style={{ ...inp, flex: "0 0 auto", width: "auto" }} {...focusProps}>
               <option value="">Todos los estados</option>

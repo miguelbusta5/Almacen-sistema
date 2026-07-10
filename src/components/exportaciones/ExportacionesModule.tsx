@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useSession } from "next-auth/react";
-import { ArrowRightLeft, BarChart3, CheckCircle2, ChevronDown, ChevronUp, Clock, Download, Pencil, RefreshCw, Search, Tags, Trash2 } from "lucide-react";
+import { ArrowRightLeft, BarChart3, CheckCircle2, ChevronDown, ChevronUp, Clock, Download, Pencil, RefreshCw, Search, Tags, Trash2, X } from "lucide-react";
 import { EmptyState, ModuleHero, SkeletonTable } from "@/components/ui";
 import { useConfirm } from "@/components/ui/useDialogs";
 import { Modal } from "@/components/ui/Modal";
@@ -347,7 +347,16 @@ export default function ExportacionesModule({ cfg }: { cfg: PaisConfig }) {
     <div style={{ display: "grid", gridTemplateColumns: isMobile ? "minmax(0, 1fr)" : (canManage ? "1.4fr 150px 150px 170px auto" : "1.4fr 180px 180px auto"), gap: 10, marginBottom: 14 }}>
       <div style={{ position: "relative" }}>
         <Search size={15} style={{ position: "absolute", left: 10, top: 11, color: "var(--muted)" }} />
-        <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Buscar caja, PLU o descripcion" className="ds-input" style={{ paddingLeft: 32 }} />
+        <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Buscar caja, PLU o descripcion" className="ds-input" style={{ paddingLeft: 32, paddingRight: 32 }} />
+        {query && (
+          <button
+            aria-label="Borrar búsqueda"
+            onClick={() => { setQuery(""); setPage(1); setApplied((prev) => ({ ...prev, q: "" })); }}
+            style={{ position: "absolute", right: 4, top: "50%", transform: "translateY(-50%)", width: 28, height: 28, display: "grid", placeItems: "center", border: "none", background: "transparent", color: "var(--muted)", cursor: "pointer", borderRadius: 6 }}
+          >
+            <X size={14} />
+          </button>
+        )}
       </div>
       <input type="date" value={fecha} onChange={(e) => setFecha(e.target.value)} className="ds-input" />
       <select value={estado} onChange={(e) => setEstado(e.target.value)} className="ds-input">

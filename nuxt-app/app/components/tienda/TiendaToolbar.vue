@@ -25,13 +25,20 @@ function onInput(e: Event) {
   localQ.value = (e.target as HTMLInputElement).value
   emitQ(localQ.value)
 }
+// La X del input borra SOLO la búsqueda (a diferencia de "Limpiar") y
+// emite directo, sin debounce.
+function clearQ() {
+  localQ.value = ''
+  emit('update:q', '')
+}
 </script>
 
 <template>
   <div class="toolbar">
     <div class="search">
-      <Search :size="16" />
+      <Search :size="16" class="search-ic" />
       <input :value="localQ" @input="onInput" class="field" placeholder="Buscar documento o cliente…">
+      <button v-if="localQ" class="clr" aria-label="Borrar búsqueda" @click="clearQ"><X :size="14" /></button>
     </div>
     <select :value="estado" @change="emit('update:estado', ($event.target as HTMLSelectElement).value)" class="field sel">
       <option value="">Todos los estados</option>
@@ -59,9 +66,16 @@ function onInput(e: Event) {
 <style scoped>
 .toolbar { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; padding: 12px; border: 1px solid var(--border); border-radius: var(--r-md); background: var(--surface); box-shadow: var(--shadow-xs); }
 .search { position: relative; flex: 1; min-width: 220px; }
-.search svg { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: var(--faint); pointer-events: none; }
-.search .field { padding-left: 38px; }
-.search:focus-within svg { color: var(--brand); }
+.search .search-ic { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: var(--faint); pointer-events: none; }
+.search .field { padding-left: 38px; padding-right: 34px; }
+.search:focus-within .search-ic { color: var(--brand); }
+.clr {
+  position: absolute; right: 6px; top: 50%; transform: translateY(-50%);
+  display: grid; place-items: center; width: 26px; height: 26px;
+  border: none; background: transparent; border-radius: var(--r-xs);
+  color: var(--faint); cursor: pointer; transition: color .12s, background .12s;
+}
+.clr:hover { color: var(--ink-2); background: var(--surface-3); }
 .sel { width: auto; min-width: 170px; cursor: pointer; }
 .btn.on { color: var(--u-critico); border-color: var(--u-critico); background: var(--u-critico-tint); }
 .right { margin-left: auto; display: flex; align-items: center; gap: 12px; }

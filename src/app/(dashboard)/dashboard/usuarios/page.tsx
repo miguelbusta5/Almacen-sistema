@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useSession } from "next-auth/react";
-import { Users, Plus, Shield, ShieldCheck, ShieldAlert, Truck, Car, Upload, Search, GitMerge, Package } from "lucide-react";
+import { Users, Plus, Shield, ShieldCheck, ShieldAlert, Truck, Car, Upload, Search, GitMerge, Package, X } from "lucide-react";
 import { SkeletonTable, EmptyState, ModuleHero } from "@/components/ui";
 import { Modal } from "@/components/ui/Modal";
 import { AutoRefreshIndicator } from "@/components/ui/AutoRefreshIndicator";
@@ -174,8 +174,17 @@ export default function UsuariosPage() {
                 value={searchQ}
                 onChange={(e) => setSearchQ(e.target.value)}
                 placeholder="Buscar por nombre, email o rol…"
-                style={{ ...inp, paddingLeft: 32, height: 36, fontSize: 13, fontFamily: "var(--sans)" }}
+                style={{ ...inp, paddingLeft: 32, paddingRight: 32, height: 36, fontSize: 13, fontFamily: "var(--sans)" }}
               />
+              {searchQ && (
+                <button
+                  aria-label="Borrar búsqueda"
+                  onClick={() => setSearchQ("")}
+                  style={{ position: "absolute", right: 4, top: "50%", transform: "translateY(-50%)", width: 28, height: 28, display: "grid", placeItems: "center", border: "none", background: "transparent", color: "var(--muted)", cursor: "pointer", borderRadius: 6 }}
+                >
+                  <X size={14} />
+                </button>
+              )}
             </div>
             <span style={{ fontSize: 12, color: "var(--muted)", whiteSpace: "nowrap" }}>
               {filteredUsers.length} de {users.length}
