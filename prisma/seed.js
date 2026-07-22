@@ -26,7 +26,8 @@ if (!ADMIN_EMAIL || !ADMIN_PASSWORD) {
 
 const pool = new Pool({
   connectionString: DB_URL,
-  ssl: DB_URL.includes('railway') ? { rejectUnauthorized: false } : false,
+  // SSL para cualquier host remoto (Railway, Supabase…); solo local sin SSL.
+  ssl: (DB_URL.includes('localhost') || DB_URL.includes('127.0.0.1')) ? false : { rejectUnauthorized: false },
 });
 const adapter = new PrismaPg(pool);
 const prisma = new PrismaClient({ adapter });

@@ -16,12 +16,15 @@ const g = globalThis as unknown as { _prisma?: PrismaClient }
 
 function create(): PrismaClient {
   const connectionString = process.env.DATABASE_POOL_URL ?? process.env.DATABASE_URL
-  const isRailway = connectionString?.includes('railway') || connectionString?.includes('rlwy.net')
+  // SSL activo contra cualquier host remoto (Railway, Supabase, etc.); solo
+  // se desactiva para una base local. Supabase EXIGE SSL — la regla vieja
+  // (SSL solo si la cadena decía "railway") fallaba al migrar.
+  const isLocal = !!connectionString && (connectionString.includes('localhost') || connectionString.includes('127.0.0.1'))
   const isPgBouncer = !!process.env.DATABASE_POOL_URL
 
   const pool = new Pool({
     connectionString,
-    ssl: isRailway ? { rejectUnauthorized: false } : false,
+    ssl: isLocal ? false : { rejectUnauthorized: false },
     max: isPgBouncer ? 1 : 3,
     idleTimeoutMillis: 30_000,
     connectionTimeoutMillis: 15_000,
