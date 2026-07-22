@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted } from 'vue'
-import { Truck, Boxes, Store, ClipboardCheck, Users, Search, Bell, LayoutGrid, CheckCircle2, TriangleAlert } from '@lucide/vue'
+import { Truck, Boxes, Store, ClipboardCheck, Users, Search, Bell, LayoutGrid, CheckCircle2, TriangleAlert, CheckSquare } from '@lucide/vue'
 import { ensureSession, useSessionState } from '~/composables/useSession'
 import { useToastState } from '~/composables/useToast'
 
@@ -18,6 +18,7 @@ const nav = [
   { icon: Store, label: 'Facturas Contado', href: '/dashboard/tienda', key: 'tienda' },
   { icon: Boxes, label: 'Novedades Inventario', href: '/dashboard/inventario', key: null },
   { icon: Truck, label: 'Guardados Transporte', href: '/dashboard/transporte', key: 'transporte' },
+  { icon: CheckSquare, label: 'Mis Tareas', href: '/dashboard/mis-tareas', key: 'mis-tareas' },
   { icon: ClipboardCheck, label: 'Preoperacional', href: '/dashboard/preoperacional', key: null },
   { icon: Users, label: 'Usuarios', href: '/dashboard/usuarios', key: null },
 ]
