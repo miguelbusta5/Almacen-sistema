@@ -6,11 +6,14 @@ import dayjs from 'dayjs'
 
 export const TARIFA_ALM = 5_000
 
-export function calcCostoAlmacenaje(fechaInicio: string, endDate?: string | null): number {
+export function diasTranscurridosAlmacenaje(fechaInicio: string, endDate?: string | null): number {
   const inicio = dayjs(fechaInicio).startOf('day')
   const fin = dayjs(endDate ?? dayjs().format('YYYY-MM-DD')).startOf('day')
-  const diasTranscurridos = Math.max(0, fin.diff(inicio, 'day'))
-  const diasCobrados = Math.max(0, diasTranscurridos - 30)
+  return Math.max(0, fin.diff(inicio, 'day'))
+}
+
+export function calcCostoAlmacenaje(fechaInicio: string, endDate?: string | null): number {
+  const diasCobrados = Math.max(0, diasTranscurridosAlmacenaje(fechaInicio, endDate) - 30)
   return diasCobrados * TARIFA_ALM
 }
 

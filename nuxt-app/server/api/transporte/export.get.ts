@@ -2,7 +2,7 @@ import { defineEventHandler, getQuery, setHeader, createError } from 'h3'
 import ExcelJS from 'exceljs'
 import { prisma } from '../../utils/prisma'
 import { requireAuth } from '../../utils/auth'
-import { calcAlmacenaje } from '../../utils/almacenaje'
+import { calcCostoAlmacenaje, diasTranscurridosAlmacenaje } from '../../utils/almacenaje'
 
 // Roles que pueden exportar, más el acceso puntual (no general) para
 // auxiliar-transporte@gmail.com — ver docs/cerebro/pendientes.md sobre el
@@ -48,11 +48,12 @@ export default defineEventHandler(async (event) => {
   const dataRows: (string | number)[][] = rows.map((r) => {
     const fecha = r.fecha.toISOString().slice(0, 10)
     const fechaDespacho = r.fecha_despacho ? r.fecha_despacho.toISOString().slice(0, 10) : null
-    const alm = calcAlmacenaje(fecha, fechaDespacho)
+    const diasTranscurridos = diasTranscurridosAlmacenaje(fecha, fechaDespacho)
+    const costoAcumulado = calcCostoAlmacenaje(fecha, fechaDespacho)
     return [
       r.documento, r.tipo ?? 'COMUN', r.codigoTienda ?? '', r.nombreTienda ?? '',
       r.ciudad ?? '', r.ubicacion, r.estado, fecha, fechaDespacho ?? '',
-      alm.diasTranscurridos, alm.costoAcumulado, r.nota ?? '',
+      diasTranscurridos, costoAcumulado, r.nota ?? '',
     ]
   })
 
