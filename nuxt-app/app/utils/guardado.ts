@@ -18,6 +18,8 @@ export interface Guardado {
   fechaDespacho: string | null;
   nota: string | null;
   ciudad: string | null;
+  codigoTienda: string | null;
+  nombreTienda: string | null;
   netsuiteId: string | null;
 }
 
@@ -85,7 +87,7 @@ export function scoreGuardado(g: Guardado): number {
   const u = urgencia(g);
   let score = 0;
   score += Math.min(35, dias * 0.45);
-  score += Math.min(35, (alm.costo / 150_000) * 10);
+  score += Math.min(35, (alm.costo / 300_000) * 10);
   if (u?.tipo === 'vencida') score += 30;
   else if (u?.tipo === 'proxima' && (u.dias ?? 10) <= 2) score += 22;
   else if (u?.tipo === 'proxima') score += 12;

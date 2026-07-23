@@ -11,6 +11,8 @@ export function mapGuardado(r: any) {
     fechaDespacho: r.fecha_despacho ? r.fecha_despacho.toISOString().slice(0, 10) : null,
     nota: r.nota,
     ciudad: r.ciudad ?? null,
+    codigoTienda: r.codigoTienda ?? null,
+    nombreTienda: r.nombreTienda ?? null,
     netsuiteId: r.netsuiteId ?? null,
   }
 }

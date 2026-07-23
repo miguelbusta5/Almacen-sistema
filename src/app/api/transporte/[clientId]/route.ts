@@ -10,6 +10,8 @@ const updateSchema = z.object({
   fechaDespacho:z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable().optional(),
   nota:         z.string().nullable().optional(),
   ciudad:       z.string().max(100).nullable().optional(),
+  codigoTienda: z.string().max(50).nullable().optional(),
+  nombreTienda: z.string().max(255).nullable().optional(),
   netsuiteId:   z.string().max(100).nullable().optional(),
   // Solo ADMIN puede modificar la fecha de ingreso (afecta almacenaje)
   fecha:        z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
@@ -51,6 +53,8 @@ export async function PUT(
         : undefined,
       ...(d.nota       !== undefined && { nota: d.nota }),
       ...(d.ciudad     !== undefined && { ciudad: d.ciudad }),
+      ...(d.codigoTienda !== undefined && { codigoTienda: d.codigoTienda }),
+      ...(d.nombreTienda !== undefined && { nombreTienda: d.nombreTienda }),
       ...(d.netsuiteId !== undefined && { netsuiteId: d.netsuiteId }),
       updated_at: new Date(),
     },

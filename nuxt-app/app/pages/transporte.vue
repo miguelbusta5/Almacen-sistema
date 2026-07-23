@@ -20,6 +20,35 @@ const canEdit = computed(() => demo.value || !!me.value?.can.edit)
 const canDelete = computed(() => demo.value || !!me.value?.can.delete)
 const canCreate = computed(() => demo.value || !!me.value?.can.create)
 
+// Exportar a Excel: mismos roles que pueden editar/gestionar Guardados, más
+// el acceso puntual para auxiliar-transporte@gmail.com (espejo del gate de
+// servidor en /api/transporte/export — ver ese archivo para el detalle).
+const ROLES_EXPORT = ['ADMIN', 'GERENTE', 'TRANSPORTE', 'SUPERVISOR_TRANSPORTE']
+const EMAILS_EXPORT = ['auxiliar-transporte@gmail.com']
+const canExport = computed(() => demo.value || ROLES_EXPORT.includes(me.value?.role ?? '') || EMAILS_EXPORT.includes(me.value?.email ?? ''))
+const exporting = ref(false)
+async function exportarExcel() {
+  if (exporting.value || demo.value) return
+  exporting.value = true
+  try {
+    const query: Record<string, string> = {}
+    if (q.value) query.q = q.value
+    if (fEstado.value) query.estado = fEstado.value
+    if (fTipo.value) query.tipo = fTipo.value
+    const blob = await $fetch<Blob>('/api/transporte/export', { query, responseType: 'blob' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `guardados-transporte-${todayISO()}.xlsx`
+    a.click()
+    URL.revokeObjectURL(url)
+  } catch (e) {
+    showToast(apiErr(e, 'No se pudo exportar'), true)
+  } finally {
+    exporting.value = false
+  }
+}
+
 // filtros
 const q = ref('')
 const fEstado = ref('')
@@ -323,7 +352,9 @@ function guardarFecha() {
       <div class="hero-actions">
         <span v-if="demo" class="demo-tag" title="Sin sesión activa: mostrando datos de ejemplo. Inicia sesión en la app principal para ver datos reales."><span class="demo-dot" /> Modo demo</span>
         <button class="btn btn-sm refresh" :class="{ spin: refreshing }" @click="refresh"><RefreshCw :size="14" /> {{ refreshing ? 'Actualizando…' : 'Actualizar' }}</button>
-        <button class="btn btn-sm"><Download :size="14" /> Excel</button>
+        <button v-if="canExport" class="btn btn-sm" :disabled="exporting" @click="exportarExcel">
+          <Download :size="14" /> {{ exporting ? 'Exportando…' : 'Excel' }}
+        </button>
         <button v-if="canCreate" class="btn btn-primary btn-sm" @click="editing = null; showForm = true"><Plus :size="14" /> Nuevo guardado</button>
       </div>
     </section>

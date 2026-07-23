@@ -35,6 +35,9 @@ export interface Guardado {
   estado: TransporteEstado;
   fechaDespacho?: string;
   nota?: string;
+  ciudad?: string | null;
+  codigoTienda?: string | null;
+  nombreTienda?: string | null;
 }
 
 export interface AlmacenajeInfo {

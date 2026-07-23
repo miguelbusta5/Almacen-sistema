@@ -1,39 +1,38 @@
 // ════════════════════════════════════════════════
-// LÓGICA DE ALMACENAJE — Regla de 30 días exactos
+// LÓGICA DE ALMACENAJE — Regla de 30 días de gracia + cobro diario
 //
 // Período de gracia: días 0-30 (inclusive) → $0
-// Cada bloque completo de 30 días DESPUÉS de la gracia → 1 cobro
+// A partir del día 31, se cobra $5.000 por cada día transcurrido
+// (acumulación diaria, sin bloques de 30 días).
 //
 // Ejemplos:
-//   Días  0-30 → 0 cobros ($0)
-//   Días 31-60 → 1 cobro  ($150.000)
-//   Días 61-90 → 2 cobros ($300.000)
-//   Días 91-120→ 3 cobros ($450.000)
-//
-// Sin prorrateo. Cada cobro es el bloque completo.
+//   Día  30 → $0 (último día de gracia)
+//   Día  31 → $5.000  (1 día cobrado)
+//   Día  60 → $150.000 (30 días cobrados)
+//   Día  90 → $300.000 (60 días cobrados)
 // ════════════════════════════════════════════════
 
-export const TARIFA_ALM = 150_000; // $150.000 COP por período de 30 días
+export const TARIFA_ALM = 5_000; // $5.000 COP por día después de la gracia
 
 export interface Almacenaje {
   // ── Campos nuevos (spec correcta) ────────────────────────
   diasTranscurridos:     number;
   diasGraciaRestantes:   number;   // 0 si ya venció la gracia
-  cobrosGenerados:       number;
+  cobrosGenerados:       number;   // días cobrados (1 cobro = 1 día)
   costoAcumulado:        number;
   fechaPrimerCobro:      string;   // YYYY-MM-DD (día 31 desde ingreso)
-  fechaProximoCobro:     string;   // YYYY-MM-DD (próximo cobro)
+  fechaProximoCobro:     string;   // YYYY-MM-DD (próximo día que se cobra)
   diasHastaProximoCobro: number;
 
   // ── Aliases de compatibilidad (código existente) ─────────
   fase:           "gracia" | "cobro";
   costo:          number;   // = costoAcumulado
-  meses:          number;   // = cobrosGenerados
+  meses:          number;   // = cobrosGenerados (días cobrados)
   finGracia:      string;   // fecha en que termina el período de gracia (día 30)
   diasRestantes:  number;   // = diasGraciaRestantes
-  costoProximo:   number;   // costo al completar el próximo bloque
+  costoProximo:   number;   // costo tras sumar el próximo día cobrado
   diasHastaProxima: number; // = diasHastaProximoCobro
-  diasEnPeriodo:  number;   // días transcurridos en el bloque actual (1-30)
+  diasEnPeriodo:  number;   // ya no hay bloques de 30: 1 si está en cobro, días si en gracia
   proximaCarga:   string;   // = fechaProximoCobro
 }
 
@@ -67,31 +66,24 @@ export function calcAlmacenaje(fechaInicio: string, endDate?: string | null): Al
   const fechaFinGracia      = addDays(inicio, 30);
   const fechaPrimerCobro    = addDays(inicio, 31);
 
-  // ── Cobros: bloques de 30 días después del día 30 ────────
-  // Cobros se generan al inicio de los días 31, 61, 91...
-  const cobrosGenerados = diasTranscurridos <= 30
-    ? 0
-    : Math.floor((diasTranscurridos - 31) / 30) + 1;
+  // ── Cobro diario a partir del día 31 ─────────────────────
+  const diasCobrados   = Math.max(0, diasTranscurridos - 30);
+  const costoAcumulado = diasCobrados * TARIFA_ALM;
 
-  const costoAcumulado = cobrosGenerados * TARIFA_ALM;
-
-  // Próximo cobro: día (31 + cobrosGenerados * 30) desde el ingreso
-  const diaProximoCobro      = 31 + cobrosGenerados * 30;
-  const diasHastaProximoCobro = diaProximoCobro - diasTranscurridos;
+  // Próximo día que se cobra: día 31 si aún en gracia, mañana si ya en cobro
+  const diasHastaProximoCobro = diasTranscurridos <= 30 ? 31 - diasTranscurridos : 1;
   const fechaProximoCobro     = addDays(fin, diasHastaProximoCobro);
 
-  // Posición dentro del bloque actual (1-30)
-  const diasEnPeriodo = diasTranscurridos <= 30
-    ? diasTranscurridos
-    : ((diasTranscurridos - 31) % 30) + 1;
-
   const fase: "gracia" | "cobro" = diasTranscurridos <= 30 ? "gracia" : "cobro";
+
+  // Ya no hay bloques de 30 días: cada día cobrado es su propio período.
+  const diasEnPeriodo = diasCobrados > 0 ? 1 : diasTranscurridos;
 
   return {
     // Spec nueva
     diasTranscurridos,
     diasGraciaRestantes,
-    cobrosGenerados,
+    cobrosGenerados: diasCobrados,
     costoAcumulado,
     fechaPrimerCobro:      toISO(fechaPrimerCobro),
     fechaProximoCobro:     toISO(fechaProximoCobro),
@@ -100,10 +92,10 @@ export function calcAlmacenaje(fechaInicio: string, endDate?: string | null): Al
     // Aliases compat
     fase,
     costo:          costoAcumulado,
-    meses:          cobrosGenerados,
+    meses:          diasCobrados,
     finGracia:      toISO(fechaFinGracia),
     diasRestantes:  diasGraciaRestantes,
-    costoProximo:   (cobrosGenerados + 1) * TARIFA_ALM,
+    costoProximo:   costoAcumulado + TARIFA_ALM,
     diasHastaProxima: diasHastaProximoCobro,
     diasEnPeriodo,
     proximaCarga:   toISO(fechaProximoCobro),

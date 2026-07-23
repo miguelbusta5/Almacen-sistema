@@ -11,26 +11,25 @@ function dia(fechaInicio: string, n: number): string {
 const INICIO = "2026-01-01";
 
 // ════════════════════════════════════════════════
-// REGLA CORRECTA: 30 días de gracia exactos.
-// Sin prorrateo. Cobros completos por bloque de 30 días.
+// REGLA: 30 días de gracia exactos, luego $5.000 por cada día.
 //
-// Días  0-30 → 0 cobros ($0)
-// Días 31-60 → 1 cobro  ($150.000)
-// Días 61-90 → 2 cobros ($300.000)
-// Días 91-120→ 3 cobros ($450.000)
+// Día  0-30 → $0 (gracia)
+// Día  31   → $5.000  (1 día cobrado)
+// Día  60   → $150.000 (30 días cobrados)
+// Día  90   → $300.000 (60 días cobrados)
 // ════════════════════════════════════════════════
 
-describe("calcAlmacenaje() — regla de 30 días exactos", () => {
+describe("calcAlmacenaje() — 30 días de gracia + $5.000/día", () => {
 
   describe("Período de gracia (días 0-30 → $0)", () => {
-    it("Día 0 (mismo día) → gracia, 0 cobros", () => {
+    it("Día 0 (mismo día) → gracia, $0", () => {
       const r = calcAlmacenaje(INICIO, INICIO);
       expect(r.cobrosGenerados).toBe(0);
       expect(r.costoAcumulado).toBe(0);
       expect(r.fase).toBe("gracia");
     });
 
-    it("Día 29 → gracia, 0 cobros, $0", () => {
+    it("Día 29 → gracia, $0", () => {
       const r = calcAlmacenaje(INICIO, dia(INICIO, 29));
       expect(r.diasTranscurridos).toBe(29);
       expect(r.cobrosGenerados).toBe(0);
@@ -39,7 +38,7 @@ describe("calcAlmacenaje() — regla de 30 días exactos", () => {
       expect(r.diasGraciaRestantes).toBe(1);
     });
 
-    it("Día 30 → gracia, 0 cobros, $0 (último día de gracia)", () => {
+    it("Día 30 → gracia, $0 (último día de gracia)", () => {
       const r = calcAlmacenaje(INICIO, dia(INICIO, 30));
       expect(r.diasTranscurridos).toBe(30);
       expect(r.cobrosGenerados).toBe(0);
@@ -49,8 +48,8 @@ describe("calcAlmacenaje() — regla de 30 días exactos", () => {
     });
   });
 
-  describe("Primer período de cobro (días 31-60 → 1 cobro)", () => {
-    it("Día 31 → 1 cobro, $150.000 (primer cobro generado)", () => {
+  describe("Cobro diario (a partir del día 31)", () => {
+    it("Día 31 → 1 día cobrado, $5.000 (primer día de cobro)", () => {
       const r = calcAlmacenaje(INICIO, dia(INICIO, 31));
       expect(r.diasTranscurridos).toBe(31);
       expect(r.cobrosGenerados).toBe(1);
@@ -59,53 +58,32 @@ describe("calcAlmacenaje() — regla de 30 días exactos", () => {
       expect(r.fase).toBe("cobro");
     });
 
-    it("Día 60 → 1 cobro, $150.000 (último día del primer período)", () => {
-      const r = calcAlmacenaje(INICIO, dia(INICIO, 60));
-      expect(r.diasTranscurridos).toBe(60);
-      expect(r.cobrosGenerados).toBe(1);
-      expect(r.costoAcumulado).toBe(TARIFA_ALM);
+    it("Día 32 → 2 días cobrados, $10.000", () => {
+      const r = calcAlmacenaje(INICIO, dia(INICIO, 32));
+      expect(r.diasTranscurridos).toBe(32);
+      expect(r.cobrosGenerados).toBe(2);
+      expect(r.costoAcumulado).toBe(2 * TARIFA_ALM);
       expect(r.fase).toBe("cobro");
     });
-  });
 
-  describe("Segundo período de cobro (días 61-90 → 2 cobros)", () => {
-    it("Día 61 → 2 cobros, $300.000 (segundo cobro generado)", () => {
-      const r = calcAlmacenaje(INICIO, dia(INICIO, 61));
-      expect(r.diasTranscurridos).toBe(61);
-      expect(r.cobrosGenerados).toBe(2);
-      expect(r.costoAcumulado).toBe(2 * TARIFA_ALM);
-      expect(r.costo).toBe(2 * TARIFA_ALM);
+    it("Día 60 → 30 días cobrados, $150.000", () => {
+      const r = calcAlmacenaje(INICIO, dia(INICIO, 60));
+      expect(r.diasTranscurridos).toBe(60);
+      expect(r.cobrosGenerados).toBe(30);
+      expect(r.costoAcumulado).toBe(30 * TARIFA_ALM);
     });
 
-    it("Día 90 → 2 cobros, $300.000 (último día del segundo período)", () => {
+    it("Día 90 → 60 días cobrados, $300.000", () => {
       const r = calcAlmacenaje(INICIO, dia(INICIO, 90));
       expect(r.diasTranscurridos).toBe(90);
-      expect(r.cobrosGenerados).toBe(2);
-      expect(r.costoAcumulado).toBe(2 * TARIFA_ALM);
+      expect(r.cobrosGenerados).toBe(60);
+      expect(r.costoAcumulado).toBe(60 * TARIFA_ALM);
     });
-  });
 
-  describe("Tercer período de cobro (días 91-120 → 3 cobros)", () => {
-    it("Día 91 → 3 cobros, $450.000 (tercer cobro generado)", () => {
-      const r = calcAlmacenaje(INICIO, dia(INICIO, 91));
-      expect(r.diasTranscurridos).toBe(91);
-      expect(r.cobrosGenerados).toBe(3);
-      expect(r.costoAcumulado).toBe(3 * TARIFA_ALM);
-      expect(r.costo).toBe(3 * TARIFA_ALM);
-    });
-  });
-
-  describe("Períodos adicionales", () => {
-    it("Día 120 → 3 cobros, $450.000", () => {
+    it("Día 120 → 90 días cobrados, $450.000", () => {
       const r = calcAlmacenaje(INICIO, dia(INICIO, 120));
-      expect(r.cobrosGenerados).toBe(3);
-      expect(r.costoAcumulado).toBe(3 * TARIFA_ALM);
-    });
-
-    it("Día 121 → 4 cobros, $600.000", () => {
-      const r = calcAlmacenaje(INICIO, dia(INICIO, 121));
-      expect(r.cobrosGenerados).toBe(4);
-      expect(r.costoAcumulado).toBe(4 * TARIFA_ALM);
+      expect(r.cobrosGenerados).toBe(90);
+      expect(r.costoAcumulado).toBe(90 * TARIFA_ALM);
     });
   });
 
@@ -115,29 +93,28 @@ describe("calcAlmacenaje() — regla de 30 días exactos", () => {
       expect(r.diasGraciaRestantes).toBe(15);
     });
 
-    it("diasHastaProximoCobro = 30 el día justo después del cobro", () => {
-      const r = calcAlmacenaje(INICIO, dia(INICIO, 31));
-      expect(r.diasHastaProximoCobro).toBe(30);
-    });
-
-    it("diasHastaProximoCobro = 1 el día antes del próximo cobro", () => {
-      const r = calcAlmacenaje(INICIO, dia(INICIO, 60));
+    it("diasHastaProximoCobro = 1 en gracia el día antes del primer cobro (día 30)", () => {
+      const r = calcAlmacenaje(INICIO, dia(INICIO, 30));
       expect(r.diasHastaProximoCobro).toBe(1);
     });
 
-    it("costoProximo = cobrosGenerados+1 × TARIFA", () => {
+    it("diasHastaProximoCobro = 1 siempre una vez en fase de cobro", () => {
+      const r31 = calcAlmacenaje(INICIO, dia(INICIO, 31));
+      const r60 = calcAlmacenaje(INICIO, dia(INICIO, 60));
+      expect(r31.diasHastaProximoCobro).toBe(1);
+      expect(r60.diasHastaProximoCobro).toBe(1);
+    });
+
+    it("costoProximo = costoAcumulado + 1 día más", () => {
       const r = calcAlmacenaje(INICIO, dia(INICIO, 31));
       expect(r.costoProximo).toBe(2 * TARIFA_ALM);
     });
 
-    it("diasEnPeriodo = 1 el día del cobro", () => {
-      const r = calcAlmacenaje(INICIO, dia(INICIO, 31));
-      expect(r.diasEnPeriodo).toBe(1);
-    });
-
-    it("diasEnPeriodo = 30 el último día del período", () => {
-      const r = calcAlmacenaje(INICIO, dia(INICIO, 60));
-      expect(r.diasEnPeriodo).toBe(30);
+    it("diasEnPeriodo = 1 en cualquier día de cobro (sin bloques)", () => {
+      const r31 = calcAlmacenaje(INICIO, dia(INICIO, 31));
+      const r60 = calcAlmacenaje(INICIO, dia(INICIO, 60));
+      expect(r31.diasEnPeriodo).toBe(1);
+      expect(r60.diasEnPeriodo).toBe(1);
     });
   });
 

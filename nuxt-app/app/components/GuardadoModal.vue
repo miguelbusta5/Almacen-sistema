@@ -15,12 +15,67 @@ const f = reactive({
   estado: props.guardado?.estado ?? 'PENDIENTE DESPACHO',
   fechaDespacho: props.guardado?.fechaDespacho ?? '',
   ciudad: props.guardado?.ciudad ?? '',
+  codigoTienda: props.guardado?.codigoTienda ?? '',
+  nombreTienda: props.guardado?.nombreTienda ?? '',
   nota: props.guardado?.nota ?? '',
 })
 const touched = ref(false)
 const missing = computed(() => !f.fecha || !f.documento.trim() || !f.ubicacion.trim())
 
-const CIUDADES = ['Bogotá', 'Medellín', 'Cali', 'Barranquilla', 'Pereira', 'Bucaramanga', 'Cartagena']
+// ── Buscador de tienda (catálogo Cargue Gourmet, MaestroTiendaGourmet) ──────
+// Mismo patrón que CrearPedidoModal.tsx (Cargue Gourmet): buscar por
+// código/tienda/ciudad, debounced, y bloquear ciudad+nombre al seleccionar.
+// Si el usuario borra o edita el texto tras seleccionar, se libera la
+// tienda y el campo ciudad vuelve a ser editable manualmente (tiendas fuera
+// de catálogo, ej. Institucional).
+interface TiendaOption { codigo: string; tienda: string; ciudad: string }
+const tiendaQuery = ref(f.codigoTienda ? `${f.codigoTienda} — ${f.nombreTienda}` : '')
+const tiendaSeleccionada = ref<TiendaOption | null>(
+  f.codigoTienda ? { codigo: f.codigoTienda, tienda: f.nombreTienda, ciudad: f.ciudad } : null
+)
+const suggestions = ref<TiendaOption[]>([])
+const showSuggestions = ref(false)
+const searchError = ref('')
+let debounceHandle: ReturnType<typeof setTimeout> | null = null
+const SEARCH_DEBOUNCE_MS = 250
+
+function onTiendaQueryChange(value: string) {
+  if (debounceHandle) clearTimeout(debounceHandle)
+  tiendaQuery.value = value
+  tiendaSeleccionada.value = null
+  f.codigoTienda = ''
+  f.nombreTienda = ''
+  searchError.value = ''
+  if (!value.trim()) { suggestions.value = []; showSuggestions.value = false; return }
+  debounceHandle = setTimeout(async () => {
+    try {
+      const res = await $fetch<{ data: TiendaOption[] }>('/api/cargue-gourmet/maestro-tiendas', { query: { q: value.trim() } })
+      suggestions.value = res.data
+      showSuggestions.value = true
+    } catch {
+      searchError.value = 'No se pudo buscar tiendas'
+      suggestions.value = []
+    }
+  }, SEARCH_DEBOUNCE_MS)
+}
+
+function selectTienda(t: TiendaOption) {
+  tiendaSeleccionada.value = t
+  tiendaQuery.value = `${t.codigo} — ${t.tienda}`
+  f.codigoTienda = t.codigo
+  f.nombreTienda = t.tienda
+  f.ciudad = t.ciudad
+  showSuggestions.value = false
+}
+
+function limpiarTienda() {
+  tiendaQuery.value = ''
+  tiendaSeleccionada.value = null
+  f.codigoTienda = ''
+  f.nombreTienda = ''
+  suggestions.value = []
+  showSuggestions.value = false
+}
 
 function submit() {
   if (props.saving) return
@@ -62,10 +117,35 @@ function submit() {
           <span class="fl">Ubicación en bodega <b>*</b></span>
           <input v-model="f.ubicacion" class="field" :class="{ err: touched && !f.ubicacion.trim() }" placeholder="Pasillo, estante, nivel…">
         </label>
+
+        <label class="fw" style="position: relative;">
+          <span class="fl">Tienda (catálogo Cargue Gourmet)</span>
+          <input
+            :value="tiendaQuery" class="field"
+            placeholder="Buscar por código, tienda o ciudad…"
+            @input="onTiendaQueryChange(($event.target as HTMLInputElement).value)"
+            @focus="showSuggestions = suggestions.length > 0"
+          >
+          <div v-if="showSuggestions && tiendaQuery && !tiendaSeleccionada" class="tienda-suggestions">
+            <div v-if="!suggestions.length" class="tienda-empty">Sin resultados</div>
+            <button
+              v-for="t in suggestions" :key="t.codigo" type="button" class="tienda-option"
+              @click="selectTienda(t)"
+            >
+              <strong>{{ t.codigo }}</strong> — {{ t.tienda }} <span class="tienda-ciudad">({{ t.ciudad }})</span>
+            </button>
+          </div>
+          <span v-if="searchError" class="fe">{{ searchError }}</span>
+          <div v-if="tiendaSeleccionada" class="tienda-resuelta">
+            {{ tiendaSeleccionada.tienda }} — {{ tiendaSeleccionada.ciudad }}
+            <button type="button" class="tienda-clear" @click="limpiarTienda">Quitar</button>
+          </div>
+        </label>
+
         <div class="g2">
           <label class="fw">
             <span class="fl">Ciudad destino</span>
-            <select v-model="f.ciudad" class="field"><option value="">— Sin asignar —</option><option v-for="c in CIUDADES" :key="c" :value="c">{{ c }}</option></select>
+            <input v-model="f.ciudad" class="field" placeholder="Ciudad (autocompleta al elegir tienda)">
           </label>
           <label class="fw">
             <span class="fl">Estado</span>
@@ -107,6 +187,13 @@ function submit() {
 .fe { font-size: 11px; font-weight: 600; color: var(--u-critico); }
 .field.err { border-color: var(--u-critico); box-shadow: 0 0 0 3px var(--u-critico-tint); }
 .hint { display: flex; align-items: center; gap: 6px; font-size: 11px; color: var(--muted); }
+.tienda-suggestions { position: absolute; top: 100%; left: 0; right: 0; z-index: 20; margin-top: 4px; max-height: 220px; overflow-y: auto; background: var(--surface); border: 1px solid var(--border); border-radius: var(--r-md); box-shadow: 0 8px 24px rgba(0,0,0,.18); }
+.tienda-option { display: block; width: 100%; text-align: left; padding: 8px 10px; font-size: 12.5px; background: none; border: none; cursor: pointer; color: var(--ink); }
+.tienda-option:hover { background: var(--surface-2); }
+.tienda-ciudad { color: var(--muted); }
+.tienda-empty { padding: 8px 10px; font-size: 12px; color: var(--muted); }
+.tienda-resuelta { margin-top: 6px; font-size: 12px; color: var(--muted2, var(--muted)); display: flex; align-items: center; gap: 8px; }
+.tienda-clear { font-size: 11px; font-weight: 600; color: var(--brand-deep); background: none; border: none; cursor: pointer; padding: 0; }
 .factions { position: sticky; bottom: 0; display: grid; grid-template-columns: 1fr 2fr; gap: 10px; padding-top: 6px; background: linear-gradient(180deg, transparent, var(--surface) 40%); }
 .factions .btn { justify-content: center; }
 @media (max-width: 560px) { .g2 { grid-template-columns: 1fr; } }

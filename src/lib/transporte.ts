@@ -116,7 +116,7 @@ export function scoreGuardado(g: Guardado): number {
   // Tiempo en bodega (0-35 pts)
   score += Math.min(35, dias * 0.45);
   // Costo acumulado (0-35 pts)
-  score += Math.min(35, (alm.costo / 150_000) * 10);
+  score += Math.min(35, (alm.costo / 300_000) * 10);
   // Urgencia de entrega comprometida (0-30 pts)
   if (u?.tipo === "vencida")  score += 30;
   else if (u?.tipo === "proxima" && (u.dias ?? 10) <= 2) score += 22;
