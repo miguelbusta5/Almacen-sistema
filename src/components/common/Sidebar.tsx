@@ -5,14 +5,12 @@ import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import {
   BarChart3,
-  CheckSquare,
   FileText,
   GitMerge,
   Globe,
   Home,
   Map,
   Menu,
-  Package,
   ScanLine,
   ScrollText,
   ShieldCheck,
@@ -41,9 +39,7 @@ interface NavItem {
 
 const ALL_ITEMS: NavItem[] = [
   { href: "/dashboard", label: "Inicio", icon: <Home size={16} strokeWidth={2.1} />, moduleKey: null },
-  { href: "/dashboard/mis-tareas", label: "Mis Tareas", icon: <CheckSquare size={16} strokeWidth={2.1} />, moduleKey: "mis-tareas" },
   { href: "/dashboard/preoperacional", label: "Preoperacional", icon: <ShieldCheck size={16} strokeWidth={2.1} />, moduleKey: "preoperacional" },
-  { href: "/dashboard/inventario", label: "Novedades Inventario", icon: <Package size={16} strokeWidth={2.1} />, moduleKey: "inventario" },
   { href: "/dashboard/tienda", label: "Facturas Contado", icon: <Store size={16} strokeWidth={2.1} />, moduleKey: "tienda" },
   { href: "/dashboard/integracion", label: "Integracion Pedidos", icon: <GitMerge size={16} strokeWidth={2.1} />, moduleKey: "integracion" },
   { href: "/dashboard/cargue-gourmet", label: "Cargue Gourmet", icon: <ScanLine size={16} strokeWidth={2.1} />, moduleKey: "cargue-gourmet" },
@@ -59,9 +55,8 @@ const ALL_ITEMS: NavItem[] = [
 ];
 
 const GROUPS = [
-  ["/dashboard", "/dashboard/mis-tareas", "/dashboard/preoperacional"],
+  ["/dashboard", "/dashboard/preoperacional"],
   [
-    "/dashboard/inventario",
     "/dashboard/tienda",
     "/dashboard/integracion",
     "/dashboard/cargue-gourmet",

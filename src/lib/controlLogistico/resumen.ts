@@ -55,8 +55,6 @@ async function computeControlLogisticoResumen(actor: SessionUser): Promise<Contr
   const ESTADOS_TIENDA = ["CREADO_TIENDA", "RECHAZADO", "CON_NOVEDAD", "ENTREGADO_CEDI", "ENVIADO_CLIENTE"] as const;
 
   const [
-    novedadesPendientes,
-    novedadesCriticas,
     guardadosPendientes,
     tiendaPorEstado,
     pendientesGuardado,
@@ -64,18 +62,10 @@ async function computeControlLogisticoResumen(actor: SessionUser): Promise<Contr
     solicitudesAlertas,
     exportacionesEnCurso,
     integracionesPendientes,
-    notifNoLeidas,
     preopBloqueadas,
     exportacionesMexicoEnCurso,
     exportacionesEeuuEnCurso,
   ] = await Promise.all([
-    see("inventario") ? prisma.novedad.count({ where: { estado: "PENDIENTE" } }) : 0,
-    see("inventario") ? prisma.novedad.count({
-      where: {
-        estado: "PENDIENTE",
-        fecha: { lt: new Date(Date.now() - 30 * 86_400_000) },
-      },
-    }) : 0,
     see("transporte") ? prisma.transporteGuardado.count({ where: { estado: "PENDIENTE DESPACHO" } }) : 0,
     // Antes eran 5 counts separados (uno por estado) — un solo groupBy
     // hace el mismo trabajo en una sola consulta a la base de datos.
@@ -110,7 +100,6 @@ async function computeControlLogisticoResumen(actor: SessionUser): Promise<Contr
       },
     }) : 0,
     see("integracion") ? prisma.integracionPedido.count({ where: { estado: { not: "COMPLETADA" } } }) : 0,
-    see("mis-tareas") ? prisma.notificacion.count({ where: { userId: actor.id, leida: false } }) : 0,
     see("preoperacional") && role !== "TRANSPORTISTA"
       ? prisma.inspeccionPreoperacional.count({ where: { estado: "BLOQUEADA", vigente: true } })
       : 0,
@@ -160,16 +149,6 @@ async function computeControlLogisticoResumen(actor: SessionUser): Promise<Contr
       href: "/dashboard/tienda",
     });
   }
-  if (see("inventario") && novedadesCriticas > 0) {
-    priorities.push({
-      id: "inventario-criticas",
-      moduleKey: "inventario",
-      level: "critical",
-      title: `${novedadesCriticas} novedad${novedadesCriticas === 1 ? "" : "es"} critica${novedadesCriticas === 1 ? "" : "s"}`,
-      context: "Mas de 30 dias sin resolver",
-      href: "/dashboard/inventario",
-    });
-  }
   if (see("transporte") && pendientesGuardado > 0) {
     priorities.push({
       id: "guardado-tienda",
@@ -212,13 +191,6 @@ async function computeControlLogisticoResumen(actor: SessionUser): Promise<Contr
   }
 
   const flow: ControlFlowStage[] = [
-    ...(see("inventario") ? [{
-      key: "inventario",
-      label: "Inventario",
-      value: novedadesPendientes,
-      status: statusFrom(novedadesCriticas, 1, 3),
-      href: "/dashboard/inventario",
-    } satisfies ControlFlowStage] : []),
     ...(see("tienda") ? [{
       key: "tienda",
       label: "Tienda",
@@ -250,7 +222,6 @@ async function computeControlLogisticoResumen(actor: SessionUser): Promise<Contr
   ];
 
   const modules: ControlModuleSignal[] = [
-    ...(see("inventario") ? [moduleSignal("inventario", novedadesPendientes, statusFrom(novedadesCriticas, 1, 3), "/dashboard/inventario")] : []),
     ...(see("tienda") ? [moduleSignal("tienda", tiendaCreados + tiendaRechazados + tiendaNovedad, statusFrom(tiendaRechazados + tiendaNovedad, 1, 5), "/dashboard/tienda")] : []),
     ...(see("transporte") ? [moduleSignal("transporte", guardadosPendientes + pendientesGuardado, statusFrom(guardadosPendientes + pendientesGuardado, 1, 10), "/dashboard/transporte")] : []),
     ...(see("solicitudes-transporte") ? [moduleSignal("solicitudes-transporte", solicitudesPendientes, statusFrom(solicitudesAlertas, 1, 5), "/dashboard/solicitudes-transporte")] : []),
@@ -262,12 +233,11 @@ async function computeControlLogisticoResumen(actor: SessionUser): Promise<Contr
     ...(see("usuarios") ? [moduleSignal("usuarios", undefined, "neutral", "/dashboard/usuarios")] : []),
     ...(see("auditoria") ? [moduleSignal("auditoria", undefined, "neutral", "/dashboard/auditoria")] : []),
     ...(see("centro-control") ? [moduleSignal("centro-control", undefined, "neutral", "/dashboard/centro-control")] : []),
-    ...(see("mis-tareas") ? [moduleSignal("mis-tareas", notifNoLeidas, statusFrom(notifNoLeidas, 1, 10), "/dashboard/mis-tareas")] : []),
   ];
 
   const critical = priorities.filter((p) => p.level === "critical").length;
   const warning = priorities.filter((p) => p.level === "warning").length;
-  const pending = novedadesPendientes + guardadosPendientes + tiendaCreados + tiendaNovedad + tiendaRechazados + pendientesGuardado + solicitudesPendientes + exportacionesEnCurso + exportacionesMexicoEnCurso + exportacionesEeuuEnCurso + integracionesPendientes + notifNoLeidas + preopBloqueadas;
+  const pending = guardadosPendientes + tiendaCreados + tiendaNovedad + tiendaRechazados + pendientesGuardado + solicitudesPendientes + exportacionesEnCurso + exportacionesMexicoEnCurso + exportacionesEeuuEnCurso + integracionesPendientes + preopBloqueadas;
 
   return {
     success: true,

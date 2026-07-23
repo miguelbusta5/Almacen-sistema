@@ -46,7 +46,6 @@ function mod(
 
 export const MODULE_THEME: Record<ModuleThemeKey, ModuleTheme> = {
   home: mod("home", PRODUCT.displayName, PRODUCT.shortName, PRODUCT.tagline),
-  inventario: mod("inventario", "Novedades Inventario", "Inventario", "PLUs, posiciones y novedades del CEDI"),
   transporte: mod("transporte", "Guardados Transporte", "Transporte", "Custodia, guardados y pendientes operativos"),
   preoperacional: mod("preoperacional", "Preoperacional", "Preop", "Inspeccion diaria de vehiculos"),
   tienda: mod("tienda", "Facturas Contado", "Facturas", "Facturas contado desde tienda hacia el flujo CEDI"),
@@ -54,7 +53,6 @@ export const MODULE_THEME: Record<ModuleThemeKey, ModuleTheme> = {
   exportaciones: mod("exportaciones", "Exportaciones Ecuador", "Export EC", "Etiquetado operativo de cajas de exportacion a Ecuador"),
   "exportaciones-mexico": mod("exportaciones-mexico", "Exportaciones México", "Export MX", "Etiquetado operativo de cajas de exportacion a México"),
   "exportaciones-eeuu": mod("exportaciones-eeuu", "Exportaciones EE.UU", "Export US", "Etiquetado operativo de cajas de exportacion a EE.UU"),
-  "mis-tareas": mod("mis-tareas", "Mis Tareas", "Tareas", "Pendientes del dia por usuario"),
   usuarios: mod("usuarios", "Usuarios", "Usuarios", "Cuentas, roles y operacion base"),
   auditoria: mod("auditoria", "Auditoria", "Auditoria", "Historial de acciones del sistema"),
   "centro-control": mod("centro-control", "Centro de Control", "Control", "Inteligencia operacional y KPIs"),

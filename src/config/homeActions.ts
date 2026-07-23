@@ -23,18 +23,6 @@ export interface HomeAction {
 
 // ── Catálogo completo de acciones ────────────────────────
 export const HOME_ACTIONS: HomeAction[] = [
-  // ── Inventario ──────────────────────────────────────────
-  {
-    id: "nueva-novedad",
-    title: "Nueva novedad de inventario",
-    description: "Registrar diferencia de PLU, posición o cantidad",
-    href: "/dashboard/inventario",
-    icon: "Plus",
-    color: getModuleColor("inventario"),
-    moduleKey: "inventario",
-    roles: ["INVENTARIO", "SUPERVISOR_INVENTARIO", "OPERADOR", "GERENTE", "ADMIN"],
-    priority: 1,
-  },
   // ── Transporte ──────────────────────────────────────────
   {
     id: "nueva-solicitud-transporte",
@@ -101,22 +89,6 @@ export const HOME_ACTIONS: HomeAction[] = [
     moduleKey: "integracion",
     roles: ["OPERACIONES_MUEBLES", "OPERACIONES_GOURMET", "ADMIN", "GERENTE"],
     priority: 1,
-  },
-  // ── Mis tareas (todos los operarios) ────────────────────
-  {
-    id: "ver-mis-tareas",
-    title: "Ver mis tareas",
-    description: "Revisar pendientes y prioridades del día",
-    href: "/dashboard/mis-tareas",
-    icon: "CheckSquare",
-    color: getModuleColor("mis-tareas"),
-    moduleKey: "mis-tareas",
-    roles: [
-      "INVENTARIO", "TRANSPORTE", "TIENDA",
-      "SUPERVISOR_INVENTARIO", "SUPERVISOR_TRANSPORTE", "SUPERVISOR_TIENDA",
-      "OPERADOR",
-    ],
-    priority: 2,
   },
   {
     id: "preoperacional",

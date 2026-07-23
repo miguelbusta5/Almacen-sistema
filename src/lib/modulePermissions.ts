@@ -6,7 +6,6 @@ import type { UserRole } from "@/types";
 export type AppRole = UserRole;
 
 export type ModuleKey =
-  | "inventario"
   | "transporte"
   | "preoperacional"
   | "tienda"
@@ -14,7 +13,6 @@ export type ModuleKey =
   | "exportaciones"
   | "exportaciones-mexico"
   | "exportaciones-eeuu"
-  | "mis-tareas"
   | "usuarios"
   | "auditoria"
   | "centro-control"
@@ -23,20 +21,8 @@ export type ModuleKey =
   | "mapa-ciudades";
 
 export const MODULE_ACCESS: Record<ModuleKey, AppRole[]> = {
-  inventario: ["INVENTARIO", "SUPERVISOR_INVENTARIO", "GERENTE", "ADMIN", "OPERADOR"],
   transporte: ["TRANSPORTE", "SUPERVISOR_TRANSPORTE", "GERENTE", "ADMIN", "OPERADOR"],
   preoperacional: ["TRANSPORTISTA", "ADMIN", "GERENTE", "SUPERVISOR_TRANSPORTE"],
-  "mis-tareas": [
-    "ADMIN",
-    "GERENTE",
-    "OPERADOR",
-    "INVENTARIO",
-    "TRANSPORTE",
-    "SUPERVISOR_INVENTARIO",
-    "SUPERVISOR_TRANSPORTE",
-    "TIENDA",
-    "SUPERVISOR_TIENDA",
-  ],
   tienda: ["TIENDA", "SUPERVISOR_TIENDA", "SUPERVISOR_TRANSPORTE", "GERENTE", "ADMIN"],
   "solicitudes-transporte": [
     "ADMIN",

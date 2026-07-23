@@ -80,8 +80,8 @@ describe("buildControlLogisticoResumen", () => {
     const resumen = await buildControlLogisticoResumen(actor("TIENDA"));
     const moduleKeys = resumen.modules.map((m) => m.key);
 
-    expect(resumen.visibleModules).toEqual(["mis-tareas", "tienda", "solicitudes-transporte"]);
-    expect(moduleKeys).toEqual(["tienda", "solicitudes-transporte", "mis-tareas"]);
+    expect(resumen.visibleModules).toEqual(["tienda", "solicitudes-transporte"]);
+    expect(moduleKeys).toEqual(["tienda", "solicitudes-transporte"]);
     expect(moduleKeys).not.toContain("transporte");
     expect(moduleKeys).not.toContain("usuarios");
     expect(resumen.priorities.map((p) => p.moduleKey)).toEqual(["tienda", "tienda"]);
@@ -105,7 +105,7 @@ describe("buildControlLogisticoResumen", () => {
     const resumen = await buildControlLogisticoResumen(actor("SUPERVISOR_TRANSPORTE"));
     const moduleKeys = resumen.modules.map((m) => m.key);
 
-    expect(resumen.visibleModules).toEqual(["transporte", "preoperacional", "mis-tareas", "tienda", "solicitudes-transporte", "centro-control", "integracion", "cargue-gourmet", "mapa-ciudades"]);
+    expect(resumen.visibleModules).toEqual(["transporte", "preoperacional", "tienda", "solicitudes-transporte", "centro-control", "integracion", "cargue-gourmet", "mapa-ciudades"]);
     expect(moduleKeys).toContain("tienda");
     expect(moduleKeys).toContain("transporte");
     expect(moduleKeys).toContain("preoperacional");

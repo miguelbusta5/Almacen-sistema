@@ -281,7 +281,7 @@ export default function CentroControlPage() {
         count:   n7d.length,
         title:   "Novedades abiertas sin resolver por más de 7 días",
         context: n7d.length > 0 ? n7d.slice(0, 3).map((n) => n.plu).join(" · ") + (n7d.length > 3 ? ` · +${n7d.length - 3} más` : "") : undefined,
-        href:    "/dashboard/inventario",
+        href:    "/dashboard",
       },
       {
         id:      "t48h",
@@ -301,7 +301,7 @@ export default function CentroControlPage() {
         count:   novSinAsig.length,
         title:   "Novedades sin responsable asignado",
         context: novSinAsig.length > 0 ? `${novSinAsig.length} novedade${novSinAsig.length !== 1 ? "s" : ""} sin seguimiento` : undefined,
-        href:    "/dashboard/inventario",
+        href:    "/dashboard",
       },
       {
         id:      "gsc",
@@ -329,7 +329,7 @@ export default function CentroControlPage() {
         id:      "topResp",
         title:   `Top responsable: ${topResp.nombre}`,
         context: `${topResp.resueltas}/${topResp.total} novedades resueltas · ${topResp.tasa}% de tasa`,
-        href:    "/dashboard/inventario",
+        href:    "/dashboard",
       },
     ].filter(Boolean) as InfoItem[];
 

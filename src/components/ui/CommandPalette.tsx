@@ -7,7 +7,7 @@ import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import {
-  Search, Home, Package, Truck,
+  Search, Home, Truck,
   Users, ScrollText, Plus, ArrowRight, X,
   BarChart3, FileText, Store, ShieldCheck, GitMerge, CheckSquare, Tags,
 } from "lucide-react";
@@ -17,7 +17,7 @@ import { getModuleColor } from "@/lib/moduleTheme";
 import { PRODUCT } from "@/config/product";
 
 // ── Tipos ─────────────────────────────────────────────────
-type ResultGroup = "actions" | "navigate" | "muebles" | "transporte" | "solicitudes" | "tienda" | "integracion" | "preoperacional" | "admin";
+type ResultGroup = "actions" | "navigate" | "transporte" | "solicitudes" | "tienda" | "integracion" | "preoperacional" | "admin";
 
 interface PaletteResult {
   id: string;
@@ -32,7 +32,6 @@ interface PaletteResult {
 const GROUP_LABEL: Record<ResultGroup, string> = {
   actions:    PRODUCT.commandLabel,
   navigate:   "Navegación",
-  muebles:    "Novedades Inventario",
   transporte: "Guardados Transporte",
   solicitudes: "Solicitudes Transporte",
   tienda:     "Facturas Contado",
@@ -41,7 +40,7 @@ const GROUP_LABEL: Record<ResultGroup, string> = {
   admin:      "Administración",
 };
 
-const GROUP_ORDER: ResultGroup[] = ["actions", "navigate", "solicitudes", "tienda", "muebles", "transporte", "integracion", "preoperacional", "admin"];
+const GROUP_ORDER: ResultGroup[] = ["actions", "navigate", "solicitudes", "tienda", "transporte", "integracion", "preoperacional", "admin"];
 
 // ── Búsqueda debounced ────────────────────────────────────
 function useDebounce<T>(value: T, delay = 300): T {
@@ -93,22 +92,18 @@ export default function CommandPalette() {
     const see = (key: Parameters<typeof canSeeModule>[1]) => canSeeModule(role, key);
 
     const actions: PaletteResult[] = [
-      ...(see("inventario") ? [{ id: "a-novedad",  group: "actions" as ResultGroup, icon: <Plus size={14} />, label: "Nueva novedad de inventario", description: "Registrar diferencia de PLU en el CEDI", color: getModuleColor("inventario"), action: () => go("/dashboard/inventario") }] : []),
       ...(see("transporte") ? [{ id: "a-guardado", group: "actions" as ResultGroup, icon: <Plus size={14} />, label: "Nuevo guardado en transporte",  description: "Registrar pedido en custodia",          color: getModuleColor("transporte"), action: () => go("/dashboard/transporte") }] : []),
       ...(see("solicitudes-transporte") ? [{ id: "a-solicitud-transporte", group: "actions" as ResultGroup, icon: <FileText size={14} />, label: "Nueva solicitud de transporte", description: "Pedir gestion de transporte interna", color: getModuleColor("solicitudes-transporte"), action: () => go("/dashboard/solicitudes-transporte") }] : []),
       ...(see("exportaciones") ? [{ id: "a-exportaciones", group: "actions" as ResultGroup, icon: <Tags size={14} />, label: "Registrar exportacion", description: "Capturar caja, PLU y unidad de empaque", color: getModuleColor("exportaciones"), action: () => go("/dashboard/exportaciones") }] : []),
       ...(see("tienda")     ? [{ id: "a-despacho", group: "actions" as ResultGroup, icon: <Store size={14} />, label: "Nueva Factura Contado", description: "Registrar factura contado para el flujo CEDI", color: getModuleColor("tienda"), action: () => go("/dashboard/tienda") }] : []),
       ...(see("preoperacional") ? [{ id: "a-preop", group: "actions" as ResultGroup, icon: <ShieldCheck size={14} />, label: "Registrar preoperacional", description: "Inspección diaria del vehículo", color: getModuleColor("preoperacional"), action: () => go("/dashboard/preoperacional") }] : []),
       ...(see("integracion") ? [{ id: "a-integracion", group: "actions" as ResultGroup, icon: <GitMerge size={14} />, label: "Nueva integración de pedido", description: "Coordinar OVDM/TSDM entre áreas", color: getModuleColor("integracion"), action: () => go("/dashboard/integracion") }] : []),
-      ...(see("mis-tareas") ? [{ id: "a-tareas", group: "actions" as ResultGroup, icon: <CheckSquare size={14} />, label: "Revisar mis tareas", description: "Abrir pendientes del día", color: getModuleColor("mis-tareas"), action: () => go("/dashboard/mis-tareas") }] : []),
       ...(see("centro-control") ? [{ id: "a-control", group: "actions" as ResultGroup, icon: <BarChart3 size={14} />, label: "Abrir centro de control", description: "KPIs y señales operativas", color: getModuleColor("centro-control"), action: () => go("/dashboard/centro-control") }] : []),
       ...(see("usuarios") ? [{ id: "a-usuarios", group: "admin" as ResultGroup, icon: <Users size={14} />, label: "Gestionar usuarios", description: "Roles, vehículos y transportistas", color: getModuleColor("usuarios"), action: () => go("/dashboard/usuarios") }] : []),
     ];
 
     const navigate: PaletteResult[] = [
       { id: "n-inicio", group: "navigate", icon: <Home size={14} />, label: "Inicio", action: () => go("/dashboard") },
-      ...(see("mis-tareas")    ? [{ id: "n-tareas",      group: "navigate" as ResultGroup, icon: <CheckSquare size={14} />,    label: "Mis tareas",              action: () => go("/dashboard/mis-tareas") }] : []),
-      ...(see("inventario")    ? [{ id: "n-inventario",  group: "navigate" as ResultGroup, icon: <Package size={14} />,       label: "Novedades Inventario",    action: () => go("/dashboard/inventario") }] : []),
       ...(see("tienda")        ? [{ id: "n-tienda",      group: "navigate" as ResultGroup, icon: <Store size={14} />,          label: "Facturas Contado",        action: () => go("/dashboard/tienda") }] : []),
       ...(see("solicitudes-transporte") ? [{ id: "n-solicitudes-transporte", group: "navigate" as ResultGroup, icon: <FileText size={14} />, label: "Solicitudes Transporte", action: () => go("/dashboard/solicitudes-transporte") }] : []),
       ...(see("exportaciones") ? [{ id: "n-exportaciones", group: "navigate" as ResultGroup, icon: <Tags size={14} />, label: "Exportaciones", action: () => go("/dashboard/exportaciones") }] : []),
@@ -126,34 +121,19 @@ export default function CommandPalette() {
   // Búsqueda en vivo (debounced)
   useEffect(() => {
     if (debouncedQuery.length < 2) { setLiveResults([]); return; }
-    const canSearchInventario = canSeeModule(role, "inventario");
     const canSearchTransporte = canSeeModule(role, "transporte");
-    if (!canSearchInventario && !canSearchTransporte) { setLiveResults([]); return; }
+    if (!canSearchTransporte) { setLiveResults([]); return; }
     let cancelled = false;
     setSearching(true);
     (async () => {
       try {
-        const [nRes, gRes] = await Promise.all([
-          canSearchInventario ? fetch(`/api/novedades?q=${encodeURIComponent(debouncedQuery)}&pageSize=5`) : Promise.resolve(null),
+        const [gRes] = await Promise.all([
           canSearchTransporte ? fetch(`/api/transporte?q=${encodeURIComponent(debouncedQuery)}&pageSize=5`) : Promise.resolve(null),
         ]);
         if (cancelled) return;
-        const [nJ, gJ] = await Promise.all([nRes?.json() ?? null, gRes?.json() ?? null]);
+        const [gJ] = await Promise.all([gRes?.json() ?? null]);
         const results: PaletteResult[] = [];
 
-        if (nJ?.success) {
-          for (const n of nJ.data ?? []) {
-            results.push({
-              id: `nov-${n.id}`,
-              group: "muebles",
-              icon: <Package size={13} />,
-              label: `PLU ${n.plu}`,
-              description: `${n.descripcion ?? ""} · ${n.posicion} · ${n.estado}`,
-              color: getModuleColor("inventario"),
-              action: () => go("/dashboard/inventario"),
-            });
-          }
-        }
         if (gJ?.success) {
           for (const g of gJ.data ?? []) {
             results.push({
