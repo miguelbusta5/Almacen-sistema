@@ -29,7 +29,7 @@ const NAV_GROUPS: NavItem[][] = [
   ],
   [
     { icon: Store, label: 'Facturas Contado', href: '/dashboard/tienda', key: 'tienda', moduleKey: 'tienda' },
-    { icon: GitMerge, label: 'Integración Pedidos', href: '/dashboard/integracion', key: null, moduleKey: 'integracion' },
+    { icon: GitMerge, label: 'Integración Pedidos', href: '/dashboard/integracion', key: 'integracion', moduleKey: 'integracion' },
     { icon: ScanLine, label: 'Cargue Gourmet', href: '/dashboard/cargue-gourmet', key: 'cargue-gourmet', moduleKey: 'cargue-gourmet' },
     { icon: Tags, label: 'Exportaciones Ecuador', href: '/dashboard/exportaciones', key: null, moduleKey: 'exportaciones' },
     { icon: Globe, label: 'Exportaciones México', href: '/dashboard/exportaciones-mexico', key: null, moduleKey: 'exportaciones-mexico' },

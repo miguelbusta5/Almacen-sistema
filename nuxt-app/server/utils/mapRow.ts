@@ -224,3 +224,32 @@ export function mapInspeccion(i: any) {
     })),
   }
 }
+
+// Mapea IntegracionPedido (+ plines/creadoPor/completadoPor) al shape del
+// cliente — igual que src/app/api/integracion/route.ts.
+export function mapIntegracion(r: any) {
+  return {
+    id: r.id,
+    numeroDocumento: r.numeroDocumento,
+    tipoDocumento: r.tipoDocumento,
+    fecha: r.fecha instanceof Date ? r.fecha.toISOString().slice(0, 10) : r.fecha,
+    estado: r.estado,
+    areaIniciadora: r.areaIniciadora,
+    numeroCajasArea1: r.numeroCajasArea1,
+    numeroCajasArea2: r.numeroCajasArea2,
+    creadoPorId: r.creadoPorId,
+    creadoPorNombre: r.creadoPor?.name ?? null,
+    completadoPorNombre: r.completadoPor?.name ?? null,
+    creadoAt: r.creadoAt,
+    completadoAt: r.completadoAt,
+    entregadoATransporteAt: r.entregadoATransporteAt,
+    marcadoCompletadoPorId: r.marcadoCompletadoPorId ?? null,
+    marcadoCompletadoAt: r.marcadoCompletadoAt,
+    observaciones: r.observaciones,
+    createdAt: r.createdAt,
+    updatedAt: r.updatedAt,
+    plines: (r.plines ?? []).map((p: any) => ({
+      id: p.id, area: p.area, plu: p.plu, descripcion: p.descripcion ?? null, unidades: p.unidades,
+    })),
+  }
+}

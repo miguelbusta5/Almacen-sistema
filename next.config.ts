@@ -13,11 +13,12 @@ const NUXT_PILOT_URL = process.env.NUXT_PILOT_URL; // Guardados Transporte
 const NUXT_PILOT_TIENDA_URL = process.env.NUXT_PILOT_TIENDA_URL; // Facturas Contado
 const NUXT_PILOT_GOURMET_URL = process.env.NUXT_PILOT_GOURMET_URL; // Cargue Gourmet
 const NUXT_PILOT_PREOP_URL = process.env.NUXT_PILOT_PREOP_URL; // Preoperacional
+const NUXT_PILOT_INTEGRACION_URL = process.env.NUXT_PILOT_INTEGRACION_URL; // Integración Pedidos
 
-// Las cuatro apuntan al mismo deploy de nuxt-app (app.baseURL: '/dashboard/' compartido
+// Las cinco apuntan al mismo deploy de nuxt-app (app.baseURL: '/dashboard/' compartido
 // en nuxt.config.ts) — sus assets (/_nuxt/*) y su $fetch interno a /api/* viven
 // bajo ese prefijo sin importar qué módulo/página los pidió.
-const SHARED_NUXT_URL = NUXT_PILOT_URL || NUXT_PILOT_TIENDA_URL || NUXT_PILOT_GOURMET_URL || NUXT_PILOT_PREOP_URL;
+const SHARED_NUXT_URL = NUXT_PILOT_URL || NUXT_PILOT_TIENDA_URL || NUXT_PILOT_GOURMET_URL || NUXT_PILOT_PREOP_URL || NUXT_PILOT_INTEGRACION_URL;
 
 const nextConfig: NextConfig = {
   async rewrites() {
@@ -45,6 +46,12 @@ const nextConfig: NextConfig = {
       beforeFiles.push(
         { source: "/dashboard/preoperacional", destination: `${NUXT_PILOT_PREOP_URL}/dashboard/preoperacional` },
         { source: "/dashboard/preoperacional/:path*", destination: `${NUXT_PILOT_PREOP_URL}/dashboard/preoperacional/:path*` },
+      );
+    }
+    if (NUXT_PILOT_INTEGRACION_URL) {
+      beforeFiles.push(
+        { source: "/dashboard/integracion", destination: `${NUXT_PILOT_INTEGRACION_URL}/dashboard/integracion` },
+        { source: "/dashboard/integracion/:path*", destination: `${NUXT_PILOT_INTEGRACION_URL}/dashboard/integracion/:path*` },
       );
     }
     if (SHARED_NUXT_URL) {
