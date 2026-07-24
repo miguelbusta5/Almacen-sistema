@@ -1,18 +1,30 @@
 <script setup lang="ts">
-import { computed, onMounted } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import {
   Home, ShieldCheck, Store, GitMerge, ScanLine, Tags, Globe, FileText, Truck,
   BarChart3, Map, Users, ScrollText, Search, Bell, CheckCircle2, TriangleAlert,
+  Menu, X,
 } from '@lucide/vue'
 import { ensureSession, useSessionState } from '~/composables/useSession'
 import { useToastState } from '~/composables/useToast'
 import { canSeeModule, type ModuleKey } from '~/utils/modulePermissions'
 
 const route = useRoute()
-const { me } = useSessionState()
+const { me, sessionLoaded, sessionInvalid } = useSessionState()
 const toast = useToastState()
 
 onMounted(() => { ensureSession() })
+
+// Sesión caducada: la app Nuxt vive detrás del rewrite de Next.js, así que el
+// middleware de Next solo comprueba la cookie en la navegación inicial. Si la
+// cookie expira estando dentro, la barra lateral se quedaba con un único "Inicio"
+// y el usuario quedaba encerrado en el módulo sin ningún mensaje. Devolvemos al
+// login de Next.js (recarga completa: es otro stack).
+watch(sessionInvalid, (invalid) => {
+  if (!invalid || typeof window === 'undefined') return
+  const callbackUrl = encodeURIComponent(window.location.pathname)
+  window.location.href = `/login?callbackUrl=${callbackUrl}`
+})
 
 // Enlaces reales: al ser un rewrite bajo el mismo dominio, los módulos sin
 // migrar navegan de vuelta a la app Next.js con recarga completa (no hay SPA
@@ -53,6 +65,13 @@ function isActive(key: string | null) {
   return !!key && route.name?.toString().startsWith(key)
 }
 
+// Menú móvil: bajo 860px la barra lateral sale del flujo y se abre como cajón.
+// Sin esto la barra quedaba en `display: none` y el usuario se quedaba encerrado
+// en el módulo Nuxt en el que aterrizó, sin forma de navegar a los demás
+// (la Sidebar de Next.js sí tiene este cajón — ver src/components/common/Sidebar.tsx).
+const navOpen = ref(false)
+watch(() => route.fullPath, () => { navOpen.value = false })
+
 const pageTitle = computed(() => (route.meta.title as string | undefined) ?? '')
 const userInitials = computed(() => {
   const n = me.value?.name?.trim()
@@ -64,14 +83,22 @@ const userInitials = computed(() => {
 
 <template>
   <div class="app">
+    <!-- Overlay del cajón móvil -->
+    <div v-if="navOpen" class="nav-overlay" @click="navOpen = false" />
+
     <!-- Sidebar -->
-    <aside class="sidebar">
+    <aside class="sidebar" :class="{ open: navOpen }">
       <div class="brand">
         <span class="brand-mark">GA</span>
         <span class="brand-name">Grupo Ambiente</span>
+        <button class="nav-close" aria-label="Cerrar menú" @click="navOpen = false"><X :size="18" /></button>
       </div>
       <nav class="nav">
-        <div v-for="(group, gi) in visibleGroups" :key="gi" class="nav-group">
+        <!-- Sin esto la barra parpadea con solo "Inicio" hasta que /api/me responde. -->
+        <div v-if="!sessionLoaded" class="nav-group">
+          <span v-for="i in 5" :key="i" class="nav-skel" />
+        </div>
+        <div v-for="(group, gi) in visibleGroups" v-else :key="gi" class="nav-group">
           <a v-for="n in group" :key="n.label" :href="n.href" class="nav-item" :class="{ active: isActive(n.key) }">
             <component :is="n.icon" :size="17" />
             <span>{{ n.label }}</span>
@@ -83,6 +110,7 @@ const userInitials = computed(() => {
     <!-- Main -->
     <div class="main">
       <header class="topbar">
+        <button class="menu-btn" aria-label="Abrir menú" @click="navOpen = true"><Menu :size="18" /></button>
         <div class="crumbs"><span>Dashboard</span><span class="sep">/</span><b>{{ pageTitle }}</b></div>
         <div class="top-right">
           <button class="icon-btn"><Search :size="17" /></button>
@@ -112,10 +140,14 @@ const userInitials = computed(() => {
 /* Sidebar */
 .sidebar { background: linear-gradient(180deg, #0E1626 0%, #0A0F1C 100%); color: #C7CDD6; display: flex; flex-direction: column; padding: 16px 12px; position: sticky; top: 0; height: 100vh; border-right: 1px solid rgba(255,255,255,.05); }
 .brand { display: flex; align-items: center; gap: 10px; padding: 6px 8px 18px; }
+.nav-close { display: none; margin-left: auto; background: none; border: none; color: #97A1AF; cursor: pointer; padding: 4px; }
+.nav-close:hover { color: #fff; }
 .brand-mark { width: 30px; height: 30px; border-radius: 9px; background: var(--brand-grad); color: var(--on-brand); display: grid; place-items: center; font-family: var(--display); font-weight: 800; font-size: 13px; }
 .brand-name { font-family: var(--display); font-weight: 700; font-size: 14px; color: #fff; }
 .nav { display: flex; flex-direction: column; gap: 14px; overflow-y: auto; }
 .nav-group { display: flex; flex-direction: column; gap: 2px; }
+.nav-skel { height: 37px; border-radius: var(--r-sm); background: rgba(255,255,255,.05); animation: nav-skel-pulse 1.3s ease-in-out infinite; }
+@keyframes nav-skel-pulse { 0%, 100% { opacity: 1 } 50% { opacity: .45 } }
 .nav-item { position: relative; display: flex; align-items: center; gap: 11px; padding: 10px 12px; border-radius: var(--r-sm); font-size: 13px; font-weight: 500; color: #97A1AF; cursor: pointer; transition: background .14s, color .14s, transform .14s; }
 .nav-item :deep(svg) { transition: transform .18s cubic-bezier(.16,1,.3,1); }
 .nav-item:hover { background: rgba(255,255,255,.05); color: #E7EBF0; }
@@ -127,7 +159,8 @@ const userInitials = computed(() => {
 /* Topbar */
 .main { display: flex; flex-direction: column; min-width: 0; }
 .topbar { display: flex; align-items: center; justify-content: space-between; height: 60px; padding: 0 26px; background: color-mix(in srgb, var(--surface) 82%, transparent); backdrop-filter: blur(10px); border-bottom: 1px solid var(--border); position: sticky; top: 0; z-index: 20; }
-.crumbs { font-size: 13px; color: var(--muted); }
+.menu-btn { display: none; background: var(--surface); border: 1px solid var(--border); color: var(--brand); border-radius: var(--r-sm); width: 36px; height: 36px; align-items: center; justify-content: center; cursor: pointer; margin-right: 12px; flex-shrink: 0; }
+.crumbs { font-size: 13px; color: var(--muted); margin-right: auto; min-width: 0; }
 .crumbs b { color: var(--ink); font-weight: 700; }
 .crumbs .sep { margin: 0 8px; color: var(--faint); }
 .top-right { display: flex; align-items: center; gap: 10px; }
@@ -148,5 +181,17 @@ const userInitials = computed(() => {
 .toast-leave-active { transition: all .2s ease; }
 .toast-enter-from, .toast-leave-to { opacity: 0; transform: translateY(14px) scale(.96); }
 
-@media (max-width: 860px) { .app { grid-template-columns: 1fr; } .sidebar { display: none; } }
+/* Cajón móvil */
+.nav-overlay { position: fixed; inset: 0; z-index: 400; background: rgba(10, 15, 28, .5); backdrop-filter: blur(4px); }
+
+@media (max-width: 860px) {
+  .app { grid-template-columns: 1fr; }
+  .sidebar {
+    position: fixed; top: 0; left: 0; z-index: 401; width: var(--sidebar-w);
+    transform: translateX(-110%); transition: transform .26s cubic-bezier(.16,1,.3,1);
+  }
+  .sidebar.open { transform: none; box-shadow: var(--shadow-lg); }
+  .menu-btn, .nav-close { display: inline-flex; }
+}
+@media (min-width: 861px) { .nav-overlay { display: none; } }
 </style>
