@@ -7,7 +7,7 @@ import { areaFromRole, type Integracion } from '~/utils/integracion'
 
 definePageMeta({ title: 'Integración Pedidos' })
 
-const { me } = useSessionState()
+const { me, sessionLoaded } = useSessionState()
 const { show: showToast } = useToast()
 
 const ALLOWED = ['OPERACIONES_MUEBLES', 'OPERACIONES_GOURMET', 'ADMIN', 'GERENTE', 'SUPERVISOR_TRANSPORTE', 'TRANSPORTE']
@@ -44,6 +44,15 @@ const filterArea = ref('')
 const filterTipo = ref('')
 const hasFilters = computed(() => !!(search.value || filterEstado.value || filterArea.value || filterTipo.value))
 function clearFilters() { search.value = ''; filterEstado.value = ''; filterArea.value = ''; filterTipo.value = '' }
+function onKpiFilter(key: string) { filterEstado.value = key }
+
+const kpiCounts = ref({ total: 0, pendienteArea2: 0, listaTransporte: 0, completada: 0 })
+async function loadConteos() {
+  try {
+    const res = await $fetch<{ data: typeof kpiCounts.value }>('/api/integracion/conteos')
+    kpiCounts.value = res.data
+  } catch { /* deja los conteos previos si falla */ }
+}
 
 async function loadAll() {
   try {
@@ -62,7 +71,7 @@ async function loadAll() {
 onMounted(async () => {
   ensureSession()
   loading.value = true
-  await loadAll()
+  await Promise.all([loadAll(), loadConteos()])
   loading.value = false
 })
 watch([filterEstado, filterArea, filterTipo], () => { void loadAll() })
@@ -70,7 +79,7 @@ watch([filterEstado, filterArea, filterTipo], () => { void loadAll() })
 async function refreshList() {
   if (refreshing.value) return
   refreshing.value = true
-  await loadAll()
+  await Promise.all([loadAll(), loadConteos()])
   refreshing.value = false
 }
 
@@ -94,6 +103,7 @@ const deletingId = ref<string | null>(null)
 
 function refresh() {
   void loadAll()
+  void loadConteos()
   selected.value = null
   completarItem.value = null
   recibidoItem.value = null
@@ -134,7 +144,10 @@ function onEditado() { editandoItem.value = null; showToast('Integración actual
       </div>
     </section>
 
-    <EmptyState v-if="!puedeVer" title="Sin acceso" description="No tienes acceso a este módulo." />
+    <!-- Mientras /api/me no responda, `role` es '' y `puedeVer` sería false: sin
+         este skeleton la página parpadea "Sin acceso" a usuarios autorizados. -->
+    <ListSkeleton v-if="!sessionLoaded" />
+    <EmptyState v-else-if="!puedeVer" title="Sin acceso" description="No tienes acceso a este módulo." />
 
     <template v-else>
       <Transition name="view" mode="out-in">
@@ -152,6 +165,7 @@ function onEditado() { editandoItem.value = null; showToast('Integración actual
         />
 
         <div v-else key="list">
+          <IntegracionKpiRail :counts="kpiCounts" style="margin-bottom: 18px" @filter="onKpiFilter" />
           <div class="filters">
             <div class="search-wrap">
               <Search :size="14" class="search-ic" />
