@@ -45,6 +45,8 @@ export default defineEventHandler(async (event) => {
           client_id: clientId, fecha: new Date(), documento: d.numeroDocumento,
           ubicacion, estado: 'PENDIENTE DESPACHO', tipo: 'ECOMMERCE',
           nota: notaFinal, netsuiteId: d.netsuiteId ?? null,
+          clienteNombre: d.clienteNombre,
+          clienteDocumento: d.clienteDocumento ?? null,
         },
       })
       const cerrado = await tx.guardadoPendienteTienda.update({

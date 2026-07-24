@@ -472,7 +472,7 @@ function guardarFecha() {
 </template>
 
 <style scoped>
-.hero { position: relative; display: flex; align-items: flex-end; justify-content: space-between; gap: 18px; margin-bottom: 22px; flex-wrap: wrap; }
+.hero { position: relative; z-index: 5; display: flex; align-items: flex-end; justify-content: space-between; gap: 18px; margin-bottom: 22px; flex-wrap: wrap; }
 .hero::before { content: ''; position: absolute; left: -40px; top: -30px; width: 260px; height: 120px; background: radial-gradient(closest-side, color-mix(in srgb, var(--brand) 16%, transparent), transparent); pointer-events: none; z-index: -1; }
 .hero-kicker { display: inline-flex; align-items: center; gap: 6px; font-size: 11px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; color: var(--brand-deep); }
 .hero-kicker::before { content: ''; width: 14px; height: 2px; border-radius: 2px; background: var(--brand); }
@@ -485,7 +485,7 @@ function guardarFecha() {
 @keyframes spin { to { transform: rotate(360deg); } }
 
 .export-menu { position: relative; }
-.export-dropdown { position: absolute; z-index: 30; top: 100%; right: 0; margin-top: 6px; min-width: 210px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--r-md); box-shadow: var(--shadow-md); overflow: hidden; }
+.export-dropdown { position: absolute; z-index: 50; top: 100%; right: 0; margin-top: 6px; min-width: 210px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--r-md); box-shadow: var(--shadow-md); overflow: hidden; }
 .export-opt { display: block; width: 100%; text-align: left; padding: 10px 14px; font-size: 12.5px; font-weight: 600; color: var(--ink-2); background: none; border: none; cursor: pointer; }
 .export-opt:hover { background: var(--surface-2); color: var(--ink); }
 .export-opt + .export-opt { border-top: 1px solid var(--border); }

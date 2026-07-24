@@ -22,7 +22,12 @@ const f = reactive({
   nota: props.guardado?.nota ?? '',
 })
 const touched = ref(false)
-const missing = computed(() => !f.fecha || !f.documento.trim() || !f.ubicacion.trim() || !f.clienteNombre.trim() || !f.clienteDocumento.trim())
+// Los campos de cliente solo son obligatorios al crear — los guardados
+// registrados antes de este feature no los tienen, y no deben bloquear
+// ediciones de rutina (ubicación, estado, nota) mientras no se rellenen.
+const missingBasic = computed(() => !f.fecha || !f.documento.trim() || !f.ubicacion.trim())
+const missingCliente = computed(() => !f.clienteNombre.trim() || !f.clienteDocumento.trim())
+const missing = computed(() => missingBasic.value || (!isEdit.value && missingCliente.value))
 
 // ── Buscador de tienda (catálogo Cargue Gourmet, MaestroTiendaGourmet) ──────
 // Mismo patrón que CrearPedidoModal.tsx (Cargue Gourmet): buscar por
@@ -117,14 +122,14 @@ function submit() {
         <div class="fsec-title"><span class="fsec-ic"><User :size="13" /></span> Cliente</div>
         <div class="g2">
           <label class="fw">
-            <span class="fl">Nombre del cliente <b>*</b></span>
-            <input v-model="f.clienteNombre" class="field" :class="{ err: touched && !f.clienteNombre.trim() }" placeholder="Nombre completo">
-            <span v-if="touched && !f.clienteNombre.trim()" class="fe">El nombre del cliente es obligatorio</span>
+            <span class="fl">Nombre del cliente <b v-if="!isEdit">*</b></span>
+            <input v-model="f.clienteNombre" class="field" :class="{ err: touched && !isEdit && !f.clienteNombre.trim() }" placeholder="Nombre completo">
+            <span v-if="touched && !isEdit && !f.clienteNombre.trim()" class="fe">El nombre del cliente es obligatorio</span>
           </label>
           <label class="fw">
-            <span class="fl">Documento de identidad <b>*</b></span>
-            <input v-model="f.clienteDocumento" class="field" :class="{ err: touched && !f.clienteDocumento.trim() }" placeholder="Cédula / NIT">
-            <span v-if="touched && !f.clienteDocumento.trim()" class="fe">El documento del cliente es obligatorio</span>
+            <span class="fl">Documento de identidad <b v-if="!isEdit">*</b></span>
+            <input v-model="f.clienteDocumento" class="field" :class="{ err: touched && !isEdit && !f.clienteDocumento.trim() }" placeholder="Cédula / NIT">
+            <span v-if="touched && !isEdit && !f.clienteDocumento.trim()" class="fe">El documento del cliente es obligatorio</span>
           </label>
         </div>
       </section>
