@@ -24,6 +24,10 @@ export const MODULE_ACCESS: Record<ModuleKey, AppRole[]> = {
   transporte: ["TRANSPORTE", "SUPERVISOR_TRANSPORTE", "GERENTE", "ADMIN", "OPERADOR"],
   preoperacional: ["TRANSPORTISTA", "ADMIN", "GERENTE", "SUPERVISOR_TRANSPORTE"],
   tienda: ["TIENDA", "SUPERVISOR_TIENDA", "SUPERVISOR_TRANSPORTE", "GERENTE", "ADMIN"],
+  // Los dos roles OPERACIONES_* quedan fuera a proposito: son patinadores de area
+  // y solo operan Integracion de Pedidos (+ Cargue Gourmet en el caso gourmet),
+  // tal como dice ROLE_DESCRIPTION mas abajo. Esta lista tambien gobierna el
+  // acceso de servidor via puedeCrear/puedeVerSolicitudTransporte.
   "solicitudes-transporte": [
     "ADMIN",
     "GERENTE",
@@ -34,8 +38,6 @@ export const MODULE_ACCESS: Record<ModuleKey, AppRole[]> = {
     "SUPERVISOR_TRANSPORTE",
     "TIENDA",
     "SUPERVISOR_TIENDA",
-    "OPERACIONES_MUEBLES",
-    "OPERACIONES_GOURMET",
   ],
   exportaciones: ["ETIQUETADO", "SUPERVISOR_ALMACENAMIENTO", "GERENTE", "ADMIN"],
   "exportaciones-mexico": ["ETIQUETADO", "SUPERVISOR_ALMACENAMIENTO", "GERENTE", "ADMIN"],

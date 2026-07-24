@@ -21,10 +21,11 @@ export const MODULE_ACCESS: Record<ModuleKey, string[]> = {
   transporte: ['TRANSPORTE', 'SUPERVISOR_TRANSPORTE', 'GERENTE', 'ADMIN', 'OPERADOR'],
   preoperacional: ['TRANSPORTISTA', 'ADMIN', 'GERENTE', 'SUPERVISOR_TRANSPORTE'],
   tienda: ['TIENDA', 'SUPERVISOR_TIENDA', 'SUPERVISOR_TRANSPORTE', 'GERENTE', 'ADMIN'],
+  // Sin los roles OPERACIONES_*: son patinadores de área y solo operan Integración
+  // de Pedidos (+ Cargue Gourmet el gourmet). Ver src/lib/modulePermissions.ts.
   'solicitudes-transporte': [
     'ADMIN', 'GERENTE', 'OPERADOR', 'INVENTARIO', 'TRANSPORTE',
     'SUPERVISOR_INVENTARIO', 'SUPERVISOR_TRANSPORTE', 'TIENDA', 'SUPERVISOR_TIENDA',
-    'OPERACIONES_MUEBLES', 'OPERACIONES_GOURMET',
   ],
   exportaciones: ['ETIQUETADO', 'SUPERVISOR_ALMACENAMIENTO', 'GERENTE', 'ADMIN'],
   'exportaciones-mexico': ['ETIQUETADO', 'SUPERVISOR_ALMACENAMIENTO', 'GERENTE', 'ADMIN'],

@@ -1,4 +1,5 @@
 import type { UserRole } from "@/types";
+import { canSeeModule } from "./modulePermissions";
 
 export const SOLICITUDES_TRANSPORTE_PATH = "/dashboard/solicitudes-transporte";
 
@@ -128,8 +129,11 @@ export const GESTORES_SOLICITUDES_TRANSPORTE: UserRole[] = [
   "SUPERVISOR_TRANSPORTE",
 ];
 
+// Antes era allow-by-default ("cualquiera menos TRANSPORTISTA"), asi que roles sin
+// el modulo en el sidebar igual podian entrar por URL y crear. Ahora la matriz de
+// modulePermissions.ts es la unica fuente: si no ves el modulo, no operas sobre el.
 export function puedeCrearSolicitudTransporte(role: UserRole | string | undefined | null): boolean {
-  return Boolean(role && role !== "TRANSPORTISTA");
+  return canSeeModule(role, "solicitudes-transporte");
 }
 
 export function puedeGestionarSolicitudTransporte(role: UserRole | string | undefined | null): boolean {
@@ -145,7 +149,7 @@ export function puedeVerSolicitudTransporte(
   actorId: string | undefined | null,
   creadoPorId: string | undefined | null
 ): boolean {
-  if (!role || role === "TRANSPORTISTA") return false;
+  if (!canSeeModule(role, "solicitudes-transporte")) return false;
   if (puedeGestionarSolicitudTransporte(role)) return true;
   return Boolean(actorId && creadoPorId && actorId === creadoPorId);
 }

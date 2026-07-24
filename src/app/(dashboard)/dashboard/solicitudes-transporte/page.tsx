@@ -12,6 +12,7 @@ import { useListDetailScroll } from "@/hooks/useListDetailScroll";
 import { AutoRefreshIndicator } from "@/components/ui/AutoRefreshIndicator";
 import { getModuleColor, getModuleCssVars } from "@/lib/moduleTheme";
 import { puedeEliminarSolicitudTransporte, puedeGestionarSolicitudTransporte } from "@/lib/solicitudesTransporte";
+import { canSeeModule } from "@/lib/modulePermissions";
 import { useAutoRefresh } from "@/hooks/useAutoRefresh";
 import { useApi } from "@/hooks/useApi";
 import { apiGet, apiSend, apiPost, apiPatch, apiDelete, buildQuery } from "@/lib/apiClient";
@@ -271,6 +272,7 @@ export default function SolicitudesTransportePage() {
   const user = session?.user as { role?: string; id?: string } | undefined;
   const role = user?.role;
   const userId = user?.id;
+  const puedeVer = canSeeModule(role, "solicitudes-transporte");
   const isGestor = puedeGestionarSolicitudTransporte(role);
   const canDelete = puedeEliminarSolicitudTransporte(role);
   const { confirm, confirmModal } = useConfirm();
@@ -291,7 +293,11 @@ export default function SolicitudesTransportePage() {
   useEffect(() => { setDebugTable(new URLSearchParams(window.location.search).get("debugTable") === "1"); }, []);
 
   // ── Lectura SWR (estado reactivo en la key; query se aplica con Enter) ──────
-  const listKey = `/api/solicitudes-transporte${buildQuery({ q: appliedQuery, estado })}`;
+  // key null cuando el rol no ve el módulo → SWR no dispara la petición (que
+  // ahora responde 403) y la página no queda con un error de carga en pantalla.
+  const listKey = puedeVer
+    ? `/api/solicitudes-transporte${buildQuery({ q: appliedQuery, estado })}`
+    : null;
   const { data: rowsData, isLoading: loading, error: rowsError, mutate: mutateRows } = useApi<{ data: Solicitud[] }>(listKey);
   const rows = useMemo(() => rowsData?.data ?? [], [rowsData]);
   const load = useCallback(() => { void mutateRows(); }, [mutateRows]);
@@ -309,12 +315,14 @@ export default function SolicitudesTransportePage() {
   }, [rowsError]);
 
   useEffect(() => {
+    if (!puedeVer) return;
     apiGet<{ data: Catalogos | null }>("/api/solicitudes-transporte/catalogos")
       .then((j) => setCatalogos(j.data ?? null))
       .catch(() => {});
-  }, []);
+  }, [puedeVer]);
 
   const autoRefresh = useAutoRefresh({
+    enabled: puedeVer,
     pause: Boolean(showForm || editing || selected || rejectText.trim()),
     onRefresh: () => load(),
   });
@@ -380,6 +388,16 @@ export default function SolicitudesTransportePage() {
       setSelected(null);
       await load();
     } catch (e) { setError(getErrorMessage(e, "No se pudo borrar")); }
+  }
+
+  // Espejo del gate de servidor (puedeCrear/puedeVerSolicitudTransporte); los
+  // roles OPERACIONES_* ya no tienen este módulo. Ver AGENTS.md: doble validación.
+  if (!puedeVer) {
+    return (
+      <div style={{ padding: "48px 24px", textAlign: "center" }}>
+        <p style={{ color: "var(--muted)" }}>No tienes acceso a este módulo.</p>
+      </div>
+    );
   }
 
   return (

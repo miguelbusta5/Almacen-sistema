@@ -17,11 +17,16 @@ function d(value: string) {
 }
 
 describe("solicitudesTransporte", () => {
-  it("permite crear a usuarios autenticados excepto TRANSPORTISTA", () => {
+  it("permite crear solo a los roles que ven el modulo", () => {
     expect(puedeCrearSolicitudTransporte("TIENDA")).toBe(true);
-    expect(puedeCrearSolicitudTransporte("OPERACIONES_MUEBLES")).toBe(true);
     expect(puedeCrearSolicitudTransporte("SUPERVISOR_TRANSPORTE")).toBe(true);
     expect(puedeCrearSolicitudTransporte("TRANSPORTISTA")).toBe(false);
+    // Patinadores de area: solo Integracion de Pedidos.
+    expect(puedeCrearSolicitudTransporte("OPERACIONES_MUEBLES")).toBe(false);
+    expect(puedeCrearSolicitudTransporte("OPERACIONES_GOURMET")).toBe(false);
+    // Ya no veian el modulo en el sidebar; ahora tampoco por URL directa.
+    expect(puedeCrearSolicitudTransporte("ETIQUETADO")).toBe(false);
+    expect(puedeCrearSolicitudTransporte("SUPERVISOR_ALMACENAMIENTO")).toBe(false);
   });
 
   it("limita gestion a supervisor transporte, gerente y admin", () => {

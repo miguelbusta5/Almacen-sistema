@@ -181,7 +181,8 @@ async function notifyGestores(recordId: string, actorId: string, titulo: string,
 export async function GET(req: NextRequest) {
   const actor = await requireAuth();
   if (actor instanceof NextResponse) return actor;
-  if (actor.role === "TRANSPORTISTA") return NextResponse.json({ error: "Sin acceso" }, { status: 403 });
+  // Mismo gate que el resto del modulo: la matriz de modulePermissions manda.
+  if (!puedeCrearSolicitudTransporte(actor.role)) return NextResponse.json({ error: "Sin acceso" }, { status: 403 });
 
   const url = new URL(req.url);
   const page = Math.max(1, Number(url.searchParams.get("page") ?? 1));

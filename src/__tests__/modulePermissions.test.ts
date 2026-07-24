@@ -95,8 +95,13 @@ describe("canSeeModule — Sprint 8", () => {
     "%s NO ve integracion", (role) => expect(canSeeModule(role, "integracion")).toBe(false)
   );
 
-  it.each(["ADMIN", "GERENTE", "OPERADOR", "INVENTARIO", "TRANSPORTE", "SUPERVISOR_INVENTARIO", "SUPERVISOR_TRANSPORTE", "TIENDA", "SUPERVISOR_TIENDA", "OPERACIONES_MUEBLES", "OPERACIONES_GOURMET"] as const)(
+  it.each(["ADMIN", "GERENTE", "OPERADOR", "INVENTARIO", "TRANSPORTE", "SUPERVISOR_INVENTARIO", "SUPERVISOR_TRANSPORTE", "TIENDA", "SUPERVISOR_TIENDA"] as const)(
     "%s ve solicitudes-transporte", (role) => expect(canSeeModule(role, "solicitudes-transporte")).toBe(true)
+  );
+
+  // Los patinadores de área solo operan Integración (+ Cargue Gourmet el gourmet).
+  it.each(["OPERACIONES_MUEBLES", "OPERACIONES_GOURMET", "TRANSPORTISTA", "ETIQUETADO", "SUPERVISOR_ALMACENAMIENTO"] as const)(
+    "%s NO ve solicitudes-transporte", (role) => expect(canSeeModule(role, "solicitudes-transporte")).toBe(false)
   );
 
   // ── Módulo cargue-gourmet ─────────────────────────────
