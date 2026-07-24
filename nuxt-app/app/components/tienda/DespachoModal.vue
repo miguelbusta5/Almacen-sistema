@@ -23,6 +23,7 @@ const f = reactive({
   notaEntrega: props.despacho?.notaEntrega ?? '',
 })
 const touched = ref(false)
+const showMissingAlert = ref(false)
 
 // Tienda origen — mismo catálogo/patrón de autocompletar de Cargue Gourmet
 // (CrearPedidoModal.vue): se busca por código/nombre/ciudad y al elegir se
@@ -60,10 +61,35 @@ function selectTiendaOrigen(t: TiendaOption) {
   showSuggestions.value = false
 }
 
-const missing = computed(() => !f.centroCostos.trim() || !f.numeroDocumento.trim() || !f.consecutivo.trim() || !f.clienteNombre.trim() || !tiendaOrigenSeleccionada.value)
+const missingBasic = computed(() => !f.centroCostos.trim() || !f.numeroDocumento.trim() || !f.consecutivo.trim() || !f.clienteNombre.trim() || !tiendaOrigenSeleccionada.value)
 
 interface PlinDraft { plu: string; descripcion: string; unidades: string; looked: boolean; looking: boolean; notFound: boolean }
 const plines = ref<PlinDraft[]>(isEdit.value ? [] : [{ plu: '', descripcion: '', unidades: '1', looked: false, looking: false, notFound: false }])
+
+// Al crear una factura nueva, todos los campos son obligatorios (incluido al
+// menos un producto); al editar se conserva solo la validación mínima previa.
+interface MissingField { key: string; label: string }
+const missingFields = computed<MissingField[]>(() => {
+  if (isEdit.value) return []
+  const m: MissingField[] = []
+  if (!f.centroCostos.trim()) m.push({ key: 'centroCostos', label: 'Centro de costos' })
+  if (!f.numeroDocumento.trim()) m.push({ key: 'numeroDocumento', label: 'N° Documento' })
+  if (!f.consecutivo.trim()) m.push({ key: 'consecutivo', label: 'Consecutivo' })
+  if (!tiendaOrigenSeleccionada.value) m.push({ key: 'tiendaOrigen', label: 'Tienda origen' })
+  if (!f.numeroCajas || f.numeroCajas < 1) m.push({ key: 'numeroCajas', label: 'N° de cajas' })
+  if (!f.clienteNombre.trim()) m.push({ key: 'clienteNombre', label: 'Nombre del cliente' })
+  if (!f.clienteDocumento.trim()) m.push({ key: 'clienteDocumento', label: 'Documento del cliente' })
+  if (!f.clienteTelefono.trim()) m.push({ key: 'clienteTelefono', label: 'Teléfono del cliente' })
+  if (!f.ciudad) m.push({ key: 'ciudad', label: 'Ciudad destino' })
+  if (!f.fechaEntregaComprometida) m.push({ key: 'fechaEntregaComprometida', label: 'Fecha entrega comprometida' })
+  if (!f.direccionEntrega.trim()) m.push({ key: 'direccionEntrega', label: 'Dirección de entrega' })
+  if (!f.contactoEntrega.trim()) m.push({ key: 'contactoEntrega', label: 'Contacto en destino' })
+  if (!f.telefonoEntrega.trim()) m.push({ key: 'telefonoEntrega', label: 'Teléfono de contacto' })
+  if (!f.notaEntrega.trim()) m.push({ key: 'notaEntrega', label: 'Nota' })
+  if (!plines.value.some((p) => p.plu.trim() && p.descripcion.trim())) m.push({ key: 'productos', label: 'Al menos un producto (PLU y descripción)' })
+  return m
+})
+const missing = computed(() => isEdit.value ? missingBasic.value : missingFields.value.length > 0)
 function addPlin() { plines.value.push({ plu: '', descripcion: '', unidades: '1', looked: false, looking: false, notFound: false }) }
 function removePlin(i: number) { plines.value.splice(i, 1) }
 async function lookupPlin(i: number) {
@@ -88,7 +114,8 @@ async function lookupPlin(i: number) {
 function submit() {
   if (props.saving) return
   touched.value = true
-  if (missing.value) return
+  if (!isEdit.value && missingFields.value.length > 0) { showMissingAlert.value = true; return }
+  if (isEdit.value && missingBasic.value) return
   const payload: Record<string, unknown> = { ...f, tiendaOrigenCodigo: tiendaOrigenSeleccionada.value!.codigo }
   if (!payload.fechaEntregaComprometida) payload.fechaEntregaComprometida = null
   if (!payload.clienteDocumento) payload.clienteDocumento = null
@@ -136,8 +163,9 @@ function submit() {
             <span v-if="touched && !f.consecutivo.trim()" class="fe">El consecutivo es obligatorio</span>
           </label>
           <label class="fw">
-            <span class="fl">N° de cajas</span>
-            <input v-model.number="f.numeroCajas" type="number" min="1" class="field">
+            <span class="fl">N° de cajas <b>*</b></span>
+            <input v-model.number="f.numeroCajas" type="number" min="1" class="field" :class="{ err: touched && !isEdit && (!f.numeroCajas || f.numeroCajas < 1) }">
+            <span v-if="touched && !isEdit && (!f.numeroCajas || f.numeroCajas < 1)" class="fe">El número de cajas es obligatorio</span>
           </label>
         </div>
         <label class="fw autocomplete">
@@ -169,8 +197,16 @@ function submit() {
           <span v-if="touched && !f.clienteNombre.trim()" class="fe">El nombre del cliente es obligatorio</span>
         </label>
         <div class="g2">
-          <label class="fw"><span class="fl">Documento</span><input v-model="f.clienteDocumento" class="field"></label>
-          <label class="fw"><span class="fl">Teléfono</span><input v-model="f.clienteTelefono" class="field"></label>
+          <label class="fw">
+            <span class="fl">Documento <b>*</b></span>
+            <input v-model="f.clienteDocumento" class="field" :class="{ err: touched && !isEdit && !f.clienteDocumento.trim() }">
+            <span v-if="touched && !isEdit && !f.clienteDocumento.trim()" class="fe">El documento del cliente es obligatorio</span>
+          </label>
+          <label class="fw">
+            <span class="fl">Teléfono <b>*</b></span>
+            <input v-model="f.clienteTelefono" class="field" :class="{ err: touched && !isEdit && !f.clienteTelefono.trim() }">
+            <span v-if="touched && !isEdit && !f.clienteTelefono.trim()" class="fe">El teléfono del cliente es obligatorio</span>
+          </label>
         </div>
       </section>
 
@@ -178,21 +214,42 @@ function submit() {
         <div class="fsec-title"><span class="fsec-ic"><MapPin :size="13" /></span> Entrega</div>
         <div class="g2">
           <label class="fw">
-            <span class="fl">Ciudad destino</span>
-            <select v-model="f.ciudad" class="field"><option value="">— Sin asignar —</option><option v-for="c in CIUDAD_OPTIONS" :key="c" :value="c">{{ c }}</option></select>
+            <span class="fl">Ciudad destino <b>*</b></span>
+            <select v-model="f.ciudad" class="field" :class="{ err: touched && !isEdit && !f.ciudad }"><option value="">— Sin asignar —</option><option v-for="c in CIUDAD_OPTIONS" :key="c" :value="c">{{ c }}</option></select>
+            <span v-if="touched && !isEdit && !f.ciudad" class="fe">La ciudad destino es obligatoria</span>
           </label>
-          <label class="fw"><span class="fl">Fecha entrega comprometida</span><input v-model="f.fechaEntregaComprometida" type="date" class="field"></label>
+          <label class="fw">
+            <span class="fl">Fecha entrega comprometida <b>*</b></span>
+            <input v-model="f.fechaEntregaComprometida" type="date" class="field" :class="{ err: touched && !isEdit && !f.fechaEntregaComprometida }">
+            <span v-if="touched && !isEdit && !f.fechaEntregaComprometida" class="fe">La fecha de entrega es obligatoria</span>
+          </label>
         </div>
-        <label class="fw"><span class="fl">Dirección de entrega</span><input v-model="f.direccionEntrega" class="field"></label>
+        <label class="fw">
+          <span class="fl">Dirección de entrega <b>*</b></span>
+          <input v-model="f.direccionEntrega" class="field" :class="{ err: touched && !isEdit && !f.direccionEntrega.trim() }">
+          <span v-if="touched && !isEdit && !f.direccionEntrega.trim()" class="fe">La dirección de entrega es obligatoria</span>
+        </label>
         <div class="g2">
-          <label class="fw"><span class="fl">Contacto en destino</span><input v-model="f.contactoEntrega" class="field"></label>
-          <label class="fw"><span class="fl">Teléfono contacto</span><input v-model="f.telefonoEntrega" class="field"></label>
+          <label class="fw">
+            <span class="fl">Contacto en destino <b>*</b></span>
+            <input v-model="f.contactoEntrega" class="field" :class="{ err: touched && !isEdit && !f.contactoEntrega.trim() }">
+            <span v-if="touched && !isEdit && !f.contactoEntrega.trim()" class="fe">El contacto en destino es obligatorio</span>
+          </label>
+          <label class="fw">
+            <span class="fl">Teléfono contacto <b>*</b></span>
+            <input v-model="f.telefonoEntrega" class="field" :class="{ err: touched && !isEdit && !f.telefonoEntrega.trim() }">
+            <span v-if="touched && !isEdit && !f.telefonoEntrega.trim()" class="fe">El teléfono de contacto es obligatorio</span>
+          </label>
         </div>
-        <label class="fw"><span class="fl">Nota</span><textarea v-model="f.notaEntrega" rows="2" class="field" /></label>
+        <label class="fw">
+          <span class="fl">Nota <b>*</b></span>
+          <textarea v-model="f.notaEntrega" rows="2" class="field" :class="{ err: touched && !isEdit && !f.notaEntrega.trim() }" />
+          <span v-if="touched && !isEdit && !f.notaEntrega.trim()" class="fe">La nota es obligatoria</span>
+        </label>
       </section>
 
       <section v-if="!isEdit" class="fsec">
-        <div class="fsec-title"><span class="fsec-ic"><Package :size="13" /></span> Productos (opcional)</div>
+        <div class="fsec-title"><span class="fsec-ic"><Package :size="13" /></span> Productos <b>*</b></div>
         <div v-for="(p, i) in plines" :key="i">
           <div class="plin-row">
             <input v-model="p.plu" class="field plu" placeholder="PLU" @blur="lookupPlin(i)">
@@ -206,6 +263,7 @@ function submit() {
           <span v-if="p.notFound" class="fe plu-fe">PLU no encontrado en el maestro — puedes escribir la descripción manualmente</span>
         </div>
         <button type="button" class="btn btn-sm add-plin" @click="addPlin"><Plus :size="14" /> Agregar producto</button>
+        <span v-if="touched && !plines.some((p) => p.plu.trim() && p.descripcion.trim())" class="fe">Agrega al menos un producto con PLU y descripción</span>
         <div class="hint"><Info :size="12" /> Al escribir un PLU y salir del campo, la descripción se autocompleta desde el maestro de productos.</div>
       </section>
 
@@ -217,6 +275,8 @@ function submit() {
         </button>
       </div>
     </form>
+
+    <AlertModal v-if="showMissingAlert" :items="missingFields.map((m) => m.label)" @close="showMissingAlert = false" />
   </ModalShell>
 </template>
 
@@ -224,6 +284,7 @@ function submit() {
 .form { display: flex; flex-direction: column; gap: 14px; }
 .fsec { display: flex; flex-direction: column; gap: 11px; padding: 14px 14px 15px; border: 1px solid var(--border); border-radius: var(--r-md); background: linear-gradient(180deg, var(--surface-2), var(--surface)); }
 .fsec-title { display: flex; align-items: center; gap: 9px; font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: .06em; color: var(--ink-2); }
+.fsec-title b { color: var(--u-critico); font-weight: 800; }
 .fsec-ic { width: 24px; height: 24px; border-radius: 7px; display: grid; place-items: center; background: var(--brand-tint); color: var(--brand-deep); }
 .g2 { display: grid; grid-template-columns: 1fr 1fr; gap: 11px; }
 .fw { display: flex; flex-direction: column; gap: 5px; }
