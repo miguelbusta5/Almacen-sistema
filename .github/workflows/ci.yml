@@ -32,7 +32,7 @@ jobs:
         run: npm test
 
   deploy:
-    name: Deploy a producción
+    name: Deploy a producción (Next.js)
     runs-on: ubuntu-latest
     needs: check
     if: github.event_name == 'push' && github.ref == 'refs/heads/master'
@@ -52,6 +52,43 @@ jobs:
           mkdir -p .vercel
           printf '{"projectId":"%s","orgId":"%s"}' \
             '${{ secrets.VERCEL_PROJECT_ID }}' \
+            '${{ secrets.VERCEL_ORG_ID }}' > .vercel/project.json
+
+      - name: Deploy a producción
+        run: vercel deploy --prod --yes --token=${{ secrets.VERCEL_TOKEN }}
+
+  # nuxt-app/ es un proyecto Vercel APARTE del de la raíz: el job de arriba nunca
+  # lo desplegaba y todo cambio en los módulos migrados (transporte, tienda,
+  # cargue-gourmet, preoperacional, integracion) se quedaba en git sin llegar a
+  # los usuarios. Misma org y mismo token que el proyecto principal; lo único
+  # distinto es el projectId (secreto VERCEL_NUXT_PROJECT_ID).
+  # No hace falta paso de Prisma: nuxt-app/package.json ya corre `prisma generate`
+  # en postinstall, y el build ocurre dentro de Vercel.
+  deploy-nuxt:
+    name: Deploy a producción (nuxt-app)
+    runs-on: ubuntu-latest
+    needs: check
+    if: github.event_name == 'push' && github.ref == 'refs/heads/master'
+
+    defaults:
+      run:
+        working-directory: nuxt-app
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Instalar Vercel CLI
+        run: npm install -g vercel@latest
+
+      - name: Crear .vercel/project.json
+        run: |
+          mkdir -p .vercel
+          printf '{"projectId":"%s","orgId":"%s"}' \
+            '${{ secrets.VERCEL_NUXT_PROJECT_ID }}' \
             '${{ secrets.VERCEL_ORG_ID }}' > .vercel/project.json
 
       - name: Deploy a producción

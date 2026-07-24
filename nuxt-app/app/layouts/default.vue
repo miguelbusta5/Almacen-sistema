@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue'
 import {
-  Home, ShieldCheck, Store, GitMerge, ScanLine, Tags, Globe, FileText, Truck,
+  ShieldCheck, Store, GitMerge, ScanLine, Tags, Globe, FileText, Truck,
   BarChart3, Map, Users, ScrollText, Search, Bell, CheckCircle2, TriangleAlert,
   Menu, X,
 } from '@lucide/vue'
@@ -35,8 +35,10 @@ watch(sessionInvalid, (invalid) => {
 // mantener ambos en sync.
 interface NavItem { icon: unknown; label: string; href: string; key: string | null; moduleKey: ModuleKey | null }
 const NAV_GROUPS: NavItem[][] = [
+  // Sin ítem "Inicio": /dashboard ya no es una página, redirige al primer módulo
+  // visible del rol (src/app/(dashboard)/dashboard/page.tsx), así que para muchos
+  // roles el enlace devolvía al usuario justo donde ya estaba.
   [
-    { icon: Home, label: 'Inicio', href: '/dashboard', key: null, moduleKey: null },
     { icon: ShieldCheck, label: 'Preoperacional', href: '/dashboard/preoperacional', key: 'preoperacional', moduleKey: 'preoperacional' },
   ],
   [
