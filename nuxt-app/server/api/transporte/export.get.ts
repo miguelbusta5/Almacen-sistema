@@ -11,7 +11,14 @@ import { calcCostoAlmacenaje, diasTranscurridosAlmacenaje } from '../../utils/al
 const ALLOWED_ROLES = ['ADMIN', 'GERENTE', 'TRANSPORTE', 'SUPERVISOR_TRANSPORTE']
 const ALLOWED_EMAILS = ['auxiliar-transporte@gmail.com']
 
-// GET /api/transporte/export — mismos filtros que GET /api/transporte.
+const ESTADO_LABEL: Record<string, string> = {
+  'PENDIENTE DESPACHO': 'Pendiente despacho',
+  DESPACHADO: 'Despachado',
+}
+
+// GET /api/transporte/export — mismos filtros que GET /api/transporte, más
+// `estado` como elección explícita del usuario al momento de descargar
+// (ver transporte.vue: el menú de Excel ya no depende del filtro de la lista).
 export default defineEventHandler(async (event) => {
   const actor = await requireAuth(event)
   if (!ALLOWED_ROLES.includes(actor.role) && !ALLOWED_EMAILS.includes(actor.email)) {
@@ -30,6 +37,8 @@ export default defineEventHandler(async (event) => {
     where.OR = [
       { documento: { contains: q, mode: 'insensitive' } },
       { ubicacion: { contains: q, mode: 'insensitive' } },
+      { clienteNombre: { contains: q, mode: 'insensitive' } },
+      { clienteDocumento: { contains: q, mode: 'insensitive' } },
     ]
   }
 
@@ -39,28 +48,65 @@ export default defineEventHandler(async (event) => {
     take: 5000,
   })
 
-  const headers = [
-    'Documento', 'Tipo', 'Código tienda', 'Nombre tienda', 'Ciudad', 'Ubicación',
-    'Estado', 'Fecha ingreso', 'Fecha despacho', 'Días transcurridos',
-    'Costo almacenaje acumulado', 'Nota',
-  ]
-
-  const dataRows: (string | number)[][] = rows.map((r) => {
+  const dataRows = rows.map((r) => {
     const fecha = r.fecha.toISOString().slice(0, 10)
     const fechaDespacho = r.fecha_despacho ? r.fecha_despacho.toISOString().slice(0, 10) : null
-    const diasTranscurridos = diasTranscurridosAlmacenaje(fecha, fechaDespacho)
-    const costoAcumulado = calcCostoAlmacenaje(fecha, fechaDespacho)
     return [
-      r.documento, r.tipo ?? 'COMUN', r.codigoTienda ?? '', r.nombreTienda ?? '',
-      r.ciudad ?? '', r.ubicacion, r.estado, fecha, fechaDespacho ?? '',
-      diasTranscurridos, costoAcumulado, r.nota ?? '',
+      r.documento,
+      r.clienteNombre ?? '',
+      r.clienteDocumento ?? '',
+      r.tipo === 'ECOMMERCE' ? 'Ecommerce' : 'Común',
+      r.codigoTienda ?? '',
+      r.nombreTienda ?? '',
+      r.ciudad ?? '',
+      r.ubicacion,
+      ESTADO_LABEL[r.estado] ?? r.estado,
+      new Date(fecha + 'T00:00:00'),
+      fechaDespacho ? new Date(fechaDespacho + 'T00:00:00') : null,
+      diasTranscurridosAlmacenaje(fecha, fechaDespacho),
+      calcCostoAlmacenaje(fecha, fechaDespacho),
+      r.nota ?? '',
     ]
   })
 
   const wb = new ExcelJS.Workbook()
-  const ws = wb.addWorksheet('Guardados Transporte')
-  ws.addRows([headers, ...dataRows])
-  ws.columns = [18, 12, 14, 26, 16, 24, 18, 14, 14, 10, 16, 30].map((width) => ({ width }))
+  const ws = wb.addWorksheet('Guardados Transporte', { views: [{ state: 'frozen', ySplit: 1 }] })
+
+  // Tabla real de Excel (encabezado con filtro/orden incorporado, filas en
+  // bandas) en vez de filas sueltas — así el archivo abre "organizado por
+  // tabla" y no como un volcado plano.
+  ws.addTable({
+    name: 'GuardadosTransporte',
+    ref: 'A1',
+    headerRow: true,
+    totalsRow: false,
+    style: { theme: 'TableStyleMedium9', showRowStripes: true },
+    columns: [
+      { name: 'Documento' },
+      { name: 'Cliente' },
+      { name: 'Documento cliente' },
+      { name: 'Tipo' },
+      { name: 'Código tienda' },
+      { name: 'Nombre tienda' },
+      { name: 'Ciudad' },
+      { name: 'Ubicación' },
+      { name: 'Estado' },
+      { name: 'Fecha ingreso' },
+      { name: 'Fecha despacho' },
+      { name: 'Días transcurridos' },
+      { name: 'Costo almacenaje acumulado' },
+      { name: 'Nota' },
+    ],
+    rows: dataRows,
+  })
+
+  ws.columns = [18, 24, 16, 12, 14, 26, 16, 24, 18, 14, 14, 12, 20, 30].map((width) => ({ width }))
+  ws.getColumn(10).numFmt = 'yyyy-mm-dd'
+  ws.getColumn(11).numFmt = 'yyyy-mm-dd'
+  ws.getColumn(12).numFmt = '#,##0'
+  ws.getColumn(13).numFmt = '"$"#,##0'
+  ws.getRow(1).font = { bold: true }
+  ws.getRow(1).alignment = { vertical: 'middle' }
 
   const buf = await wb.xlsx.writeBuffer()
   const today = new Date().toISOString().slice(0, 10)

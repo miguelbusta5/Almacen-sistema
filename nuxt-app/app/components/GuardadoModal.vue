@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { reactive, ref, computed } from 'vue'
-import { Package, MapPin, FileText, Info } from '@lucide/vue'
+import { Package, User, MapPin, FileText, Info } from '@lucide/vue'
 import { todayISO, type Guardado } from '~/utils/guardado'
 
 const props = defineProps<{ guardado?: Guardado | null; saving?: boolean }>()
@@ -17,10 +17,12 @@ const f = reactive({
   ciudad: props.guardado?.ciudad ?? '',
   codigoTienda: props.guardado?.codigoTienda ?? '',
   nombreTienda: props.guardado?.nombreTienda ?? '',
+  clienteNombre: props.guardado?.clienteNombre ?? '',
+  clienteDocumento: props.guardado?.clienteDocumento ?? '',
   nota: props.guardado?.nota ?? '',
 })
 const touched = ref(false)
-const missing = computed(() => !f.fecha || !f.documento.trim() || !f.ubicacion.trim())
+const missing = computed(() => !f.fecha || !f.documento.trim() || !f.ubicacion.trim() || !f.clienteNombre.trim() || !f.clienteDocumento.trim())
 
 // ── Buscador de tienda (catálogo Cargue Gourmet, MaestroTiendaGourmet) ──────
 // Mismo patrón que CrearPedidoModal.tsx (Cargue Gourmet): buscar por
@@ -109,6 +111,22 @@ function submit() {
           <input v-model="f.documento" class="field" :class="{ err: touched && !f.documento.trim() }" placeholder="Factura / remisión">
           <span v-if="touched && !f.documento.trim()" class="fe">El documento es obligatorio</span>
         </label>
+      </section>
+
+      <section class="fsec">
+        <div class="fsec-title"><span class="fsec-ic"><User :size="13" /></span> Cliente</div>
+        <div class="g2">
+          <label class="fw">
+            <span class="fl">Nombre del cliente <b>*</b></span>
+            <input v-model="f.clienteNombre" class="field" :class="{ err: touched && !f.clienteNombre.trim() }" placeholder="Nombre completo">
+            <span v-if="touched && !f.clienteNombre.trim()" class="fe">El nombre del cliente es obligatorio</span>
+          </label>
+          <label class="fw">
+            <span class="fl">Documento de identidad <b>*</b></span>
+            <input v-model="f.clienteDocumento" class="field" :class="{ err: touched && !f.clienteDocumento.trim() }" placeholder="Cédula / NIT">
+            <span v-if="touched && !f.clienteDocumento.trim()" class="fe">El documento del cliente es obligatorio</span>
+          </label>
+        </div>
       </section>
 
       <section class="fsec">

@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, computed, watch, onMounted } from 'vue'
+import { onClickOutside } from '@vueuse/core'
 import { RefreshCw, Download, Plus, Calendar } from '@lucide/vue'
 import { tieneAlerta, todayISO, parseEntrega, type Guardado, type ContactoGuardado } from '~/utils/guardado'
 import { SAMPLE_GUARDADOS, SAMPLE_CONTACTOS, SAMPLE_PENDIENTES, type PendienteTienda } from '~/utils/sampleData'
@@ -27,13 +28,20 @@ const ROLES_EXPORT = ['ADMIN', 'GERENTE', 'TRANSPORTE', 'SUPERVISOR_TRANSPORTE']
 const EMAILS_EXPORT = ['auxiliar-transporte@gmail.com']
 const canExport = computed(() => demo.value || ROLES_EXPORT.includes(me.value?.role ?? '') || EMAILS_EXPORT.includes(me.value?.email ?? ''))
 const exporting = ref(false)
-async function exportarExcel() {
+const showExportMenu = ref(false)
+const exportMenuEl = ref<HTMLElement | null>(null)
+onClickOutside(exportMenuEl, () => { showExportMenu.value = false })
+// El export es una elección explícita al momento de descargar — independiente
+// del filtro de estado que tenga puesto la lista en ese momento — para que el
+// usuario elija a propósito qué descarga (todos / pendientes / despachados).
+async function exportarExcel(estadoFiltro?: string) {
   if (exporting.value || demo.value) return
+  showExportMenu.value = false
   exporting.value = true
   try {
     const query: Record<string, string> = {}
     if (q.value) query.q = q.value
-    if (fEstado.value) query.estado = fEstado.value
+    if (estadoFiltro) query.estado = estadoFiltro
     if (fTipo.value) query.tipo = fTipo.value
     const blob = await $fetch<Blob>('/api/transporte/export', { query, responseType: 'blob' })
     const url = URL.createObjectURL(blob)
@@ -352,9 +360,16 @@ function guardarFecha() {
       <div class="hero-actions">
         <span v-if="demo" class="demo-tag" title="Sin sesión activa: mostrando datos de ejemplo. Inicia sesión en la app principal para ver datos reales."><span class="demo-dot" /> Modo demo</span>
         <button class="btn btn-sm refresh" :class="{ spin: refreshing }" @click="refresh"><RefreshCw :size="14" /> {{ refreshing ? 'Actualizando…' : 'Actualizar' }}</button>
-        <button v-if="canExport" class="btn btn-sm" :disabled="exporting" @click="exportarExcel">
-          <Download :size="14" /> {{ exporting ? 'Exportando…' : 'Excel' }}
-        </button>
+        <div v-if="canExport" ref="exportMenuEl" class="export-menu">
+          <button class="btn btn-sm" :disabled="exporting" @click="showExportMenu = !showExportMenu">
+            <Download :size="14" /> {{ exporting ? 'Exportando…' : 'Excel' }}
+          </button>
+          <div v-if="showExportMenu" class="export-dropdown">
+            <button type="button" class="export-opt" @click="exportarExcel()">Todos los guardados</button>
+            <button type="button" class="export-opt" @click="exportarExcel('PENDIENTE DESPACHO')">Pendientes por despacho</button>
+            <button type="button" class="export-opt" @click="exportarExcel('DESPACHADO')">Despachados</button>
+          </div>
+        </div>
         <button v-if="canCreate" class="btn btn-primary btn-sm" @click="editing = null; showForm = true"><Plus :size="14" /> Nuevo guardado</button>
       </div>
     </section>
@@ -468,6 +483,12 @@ function guardarFecha() {
 .demo-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--u-aviso); animation: auroraPulse 1.6s infinite; }
 .refresh.spin :deep(svg) { animation: spin .8s linear infinite; }
 @keyframes spin { to { transform: rotate(360deg); } }
+
+.export-menu { position: relative; }
+.export-dropdown { position: absolute; z-index: 30; top: 100%; right: 0; margin-top: 6px; min-width: 210px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--r-md); box-shadow: var(--shadow-md); overflow: hidden; }
+.export-opt { display: block; width: 100%; text-align: left; padding: 10px 14px; font-size: 12.5px; font-weight: 600; color: var(--ink-2); background: none; border: none; cursor: pointer; }
+.export-opt:hover { background: var(--surface-2); color: var(--ink); }
+.export-opt + .export-opt { border-top: 1px solid var(--border); }
 
 /* Transición lista ↔ detalle */
 .view-enter-active, .view-leave-active { transition: opacity .28s cubic-bezier(.16,1,.3,1), transform .28s cubic-bezier(.16,1,.3,1); }

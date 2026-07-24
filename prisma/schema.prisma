@@ -75,6 +75,8 @@ model TransporteGuardado {
   ciudad         String?   @db.VarChar(100) // Ciudad de destino (opcional)
   codigoTienda   String?   @map("codigo_tienda") @db.VarChar(50) // Código del catálogo Gourmet (MaestroTiendaGourmet)
   nombreTienda   String?   @map("nombre_tienda") @db.VarChar(255)
+  clienteNombre     String?   @map("cliente_nombre") @db.VarChar(255)
+  clienteDocumento  String?   @map("cliente_documento") @db.VarChar(50)
   netsuiteId     String?   @map("netsuite_id") // ID interno de NetSuite (futuro)
   created_at     DateTime? @default(now()) @db.Timestamp(6)
   updated_at     DateTime? @default(now()) @db.Timestamp(6)

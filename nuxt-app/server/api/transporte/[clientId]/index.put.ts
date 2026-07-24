@@ -12,6 +12,8 @@ const updateSchema = z.object({
   ciudad: z.string().max(100).nullable().optional(),
   codigoTienda: z.string().max(50).nullable().optional(),
   nombreTienda: z.string().max(255).nullable().optional(),
+  clienteNombre: z.string().max(255).nullable().optional(),
+  clienteDocumento: z.string().max(50).nullable().optional(),
   netsuiteId: z.string().max(100).nullable().optional(),
   fecha: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
 })
@@ -42,6 +44,8 @@ export default defineEventHandler(async (event) => {
       ...(d.ciudad !== undefined && { ciudad: d.ciudad }),
       ...(d.codigoTienda !== undefined && { codigoTienda: d.codigoTienda }),
       ...(d.nombreTienda !== undefined && { nombreTienda: d.nombreTienda }),
+      ...(d.clienteNombre !== undefined && { clienteNombre: d.clienteNombre }),
+      ...(d.clienteDocumento !== undefined && { clienteDocumento: d.clienteDocumento }),
       ...(d.netsuiteId !== undefined && { netsuiteId: d.netsuiteId }),
       updated_at: new Date(),
     },

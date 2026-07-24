@@ -21,6 +21,8 @@ export default defineEventHandler(async (event) => {
   if (q) where.OR = [
     { documento: { contains: q, mode: 'insensitive' } },
     { ubicacion: { contains: q, mode: 'insensitive' } },
+    { clienteNombre: { contains: q, mode: 'insensitive' } },
+    { clienteDocumento: { contains: q, mode: 'insensitive' } },
   ]
   if (alerta) {
     // "Alerta" depende de una fecha de entrega comprometida embebida en la

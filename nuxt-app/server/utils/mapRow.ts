@@ -13,6 +13,8 @@ export function mapGuardado(r: any) {
     ciudad: r.ciudad ?? null,
     codigoTienda: r.codigoTienda ?? null,
     nombreTienda: r.nombreTienda ?? null,
+    clienteNombre: r.clienteNombre ?? null,
+    clienteDocumento: r.clienteDocumento ?? null,
     netsuiteId: r.netsuiteId ?? null,
   }
 }

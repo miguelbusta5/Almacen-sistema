@@ -20,6 +20,8 @@ export interface Guardado {
   ciudad: string | null;
   codigoTienda: string | null;
   nombreTienda: string | null;
+  clienteNombre: string | null;
+  clienteDocumento: string | null;
   netsuiteId: string | null;
 }
 

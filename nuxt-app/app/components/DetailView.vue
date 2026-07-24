@@ -18,6 +18,8 @@ const tier = computed(() => alertaTier(props.g))
 
 const detalle = computed(() => [
   { label: 'Fecha ingreso', value: fmtFecha(props.g.fecha) },
+  { label: 'Cliente', value: props.g.clienteNombre || '—' },
+  { label: 'Documento cliente', value: props.g.clienteDocumento || '—' },
   { label: 'Tienda', value: props.g.codigoTienda ? `${props.g.codigoTienda} — ${props.g.nombreTienda}` : 'Sin asignar' },
   { label: 'Ciudad destino', value: props.g.ciudad || '—' },
   { label: 'Entrega comprometida', value: entrega.value ? fmtFecha(entrega.value) : 'Sin asignar' },

@@ -15,6 +15,8 @@ const createSchema = z.object({
   ciudad: z.string().max(100).nullable().optional(),
   codigoTienda: z.string().max(50).nullable().optional(),
   nombreTienda: z.string().max(255).nullable().optional(),
+  clienteNombre: z.string().min(1, 'Nombre del cliente requerido').max(255),
+  clienteDocumento: z.string().min(1, 'Documento del cliente requerido').max(50),
 })
 
 export default defineEventHandler(async (event) => {
@@ -35,6 +37,8 @@ export default defineEventHandler(async (event) => {
       ciudad: d.ciudad || null,
       codigoTienda: d.codigoTienda || null,
       nombreTienda: d.nombreTienda || null,
+      clienteNombre: d.clienteNombre,
+      clienteDocumento: d.clienteDocumento,
     },
   })
   await prisma.activityLog.create({
