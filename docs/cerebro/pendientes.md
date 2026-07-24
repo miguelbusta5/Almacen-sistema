@@ -48,6 +48,29 @@
 - [ ] **Siguiente módulo a migrar (acordado con el usuario): Facturas Contado (`tienda`)** —
   replicar el mismo patrón (Nitro/Nuxt + rewrite condicional `beforeFiles` + `app.baseURL`).
 
+### Piloto Preoperacional Vue/Nuxt — go-live en producción (2026-07-24)
+
+- [x] Sidebar de Nuxt (`nuxt-app/app/layouts/default.vue`) tenía enlaces muertos a módulos
+  retirados (`/dashboard/inventario`, `/dashboard/mis-tareas`), le faltaban 8 de 14 módulos y no
+  filtraba por rol. Se portó `modulePermissions.ts` (`nuxt-app/app/utils/modulePermissions.ts`) y
+  se reescribió el nav con los mismos 14 ítems/grupos que `src/components/common/Sidebar.tsx`,
+  filtrados por `canSeeModule(role, moduleKey)`.
+- [x] Preoperacional portado completo a Nitro/Nuxt: `nuxt-app/server/api/preoperacional/*`
+  (conductor GET/POST, historial, export Excel, detalle/borrado ADMIN), `nuxt-app/server/utils/
+  preoperacional.ts` (checklist + `estadoDesdeItems`), `nuxt-app/server/api/uploads/foto.post.ts`
+  (nuevo — no existía endpoint de upload en Nuxt, se agregó `@vercel/blob` a
+  `nuxt-app/package.json`), y la página `nuxt-app/app/pages/preoperacional.vue` +
+  `nuxt-app/app/components/preoperacional/{ConductorView,SupervisorView,InspeccionDetail}.vue`.
+- [x] **Go-live real:** `NUXT_PILOT_PREOP_URL` (mismo deploy `nuxt-app-chi-ivory.vercel.app` que
+  los demás pilotos) activo en Production de `almacen-sistema` — `/dashboard/preoperacional` sirve
+  el piloto Nuxt a todos los usuarios desde el deploy que dispara este commit.
+- [ ] QA manual en navegador con sesión real (TRANSPORTISTA y ADMIN/GERENTE/SUPERVISOR_TRANSPORTE)
+  tras el deploy — no se pudo probar en este entorno por falta de acceso a la DB/sesión real; solo
+  se validó con `nuxi typecheck` y `nuxt build` (ambos verdes). Ver [[bugs]] BUG-004 por si aparecen
+  los mismos síntomas del primer flip de un piloto (500 inicial, CSS/datos rotos).
+- [ ] Decidir cuándo retirar `src/app/(dashboard)/dashboard/preoperacional/` (React, ahora fallback
+  sin tráfico) del repo — dejarlo un tiempo como red de seguridad antes de borrar.
+
 ### Cargue Gourmet — anti-duplicados y edición de ubicación (2026-07-03)
 
 - [x] **BUG-003 (ver [[bugs]])**: `POST`/`PUT /api/cargue-gourmet` rechazan con `409 ORDEN_DUPLICADA` una

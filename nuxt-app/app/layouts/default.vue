@@ -1,8 +1,12 @@
 <script setup lang="ts">
 import { computed, onMounted } from 'vue'
-import { Truck, Boxes, Store, ClipboardCheck, Users, Search, Bell, LayoutGrid, CheckCircle2, TriangleAlert, CheckSquare } from '@lucide/vue'
+import {
+  Home, ShieldCheck, Store, GitMerge, ScanLine, Tags, Globe, FileText, Truck,
+  BarChart3, Map, Users, ScrollText, Search, Bell, CheckCircle2, TriangleAlert,
+} from '@lucide/vue'
 import { ensureSession, useSessionState } from '~/composables/useSession'
 import { useToastState } from '~/composables/useToast'
+import { canSeeModule, type ModuleKey } from '~/utils/modulePermissions'
 
 const route = useRoute()
 const { me } = useSessionState()
@@ -13,15 +17,38 @@ onMounted(() => { ensureSession() })
 // Enlaces reales: al ser un rewrite bajo el mismo dominio, los módulos sin
 // migrar navegan de vuelta a la app Next.js con recarga completa (no hay SPA
 // compartida entre stacks). `key` identifica el nombre de ruta interno de Nuxt
-// para resaltar el ítem activo en los módulos ya migrados.
-const nav = [
-  { icon: Store, label: 'Facturas Contado', href: '/dashboard/tienda', key: 'tienda' },
-  { icon: Boxes, label: 'Novedades Inventario', href: '/dashboard/inventario', key: null },
-  { icon: Truck, label: 'Guardados Transporte', href: '/dashboard/transporte', key: 'transporte' },
-  { icon: CheckSquare, label: 'Mis Tareas', href: '/dashboard/mis-tareas', key: 'mis-tareas' },
-  { icon: ClipboardCheck, label: 'Preoperacional', href: '/dashboard/preoperacional', key: null },
-  { icon: Users, label: 'Usuarios', href: '/dashboard/usuarios', key: null },
+// para resaltar el ítem activo en los módulos ya migrados a Nuxt; en el resto
+// queda en null porque esta barra solo se monta en páginas ya migradas.
+// Mismo listado y agrupación que src/components/common/Sidebar.tsx (Next.js) —
+// mantener ambos en sync.
+interface NavItem { icon: unknown; label: string; href: string; key: string | null; moduleKey: ModuleKey | null }
+const NAV_GROUPS: NavItem[][] = [
+  [
+    { icon: Home, label: 'Inicio', href: '/dashboard', key: null, moduleKey: null },
+    { icon: ShieldCheck, label: 'Preoperacional', href: '/dashboard/preoperacional', key: 'preoperacional', moduleKey: 'preoperacional' },
+  ],
+  [
+    { icon: Store, label: 'Facturas Contado', href: '/dashboard/tienda', key: 'tienda', moduleKey: 'tienda' },
+    { icon: GitMerge, label: 'Integración Pedidos', href: '/dashboard/integracion', key: null, moduleKey: 'integracion' },
+    { icon: ScanLine, label: 'Cargue Gourmet', href: '/dashboard/cargue-gourmet', key: 'cargue-gourmet', moduleKey: 'cargue-gourmet' },
+    { icon: Tags, label: 'Exportaciones Ecuador', href: '/dashboard/exportaciones', key: null, moduleKey: 'exportaciones' },
+    { icon: Globe, label: 'Exportaciones México', href: '/dashboard/exportaciones-mexico', key: null, moduleKey: 'exportaciones-mexico' },
+    { icon: Globe, label: 'Exportaciones EE.UU', href: '/dashboard/exportaciones-eeuu', key: null, moduleKey: 'exportaciones-eeuu' },
+    { icon: FileText, label: 'Solicitudes Transporte', href: '/dashboard/solicitudes-transporte', key: null, moduleKey: 'solicitudes-transporte' },
+    { icon: Truck, label: 'Guardados', href: '/dashboard/transporte', key: 'transporte', moduleKey: 'transporte' },
+  ],
+  [
+    { icon: BarChart3, label: 'Centro de Control', href: '/dashboard/centro-control', key: null, moduleKey: 'centro-control' },
+    { icon: Map, label: 'Mapa de Ciudades', href: '/dashboard/mapa-ciudades', key: null, moduleKey: 'mapa-ciudades' },
+  ],
+  [
+    { icon: Users, label: 'Usuarios', href: '/dashboard/usuarios', key: null, moduleKey: 'usuarios' },
+    { icon: ScrollText, label: 'Auditoría', href: '/dashboard/auditoria', key: null, moduleKey: 'auditoria' },
+  ],
 ]
+const visibleGroups = computed(() => NAV_GROUPS
+  .map((group) => group.filter((item) => item.moduleKey === null || canSeeModule(me.value?.role, item.moduleKey)))
+  .filter((group) => group.length > 0))
 function isActive(key: string | null) {
   return !!key && route.name?.toString().startsWith(key)
 }
@@ -44,14 +71,13 @@ const userInitials = computed(() => {
         <span class="brand-name">Grupo Ambiente</span>
       </div>
       <nav class="nav">
-        <a v-for="n in nav" :key="n.label" :href="n.href" class="nav-item" :class="{ active: isActive(n.key) }">
-          <component :is="n.icon" :size="17" />
-          <span>{{ n.label }}</span>
-        </a>
+        <div v-for="(group, gi) in visibleGroups" :key="gi" class="nav-group">
+          <a v-for="n in group" :key="n.label" :href="n.href" class="nav-item" :class="{ active: isActive(n.key) }">
+            <component :is="n.icon" :size="17" />
+            <span>{{ n.label }}</span>
+          </a>
+        </div>
       </nav>
-      <div class="side-foot">
-        <a href="/dashboard" class="nav-item"><LayoutGrid :size="17" /><span>Volver al dashboard</span></a>
-      </div>
     </aside>
 
     <!-- Main -->
@@ -88,7 +114,8 @@ const userInitials = computed(() => {
 .brand { display: flex; align-items: center; gap: 10px; padding: 6px 8px 18px; }
 .brand-mark { width: 30px; height: 30px; border-radius: 9px; background: var(--brand-grad); color: var(--on-brand); display: grid; place-items: center; font-family: var(--display); font-weight: 800; font-size: 13px; }
 .brand-name { font-family: var(--display); font-weight: 700; font-size: 14px; color: #fff; }
-.nav { display: flex; flex-direction: column; gap: 2px; }
+.nav { display: flex; flex-direction: column; gap: 14px; overflow-y: auto; }
+.nav-group { display: flex; flex-direction: column; gap: 2px; }
 .nav-item { position: relative; display: flex; align-items: center; gap: 11px; padding: 10px 12px; border-radius: var(--r-sm); font-size: 13px; font-weight: 500; color: #97A1AF; cursor: pointer; transition: background .14s, color .14s, transform .14s; }
 .nav-item :deep(svg) { transition: transform .18s cubic-bezier(.16,1,.3,1); }
 .nav-item:hover { background: rgba(255,255,255,.05); color: #E7EBF0; }
@@ -96,7 +123,6 @@ const userInitials = computed(() => {
 .nav-item:hover :deep(svg) { transform: scale(1.12); }
 .nav-item.active { background: linear-gradient(90deg, color-mix(in srgb, var(--brand) 26%, transparent), color-mix(in srgb, var(--brand) 8%, transparent)); color: #fff; box-shadow: inset 3px 0 0 var(--brand-bright), 0 4px 14px -6px color-mix(in srgb, var(--brand) 60%, transparent); }
 .nav-item.active :deep(svg) { color: var(--brand-bright); }
-.side-foot { margin-top: auto; }
 
 /* Topbar */
 .main { display: flex; flex-direction: column; min-width: 0; }
