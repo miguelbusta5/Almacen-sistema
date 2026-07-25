@@ -42,7 +42,9 @@ export const MODULE_ACCESS: Record<ModuleKey, AppRole[]> = {
   "exportaciones-mexico": ["ETIQUETADO", "SUPERVISOR_ALMACENAMIENTO", "GERENTE", "ADMIN"],
   "exportaciones-eeuu": ["ETIQUETADO", "SUPERVISOR_ALMACENAMIENTO", "GERENTE", "ADMIN"],
   usuarios: ["ADMIN"],
-  auditoria: ["ADMIN", "GERENTE"],
+  // Solo ADMIN: /api/activity exige requireRole(["ADMIN"]), asi que un GERENTE
+  // veia el modulo en el menu y recibia 403 al entrar.
+  auditoria: ["ADMIN"],
   "centro-control": [
     "GERENTE",
     "ADMIN",

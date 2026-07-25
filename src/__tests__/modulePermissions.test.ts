@@ -34,6 +34,8 @@ describe("canSeeModule — Sprint 8", () => {
     it("ve tienda",          () => expect(canSeeModule("ADMIN", "tienda")).toBe(true));
     it("ve usuarios",        () => expect(canSeeModule("ADMIN", "usuarios")).toBe(true));
     it("ve auditoria",       () => expect(canSeeModule("ADMIN", "auditoria")).toBe(true));
+    // Solo ADMIN: /api/activity exige ese rol y el menu debe decir lo mismo.
+    it("GERENTE NO ve auditoria", () => expect(canSeeModule("GERENTE", "auditoria")).toBe(false));
     it("ve centro-control",  () => expect(canSeeModule("ADMIN", "centro-control")).toBe(true));
     it("ve solicitudes-transporte", () => expect(canSeeModule("ADMIN", "solicitudes-transporte")).toBe(true));
     it("ve exportaciones", () => expect(canSeeModule("ADMIN", "exportaciones")).toBe(true));

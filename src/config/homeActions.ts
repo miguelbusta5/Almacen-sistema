@@ -135,7 +135,7 @@ export const HOME_ACTIONS: HomeAction[] = [
     icon: "History",
     color: getModuleColor("auditoria"),
     moduleKey: "auditoria",
-    roles: ["ADMIN", "GERENTE"],
+    roles: ["ADMIN"],
     priority: 5,
   },
 ];

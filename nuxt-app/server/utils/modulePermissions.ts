@@ -36,7 +36,9 @@ export const MODULE_ACCESS: Record<ModuleKey, string[]> = {
   'exportaciones-mexico': ['ETIQUETADO', 'SUPERVISOR_ALMACENAMIENTO', 'GERENTE', 'ADMIN'],
   'exportaciones-eeuu': ['ETIQUETADO', 'SUPERVISOR_ALMACENAMIENTO', 'GERENTE', 'ADMIN'],
   usuarios: ['ADMIN'],
-  auditoria: ['ADMIN', 'GERENTE'],
+  // Solo ADMIN: /api/activity exige ese rol; antes el menu lo prometia a GERENTE
+  // y el servidor le devolvia 403.
+  auditoria: ['ADMIN'],
   'centro-control': [
     'GERENTE', 'ADMIN', 'SUPERVISOR_INVENTARIO', 'SUPERVISOR_TRANSPORTE',
     'SUPERVISOR_TIENDA', 'SUPERVISOR_ALMACENAMIENTO',

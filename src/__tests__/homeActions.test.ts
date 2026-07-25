@@ -103,7 +103,7 @@ describe("getHomeActionsByRole", () => {
   describe("GERENTE", () => {
     it("ve nuevo-guardado", () => expect(hasAction("GERENTE", "nuevo-guardado")).toBe(true));
     it("ve centro-control", () => expect(hasAction("GERENTE", "centro-control")).toBe(true));
-    it("ve ver-auditoria", () => expect(hasAction("GERENTE", "ver-auditoria")).toBe(true));
+    it("NO ve ver-auditoria", () => expect(hasAction("GERENTE", "ver-auditoria")).toBe(false));
     it("NO ve gestionar-usuarios", () => expect(hasAction("GERENTE", "gestionar-usuarios")).toBe(false));
   });
 

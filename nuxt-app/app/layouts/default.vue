@@ -56,7 +56,7 @@ const NAV_GROUPS: NavItem[][] = [
   ],
   [
     { icon: Users, label: 'Usuarios', href: '/dashboard/usuarios', key: null, moduleKey: 'usuarios' },
-    { icon: ScrollText, label: 'Auditoría', href: '/dashboard/auditoria', key: null, moduleKey: 'auditoria' },
+    { icon: ScrollText, label: 'Auditoría', href: '/dashboard/auditoria', key: 'auditoria', moduleKey: 'auditoria' },
   ],
 ]
 const visibleGroups = computed(() => NAV_GROUPS
