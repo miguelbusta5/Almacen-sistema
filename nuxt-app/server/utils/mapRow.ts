@@ -259,6 +259,85 @@ export function mapIntegracion(r: any) {
   }
 }
 
+// Mapea SolicitudTransporte al shape del cliente — port de mapSolicitudTransporte
+// en src/app/api/solicitudes-transporte/route.ts.
+// Ojo con dos detalles del original: `cantidadCajas` y `unidades` mapean la MISMA
+// columna (`unidades`; no existe columna cantidadCajas), y `valorFlete` es Decimal
+// de Prisma, así que necesita Number() o el JSON sale como objeto.
+export function mapSolicitudTransporte(r: any) {
+  const dateOnly = (v: any) => (v ? new Date(v).toISOString().slice(0, 10) : null)
+  const iso = (v: any) => (v ? new Date(v).toISOString() : null)
+  return {
+    id: r.id,
+    fechaSolicitud: dateOnly(r.fechaSolicitud),
+    areaSolicitante: r.areaSolicitante,
+    areaOtro: r.areaOtro,
+    solicitanteNombre: r.solicitanteNombre,
+    solicitanteCorreo: r.solicitanteCorreo,
+    solicitanteTelefono: r.solicitanteTelefono,
+    tipoVenta: r.tipoVenta,
+    numeroPedido: r.numeroPedido,
+    facturaIntegracion: r.facturaIntegracion,
+    cobroFlete: r.cobroFlete,
+    valorFlete: r.valorFlete === null || r.valorFlete === undefined ? null : Number(r.valorFlete),
+    cantidadCajas: r.unidades,
+    unidades: r.unidades,
+    volumenEstimado: r.volumenEstimado,
+    tipoMercancia: r.tipoMercancia,
+    ciudadOrigen: r.ciudadOrigen,
+    zonaRecogida: r.zonaRecogida,
+    direccionRecogida: r.direccionRecogida,
+    puntoRecogida: r.puntoRecogida,
+    puntoRecogidaOtro: r.puntoRecogidaOtro,
+    ciudadEntrega: r.ciudadEntrega,
+    direccionEntrega: r.direccionEntrega,
+    zonaEntrega: r.zonaEntrega,
+    fechaPromesaEntrega: dateOnly(r.fechaPromesaEntrega),
+    ventanaEntrega: r.ventanaEntrega,
+    restriccionHoraria: r.restriccionHoraria,
+    descripcionRestriccion: r.descripcionRestriccion,
+    tipoServicio: r.tipoServicio,
+    tipoServicioOtro: r.tipoServicioOtro,
+    observacionesSolicitante: r.observacionesSolicitante,
+    estado: r.estado,
+    stellaEstado: r.stellaEstado,
+    documentoNetSuite: r.documentoNetSuite,
+    transportadora: r.transportadora,
+    numeroGuia: r.numeroGuia,
+    fechaProgramacion: dateOnly(r.fechaProgramacion),
+    observacionTransporte: r.observacionTransporte,
+    prioridad: r.prioridad,
+    semaforo: r.semaforo,
+    mesSolicitud: r.mesSolicitud,
+    motivoRechazo: r.motivoRechazo,
+    rechazadoAt: iso(r.rechazadoAt),
+    reenviadoAt: iso(r.reenviadoAt),
+    creadoPorId: r.creadoPorId,
+    creadoPorNombre: r.creadoPor?.name ?? null,
+    gestionadoPorId: r.gestionadoPorId,
+    gestionadoPorNombre: r.gestionadoPor?.name ?? null,
+    deletedAt: iso(r.deletedAt),
+    plines: (r.plines ?? []).map((p: any) => ({
+      id: p.id, plu: p.plu, descripcion: p.descripcion, unidades: p.unidades,
+    })),
+    createdAt: iso(r.createdAt),
+    updatedAt: iso(r.updatedAt),
+  }
+}
+
+// Historial de una solicitud. La app Next lo devuelve en GET /[id] pero su UI nunca
+// lo consume; en Nuxt sí se muestra como timeline en el detalle.
+export function mapHistorialSolicitud(h: any) {
+  return {
+    id: h.id,
+    estadoAnterior: h.estadoAnterior,
+    estadoNuevo: h.estadoNuevo,
+    observacion: h.observacion,
+    usuarioNombre: h.usuario?.name ?? null,
+    createdAt: h.createdAt ? new Date(h.createdAt).toISOString() : null,
+  }
+}
+
 // Mapea EtiquetadoExportacion (+ Mexico/Eeuu: los 3 modelos comparten forma) al
 // shape del cliente — port de src/lib/exportaciones/map.ts.
 // No expone hayReguero/cantidadReguero: no tienen UI, solo salen en el Excel.

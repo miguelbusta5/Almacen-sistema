@@ -15,6 +15,7 @@ const NUXT_PILOT_GOURMET_URL = process.env.NUXT_PILOT_GOURMET_URL; // Cargue Gou
 const NUXT_PILOT_PREOP_URL = process.env.NUXT_PILOT_PREOP_URL; // Preoperacional
 const NUXT_PILOT_INTEGRACION_URL = process.env.NUXT_PILOT_INTEGRACION_URL; // Integración Pedidos
 const NUXT_PILOT_EXPORT_URL = process.env.NUXT_PILOT_EXPORT_URL; // Exportaciones (Ecuador + México + EE.UU)
+const NUXT_PILOT_SOLICITUDES_URL = process.env.NUXT_PILOT_SOLICITUDES_URL; // Solicitudes Transporte
 
 // Todas apuntan al mismo deploy de nuxt-app (app.baseURL: '/dashboard/' compartido
 // en nuxt.config.ts) — sus assets (/_nuxt/*) y su $fetch interno a /api/* viven
@@ -22,7 +23,7 @@ const NUXT_PILOT_EXPORT_URL = process.env.NUXT_PILOT_EXPORT_URL; // Exportacione
 // IMPORTANTE: toda variable nueva tiene que entrar en esta cadena. Si fuera la única
 // definida y no estuviera aquí, no se emitirían las reglas de /dashboard/api/* ni
 // /dashboard/_nuxt/* y su página cargaría en blanco.
-const SHARED_NUXT_URL = NUXT_PILOT_URL || NUXT_PILOT_TIENDA_URL || NUXT_PILOT_GOURMET_URL || NUXT_PILOT_PREOP_URL || NUXT_PILOT_INTEGRACION_URL || NUXT_PILOT_EXPORT_URL;
+const SHARED_NUXT_URL = NUXT_PILOT_URL || NUXT_PILOT_TIENDA_URL || NUXT_PILOT_GOURMET_URL || NUXT_PILOT_PREOP_URL || NUXT_PILOT_INTEGRACION_URL || NUXT_PILOT_EXPORT_URL || NUXT_PILOT_SOLICITUDES_URL;
 
 const nextConfig: NextConfig = {
   async rewrites() {
@@ -56,6 +57,12 @@ const nextConfig: NextConfig = {
       beforeFiles.push(
         { source: "/dashboard/integracion", destination: `${NUXT_PILOT_INTEGRACION_URL}/dashboard/integracion` },
         { source: "/dashboard/integracion/:path*", destination: `${NUXT_PILOT_INTEGRACION_URL}/dashboard/integracion/:path*` },
+      );
+    }
+    if (NUXT_PILOT_SOLICITUDES_URL) {
+      beforeFiles.push(
+        { source: "/dashboard/solicitudes-transporte", destination: `${NUXT_PILOT_SOLICITUDES_URL}/dashboard/solicitudes-transporte` },
+        { source: "/dashboard/solicitudes-transporte/:path*", destination: `${NUXT_PILOT_SOLICITUDES_URL}/dashboard/solicitudes-transporte/:path*` },
       );
     }
     // Una sola variable activa los tres países: comparten componente y handlers,

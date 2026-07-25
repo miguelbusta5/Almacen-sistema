@@ -48,7 +48,7 @@ const NAV_GROUPS: NavItem[][] = [
     { icon: Tags, label: 'Exportaciones Ecuador', href: '/dashboard/exportaciones', key: 'exportaciones', moduleKey: 'exportaciones' },
     { icon: Globe, label: 'Exportaciones México', href: '/dashboard/exportaciones-mexico', key: 'exportaciones-mexico', moduleKey: 'exportaciones-mexico' },
     { icon: Globe, label: 'Exportaciones EE.UU', href: '/dashboard/exportaciones-eeuu', key: 'exportaciones-eeuu', moduleKey: 'exportaciones-eeuu' },
-    { icon: FileText, label: 'Solicitudes Transporte', href: '/dashboard/solicitudes-transporte', key: null, moduleKey: 'solicitudes-transporte' },
+    { icon: FileText, label: 'Solicitudes Transporte', href: '/dashboard/solicitudes-transporte', key: 'solicitudes-transporte', moduleKey: 'solicitudes-transporte' },
     { icon: Truck, label: 'Guardados', href: '/dashboard/transporte', key: 'transporte', moduleKey: 'transporte' },
   ],
   [
