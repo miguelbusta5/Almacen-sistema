@@ -2,7 +2,7 @@
 import { computed, onMounted, ref, watch } from 'vue'
 import {
   ShieldCheck, Store, GitMerge, ScanLine, Tags, Globe, FileText, Truck,
-  BarChart3, Map, Users, ScrollText, Search, Bell, CheckCircle2, TriangleAlert,
+  BarChart3, Users, ScrollText, Search, Bell, CheckCircle2, TriangleAlert,
   Menu, X,
 } from '@lucide/vue'
 import { ensureSession, useSessionState } from '~/composables/useSession'
@@ -53,7 +53,6 @@ const NAV_GROUPS: NavItem[][] = [
   ],
   [
     { icon: BarChart3, label: 'Centro de Control', href: '/dashboard/centro-control', key: null, moduleKey: 'centro-control' },
-    { icon: Map, label: 'Mapa de Ciudades', href: '/dashboard/mapa-ciudades', key: null, moduleKey: 'mapa-ciudades' },
   ],
   [
     { icon: Users, label: 'Usuarios', href: '/dashboard/usuarios', key: null, moduleKey: 'usuarios' },

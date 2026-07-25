@@ -15,7 +15,6 @@ const MODULE_HREF: Record<ModuleKey, string> = {
   "solicitudes-transporte": "/dashboard/solicitudes-transporte",
   preoperacional: "/dashboard/preoperacional",
   "centro-control": "/dashboard/centro-control",
-  "mapa-ciudades": "/dashboard/mapa-ciudades",
   usuarios: "/dashboard/usuarios",
   auditoria: "/dashboard/auditoria",
 };
@@ -33,7 +32,6 @@ const PRIORITY_ORDER: ModuleKey[] = [
   "solicitudes-transporte",
   "preoperacional",
   "centro-control",
-  "mapa-ciudades",
   "usuarios",
   "auditoria",
 ];

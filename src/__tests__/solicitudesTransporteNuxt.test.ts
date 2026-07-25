@@ -111,7 +111,7 @@ describe("solicitudes transporte — cálculo de prioridad y semáforo", () => {
 describe("port Nuxt — la convención de fechas no se reescribió", () => {
   it("parseDateOnly construye la fecha SIN sufijo Z", () => {
     // Con Z se escribiría un día distinto al que escribe la app Next sobre la misma
-    // tabla, y controlLogistico/resumen.ts y mapa-ciudades contarían mal.
+    // tabla, y la app Next (que sigue leyendo estas mismas tablas) contaría mal.
     expect(calc).toContain("T00:00:00`)");
     expect(calc).not.toMatch(/\$\{value\}T00:00:00\.000Z/);
   });

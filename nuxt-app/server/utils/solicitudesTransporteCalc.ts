@@ -93,8 +93,8 @@ export function puedeVerSolicitudTransporte(
  * medianoche LOCAL, sin `Z`, y así es como la app Next escribe estas columnas
  * (@db.Date). Si alguien "arregla" esto añadiendo la Z, o reutiliza el
  * `todayBogota` de exportacionesCalc, los dos stacks escribirán fechas distintas
- * para el mismo día y los consumidores externos (controlLogistico/resumen.ts y
- * api/mapa-ciudades) empezarán a contar mal.
+ * para el mismo día y la app Next (que sigue sirviendo estas rutas como respaldo y
+ * lee estas mismas tablas) empezará a contar mal.
  */
 export function parseDateOnly(value: string | Date | null | undefined): Date | null {
   if (!value) return null
