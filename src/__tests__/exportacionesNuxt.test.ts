@@ -1,140 +1,169 @@
-// Cubre el port de Exportaciones a nuxt-app. Los helpers viven duplicados (client
-// en app/utils, server en server/utils) porque Nitro y Vue resuelven alias distintos;
-// estos tests son la red que impide que se desincronicen de src/lib/exportaciones.ts.
+// Guarda de sincronía del port de Exportaciones a nuxt-app.
+//
+// Por qué se lee el archivo como TEXTO en vez de importarlo: `nuxt-app/` vive bajo
+// su propio tsconfig, que referencia `./.nuxt/*` — un directorio que genera
+// `nuxt prepare` y que está gitignorado. En CI las dependencias de nuxt-app no se
+// instalan, así que ese directorio no existe y cualquier import cruzado revienta el
+// transform con TSCONFIG_ERROR (falla solo en CI: en local pasa porque `.nuxt`
+// quedó de algún build). Leer con `fs` no involucra al transform.
+//
+// Lo que estos tests protegen es el drift: la lógica está duplicada a propósito
+// entre src/lib (Next), nuxt-app/app/utils (cliente) y nuxt-app/server/utils
+// (Nitro), y comparten la MISMA tabla. Si una copia se desvía, los registros de un
+// stack dejan de verse en el otro.
 import { describe, it, expect } from "vitest";
+import { readFileSync } from "fs";
+import path from "path";
 import {
-  calcularTotalProductividad,
-  estadoExport,
-  hoyBogota,
-  normalizePlu as normalizePluClient,
-  puedeGestionarExportaciones as gestionaClient,
-  puedeUsarExportaciones as usaClient,
-  sumarDias,
-  toneProm,
-  PAISES_EXPORT,
-  type Exportacion,
-  type UserStat,
-} from "../../nuxt-app/app/utils/exportaciones";
-import {
-  puedeUsarExportaciones as usaSrv,
-  puedeGestionarExportaciones as gestionaSrv,
-} from "../../src/lib/exportaciones";
+  puedeUsarExportaciones,
+  puedeGestionarExportaciones,
+  todayBogota,
+  calcularDuracionMinutos,
+} from "@/lib/exportaciones";
 
-const ROLES = [
-  "ADMIN", "GERENTE", "OPERADOR", "TRANSPORTISTA", "INVENTARIO", "TRANSPORTE",
-  "SUPERVISOR_INVENTARIO", "SUPERVISOR_TRANSPORTE", "TIENDA", "SUPERVISOR_TIENDA",
-  "OPERACIONES_MUEBLES", "OPERACIONES_GOURMET", "ETIQUETADO", "SUPERVISOR_ALMACENAMIENTO",
-] as const;
+const raiz = path.resolve(__dirname, "../..");
+const leer = (rel: string) => readFileSync(path.join(raiz, rel), "utf8");
 
-describe("exportaciones (port Nuxt) — paridad de permisos con src/lib", () => {
-  it.each(ROLES)("%s: puedeUsar coincide entre Next y Nuxt", (role) => {
-    expect(usaClient(role)).toBe(usaSrv(role));
+const utilsCliente = leer("nuxt-app/app/utils/exportaciones.ts");
+const utilsServidor = leer("nuxt-app/server/utils/exportaciones.ts");
+const handlers = leer("nuxt-app/server/utils/exportacionesHandlers.ts");
+const layout = leer("nuxt-app/app/layouts/default.vue");
+
+// ── Comportamiento (fuente de verdad: src/lib, que el port copia literal) ──
+describe("exportaciones — zona horaria", () => {
+  // 03:00 UTC son las 22:00 del día anterior en Bogotá (UTC-5).
+  it("todayBogota devuelve el día colombiano, no el UTC", () => {
+    expect(todayBogota(new Date("2026-07-24T03:00:00Z")).toISOString()).toBe("2026-07-23T00:00:00.000Z");
   });
 
-  it.each(ROLES)("%s: puedeGestionar coincide entre Next y Nuxt", (role) => {
-    expect(gestionaClient(role)).toBe(gestionaSrv(role));
+  it("todayBogota no se adelanta durante la jornada", () => {
+    expect(todayBogota(new Date("2026-07-24T16:00:00Z")).toISOString()).toBe("2026-07-24T00:00:00.000Z");
   });
 
+  it("calcularDuracionMinutos redondea y nunca es negativo", () => {
+    expect(calcularDuracionMinutos("2026-07-24T10:00:00Z", "2026-07-24T10:07:20Z")).toBe(7);
+    expect(calcularDuracionMinutos("2026-07-24T10:00:00Z", null)).toBeNull();
+    expect(calcularDuracionMinutos("2026-07-24T10:10:00Z", "2026-07-24T10:00:00Z")).toBe(0);
+  });
+});
+
+describe("exportaciones — roles", () => {
   it("ETIQUETADO usa pero no gestiona", () => {
-    expect(usaClient("ETIQUETADO")).toBe(true);
-    expect(gestionaClient("ETIQUETADO")).toBe(false);
+    expect(puedeUsarExportaciones("ETIQUETADO")).toBe(true);
+    expect(puedeGestionarExportaciones("ETIQUETADO")).toBe(false);
   });
-
-  it("roles ajenos al modulo quedan fuera", () => {
-    expect(usaClient("TIENDA")).toBe(false);
-    expect(usaClient(null)).toBe(false);
-    expect(usaClient(undefined)).toBe(false);
-  });
-});
-
-describe("exportaciones (port Nuxt) — zona horaria", () => {
-  // 03:00 UTC son las 22:00 del dia anterior en Bogota (UTC-5). Si esta funcion se
-  // reescribiera con dayjs o con `new Date(fecha)` sin la Z, el dia se desplazaria y
-  // los registros creados desde la app Next no apareceran en la Nuxt (comparten tabla).
-  it("hoyBogota devuelve el dia colombiano, no el UTC", () => {
-    expect(hoyBogota(new Date("2026-07-24T03:00:00Z"))).toBe("2026-07-23");
-  });
-
-  it("hoyBogota no se adelanta durante la jornada", () => {
-    expect(hoyBogota(new Date("2026-07-24T16:00:00Z"))).toBe("2026-07-24");
-  });
-
-  it("sumarDias cruza el cambio de mes", () => {
-    expect(sumarDias("2026-07-01", -6)).toBe("2026-06-25");
-    expect(sumarDias("2026-07-24", 0)).toBe("2026-07-24");
+  it("los gestores son ADMIN, GERENTE y SUPERVISOR_ALMACENAMIENTO", () => {
+    for (const r of ["ADMIN", "GERENTE", "SUPERVISOR_ALMACENAMIENTO"]) {
+      expect(puedeGestionarExportaciones(r)).toBe(true);
+    }
+    expect(puedeGestionarExportaciones("TIENDA")).toBe(false);
   });
 });
 
-describe("exportaciones (port Nuxt) — helpers", () => {
-  it("normalizePlu recorta y pasa a mayusculas", () => {
-    expect(normalizePluClient("  a4011 ")).toBe("A4011");
+// ── Sincronía del port ────────────────────────────────────────────────
+describe("port Nuxt — la zona horaria no se reescribió", () => {
+  it("el servidor construye la fecha con el Intl de Bogotá y el sufijo Z", () => {
+    // Si esto se reescribe con dayjs o con `new Date(fecha)` sin la Z, el día se
+    // desplaza y los registros creados desde Next no aparecen en Nuxt.
+    expect(utilsServidor).toContain("timeZone: 'America/Bogota'");
+    expect(utilsServidor).toContain("T00:00:00.000Z");
   });
 
-  it("estadoExport depende solo de horaFinalizacion", () => {
-    const base = { horaFinalizacion: null } as Exportacion;
-    expect(estadoExport(base)).toBe("en-curso");
-    expect(estadoExport({ ...base, horaFinalizacion: "2026-07-24T12:00:00.000Z" })).toBe("finalizado");
+  it("el cliente usa el mismo Intl que el servidor", () => {
+    expect(utilsCliente).toContain("timeZone: 'America/Bogota'");
   });
 
-  it("toneProm aplica el semaforo 5/10", () => {
-    expect(toneProm(null)).toBe("var(--faint)");
-    expect(toneProm(5)).toBe("var(--u-ok)");
-    expect(toneProm(7.5)).toBe("var(--u-aviso)");
-    expect(toneProm(11)).toBe("var(--u-critico)");
+  it("ningún archivo del módulo importa dayjs", () => {
+    for (const src of [utilsCliente, utilsServidor, handlers]) {
+      expect(src).not.toMatch(/from ['"]dayjs['"]/);
+    }
   });
 });
 
-describe("exportaciones (port Nuxt) — fila Total de productividad", () => {
-  const stats: UserStat[] = [
-    { id: "u1", nombre: "Ana", cajas: 10, plusDistintos: 4, totalUnidades: 60, finalizadas: 9, duracionTotalMin: 70, promedioPorCajaMin: 7.8 },
-    { id: "u2", nombre: "Beto", cajas: 5, plusDistintos: 3, totalUnidades: 30, finalizadas: 5, duracionTotalMin: 40, promedioPorCajaMin: 8 },
+describe("port Nuxt — las listas de roles no se desviaron", () => {
+  const gestores = ["ADMIN", "GERENTE", "SUPERVISOR_ALMACENAMIENTO"];
+  it.each(["cliente", "servidor"] as const)("%s declara los mismos gestores y añade ETIQUETADO", (cual) => {
+    const src = cual === "cliente" ? utilsCliente : utilsServidor;
+    const linea = src.match(/GESTORES_EXPORTACIONES\s*=\s*\[([^\]]*)\]/)?.[1] ?? "";
+    for (const r of gestores) expect(linea).toContain(r);
+    expect(src).toMatch(/USUARIOS_EXPORTACIONES\s*=\s*\['ETIQUETADO'/);
+  });
+});
+
+describe("port Nuxt — la transacción de captura sigue en forma de array", () => {
+  // Con `$transaction(async tx => ...)` y un delegate mal reconstruido desde `tx`,
+  // el updateMany corre fuera de la transacción y el operario acaba con DOS
+  // registros abiertos a la vez: el banner y el cálculo de duración dejan de servir.
+  it("usa prisma.$transaction([...]) y no la forma de callback", () => {
+    expect(handlers).toContain("await prisma.$transaction([");
+    // Sin comentarios: el propio código lleva una nota que menciona la forma de
+    // callback justo para advertir de que no se use.
+    const codigo = handlers.replace(/\/\/.*$/gm, "");
+    expect(codigo).not.toMatch(/\$transaction\(\s*async/);
+  });
+
+  it("cierra el registro abierto del propio actor antes de crear", () => {
+    expect(handlers).toMatch(/updateMany\(\{\s*where:\s*\{\s*creadoPorId:\s*actor\.id,\s*horaFinalizacion:\s*null/);
+  });
+});
+
+describe("port Nuxt — el filtro de dueño para ETIQUETADO existe", () => {
+  it("whereScope acota por creadoPorId cuando no es gestor", () => {
+    // Olvidarlo filtra los registros de todos los operarios a un ETIQUETADO.
+    expect(utilsServidor).toMatch(/if \(!isGestor\) return \{ creadoPorId: actor\.id \}/);
+  });
+  it("el listado y los conteos pasan por whereScope", () => {
+    expect(handlers).toContain("buildExportWhere");
+    expect(handlers).toContain("whereScope(actor)");
+  });
+  it("stats, operarios y export exigen gestor", () => {
+    const gestorGates = handlers.match(/assertGestor\(actor\.role/g) ?? [];
+    expect(gestorGates.length).toBeGreaterThanOrEqual(4); // operarios, stats, export, delete
+  });
+});
+
+describe("port Nuxt — sidebar y rutas por país", () => {
+  const PAISES = [
+    { route: "exportaciones", api: "/api/exportaciones" },
+    { route: "exportaciones-mexico", api: "/api/exportaciones-mexico" },
+    { route: "exportaciones-eeuu", api: "/api/exportaciones-eeuu" },
   ];
 
-  it("suma cajas, unidades, finalizadas y minutos", () => {
-    const t = calcularTotalProductividad(stats);
-    expect(t.cajas).toBe(15);
-    expect(t.totalUnidades).toBe(90);
-    expect(t.finalizadas).toBe(14);
-    expect(t.duracionTotalMin).toBe(110);
+  it("existe una página por país, y su nombre de archivo es el route.name", () => {
+    for (const p of PAISES) {
+      expect(() => leer(`nuxt-app/app/pages/${p.route}.vue`)).not.toThrow();
+    }
   });
 
-  it("promedia sobre finalizadas, no sobre cajas", () => {
-    expect(calcularTotalProductividad(stats).promedioPorCajaMin).toBe(7.9);
+  it("cada país apunta a su propio apiBase", () => {
+    for (const p of PAISES) expect(utilsCliente).toContain(`apiBase: '${p.api}'`);
   });
 
-  it("los PLU distintos no son sumables entre operarios", () => {
-    expect(calcularTotalProductividad(stats).plusDistintos).toBe(0);
+  it("el sidebar usa igualdad exacta, no startsWith", () => {
+    // Con startsWith, la clave 'exportaciones' matchea también 'exportaciones-mexico'
+    // y '-eeuu': estando en México se resaltaban dos ítems a la vez.
+    expect(layout).toContain("route.name?.toString() === key");
+    expect(layout).not.toContain("route.name?.toString().startsWith(key)");
   });
 
-  it("sin finalizadas el promedio es null, no division por cero", () => {
-    const sin: UserStat[] = [{ ...stats[0]!, finalizadas: 0, duracionTotalMin: 0 }];
-    expect(calcularTotalProductividad(sin).promedioPorCajaMin).toBeNull();
+  it("los tres ítems del sidebar tienen key, si no nunca se resaltan", () => {
+    for (const p of PAISES) {
+      expect(layout).toMatch(new RegExp(`href: '/dashboard/${p.route}'[^}]*key: '${p.route}'`));
+    }
   });
 });
 
-describe("exportaciones (port Nuxt) — config de paises", () => {
-  it("cada pais tiene routeName igual al ultimo segmento de basePath", () => {
-    // De esto depende que el sidebar resalte el item activo: `key` compara contra
-    // route.name, que Nuxt deriva del nombre del archivo en app/pages/.
-    for (const cfg of Object.values(PAISES_EXPORT)) {
-      expect(cfg.basePath).toBe(`/dashboard/${cfg.routeName}`);
+describe("port Nuxt — rewrite de Next", () => {
+  const nextConfig = leer("next.config.ts");
+  it("la variable entra en la cadena de SHARED_NUXT_URL", () => {
+    // Sin esto, si fuera la única definida no se emitirían las reglas de
+    // /dashboard/api/* ni /dashboard/_nuxt/* y la página cargaría en blanco.
+    expect(nextConfig).toMatch(/SHARED_NUXT_URL\s*=[^;]*NUXT_PILOT_EXPORT_URL/);
+  });
+  it("una sola variable activa los tres países", () => {
+    expect(nextConfig).toMatch(/if \(NUXT_PILOT_EXPORT_URL\)/);
+    for (const m of ["exportaciones", "exportaciones-mexico", "exportaciones-eeuu"]) {
+      expect(nextConfig).toContain(`"${m}"`);
     }
-  });
-
-  it("routeName y moduleKey coinciden por pais", () => {
-    for (const cfg of Object.values(PAISES_EXPORT)) {
-      expect(cfg.routeName).toBe(cfg.moduleKey);
-    }
-  });
-
-  it("los routeName son distintos entre si y ninguno es prefijo de otro por igualdad", () => {
-    const names = Object.values(PAISES_EXPORT).map((c) => c.routeName);
-    expect(new Set(names).size).toBe(names.length);
-  });
-
-  it("apiBase apunta al modulo correcto", () => {
-    expect(PAISES_EXPORT.ecuador.apiBase).toBe("/api/exportaciones");
-    expect(PAISES_EXPORT.mexico.apiBase).toBe("/api/exportaciones-mexico");
-    expect(PAISES_EXPORT.eeuu.apiBase).toBe("/api/exportaciones-eeuu");
   });
 });
