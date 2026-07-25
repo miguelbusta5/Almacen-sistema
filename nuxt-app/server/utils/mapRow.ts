@@ -1,3 +1,5 @@
+import { calcularDuracionMinutos, formatDateOnly } from './exportaciones'
+
 // Mapea la fila de TransporteGuardado al shape del cliente (igual que la app Next).
 export function mapGuardado(r: any) {
   return {
@@ -251,5 +253,27 @@ export function mapIntegracion(r: any) {
     plines: (r.plines ?? []).map((p: any) => ({
       id: p.id, area: p.area, plu: p.plu, descripcion: p.descripcion ?? null, unidades: p.unidades,
     })),
+  }
+}
+
+// Mapea EtiquetadoExportacion (+ Mexico/Eeuu: los 3 modelos comparten forma) al
+// shape del cliente — port de src/lib/exportaciones/map.ts.
+// No expone hayReguero/cantidadReguero: no tienen UI, solo salen en el Excel.
+export function mapExportacion(r: any) {
+  return {
+    id: r.id,
+    numeroCaja: r.numeroCaja,
+    plu: r.plu,
+    descripcion: r.descripcion,
+    unidadEmpaque: r.unidadEmpaque,
+    fecha: formatDateOnly(r.fecha),
+    horaInicio: r.horaInicio.toISOString(),
+    horaFinalizacion: r.horaFinalizacion ? r.horaFinalizacion.toISOString() : null,
+    duracionMinutos: calcularDuracionMinutos(r.horaInicio, r.horaFinalizacion),
+    motivoCorreccion: r.motivoCorreccion ?? null,
+    creadoPorId: r.creadoPorId,
+    creadoPorNombre: r.creadoPor?.name ?? null,
+    actualizadoPorId: r.actualizadoPorId ?? null,
+    actualizadoPorNombre: r.actualizadoPor?.name ?? null,
   }
 }

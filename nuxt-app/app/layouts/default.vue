@@ -45,9 +45,9 @@ const NAV_GROUPS: NavItem[][] = [
     { icon: Store, label: 'Facturas Contado', href: '/dashboard/tienda', key: 'tienda', moduleKey: 'tienda' },
     { icon: GitMerge, label: 'Integración Pedidos', href: '/dashboard/integracion', key: 'integracion', moduleKey: 'integracion' },
     { icon: ScanLine, label: 'Cargue Gourmet', href: '/dashboard/cargue-gourmet', key: 'cargue-gourmet', moduleKey: 'cargue-gourmet' },
-    { icon: Tags, label: 'Exportaciones Ecuador', href: '/dashboard/exportaciones', key: null, moduleKey: 'exportaciones' },
-    { icon: Globe, label: 'Exportaciones México', href: '/dashboard/exportaciones-mexico', key: null, moduleKey: 'exportaciones-mexico' },
-    { icon: Globe, label: 'Exportaciones EE.UU', href: '/dashboard/exportaciones-eeuu', key: null, moduleKey: 'exportaciones-eeuu' },
+    { icon: Tags, label: 'Exportaciones Ecuador', href: '/dashboard/exportaciones', key: 'exportaciones', moduleKey: 'exportaciones' },
+    { icon: Globe, label: 'Exportaciones México', href: '/dashboard/exportaciones-mexico', key: 'exportaciones-mexico', moduleKey: 'exportaciones-mexico' },
+    { icon: Globe, label: 'Exportaciones EE.UU', href: '/dashboard/exportaciones-eeuu', key: 'exportaciones-eeuu', moduleKey: 'exportaciones-eeuu' },
     { icon: FileText, label: 'Solicitudes Transporte', href: '/dashboard/solicitudes-transporte', key: null, moduleKey: 'solicitudes-transporte' },
     { icon: Truck, label: 'Guardados', href: '/dashboard/transporte', key: 'transporte', moduleKey: 'transporte' },
   ],
@@ -63,8 +63,12 @@ const NAV_GROUPS: NavItem[][] = [
 const visibleGroups = computed(() => NAV_GROUPS
   .map((group) => group.filter((item) => item.moduleKey === null || canSeeModule(me.value?.role, item.moduleKey)))
   .filter((group) => group.length > 0))
+// Igualdad exacta, NO startsWith: con `startsWith`, la clave 'exportaciones'
+// también matchea 'exportaciones-mexico' y 'exportaciones-eeuu', y estando en
+// México se resaltaban dos ítems a la vez. Ninguna ruta tiene sub-rutas, así que
+// la igualdad es equivalente para el resto de módulos.
 function isActive(key: string | null) {
-  return !!key && route.name?.toString().startsWith(key)
+  return !!key && route.name?.toString() === key
 }
 
 // Menú móvil: bajo 860px la barra lateral sale del flujo y se abre como cajón.

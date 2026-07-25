@@ -76,6 +76,13 @@ Logo en `public/logo.png` (se invierte a blanco). Detalle en `docs/cerebro/ux-ui
 **Todo color debe salir de tokens** (`var(--…)`) para que ambos temas funcionen. No reintroducir color por
 módulo ni `heroImage`.
 
+> **Única excepción — Exportaciones** (2026-07-24): los tres países (Ecuador / México / EE.UU.) son
+> pantallas idénticas del *mismo* módulo, y el error caro es capturar en el país equivocado. Cada uno
+> lleva acento propio vía `--pais` (`--brand` / `--bill` / `--info`), limitado a cromo identitario:
+> hero, banner de registro en curso, barra de las KPI y chips. Los botones de acción siguen con el
+> verde de marca. La regla sigue siendo «sin color por módulo»; esto distingue **variantes dentro de
+> un módulo**, no módulos entre sí.
+
 ## Comandos
 - Dev: `npm run dev` · Build: `npm run build` · Type-check: `npx tsc --noEmit`
 - Tests: `npm test` · Schema a DB: `npx prisma db push` · Crear admin: `node prisma/seed.js`

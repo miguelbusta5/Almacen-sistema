@@ -1,0 +1,4 @@
+import { makeConteosHandler } from '../../utils/exportacionesHandlers'
+import { PAISES_EXPORT_SRV } from '../../utils/exportaciones'
+
+export default makeConteosHandler(PAISES_EXPORT_SRV.mexico)

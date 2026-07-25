@@ -14,11 +14,15 @@ const NUXT_PILOT_TIENDA_URL = process.env.NUXT_PILOT_TIENDA_URL; // Facturas Con
 const NUXT_PILOT_GOURMET_URL = process.env.NUXT_PILOT_GOURMET_URL; // Cargue Gourmet
 const NUXT_PILOT_PREOP_URL = process.env.NUXT_PILOT_PREOP_URL; // Preoperacional
 const NUXT_PILOT_INTEGRACION_URL = process.env.NUXT_PILOT_INTEGRACION_URL; // Integración Pedidos
+const NUXT_PILOT_EXPORT_URL = process.env.NUXT_PILOT_EXPORT_URL; // Exportaciones (Ecuador + México + EE.UU)
 
-// Las cinco apuntan al mismo deploy de nuxt-app (app.baseURL: '/dashboard/' compartido
+// Todas apuntan al mismo deploy de nuxt-app (app.baseURL: '/dashboard/' compartido
 // en nuxt.config.ts) — sus assets (/_nuxt/*) y su $fetch interno a /api/* viven
 // bajo ese prefijo sin importar qué módulo/página los pidió.
-const SHARED_NUXT_URL = NUXT_PILOT_URL || NUXT_PILOT_TIENDA_URL || NUXT_PILOT_GOURMET_URL || NUXT_PILOT_PREOP_URL || NUXT_PILOT_INTEGRACION_URL;
+// IMPORTANTE: toda variable nueva tiene que entrar en esta cadena. Si fuera la única
+// definida y no estuviera aquí, no se emitirían las reglas de /dashboard/api/* ni
+// /dashboard/_nuxt/* y su página cargaría en blanco.
+const SHARED_NUXT_URL = NUXT_PILOT_URL || NUXT_PILOT_TIENDA_URL || NUXT_PILOT_GOURMET_URL || NUXT_PILOT_PREOP_URL || NUXT_PILOT_INTEGRACION_URL || NUXT_PILOT_EXPORT_URL;
 
 const nextConfig: NextConfig = {
   async rewrites() {
@@ -53,6 +57,16 @@ const nextConfig: NextConfig = {
         { source: "/dashboard/integracion", destination: `${NUXT_PILOT_INTEGRACION_URL}/dashboard/integracion` },
         { source: "/dashboard/integracion/:path*", destination: `${NUXT_PILOT_INTEGRACION_URL}/dashboard/integracion/:path*` },
       );
+    }
+    // Una sola variable activa los tres países: comparten componente y handlers,
+    // así que no tiene sentido poder activar uno sin los otros.
+    if (NUXT_PILOT_EXPORT_URL) {
+      for (const modulo of ["exportaciones", "exportaciones-mexico", "exportaciones-eeuu"]) {
+        beforeFiles.push(
+          { source: `/dashboard/${modulo}`, destination: `${NUXT_PILOT_EXPORT_URL}/dashboard/${modulo}` },
+          { source: `/dashboard/${modulo}/:path*`, destination: `${NUXT_PILOT_EXPORT_URL}/dashboard/${modulo}/:path*` },
+        );
+      }
     }
     if (SHARED_NUXT_URL) {
       beforeFiles.push(
