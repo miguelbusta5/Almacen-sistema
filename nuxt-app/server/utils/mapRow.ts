@@ -1,4 +1,7 @@
-import { calcularDuracionMinutos, formatDateOnly } from './exportaciones'
+// Desde exportacionesCalc (puro), NO desde exportaciones: ese último importa el
+// cliente de Prisma para el delegate por país, y mapRow lo usan los handlers de
+// TODOS los módulos. Ver la nota en exportacionesCalc.ts.
+import { calcularDuracionMinutos, formatDateOnly } from './exportacionesCalc'
 
 // Mapea la fila de TransporteGuardado al shape del cliente (igual que la app Next).
 export function mapGuardado(r: any) {

@@ -26,7 +26,9 @@ const leer = (rel: string) => readFileSync(path.join(raiz, rel), "utf8");
 
 const utilsCliente = leer("nuxt-app/app/utils/exportaciones.ts");
 const utilsServidor = leer("nuxt-app/server/utils/exportaciones.ts");
+const calcServidor = leer("nuxt-app/server/utils/exportacionesCalc.ts");
 const handlers = leer("nuxt-app/server/utils/exportacionesHandlers.ts");
+const mapRow = leer("nuxt-app/server/utils/mapRow.ts");
 const layout = leer("nuxt-app/app/layouts/default.vue");
 
 // ── Comportamiento (fuente de verdad: src/lib, que el port copia literal) ──
@@ -65,8 +67,8 @@ describe("port Nuxt — la zona horaria no se reescribió", () => {
   it("el servidor construye la fecha con el Intl de Bogotá y el sufijo Z", () => {
     // Si esto se reescribe con dayjs o con `new Date(fecha)` sin la Z, el día se
     // desplaza y los registros creados desde Next no aparecen en Nuxt.
-    expect(utilsServidor).toContain("timeZone: 'America/Bogota'");
-    expect(utilsServidor).toContain("T00:00:00.000Z");
+    expect(calcServidor).toContain("timeZone: 'America/Bogota'");
+    expect(calcServidor).toContain("T00:00:00.000Z");
   });
 
   it("el cliente usa el mismo Intl que el servidor", () => {
@@ -74,9 +76,26 @@ describe("port Nuxt — la zona horaria no se reescribió", () => {
   });
 
   it("ningún archivo del módulo importa dayjs", () => {
-    for (const src of [utilsCliente, utilsServidor, handlers]) {
+    for (const src of [utilsCliente, utilsServidor, calcServidor, handlers]) {
       expect(src).not.toMatch(/from ['"]dayjs['"]/);
     }
+  });
+});
+
+describe("port Nuxt — mapRow no arrastra Prisma", () => {
+  // mapRow lo importan los handlers de TODOS los módulos migrados. Si sus imports
+  // encadenan hasta el cliente de Prisma, un fallo de resolución ahí tumba el build
+  // entero de nuxt-app, no solo exportaciones (precedente: BUG-004, que solo se
+  // manifestaba en el bundle de Vercel).
+  it("mapRow importa los helpers puros, no el módulo con el delegate", () => {
+    expect(mapRow).toContain("from './exportacionesCalc'");
+    expect(mapRow).not.toMatch(/from '\.\/exportaciones'/);
+  });
+
+  it("exportacionesCalc no importa Prisma ni h3", () => {
+    expect(calcServidor).not.toMatch(/from '\.\/prisma'/);
+    expect(calcServidor).not.toMatch(/from ['"]h3['"]/);
+    expect(calcServidor).not.toMatch(/@prisma/);
   });
 });
 
