@@ -95,5 +95,20 @@ jobs:
             '${{ secrets.VERCEL_NUXT_PROJECT_ID }}' \
             '${{ secrets.VERCEL_ORG_ID }}' > .vercel/project.json
 
+      # Temporal: el deploy falla diciendo que <workspace>/nuxt-app no existe, pero
+      # nuxt-app SÍ está en el repo (200 archivos versionados). Esto imprime lo que
+      # el runner ve de verdad y el rootDirectory que Vercel tiene guardado, para
+      # dejar de deducirlo. `vercel pull` escribe settings en .vercel/project.json;
+      # se imprime SOLO ese archivo — los .env que descarga no se tocan.
+      - name: Diagnóstico de rutas y settings
+        run: |
+          echo "PWD=$(pwd)"
+          echo "GITHUB_WORKSPACE=$GITHUB_WORKSPACE"
+          echo "--- ¿existe nuxt-app? ---"
+          if [ -d nuxt-app ]; then echo "SI: $(ls nuxt-app | tr '\n' ' ')"; else echo "NO EXISTE"; fi
+          echo "--- rootDirectory guardado en Vercel ---"
+          vercel pull --yes --environment=production --token=${{ secrets.VERCEL_TOKEN }} >/dev/null 2>&1 || echo "(vercel pull fallo)"
+          node -e "const s=require('./.vercel/project.json').settings||{}; console.log('rootDirectory:', JSON.stringify(s.rootDirectory)); console.log('framework:', JSON.stringify(s.framework))" || cat .vercel/project.json
+
       - name: Deploy a producción
         run: vercel deploy --prod --yes --token=${{ secrets.VERCEL_TOKEN }}
