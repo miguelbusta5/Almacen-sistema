@@ -60,14 +60,14 @@ jobs:
   # nuxt-app/ es un proyecto Vercel APARTE del de la raíz, y ESTE JOB ES LA ÚNICA
   # COSA QUE LO DESPLIEGA. No lo borres.
   #
-  # El proyecto figura como conectado a este repo en Vercel, pero su integración de
-  # Git no crea deployments para los pushes a master (verificado: los commits
-  # bd8639e, bf077a1 y 56d816d no aparecen siquiera en su lista de Deployments).
-  # Este job ya no es un duplicado: sin él, cualquier cambio a los módulos migrados
-  # (transporte, tienda, cargue-gourmet, preoperacional, integracion, exportaciones)
-  # se queda en git sin llegar a los usuarios. `--prod` fuerza el alias de producción.
+  # Se despliega desde la RAÍZ del repo, no desde nuxt-app/. El proyecto tiene su
+  # Root Directory en `nuxt-app`, así que Vercel entra él solo a esa carpeta. Si el
+  # CLI subiera únicamente nuxt-app/ como origen, Vercel buscaría nuxt-app/nuxt-app
+  # y el deploy se queda colgado sin arrancar (pasó con ba02424: 24 min en el paso
+  # de deploy, hubo que cancelarlo a mano). Origen = repo completo, igual que el
+  # hook de Git.
   #
-  # Ventaja adicional sobre el hook de Git: `needs: check` lo gatea con tsc + tests.
+  # `--prod` fuerza el alias de producción, y `needs: check` lo gatea con tsc+tests.
   # No hace falta paso de Prisma: nuxt-app/package.json ya corre `prisma generate`
   # en postinstall, y el build ocurre dentro de Vercel.
   deploy-nuxt:
@@ -75,10 +75,6 @@ jobs:
     runs-on: ubuntu-latest
     needs: check
     if: github.event_name == 'push' && github.ref == 'refs/heads/master'
-
-    defaults:
-      run:
-        working-directory: nuxt-app
 
     steps:
       - uses: actions/checkout@v4
@@ -90,6 +86,8 @@ jobs:
       - name: Instalar Vercel CLI
         run: npm install -g vercel@latest
 
+      # En la raíz, no en nuxt-app/: es el origen que se sube. Lleva el projectId de
+      # nuxt-app, así que apunta a ese proyecto aunque el contexto sea el repo entero.
       - name: Crear .vercel/project.json
         run: |
           mkdir -p .vercel
