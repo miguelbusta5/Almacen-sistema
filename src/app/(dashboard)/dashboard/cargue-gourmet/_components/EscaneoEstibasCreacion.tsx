@@ -17,8 +17,12 @@ export function useEscaneoEstibas(estibasEsperadas: number) {
   const [estibas, setEstibas] = useState<EstibaEscaneada[]>([]);
 
   useEffect(() => {
+    // Si el valor es inválido/transitorio (ej. el usuario borró el campo para
+    // teclear un número nuevo), no tocamos las estibas ya escaneadas: evita
+    // perder cajas por un `estibasEsperadas` momentáneamente en 0/NaN.
+    if (!Number.isInteger(estibasEsperadas) || estibasEsperadas <= 0) return;
     setEstibas((prev) => {
-      const n = Number.isInteger(estibasEsperadas) && estibasEsperadas > 0 ? estibasEsperadas : 0;
+      const n = estibasEsperadas;
       if (n === prev.length) return prev;
       const next: EstibaEscaneada[] = [];
       for (let i = 0; i < n; i++) {
