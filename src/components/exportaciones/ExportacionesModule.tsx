@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useSession } from "next-auth/react";
-import { ArrowRightLeft, BarChart3, CheckCircle2, ChevronDown, ChevronUp, Clock, Download, Pencil, RefreshCw, Search, Tags, Trash2, X } from "lucide-react";
+import { ArrowRightLeft, BarChart3, CheckCircle2, ChevronDown, ChevronUp, Clock, Download, FileSpreadsheet, Pencil, RefreshCw, Search, Tags, Trash2, X } from "lucide-react";
 import { EmptyState, ModuleHero, SkeletonTable } from "@/components/ui";
 import { useConfirm } from "@/components/ui/useDialogs";
 import { Modal } from "@/components/ui/Modal";
@@ -68,6 +68,7 @@ export default function ExportacionesModule({ cfg }: { cfg: PaisConfig }) {
   const [saving, setSaving] = useState(false);
   const [finalizing, setFinalizing] = useState(false);
   const [exporting, setExporting] = useState(false);
+  const [reportando, setReportando] = useState(false);
   const [error, setError] = useState("");
   const [showStats, setShowStats] = useState(true);
   const [statsOperario, setStatsOperario] = useState("");
@@ -153,6 +154,28 @@ export default function ExportacionesModule({ cfg }: { cfg: PaisConfig }) {
       setError(getErrorMessage(err, "No se pudo exportar"));
     } finally {
       setExporting(false);
+    }
+  }
+
+  // Reporte consolidado: los tres países, todo el histórico, 5 hojas con gráficas.
+  // No depende de los filtros de la pantalla a propósito — es un informe, no un volcado.
+  async function descargarReporte() {
+    setReportando(true);
+    setError("");
+    try {
+      const res = await fetch("/api/exportaciones/reporte");
+      if (!res.ok) throw new Error("No se pudo generar el reporte");
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `reporte-exportaciones-${new Date().toISOString().slice(0, 10)}.xlsx`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      setError(getErrorMessage(err, "No se pudo generar el reporte"));
+    } finally {
+      setReportando(false);
     }
   }
 
@@ -552,6 +575,11 @@ export default function ExportacionesModule({ cfg }: { cfg: PaisConfig }) {
             {canManage && (
               <button onClick={exportar} disabled={exporting} className="ds-btn ds-btn-secondary ds-btn-sm" style={{ display: "flex", alignItems: "center", gap: 6, opacity: exporting ? 0.7 : 1 }}>
                 <Download size={14} />{exporting ? "Exportando..." : "Exportar Excel"}
+              </button>
+            )}
+            {canManage && (
+              <button onClick={descargarReporte} disabled={reportando} className="ds-btn ds-btn-secondary ds-btn-sm" title="Los tres países, todo el histórico, con hojas de análisis y gráficas" style={{ display: "flex", alignItems: "center", gap: 6, opacity: reportando ? 0.7 : 1 }}>
+                <FileSpreadsheet size={14} />{reportando ? "Generando..." : "Reporte completo"}
               </button>
             )}
             <AutoRefreshIndicator

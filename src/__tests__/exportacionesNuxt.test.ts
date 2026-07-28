@@ -186,3 +186,84 @@ describe("port Nuxt — rewrite de Next", () => {
     }
   });
 });
+
+// ── Reporte consolidado (5 hojas + gráficas nativas) ──────────────────
+//
+// El helper de gráficas y las agregaciones están duplicados literalmente entre
+// src/lib y nuxt-app/server/utils. Un drift ahí no rompe el build de ninguno de
+// los dos stacks: simplemente el reporte sale distinto según quién lo genere, o
+// peor, Excel pide "reparar" solo en uno. De ahí la comparación normalizada.
+describe("port Nuxt — reporte consolidado", () => {
+  /**
+   * Deja solo la lógica, ignorando lo que separa a los dos stacks: comentarios,
+   * rutas de import, comillas simples vs dobles, punto y coma y el formato de
+   * Prettier (que rompe las líneas en sitios distintos en cada repo).
+   */
+  const normalizar = (src: string) =>
+    src
+      .replace(/\/\*[\s\S]*?\*\//g, "")
+      .replace(/^\s*\/\/.*$/gm, "")
+      .replace(/^import[\s\S]*?from\s+['"][^'"]*['"];?\s*$/gm, "")
+      .replace(/\\"/g, '"')
+      .replace(/'/g, '"')
+      .replace(/;/g, "")
+      .replace(/,(\s*[)\]}])/g, "$1")
+      .replace(/\s+/g, " ")
+      .replace(/\s*([(){}[\],:])\s*/g, "$1")
+      .trim();
+
+  it("excelCharts es idéntico en los dos stacks", () => {
+    expect(normalizar(leer("nuxt-app/server/utils/excelCharts.ts"))).toBe(
+      normalizar(leer("src/lib/excelCharts.ts")),
+    );
+  });
+
+  it("las agregaciones son idénticas en los dos stacks", () => {
+    expect(normalizar(leer("nuxt-app/server/utils/exportacionesReporteCalc.ts"))).toBe(
+      normalizar(leer("src/lib/exportaciones/reporteCalc.ts")),
+    );
+  });
+
+  it("ambos libros tienen las mismas 5 hojas y las mismas gráficas", () => {
+    const hojas = ["Registros", "Tiempos por usuario", "Unidades por día", "Registros por día", "Promedios mensuales"];
+    const titulos = [
+      "Promedio de minutos por caja, por usuario",
+      "Minutos totales por usuario (apilado por país)",
+      "Promedio de minutos por caja, por mes",
+      "Unidades por mes y país",
+    ];
+    for (const rel of [
+      "src/lib/exportaciones/reporteWorkbook.ts",
+      "nuxt-app/server/utils/exportacionesReporteWorkbook.ts",
+    ]) {
+      const src = leer(rel);
+      // Comillas simples o dobles según el stack, de ahí la clase de caracteres.
+      for (const hoja of hojas) expect(src).toMatch(new RegExp(`['"]${hoja}['"]`));
+      for (const titulo of titulos) expect(src).toContain(titulo);
+    }
+  });
+
+  it("el endpoint es gestor-only y lee todo el histórico de los tres países", () => {
+    for (const rel of ["src/lib/exportaciones/reporte.ts", "nuxt-app/server/utils/exportacionesReporte.ts"]) {
+      const src = leer(rel);
+      expect(src).toContain("puedeGestionarExportaciones");
+      expect(src).toContain("Sin permiso para exportar");
+      expect(src).toContain("deletedAt: null");
+      expect(src).toContain("MAX_POR_PAIS");
+      // Sin filtros de pantalla a propósito: las hojas de tendencia los necesitan.
+      expect(src).not.toContain("buildExportWhere");
+    }
+  });
+
+  it("el botón del reporte existe en los dos frontends y es gestor-only", () => {
+    const vue = leer("nuxt-app/app/components/exportaciones/Module.vue");
+    expect(vue).toContain("descargarReporte");
+    expect(vue).toMatch(/v-if="canManage"[\s\S]{0,200}descargarReporte/);
+    expect(vue).toContain("/api/exportaciones/reporte");
+
+    const react = leer("src/components/exportaciones/ExportacionesModule.tsx");
+    expect(react).toContain("descargarReporte");
+    expect(react).toMatch(/canManage && \([\s\S]{0,200}descargarReporte/);
+    expect(react).toContain("/api/exportaciones/reporte");
+  });
+});

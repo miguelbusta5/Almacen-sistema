@@ -17,8 +17,10 @@
     "@vercel/blob": "^2.4.0",
     "@vueuse/core": "^14.3.0",
     "@zxing/browser": "^0.2.1",
+    "bcryptjs": "^3.0.3",
     "dayjs": "^1.11.21",
     "exceljs": "^4.4.0",
+    "jszip": "^3.10.1",
     "nuxt": "^4.4.8",
     "pg": "^8.22.0",
     "vue": "^3.5.38",
@@ -26,6 +28,7 @@
     "zod": "^4.4.3"
   },
   "devDependencies": {
+    "@types/bcryptjs": "^2.4.6",
     "@types/pg": "^8.20.0",
     "prisma": "^7.8.0",
     "vue-tsc": "^3.3.6"

@@ -2,7 +2,7 @@
 // Orquestador de los 3 módulos de Exportación. Las páginas
 // (app/pages/exportaciones{,-mexico,-eeuu}.vue) solo le pasan su PaisConfig.
 import { ref, computed, watch, onMounted } from 'vue'
-import { RefreshCw, Download, Tags } from '@lucide/vue'
+import { RefreshCw, Download, FileSpreadsheet, Tags } from '@lucide/vue'
 import { ensureSession, useSessionState } from '~/composables/useSession'
 import { useToast } from '~/composables/useToast'
 import { useAutoRefresh } from '~/composables/useAutoRefresh'
@@ -254,6 +254,28 @@ async function exportar() {
     exporting.value = false
   }
 }
+
+// ── Reporte consolidado ────────────────────────────────────
+// Los tres países, todo el histórico, 5 hojas con gráficas. No depende de los
+// filtros de la pantalla a propósito: es un informe, no un volcado del listado.
+const reportando = ref(false)
+async function descargarReporte() {
+  if (reportando.value) return
+  reportando.value = true
+  try {
+    const blob = await $fetch<Blob>('/api/exportaciones/reporte', { responseType: 'blob' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `reporte-exportaciones-${new Date().toISOString().slice(0, 10)}.xlsx`
+    a.click()
+    URL.revokeObjectURL(url)
+  } catch (e) {
+    showToast(apiErr(e, 'No se pudo generar el reporte'), true)
+  } finally {
+    reportando.value = false
+  }
+}
 </script>
 
 <template>
@@ -276,6 +298,14 @@ async function exportar() {
         <button v-if="canManage" class="btn btn-sm" :disabled="exporting" @click="exportar">
           <Spinner v-if="exporting" :size="14" /><Download v-else :size="14" />
           {{ exporting ? 'Generando…' : 'Excel' }}
+        </button>
+        <button
+          v-if="canManage" class="btn btn-sm" :disabled="reportando"
+          title="Los tres países, todo el histórico, con hojas de análisis y gráficas"
+          @click="descargarReporte"
+        >
+          <Spinner v-if="reportando" :size="14" /><FileSpreadsheet v-else :size="14" />
+          {{ reportando ? 'Generando…' : 'Reporte completo' }}
         </button>
       </div>
     </section>
