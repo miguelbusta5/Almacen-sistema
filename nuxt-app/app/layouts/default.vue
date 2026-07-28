@@ -55,7 +55,7 @@ const NAV_GROUPS: NavItem[][] = [
     { icon: BarChart3, label: 'Centro de Control', href: '/dashboard/centro-control', key: null, moduleKey: 'centro-control' },
   ],
   [
-    { icon: Users, label: 'Usuarios', href: '/dashboard/usuarios', key: null, moduleKey: 'usuarios' },
+    { icon: Users, label: 'Usuarios', href: '/dashboard/usuarios', key: 'usuarios', moduleKey: 'usuarios' },
     { icon: ScrollText, label: 'Auditoría', href: '/dashboard/auditoria', key: 'auditoria', moduleKey: 'auditoria' },
   ],
 ]
