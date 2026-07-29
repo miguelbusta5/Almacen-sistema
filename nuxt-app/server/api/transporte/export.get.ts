@@ -2,7 +2,7 @@ import { defineEventHandler, getQuery, setHeader, createError } from 'h3'
 import ExcelJS from 'exceljs'
 import { prisma } from '../../utils/prisma'
 import { requireAuth } from '../../utils/auth'
-import { calcCostoAlmacenaje, diasTranscurridosAlmacenaje } from '../../utils/almacenaje'
+import { calcCostoAlmacenaje, diasTranscurridosAlmacenaje, tieneAlertaEntrega } from '../../utils/almacenaje'
 
 // Roles que pueden exportar, más el acceso puntual (no general) para
 // auxiliar-transporte@gmail.com — ver docs/cerebro/pendientes.md sobre el
@@ -29,6 +29,7 @@ export default defineEventHandler(async (event) => {
   const q = sp.q ? String(sp.q).trim() : undefined
   const estado = sp.estado ? String(sp.estado) : undefined
   const tipo = sp.tipo ? String(sp.tipo) : undefined
+  const alerta = sp.alerta === '1' || sp.alerta === 'true'
 
   const where: any = {}
   if (estado) where.estado = estado
@@ -40,6 +41,15 @@ export default defineEventHandler(async (event) => {
       { clienteNombre: { contains: q, mode: 'insensitive' } },
       { clienteDocumento: { contains: q, mode: 'insensitive' } },
     ]
+  }
+  if (alerta) {
+    // Igual que en GET /api/transporte: "alerta" depende de una fecha
+    // embebida en la nota (texto libre), no se puede expresar como filtro SQL.
+    const activos = await prisma.transporteGuardado.findMany({
+      where: { estado: 'PENDIENTE DESPACHO' },
+      select: { client_id: true, nota: true },
+    })
+    where.client_id = { in: activos.filter((g) => tieneAlertaEntrega(g.nota)).map((g) => g.client_id) }
   }
 
   const rows = await prisma.transporteGuardado.findMany({

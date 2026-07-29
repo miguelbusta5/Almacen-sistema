@@ -34,7 +34,7 @@ onClickOutside(exportMenuEl, () => { showExportMenu.value = false })
 // El export es una elección explícita al momento de descargar — independiente
 // del filtro de estado que tenga puesto la lista en ese momento — para que el
 // usuario elija a propósito qué descarga (todos / pendientes / despachados).
-async function exportarExcel(estadoFiltro?: string) {
+async function exportarExcel(estadoFiltro?: string, soloAlerta?: boolean) {
   if (exporting.value || demo.value) return
   showExportMenu.value = false
   exporting.value = true
@@ -43,6 +43,7 @@ async function exportarExcel(estadoFiltro?: string) {
     if (q.value) query.q = q.value
     if (estadoFiltro) query.estado = estadoFiltro
     if (fTipo.value) query.tipo = fTipo.value
+    if (soloAlerta) query.alerta = '1'
     const blob = await $fetch<Blob>('/api/transporte/export', { query, responseType: 'blob' })
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
@@ -368,6 +369,7 @@ function guardarFecha() {
             <button type="button" class="export-opt" @click="exportarExcel()">Todos los guardados</button>
             <button type="button" class="export-opt" @click="exportarExcel('PENDIENTE DESPACHO')">Pendientes por despacho</button>
             <button type="button" class="export-opt" @click="exportarExcel('DESPACHADO')">Despachados</button>
+            <button type="button" class="export-opt" @click="exportarExcel(undefined, true)">Con alerta de entrega</button>
           </div>
         </div>
         <button v-if="canCreate" class="btn btn-primary btn-sm" @click="editing = null; showForm = true"><Plus :size="14" /> Nuevo guardado</button>
