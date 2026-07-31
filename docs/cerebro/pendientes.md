@@ -6,6 +6,28 @@
 
 ## Tareas pendientes
 
+### Login — migrar a Nuxt/Vue (2026-07-31)
+
+- [x] **Código migrado**: `nuxt-app/app/pages/login.vue` (sin layout de dashboard) +
+  `nuxt-app/app/composables/useCredentialsLogin.ts`. No reimplementa la validación de
+  credenciales: llama al mismo endpoint de Auth.js en Next (`/api/auth/csrf` +
+  `/api/auth/callback/credentials`, con el header `X-Auth-Return-Redirect` que usa
+  `next-auth/react` internamente) — ese endpoint NO está proxeado por el rewrite (solo
+  `/login` y `/dashboard/*` lo están), así que sigue viviendo en la app Next sin duplicar
+  bcrypt/Prisma. Rewrite condicional `NUXT_PILOT_LOGIN_URL` en `next.config.ts`, guarda de
+  drift en `src/__tests__/loginNuxt.test.ts`. `tsc` + 1036 tests + `nuxi typecheck` verdes
+  (los 2 errores de `nuxi typecheck` son preexistentes en `exportacionesReporte*`, no
+  tocados por este cambio). Verificado en `nuxi dev` (`preview_start nuxt-pilot`):
+  formulario renderiza, logo carga desde `/logo.png` (ruta raíz, no proxeada).
+- [ ] **Go-live**: falta configurar `NUXT_PILOT_LOGIN_URL` en Vercel Production (mismo
+  deploy `nuxt-app-chi-ivory.vercel.app`, **con `https://`** — ver [[bugs]] por el error de
+  rewrite inválido que dio `NUXT_PILOT_USUARIOS_URL`/`NUXT_PILOT_AUDITORIA_URL` sin
+  protocolo) y redeploy. Sin esa variable, `/login` sigue sirviendo la página React.
+- [ ] QA manual del flujo completo con sesión real: login correcto → `/dashboard`,
+  credenciales inválidas → mensaje de error, `callbackUrl` tras expirar sesión dentro de un
+  módulo Nuxt (ver el `watch(sessionInvalid)` de `default.vue`), y el banner de
+  `passwordChanged=1`.
+
 ### Cargue Gourmet — quitar despacho masivo a un usuario + probar escaneo de cajas (2026-07-04)
 
 - [x] **Quitar acceso a "Despacho masivo" a `auxiliar-transporte@gmail.com`** — hecho

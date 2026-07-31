@@ -18,6 +18,7 @@ const NUXT_PILOT_EXPORT_URL = process.env.NUXT_PILOT_EXPORT_URL; // Exportacione
 const NUXT_PILOT_SOLICITUDES_URL = process.env.NUXT_PILOT_SOLICITUDES_URL; // Solicitudes Transporte
 const NUXT_PILOT_AUDITORIA_URL = process.env.NUXT_PILOT_AUDITORIA_URL; // Auditoría
 const NUXT_PILOT_USUARIOS_URL = process.env.NUXT_PILOT_USUARIOS_URL; // Usuarios
+const NUXT_PILOT_LOGIN_URL = process.env.NUXT_PILOT_LOGIN_URL; // Login
 
 // Todas apuntan al mismo deploy de nuxt-app (app.baseURL: '/dashboard/' compartido
 // en nuxt.config.ts) — sus assets (/_nuxt/*) y su $fetch interno a /api/* viven
@@ -25,7 +26,7 @@ const NUXT_PILOT_USUARIOS_URL = process.env.NUXT_PILOT_USUARIOS_URL; // Usuarios
 // IMPORTANTE: toda variable nueva tiene que entrar en esta cadena. Si fuera la única
 // definida y no estuviera aquí, no se emitirían las reglas de /dashboard/api/* ni
 // /dashboard/_nuxt/* y su página cargaría en blanco.
-const SHARED_NUXT_URL = NUXT_PILOT_URL || NUXT_PILOT_TIENDA_URL || NUXT_PILOT_GOURMET_URL || NUXT_PILOT_PREOP_URL || NUXT_PILOT_INTEGRACION_URL || NUXT_PILOT_EXPORT_URL || NUXT_PILOT_SOLICITUDES_URL || NUXT_PILOT_AUDITORIA_URL || NUXT_PILOT_USUARIOS_URL;
+const SHARED_NUXT_URL = NUXT_PILOT_URL || NUXT_PILOT_TIENDA_URL || NUXT_PILOT_GOURMET_URL || NUXT_PILOT_PREOP_URL || NUXT_PILOT_INTEGRACION_URL || NUXT_PILOT_EXPORT_URL || NUXT_PILOT_SOLICITUDES_URL || NUXT_PILOT_AUDITORIA_URL || NUXT_PILOT_USUARIOS_URL || NUXT_PILOT_LOGIN_URL;
 
 const nextConfig: NextConfig = {
   async rewrites() {
@@ -71,6 +72,12 @@ const nextConfig: NextConfig = {
       beforeFiles.push(
         { source: "/dashboard/auditoria", destination: `${NUXT_PILOT_AUDITORIA_URL}/dashboard/auditoria` },
         { source: "/dashboard/auditoria/:path*", destination: `${NUXT_PILOT_AUDITORIA_URL}/dashboard/auditoria/:path*` },
+      );
+    }
+    if (NUXT_PILOT_LOGIN_URL) {
+      beforeFiles.push(
+        { source: "/login", destination: `${NUXT_PILOT_LOGIN_URL}/dashboard/login` },
+        { source: "/login/:path*", destination: `${NUXT_PILOT_LOGIN_URL}/dashboard/login/:path*` },
       );
     }
     if (NUXT_PILOT_SOLICITUDES_URL) {
