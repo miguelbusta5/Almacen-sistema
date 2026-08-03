@@ -1,10 +1,10 @@
 <script setup lang="ts">
 // Tabla en escritorio, lista de cards por debajo de 760px (sin scroll horizontal).
-import { computed } from 'vue'
+import { computed, onBeforeUnmount, ref, watch } from 'vue'
 import { useMediaQuery } from '@vueuse/core'
 import { Pencil, Trash2 } from '@lucide/vue'
 import {
-  estadoExport, EXPORT_ESTADO_TONE, fmtFechaExport, fmtHoraExport, type Exportacion,
+  estadoExport, EXPORT_ESTADO_TONE, fmtFechaExport, fmtHoraExport, objetivoPlu, type Exportacion,
 } from '~/utils/exportaciones'
 
 const props = defineProps<{
@@ -13,6 +13,8 @@ const props = defineProps<{
   userId?: string
   selectable: boolean
   selectedIds: string[]
+  promediosPlu: Record<string, number>
+  promedioGlobal: number | null
 }>()
 const emit = defineEmits<{
   (e: 'editar', item: Exportacion): void
@@ -35,6 +37,23 @@ function badge(item: Exportacion) {
   const e = estadoExport(item)
   return { label: ESTADO_LABEL[e], tone: EXPORT_ESTADO_TONE[e] }
 }
+
+// Reloj compartido para el cronómetro de TODAS las filas en curso — un solo
+// setInterval para la tabla entera, no uno por fila. Arranca solo si hay
+// filas en curso y se apaga en cuanto dejan de haberlas (paginación, filtro,
+// o el auto-refresh que cierra el último registro abierto).
+const ahora = ref(Date.now())
+let tick: ReturnType<typeof setInterval> | null = null
+const hayEnCurso = computed(() => props.items.some((i) => i.duracionMinutos == null))
+watch(
+  hayEnCurso,
+  (activo) => {
+    if (activo && !tick) tick = setInterval(() => { ahora.value = Date.now() }, 1000)
+    if (!activo && tick) { clearInterval(tick); tick = null }
+  },
+  { immediate: true },
+)
+onBeforeUnmount(() => { if (tick) clearInterval(tick) })
 </script>
 
 <template>
@@ -66,7 +85,15 @@ function badge(item: Exportacion) {
             <Badge v-bind="badge(item)" />
             <span v-if="item.horaFinalizacion" class="fin tnum">{{ fmtHoraExport(item.horaFinalizacion) }}</span>
           </td>
-          <td class="tnum">{{ item.duracionMinutos ?? '—' }}</td>
+          <td class="tnum">
+            <ExportacionesDuracionEnCurso
+              v-if="item.duracionMinutos == null"
+              :hora-inicio="item.horaInicio"
+              :objetivo-min="objetivoPlu(item.plu, promediosPlu, promedioGlobal)"
+              :ahora="ahora"
+            />
+            <template v-else>{{ item.duracionMinutos }}</template>
+          </td>
           <td class="acciones">
             <button v-if="puedeEditar(item)" class="btn-icon" title="Editar" @click="emit('editar', item)">
               <Pencil :size="13" />
@@ -95,7 +122,18 @@ function badge(item: Exportacion) {
           <div><dt>Fecha</dt><dd>{{ fmtFechaExport(item.fecha) }}</dd></div>
           <div><dt>Empaque</dt><dd class="tnum">{{ item.unidadEmpaque }}</dd></div>
           <div><dt>Inicio</dt><dd class="tnum">{{ fmtHoraExport(item.horaInicio) }}</dd></div>
-          <div><dt>Duración</dt><dd class="tnum">{{ item.duracionMinutos ?? '—' }} min</dd></div>
+          <div>
+            <dt>Duración</dt>
+            <dd class="tnum">
+              <ExportacionesDuracionEnCurso
+                v-if="item.duracionMinutos == null"
+                :hora-inicio="item.horaInicio"
+                :objetivo-min="objetivoPlu(item.plu, promediosPlu, promedioGlobal)"
+                :ahora="ahora"
+              />
+              <template v-else>{{ item.duracionMinutos }} min</template>
+            </dd>
+          </div>
         </dl>
         <footer v-if="puedeEditar(item) || canManage" class="rc-acc">
           <button v-if="puedeEditar(item)" class="btn-icon" @click="emit('editar', item)"><Pencil :size="13" /> Editar</button>

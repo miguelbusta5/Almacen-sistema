@@ -75,6 +75,21 @@ async function loadConteos() {
   } catch { /* deja los conteos previos si falla */ }
 }
 
+// ── Promedios por PLU (objetivo del cronómetro en curso) ───
+// Referencia estadística de cambio lento: se carga una vez al montar y se
+// refresca solo con el botón manual, no en cada tick del auto-refresh.
+const promediosPlu = ref<Record<string, number>>({})
+const promedioGlobal = ref<number | null>(null)
+async function loadPromedios() {
+  try {
+    const res = await $fetch<{ data: { porPlu: Record<string, number>; global: number | null } }>(
+      `${props.cfg.apiBase}/promedios-plu`,
+    )
+    promediosPlu.value = res.data.porPlu
+    promedioGlobal.value = res.data.global
+  } catch { /* Tabla cae al fallback fijo si esto falla */ }
+}
+
 // ── Operarios y productividad (solo gestores) ──────────────
 const operarios = ref<Operario[]>([])
 async function loadOperarios() {
@@ -111,7 +126,7 @@ onMounted(async () => {
   await ensureSession()
   if (!puedeVer.value) { loading.value = false; return }
   loading.value = true
-  await Promise.all([loadLista(), loadAbierto(), loadConteos(), loadOperarios(), loadStats()])
+  await Promise.all([loadLista(), loadAbierto(), loadConteos(), loadOperarios(), loadStats(), loadPromedios()])
   loading.value = false
 })
 
@@ -142,7 +157,7 @@ useAutoRefresh({
 async function refreshAll() {
   if (refreshing.value) return
   refreshing.value = true
-  await Promise.all([loadLista(), loadAbierto(), loadConteos()])
+  await Promise.all([loadLista(), loadAbierto(), loadConteos(), loadPromedios()])
   refreshing.value = false
 }
 
@@ -354,6 +369,7 @@ async function descargarReporte() {
         <ExportacionesTabla
           :items="items" :can-manage="canManage" :user-id="userId"
           :selectable="isAdmin" :selected-ids="selectedIds"
+          :promedios-plu="promediosPlu" :promedio-global="promedioGlobal"
           @editar="editando = $event" @borrar="borrando = $event"
           @toggle-select="toggleSelect" @toggle-select-all="toggleSelectAll"
         />

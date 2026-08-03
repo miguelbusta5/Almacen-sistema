@@ -470,6 +470,57 @@ export function makeStatsHandler(cfg: PaisConfigSrv) {
   })
 }
 
+// ── GET promedios por PLU (objetivo del cronómetro en curso) ──────────
+// Sin whereScope a propósito: el objetivo es una métrica operativa compartida
+// (cuánto tarda normalmente ESE plu), no debe variar según quién la consulta —
+// un ETIQUETADO sin historial propio en un PLU igual necesita una meta razonable.
+export function makePromediosPluHandler(cfg: PaisConfigSrv) {
+  const delegate = getExportDelegate(cfg.pais)
+
+  return defineEventHandler(async (event) => {
+    const actor = await requireAuth(event)
+    assertUsuario(actor.role)
+
+    // Acotado igual que makeExportHandler: no barrer todo el histórico sin límite.
+    const registros = await delegate.findMany({
+      where: { deletedAt: null, horaFinalizacion: { not: null } } as never,
+      select: { plu: true, horaInicio: true, horaFinalizacion: true },
+      orderBy: [{ horaInicio: 'desc' }],
+      take: 5000,
+    })
+
+    // Agregación en memoria a propósito, mismo criterio que makeStatsHandler:
+    // duracionMinutos no es una columna, se deriva con calcularDuracionMinutos.
+    // No convertir a groupBy/_avg.
+    const byPlu = new Map<string, { total: number; count: number }>()
+    let totalGlobal = 0
+    let countGlobal = 0
+    for (const r of registros) {
+      const min = calcularDuracionMinutos(r.horaInicio, r.horaFinalizacion)
+      if (min == null) continue
+      totalGlobal += min
+      countGlobal++
+      const e = byPlu.get(r.plu) ?? { total: 0, count: 0 }
+      e.total += min
+      e.count++
+      byPlu.set(r.plu, e)
+    }
+
+    const porPlu: Record<string, number> = {}
+    for (const [plu, e] of byPlu) {
+      porPlu[plu] = Math.round((e.total / e.count) * 10) / 10
+    }
+
+    return {
+      success: true,
+      data: {
+        porPlu,
+        global: countGlobal > 0 ? Math.round((totalGlobal / countGlobal) * 10) / 10 : null,
+      },
+    }
+  })
+}
+
 // ── GET export (Excel) ────────────────────────────────────
 export function makeExportHandler(cfg: PaisConfigSrv) {
   const delegate = getExportDelegate(cfg.pais)

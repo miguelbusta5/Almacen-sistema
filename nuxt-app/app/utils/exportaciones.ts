@@ -171,6 +171,26 @@ export function toneProm(min: number | null): string {
   return 'var(--u-critico)'
 }
 
+/** Meta (minutos) del cronómetro en curso cuando no hay promedio de ningún nivel. */
+export const DURACION_OBJETIVO_FALLBACK_MIN = 5
+
+/**
+ * Objetivo (minutos) para el cronómetro/barra de un registro en curso, con
+ * caída en 3 niveles: promedio del PLU → promedio global del país → constante
+ * fija. Única fuente de verdad de la cadena de fallback (no reimplementarla en
+ * el componente ni en Tabla.vue).
+ */
+export function objetivoPlu(
+  plu: string,
+  promediosPlu: Record<string, number> | null | undefined,
+  promedioGlobal: number | null | undefined,
+): number {
+  const porPlu = promediosPlu?.[plu]
+  if (porPlu && porPlu > 0) return porPlu
+  if (promedioGlobal && promedioGlobal > 0) return promedioGlobal
+  return DURACION_OBJETIVO_FALLBACK_MIN
+}
+
 /**
  * Fila Total de la tabla de productividad. `plusDistintos` va en 0 a propósito:
  * los PLU distintos no son sumables entre operarios (se renderiza como "—").
