@@ -47,7 +47,12 @@ describe("port Nuxt — login: cableado de la ruta", () => {
   });
 
   it("solo acepta callbackUrl relativo (evita open redirect a otro origen)", () => {
-    expect(pagina).toMatch(/callbackUrl\.startsWith\('\/'\)/);
+    expect(pagina).toMatch(/url\.startsWith\('\/'\)/);
+  });
+
+  it("rechaza un callbackUrl que apunte de vuelta al login (evita el bucle del bug del 2026-08-03)", () => {
+    expect(pagina).toContain("!url.startsWith('/login')");
+    expect(pagina).toContain("url !== '/dashboard/login'");
   });
 
   it("existe la página", () => {

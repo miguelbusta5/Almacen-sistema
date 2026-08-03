@@ -8,9 +8,18 @@ definePageMeta({ layout: false })
 
 const route = useRoute()
 const passwordChanged = route.query.passwordChanged === '1'
-const callbackUrl = typeof route.query.callbackUrl === 'string' && route.query.callbackUrl.startsWith('/')
-  ? route.query.callbackUrl
-  : '/dashboard'
+
+// Además de exigir ruta relativa (evita open redirect a otro origen), rechaza
+// cualquier destino que apunte de vuelta al login: un callbackUrl así solo
+// puede venir de un enlace/pestaña vieja atrapada en el bug real (2026-08-03,
+// ver src/middleware.ts) donde el middleware armaba /login?callbackUrl=
+// %2Fdashboard%2Flogin — esa ruta no es una página real y 404 tras iniciar
+// sesión. Sin este filtro, un usuario con esa pestaña abierta queda atrapado
+// otra vez aunque el bug de fondo ya esté resuelto.
+function esCallbackValido(url: unknown): url is string {
+  return typeof url === 'string' && url.startsWith('/') && !url.startsWith('/login') && url !== '/dashboard/login'
+}
+const callbackUrl = esCallbackValido(route.query.callbackUrl) ? route.query.callbackUrl : '/dashboard'
 
 // Binding dinámico a propósito: un `src` estático hace que Vite lo trate como
 // un import de asset y lo busque en el `public/` de nuxt-app (donde no existe;
