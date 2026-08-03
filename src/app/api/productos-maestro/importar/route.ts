@@ -3,12 +3,11 @@ import { NextRequest, NextResponse } from "next/server";
 import { Prisma } from "@prisma/client";
 import { requireRole } from "@/lib/authz";
 import { prisma } from "@/lib/prisma";
-import { mapExcelProductoRow, ProductoMaestroDTO } from "@/lib/productosMaestro";
+import { mapExcelProductoRow, MAESTRO_SHEET_NAME, ProductoMaestroDTO } from "@/lib/productosMaestro";
 import { readWorkbook, worksheetObjects } from "@/lib/excel";
 import { validateImportFile, validateRowLimit } from "@/lib/fileSecurity";
 import { getErrorMessage } from "@/lib/errors";
 
-const SHEET_NAME = "ResultadosMaestrodeproductosPV";
 const MAX_MAESTRO_ROWS = 25000;
 const BATCH_SIZE = 500;
 
@@ -28,7 +27,7 @@ export async function POST(req: NextRequest) {
 
   const buffer = Buffer.from(await file.arrayBuffer());
   const workbook = await readWorkbook(buffer);
-  const sheet = workbook.getWorksheet(SHEET_NAME) ?? workbook.worksheets[0];
+  const sheet = workbook.getWorksheet(MAESTRO_SHEET_NAME) ?? workbook.worksheets[0];
   if (!sheet) return NextResponse.json({ error: "No se encontro hoja en el archivo" }, { status: 400 });
 
   const rows = worksheetObjects(sheet);

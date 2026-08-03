@@ -1,3 +1,8 @@
+// Nombre de hoja compartido entre importación y exportación: si se desalinean,
+// el importar()/route.ts no encuentra la hoja y cae al primer worksheet del
+// archivo, lo que rompe el roundtrip export -> editar -> import.
+export const MAESTRO_SHEET_NAME = "ResultadosMaestrodeproductosPV";
+
 export interface ProductoMaestroDTO {
   plu: string;
   descripcion: string | null;

@@ -2,7 +2,7 @@
 // Flota: vehículos y conductores operativos. Alimenta el módulo Preoperacional —
 // un usuario con rol TRANSPORTISTA necesita un conductor con vehículo asignado.
 import { ref, computed } from 'vue'
-import { Plus, Truck, Upload } from '@lucide/vue'
+import { Download, Plus, Truck, Upload } from '@lucide/vue'
 import type { TransportistaOperativo, VehiculoOperativo } from '~/utils/usuarios'
 
 const props = defineProps<{
@@ -117,6 +117,29 @@ async function importarMaestro(ev: Event) {
   }
 }
 
+// ── Descargar maestro de productos ─────────────────────────
+// Mismo motivo que importarMaestro para usar `fetch` nativo: el endpoint
+// sigue en la app Next (`/api/productos-maestro/export`).
+const descargando = ref(false)
+async function descargarMaestro() {
+  descargando.value = true
+  try {
+    const res = await fetch('/api/productos-maestro/export')
+    if (!res.ok) throw new Error('Error al descargar el maestro')
+    const blob = await res.blob()
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `maestro-productos-${new Date().toISOString().slice(0, 10)}.xlsx`
+    a.click()
+    URL.revokeObjectURL(url)
+  } catch (e: any) {
+    emit('toast', e?.message || 'No se pudo descargar el maestro', true)
+  } finally {
+    descargando.value = false
+  }
+}
+
 const vehiculosLibres = computed(() => props.vehiculos)
 </script>
 
@@ -203,8 +226,13 @@ const vehiculosLibres = computed(() => props.vehiculos)
       <h3>Maestro de productos</h3>
       <p class="desc">
         Importa el archivo .xlsx del maestro. Los PLU existentes se actualizan y los nuevos se crean.
+        Descarga el maestro actual para ver el formato exacto (mismas columnas) antes de editarlo.
       </p>
       <div class="alta">
+        <button class="btn btn-sm" :disabled="descargando" @click="descargarMaestro">
+          <Spinner v-if="descargando" :size="13" /><Download v-else :size="13" />
+          {{ descargando ? 'Descargando…' : 'Descargar maestro actual' }}
+        </button>
         <label class="btn btn-sm imp">
           <Spinner v-if="importando" :size="13" /><Upload v-else :size="13" />
           {{ importando ? 'Importando…' : 'Seleccionar archivo .xlsx' }}
