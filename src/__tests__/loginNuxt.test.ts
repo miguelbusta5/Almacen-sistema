@@ -17,6 +17,7 @@ const leer = (rel: string) => readFileSync(path.join(raiz, rel), "utf8");
 const composable = leer("nuxt-app/app/composables/useCredentialsLogin.ts");
 const pagina = leer("nuxt-app/app/pages/login.vue");
 const nextConfig = leer("next.config.ts");
+const middleware = leer("src/middleware.ts");
 
 describe("port Nuxt — login: no duplica la validación de credenciales", () => {
   it("llama al endpoint real de Auth.js en vez de reimplementar bcrypt/Prisma", () => {
@@ -66,5 +67,21 @@ describe("port Nuxt — login: cableado de la ruta", () => {
 
   it("/api/auth no está en ninguna regla de rewrite (Auth.js sigue siendo Next.js)", () => {
     expect(nextConfig).not.toMatch(/\/api\/auth/);
+  });
+});
+
+describe("middleware — no gatea los assets/API compartidos de Nuxt", () => {
+  // Bug real (2026-08-03): el middleware protegía TODO /dashboard/*, incluidos
+  // /dashboard/_nuxt/* y /dashboard/api/* (compartidos por todos los módulos
+  // migrados). Login es la única pantalla que los pide sin sesión — el middleware
+  // los redirigía a /login devolviendo HTML donde el navegador esperaba JS
+  // ("Failed to fetch dynamically imported module"). Los demás módulos nunca lo
+  // sufrieron porque para llegar a ellos ya hacía falta sesión.
+  it("exime /dashboard/_nuxt y /dashboard/api del chequeo de cookie de sesión", () => {
+    const iExencion = middleware.indexOf('pathname.startsWith("/dashboard/_nuxt")');
+    const iCheckSesion = middleware.indexOf("hasSession");
+    expect(iExencion).toBeGreaterThan(-1);
+    expect(middleware).toContain('pathname.startsWith("/dashboard/api")');
+    expect(iExencion).toBeLessThan(iCheckSesion);
   });
 });

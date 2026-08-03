@@ -31,6 +31,18 @@ export function middleware(request: NextRequest) {
   // Solo proteger rutas del dashboard (mis-tareas es accesible a todos los roles autenticados)
   if (!pathname.startsWith("/dashboard")) return NextResponse.next();
 
+  // Assets y API de Nuxt (compartidos por TODOS los módulos migrados, vía el rewrite
+  // de SHARED_NUXT_URL en next.config.ts) nunca deben quedar detrás de este gate: la
+  // pantalla de Login los pide sin sesión (es, por definición, la única pantalla del
+  // dashboard que se visita sin cookie), y este middleware los redirigía a /login
+  // devolviendo HTML donde el navegador esperaba JS ("Failed to fetch dynamically
+  // imported module"). Los endpoints de Nitro ya exigen su propia sesión
+  // (requireAuth/requireCan/requireRole, ver nuxt-app/server/utils/auth.ts) y los
+  // assets estáticos no necesitan protección.
+  if (pathname.startsWith("/dashboard/_nuxt") || pathname.startsWith("/dashboard/api")) {
+    return NextResponse.next();
+  }
+
   // Verificar presencia de cookie de sesión
   const hasSession = SESSION_COOKIES.some((name) => request.cookies.has(name));
 
