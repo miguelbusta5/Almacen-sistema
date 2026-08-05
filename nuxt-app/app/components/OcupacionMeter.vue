@@ -18,7 +18,12 @@ const nivel = computed(() => {
         <div class="ocup-kicker">Ocupación del CEDI</div>
         <div class="ocup-amount mono">{{ pct.toFixed(1) }}%</div>
       </div>
-      <div class="ocup-count mono">{{ ocupadas.toLocaleString('es-CO') }} / {{ total.toLocaleString('es-CO') }} posiciones</div>
+      <div class="ocup-count">
+        <span class="ocup-count-num mono">{{ ocupadas.toLocaleString('es-CO') }}</span>
+        <span class="ocup-count-sep">/</span>
+        <span class="ocup-count-total mono">{{ total.toLocaleString('es-CO') }}</span>
+        <span class="ocup-count-label">posiciones ocupadas</span>
+      </div>
     </div>
     <div class="ocup-track">
       <span class="ocup-fill" :style="{ '--fill': pct / 100 }" />
@@ -35,7 +40,11 @@ const nivel = computed(() => {
 .ocup-amount { font-family: var(--display); font-size: 24px; font-weight: 800; letter-spacing: -.03em; color: var(--info); margin-top: 2px; }
 .ocup-meter.alerta .ocup-amount { color: var(--u-alerta); }
 .ocup-meter.critico .ocup-amount { color: var(--u-critico); }
-.ocup-count { font-size: 12px; color: var(--muted); }
+.ocup-count { display: flex; align-items: baseline; gap: 5px; flex-wrap: wrap; }
+.ocup-count-num { font-size: 22px; font-weight: 800; color: var(--ink); letter-spacing: -.02em; }
+.ocup-count-sep { font-size: 15px; font-weight: 600; color: var(--faint); }
+.ocup-count-total { font-size: 15px; font-weight: 700; color: var(--muted); }
+.ocup-count-label { font-size: 11px; font-weight: 600; color: var(--faint); text-transform: uppercase; letter-spacing: .04em; margin-left: 2px; }
 .ocup-track { position: relative; height: 10px; border-radius: var(--r-pill); background: var(--surface-3); overflow: hidden; border: 1px solid var(--border); }
 .ocup-fill { position: absolute; inset: 0; border-radius: inherit; transform-origin: left; transform: scaleX(var(--fill, 0)); background: linear-gradient(90deg, color-mix(in srgb, var(--info) 70%, white), var(--info)); transition: transform .5s cubic-bezier(.22,1,.36,1); }
 .ocup-meter.alerta .ocup-fill { background: linear-gradient(90deg, color-mix(in srgb, var(--u-alerta) 70%, white), var(--u-alerta)); }
