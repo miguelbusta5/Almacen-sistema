@@ -1,23 +1,16 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-import { Boxes, Clock, CheckCircle2, TriangleAlert, Wallet, PackageOpen } from '@lucide/vue'
+import { Boxes, Clock, CheckCircle2, TriangleAlert, Wallet } from '@lucide/vue'
 import { fmtCOP } from '~/utils/guardado'
-
-function fmtPct(n: number): string {
-  return `${n.toFixed(1)}%`
-}
 
 // Antes se calculaba filtrando el arreglo completo de guardados cargado
 // en el cliente — con la lista paginada de verdad eso solo reflejaría la
 // página visible. Los totales (incluido el costo de almacenaje, que
 // depende de la fecha de cada guardado activo) ahora vienen de
 // /api/transporte/conteos.
-const props = defineProps<{
-  counts: {
-    total: number; pend: number; desp: number; alertas: number; costo: number
-    ocupacionPct?: number; posicionesOcupadas?: number; posicionesTotal?: number
-  }
-}>()
+// La ocupación del CEDI se muestra solo en OcupacionMeter (transporte.vue) —
+// mostrarla también aquí duplicaba el mismo dato en dos formatos.
+const props = defineProps<{ counts: { total: number; pend: number; desp: number; alertas: number; costo: number } }>()
 const emit = defineEmits<{ (e: 'filter', key: string): void }>()
 
 const k = computed(() => props.counts)
@@ -28,10 +21,6 @@ const cards = computed(() => [
   { key: 'desp', label: 'Despachados', value: k.value.desp, tone: 'var(--u-ok)', icon: CheckCircle2, filter: 'DESPACHADO', hint: 'completados' },
   { key: 'alertas', label: 'Con alerta de entrega', value: k.value.alertas, tone: k.value.alertas ? 'var(--u-critico)' : 'var(--u-ok)', icon: TriangleAlert, filter: 'alerta', hint: 'requieren acción' },
   { key: 'costo', label: 'Almacenaje activo', value: k.value.costo, tone: 'var(--bill)', icon: Wallet, filter: '', hint: 'acumulado', money: true },
-  {
-    key: 'ocupacion', label: 'Ocupación CEDI', value: k.value.ocupacionPct ?? 0, tone: 'var(--info)',
-    icon: PackageOpen, filter: '', hint: `${k.value.posicionesOcupadas ?? 0} / ${k.value.posicionesTotal ?? 4716}`, format: fmtPct,
-  },
 ])
 </script>
 
@@ -46,14 +35,14 @@ const cards = computed(() => [
         <span class="kpi-ic"><component :is="c.icon" :size="16" /></span>
         <span class="kpi-hint">{{ c.hint }}</span>
       </div>
-      <span class="kpi-value tnum"><CountUp :value="c.value" :format="c.format ?? (c.money ? fmtCOP : undefined)" /></span>
+      <span class="kpi-value tnum"><CountUp :value="c.value" :format="c.money ? fmtCOP : undefined" /></span>
       <span class="kpi-label">{{ c.label }}</span>
     </button>
   </div>
 </template>
 
 <style scoped>
-.rail { display: grid; grid-template-columns: repeat(6, 1fr); gap: 14px; }
+.rail { display: grid; grid-template-columns: repeat(5, 1fr); gap: 14px; }
 .kpi {
   position: relative; text-align: left; cursor: pointer;
   background:
@@ -67,7 +56,6 @@ const cards = computed(() => [
 }
 .kpi:nth-child(2){animation-delay:45ms}.kpi:nth-child(3){animation-delay:90ms}
 .kpi:nth-child(4){animation-delay:135ms}.kpi:nth-child(5){animation-delay:180ms}
-.kpi:nth-child(6){animation-delay:225ms}
 .kpi:hover { transform: translateY(-3px); box-shadow: var(--shadow); border-color: color-mix(in srgb, var(--c) 45%, var(--border)); }
 .kpi:active { transform: translateY(-1px); }
 .kpi:focus-visible { outline: none; box-shadow: var(--ring); }
