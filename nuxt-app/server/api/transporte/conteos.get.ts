@@ -3,6 +3,9 @@ import { prisma } from '../../utils/prisma'
 import { requireAuth } from '../../utils/auth'
 import { calcCostoAlmacenaje, tieneAlertaEntrega } from '../../utils/almacenaje'
 
+// Total de posiciones físicas del CEDI — usado para el KPI de ocupación.
+export const CEDI_TOTAL_POSICIONES = 4716
+
 // GET /api/transporte/conteos — totales para el KpiRail, independientes
 // de la paginación/filtros de la lista. `alertas`/`costo` dependen de
 // datos por fila (fecha de ingreso + nota de entrega comprometida) — se
@@ -18,14 +21,20 @@ export default defineEventHandler(async (event) => {
 
   const activos = await prisma.transporteGuardado.findMany({
     where: { estado: 'PENDIENTE DESPACHO' },
-    select: { fecha: true, nota: true },
+    select: { fecha: true, nota: true, posicionesOcupadas: true },
   })
   let alertas = 0
   let costo = 0
+  let posicionesOcupadas = 0
   for (const g of activos) {
     if (tieneAlertaEntrega(g.nota)) alertas++
     costo += calcCostoAlmacenaje(g.fecha.toISOString().slice(0, 10), null)
+    posicionesOcupadas += g.posicionesOcupadas ?? 0
   }
+  const ocupacionPct = (posicionesOcupadas / CEDI_TOTAL_POSICIONES) * 100
 
-  return { success: true, data: { total, pend, desp, alertas, costo } }
+  return {
+    success: true,
+    data: { total, pend, desp, alertas, costo, posicionesOcupadas, posicionesTotal: CEDI_TOTAL_POSICIONES, ocupacionPct },
+  }
 })

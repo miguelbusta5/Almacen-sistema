@@ -23,6 +23,7 @@ export const SAMPLE_GUARDADOS: Guardado[] = [
     fechaDespacho: null, nota: `Cliente no responde. Entrega comprometida ${isoInDays(-9)}`,
     ciudad: 'Medellín', codigoTienda: null, nombreTienda: null,
     clienteNombre: 'Juliana Restrepo', clienteDocumento: '43128900', netsuiteId: '45120',
+    posicionesOcupadas: 4,
   },
   {
     id: 2, clientId: 't-1002', fecha: isoDaysAgo(74), documento: 'FV-88544',
@@ -30,6 +31,7 @@ export const SAMPLE_GUARDADOS: Guardado[] = [
     fechaDespacho: null, nota: `Pendiente coordinar transporte. Entrega ${isoInDays(2)}`,
     ciudad: 'Bogotá', codigoTienda: null, nombreTienda: null,
     clienteNombre: 'Carlos Andrés Peña', clienteDocumento: '79445210', netsuiteId: null,
+    posicionesOcupadas: 2,
   },
   {
     id: 3, clientId: 't-1003', fecha: isoDaysAgo(48), documento: 'REM-20391',
@@ -37,6 +39,7 @@ export const SAMPLE_GUARDADOS: Guardado[] = [
     fechaDespacho: null, nota: `Entrega ${isoInDays(4)}`,
     ciudad: 'Cali', codigoTienda: null, nombreTienda: null,
     clienteNombre: 'María Fernanda Ríos', clienteDocumento: '1144556677', netsuiteId: '45231',
+    posicionesOcupadas: 6,
   },
   {
     id: 4, clientId: 't-1004', fecha: isoDaysAgo(28), documento: 'FV-89012',
@@ -44,6 +47,7 @@ export const SAMPLE_GUARDADOS: Guardado[] = [
     fechaDespacho: null, nota: `Entrega ${isoInDays(12)}`,
     ciudad: 'Barranquilla', codigoTienda: null, nombreTienda: null,
     clienteNombre: 'Jorge Iván Salazar', clienteDocumento: '72334455', netsuiteId: null,
+    posicionesOcupadas: 1,
   },
   {
     id: 5, clientId: 't-1005', fecha: isoDaysAgo(15), documento: 'FV-89233',
@@ -51,6 +55,7 @@ export const SAMPLE_GUARDADOS: Guardado[] = [
     fechaDespacho: null, nota: 'Sin fecha de entrega definida aún',
     ciudad: null, codigoTienda: null, nombreTienda: null,
     clienteNombre: 'Sandra Milena Ortiz', clienteDocumento: '52667788', netsuiteId: null,
+    posicionesOcupadas: 3,
   },
   {
     id: 6, clientId: 't-1006', fecha: isoDaysAgo(6), documento: 'REM-20455',
@@ -58,6 +63,7 @@ export const SAMPLE_GUARDADOS: Guardado[] = [
     fechaDespacho: null, nota: `Entrega ${isoInDays(20)}`,
     ciudad: 'Medellín', codigoTienda: null, nombreTienda: null,
     clienteNombre: 'Andrés Felipe Gómez', clienteDocumento: '1017889900', netsuiteId: '45310',
+    posicionesOcupadas: 5,
   },
   {
     id: 7, clientId: 't-1007', fecha: isoDaysAgo(63), documento: 'FV-87990',
@@ -65,6 +71,7 @@ export const SAMPLE_GUARDADOS: Guardado[] = [
     fechaDespacho: isoDaysAgo(3), nota: 'Entregado al cliente en tienda',
     ciudad: 'Bogotá', codigoTienda: null, nombreTienda: null,
     clienteNombre: 'Luisa Fernanda Cárdenas', clienteDocumento: '80112233', netsuiteId: '44980',
+    posicionesOcupadas: 2,
   },
   {
     id: 8, clientId: 't-1008', fecha: isoDaysAgo(38), documento: 'FV-89320',
@@ -72,6 +79,7 @@ export const SAMPLE_GUARDADOS: Guardado[] = [
     fechaDespacho: null, nota: `Cliente pidió reprogramar. Entrega ${isoInDays(1)}`,
     ciudad: 'Pereira', codigoTienda: null, nombreTienda: null,
     clienteNombre: 'Ricardo Alonso Vélez', clienteDocumento: '98765432', netsuiteId: null,
+    posicionesOcupadas: 3,
   },
 ];
 

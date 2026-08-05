@@ -7,6 +7,7 @@ const props = defineProps<{ guardado?: Guardado | null; saving?: boolean }>()
 const emit = defineEmits<{ (e: 'close'): void; (e: 'saved', g: Partial<Guardado>): void }>()
 
 const isEdit = computed(() => !!props.guardado)
+const despachado = computed(() => props.guardado?.estado === 'DESPACHADO')
 const f = reactive({
   fecha: props.guardado?.fecha ?? todayISO(),
   documento: props.guardado?.documento ?? '',
@@ -20,6 +21,7 @@ const f = reactive({
   clienteNombre: props.guardado?.clienteNombre ?? '',
   clienteDocumento: props.guardado?.clienteDocumento ?? '',
   nota: props.guardado?.nota ?? '',
+  posicionesOcupadas: props.guardado?.posicionesOcupadas ?? null as number | null,
 })
 const touched = ref(false)
 // Los campos de cliente solo son obligatorios al crear — los guardados
@@ -88,7 +90,10 @@ function submit() {
   if (props.saving) return
   touched.value = true
   if (missing.value) return
-  emit('saved', { ...f } as Partial<Guardado>)
+  const posicionesOcupadas = f.posicionesOcupadas === null || (f.posicionesOcupadas as unknown) === ''
+    ? null
+    : Number(f.posicionesOcupadas)
+  emit('saved', { ...f, posicionesOcupadas } as Partial<Guardado>)
 }
 </script>
 
@@ -115,6 +120,14 @@ function submit() {
           <span class="fl">N° Documento <b>*</b></span>
           <input v-model="f.documento" class="field" :class="{ err: touched && !f.documento.trim() }" placeholder="Factura / remisión">
           <span v-if="touched && !f.documento.trim()" class="fe">El documento es obligatorio</span>
+        </label>
+        <label class="fw">
+          <span class="fl">Posiciones ocupadas</span>
+          <input
+            v-model.number="f.posicionesOcupadas" type="number" min="0" max="4716" class="field"
+            :disabled="despachado" placeholder="Cantidad de posiciones del CEDI"
+          >
+          <span v-if="despachado" class="hint2">No editable: el guardado ya fue despachado.</span>
         </label>
       </section>
 
@@ -210,6 +223,7 @@ function submit() {
 .fe { font-size: 11px; font-weight: 600; color: var(--u-critico); }
 .field.err { border-color: var(--u-critico); box-shadow: 0 0 0 3px var(--u-critico-tint); }
 .hint { display: flex; align-items: center; gap: 6px; font-size: 11px; color: var(--muted); }
+.hint2 { font-size: 11px; color: var(--muted); }
 .tienda-suggestions { position: absolute; top: 100%; left: 0; right: 0; z-index: 20; margin-top: 4px; max-height: 220px; overflow-y: auto; background: var(--surface); border: 1px solid var(--border); border-radius: var(--r-md); box-shadow: 0 8px 24px rgba(0,0,0,.18); }
 .tienda-option { display: block; width: 100%; text-align: left; padding: 8px 10px; font-size: 12.5px; background: none; border: none; cursor: pointer; color: var(--ink); }
 .tienda-option:hover { background: var(--surface-2); }

@@ -16,6 +16,7 @@ const updateSchema = z.object({
   clienteDocumento: z.string().max(50).nullable().optional(),
   netsuiteId: z.string().max(100).nullable().optional(),
   fecha: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+  posicionesOcupadas: z.number().int().min(0).max(4716).nullable().optional(),
 })
 
 export default defineEventHandler(async (event) => {
@@ -28,6 +29,14 @@ export default defineEventHandler(async (event) => {
 
   if (d.fecha !== undefined && actor.role !== 'ADMIN') {
     throw createError({ statusCode: 403, statusMessage: 'Solo el administrador puede modificar la fecha de ingreso' })
+  }
+
+  if (d.posicionesOcupadas !== undefined) {
+    const actual = await prisma.transporteGuardado.findUnique({ where: { client_id: clientId }, select: { estado: true } })
+    const estadoFinal = d.estado ?? actual?.estado
+    if (estadoFinal === 'DESPACHADO') {
+      throw createError({ statusCode: 403, statusMessage: 'No se pueden editar las posiciones ocupadas de un guardado ya despachado' })
+    }
   }
 
   const row = await prisma.transporteGuardado.update({
@@ -47,6 +56,7 @@ export default defineEventHandler(async (event) => {
       ...(d.clienteNombre !== undefined && { clienteNombre: d.clienteNombre }),
       ...(d.clienteDocumento !== undefined && { clienteDocumento: d.clienteDocumento }),
       ...(d.netsuiteId !== undefined && { netsuiteId: d.netsuiteId }),
+      ...(d.posicionesOcupadas !== undefined && { posicionesOcupadas: d.posicionesOcupadas }),
       updated_at: new Date(),
     },
   })

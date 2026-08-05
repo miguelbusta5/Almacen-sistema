@@ -63,6 +63,21 @@ Cada etapa tiene un estado de despacho asociado. Ver [[estados-despacho]].
 
 ---
 
+## Guardados Transporte — ocupación del CEDI
+
+- El CEDI tiene **4.716 posiciones físicas** totales (constante `CEDI_TOTAL_POSICIONES` en
+  `nuxt-app/server/api/transporte/conteos.get.ts`).
+- Cada guardado (`TransporteGuardado`) registra cuántas posiciones ocupa en el campo
+  `posicionesOcupadas` (opcional, capturado al crear).
+- El KPI de **% de ocupación** se calcula solo sobre guardados **activos**
+  (`estado = 'PENDIENTE DESPACHO'`): `suma(posicionesOcupadas) / 4716 * 100`.
+- `posicionesOcupadas` es editable **mientras el guardado está activo**; una vez
+  `DESPACHADO` queda fijo (el backend rechaza la edición en ese estado).
+- Mismos roles que ya editan guardados (`SUPERVISOR_TRANSPORTE`, `GERENTE`, `ADMIN`) pueden
+  editar este campo — no se amplió el permiso de edición para `TRANSPORTE`.
+
+---
+
 ## Solicitudes de Transporte
 
 Modulo interno para reemplazar el formulario de Google y su Google Sheet operativo.

@@ -23,6 +23,7 @@ export interface Guardado {
   clienteNombre: string | null;
   clienteDocumento: string | null;
   netsuiteId: string | null;
+  posicionesOcupadas: number | null;
 }
 
 export function fmtCOP(n: number): string {

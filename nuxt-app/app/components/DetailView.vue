@@ -24,6 +24,7 @@ const detalle = computed(() => [
   { label: 'Ciudad destino', value: props.g.ciudad || '—' },
   { label: 'Entrega comprometida', value: entrega.value ? fmtFecha(entrega.value) : 'Sin asignar' },
   { label: 'Fecha despacho', value: props.g.fechaDespacho ? fmtFecha(props.g.fechaDespacho) : '—' },
+  { label: 'Posiciones ocupadas', value: props.g.posicionesOcupadas != null ? String(props.g.posicionesOcupadas) : '—' },
 ])
 </script>
 

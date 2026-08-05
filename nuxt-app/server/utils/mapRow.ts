@@ -21,6 +21,7 @@ export function mapGuardado(r: any) {
     clienteNombre: r.clienteNombre ?? null,
     clienteDocumento: r.clienteDocumento ?? null,
     netsuiteId: r.netsuiteId ?? null,
+    posicionesOcupadas: r.posicionesOcupadas ?? null,
   }
 }
 

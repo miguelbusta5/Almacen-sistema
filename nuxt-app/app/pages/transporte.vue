@@ -75,7 +75,7 @@ const pageSize = ref(30)
 const total = ref(0)
 const pages = computed(() => Math.max(1, Math.ceil(total.value / pageSize.value)))
 
-const kpiCounts = ref({ total: 0, pend: 0, desp: 0, alertas: 0, costo: 0 })
+const kpiCounts = ref({ total: 0, pend: 0, desp: 0, alertas: 0, costo: 0, posicionesOcupadas: 0, posicionesTotal: 4716, ocupacionPct: 0 })
 async function loadConteos() {
   if (demo.value) return
   try {
@@ -108,12 +108,17 @@ async function loadAll() {
     guardados.value = [...SAMPLE_GUARDADOS]
     pendientes.value = [...SAMPLE_PENDIENTES]
     total.value = guardados.value.length
+    const activosDemo = guardados.value.filter((g) => g.estado === 'PENDIENTE DESPACHO')
+    const posicionesOcupadasDemo = activosDemo.reduce((s, g) => s + (g.posicionesOcupadas ?? 0), 0)
     kpiCounts.value = {
       total: guardados.value.length,
-      pend: guardados.value.filter((g) => g.estado === 'PENDIENTE DESPACHO').length,
+      pend: activosDemo.length,
       desp: guardados.value.filter((g) => g.estado === 'DESPACHADO').length,
       alertas: guardados.value.filter((g) => tieneAlerta(g)).length,
       costo: 0,
+      posicionesOcupadas: posicionesOcupadasDemo,
+      posicionesTotal: 4716,
+      ocupacionPct: (posicionesOcupadasDemo / 4716) * 100,
     }
   }
 }
@@ -380,7 +385,8 @@ function guardarFecha() {
       <!-- Vista lista -->
       <div v-if="!panelItem" key="list">
         <PendientesBanner :items="pendientes" :busy="busy" class="fade-in" style="margin-bottom: 18px" @registrar="abrirUbicacionPendiente" />
-        <KpiRail :key="refreshKey" :counts="kpiCounts" style="margin-bottom: 18px" @filter="onKpiFilter" />
+        <KpiRail :key="refreshKey" :counts="kpiCounts" style="margin-bottom: 14px" @filter="onKpiFilter" />
+        <OcupacionMeter :ocupadas="kpiCounts.posicionesOcupadas" :total="kpiCounts.posicionesTotal" style="margin-bottom: 18px" />
         <Toolbar
           v-model:q="q" v-model:estado="fEstado" v-model:tipo="fTipo" v-model:alerta="fAlerta" v-model:density="density"
           :count="total" :total="kpiCounts.total" style="margin-bottom: 14px" @clear="clearFilters"
