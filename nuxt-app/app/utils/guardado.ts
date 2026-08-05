@@ -28,7 +28,7 @@ export interface Guardado {
 
 export function fmtCOP(n: number): string {
   if (!n) return '$0';
-  return '$' + n.toLocaleString('es-CO');
+  return '$' + Math.round(n).toLocaleString('es-CO');
 }
 export function fmtFecha(iso: string | null): string {
   if (!iso) return '—';

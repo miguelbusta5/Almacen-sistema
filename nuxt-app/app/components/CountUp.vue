@@ -31,5 +31,5 @@ watch(() => props.value, (v) => animate(v))
 </script>
 
 <template>
-  <span>{{ format ? format(Math.round(display)) : Math.round(display).toLocaleString('es-CO') }}</span>
+  <span>{{ format ? format(display) : Math.round(display).toLocaleString('es-CO') }}</span>
 </template>
