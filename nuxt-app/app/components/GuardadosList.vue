@@ -17,15 +17,16 @@ const emit = defineEmits<{ (e: 'open', g: Guardado): void; (e: 'clear'): void; (
 
 function almOf(g: Guardado) { return calcAlmacenaje(g.fecha, g.estado === 'DESPACHADO' ? g.fechaDespacho : null) }
 
-type SortKey = 'urgencia' | 'documento' | 'entrega' | 'ubicacion' | 'ciudad' | 'almacenaje' | 'tipo'
+type SortKey = 'urgencia' | 'documento' | 'entrega' | 'ubicacion' | 'posiciones' | 'ciudad' | 'almacenaje' | 'tipo'
 const columns: { key: SortKey; label: string; w: string }[] = [
-  { key: 'urgencia', label: 'Urgencia', w: '18%' },
-  { key: 'documento', label: 'Documento', w: '17%' },
-  { key: 'entrega', label: 'Entrega', w: '12%' },
-  { key: 'ubicacion', label: 'Ubicación', w: '13%' },
-  { key: 'ciudad', label: 'Ciudad destino', w: '11%' },
-  { key: 'almacenaje', label: 'Almacenaje', w: '17%' },
-  { key: 'tipo', label: 'Tipo', w: '12%' },
+  { key: 'urgencia', label: 'Urgencia', w: '16%' },
+  { key: 'documento', label: 'Documento', w: '15%' },
+  { key: 'entrega', label: 'Entrega', w: '11%' },
+  { key: 'ubicacion', label: 'Ubicación', w: '12%' },
+  { key: 'posiciones', label: 'Posiciones', w: '9%' },
+  { key: 'ciudad', label: 'Ciudad destino', w: '10%' },
+  { key: 'almacenaje', label: 'Almacenaje', w: '16%' },
+  { key: 'tipo', label: 'Tipo', w: '11%' },
 ]
 const sortKey = ref<SortKey>('urgencia')
 const sortDir = ref<'asc' | 'desc'>('desc')
@@ -41,6 +42,7 @@ function sortVal(g: Guardado, k: SortKey): number | string {
     case 'documento': return g.documento
     case 'entrega': return parseEntrega(g.nota) ?? '9999-99-99'
     case 'ubicacion': return g.ubicacion
+    case 'posiciones': return g.posicionesOcupadas ?? -1
     case 'ciudad': return g.ciudad ?? ''
     case 'almacenaje': return almOf(g).costoAcumulado
     case 'tipo': return g.tipo
@@ -112,6 +114,10 @@ function tipoIcon(g: Guardado) { return g.tipo === 'ECOMMERCE' ? ShoppingCart : 
             <div class="ubic" :title="g.ubicacion">{{ g.ubicacion }}</div>
           </td>
           <td>
+            <span v-if="g.posicionesOcupadas != null" class="posiciones mono">{{ g.posicionesOcupadas }}</span>
+            <span v-else class="nofecha">—</span>
+          </td>
+          <td>
             <div class="sub city"><MapPin :size="11" />{{ g.ciudad || '—' }}</div>
           </td>
           <td>
@@ -140,7 +146,7 @@ function tipoIcon(g: Guardado) { return g.tipo === 'ECOMMERCE' ? ShoppingCart : 
 
 <style scoped>
 .panel { overflow-x: auto; overflow-y: hidden; }
-.tbl { width: 100%; min-width: 960px; border-collapse: collapse; }
+.tbl { width: 100%; min-width: 1040px; border-collapse: collapse; }
 .tbl thead th { text-align: left; padding: 0; background: var(--surface-2); border-bottom: 1px solid var(--border); }
 .th-btn {
   display: inline-flex; align-items: center; gap: 5px; width: 100%;
@@ -181,6 +187,7 @@ function tipoIcon(g: Guardado) { return g.tipo === 'ECOMMERCE' ? ShoppingCart : 
 .ent { font-size: 13px; font-weight: 700; }
 .nofecha { font-size: 11px; font-weight: 600; color: var(--error); }
 .ubic { font-size: 13px; color: var(--ink-2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 100%; }
+.posiciones { font-size: 13px; font-weight: 700; color: var(--ink-2); }
 .alm { display: flex; flex-direction: column; gap: 5px; }
 .alm-cost { font-size: 12px; font-weight: 700; color: var(--bill-deep); }
 .alm-cost.gracia { color: var(--u-ok); }
