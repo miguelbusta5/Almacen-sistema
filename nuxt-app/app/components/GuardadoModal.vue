@@ -88,13 +88,14 @@ function limpiarTienda() {
 
 // Los pedidos Ecommerce no vienen de una tienda física del catálogo Cargue
 // Gourmet, así que no hay nada que buscar/seleccionar ahí — este atajo llena
-// el campo "tienda" con un valor fijo "Ecommerce" (sin código) para que quede
+// el campo "tienda" con el código fijo 998 (Ecommerce) para que quede
 // registrado como tal en el listado y en el Excel de exportación.
+const CODIGO_TIENDA_ECOMMERCE = '998'
 function marcarEcommerce() {
   if (debounceHandle) clearTimeout(debounceHandle)
-  tiendaQuery.value = 'Ecommerce'
-  tiendaSeleccionada.value = { codigo: '', tienda: 'Ecommerce', ciudad: f.ciudad }
-  f.codigoTienda = ''
+  tiendaQuery.value = `${CODIGO_TIENDA_ECOMMERCE} — Ecommerce`
+  tiendaSeleccionada.value = { codigo: CODIGO_TIENDA_ECOMMERCE, tienda: 'Ecommerce', ciudad: f.ciudad }
+  f.codigoTienda = CODIGO_TIENDA_ECOMMERCE
   f.nombreTienda = 'Ecommerce'
   suggestions.value = []
   showSuggestions.value = false
