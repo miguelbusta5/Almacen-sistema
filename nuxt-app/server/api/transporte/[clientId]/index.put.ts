@@ -4,6 +4,7 @@ import { prisma } from '../../../utils/prisma'
 import { requireCan } from '../../../utils/auth'
 
 const updateSchema = z.object({
+  documento: z.string().min(1).optional(),
   ubicacion: z.string().min(1).optional(),
   estado: z.enum(['PENDIENTE DESPACHO', 'DESPACHADO']).optional(),
   tipo: z.enum(['COMUN', 'ECOMMERCE']).optional(),
@@ -43,6 +44,7 @@ export default defineEventHandler(async (event) => {
     where: { client_id: clientId },
     data: {
       ...(d.fecha !== undefined && { fecha: new Date(d.fecha + 'T00:00:00') }),
+      ...(d.documento !== undefined && { documento: d.documento }),
       ...(d.ubicacion !== undefined && { ubicacion: d.ubicacion }),
       ...(d.estado !== undefined && { estado: d.estado }),
       ...(d.tipo !== undefined && { tipo: d.tipo }),

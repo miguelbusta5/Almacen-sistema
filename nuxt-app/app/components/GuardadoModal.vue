@@ -86,6 +86,20 @@ function limpiarTienda() {
   showSuggestions.value = false
 }
 
+// Los pedidos Ecommerce no vienen de una tienda física del catálogo Cargue
+// Gourmet, así que no hay nada que buscar/seleccionar ahí — este atajo llena
+// el campo "tienda" con un valor fijo "Ecommerce" (sin código) para que quede
+// registrado como tal en el listado y en el Excel de exportación.
+function marcarEcommerce() {
+  if (debounceHandle) clearTimeout(debounceHandle)
+  tiendaQuery.value = 'Ecommerce'
+  tiendaSeleccionada.value = { codigo: '', tienda: 'Ecommerce', ciudad: f.ciudad }
+  f.codigoTienda = ''
+  f.nombreTienda = 'Ecommerce'
+  suggestions.value = []
+  showSuggestions.value = false
+}
+
 function submit() {
   if (props.saving) return
   touched.value = true
@@ -176,6 +190,12 @@ function submit() {
             {{ tiendaSeleccionada.tienda }} — {{ tiendaSeleccionada.ciudad }}
             <button type="button" class="tienda-clear" @click="limpiarTienda">Quitar</button>
           </div>
+          <button
+            v-if="f.tipo === 'ECOMMERCE' && !tiendaSeleccionada" type="button"
+            class="btn btn-sm tienda-ecommerce-btn" @click="marcarEcommerce"
+          >
+            Marcar tienda como "Ecommerce"
+          </button>
         </label>
 
         <div class="g2">
@@ -231,6 +251,7 @@ function submit() {
 .tienda-empty { padding: 8px 10px; font-size: 12px; color: var(--muted); }
 .tienda-resuelta { margin-top: 6px; font-size: 12px; color: var(--muted2, var(--muted)); display: flex; align-items: center; gap: 8px; }
 .tienda-clear { font-size: 11px; font-weight: 600; color: var(--brand-deep); background: none; border: none; cursor: pointer; padding: 0; }
+.tienda-ecommerce-btn { align-self: flex-start; margin-top: 6px; }
 .factions { position: sticky; bottom: 0; display: grid; grid-template-columns: 1fr 2fr; gap: 10px; padding-top: 6px; background: linear-gradient(180deg, transparent, var(--surface) 40%); }
 .factions .btn { justify-content: center; }
 @media (max-width: 560px) { .g2 { grid-template-columns: 1fr; } }
