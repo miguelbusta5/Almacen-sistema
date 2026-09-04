@@ -4,6 +4,7 @@ export const USER_ROLES = [
   'ADMIN', 'GERENTE', 'OPERADOR', 'TRANSPORTISTA', 'INVENTARIO', 'TRANSPORTE',
   'SUPERVISOR_INVENTARIO', 'SUPERVISOR_TRANSPORTE', 'TIENDA', 'SUPERVISOR_TIENDA',
   'OPERACIONES_MUEBLES', 'OPERACIONES_GOURMET', 'ETIQUETADO', 'SUPERVISOR_ALMACENAMIENTO',
+  'MONTACARGAS',
 ] as const
 
 export type UserRole = typeof USER_ROLES[number]
@@ -23,6 +24,7 @@ export const ROLE_LABEL: Record<UserRole, string> = {
   OPERACIONES_GOURMET: 'Operaciones Gourmet',
   ETIQUETADO: 'Etiquetado',
   SUPERVISOR_ALMACENAMIENTO: 'Supervisor de Almacenamiento',
+  MONTACARGAS: 'Montacarguista',
 }
 
 export const ROLE_DESCRIPTION: Record<UserRole, string> = {
@@ -39,7 +41,8 @@ export const ROLE_DESCRIPTION: Record<UserRole, string> = {
   OPERACIONES_MUEBLES: 'Solo Integración de Pedidos.',
   OPERACIONES_GOURMET: 'Integración de Pedidos y Cargue Gourmet.',
   ETIQUETADO: 'Solo captura de Exportaciones.',
-  SUPERVISOR_ALMACENAMIENTO: 'Gestiona Exportaciones.',
+  SUPERVISOR_ALMACENAMIENTO: 'Gestiona Exportaciones y Estibas.',
+  MONTACARGAS: 'Solo el módulo Estibas.',
 }
 
 // Tono por familia de rol: administración, supervisión y operación.
@@ -58,6 +61,7 @@ export const ROLE_TONE: Record<UserRole, string> = {
   OPERACIONES_MUEBLES: 'var(--muted)',
   OPERACIONES_GOURMET: 'var(--muted)',
   ETIQUETADO: 'var(--muted)',
+  MONTACARGAS: 'var(--muted)',
 }
 
 export interface Usuario {

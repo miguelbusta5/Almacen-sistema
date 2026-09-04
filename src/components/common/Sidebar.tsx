@@ -6,6 +6,7 @@ import { useEffect, useState } from "react";
 import {
   BarChart3,
   FileText,
+  Forklift,
   GitMerge,
   Globe,
   Home,
@@ -43,6 +44,7 @@ const ALL_ITEMS: NavItem[] = [
   { href: "/dashboard/tienda", label: "Facturas Contado", icon: <Store size={16} strokeWidth={2.1} />, moduleKey: "tienda" },
   { href: "/dashboard/integracion", label: "Integracion Pedidos", icon: <GitMerge size={16} strokeWidth={2.1} />, moduleKey: "integracion" },
   { href: "/dashboard/cargue-gourmet", label: "Cargue Gourmet", icon: <ScanLine size={16} strokeWidth={2.1} />, moduleKey: "cargue-gourmet" },
+  { href: "/dashboard/estibas", label: "Estibas", icon: <Forklift size={16} strokeWidth={2.1} />, moduleKey: "estibas" },
   { href: "/dashboard/exportaciones", label: "Exportaciones Ecuador", icon: <Tags size={16} strokeWidth={2.1} />, moduleKey: "exportaciones" },
   { href: "/dashboard/exportaciones-mexico", label: "Exportaciones México", icon: <Globe size={16} strokeWidth={2.1} />, moduleKey: "exportaciones-mexico" },
   { href: "/dashboard/exportaciones-eeuu", label: "Exportaciones EE.UU", icon: <Globe size={16} strokeWidth={2.1} />, moduleKey: "exportaciones-eeuu" },
@@ -59,6 +61,7 @@ const GROUPS = [
     "/dashboard/tienda",
     "/dashboard/integracion",
     "/dashboard/cargue-gourmet",
+    "/dashboard/estibas",
     "/dashboard/exportaciones",
     "/dashboard/exportaciones-mexico",
     "/dashboard/exportaciones-eeuu",

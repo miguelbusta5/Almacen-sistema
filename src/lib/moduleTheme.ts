@@ -58,6 +58,7 @@ export const MODULE_THEME: Record<ModuleThemeKey, ModuleTheme> = {
   "centro-control": mod("centro-control", "Centro de Control", "Control", "Inteligencia operacional y KPIs"),
   integracion: mod("integracion", "Integracion Pedidos", "Integracion", "Picking OVDM/TSDM entre areas"),
   "cargue-gourmet": mod("cargue-gourmet", "Cargue Gourmet", "Cargue Gourmet", "Ubicacion y cargue verificado de pedidos Gourmet"),
+  estibas: mod("estibas", "Estibas", "Estibas", "Armado de estibas y ubicacion de contenedores en el CEDI"),
 };
 
 export function getModuleTheme(key: ModuleThemeKey | string | null | undefined): ModuleTheme {

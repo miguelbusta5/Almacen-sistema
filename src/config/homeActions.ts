@@ -40,6 +40,17 @@ export const HOME_ACTIONS: HomeAction[] = [
     priority: 1,
   },
   {
+    id: "crear-estiba",
+    title: "Crear estiba",
+    description: "Armar estiba de contenedor y ubicarla en el CEDI",
+    href: "/dashboard/estibas",
+    icon: "Forklift",
+    color: getModuleColor("estibas"),
+    moduleKey: "estibas",
+    roles: ["MONTACARGAS", "SUPERVISOR_ALMACENAMIENTO", "GERENTE", "ADMIN"],
+    priority: 1,
+  },
+  {
     id: "registrar-exportacion",
     title: "Registrar exportación Ecuador",
     description: "Capturar caja, PLU y unidad de empaque",

@@ -49,16 +49,22 @@ model Novedad {
 }
 
 model ProductoMaestro {
-  id          String   @id @default(cuid())
-  plu         String   @unique @db.VarChar(100)
-  descripcion String?
-  fabricante  String?  @db.VarChar(255)
-  precio      Decimal? @db.Decimal(12, 2)
-  marca       String?  @db.VarChar(255)
-  createdAt   DateTime @default(now()) @map("created_at")
-  updatedAt   DateTime @updatedAt @map("updated_at")
+  id              String   @id @default(cuid())
+  plu             String   @unique @db.VarChar(100)
+  descripcion     String?
+  fabricante      String?  @db.VarChar(255)
+  precio          Decimal? @db.Decimal(12, 2)
+  marca           String?  @db.VarChar(255)
+  // Código de barras: es lo que lee la pistola del montacarguista, que no ve el PLU.
+  ean             String?  @db.VarChar(20)
+  // "Und Emp" del maestro. Nulo en ~71% del catálogo, por eso Estiba deja
+  // escribirlo a mano en vez de bloquear la captura.
+  unidadesPorCaja Int?     @map("unidades_por_caja")
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
 
   @@index([plu])
+  @@index([ean])
   @@map("productos_maestro")
 }
 
@@ -130,6 +136,8 @@ model User {
   exportacionesEeuuCreadas       EtiquetadoExportacionEeuu[]    @relation("ExportacionesEeuuEtiquetadoCreadas")
   exportacionesEeuuActualizadas  EtiquetadoExportacionEeuu[]    @relation("ExportacionesEeuuEtiquetadoActualizadas")
   gourmetPedidosCreados          GourmetPedido[]                @relation("GourmetPedidosCreados")
+  estibasCreadas                 Estiba[]                       @relation("EstibasCreadas")
+  estibasActualizadas            Estiba[]                       @relation("EstibasActualizadas")
 
   @@index([email])
   @@map("users")
@@ -150,6 +158,7 @@ enum Role {
   OPERACIONES_GOURMET // Operario Operaciones Gourmet — solo módulo integración
   ETIQUETADO // Operario etiquetado exportaciones — solo módulo exportaciones
   SUPERVISOR_ALMACENAMIENTO // Supervisor almacenamiento — gestiona exportaciones
+  MONTACARGAS // Montacarguista — solo módulo Estibas
 }
 
 enum EstadoDespacho {
@@ -1027,4 +1036,50 @@ model GourmetCargueNovedad {
   @@index([pedidoId])
   @@index([estado])
   @@map("gourmet_cargue_novedades")
+}
+
+// Estiba armada por un montacarguista con la mercancía de un contenedor.
+// Sustituye la "PLANILLA MONTACARGAS" (Google Sheets), donde el tiempo lo ponía
+// un NOW() volátil de Excel: aquí horaInicio/horaFinalizacion los sella el
+// servidor, así que la medición de productividad es confiable.
+// Una estiba = un PLU (igual que una fila de la planilla). El ciclo es en dos
+// pasos: crear (arranca el reloj) y asignar ubicación (lo para).
+model Estiba {
+  id               String    @id @default(cuid())
+  pedido           String    @db.VarChar(50)
+  plu              String    @db.VarChar(100)
+  // Lo que leyó la pistola, si se capturó por código de barras en vez de por PLU.
+  ean              String?   @db.VarChar(20)
+  descripcion      String    @db.VarChar(255)
+  cajas            Int
+  unidadesPorCaja  Int       @map("unidades_por_caja")
+  // El maestro no trae "Und Emp" para ~71% de los productos; cuando el operario
+  // la escribe a mano se marca aquí, y esa lista es el trabajo de completar el
+  // catálogo.
+  unidadesManuales Boolean   @default(false) @map("unidades_manuales")
+  // cajas * unidadesPorCaja, sellado al crear. Se persiste (en vez de derivarse)
+  // porque es la cifra que agregan los KPIs y el export.
+  cantidadTotal    Int       @map("cantidad_total")
+  // Null mientras la estiba está en curso: asignarla es lo que la cierra.
+  ubicacion        String?   @db.VarChar(120)
+  fecha            DateTime  @db.Date
+  horaInicio       DateTime  @map("hora_inicio")
+  horaFinalizacion DateTime? @map("hora_finalizacion")
+  motivoCorreccion String?   @map("motivo_correccion")
+  deletedAt        DateTime? @map("deleted_at")
+
+  creadoPorId      String  @map("creado_por_id")
+  creadoPor        User    @relation("EstibasCreadas", fields: [creadoPorId], references: [id])
+  actualizadoPorId String? @map("actualizado_por_id")
+  actualizadoPor   User?   @relation("EstibasActualizadas", fields: [actualizadoPorId], references: [id])
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  // Sirve la consulta caliente: "la estiba abierta de este operario".
+  @@index([creadoPorId, horaFinalizacion, deletedAt])
+  @@index([fecha])
+  @@index([pedido])
+  @@index([plu])
+  @@map("estibas")
 }

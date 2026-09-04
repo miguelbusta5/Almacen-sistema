@@ -21,6 +21,7 @@ export type ModuleKey =
   | 'centro-control'
   | 'integracion'
   | 'cargue-gourmet'
+  | 'estibas'
 
 export const MODULE_ACCESS: Record<ModuleKey, string[]> = {
   transporte: ['TRANSPORTE', 'SUPERVISOR_TRANSPORTE', 'GERENTE', 'ADMIN', 'OPERADOR'],
@@ -48,6 +49,10 @@ export const MODULE_ACCESS: Record<ModuleKey, string[]> = {
     'SUPERVISOR_TRANSPORTE', 'TRANSPORTE',
   ],
   'cargue-gourmet': ['ADMIN', 'GERENTE', 'OPERACIONES_GOURMET', 'TRANSPORTE', 'SUPERVISOR_TRANSPORTE'],
+// Quien arma las estibas (MONTACARGAS) y quien responde por el almacenamiento.
+// Los supervisores de inventario y de transporte quedan fuera: el armado de
+// estibas de contenedor no es su área.
+  estibas: ['MONTACARGAS', 'SUPERVISOR_ALMACENAMIENTO', 'GERENTE', 'ADMIN'],
 }
 
 export function canSeeModule(role: string | undefined | null, moduleKey: ModuleKey): boolean {

@@ -16,6 +16,7 @@ const CREADORES: UserRole[] = [
   "TIENDA", "SUPERVISOR_TIENDA",
   "OPERACIONES_MUEBLES", "OPERACIONES_GOURMET",
   "ETIQUETADO", "SUPERVISOR_ALMACENAMIENTO",
+  "MONTACARGAS",
 ];
 
 const MATRIX: Record<Action, UserRole[]> = {
@@ -48,6 +49,7 @@ export const ROLE_LABEL: Record<UserRole, string> = {
   OPERACIONES_GOURMET:    "Operaciones Gourmet",
   ETIQUETADO:             "Etiquetado",
   SUPERVISOR_ALMACENAMIENTO: "Supervisor Almacenamiento",
+  MONTACARGAS:            "Montacarguista",
 };
 
 export { USER_ROLE_VALUES };

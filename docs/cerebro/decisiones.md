@@ -1,5 +1,51 @@
 # Decisiones de Arquitectura y Producto
 
+## 2026-09-04 - Módulo Estibas (montacargas): reemplazo de la planilla de Google Sheets
+
+**Contexto:** los montacarguistas llevaban el control de la mercancía de contenedores en
+`PLANILLA MONTACARGAS 2026 Nn.xlsx` (una pestaña por operario + hoja `MAESTRO REF` con 18.853
+productos). El Sheet ya estaba roto: fórmulas `#N/A`/`#REF!` en dos pestañas y, sobre todo,
+`NOW()` es volátil — se recalcula al abrir el archivo, así que los tiempos no eran confiables.
+
+**Decisión:** módulo nuevo `estibas`, con estas decisiones acordadas con el usuario:
+
+1. **Una estiba = un PLU** (pedido + PLU + cajas + una ubicación), igual que una fila de la planilla.
+2. **Ciclo de dos pasos con el reloj en el servidor:** crear arranca `horaInicio`; asignar la
+   ubicación sella `horaFinalizacion` y cierra. No hay "finalizar" aparte. **Una sola estiba abierta
+   por operario**: el POST devuelve 409 con la estiba abierta (a diferencia de Exportaciones, que
+   auto-cierra la anterior — aquí cerrarla sin ubicación dejaría el registro sin su dato clave).
+3. **El escáner lee el EAN**, no el PLU → `GET /api/productos-maestro/buscar?codigo=` resuelve por
+   cualquiera de los dos. `[plu].get.ts` se dejó intacto: lo consumen Exportaciones, Tienda y Solicitudes.
+4. **Rol nuevo `MONTACARGAS`** (solo ve Estibas), como TRANSPORTISTA con Preoperacional. Son 15 roles.
+   Acceso al módulo: `MONTACARGAS` + `SUPERVISOR_ALMACENAMIENTO` + `GERENTE` + `ADMIN`. Los supervisores
+   de inventario y de transporte quedan fuera: el armado de estibas de contenedor no es su área.
+   Gestionan (exportar, borrar, corregir horas, ver todo) los tres últimos; el montacarguista solo
+   ve y cierra las suyas.
+5. **Unidades por caja editables:** 13.373 de 18.852 productos (71%) no traen «Und Emp» en el maestro.
+   Bloquear habría parado 7 de cada 10 capturas. Se marca `unidadesManuales` para poder completar el
+   catálogo después. La UI **limpia** el campo al cambiar de PLU: arrastrarlo daría un total erróneo
+   en silencio.
+6. **Ubicación de texto libre.** El histórico tiene 2.406 valores distintos e incluye `INSPECCION`,
+   `MUEBLES`, `ECUADOR`. Se valida el formato canónico `05-B-25-03-01` solo para **marcar** las libres,
+   nunca para rechazarlas.
+7. **Solo Nuxt/Vue, sin página React.** Los 12 módulos y el login ya están migrados; las páginas React
+   son fallback muerto. Se omite a propósito la plantilla React del SOT §16, que quedó obsoleta.
+   ⚠️ Consecuencia: **`NUXT_PILOT_ESTIBAS_URL` es obligatoria en Vercel** — sin ella la ruta da 404,
+   no degrada a React como los demás módulos.
+
+**`ProductoMaestro` extendido** con `ean` y `unidadesPorCaja` en vez de crear un catálogo nuevo.
+
+**Riesgo encontrado y corregido durante la implementación:** aceptar la hoja `MAESTRO REF` en el
+importador iba a **vaciar `fabricante`, `precio` y `marca` de 19.299 productos**, porque esa planilla
+no trae esas columnas y el `ON CONFLICT DO UPDATE` las sobrescribía sin condición (y `precio` alimenta
+el costo unitario de Novedades). Ahora el importador calcula `columnasPresentes(rows)` y solo
+actualiza las columnas que el archivo declara — el roundtrip export → editar → import sigue pudiendo
+vaciar un campo a propósito, porque el export las trae todas.
+
+**Migración:** `prisma/migrate-estibas.sql`, aditivo e idempotente, aplicado a producción. Se prefirió
+sobre `prisma db push` porque este compara el schema completo contra la base y podría arrastrar drift
+no intencionado en una DB con 19k productos y datos vivos.
+
 ## 2026-07-03 (tarde/noche) - Piloto Guardados: go-live real en producción + 3 bugs de despliegue
 
 **Decisión:** activar `NUXT_PILOT_URL` en **Production** de `almacen-sistema` — `/dashboard/transporte`

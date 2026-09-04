@@ -16,19 +16,21 @@ export async function GET() {
 
   const productos = await prisma.productoMaestro.findMany({ orderBy: { plu: "asc" } });
 
-  const headers = ["PLU", "DESCRIPCION", "Fabricante", "PRECIO", "MARCAS"];
+  const headers = ["PLU", "DESCRIPCION", "Fabricante", "PRECIO", "MARCAS", "EAN", "Und Emp"];
   const rows: (string | number)[][] = productos.map((p) => [
     p.plu,
     p.descripcion ?? "",
     p.fabricante ?? "",
     p.precio == null ? "" : Number(p.precio),
     p.marca ?? "",
+    p.ean ?? "",
+    p.unidadesPorCaja ?? "",
   ]);
 
   const wb = new ExcelJS.Workbook();
   const ws = wb.addWorksheet(MAESTRO_SHEET_NAME);
   ws.addRows([headers, ...rows]);
-  ws.columns = [16, 44, 24, 12, 20].map((width) => ({ width }));
+  ws.columns = [16, 44, 24, 12, 20, 18, 10].map((width) => ({ width }));
 
   const buf = await workbookBuffer(wb);
   const today = new Date().toISOString().slice(0, 10);

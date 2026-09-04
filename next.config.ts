@@ -19,6 +19,7 @@ const NUXT_PILOT_SOLICITUDES_URL = process.env.NUXT_PILOT_SOLICITUDES_URL; // So
 const NUXT_PILOT_AUDITORIA_URL = process.env.NUXT_PILOT_AUDITORIA_URL; // Auditoría
 const NUXT_PILOT_USUARIOS_URL = process.env.NUXT_PILOT_USUARIOS_URL; // Usuarios
 const NUXT_PILOT_LOGIN_URL = process.env.NUXT_PILOT_LOGIN_URL; // Login
+const NUXT_PILOT_ESTIBAS_URL = process.env.NUXT_PILOT_ESTIBAS_URL; // Estibas (montacargas)
 
 // Todas apuntan al mismo deploy de nuxt-app (app.baseURL: '/dashboard/' compartido
 // en nuxt.config.ts) — sus assets (/_nuxt/*) y su $fetch interno a /api/* viven
@@ -26,7 +27,7 @@ const NUXT_PILOT_LOGIN_URL = process.env.NUXT_PILOT_LOGIN_URL; // Login
 // IMPORTANTE: toda variable nueva tiene que entrar en esta cadena. Si fuera la única
 // definida y no estuviera aquí, no se emitirían las reglas de /dashboard/api/* ni
 // /dashboard/_nuxt/* y su página cargaría en blanco.
-const SHARED_NUXT_URL = NUXT_PILOT_URL || NUXT_PILOT_TIENDA_URL || NUXT_PILOT_GOURMET_URL || NUXT_PILOT_PREOP_URL || NUXT_PILOT_INTEGRACION_URL || NUXT_PILOT_EXPORT_URL || NUXT_PILOT_SOLICITUDES_URL || NUXT_PILOT_AUDITORIA_URL || NUXT_PILOT_USUARIOS_URL || NUXT_PILOT_LOGIN_URL;
+const SHARED_NUXT_URL = NUXT_PILOT_URL || NUXT_PILOT_TIENDA_URL || NUXT_PILOT_GOURMET_URL || NUXT_PILOT_PREOP_URL || NUXT_PILOT_INTEGRACION_URL || NUXT_PILOT_EXPORT_URL || NUXT_PILOT_SOLICITUDES_URL || NUXT_PILOT_AUDITORIA_URL || NUXT_PILOT_USUARIOS_URL || NUXT_PILOT_LOGIN_URL || NUXT_PILOT_ESTIBAS_URL;
 
 const nextConfig: NextConfig = {
   async rewrites() {
@@ -72,6 +73,14 @@ const nextConfig: NextConfig = {
       beforeFiles.push(
         { source: "/dashboard/auditoria", destination: `${NUXT_PILOT_AUDITORIA_URL}/dashboard/auditoria` },
         { source: "/dashboard/auditoria/:path*", destination: `${NUXT_PILOT_AUDITORIA_URL}/dashboard/auditoria/:path*` },
+      );
+    }
+    // Estibas no tiene página React de respaldo (se construyó directo en Nuxt),
+    // así que sin esta variable la ruta da 404 en vez de degradar.
+    if (NUXT_PILOT_ESTIBAS_URL) {
+      beforeFiles.push(
+        { source: "/dashboard/estibas", destination: `${NUXT_PILOT_ESTIBAS_URL}/dashboard/estibas` },
+        { source: "/dashboard/estibas/:path*", destination: `${NUXT_PILOT_ESTIBAS_URL}/dashboard/estibas/:path*` },
       );
     }
     if (NUXT_PILOT_LOGIN_URL) {
