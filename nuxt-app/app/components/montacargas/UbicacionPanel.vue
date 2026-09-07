@@ -1,22 +1,22 @@
 <script setup lang="ts">
-// Paso 2 del ciclo: la estiba ya está armada y el reloj corriendo. Asignar la
-// ubicación es lo que la cierra — no hay un "finalizar" aparte.
-// Ocupa el sitio de la captura mientras hay una estiba en curso: el operario
-// solo puede hacer una cosa a la vez, y así no hay forma de equivocarse.
+// Paso 2 del ciclo: el registro ya esta creado y el reloj corriendo. Asignar la
+// ubicacion final es lo que lo cierra - no hay un "finalizar" aparte.
+// Ocupa el sitio de la captura mientras hay un registro en curso: el operario
+// solo puede hacer una cosa a la vez, y asi no hay forma de equivocarse.
 import { ref, computed, onMounted, onBeforeUnmount, watch, nextTick } from 'vue'
 import { MapPin, TriangleAlert } from '@lucide/vue'
 import {
-  esUbicacionCanonica, fmtHoraEstiba, normalizarUbicacion, type Estiba,
-} from '~/utils/estibas'
+  esUbicacionCanonica, fmtHoraMovimiento, normalizarUbicacion, type Movimiento,
+} from '~/utils/montacargas'
 
-const props = defineProps<{ estiba: Estiba; saving: boolean }>()
-const emit = defineEmits<{ (e: 'submit', ubicacion: string): void }>()
+const props = defineProps<{ movimiento: Movimiento; saving: boolean }>()
+const emit = defineEmits<{ (e: 'submit', ubicacionFinal: string): void }>()
 
 const input = ref<HTMLInputElement | null>(null)
 const ubicacion = ref('')
 
-// Cronómetro: refuerza al operario que el tiempo corre. Tick de 1s (y no de 30s
-// como en Exportaciones) porque una estiba se cierra en minutos, no en horas.
+// Cronometro: refuerza al operario que el tiempo corre. Tick de 1s porque un
+// movimiento se cierra en minutos, no en horas.
 const ahora = ref(Date.now())
 let tick: ReturnType<typeof setInterval> | null = null
 onMounted(() => {
@@ -25,22 +25,22 @@ onMounted(() => {
 })
 onBeforeUnmount(() => { if (tick) clearInterval(tick) })
 
-// Al pasar de una estiba a otra hay que limpiar y volver a enfocar.
-watch(() => props.estiba.id, () => {
+// Al pasar de un registro a otro hay que limpiar y volver a enfocar.
+watch(() => props.movimiento.id, () => {
   ubicacion.value = ''
   void nextTick(() => input.value?.focus())
 })
 
 const transcurrido = computed(() => {
-  const seg = Math.max(0, Math.floor((ahora.value - new Date(props.estiba.horaInicio).getTime()) / 1000))
+  const seg = Math.max(0, Math.floor((ahora.value - new Date(props.movimiento.horaInicio).getTime()) / 1000))
   const m = Math.floor(seg / 60)
   const s = seg % 60
   return `${m}:${String(s).padStart(2, '0')}`
 })
 
 const normalizada = computed(() => normalizarUbicacion(ubicacion.value))
-// Fuera del formato canónico (INSPECCION, MUEBLES, ECUADOR…) es válido igual:
-// el histórico tiene 2.406 valores distintos y bloquearlos pararía la operación.
+// Fuera del formato canonico (INSPECCION, MUEBLES, ECUADOR...) es valido igual:
+// el historico tiene 2.406 valores distintos y bloquearlos pararia la operacion.
 // Solo se avisa para que el operario confirme que no fue un dedazo.
 const esLibre = computed(() => Boolean(normalizada.value) && !esUbicacionCanonica(normalizada.value))
 
@@ -57,19 +57,21 @@ function submit() {
     <header class="cab">
       <span class="pulse" />
       <div class="cab-txt">
-        <b>Estiba en curso</b>
+        <b>Registro en curso</b>
         <span class="det">
-          Pedido {{ estiba.pedido }} · PLU {{ estiba.plu }} ·
-          {{ estiba.cajas }} cajas · {{ estiba.cantidadTotal }} unidades ·
-          desde {{ fmtHoraEstiba(estiba.horaInicio) }}
+          PLU {{ movimiento.plu }} · {{ movimiento.cajas }} cajas
+          <template v-if="movimiento.hayReguero"> + {{ movimiento.unidadesSueltas }} sueltas</template>
+          · {{ movimiento.cantidadTotal }} unidades
+          <template v-if="movimiento.ubicacionInicial"> · desde {{ movimiento.ubicacionInicial }}</template>
+          · {{ fmtHoraMovimiento(movimiento.horaInicio) }}
         </span>
       </div>
-      <div class="crono tnum" :title="`Iniciada a las ${fmtHoraEstiba(estiba.horaInicio)}`">
+      <div class="crono tnum" :title="`Iniciado a las ${fmtHoraMovimiento(movimiento.horaInicio)}`">
         {{ transcurrido }}
       </div>
     </header>
 
-    <p class="desc-prod">{{ estiba.descripcion }}</p>
+    <p class="desc-prod">{{ movimiento.descripcion }}</p>
 
     <form class="fila" @submit.prevent="submit">
       <label class="f">

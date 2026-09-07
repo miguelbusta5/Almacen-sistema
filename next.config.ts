@@ -19,7 +19,7 @@ const NUXT_PILOT_SOLICITUDES_URL = process.env.NUXT_PILOT_SOLICITUDES_URL; // So
 const NUXT_PILOT_AUDITORIA_URL = process.env.NUXT_PILOT_AUDITORIA_URL; // Auditoría
 const NUXT_PILOT_USUARIOS_URL = process.env.NUXT_PILOT_USUARIOS_URL; // Usuarios
 const NUXT_PILOT_LOGIN_URL = process.env.NUXT_PILOT_LOGIN_URL; // Login
-const NUXT_PILOT_ESTIBAS_URL = process.env.NUXT_PILOT_ESTIBAS_URL; // Estibas (montacargas)
+const NUXT_PILOT_MONTACARGAS_URL = process.env.NUXT_PILOT_MONTACARGAS_URL; // Control Montacargas + Resurtido
 
 // Todas apuntan al mismo deploy de nuxt-app (app.baseURL: '/dashboard/' compartido
 // en nuxt.config.ts) — sus assets (/_nuxt/*) y su $fetch interno a /api/* viven
@@ -27,9 +27,33 @@ const NUXT_PILOT_ESTIBAS_URL = process.env.NUXT_PILOT_ESTIBAS_URL; // Estibas (m
 // IMPORTANTE: toda variable nueva tiene que entrar en esta cadena. Si fuera la única
 // definida y no estuviera aquí, no se emitirían las reglas de /dashboard/api/* ni
 // /dashboard/_nuxt/* y su página cargaría en blanco.
-const SHARED_NUXT_URL = NUXT_PILOT_URL || NUXT_PILOT_TIENDA_URL || NUXT_PILOT_GOURMET_URL || NUXT_PILOT_PREOP_URL || NUXT_PILOT_INTEGRACION_URL || NUXT_PILOT_EXPORT_URL || NUXT_PILOT_SOLICITUDES_URL || NUXT_PILOT_AUDITORIA_URL || NUXT_PILOT_USUARIOS_URL || NUXT_PILOT_LOGIN_URL || NUXT_PILOT_ESTIBAS_URL;
+const SHARED_NUXT_URL = NUXT_PILOT_URL || NUXT_PILOT_TIENDA_URL || NUXT_PILOT_GOURMET_URL || NUXT_PILOT_PREOP_URL || NUXT_PILOT_INTEGRACION_URL || NUXT_PILOT_EXPORT_URL || NUXT_PILOT_SOLICITUDES_URL || NUXT_PILOT_AUDITORIA_URL || NUXT_PILOT_USUARIOS_URL || NUXT_PILOT_LOGIN_URL || NUXT_PILOT_MONTACARGAS_URL;
+
+// Cabeceras de seguridad. La app no tenia ninguna: sin ellas el navegador no
+// impide que la pongan en un iframe (clickjacking sobre una sesion abierta), ni
+// fuerza HTTPS en visitas siguientes, ni limita a donde se filtra la URL.
+// Se aplican a TODAS las rutas, incluidas las proxeadas a Nuxt (los rewrites de
+// beforeFiles no emiten cabeceras propias).
+const SECURITY_HEADERS = [
+  // La app se sirve solo desde su propio dominio; nunca debe embeberse.
+  { key: "X-Frame-Options", value: "DENY" },
+  { key: "X-Content-Type-Options", value: "nosniff" },
+  // No filtrar la ruta completa (que lleva ids de pedido/estiba) a terceros.
+  { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
+  // No se usa ninguna de estas APIs: negarlas de raiz. La camara NO se niega:
+  // el escaner de Cargue Gourmet la necesita (CameraScanner.vue).
+  { key: "Permissions-Policy", value: "geolocation=(), microphone=(), payment=(), usb=()" },
+  // 2 anios + subdominios. Vercel ya sirve solo HTTPS; esto ademas evita el
+  // primer request en claro, que es donde una contrasena viajaria expuesta.
+  { key: "Strict-Transport-Security", value: "max-age=63072000; includeSubDomains; preload" },
+];
 
 const nextConfig: NextConfig = {
+  // `headers()` se aplica tambien a las rutas reescritas hacia nuxt-app.
+  async headers() {
+    return [{ source: "/:path*", headers: SECURITY_HEADERS }];
+  },
+
   async rewrites() {
     const beforeFiles: { source: string; destination: string }[] = [];
 
@@ -75,13 +99,17 @@ const nextConfig: NextConfig = {
         { source: "/dashboard/auditoria/:path*", destination: `${NUXT_PILOT_AUDITORIA_URL}/dashboard/auditoria/:path*` },
       );
     }
-    // Estibas no tiene página React de respaldo (se construyó directo en Nuxt),
-    // así que sin esta variable la ruta da 404 en vez de degradar.
-    if (NUXT_PILOT_ESTIBAS_URL) {
-      beforeFiles.push(
-        { source: "/dashboard/estibas", destination: `${NUXT_PILOT_ESTIBAS_URL}/dashboard/estibas` },
-        { source: "/dashboard/estibas/:path*", destination: `${NUXT_PILOT_ESTIBAS_URL}/dashboard/estibas/:path*` },
-      );
+    // Una sola variable activa los dos módulos: comparten componente, API y
+    // deploy, así que no tiene sentido poder encender uno sin el otro.
+    // Ninguno tiene página React de respaldo (se construyeron directo en Nuxt),
+    // así que sin esta variable las rutas dan 404 en vez de degradar.
+    if (NUXT_PILOT_MONTACARGAS_URL) {
+      for (const modulo of ["control-montacargas", "resurtido"]) {
+        beforeFiles.push(
+          { source: `/dashboard/${modulo}`, destination: `${NUXT_PILOT_MONTACARGAS_URL}/dashboard/${modulo}` },
+          { source: `/dashboard/${modulo}/:path*`, destination: `${NUXT_PILOT_MONTACARGAS_URL}/dashboard/${modulo}/:path*` },
+        );
+      }
     }
     if (NUXT_PILOT_LOGIN_URL) {
       beforeFiles.push(

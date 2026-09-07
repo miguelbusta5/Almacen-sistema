@@ -18,7 +18,8 @@ export type ModuleKey =
   | "centro-control"
   | "integracion"
   | "cargue-gourmet"
-  | "estibas";
+  | "control-montacargas"
+  | "resurtido";
 
 export const MODULE_ACCESS: Record<ModuleKey, AppRole[]> = {
   transporte: ["TRANSPORTE", "SUPERVISOR_TRANSPORTE", "GERENTE", "ADMIN", "OPERADOR"],
@@ -69,10 +70,10 @@ export const MODULE_ACCESS: Record<ModuleKey, AppRole[]> = {
     "TRANSPORTE",
     "SUPERVISOR_TRANSPORTE",
   ],
-// Quien arma las estibas (MONTACARGAS) y quien responde por el almacenamiento.
-// Los supervisores de inventario y de transporte quedan fuera: el armado de
-// estibas de contenedor no es su área.
-  estibas: ["MONTACARGAS", "SUPERVISOR_ALMACENAMIENTO", "GERENTE", "ADMIN"],
+  // Montacarguistas y quien responde por el almacenamiento. Los supervisores de
+  // inventario y de transporte quedan fuera: el trabajo de montacargas no es su area.
+  "control-montacargas": ["MONTACARGAS", "SUPERVISOR_ALMACENAMIENTO", "GERENTE", "ADMIN"],
+  resurtido: ["MONTACARGAS", "SUPERVISOR_ALMACENAMIENTO", "GERENTE", "ADMIN"],
 };
 
 export function canSeeModule(role: string | undefined | null, moduleKey: ModuleKey): boolean {
@@ -118,5 +119,5 @@ export const ROLE_DESCRIPTION: Record<AppRole, string> = {
   OPERACIONES_GOURMET: "Solo ve y gestiona el modulo Integracion de Pedidos.",
   ETIQUETADO: "Solo ve y captura etiquetas de Exportaciones.",
   SUPERVISOR_ALMACENAMIENTO: "Gestiona Exportaciones, etiquetado y Estibas.",
-  MONTACARGAS: "Solo ve el modulo Estibas.",
+  MONTACARGAS: "Control Montacargas y Resurtido.",
 };

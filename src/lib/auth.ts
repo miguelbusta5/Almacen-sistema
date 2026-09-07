@@ -21,6 +21,16 @@ declare module "@auth/core/jwt" {
   }
 }
 
+// Bloqueo por fuerza bruta: 5 intentos fallidos → 15 minutos de espera. Sin
+// esto, una contraseña de 8 caracteres (el mínimo que exige la app) se puede
+// probar sin límite contra el endpoint de login.
+const MAX_INTENTOS = 5;
+const BLOQUEO_MINUTOS = 15;
+
+// Hash bcrypt válido de una cadena arbitraria, solo para igualar tiempos.
+// No corresponde a ninguna contraseña utilizable.
+const HASH_SENUELO = "$2a$12$C6UzMDM.H6dfI/f/IKcEe.7dO0bqBqyLwLrHqDGqZ0yBqXqXqXqXq";
+
 export const { handlers, auth, signIn, signOut } = NextAuth({
   providers: [
     Credentials({
@@ -36,10 +46,44 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         const email = rawEmail.toLowerCase().trim();
 
         const user = await prisma.user.findUnique({ where: { email } });
-        if (!user || !user.active) return null;
+
+        // Se compara contra un hash señuelo cuando el correo no existe para que
+        // el endpoint tarde lo mismo en ambos casos. Sin esto, la diferencia de
+        // tiempo (bcrypt vs. respuesta inmediata) delata qué correos son de
+        // usuarios reales, que es el primer paso de un ataque dirigido.
+        if (!user || !user.active) {
+          await bcrypt.compare(password, HASH_SENUELO);
+          return null;
+        }
+
+        // Cuenta bloqueada: no se evalúa la contraseña. El mensaje que ve el
+        // usuario es el mismo genérico de credenciales inválidas — decir "cuenta
+        // bloqueada" confirmaría que el correo existe.
+        if (user.bloqueadoHasta && user.bloqueadoHasta > new Date()) return null;
 
         const valid = await bcrypt.compare(password, user.password);
-        if (!valid) return null;
+
+        if (!valid) {
+          const intentos = user.intentosFallidos + 1;
+          await prisma.user.update({
+            where: { id: user.id },
+            data: {
+              intentosFallidos: intentos,
+              ...(intentos >= MAX_INTENTOS && {
+                bloqueadoHasta: new Date(Date.now() + BLOQUEO_MINUTOS * 60_000),
+              }),
+            },
+          }).catch(() => {});
+          return null;
+        }
+
+        // Login correcto: se limpia el contador para que los fallos sueltos de
+        // un usuario legítimo no se acumulen hasta bloquearlo semanas después.
+        if (user.intentosFallidos > 0 || user.bloqueadoHasta) {
+          await prisma.user
+            .update({ where: { id: user.id }, data: { intentosFallidos: 0, bloqueadoHasta: null } })
+            .catch(() => {});
+        }
 
         return { id: user.id, email: user.email, name: user.name, role: user.role, mustChangePassword: user.mustChangePassword };
       },

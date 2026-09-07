@@ -1,5 +1,68 @@
 # Decisiones de Arquitectura y Producto
 
+## 2026-09-07 - Control Montacargas + Resurtido, y auditoria de seguridad
+
+**Renombrado y ampliado** el modulo `estibas` (nunca llego a produccion: su variable
+`NUXT_PILOT_ESTIBAS_URL` jamas se activo, asi que la tabla quedo vacia y se pudo reestructurar
+en vez de migrar datos).
+
+### Cambios de producto
+
+1. **`estibas` -> `control-montacargas`**, con dos pestanas: *Recepcion de contenedor* y
+   *Movimientos de deposito*. **`resurtido` es un modulo aparte** en el menu, con el mismo flujo
+   que un movimiento. Una sola variable `NUXT_PILOT_MONTACARGAS_URL` activa los dos (comparten
+   componente, API y deploy).
+2. **Fuera el numero de pedido**: el operario ya no lo captura.
+3. **Reguero**: check que habilita el campo de unidades sueltas sin caja master.
+   `cantidadTotal = cajas x unidadesPorCaja + unidadesSueltas`. La UI limpia la cantidad al
+   desmarcar el check, y el servidor rechaza las dos incoherencias (check sin cantidad, cantidad
+   sin check) para que no queden datos huerfanos fuera de los reportes de reguero.
+   Un registro puede ser **solo reguero** (0 cajas).
+4. **`ubicacionInicial`**: obligatoria en MOVIMIENTO y RESURTIDO, nula en RECEPCION (un
+   contenedor no tiene ubicacion previa). `ubicacion` paso a llamarse `ubicacionFinal`.
+5. **Un registro abierto por operario Y POR TIPO** (antes era uno global). Asi un resurtido a
+   medias no bloquea empezar una recepcion, que es lo que pasa en piso.
+6. **Modelo unico `MovimientoMontacargas`** con enum `TipoMovimientoMontacargas`
+   (RECEPCION | MOVIMIENTO | RESURTIDO). Un solo listado, un solo Excel, filtrados por tipo:
+   sin ese filtro Resurtido mostraria los movimientos de deposito y al reves.
+7. **Cargue Gourmet**: alta de la tienda `1029 - Exito Unicentro Medellin` (MEDELLIN).
+
+### Auditoria de seguridad
+
+Disparada por el reporte de que "las contrasenas quedan expuestas en el inspector de Google".
+La contrasena que se ve ahi es la del propio usuario en su propia maquina (inherente a
+cualquier login por contrasena sobre HTTPS), pero el barrido encontro cuatro problemas reales:
+
+- **`mustChangePassword` no se aplicaba en Nuxt.** Vivia solo en
+  `src/app/(dashboard)/dashboard/layout.tsx`, y los 12 modulos se sirven por rewrite sin pasar
+  por ese layout: un usuario con contrasena temporal podia trabajar sin cambiarla nunca. El
+  corte se movio a `src/middleware.ts`, unico punto por el que pasan las dos pilas. Falla
+  ABIERTO si el token no decodifica, para no dejar a todos fuera ante una rotacion de secreto.
+- **Login sin limite de intentos.** Una contrasena de 8 caracteres (el minimo de la app) se
+  podia probar sin freno. Ahora: 5 fallos -> 15 minutos de bloqueo, con contador **en la base**
+  (`users.intentos_fallidos` / `users.bloqueado_hasta`) y no en memoria, porque en serverless
+  cada instancia tendria el suyo y el limite seria trivial de esquivar repartiendo intentos.
+- **Enumeracion de usuarios por tiempo de respuesta.** Un correo inexistente respondia sin
+  pasar por bcrypt; la diferencia delataba que correos son reales. Ahora se compara contra un
+  hash senuelo para igualar tiempos.
+- **Cero cabeceras de seguridad.** Se anadieron `X-Frame-Options: DENY` (clickjacking sobre una
+  sesion abierta), `X-Content-Type-Options`, `Referrer-Policy`, `Permissions-Policy` y HSTS, en
+  las dos apps (nuxt-app tiene dominio propio y es alcanzable sin pasar por el rewrite).
+  `camera` NO se niega: la necesita el escaner de Cargue Gourmet.
+
+**Dependencias:** de 20 vulnerabilidades (2 criticas) a 4. Se cerraron las criticas de
+`@auth/core`/`next-auth` y se subio Next 16.2.6 -> 16.3.4 por un *bypass de middleware* en App
+Router, que es justamente lo que protege las rutas aqui. Las 4 restantes son del toolchain del
+CLI de Prisma (`@prisma/config`, `deepmerge-ts`, `mysql2`, `prisma`) y npm solo las "arregla"
+bajando Prisma 7.8 -> 6.19, que es un downgrade; `mysql2` ni se usa (van con `adapter-pg`).
+**Riesgo aceptado y documentado**, revisar cuando Prisma 7 publique el parche.
+
+**No revisado por falta de acceso:** configuracion de Vercel (variables, dominios, proteccion de
+deploys) y politicas de la base en Supabase.
+
+**Migraciones:** `prisma/migrate-montacargas.sql` y `prisma/migrate-seguridad-login.sql`, ambas
+aditivas e idempotentes, aplicadas a produccion.
+
 ## 2026-09-04 - Módulo Estibas (montacargas): reemplazo de la planilla de Google Sheets
 
 **Contexto:** los montacarguistas llevaban el control de la mercancía de contenedores en

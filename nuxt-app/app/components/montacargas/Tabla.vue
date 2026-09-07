@@ -6,44 +6,45 @@ import { computed } from 'vue'
 import { useMediaQuery } from '@vueuse/core'
 import { Pencil, Trash2, TriangleAlert } from '@lucide/vue'
 import {
-  ESTADO_ESTIBA_LABEL, esUbicacionCanonica, fmtDuracion, fmtHoraEstiba, type Estiba,
-} from '~/utils/estibas'
+  ESTADO_MOVIMIENTO_LABEL, esUbicacionCanonica, fmtDuracion, fmtFechaCorta,
+  fmtHoraMovimiento, requiereUbicacionInicial, type Movimiento, type TipoMovimiento,
+} from '~/utils/montacargas'
 
 const props = defineProps<{
-  items: Estiba[]
+  items: Movimiento[]
+  tipo: TipoMovimiento
   canManage: boolean
   userId?: string
 }>()
 const emit = defineEmits<{
-  (e: 'editar', item: Estiba): void
-  (e: 'borrar', item: Estiba): void
+  (e: 'editar', item: Movimiento): void
+  (e: 'borrar', item: Movimiento): void
 }>()
 
 const esCompacto = useMediaQuery('(max-width: 760px)')
+const muestraOrigen = computed(() => requiereUbicacionInicial(props.tipo))
 
 // Editar: gestores cualquiera, el resto solo lo propio (espejo del gate de servidor).
-function puedeEditar(item: Estiba) {
+function puedeEditar(item: Movimiento) {
   return props.canManage || item.creadoPorId === props.userId
 }
 
-function badge(item: Estiba) {
+function badge(item: Movimiento) {
   return {
-    label: ESTADO_ESTIBA_LABEL[item.estado],
+    label: ESTADO_MOVIMIENTO_LABEL[item.estado],
     tone: item.estado === 'EN_CURSO' ? 'var(--info)' : 'var(--u-ok)',
   }
 }
 
-// Ubicación fuera del formato canónico: se marca para que supervisión pueda
-// revisarla, no para bloquearla (INSPECCION, MUEBLES… son legítimas).
-const libres = computed(
-  () => new Set(props.items.filter((i) => i.ubicacion && !esUbicacionCanonica(i.ubicacion)).map((i) => i.id)),
+// Ubicacion fuera del formato canonico: se marca para que supervision pueda
+// revisarla, no para bloquearla (INSPECCION, MUEBLES... son legitimas).
+const librs = computed(
+  () => new Set(
+    props.items
+      .filter((i) => i.ubicacionFinal && !esUbicacionCanonica(i.ubicacionFinal))
+      .map((i) => i.id),
+  ),
 )
-
-function fmtFecha(fecha: string | null): string {
-  if (!fecha) return '—'
-  const [y, m, d] = fecha.split('-')
-  return `${d}/${m}/${y}`
-}
 </script>
 
 <template>
@@ -52,38 +53,43 @@ function fmtFecha(fecha: string | null): string {
     <table v-if="!esCompacto" class="table">
       <thead>
         <tr>
-          <th>Fecha</th><th>Montacarguista</th><th>Pedido</th><th>PLU</th><th>Descripción</th>
-          <th>Cajas</th><th>Und/caja</th><th>Total</th><th>Depósito final</th>
-          <th>Inicio</th><th>Estado</th><th>Tiempo</th><th />
+          <th>Fecha</th><th>Montacarguista</th><th>PLU</th><th>Descripción</th>
+          <th>Cajas</th><th>Und/caja</th><th>Reguero</th><th>Total</th>
+          <th v-if="muestraOrigen">Ubic. inicial</th>
+          <th>Depósito final</th><th>Inicio</th><th>Estado</th><th>Tiempo</th><th />
         </tr>
       </thead>
       <tbody>
         <tr v-for="item in items" :key="item.id">
-          <td class="muted">{{ fmtFecha(item.fecha) }}</td>
+          <td class="muted">{{ fmtFechaCorta(item.fecha) }}</td>
           <td class="op">{{ item.creadoPorNombre ?? '—' }}</td>
-          <td class="mono strong">{{ item.pedido }}</td>
-          <td class="mono">{{ item.plu }}</td>
+          <td class="mono strong">{{ item.plu }}</td>
           <td class="desc" :title="item.descripcion">{{ item.descripcion }}</td>
           <td class="tnum">{{ item.cajas }}</td>
           <td class="tnum">
             {{ item.unidadesPorCaja }}
             <span v-if="item.unidadesManuales" class="manual" title="Escrita a mano: el maestro no la tenía">·M</span>
           </td>
+          <td class="tnum">
+            <span v-if="item.hayReguero" class="reguero">{{ item.unidadesSueltas }}</span>
+            <span v-else class="muted">—</span>
+          </td>
           <td class="tnum strong">{{ item.cantidadTotal }}</td>
+          <td v-if="muestraOrigen" class="mono">{{ item.ubicacionInicial ?? '—' }}</td>
           <td class="mono">
-            <template v-if="item.ubicacion">
-              {{ item.ubicacion }}
+            <template v-if="item.ubicacionFinal">
+              {{ item.ubicacionFinal }}
               <TriangleAlert
-                v-if="libres.has(item.id)" :size="11" class="ub-libre"
+                v-if="librs.has(item.id)" :size="11" class="ub-libre"
                 aria-label="Ubicación fuera del formato canónico"
               />
             </template>
             <span v-else class="muted">—</span>
           </td>
-          <td class="muted tnum">{{ fmtHoraEstiba(item.horaInicio) }}</td>
+          <td class="muted tnum">{{ fmtHoraMovimiento(item.horaInicio) }}</td>
           <td>
             <Badge v-bind="badge(item)" />
-            <span v-if="item.horaFinalizacion" class="fin tnum">{{ fmtHoraEstiba(item.horaFinalizacion) }}</span>
+            <span v-if="item.horaFinalizacion" class="fin tnum">{{ fmtHoraMovimiento(item.horaFinalizacion) }}</span>
           </td>
           <td class="tnum">{{ fmtDuracion(item.duracionMinutos) }}</td>
           <td class="acciones">
@@ -98,20 +104,21 @@ function fmtFecha(fecha: string | null): string {
       </tbody>
     </table>
 
-    <!-- Móvil -->
+    <!-- Movil -->
     <div v-else class="cards">
       <article v-for="item in items" :key="item.id" class="rowcard">
         <header class="rc-top">
-          <span class="mono strong">{{ item.pedido }}</span>
+          <span class="mono strong">{{ item.plu }}</span>
           <Badge v-bind="badge(item)" />
         </header>
-        <p class="rc-desc"><span class="mono">{{ item.plu }}</span> · {{ item.descripcion }}</p>
+        <p class="rc-desc">{{ item.descripcion }}</p>
         <dl class="rc-meta">
-          <div><dt>Fecha</dt><dd>{{ fmtFecha(item.fecha) }}</dd></div>
+          <div><dt>Fecha</dt><dd>{{ fmtFechaCorta(item.fecha) }}</dd></div>
           <div><dt>Cajas</dt><dd class="tnum">{{ item.cajas }} × {{ item.unidadesPorCaja }}</dd></div>
+          <div><dt>Reguero</dt><dd class="tnum">{{ item.hayReguero ? item.unidadesSueltas : '—' }}</dd></div>
           <div><dt>Total</dt><dd class="tnum strong">{{ item.cantidadTotal }}</dd></div>
-          <div><dt>Depósito</dt><dd class="mono">{{ item.ubicacion ?? '—' }}</dd></div>
-          <div><dt>Inicio</dt><dd class="tnum">{{ fmtHoraEstiba(item.horaInicio) }}</dd></div>
+          <div v-if="muestraOrigen"><dt>Inicial</dt><dd class="mono">{{ item.ubicacionInicial ?? '—' }}</dd></div>
+          <div><dt>Final</dt><dd class="mono">{{ item.ubicacionFinal ?? '—' }}</dd></div>
           <div><dt>Tiempo</dt><dd class="tnum">{{ fmtDuracion(item.duracionMinutos) }}</dd></div>
         </dl>
         <footer v-if="puedeEditar(item) || canManage" class="rc-acc">
@@ -123,7 +130,7 @@ function fmtFecha(fecha: string | null): string {
 
     <EmptyState
       v-if="items.length === 0"
-      title="Sin estibas" description="No hay estibas que coincidan con los filtros."
+      title="Sin registros" description="No hay registros que coincidan con los filtros."
     />
   </div>
 </template>
@@ -137,9 +144,10 @@ function fmtFecha(fecha: string | null): string {
 .strong { font-weight: 600; color: var(--ink); }
 .muted { color: var(--muted); }
 .op { font-size: 12.5px; }
-.desc { max-width: 240px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.desc { max-width: 230px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .fin { display: block; font-size: 11px; color: var(--muted); margin-top: 2px; }
 .manual { font-size: 10px; font-weight: 700; color: var(--u-aviso); }
+.reguero { font-weight: 600; color: var(--u-aviso); }
 .ub-libre { color: var(--u-aviso); vertical-align: -1px; }
 .acciones { display: flex; gap: 6px; }
 .btn-icon { display: inline-flex; align-items: center; gap: 4px; padding: 5px 9px; border-radius: var(--r-xs); border: 1px solid var(--border); background: var(--surface); color: var(--muted); cursor: pointer; font-size: 12px; }

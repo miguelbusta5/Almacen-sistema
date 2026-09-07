@@ -1,14 +1,15 @@
 import { defineEventHandler } from 'h3'
 import { prisma } from '../../utils/prisma'
 import { requireAuth } from '../../utils/auth'
-import { assertGestorEstibas } from '../../utils/estibas'
+import { assertGestorMontacargas } from '../../utils/montacargas'
 
-// GET /api/estibas/operarios — para el filtro por montacarguista del listado.
+// GET /api/montacargas/operarios - para el filtro por montacarguista del listado.
+// Sin filtrar por tipo a proposito: es el mismo equipo en los tres flujos.
 export default defineEventHandler(async (event) => {
   const actor = await requireAuth(event)
-  assertGestorEstibas(actor.role)
+  assertGestorMontacargas(actor.role)
 
-  const rows = await prisma.estiba.findMany({
+  const rows = await prisma.movimientoMontacargas.findMany({
     where: { deletedAt: null },
     distinct: ['creadoPorId'],
     select: { creadoPorId: true, creadoPor: { select: { name: true } } },

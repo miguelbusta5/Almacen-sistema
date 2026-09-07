@@ -1,7 +1,11 @@
 <script setup lang="ts">
-// Orquestador del módulo Estibas (montacargas). Sustituye la "PLANILLA
-// MONTACARGAS" de Google Sheets: el ciclo es crear estiba → asignar ubicación →
-// confirmación → siguiente, con el reloj sellado por el servidor.
+// Orquestador de Control Montacargas y Resurtido. Sustituye la "PLANILLA
+// MONTACARGAS" de Google Sheets: el ciclo es registrar → asignar ubicación
+// final → confirmación → siguiente, con el reloj sellado por el servidor.
+//
+// El mismo componente sirve a los dos módulos: Control Montacargas le pasa dos
+// flujos (recepción y movimientos, como pestañas) y Resurtido uno solo, que se
+// renderiza sin barra de pestañas.
 import { ref, computed, watch, onMounted, nextTick } from 'vue'
 import { RefreshCw, Download, Forklift } from '@lucide/vue'
 import { ensureSession, useSessionState } from '~/composables/useSession'
@@ -9,9 +13,16 @@ import { useToast } from '~/composables/useToast'
 import { useAutoRefresh } from '~/composables/useAutoRefresh'
 import { sonarVeredicto } from '~/utils/escaneoFeedback'
 import {
-  API_ESTIBAS, puedeGestionarEstibas, puedeUsarEstibas,
-  type Estiba, type EstibaConteos, type Operario,
-} from '~/utils/estibas'
+  API_MONTACARGAS, puedeGestionarMontacargas, puedeUsarMontacargas,
+  type FlujoConfig, type Movimiento, type MovimientoConteos, type Operario,
+} from '~/utils/montacargas'
+
+const props = defineProps<{
+  titulo: string
+  kicker: string
+  /** Uno o más flujos. Con más de uno se dibuja la barra de pestañas. */
+  flujos: FlujoConfig[]
+}>()
 
 const { me, sessionLoaded } = useSessionState()
 const { show: showToast } = useToast()
@@ -22,12 +33,17 @@ function apiErr(e: any, fallback: string) {
 
 const role = computed(() => me.value?.role ?? '')
 const userId = computed(() => me.value?.id)
-const puedeVer = computed(() => puedeUsarEstibas(role.value))
-const canManage = computed(() => puedeGestionarEstibas(role.value))
+const puedeVer = computed(() => puedeUsarMontacargas(role.value))
+const canManage = computed(() => puedeGestionarMontacargas(role.value))
+
+// ── Pestaña activa ─────────────────────────────────────────────────
+const flujoActivo = ref<FlujoConfig>(props.flujos[0]!)
+const tipo = computed(() => flujoActivo.value.tipo)
+const hayPestanas = computed(() => props.flujos.length > 1)
 
 // ── Listado ────────────────────────────────────────────────
 const PAGE_SIZE = 40
-const items = ref<Estiba[]>([])
+const items = ref<Movimiento[]>([])
 const total = ref(0)
 const page = ref(1)
 const loading = ref(true)
@@ -41,35 +57,41 @@ const fUsuario = ref('')
 
 async function loadLista() {
   try {
-    const query: Record<string, string | number> = { page: page.value, pageSize: PAGE_SIZE }
+    const query: Record<string, string | number> = { tipo: tipo.value, page: page.value, pageSize: PAGE_SIZE }
     if (fQ.value) query.q = fQ.value
     if (fFecha.value) query.fecha = fFecha.value
     if (fEstado.value) query.estado = fEstado.value
     if (fUsuario.value) query.usuarioId = fUsuario.value
-    const res = await $fetch<{ data: Estiba[]; total: number }>(API_ESTIBAS, { query })
+    const res = await $fetch<{ data: Movimiento[]; total: number }>(API_MONTACARGAS, { query })
     items.value = res.data
     total.value = res.total
   } catch (e) {
-    showToast(apiErr(e, 'No se pudieron cargar las estibas'), true)
+    showToast(apiErr(e, 'No se pudieron cargar los registros'), true)
   }
 }
 
-// ── Estiba en curso ────────────────────────────────────────
+// ── Registro en curso ──────────────────────────────────────
 // Endpoint propio, no derivado de la lista: el paso de ubicar tiene que
 // sobrevivir a los filtros, la paginación y a recargar la página.
-const abierta = ref<Estiba | null>(null)
-async function loadAbierta() {
+const abierto = ref<Movimiento | null>(null)
+async function loadAbierto() {
   try {
-    const res = await $fetch<{ data: Estiba | null }>(`${API_ESTIBAS}/abierta`)
-    abierta.value = res.data
+    const res = await $fetch<{ data: Movimiento | null }>(`${API_MONTACARGAS}/abierto`, {
+      query: { tipo: tipo.value },
+    })
+    abierto.value = res.data
   } catch { /* no bloquea la vista */ }
 }
 
 // ── KPIs ───────────────────────────────────────────────────
-const conteos = ref<EstibaConteos>({ estibasHoy: 0, cajasHoy: 0, unidadesHoy: 0, enCurso: 0, promedioMin: null })
+const conteos = ref<MovimientoConteos>({
+  registrosHoy: 0, cajasHoy: 0, unidadesHoy: 0, sueltasHoy: 0, enCurso: 0, promedioMin: null,
+})
 async function loadConteos() {
   try {
-    const res = await $fetch<{ data: EstibaConteos }>(`${API_ESTIBAS}/conteos`)
+    const res = await $fetch<{ data: MovimientoConteos }>(`${API_MONTACARGAS}/conteos`, {
+      query: { tipo: tipo.value },
+    })
     conteos.value = res.data
   } catch { /* deja los conteos previos si falla */ }
 }
@@ -79,18 +101,33 @@ const operarios = ref<Operario[]>([])
 async function loadOperarios() {
   if (!canManage.value) return
   try {
-    const res = await $fetch<{ data: Operario[] }>(`${API_ESTIBAS}/operarios`)
+    const res = await $fetch<{ data: Operario[] }>(`${API_MONTACARGAS}/operarios`)
     operarios.value = res.data
   } catch { /* silencioso: es un filtro auxiliar */ }
+}
+
+async function cargarTodo() {
+  loading.value = true
+  await Promise.all([loadLista(), loadAbierto(), loadConteos()])
+  loading.value = false
 }
 
 // ── Ciclo de vida ──────────────────────────────────────────
 onMounted(async () => {
   await ensureSession()
   if (!puedeVer.value) { loading.value = false; return }
-  loading.value = true
-  await Promise.all([loadLista(), loadAbierta(), loadConteos(), loadOperarios()])
-  loading.value = false
+  await Promise.all([cargarTodo(), loadOperarios()])
+})
+
+// Cambiar de pestaña es cambiar de flujo entero: se reinician filtros y página
+// para no arrastrar un filtro que no aplica al otro tipo.
+watch(flujoActivo, () => {
+  page.value = 1
+  fQ.value = ''
+  fFecha.value = ''
+  fEstado.value = ''
+  fUsuario.value = ''
+  void cargarTodo()
 })
 
 watch(page, () => { void loadLista() })
@@ -105,11 +142,11 @@ const formDirty = ref(false)
 useAutoRefresh({
   onRefresh: () => {
     if (!puedeVer.value) return
-    // Nunca refrescar con una estiba abierta: el panel de ubicación tiene el
+    // Nunca refrescar con un registro abierto: el panel de ubicación tiene el
     // foco en su input y un re-render le robaría lo que el operario escribe.
-    if (abierta.value || formDirty.value || saving.value || cerrando.value || editando.value) return
+    if (abierto.value || formDirty.value || saving.value || cerrando.value || editando.value) return
     void loadLista()
-    void loadAbierta()
+    void loadAbierto()
     void loadConteos()
   },
 })
@@ -117,93 +154,100 @@ useAutoRefresh({
 async function refreshAll() {
   if (refreshing.value) return
   refreshing.value = true
-  await Promise.all([loadLista(), loadAbierta(), loadConteos()])
+  await Promise.all([loadLista(), loadAbierto(), loadConteos()])
   refreshing.value = false
 }
 
 function limpiarFiltros() { fQ.value = ''; fFecha.value = ''; fEstado.value = ''; fUsuario.value = '' }
 function onKpiFilter(key: string) { fEstado.value = key }
 
-// ── Paso 1: crear ──────────────────────────────────────────
+// ── Paso 1: registrar ──────────────────────────────────────
 const capturaRef = ref<{ reset: () => void } | null>(null)
 const saving = ref(false)
-// El pedido vive aquí y no en Captura porque ese componente se desmonta mientras
-// hay una estiba en curso. Un contenedor son decenas de estibas del mismo pedido.
-const pedido = ref('')
 
-async function crear(payload: { pedido: string; codigo: string; cajas: number; unidadesPorCaja: number }) {
+async function crear(payload: {
+  codigo: string
+  cajas: number
+  unidadesPorCaja: number
+  hayReguero: boolean
+  unidadesSueltas: number
+  ubicacionInicial?: string
+}) {
   saving.value = true
   try {
-    const res = await $fetch<{ data: Estiba }>(API_ESTIBAS, { method: 'POST', body: payload })
-    abierta.value = res.data
+    const res = await $fetch<{ data: Movimiento }>(API_MONTACARGAS, {
+      method: 'POST',
+      body: { ...payload, tipo: tipo.value },
+    })
+    abierto.value = res.data
     await Promise.all([loadLista(), loadConteos()])
   } catch (e: any) {
-    // 409: ya había una estiba abierta. El servidor la devuelve para que la UI
-    // salte al paso de ubicar en vez de dejar al operario atascado creando.
-    const yaAbierta = e?.data?.data?.estiba as Estiba | undefined
-    if (yaAbierta) {
-      abierta.value = yaAbierta
-      showToast('Ya tenías una estiba en curso: asígnale la ubicación', true)
+    // 409: ya había un registro abierto de este tipo. El servidor lo devuelve
+    // para que la UI salte al paso de ubicar en vez de dejar al operario
+    // atascado creando.
+    const yaAbierto = e?.data?.data?.movimiento as Movimiento | undefined
+    if (yaAbierto) {
+      abierto.value = yaAbierto
+      showToast('Ya tenías un registro en curso: asígnale la ubicación final', true)
     } else {
-      showToast(apiErr(e, 'No se pudo crear la estiba'), true)
+      showToast(apiErr(e, 'No se pudo crear el registro'), true)
     }
   } finally {
     saving.value = false
   }
 }
 
-// ── Paso 2: ubicar (cierra la estiba) ──────────────────────
+// ── Paso 2: ubicar (cierra el registro) ────────────────────
 const cerrando = ref(false)
-const exito = ref<Estiba | null>(null)
+const exito = ref<Movimiento | null>(null)
 let exitoTimer: ReturnType<typeof setTimeout> | null = null
 
-async function asignarUbicacion(ubicacion: string) {
-  if (!abierta.value) return
+async function asignarUbicacion(ubicacionFinal: string) {
+  if (!abierto.value) return
   cerrando.value = true
   try {
-    const res = await $fetch<{ data: Estiba }>(`${API_ESTIBAS}/${abierta.value.id}/ubicacion`, {
+    const res = await $fetch<{ data: Movimiento }>(`${API_MONTACARGAS}/${abierto.value.id}/ubicacion`, {
       method: 'POST',
-      body: { ubicacion },
+      body: { ubicacionFinal },
     })
-    abierta.value = null
+    abierto.value = null
 
     // Confirmación de proceso exitoso: overlay + sonido/vibración, para que el
-    // operario lo perciba sin mirar la pantalla y encadene la siguiente.
+    // operario lo perciba sin mirar la pantalla y encadene el siguiente.
     exito.value = res.data
     sonarVeredicto('VALIDO')
     if (exitoTimer) clearTimeout(exitoTimer)
     exitoTimer = setTimeout(() => { exito.value = null }, 1800)
 
-    // Captura vuelve a montarse (era el v-else de `abierta`), ya con el pedido
-    // intacto y el foco en el código. El reset es la red por si en algún flujo
-    // el componente no llegara a desmontarse.
+    // Captura vuelve a montarse (era el v-else de `abierto`), con el foco en el
+    // código. El reset es la red por si en algún flujo no llegara a desmontarse.
     await nextTick()
     capturaRef.value?.reset()
 
     await Promise.all([loadLista(), loadConteos()])
   } catch (e) {
-    showToast(apiErr(e, 'No se pudo cerrar la estiba'), true)
+    showToast(apiErr(e, 'No se pudo cerrar el registro'), true)
   } finally {
     cerrando.value = false
   }
 }
 
 // ── Edición y borrado ──────────────────────────────────────
-const editando = ref<Estiba | null>(null)
-const borrando = ref<Estiba | null>(null)
+const editando = ref<Movimiento | null>(null)
+const borrando = ref<Movimiento | null>(null)
 const deleting = ref(false)
 
 async function confirmarBorrado() {
   if (!borrando.value) return
   deleting.value = true
   try {
-    await $fetch(`${API_ESTIBAS}/${borrando.value.id}`, {
+    await $fetch(`${API_MONTACARGAS}/${borrando.value.id}`, {
       method: 'DELETE',
       query: { motivo: 'Borrado desde interfaz' },
     })
     borrando.value = null
-    showToast('Estiba borrada')
-    await Promise.all([loadLista(), loadAbierta(), loadConteos()])
+    showToast('Registro borrado')
+    await Promise.all([loadLista(), loadAbierto(), loadConteos()])
   } catch (e) {
     showToast(apiErr(e, 'No se pudo borrar'), true)
   } finally {
@@ -213,8 +257,8 @@ async function confirmarBorrado() {
 
 async function onEditado() {
   editando.value = null
-  showToast('Estiba actualizada ✓')
-  await Promise.all([loadLista(), loadAbierta(), loadConteos()])
+  showToast('Registro actualizado ✓')
+  await Promise.all([loadLista(), loadAbierto(), loadConteos()])
 }
 
 // ── Excel ──────────────────────────────────────────────────
@@ -223,16 +267,16 @@ async function exportar() {
   if (exporting.value) return
   exporting.value = true
   try {
-    const query: Record<string, string> = {}
+    const query: Record<string, string> = { tipo: tipo.value }
     if (fQ.value) query.q = fQ.value
     if (fFecha.value) query.fecha = fFecha.value
     if (fEstado.value) query.estado = fEstado.value
     if (fUsuario.value) query.usuarioId = fUsuario.value
-    const blob = await $fetch<Blob>(`${API_ESTIBAS}/export`, { query, responseType: 'blob' })
+    const blob = await $fetch<Blob>(`${API_MONTACARGAS}/export`, { query, responseType: 'blob' })
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
     a.href = url
-    a.download = `estibas-${new Date().toISOString().slice(0, 10)}.xlsx`
+    a.download = `montacargas-${tipo.value.toLowerCase()}-${new Date().toISOString().slice(0, 10)}.xlsx`
     a.click()
     URL.revokeObjectURL(url)
   } catch (e) {
@@ -249,11 +293,11 @@ async function exportar() {
       <div class="hero-left">
         <div class="hero-kicker">
           <span class="hero-ic"><Forklift :size="13" /></span>
-          Montacargas · Flujo CEDI
+          {{ kicker }}
         </div>
-        <h1 class="hero-title">Estibas</h1>
+        <h1 class="hero-title">{{ titulo }}</h1>
         <p class="hero-desc">
-          {{ loading ? 'Cargando…' : `${total} estiba${total !== 1 ? 's' : ''}` }}
+          {{ loading ? 'Cargando…' : `${total} registro${total !== 1 ? 's' : ''} · ${flujoActivo.descripcion}` }}
         </p>
       </div>
       <div class="hero-actions">
@@ -277,47 +321,60 @@ async function exportar() {
     />
 
     <template v-else>
-      <!-- Un paso o el otro, nunca los dos: con una estiba abierta lo único que
-           se puede hacer es ubicarla. Así no hay forma de armar dos a la vez y
-           el tiempo medido sigue significando algo. -->
-      <EstibasUbicacionPanel
-        v-if="abierta" class="bloque" :estiba="abierta" :saving="cerrando"
+      <!-- Con un solo flujo (Resurtido) no se dibuja la barra: una pestaña
+           única es ruido que no decide nada. -->
+      <nav v-if="hayPestanas" class="tabs" role="tablist">
+        <button
+          v-for="f in flujos" :key="f.tipo" class="tab" role="tab"
+          :class="{ on: f.tipo === flujoActivo.tipo }"
+          :aria-selected="f.tipo === flujoActivo.tipo"
+          @click="flujoActivo = f"
+        >
+          {{ f.tab }}
+        </button>
+      </nav>
+
+      <!-- Un paso o el otro, nunca los dos: con un registro abierto lo único
+           que se puede hacer es ubicarlo. Así no hay forma de arrancar dos a la
+           vez y el tiempo medido sigue significando algo. -->
+      <MontacargasUbicacionPanel
+        v-if="abierto" class="bloque" :movimiento="abierto" :saving="cerrando"
         @submit="asignarUbicacion"
       />
-      <EstibasCaptura
-        v-else ref="capturaRef" v-model:pedido="pedido" class="bloque" :saving="saving"
+      <MontacargasCaptura
+        v-else ref="capturaRef" class="bloque" :flujo="flujoActivo" :saving="saving"
         @submit="crear" @dirty="formDirty = $event"
       />
 
-      <EstibasKpiRail class="bloque" :counts="conteos" @filter="onKpiFilter" />
+      <MontacargasKpiRail class="bloque" :counts="conteos" @filter="onKpiFilter" />
 
-      <EstibasFiltros
+      <MontacargasFiltros
         v-model:q="fQ" v-model:fecha="fFecha" v-model:estado="fEstado" v-model:usuario-id="fUsuario"
         :operarios="operarios" :can-manage="canManage" @clear="limpiarFiltros"
       />
 
       <ListSkeleton v-if="loading" />
       <template v-else>
-        <EstibasTabla
-          :items="items" :can-manage="canManage" :user-id="userId"
+        <MontacargasTabla
+          :items="items" :tipo="flujoActivo.tipo" :can-manage="canManage" :user-id="userId"
           @editar="editando = $event" @borrar="borrando = $event"
         />
         <PageNav v-if="pages > 1" v-model:page="page" :pages="pages" class="pagenav" />
       </template>
     </template>
 
-    <EstibasEditarModal
+    <MontacargasEditarModal
       v-if="editando" :item="editando" :can-manage="canManage"
       @close="editando = null" @saved="onEditado"
     />
     <ConfirmModal
       v-if="borrando"
-      title="Borrar estiba"
-      :message="`Se marcará como borrada la estiba del pedido ${borrando.pedido} (PLU ${borrando.plu}). Podrás verla en auditoría.`"
+      title="Borrar registro"
+      :message="`Se marcará como borrado el registro del PLU ${borrando.plu}. Podrás verlo en auditoría.`"
       confirm-label="Borrar" :confirming="deleting"
       @close="borrando = null" @confirm="confirmarBorrado"
     />
-    <EstibasExitoOverlay :estiba="exito" />
+    <MontacargasExitoOverlay :movimiento="exito" />
   </div>
 </template>
 
@@ -331,10 +388,22 @@ async function exportar() {
 .refresh.spin :deep(svg) { animation: spin 1s linear infinite; }
 @keyframes spin { to { transform: rotate(360deg); } }
 
+.tabs { display: flex; gap: 4px; margin-bottom: 16px; border-bottom: 1px solid var(--border); }
+.tab {
+  appearance: none; border: none; background: none; cursor: pointer;
+  padding: 9px 15px; font-size: 13px; font-weight: 600; color: var(--muted);
+  border-bottom: 2px solid transparent; margin-bottom: -1px;
+  transition: color .15s, border-color .15s;
+}
+.tab:hover { color: var(--ink-2); }
+.tab.on { color: var(--brand); border-bottom-color: var(--brand); }
+.tab:focus-visible { outline: none; box-shadow: var(--ring); border-radius: var(--r-xs); }
+
 .bloque { margin-bottom: 18px; }
 .pagenav { margin-top: 16px; }
 
 @media (max-width: 700px) {
   .hero-title { font-size: 24px; }
+  .tab { flex: 1; padding: 11px 8px; }
 }
 </style>

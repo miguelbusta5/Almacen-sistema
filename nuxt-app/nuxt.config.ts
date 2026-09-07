@@ -11,7 +11,19 @@ export default defineNuxtConfig({
   // cada navegación. Servir el shell SPA lo elimina sin ningún cambio
   // visual. Las rutas /api/** son de Nitro y no pasan por esta regla.
   routeRules: {
-    '/**': { ssr: false },
+    // Mismas cabeceras de seguridad que emite la app Next (ver SECURITY_HEADERS
+    // en next.config.ts). Hacen falta aqui tambien porque este deploy tiene su
+    // propio dominio de Vercel y es alcanzable directo, sin pasar por el rewrite.
+    '/**': {
+      ssr: false,
+      headers: {
+        'X-Frame-Options': 'DENY',
+        'X-Content-Type-Options': 'nosniff',
+        'Referrer-Policy': 'strict-origin-when-cross-origin',
+        'Permissions-Policy': 'geolocation=(), microphone=(), payment=(), usb=()',
+        'Strict-Transport-Security': 'max-age=63072000; includeSubDomains; preload',
+      },
+    },
   },
   app: {
     // La app solo se sirve vía rewrites de Next.js bajo /dashboard/<modulo>

@@ -10,6 +10,7 @@
 // ═══════════════════════════════════════════════════════════
 
 import { NextRequest, NextResponse } from "next/server";
+import { decode } from "@auth/core/jwt";
 
 // Nombres de cookies que usa Auth.js v5 según el entorno
 const SESSION_COOKIES = [
@@ -18,7 +19,37 @@ const SESSION_COOKIES = [
   "next-auth.session-token",        // legacy v4 (compat)
 ];
 
-export function middleware(request: NextRequest) {
+/**
+ * Fuerza el cambio de contraseña temporal.
+ *
+ * Vivía SOLO en src/app/(dashboard)/dashboard/layout.tsx, pero los 12 módulos se
+ * sirven ahora desde nuxt-app vía rewrite y ese layout no llega a ejecutarse: un
+ * usuario con contraseña temporal podía entrar a cualquier módulo y trabajar sin
+ * cambiarla nunca. El middleware es el único punto por el que pasan las dos
+ * pilas, así que el corte va aquí.
+ *
+ * Falla ABIERTO a propósito: si el token no se puede decodificar (rotación del
+ * secreto, formato viejo) se deja pasar y el gate de sesión de cada endpoint
+ * sigue aplicando. Bloquear ante un error dejaría a todo el mundo fuera.
+ */
+async function debeCambiarPassword(request: NextRequest): Promise<boolean> {
+  const secret = process.env.NEXTAUTH_SECRET || process.env.AUTH_SECRET;
+  if (!secret) return false;
+
+  for (const salt of SESSION_COOKIES) {
+    const token = request.cookies.get(salt)?.value;
+    if (!token) continue;
+    try {
+      const payload = await decode({ token, secret, salt });
+      if (payload) return payload.mustChangePassword === true;
+    } catch {
+      // Token con otro salt/secreto — probar el siguiente.
+    }
+  }
+  return false;
+}
+
+export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   if (pathname.startsWith("/api/logistica")) {
@@ -54,6 +85,11 @@ export function middleware(request: NextRequest) {
 
   if (pathname.startsWith("/dashboard/logistica")) {
     return NextResponse.redirect(new URL("/dashboard", request.url));
+  }
+
+  // Contraseña temporal: no se entra a ningún módulo hasta cambiarla.
+  if (await debeCambiarPassword(request)) {
+    return NextResponse.redirect(new URL("/cambiar-password", request.url));
   }
 
   // Sesión presente → dejar pasar.

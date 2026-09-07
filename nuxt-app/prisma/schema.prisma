@@ -57,7 +57,7 @@ model ProductoMaestro {
   marca           String?  @db.VarChar(255)
   // Código de barras: es lo que lee la pistola del montacarguista, que no ve el PLU.
   ean             String?  @db.VarChar(20)
-  // "Und Emp" del maestro. Nulo en ~71% del catálogo, por eso Estiba deja
+  // "Und Emp" del maestro. Nulo en ~71% del catálogo, por eso el modulo deja
   // escribirlo a mano en vez de bloquear la captura.
   unidadesPorCaja Int?     @map("unidades_por_caja")
   createdAt       DateTime @default(now()) @map("created_at")
@@ -112,6 +112,11 @@ model User {
   role      Role     @default(OPERADOR)
   active    Boolean  @default(true)
   mustChangePassword Boolean @default(false) @map("must_change_password")
+  // Bloqueo por fuerza bruta. Se persiste en vez de guardarse en memoria porque
+  // en serverless cada instancia tendria su propio contador y el limite seria
+  // trivial de esquivar repartiendo los intentos.
+  intentosFallidos   Int       @default(0) @map("intentos_fallidos")
+  bloqueadoHasta     DateTime? @map("bloqueado_hasta")
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
@@ -136,8 +141,8 @@ model User {
   exportacionesEeuuCreadas       EtiquetadoExportacionEeuu[]    @relation("ExportacionesEeuuEtiquetadoCreadas")
   exportacionesEeuuActualizadas  EtiquetadoExportacionEeuu[]    @relation("ExportacionesEeuuEtiquetadoActualizadas")
   gourmetPedidosCreados          GourmetPedido[]                @relation("GourmetPedidosCreados")
-  estibasCreadas                 Estiba[]                       @relation("EstibasCreadas")
-  estibasActualizadas            Estiba[]                       @relation("EstibasActualizadas")
+  movimientosMontacargasCreados      MovimientoMontacargas[] @relation("MovimientosMontacargasCreados")
+  movimientosMontacargasActualizados MovimientoMontacargas[] @relation("MovimientosMontacargasActualizados")
 
   @@index([email])
   @@map("users")
@@ -158,7 +163,7 @@ enum Role {
   OPERACIONES_GOURMET // Operario Operaciones Gourmet — solo módulo integración
   ETIQUETADO // Operario etiquetado exportaciones — solo módulo exportaciones
   SUPERVISOR_ALMACENAMIENTO // Supervisor almacenamiento — gestiona exportaciones
-  MONTACARGAS // Montacarguista — solo módulo Estibas
+  MONTACARGAS // Montacarguista — Control Montacargas y Resurtido
 }
 
 enum EstadoDespacho {
@@ -1038,30 +1043,50 @@ model GourmetCargueNovedad {
   @@map("gourmet_cargue_novedades")
 }
 
-// Estiba armada por un montacarguista con la mercancía de un contenedor.
-// Sustituye la "PLANILLA MONTACARGAS" (Google Sheets), donde el tiempo lo ponía
-// un NOW() volátil de Excel: aquí horaInicio/horaFinalizacion los sella el
-// servidor, así que la medición de productividad es confiable.
-// Una estiba = un PLU (igual que una fila de la planilla). El ciclo es en dos
-// pasos: crear (arranca el reloj) y asignar ubicación (lo para).
-model Estiba {
-  id               String    @id @default(cuid())
-  pedido           String    @db.VarChar(50)
-  plu              String    @db.VarChar(100)
-  // Lo que leyó la pistola, si se capturó por código de barras en vez de por PLU.
-  ean              String?   @db.VarChar(20)
-  descripcion      String    @db.VarChar(255)
-  cajas            Int
-  unidadesPorCaja  Int       @map("unidades_por_caja")
+enum TipoMovimientoMontacargas {
+  RECEPCION // Mercancia de contenedor: llega sin ubicacion previa
+  MOVIMIENTO // Movimiento entre depositos: sale de una ubicacion y va a otra
+  RESURTIDO // Resurtido: mismo flujo que un movimiento, modulo aparte
+}
+
+// Registro de trabajo de un montacarguista. Sustituye la "PLANILLA MONTACARGAS"
+// (Google Sheets), donde el tiempo lo ponia un NOW() volatil de Excel: aqui
+// horaInicio/horaFinalizacion los sella el servidor, asi que la medicion de
+// productividad es confiable.
+// Un registro = un PLU. El ciclo es en dos pasos: crear (arranca el reloj) y
+// asignar la ubicacion final (lo para).
+model MovimientoMontacargas {
+  id   String                    @id @default(cuid())
+  tipo TipoMovimientoMontacargas
+
+  plu         String  @db.VarChar(100)
+  // Lo que leyo la pistola, si se capturo por codigo de barras en vez de por PLU.
+  ean         String? @db.VarChar(20)
+  descripcion String  @db.VarChar(255)
+
+  // Cajas master completas.
+  cajas           Int
+  unidadesPorCaja Int @map("unidades_por_caja")
   // El maestro no trae "Und Emp" para ~71% de los productos; cuando el operario
-  // la escribe a mano se marca aquí, y esa lista es el trabajo de completar el
-  // catálogo.
-  unidadesManuales Boolean   @default(false) @map("unidades_manuales")
-  // cajas * unidadesPorCaja, sellado al crear. Se persiste (en vez de derivarse)
-  // porque es la cifra que agregan los KPIs y el export.
-  cantidadTotal    Int       @map("cantidad_total")
-  // Null mientras la estiba está en curso: asignarla es lo que la cierra.
-  ubicacion        String?   @db.VarChar(120)
+  // la escribe a mano se marca aqui, y esa lista es el trabajo de completar el
+  // catalogo.
+  unidadesManuales Boolean @default(false) @map("unidades_manuales")
+
+  // Reguero: unidades sueltas que no vienen en caja master.
+  hayReguero      Boolean @default(false) @map("hay_reguero")
+  unidadesSueltas Int     @default(0) @map("unidades_sueltas")
+
+  // cajas * unidadesPorCaja + unidadesSueltas, sellado al crear. Se persiste (en
+  // vez de derivarse) porque es la cifra que agregan los KPIs y el export.
+  cantidadTotal Int @map("cantidad_total")
+
+  // Solo en MOVIMIENTO y RESURTIDO: de donde sale la mercancia. En RECEPCION es
+  // null porque el contenedor no tiene ubicacion previa.
+  ubicacionInicial String? @map("ubicacion_inicial") @db.VarChar(120)
+  // Ubicacion final. Null mientras el registro esta en curso: asignarla es lo
+  // que lo cierra.
+  ubicacionFinal   String? @map("ubicacion_final") @db.VarChar(120)
+
   fecha            DateTime  @db.Date
   horaInicio       DateTime  @map("hora_inicio")
   horaFinalizacion DateTime? @map("hora_finalizacion")
@@ -1069,17 +1094,16 @@ model Estiba {
   deletedAt        DateTime? @map("deleted_at")
 
   creadoPorId      String  @map("creado_por_id")
-  creadoPor        User    @relation("EstibasCreadas", fields: [creadoPorId], references: [id])
+  creadoPor        User    @relation("MovimientosMontacargasCreados", fields: [creadoPorId], references: [id])
   actualizadoPorId String? @map("actualizado_por_id")
-  actualizadoPor   User?   @relation("EstibasActualizadas", fields: [actualizadoPorId], references: [id])
+  actualizadoPor   User?   @relation("MovimientosMontacargasActualizados", fields: [actualizadoPorId], references: [id])
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
-  // Sirve la consulta caliente: "la estiba abierta de este operario".
-  @@index([creadoPorId, horaFinalizacion, deletedAt])
-  @@index([fecha])
-  @@index([pedido])
+  // Sirve la consulta caliente: "el registro abierto de este operario en este tipo".
+  @@index([creadoPorId, tipo, horaFinalizacion, deletedAt])
+  @@index([tipo, fecha])
   @@index([plu])
-  @@map("estibas")
+  @@map("movimientos_montacargas")
 }

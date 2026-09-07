@@ -1,7 +1,7 @@
 import { defineEventHandler, getQuery, createError } from 'h3'
 import { prisma } from '../../utils/prisma'
 import { requireAuth } from '../../utils/auth'
-import { normalizarCodigoProducto, pareceEan } from '../../utils/estibasCalc'
+import { normalizarCodigoProducto, pareceEan } from '../../utils/montacargasCalc'
 
 // GET /api/productos-maestro/buscar?codigo=… — resuelve por PLU **o** por EAN.
 // Existe aparte de [plu].get.ts porque la pistola del montacarguista lee el

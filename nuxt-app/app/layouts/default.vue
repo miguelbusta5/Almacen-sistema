@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue'
 import {
-  ShieldCheck, Store, GitMerge, ScanLine, Forklift, Tags, Globe, FileText, Truck,
+  ShieldCheck, Store, GitMerge, ScanLine, Forklift, PackageOpen, Tags, Globe, FileText, Truck,
   BarChart3, Users, ScrollText, Search, Bell, CheckCircle2, TriangleAlert,
   Menu, X,
 } from '@lucide/vue'
@@ -45,7 +45,8 @@ const NAV_GROUPS: NavItem[][] = [
     { icon: Store, label: 'Facturas Contado', href: '/dashboard/tienda', key: 'tienda', moduleKey: 'tienda' },
     { icon: GitMerge, label: 'Integración Pedidos', href: '/dashboard/integracion', key: 'integracion', moduleKey: 'integracion' },
     { icon: ScanLine, label: 'Cargue Gourmet', href: '/dashboard/cargue-gourmet', key: 'cargue-gourmet', moduleKey: 'cargue-gourmet' },
-    { icon: Forklift, label: 'Estibas', href: '/dashboard/estibas', key: 'estibas', moduleKey: 'estibas' },
+    { icon: Forklift, label: 'Control Montacargas', href: '/dashboard/control-montacargas', key: 'control-montacargas', moduleKey: 'control-montacargas' },
+    { icon: PackageOpen, label: 'Resurtido', href: '/dashboard/resurtido', key: 'resurtido', moduleKey: 'resurtido' },
     { icon: Tags, label: 'Exportaciones Ecuador', href: '/dashboard/exportaciones', key: 'exportaciones', moduleKey: 'exportaciones' },
     { icon: Globe, label: 'Exportaciones México', href: '/dashboard/exportaciones-mexico', key: 'exportaciones-mexico', moduleKey: 'exportaciones-mexico' },
     { icon: Globe, label: 'Exportaciones EE.UU', href: '/dashboard/exportaciones-eeuu', key: 'exportaciones-eeuu', moduleKey: 'exportaciones-eeuu' },

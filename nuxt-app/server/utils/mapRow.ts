@@ -2,7 +2,7 @@
 // cliente de Prisma para el delegate por país, y mapRow lo usan los handlers de
 // TODOS los módulos. Ver la nota en exportacionesCalc.ts.
 import { calcularDuracionMinutos, formatDateOnly } from './exportacionesCalc'
-import { estadoEstiba } from './estibasCalc'
+import { estadoMovimiento } from './montacargasCalc'
 
 // Mapea la fila de TransporteGuardado al shape del cliente (igual que la app Next).
 export function mapGuardado(r: any) {
@@ -362,25 +362,29 @@ export function mapExportacion(r: any) {
   }
 }
 
-// Mapea la fila de Estiba al shape del cliente. `estado` y `duracionMinutos` no
-// son columnas: se derivan de horaFinalizacion, igual que en Exportaciones.
-export function mapEstiba(r: any) {
+// Mapea la fila de MovimientoMontacargas al shape del cliente. `estado` y
+// `duracionMinutos` no son columnas: se derivan de horaFinalizacion, igual que
+// en Exportaciones.
+export function mapMovimientoMontacargas(r: any) {
   return {
     id: r.id,
-    pedido: r.pedido,
+    tipo: r.tipo,
     plu: r.plu,
     ean: r.ean ?? null,
     descripcion: r.descripcion,
     cajas: r.cajas,
     unidadesPorCaja: r.unidadesPorCaja,
     unidadesManuales: r.unidadesManuales,
+    hayReguero: r.hayReguero,
+    unidadesSueltas: r.unidadesSueltas,
     cantidadTotal: r.cantidadTotal,
-    ubicacion: r.ubicacion ?? null,
+    ubicacionInicial: r.ubicacionInicial ?? null,
+    ubicacionFinal: r.ubicacionFinal ?? null,
     fecha: formatDateOnly(r.fecha),
     horaInicio: r.horaInicio.toISOString(),
     horaFinalizacion: r.horaFinalizacion ? r.horaFinalizacion.toISOString() : null,
     duracionMinutos: calcularDuracionMinutos(r.horaInicio, r.horaFinalizacion),
-    estado: estadoEstiba(r.horaFinalizacion),
+    estado: estadoMovimiento(r.horaFinalizacion),
     motivoCorreccion: r.motivoCorreccion ?? null,
     creadoPorId: r.creadoPorId,
     creadoPorNombre: r.creadoPor?.name ?? null,

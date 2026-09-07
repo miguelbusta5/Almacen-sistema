@@ -1,19 +1,22 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { Layers, Clock, Boxes, Timer } from '@lucide/vue'
-import type { EstibaConteos } from '~/utils/estibas'
+import type { MovimientoConteos } from '~/utils/montacargas'
 
-const props = defineProps<{ counts: EstibaConteos }>()
+const props = defineProps<{ counts: MovimientoConteos }>()
 const emit = defineEmits<{ (e: 'filter', key: string): void }>()
 
 const cards = computed(() => [
-  { key: 'hoy', label: 'Estibas hoy', value: props.counts.estibasHoy, tone: 'var(--brand)', icon: Layers, filter: '', hint: 'armadas' },
+  { key: 'hoy', label: 'Registros hoy', value: props.counts.registrosHoy, tone: 'var(--brand)', icon: Layers, filter: '', hint: 'del dia' },
   { key: 'curso', label: 'En curso', value: props.counts.enCurso, tone: 'var(--info)', icon: Clock, filter: 'en-curso', hint: 'sin ubicar' },
-  { key: 'uds', label: 'Unidades hoy', value: props.counts.unidadesHoy, tone: 'var(--ink)', icon: Boxes, filter: '', hint: `en ${props.counts.cajasHoy} cajas` },
   {
-    key: 'prom', label: 'Prom. min/estiba', value: props.counts.promedioMin ?? 0,
-    tone: 'var(--ink)', icon: Timer, filter: 'cerrada',
-    hint: props.counts.promedioMin === null ? 'sin datos' : 'por estiba',
+    key: 'uds', label: 'Unidades hoy', value: props.counts.unidadesHoy, tone: 'var(--ink)', icon: Boxes, filter: '',
+    hint: `${props.counts.cajasHoy} cajas · ${props.counts.sueltasHoy} sueltas`,
+  },
+  {
+    key: 'prom', label: 'Prom. min/registro', value: props.counts.promedioMin ?? 0,
+    tone: 'var(--ink)', icon: Timer, filter: 'cerrado',
+    hint: props.counts.promedioMin === null ? 'sin datos' : 'por registro',
   },
 ])
 </script>
@@ -46,10 +49,10 @@ const cards = computed(() => [
 .kpi:hover { transform: translateY(-3px); box-shadow: var(--shadow); border-color: color-mix(in srgb, var(--c) 45%, var(--border)); }
 .kpi:active { transform: translateY(-1px); }
 .kpi:focus-visible { outline: none; box-shadow: var(--ring); }
-.kpi-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
-.kpi-ic { width: 30px; height: 30px; border-radius: 9px; display: grid; place-items: center; color: var(--c); background: color-mix(in srgb, var(--c) 12%, transparent); transition: transform .2s cubic-bezier(.34,1.56,.64,1); }
+.kpi-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; gap: 8px; }
+.kpi-ic { width: 30px; height: 30px; border-radius: 9px; display: grid; place-items: center; color: var(--c); background: color-mix(in srgb, var(--c) 12%, transparent); transition: transform .2s cubic-bezier(.34,1.56,.64,1); flex-shrink: 0; }
 .kpi:hover .kpi-ic { transform: scale(1.1) rotate(-4deg); }
-.kpi-hint { font-size: 10px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; color: var(--faint); }
+.kpi-hint { font-size: 10px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; color: var(--faint); text-align: right; }
 .kpi-value { display: block; font-family: var(--display); font-size: 28px; font-weight: 800; letter-spacing: -.035em; color: var(--c); line-height: 1.05; }
 .kpi-label { display: block; font-size: 12px; font-weight: 600; color: var(--muted); margin-top: 3px; }
 .kpi-bar { position: absolute; left: 0; top: 0; bottom: 0; width: 3px; background: linear-gradient(var(--c), color-mix(in srgb, var(--c) 55%, transparent)); }

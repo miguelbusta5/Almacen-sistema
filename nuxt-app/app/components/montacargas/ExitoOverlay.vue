@@ -1,27 +1,28 @@
 <script setup lang="ts">
-// Confirmación de "proceso exitoso" tras cerrar una estiba. Pantalla completa y
-// sin interacción: el padre la muestra y la quita con un timer, y devuelve el
-// foco a la captura para que el operario encadene la siguiente sin tocar nada.
-// Mismo formato que VeredictoOverlay de Cargue Gourmet — el operario de CEDI ya
+// Confirmacion de "proceso exitoso" tras cerrar un registro. Pantalla completa y
+// sin interaccion: el padre la muestra y la quita con un timer, y devuelve el
+// foco a la captura para que el operario encadene el siguiente.
+// Mismo formato que VeredictoOverlay de Cargue Gourmet - el operario de CEDI ya
 // conoce ese lenguaje visual.
 import { CheckCircle2 } from '@lucide/vue'
-import { fmtDuracion, type Estiba } from '~/utils/estibas'
+import { fmtDuracion, type Movimiento } from '~/utils/montacargas'
 
-defineProps<{ estiba: Estiba | null }>()
+defineProps<{ movimiento: Movimiento | null }>()
 </script>
 
 <template>
   <Teleport to="body">
     <Transition name="exito">
-      <div v-if="estiba" :key="estiba.id" class="full">
+      <div v-if="movimiento" :key="movimiento.id" class="full">
         <CheckCircle2 :size="88" class="full-ic" />
-        <div class="full-label">Estiba registrada</div>
-        <div class="full-cod mono">{{ estiba.ubicacion }}</div>
+        <div class="full-label">Registro completado</div>
+        <div class="full-cod mono">{{ movimiento.ubicacionFinal }}</div>
         <div class="full-msg">
-          Pedido {{ estiba.pedido }} · PLU {{ estiba.plu }} ·
-          {{ estiba.cajas }} cajas · {{ estiba.cantidadTotal }} unidades
+          PLU {{ movimiento.plu }} · {{ movimiento.cajas }} cajas
+          <template v-if="movimiento.hayReguero"> + {{ movimiento.unidadesSueltas }} sueltas</template>
+          · {{ movimiento.cantidadTotal }} unidades
         </div>
-        <div class="full-tiempo">Tiempo: {{ fmtDuracion(estiba.duracionMinutos) }}</div>
+        <div class="full-tiempo">Tiempo: {{ fmtDuracion(movimiento.duracionMinutos) }}</div>
       </div>
     </Transition>
   </Teleport>

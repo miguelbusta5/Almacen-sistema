@@ -1,35 +1,44 @@
 <script setup lang="ts">
-// Paso 1 del ciclo: armar la estiba. Es lo que el montacarguista hace decenas de
-// veces al día, con guantes y desde una tablet o con pistola de código de barras.
-// Prioridad absoluta a encadenar estibas sin soltar el teclado.
+// Paso 1 del ciclo: registrar el movimiento. Es lo que el montacarguista hace
+// decenas de veces al día, con guantes y desde una tablet o con pistola de
+// código de barras. Prioridad absoluta a encadenar registros sin soltar el
+// teclado.
+//
+// El mismo componente sirve a los tres flujos: solo cambia si pide ubicación
+// inicial (recepción no la tiene: el contenedor llega sin ubicación previa).
 import { ref, reactive, computed, onMounted, watch } from 'vue'
 import { useDebounceFn } from '@vueuse/core'
 import { Search, TriangleAlert } from '@lucide/vue'
 import {
-  calcularCantidadTotal, esPedidoValido, normalizarCodigoProducto, normalizarPedido,
-  type ProductoBuscado,
-} from '~/utils/estibas'
+  calcularCantidadTotal, esUbicacionCanonica, normalizarCodigoProducto, normalizarUbicacion,
+  requiereUbicacionInicial, type FlujoConfig, type ProductoBuscado,
+} from '~/utils/montacargas'
 
-// `pedido` vive en el padre (v-model) y NO como estado local: este componente se
-// desmonta entero mientras hay una estiba en curso (lo reemplaza UbicacionPanel),
-// así que cualquier estado propio se pierde entre estiba y estiba. Un contenedor
-// son decenas de estibas del mismo pedido: reescribirlo cada vez es inaceptable.
-const props = defineProps<{ saving: boolean; pedido: string }>()
+const props = defineProps<{ flujo: FlujoConfig; saving: boolean }>()
 const emit = defineEmits<{
-  (e: 'submit', payload: { pedido: string; codigo: string; cajas: number; unidadesPorCaja: number }): void
-  (e: 'update:pedido', value: string): void
+  (e: 'submit', payload: {
+    codigo: string
+    cajas: number
+    unidadesPorCaja: number
+    hayReguero: boolean
+    unidadesSueltas: number
+    ubicacionInicial?: string
+  }): void
   (e: 'dirty', value: boolean): void
 }>()
 
-const pedidoInput = ref<HTMLInputElement | null>(null)
 const codigoInput = ref<HTMLInputElement | null>(null)
 const cajasInput = ref<HTMLInputElement | null>(null)
-const form = reactive({ codigo: '', cajas: '', unidadesPorCaja: '' })
-
-const pedido = computed({
-  get: () => props.pedido,
-  set: (v: string) => emit('update:pedido', v),
+const form = reactive({
+  codigo: '',
+  cajas: '',
+  unidadesPorCaja: '',
+  hayReguero: false,
+  unidadesSueltas: '',
+  ubicacionInicial: '',
 })
+
+const pideOrigen = computed(() => requiereUbicacionInicial(props.flujo.tipo))
 
 const producto = ref<ProductoBuscado | null>(null)
 // PLU cuyas unidades por caja escribió el operario a mano, para no arrastrarlas
@@ -42,23 +51,28 @@ const lookupState = ref<'idle' | 'buscando' | 'ok' | 'nohay'>('idle')
 // habilita para que el operario lo escriba: bloquear pararía 7 de cada 10 capturas.
 const unidadesDelMaestro = ref(false)
 
-const dirty = computed(() => Boolean(form.codigo.trim() || form.cajas.trim()))
+const dirty = computed(() =>
+  Boolean(form.codigo.trim() || form.cajas.trim() || form.unidadesSueltas.trim()),
+)
 watch(dirty, (v) => emit('dirty', v))
 
-// Con el pedido ya puesto (segunda estiba del mismo contenedor) el foco arranca
-// en el código: es lo único que cambia entre una estiba y la siguiente.
-onMounted(() => {
-  if (props.pedido.trim()) codigoInput.value?.focus()
-  else pedidoInput.value?.focus()
-})
+onMounted(() => { codigoInput.value?.focus() })
 
-const pedidoNormalizado = computed(() => normalizarPedido(pedido.value))
-const pedidoInvalido = computed(
-  () => Boolean(pedido.value.trim()) && !esPedidoValido(pedidoNormalizado.value),
+// Al desmarcar el reguero se limpian las unidades sueltas: dejarlas ahí las
+// sumaría al total sin que se vean en pantalla.
+watch(() => form.hayReguero, (activo) => { if (!activo) form.unidadesSueltas = '' })
+
+const ubicacionInicialNorm = computed(() => normalizarUbicacion(form.ubicacionInicial))
+const origenEsLibre = computed(
+  () => Boolean(ubicacionInicialNorm.value) && !esUbicacionCanonica(ubicacionInicialNorm.value),
 )
 
 const cantidadTotal = computed(() =>
-  calcularCantidadTotal(Number(form.cajas || 0), Number(form.unidadesPorCaja || 0)),
+  calcularCantidadTotal(
+    Number(form.cajas || 0),
+    Number(form.unidadesPorCaja || 0),
+    form.hayReguero ? Number(form.unidadesSueltas || 0) : 0,
+  ),
 )
 
 async function buscarProducto() {
@@ -114,33 +128,39 @@ async function onCodigoEnter() {
   if (lookupState.value === 'ok') cajasInput.value?.focus()
 }
 
+const cajasNum = computed(() => Number(form.cajas || 0))
+const sueltasNum = computed(() => (form.hayReguero ? Number(form.unidadesSueltas || 0) : 0))
+
 const puedeGuardar = computed(() =>
   !props.saving &&
-  Boolean(pedidoNormalizado.value) && !pedidoInvalido.value &&
   lookupState.value === 'ok' &&
-  Number(form.cajas) >= 1 &&
-  Number(form.unidadesPorCaja) >= 1,
+  Number(form.unidadesPorCaja) >= 1 &&
+  // Un registro tiene que mover algo: cajas completas o unidades sueltas.
+  (cajasNum.value >= 1 || sueltasNum.value >= 1) &&
+  (!form.hayReguero || sueltasNum.value >= 1) &&
+  (!pideOrigen.value || Boolean(ubicacionInicialNorm.value)),
 )
 
 function submit() {
   if (!puedeGuardar.value) return
   emit('submit', {
-    pedido: pedidoNormalizado.value,
     codigo: normalizarCodigoProducto(form.codigo),
-    cajas: Number(form.cajas),
+    cajas: cajasNum.value,
     unidadesPorCaja: Number(form.unidadesPorCaja),
+    hayReguero: form.hayReguero,
+    unidadesSueltas: sueltasNum.value,
+    ...(pideOrigen.value ? { ubicacionInicial: ubicacionInicialNorm.value } : {}),
   })
 }
 
-// El padre llama a esto tras cerrar una estiba. `pedido` y `unidadesPorCaja` NO
-// se resetean: un contenedor son decenas de estibas del mismo pedido y a menudo
-// del mismo empaque.
-// El padre lo llama tras cerrar una estiba. El pedido no se toca: vive en el
-// padre justamente para sobrevivir a esto.
+// El padre lo llama tras cerrar un registro. La ubicación inicial NO se limpia:
+// en una tanda de movimientos la mercancía suele salir del mismo sitio.
 function reset() {
   form.codigo = ''
   form.cajas = ''
   form.unidadesPorCaja = ''
+  form.hayReguero = false
+  form.unidadesSueltas = ''
   producto.value = null
   pluUnidadesManuales.value = ''
   lookupState.value = 'idle'
@@ -153,18 +173,6 @@ defineExpose({ reset })
 <template>
   <section class="captura card">
     <form class="grid" @submit.prevent="submit">
-      <label class="f f-pedido">
-        <span class="lbl">N° de pedido</span>
-        <input
-          ref="pedidoInput" v-model="pedido" class="field" :class="{ bad: pedidoInvalido }"
-          placeholder="PEDDM11887" autocomplete="off" autocapitalize="characters"
-          enterkeyhint="next" :disabled="saving"
-        >
-        <span v-if="pedidoInvalido" class="hint bad-txt">
-          <TriangleAlert :size="11" /> Se espera algo como PEDDM11887
-        </span>
-      </label>
-
       <label class="f f-codigo">
         <span class="lbl">PLU o código de barras</span>
         <input
@@ -187,10 +195,21 @@ defineExpose({ reset })
         </div>
       </label>
 
-      <label class="f f-cajas">
-        <span class="lbl">Cajas</span>
+      <label v-if="pideOrigen" class="f f-origen">
+        <span class="lbl">Ubicación inicial</span>
         <input
-          ref="cajasInput" v-model="form.cajas" class="field tnum" type="number" min="1" step="1"
+          v-model="form.ubicacionInicial" class="field" placeholder="05-B-25-03-01"
+          autocomplete="off" autocapitalize="characters" :disabled="saving"
+        >
+        <span v-if="origenEsLibre" class="hint warn-txt">
+          <TriangleAlert :size="11" /> Fuera del formato 05-B-25-03-01
+        </span>
+      </label>
+
+      <label class="f f-cajas">
+        <span class="lbl">Cajas master</span>
+        <input
+          ref="cajasInput" v-model="form.cajas" class="field tnum" type="number" min="0" step="1"
           inputmode="numeric" enterkeyhint="done" :disabled="saving"
         >
       </label>
@@ -209,6 +228,25 @@ defineExpose({ reset })
         </span>
       </label>
 
+      <!-- Reguero: unidades sueltas que no vienen en caja master. El campo solo
+           aparece con el check marcado, para que nadie meta un número suelto
+           por accidente y descuadre la cantidad total. -->
+      <div class="f f-reguero">
+        <span class="lbl">¿Hay reguero?</span>
+        <label class="check">
+          <input v-model="form.hayReguero" type="checkbox" :disabled="saving">
+          <span>Unidades sueltas sin caja master</span>
+        </label>
+      </div>
+
+      <label v-if="form.hayReguero" class="f f-sueltas">
+        <span class="lbl">Unidades sueltas</span>
+        <input
+          v-model="form.unidadesSueltas" class="field tnum" type="number" min="1" step="1"
+          inputmode="numeric" :disabled="saving"
+        >
+      </label>
+
       <div class="f f-total">
         <span class="lbl">Cantidad total</span>
         <div class="total tnum" :class="{ on: cantidadTotal > 0 }">{{ cantidadTotal }}</div>
@@ -217,7 +255,7 @@ defineExpose({ reset })
       <div class="f f-btn">
         <button class="btn btn-primary submit" :disabled="!puedeGuardar">
           <Spinner v-if="saving" :size="14" />
-          {{ saving ? 'Creando…' : 'Crear estiba e iniciar tiempo' }}
+          {{ saving ? 'Registrando…' : 'Registrar e iniciar tiempo' }}
         </button>
       </div>
     </form>
@@ -229,21 +267,24 @@ defineExpose({ reset })
 
 .grid { display: grid; grid-template-columns: repeat(12, 1fr); gap: 12px; align-items: start; }
 .f { display: flex; flex-direction: column; gap: 5px; min-width: 0; }
-.f-pedido { grid-column: span 3; }
 .f-codigo { grid-column: span 3; }
-.f-desc { grid-column: span 6; }
+.f-desc { grid-column: span 5; }
+.f-origen { grid-column: span 4; }
 .f-cajas { grid-column: span 2; }
 .f-und { grid-column: span 3; }
-.f-total { grid-column: span 3; }
-.f-btn { grid-column: span 4; justify-content: flex-end; }
+.f-reguero { grid-column: span 3; }
+.f-sueltas { grid-column: span 2; }
+.f-total { grid-column: span 2; }
+.f-btn { grid-column: span 12; }
 
 .lbl { display: flex; align-items: center; gap: 6px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); }
 .tag-maestro { font-size: 9px; font-weight: 700; letter-spacing: .06em; padding: 1px 5px; border-radius: 999px; background: color-mix(in srgb, var(--brand) 16%, transparent); color: var(--brand); }
 
+.check { display: flex; align-items: center; gap: 8px; height: 38px; padding: 0 11px; border: 1px solid var(--border); border-radius: var(--r-sm); background: var(--surface-2); font-size: 12.5px; color: var(--ink-2); cursor: pointer; }
+.check input { width: 17px; height: 17px; accent-color: var(--brand); cursor: pointer; }
+
 .hint { display: flex; align-items: center; gap: 4px; font-size: 11px; }
-.bad-txt { color: var(--u-critico); }
 .warn-txt { color: var(--u-aviso); }
-.field.bad { border-color: color-mix(in srgb, var(--u-critico) 50%, transparent); }
 
 .desc { display: flex; align-items: center; gap: 7px; background: var(--surface-2); color: var(--faint); overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
 .desc.ok { color: var(--ink); }
@@ -258,10 +299,11 @@ defineExpose({ reset })
 
 /* Captura desde móvil/tablet: una columna, targets grandes y 16px en los inputs
    (por debajo de eso iOS hace zoom automático al enfocar). */
-@media (max-width: 860px) {
+@media (max-width: 980px) {
   .grid { grid-template-columns: 1fr; gap: 10px; }
-  .f, .f-pedido, .f-codigo, .f-desc, .f-cajas, .f-und, .f-total, .f-btn { grid-column: 1 / -1; }
+  .f, .f-codigo, .f-desc, .f-origen, .f-cajas, .f-und, .f-reguero, .f-sueltas, .f-total, .f-btn { grid-column: 1 / -1; }
   .grid :deep(.field) { height: 48px; font-size: 16px; }
+  .check { height: 48px; font-size: 15px; }
   .total { height: 48px; font-size: 24px; }
   .submit { height: 50px; font-size: 15px; position: sticky; bottom: 12px; }
 }

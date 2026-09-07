@@ -1,10 +1,10 @@
 <script setup lang="ts">
-// Los filtros se aplican solos (búsqueda con debounce, selects al instante),
-// mismo patrón que Exportaciones e Integración.
+// Los filtros se aplican solos (busqueda con debounce, selects al instante),
+// mismo patron que Exportaciones e Integracion.
 import { ref, computed, watch } from 'vue'
 import { useDebounceFn } from '@vueuse/core'
 import { Search, X } from '@lucide/vue'
-import type { Operario } from '~/utils/estibas'
+import type { Operario } from '~/utils/montacargas'
 
 const props = defineProps<{
   q: string
@@ -36,7 +36,7 @@ const hasFilters = computed(() => Boolean(props.q || props.fecha || props.estado
   <div class="filtros">
     <div class="search-wrap">
       <Search :size="14" class="search-ic" />
-      <input v-model="localQ" class="field" placeholder="Buscar pedido, PLU, descripción o ubicación…" @input="onQInput">
+      <input v-model="localQ" class="field" placeholder="Buscar PLU, descripción o ubicación…" @input="onQInput">
       <button v-if="localQ" class="search-clear" @click="clearQ"><X :size="14" /></button>
     </div>
 
@@ -48,7 +48,7 @@ const hasFilters = computed(() => Boolean(props.q || props.fecha || props.estado
     <select class="field sel" :value="estado" @change="emit('update:estado', ($event.target as HTMLSelectElement).value)">
       <option value="">Todos los estados</option>
       <option value="en-curso">En curso</option>
-      <option value="cerrada">Cerrada</option>
+      <option value="cerrado">Cerrado</option>
     </select>
 
     <select
