@@ -162,7 +162,10 @@ async function submit() {
         <p v-if="faltaMotivo" class="warn">Cambiaste las horas: hace falta un motivo de al menos 5 caracteres.</p>
       </template>
 
-      <p v-if="error" class="err">{{ error }}</p>
+      <p class="hint">
+      Corrección a posteriori. El flujo normal del operario no pasa por aquí.
+    </p>
+    <p v-if="error" class="err">{{ error }}</p>
 
       <div class="acciones">
         <button type="button" class="btn" @click="emit('close')">Cancelar</button>

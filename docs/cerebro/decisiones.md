@@ -1,5 +1,76 @@
 # Decisiones de Arquitectura y Producto
 
+## 2026-09-08 - Montacargas: reloj desde el PLU, ayudantes y novedades
+
+### El reloj arranca al digitar el PLU
+
+Antes arrancaba al enviar el formulario completo. Ahora el registro **nace con el
+PLU** (cantidades en 0) y el reloj corre mientras el operario cuenta las cajas.
+Consecuencia obligada: un PLU mal escaneado deja un reloj corriendo, asi que hay
+un boton **Descartar** (borrado logico, queda en auditoria y fuera de los KPIs).
+Sin esa salida cada dedazo quedaria abierto para siempre inflando el promedio.
+
+El flujo pasa a tres pasos: `POST /` (abre y arranca) -> `PATCH /:id/cantidades`
+(sin parar el reloj) -> `POST /:id/ubicacion` (cierra). Las cantidades se exigen
+**al cerrar**, no al abrir.
+
+### Varios relojes a la vez en Resurtido
+
+`admiteVariosAbiertos(tipo)`: en RESURTIDO el operario baja varios PLUs de una
+pasada y cada uno corre su propio reloj. En RECEPCION y MOVIMIENTO se sigue
+trabajando una estiba a la vez — permitir varios solo serviria para dejar relojes
+olvidados.
+
+### Ayudantes: rol nuevo y tramos de tiempo
+
+Rol **`OPERARIO_ALMACENAMIENTO`** (16 roles). Entra al modulo pero **no crea**
+registros: los recibe. Puede volver a pasarlos a otro ayudante.
+
+El tiempo se guarda en **`TramoMontacargas`**, un tramo por cada persona que tuvo
+el PLU en la mano, en vez de un par de columnas. Razon: el PLU puede pasar por
+varias manos y la productividad se mide por persona — sumar todo el tiempo a
+quien lo empezo seria mentir. `duracionMinutos` es la **suma de tramos cerrados**,
+no `fin - inicio`.
+
+Al traspasar se cierra el tramo del primero y se abre el del segundo en el mismo
+instante. La lista de ayudantes muestra la **carga pendiente** de cada uno para
+que el operario reparta con criterio en vez de a ciegas.
+
+### Novedades: el ayudante no corrige, detiene el reloj
+
+Decision del usuario: *"no se puede corregir una vez pasado al ayudante, debe
+coincidir"*. Si lo que recibe no cuadra abre una **novedad**, que:
+
+- **cierra el tramo abierto** -> el reloj se detiene;
+- deja el registro en estado `NOVEDAD`, sin poder cerrarse;
+- **no se cronometra**: la ventana de verificacion queda fuera del tiempo medido.
+  Verificado en pruebas: ventana total 58s, tramos trabajados 29s, 29s excluidos.
+
+Que se verifica depende del tipo (`novedadEsperada`): en RECEPCION las unidades de
+la estiba (no hay ubicacion de origen que revisar); en MOVIMIENTO y RESURTIDO, de
+donde salio la mercancia.
+
+La resuelve el **montacarguista o supervision**, no quien la abrio. Al resolver se
+abre un tramo nuevo: lo que quede de almacenar si se mide.
+
+**Confirmacion eficiente** (pedido explicito): la bandeja del ayudante tiene un
+campo de escaneo; al escanear el PLU su tarjeta se resalta y toma el foco, y
+muestra en grande *"Debes almacenar N unidades"* con dos salidas — escribir la
+ubicacion (cierra) o *"No cuadra"* (novedad). Una pulsacion.
+
+### Maestro corregido
+
+Importado `maestro nuevos.xlsx` (hoja **MEDIDAS**, nombre nuevo aceptado por el
+importador). Unidades por caja: **5.479 -> 11.304**. El archivo NO trae EAN ni
+precio, asi que `columnasPresentes` los dejo intactos (18.798 EAN y 19.233 precios
+sin tocar). Dos guardas nuevas en `mapExcelProductoRow`: se descarta el PLU "0"
+(fila de sub-encabezados de las hojas con cabecera de dos niveles) y las filas
+cuya descripcion es el marcador *"PLU no existe en el maestro"* — importarlas
+dejaria esa frase como descripcion del producto. Se elimino el PLU 8, que ya la
+tenia de la importacion anterior.
+
+**Migracion:** `prisma/migrate-montacargas-tramos.sql`, aditiva e idempotente.
+
 ## 2026-09-07 - Control Montacargas + Resurtido, y auditoria de seguridad
 
 **Renombrado y ampliado** el modulo `estibas` (nunca llego a produccion: su variable

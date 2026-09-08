@@ -21,6 +21,18 @@ export function requiereUbicacionInicial(tipo: TipoMovimiento): boolean {
   return tipo !== 'RECEPCION'
 }
 
+/** En resurtido el operario baja varios PLUs de una pasada y cada uno corre su
+ *  propio reloj; en recepción y movimientos se trabaja una estiba a la vez. */
+export function admiteVariosAbiertos(tipo: TipoMovimiento): boolean {
+  return tipo === 'RESURTIDO'
+}
+
+/** En recepción no hay ubicación de origen que revisar: lo que puede no cuadrar
+ *  son las unidades de la estiba. */
+export function novedadEsperada(tipo: TipoMovimiento): TipoNovedad {
+  return tipo === 'RECEPCION' ? 'UNIDADES' : 'UBICACION_INICIAL'
+}
+
 /** Config de cada flujo. Los tres comparten componentes y API; cambian el copy,
  *  el módulo al que pertenecen y si piden ubicación inicial. */
 export interface FlujoConfig {
@@ -59,12 +71,57 @@ export const FLUJOS: Record<TipoMovimiento, FlujoConfig> = {
 // Pestañas del módulo Control Montacargas, en orden.
 export const FLUJOS_MONTACARGAS: FlujoConfig[] = [FLUJOS.RECEPCION, FLUJOS.MOVIMIENTO]
 
+// ── Estados y novedades ──────────────────────────────────────────────
+export type EstadoMovimiento = 'EN_CURSO' | 'NOVEDAD' | 'CERRADO'
+
+export const ESTADO_MOVIMIENTO_LABEL: Record<EstadoMovimiento, string> = {
+  EN_CURSO: 'En curso',
+  NOVEDAD: 'Con novedad',
+  CERRADO: 'Cerrado',
+}
+
+export const ESTADO_MOVIMIENTO_TONE: Record<EstadoMovimiento, string> = {
+  EN_CURSO: 'var(--info)',
+  NOVEDAD: 'var(--u-aviso)',
+  CERRADO: 'var(--u-ok)',
+}
+
+export type TipoNovedad = 'UNIDADES' | 'UBICACION_INICIAL'
+
+export const TIPO_NOVEDAD_LABEL: Record<TipoNovedad, string> = {
+  UNIDADES: 'Las unidades no coinciden',
+  UBICACION_INICIAL: 'La ubicación inicial no coincide',
+}
+
 // ── DTOs (forma exacta de mapMovimientoMontacargas en el servidor) ───
-export type EstadoMovimiento = 'EN_CURSO' | 'CERRADO'
+export interface TramoMovimiento {
+  id: string
+  orden: number
+  usuarioId: string
+  usuarioNombre: string | null
+  inicio: string
+  fin: string | null
+}
+
+export interface NovedadMovimiento {
+  id: string
+  tipo: TipoNovedad
+  detalle: string | null
+  cantidadEncontrada: number | null
+  ubicacionEncontrada: string | null
+  abiertaPorId: string
+  abiertaPorNombre: string | null
+  abiertaAt: string
+  resueltaPorId: string | null
+  resueltaPorNombre: string | null
+  resueltaAt: string | null
+  notaResolucion: string | null
+}
 
 export interface Movimiento {
   id: string
   tipo: TipoMovimiento
+  estado: EstadoMovimiento
   plu: string
   ean: string | null
   descripcion: string
@@ -80,12 +137,16 @@ export interface Movimiento {
   horaInicio: string
   horaFinalizacion: string | null
   duracionMinutos: number | null
-  estado: EstadoMovimiento
   motivoCorreccion: string | null
   creadoPorId: string
   creadoPorNombre: string | null
+  responsableId: string
+  responsableNombre: string | null
   actualizadoPorId: string | null
   actualizadoPorNombre: string | null
+  tramos: TramoMovimiento[]
+  novedades: NovedadMovimiento[]
+  novedadAbierta: NovedadMovimiento | null
 }
 
 export interface MovimientoConteos {
@@ -94,10 +155,12 @@ export interface MovimientoConteos {
   unidadesHoy: number
   sueltasHoy: number
   enCurso: number
+  conNovedad: number
   promedioMin: number | null
 }
 
 export interface Operario { id: string; nombre: string }
+export interface Ayudante { id: string; nombre: string; pendientes: number }
 
 /** Lo que devuelve /api/productos-maestro/buscar. */
 export interface ProductoBuscado {
@@ -114,16 +177,26 @@ export const GESTORES_MONTACARGAS = [
   'SUPERVISOR_ALMACENAMIENTO', 'GERENTE', 'ADMIN',
 ]
 export const ROLES_MONTACARGAS = ['MONTACARGAS', ...GESTORES_MONTACARGAS]
+export const ROL_AYUDANTE = 'OPERARIO_ALMACENAMIENTO'
 
 export function puedeUsarMontacargas(role: string | null | undefined): boolean {
-  return Boolean(role && ROLES_MONTACARGAS.includes(role))
+  return Boolean(role && (ROLES_MONTACARGAS.includes(role) || role === ROL_AYUDANTE))
 }
 
 export function puedeGestionarMontacargas(role: string | null | undefined): boolean {
   return Boolean(role && GESTORES_MONTACARGAS.includes(role))
 }
 
-// ── Normalización y validación (espejo de montacargasCalc.ts) ────────
+/** Solo los montacarguistas (y gestión) inician registros. El ayudante recibe. */
+export function puedeCrearMovimiento(role: string | null | undefined): boolean {
+  return Boolean(role && ROLES_MONTACARGAS.includes(role))
+}
+
+export function esAyudante(role: string | null | undefined): boolean {
+  return role === ROL_AYUDANTE
+}
+
+// ── Normalización (espejo de montacargasCalc.ts) ─────────────────────
 function normalizarCodigo(value: unknown): string {
   return String(value ?? '').trim().toUpperCase().replace(/\s+/g, ' ')
 }
@@ -156,12 +229,13 @@ export function calcularCantidadTotal(
   return Math.max(0, Math.round(cajas)) * Math.max(0, Math.round(unidadesPorCaja)) + sueltas
 }
 
-// ── Formato ──────────────────────────────────────────────────────────
-export const ESTADO_MOVIMIENTO_LABEL: Record<EstadoMovimiento, string> = {
-  EN_CURSO: 'En curso',
-  CERRADO: 'Cerrado',
+/** ¿Ya tiene cantidades cargadas? Un registro recién abierto no las tiene: el
+ *  reloj arranca con el PLU y las cifras llegan después. */
+export function tieneCantidades(m: Movimiento): boolean {
+  return m.unidadesPorCaja >= 1 && (m.cajas >= 1 || m.unidadesSueltas >= 1)
 }
 
+// ── Formato ──────────────────────────────────────────────────────────
 export function fmtHoraMovimiento(iso: string | null): string {
   if (!iso) return 'En curso'
   return new Intl.DateTimeFormat('es-CO', {
@@ -183,4 +257,12 @@ export function fmtFechaCorta(fecha: string | null): string {
   if (!fecha) return '—'
   const [y, m, d] = fecha.split('-')
   return `${d}/${m}/${y}`
+}
+
+/** Cronómetro del tramo abierto. Devuelve "m:ss" o null si nadie lo tiene. */
+export function cronometroTramo(m: Movimiento, ahora: number): string | null {
+  const abierto = m.tramos.find((t) => !t.fin)
+  if (!abierto) return null
+  const seg = Math.max(0, Math.floor((ahora - new Date(abierto.inicio).getTime()) / 1000))
+  return `${Math.floor(seg / 60)}:${String(seg % 60).padStart(2, '0')}`
 }

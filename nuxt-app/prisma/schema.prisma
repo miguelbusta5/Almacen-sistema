@@ -142,7 +142,11 @@ model User {
   exportacionesEeuuActualizadas  EtiquetadoExportacionEeuu[]    @relation("ExportacionesEeuuEtiquetadoActualizadas")
   gourmetPedidosCreados          GourmetPedido[]                @relation("GourmetPedidosCreados")
   movimientosMontacargasCreados      MovimientoMontacargas[] @relation("MovimientosMontacargasCreados")
+  movimientosMontacargasResponsable  MovimientoMontacargas[] @relation("MovimientosMontacargasResponsable")
   movimientosMontacargasActualizados MovimientoMontacargas[] @relation("MovimientosMontacargasActualizados")
+  tramosMontacargas                  TramoMontacargas[]      @relation("TramosMontacargas")
+  novedadesMontacargasAbiertas       NovedadMontacargas[]    @relation("NovedadesMontacargasAbiertas")
+  novedadesMontacargasResueltas      NovedadMontacargas[]    @relation("NovedadesMontacargasResueltas")
 
   @@index([email])
   @@map("users")
@@ -164,6 +168,7 @@ enum Role {
   ETIQUETADO // Operario etiquetado exportaciones — solo módulo exportaciones
   SUPERVISOR_ALMACENAMIENTO // Supervisor almacenamiento — gestiona exportaciones
   MONTACARGAS // Montacarguista — Control Montacargas y Resurtido
+  OPERARIO_ALMACENAMIENTO // Ayudante — solo su bandeja de PLUs asignados
 }
 
 enum EstadoDespacho {
@@ -1049,41 +1054,56 @@ enum TipoMovimientoMontacargas {
   RESURTIDO // Resurtido: mismo flujo que un movimiento, modulo aparte
 }
 
+enum EstadoMovimientoMontacargas {
+  EN_CURSO // El reloj corre para el responsable actual
+  NOVEDAD // Reloj detenido: las unidades o la ubicacion no cuadran y se verifica
+  CERRADO // Ubicacion final asignada
+}
+
+enum TipoNovedadMontacargas {
+  UNIDADES // Recepcion: las unidades de la estiba no coinciden
+  UBICACION_INICIAL // Movimiento/resurtido: la ubicacion de origen no coincide
+}
+
 // Registro de trabajo de un montacarguista. Sustituye la "PLANILLA MONTACARGAS"
-// (Google Sheets), donde el tiempo lo ponia un NOW() volatil de Excel: aqui
-// horaInicio/horaFinalizacion los sella el servidor, asi que la medicion de
-// productividad es confiable.
-// Un registro = un PLU. El ciclo es en dos pasos: crear (arranca el reloj) y
-// asignar la ubicacion final (lo para).
+// (Google Sheets), donde el tiempo lo ponia un NOW() volatil de Excel: aqui las
+// horas las sella el servidor, asi que la medicion de productividad es confiable.
+//
+// El reloj arranca al digitar el PLU (el registro se crea en ese momento, con
+// las cantidades todavia en cero) y se detiene al asignar la ubicacion final.
+// Por el medio el PLU puede pasar a un ayudante: cada persona que lo tuvo en
+// mano deja su propio tramo (ver TramoMontacargas), asi que el tiempo total no
+// se le carga a quien lo empezo.
 model MovimientoMontacargas {
-  id   String                    @id @default(cuid())
-  tipo TipoMovimientoMontacargas
+  id     String                     @id @default(cuid())
+  tipo   TipoMovimientoMontacargas
+  estado EstadoMovimientoMontacargas @default(EN_CURSO)
 
   plu         String  @db.VarChar(100)
   // Lo que leyo la pistola, si se capturo por codigo de barras en vez de por PLU.
   ean         String? @db.VarChar(20)
   descripcion String  @db.VarChar(255)
 
-  // Cajas master completas.
-  cajas           Int
-  unidadesPorCaja Int @map("unidades_por_caja")
-  // El maestro no trae "Und Emp" para ~71% de los productos; cuando el operario
-  // la escribe a mano se marca aqui, y esa lista es el trabajo de completar el
-  // catalogo.
+  // Cajas master completas. Arranca en 0: el registro nace al digitar el PLU y
+  // las cantidades se completan despues, sin parar el reloj.
+  cajas           Int @default(0)
+  unidadesPorCaja Int @default(0) @map("unidades_por_caja")
+  // El maestro no trae "Und Emp" para parte del catalogo; cuando la escribe el
+  // operario se marca aqui, y esa lista es el trabajo de completar el catalogo.
   unidadesManuales Boolean @default(false) @map("unidades_manuales")
 
   // Reguero: unidades sueltas que no vienen en caja master.
   hayReguero      Boolean @default(false) @map("hay_reguero")
   unidadesSueltas Int     @default(0) @map("unidades_sueltas")
 
-  // cajas * unidadesPorCaja + unidadesSueltas, sellado al crear. Se persiste (en
-  // vez de derivarse) porque es la cifra que agregan los KPIs y el export.
-  cantidadTotal Int @map("cantidad_total")
+  // cajas * unidadesPorCaja + unidadesSueltas, sellado en cada cambio. Se
+  // persiste (en vez de derivarse) porque es la cifra que agregan KPIs y export.
+  cantidadTotal Int @default(0) @map("cantidad_total")
 
   // Solo en MOVIMIENTO y RESURTIDO: de donde sale la mercancia. En RECEPCION es
   // null porque el contenedor no tiene ubicacion previa.
   ubicacionInicial String? @map("ubicacion_inicial") @db.VarChar(120)
-  // Ubicacion final. Null mientras el registro esta en curso: asignarla es lo
+  // Ubicacion final. Null mientras el registro esta abierto: asignarla es lo
   // que lo cierra.
   ubicacionFinal   String? @map("ubicacion_final") @db.VarChar(120)
 
@@ -1093,17 +1113,76 @@ model MovimientoMontacargas {
   motivoCorreccion String?   @map("motivo_correccion")
   deletedAt        DateTime? @map("deleted_at")
 
-  creadoPorId      String  @map("creado_por_id")
-  creadoPor        User    @relation("MovimientosMontacargasCreados", fields: [creadoPorId], references: [id])
+  creadoPorId String @map("creado_por_id")
+  creadoPor   User   @relation("MovimientosMontacargasCreados", fields: [creadoPorId], references: [id])
+  // Quien tiene el PLU en la mano ahora mismo. Cambia con cada traspaso; es lo
+  // que decide en la bandeja de quien aparece el registro.
+  responsableId String @map("responsable_id")
+  responsable   User   @relation("MovimientosMontacargasResponsable", fields: [responsableId], references: [id])
   actualizadoPorId String? @map("actualizado_por_id")
   actualizadoPor   User?   @relation("MovimientosMontacargasActualizados", fields: [actualizadoPorId], references: [id])
+
+  tramos    TramoMontacargas[]
+  novedades NovedadMontacargas[]
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
-  // Sirve la consulta caliente: "el registro abierto de este operario en este tipo".
-  @@index([creadoPorId, tipo, horaFinalizacion, deletedAt])
+  // Sirve la consulta caliente: "los registros abiertos de esta persona en este tipo".
+  @@index([responsableId, tipo, estado, deletedAt])
   @@index([tipo, fecha])
   @@index([plu])
   @@map("movimientos_montacargas")
+}
+
+// Un tramo por cada persona que tuvo el PLU en la mano. Se cierra al traspasar,
+// al abrir una novedad o al asignar la ubicacion final.
+//
+// Existe como tabla y no como un par de columnas porque el PLU puede pasar por
+// varias manos (el ayudante puede volver a pasarlo) y porque la productividad se
+// mide por persona: sumar todo el tiempo a quien lo empezo seria mentir.
+// La ventana de una novedad NO es un tramo: verificar no se cronometra.
+model TramoMontacargas {
+  id            String                @id @default(cuid())
+  movimientoId  String                @map("movimiento_id")
+  movimiento    MovimientoMontacargas @relation(fields: [movimientoId], references: [id], onDelete: Cascade)
+  usuarioId     String                @map("usuario_id")
+  usuario       User                  @relation("TramosMontacargas", fields: [usuarioId], references: [id])
+  orden         Int
+  inicio        DateTime
+  // Null mientras la persona todavia lo tiene en la mano.
+  fin           DateTime?
+  createdAt     DateTime              @default(now()) @map("created_at")
+
+  @@index([movimientoId, orden])
+  @@index([usuarioId, fin])
+  @@map("tramos_montacargas")
+}
+
+// El ayudante no corrige cantidades ni ubicaciones: si no cuadran, abre una
+// novedad. Eso detiene el reloj y saca el registro de la medicion hasta que
+// alguien verifique y confirme. La verificacion no se cronometra a proposito.
+model NovedadMontacargas {
+  id           String                 @id @default(cuid())
+  movimientoId String                 @map("movimiento_id")
+  movimiento   MovimientoMontacargas  @relation(fields: [movimientoId], references: [id], onDelete: Cascade)
+  tipo         TipoNovedadMontacargas
+  detalle      String?
+  // Cifras que el ayudante encontro, para que quien verifica vea el descuadre
+  // sin tener que preguntar.
+  cantidadEncontrada Int?    @map("cantidad_encontrada")
+  ubicacionEncontrada String? @map("ubicacion_encontrada") @db.VarChar(120)
+
+  abiertaPorId String   @map("abierta_por_id")
+  abiertaPor   User     @relation("NovedadesMontacargasAbiertas", fields: [abiertaPorId], references: [id])
+  abiertaAt    DateTime @default(now()) @map("abierta_at")
+
+  resueltaPorId    String?   @map("resuelta_por_id")
+  resueltaPor      User?     @relation("NovedadesMontacargasResueltas", fields: [resueltaPorId], references: [id])
+  resueltaAt       DateTime? @map("resuelta_at")
+  notaResolucion   String?   @map("nota_resolucion")
+
+  @@index([movimientoId])
+  @@index([resueltaAt])
+  @@map("novedades_montacargas")
 }

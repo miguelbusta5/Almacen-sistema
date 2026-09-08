@@ -6,8 +6,9 @@ import { computed } from 'vue'
 import { useMediaQuery } from '@vueuse/core'
 import { Pencil, Trash2, TriangleAlert } from '@lucide/vue'
 import {
-  ESTADO_MOVIMIENTO_LABEL, esUbicacionCanonica, fmtDuracion, fmtFechaCorta,
-  fmtHoraMovimiento, requiereUbicacionInicial, type Movimiento, type TipoMovimiento,
+  ESTADO_MOVIMIENTO_LABEL, ESTADO_MOVIMIENTO_TONE, esUbicacionCanonica, fmtDuracion,
+  fmtFechaCorta, fmtHoraMovimiento, requiereUbicacionInicial,
+  type Movimiento, type TipoMovimiento,
 } from '~/utils/montacargas'
 
 const props = defineProps<{
@@ -32,7 +33,7 @@ function puedeEditar(item: Movimiento) {
 function badge(item: Movimiento) {
   return {
     label: ESTADO_MOVIMIENTO_LABEL[item.estado],
-    tone: item.estado === 'EN_CURSO' ? 'var(--info)' : 'var(--u-ok)',
+    tone: ESTADO_MOVIMIENTO_TONE[item.estado],
   }
 }
 
@@ -54,7 +55,7 @@ const librs = computed(
       <thead>
         <tr>
           <th>Fecha</th><th>Montacarguista</th><th>PLU</th><th>Descripción</th>
-          <th>Cajas</th><th>Und/caja</th><th>Reguero</th><th>Total</th>
+          <th>Cajas</th><th>Und/caja</th><th>Reguero</th><th>Total</th><th>Responsable</th>
           <th v-if="muestraOrigen">Ubic. inicial</th>
           <th>Depósito final</th><th>Inicio</th><th>Estado</th><th>Tiempo</th><th />
         </tr>
@@ -75,6 +76,7 @@ const librs = computed(
             <span v-else class="muted">—</span>
           </td>
           <td class="tnum strong">{{ item.cantidadTotal }}</td>
+          <td class="op">{{ item.responsableNombre ?? '—' }}</td>
           <td v-if="muestraOrigen" class="mono">{{ item.ubicacionInicial ?? '—' }}</td>
           <td class="mono">
             <template v-if="item.ubicacionFinal">

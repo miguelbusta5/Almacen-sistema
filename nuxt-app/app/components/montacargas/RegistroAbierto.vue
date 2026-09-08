@@ -1,0 +1,285 @@
+<script setup lang="ts">
+// Tarjeta de un registro con el reloj corriendo. Es donde vive todo el trabajo
+// después de digitar el PLU: completar cantidades, pasarlo a un ayudante,
+// marcar una novedad o cerrarlo con la ubicación final.
+//
+// El mismo componente sirve al montacarguista y al ayudante; cambian los
+// botones. El ayudante NO edita cantidades: confirma lo que recibe o marca la
+// novedad — por eso su vista es de una sola pulsación.
+import { ref, reactive, computed, watch, nextTick } from 'vue'
+import { MapPin, UserPlus, Trash2, TriangleAlert, CheckCircle2, Boxes } from '@lucide/vue'
+import {
+  calcularCantidadTotal, esUbicacionCanonica, fmtHoraMovimiento, normalizarUbicacion,
+  requiereUbicacionInicial, tieneCantidades, TIPO_NOVEDAD_LABEL, cronometroTramo,
+  type Movimiento,
+} from '~/utils/montacargas'
+
+const props = defineProps<{
+  movimiento: Movimiento
+  ahora: number
+  /** El ayudante confirma y ubica; no edita cantidades ni resuelve novedades. */
+  esAyudante: boolean
+  /** Resaltado tras escanear su PLU en la bandeja. */
+  destacado?: boolean
+  guardando: boolean
+}>()
+const emit = defineEmits<{
+  (e: 'cantidades', payload: { cajas: number; unidadesPorCaja: number; hayReguero: boolean; unidadesSueltas: number }): void
+  (e: 'ubicar', ubicacionFinal: string): void
+  (e: 'traspasar'): void
+  (e: 'novedad'): void
+  (e: 'resolver'): void
+  (e: 'descartar'): void
+}>()
+
+const m = computed(() => props.movimiento)
+const listo = computed(() => tieneCantidades(m.value))
+const enNovedad = computed(() => m.value.estado === 'NOVEDAD')
+const pideOrigen = computed(() => requiereUbicacionInicial(m.value.tipo))
+
+// El reloj se detiene con la novedad: el cronómetro deja de correr solo porque
+// el tramo está cerrado, sin ninguna lógica extra aquí.
+const crono = computed(() => cronometroTramo(m.value, props.ahora))
+
+// ── Cantidades (solo montacarguista) ──────────────────────
+const form = reactive({
+  cajas: String(m.value.cajas || ''),
+  unidadesPorCaja: String(m.value.unidadesPorCaja || ''),
+  hayReguero: m.value.hayReguero,
+  unidadesSueltas: String(m.value.unidadesSueltas || ''),
+})
+watch(() => m.value.id, () => {
+  form.cajas = String(m.value.cajas || '')
+  form.unidadesPorCaja = String(m.value.unidadesPorCaja || '')
+  form.hayReguero = m.value.hayReguero
+  form.unidadesSueltas = String(m.value.unidadesSueltas || '')
+})
+// Desmarcar el reguero limpia la cantidad: dejarla la sumaría al total sin verse.
+watch(() => form.hayReguero, (v) => { if (!v) form.unidadesSueltas = '' })
+
+const sueltasNum = computed(() => (form.hayReguero ? Number(form.unidadesSueltas || 0) : 0))
+const totalPreview = computed(() =>
+  calcularCantidadTotal(Number(form.cajas || 0), Number(form.unidadesPorCaja || 0), sueltasNum.value),
+)
+const puedeGuardarCantidades = computed(() =>
+  !props.guardando &&
+  Number(form.unidadesPorCaja) >= 1 &&
+  (Number(form.cajas || 0) >= 1 || sueltasNum.value >= 1) &&
+  (!form.hayReguero || sueltasNum.value >= 1),
+)
+
+function guardarCantidades() {
+  if (!puedeGuardarCantidades.value) return
+  emit('cantidades', {
+    cajas: Number(form.cajas || 0),
+    unidadesPorCaja: Number(form.unidadesPorCaja),
+    hayReguero: form.hayReguero,
+    unidadesSueltas: sueltasNum.value,
+  })
+}
+
+// ── Ubicación final ───────────────────────────────────────
+const ubicInput = ref<HTMLInputElement | null>(null)
+const ubicacion = ref('')
+const normalizada = computed(() => normalizarUbicacion(ubicacion.value))
+const esLibre = computed(() => Boolean(normalizada.value) && !esUbicacionCanonica(normalizada.value))
+const puedeUbicar = computed(() => !props.guardando && Boolean(normalizada.value) && listo.value && !enNovedad.value)
+
+watch(() => props.destacado, (v) => { if (v) void nextTick(() => ubicInput.value?.focus()) })
+
+function ubicar() {
+  if (!puedeUbicar.value) return
+  emit('ubicar', normalizada.value)
+}
+</script>
+
+<template>
+  <section class="reg card" :class="{ destacado, novedad: enNovedad }">
+    <header class="cab">
+      <span class="pulse" :class="{ parado: enNovedad }" />
+      <div class="cab-txt">
+        <b class="mono">{{ m.plu }}</b>
+        <span class="desc">{{ m.descripcion }}</span>
+      </div>
+      <div class="cab-der">
+        <span v-if="enNovedad" class="chip-nov"><TriangleAlert :size="12" /> Reloj detenido</span>
+        <span v-else class="crono tnum">{{ crono ?? '—' }}</span>
+      </div>
+    </header>
+
+    <p class="meta">
+      <template v-if="listo">
+        {{ m.cajas }} cajas × {{ m.unidadesPorCaja }}
+        <template v-if="m.hayReguero"> + {{ m.unidadesSueltas }} sueltas</template>
+        = <b class="tnum">{{ m.cantidadTotal }}</b> unidades
+      </template>
+      <template v-else>Sin cantidades todavía</template>
+      <template v-if="m.ubicacionInicial"> · desde {{ m.ubicacionInicial }}</template>
+      · desde {{ fmtHoraMovimiento(m.horaInicio) }}
+      <template v-if="m.responsableNombre"> · {{ m.responsableNombre }}</template>
+    </p>
+
+    <!-- Novedad abierta: el registro está fuera del reloj hasta que se verifique -->
+    <div v-if="enNovedad && m.novedadAbierta" class="banda-nov">
+      <TriangleAlert :size="14" />
+      <div class="banda-txt">
+        <b>{{ TIPO_NOVEDAD_LABEL[m.novedadAbierta.tipo] }}</b>
+        <span>
+          {{ m.novedadAbierta.abiertaPorNombre ?? 'Ayudante' }}
+          <template v-if="m.novedadAbierta.cantidadEncontrada != null">
+            · encontró {{ m.novedadAbierta.cantidadEncontrada }} unidades
+          </template>
+          <template v-if="m.novedadAbierta.ubicacionEncontrada">
+            · encontró en {{ m.novedadAbierta.ubicacionEncontrada }}
+          </template>
+        </span>
+        <span v-if="m.novedadAbierta.detalle" class="det-nov">{{ m.novedadAbierta.detalle }}</span>
+      </div>
+      <button v-if="!esAyudante" class="btn btn-sm" @click="emit('resolver')">Verificar</button>
+    </div>
+
+    <!-- Cantidades: el montacarguista las completa con el reloj ya corriendo.
+         El ayudante nunca las edita — confirma o marca novedad. -->
+    <form v-if="!esAyudante && !enNovedad" class="cant" @submit.prevent="guardarCantidades">
+      <label class="f">
+        <span class="lbl">Cajas master</span>
+        <input v-model="form.cajas" class="field tnum" type="number" min="0" inputmode="numeric" :disabled="guardando">
+      </label>
+      <label class="f">
+        <span class="lbl">Unidades x caja</span>
+        <input v-model="form.unidadesPorCaja" class="field tnum" type="number" min="1" inputmode="numeric" :disabled="guardando">
+      </label>
+      <div class="f f-chk">
+        <span class="lbl">¿Hay reguero?</span>
+        <label class="check">
+          <input v-model="form.hayReguero" type="checkbox" :disabled="guardando">
+          <span>Sueltas</span>
+        </label>
+      </div>
+      <label v-if="form.hayReguero" class="f">
+        <span class="lbl">Sueltas</span>
+        <input v-model="form.unidadesSueltas" class="field tnum" type="number" min="1" inputmode="numeric" :disabled="guardando">
+      </label>
+      <div class="f">
+        <span class="lbl">Total</span>
+        <div class="total tnum" :class="{ on: totalPreview > 0 }">{{ totalPreview }}</div>
+      </div>
+      <div class="f f-btn">
+        <button class="btn btn-sm" :disabled="!puedeGuardarCantidades">
+          <Spinner v-if="guardando" :size="13" /><Boxes v-else :size="13" />
+          Guardar cantidades
+        </button>
+      </div>
+    </form>
+
+    <!-- Confirmación del ayudante: una sola pulsación. Ve lo que debe almacenar
+         y decide; si no cuadra, no corrige, marca la novedad. -->
+    <div v-if="esAyudante && !enNovedad" class="confirmar">
+      <div class="esperado">
+        <span class="lbl">Debes almacenar</span>
+        <b class="tnum">{{ m.cantidadTotal }}</b>
+        <span class="ud">unidades</span>
+      </div>
+      <button class="btn btn-sm no-cuadra" :disabled="guardando" @click="emit('novedad')">
+        <TriangleAlert :size="13" /> No cuadra
+      </button>
+    </div>
+
+    <!-- Ubicación final: cierra el registro y para el reloj -->
+    <form v-if="!enNovedad" class="cerrar" @submit.prevent="ubicar">
+      <label class="f f-ubic">
+        <span class="lbl">Ubicación final</span>
+        <input
+          ref="ubicInput" v-model="ubicacion" class="field" placeholder="05-B-25-03-01"
+          autocomplete="off" autocapitalize="characters" enterkeyhint="done" :disabled="guardando || !listo"
+        >
+        <span v-if="esLibre" class="hint warn-txt">
+          <TriangleAlert :size="11" /> Ubicación libre, fuera del formato 05-B-25-03-01
+        </span>
+        <span v-else-if="!listo" class="hint warn-txt">
+          <TriangleAlert :size="11" /> Completa las cantidades antes de cerrar
+        </span>
+      </label>
+      <button class="btn btn-primary submit" :disabled="!puedeUbicar">
+        <Spinner v-if="guardando" :size="14" /><CheckCircle2 v-else :size="14" />
+        Cerrar
+      </button>
+    </form>
+
+    <footer class="acc">
+      <button v-if="!enNovedad" class="btn-link" :disabled="guardando" @click="emit('traspasar')">
+        <UserPlus :size="13" /> Pasar a ayudante
+      </button>
+      <button class="btn-link danger" :disabled="guardando" @click="emit('descartar')">
+        <Trash2 :size="13" /> Descartar
+      </button>
+    </footer>
+  </section>
+</template>
+
+<style scoped>
+.reg {
+  padding: 14px 16px 12px;
+  border-top: 3px solid var(--info);
+  background: color-mix(in srgb, var(--info) 4%, var(--surface));
+  transition: box-shadow .2s, border-color .2s;
+}
+.reg.novedad { border-top-color: var(--u-aviso); background: color-mix(in srgb, var(--u-aviso) 5%, var(--surface)); }
+.reg.destacado { box-shadow: 0 0 0 2px var(--brand); }
+
+.cab { display: flex; align-items: center; gap: 10px; }
+.pulse { width: 8px; height: 8px; border-radius: 50%; background: var(--info); flex-shrink: 0; animation: auroraPulse 1.8s ease-in-out infinite; }
+.pulse.parado { background: var(--u-aviso); animation: none; }
+.cab-txt { display: flex; flex-direction: column; gap: 1px; min-width: 0; flex: 1; }
+.cab-txt b { font-size: 14px; color: var(--ink); }
+.desc { font-size: 12px; color: var(--muted); overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.cab-der { flex-shrink: 0; }
+.crono { font-size: 20px; font-weight: 700; color: var(--info); font-variant-numeric: tabular-nums; }
+.chip-nov { display: inline-flex; align-items: center; gap: 5px; font-size: 11px; font-weight: 700; color: var(--u-aviso); }
+
+.meta { margin: 8px 0 10px; font-size: 12px; color: var(--muted); }
+.meta b { color: var(--ink); }
+
+.banda-nov { display: flex; align-items: flex-start; gap: 9px; padding: 9px 11px; margin-bottom: 11px; border-radius: var(--r-sm); background: color-mix(in srgb, var(--u-aviso) 10%, transparent); border: 1px solid color-mix(in srgb, var(--u-aviso) 32%, transparent); color: var(--u-aviso); }
+.banda-txt { display: flex; flex-direction: column; gap: 1px; flex: 1; min-width: 0; }
+.banda-txt b { font-size: 12.5px; color: var(--ink); }
+.banda-txt span { font-size: 11.5px; color: var(--muted); }
+.det-nov { font-style: italic; }
+
+.cant { display: flex; gap: 10px; flex-wrap: wrap; align-items: flex-end; margin-bottom: 11px; }
+.f { display: flex; flex-direction: column; gap: 4px; min-width: 0; flex: 0 1 110px; }
+.f-chk { flex: 0 1 130px; }
+.f-btn { flex: 0 0 auto; }
+.lbl { font-size: 10.5px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); }
+.check { display: flex; align-items: center; gap: 7px; height: 36px; padding: 0 10px; border: 1px solid var(--border); border-radius: var(--r-sm); background: var(--surface-2); font-size: 12.5px; cursor: pointer; }
+.check input { width: 16px; height: 16px; accent-color: var(--brand); }
+.total { display: flex; align-items: center; height: 36px; padding: 0 11px; border-radius: var(--r-sm); background: var(--surface-2); font-size: 17px; font-weight: 700; color: var(--faint); }
+.total.on { color: var(--brand); }
+
+.confirmar { display: flex; align-items: center; gap: 12px; margin-bottom: 11px; padding: 10px 13px; border-radius: var(--r-sm); background: var(--surface-2); border: 1px solid var(--border); }
+.esperado { display: flex; align-items: baseline; gap: 8px; flex: 1; }
+.esperado b { font-size: 26px; color: var(--ink); }
+.ud { font-size: 12px; color: var(--muted); }
+.no-cuadra { color: var(--u-aviso); border-color: color-mix(in srgb, var(--u-aviso) 40%, transparent); }
+
+.cerrar { display: flex; align-items: flex-end; gap: 10px; }
+.f-ubic { flex: 1 1 auto; }
+.hint { display: flex; align-items: center; gap: 4px; font-size: 11px; }
+.warn-txt { color: var(--u-aviso); }
+.submit { height: 36px; white-space: nowrap; }
+
+.acc { display: flex; gap: 12px; margin-top: 10px; padding-top: 9px; border-top: 1px solid var(--border); }
+.btn-link { display: inline-flex; align-items: center; gap: 5px; background: none; border: none; color: var(--muted); cursor: pointer; font-size: 12px; padding: 3px 0; }
+.btn-link:hover:not(:disabled) { color: var(--ink-2); }
+.btn-link.danger:hover:not(:disabled) { color: var(--u-critico); }
+.btn-link:disabled { opacity: .5; cursor: default; }
+
+@media (max-width: 760px) {
+  .cant { flex-direction: column; align-items: stretch; }
+  .f, .f-chk, .f-btn { flex: 1 1 auto; }
+  .cerrar { flex-direction: column; align-items: stretch; }
+  .cerrar :deep(.field) { height: 46px; font-size: 16px; }
+  .submit { height: 46px; justify-content: center; }
+  .esperado b { font-size: 30px; }
+}
+</style>

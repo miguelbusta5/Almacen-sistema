@@ -1,19 +1,25 @@
 <script setup lang="ts">
 // Orquestador de Control Montacargas y Resurtido. Sustituye la "PLANILLA
-// MONTACARGAS" de Google Sheets: el ciclo es registrar → asignar ubicación
-// final → confirmación → siguiente, con el reloj sellado por el servidor.
+// MONTACARGAS" de Google Sheets.
 //
-// El mismo componente sirve a los dos módulos: Control Montacargas le pasa dos
-// flujos (recepción y movimientos, como pestañas) y Resurtido uno solo, que se
-// renderiza sin barra de pestañas.
-import { ref, computed, watch, onMounted, nextTick } from 'vue'
-import { RefreshCw, Download, Forklift } from '@lucide/vue'
+// Ciclo: digitar el PLU arranca el reloj → completar cantidades → asignar la
+// ubicación final lo cierra. Por el medio el PLU puede pasar a un ayudante
+// (cierra el tramo del primero y abre el del segundo) o quedar en novedad
+// (detiene el reloj hasta que alguien verifique).
+//
+// El mismo componente sirve a los dos módulos y a los dos roles: Control
+// Montacargas le pasa dos flujos (pestañas), Resurtido uno solo; y el ayudante
+// ve su bandeja en vez del formulario de captura.
+import { ref, computed, watch, onMounted, onBeforeUnmount, nextTick } from 'vue'
+import { RefreshCw, Download, Forklift, ScanLine } from '@lucide/vue'
 import { ensureSession, useSessionState } from '~/composables/useSession'
 import { useToast } from '~/composables/useToast'
 import { useAutoRefresh } from '~/composables/useAutoRefresh'
 import { sonarVeredicto } from '~/utils/escaneoFeedback'
 import {
-  API_MONTACARGAS, puedeGestionarMontacargas, puedeUsarMontacargas,
+  API_MONTACARGAS, admiteVariosAbiertos, esAyudante as esRolAyudante,
+  normalizarCodigoProducto, puedeCrearMovimiento, puedeGestionarMontacargas,
+  puedeUsarMontacargas,
   type FlujoConfig, type Movimiento, type MovimientoConteos, type Operario,
 } from '~/utils/montacargas'
 
@@ -35,11 +41,21 @@ const role = computed(() => me.value?.role ?? '')
 const userId = computed(() => me.value?.id)
 const puedeVer = computed(() => puedeUsarMontacargas(role.value))
 const canManage = computed(() => puedeGestionarMontacargas(role.value))
+const puedeCrear = computed(() => puedeCrearMovimiento(role.value))
+const ayudante = computed(() => esRolAyudante(role.value))
 
 // ── Pestaña activa ─────────────────────────────────────────────────
 const flujoActivo = ref<FlujoConfig>(props.flujos[0]!)
 const tipo = computed(() => flujoActivo.value.tipo)
 const hayPestanas = computed(() => props.flujos.length > 1)
+
+// ── Reloj compartido ───────────────────────────────────────────────
+// Un solo setInterval para todos los cronómetros de la pantalla, no uno por
+// tarjeta: en resurtido pueden ser muchos a la vez.
+const ahora = ref(Date.now())
+let tick: ReturnType<typeof setInterval> | null = null
+onMounted(() => { tick = setInterval(() => { ahora.value = Date.now() }, 1000) })
+onBeforeUnmount(() => { if (tick) clearInterval(tick) })
 
 // ── Listado ────────────────────────────────────────────────
 const PAGE_SIZE = 40
@@ -70,22 +86,29 @@ async function loadLista() {
   }
 }
 
-// ── Registro en curso ──────────────────────────────────────
-// Endpoint propio, no derivado de la lista: el paso de ubicar tiene que
-// sobrevivir a los filtros, la paginación y a recargar la página.
-const abierto = ref<Movimiento | null>(null)
-async function loadAbierto() {
+// ── Registros abiertos (bandeja) ───────────────────────────
+// Plural: en resurtido pueden correr varios relojes a la vez. Endpoint propio y
+// no derivado de la lista: la bandeja tiene que sobrevivir a filtros,
+// paginación y a recargar la página.
+const abiertos = ref<Movimiento[]>([])
+async function loadAbiertos() {
   try {
-    const res = await $fetch<{ data: Movimiento | null }>(`${API_MONTACARGAS}/abierto`, {
+    const res = await $fetch<{ data: Movimiento[] }>(`${API_MONTACARGAS}/abiertos`, {
       query: { tipo: tipo.value },
     })
-    abierto.value = res.data
+    abiertos.value = res.data
   } catch { /* no bloquea la vista */ }
 }
 
+// En recepción y movimientos se trabaja una estiba a la vez: con una abierta se
+// esconde el formulario para que no haya forma de arrancar dos relojes.
+const puedeAbrirOtro = computed(
+  () => puedeCrear.value && (admiteVariosAbiertos(tipo.value) || abiertos.value.length === 0),
+)
+
 // ── KPIs ───────────────────────────────────────────────────
 const conteos = ref<MovimientoConteos>({
-  registrosHoy: 0, cajasHoy: 0, unidadesHoy: 0, sueltasHoy: 0, enCurso: 0, promedioMin: null,
+  registrosHoy: 0, cajasHoy: 0, unidadesHoy: 0, sueltasHoy: 0, enCurso: 0, conNovedad: 0, promedioMin: null,
 })
 async function loadConteos() {
   try {
@@ -96,7 +119,6 @@ async function loadConteos() {
   } catch { /* deja los conteos previos si falla */ }
 }
 
-// ── Operarios (filtro, solo gestores) ──────────────────────
 const operarios = ref<Operario[]>([])
 async function loadOperarios() {
   if (!canManage.value) return
@@ -108,11 +130,10 @@ async function loadOperarios() {
 
 async function cargarTodo() {
   loading.value = true
-  await Promise.all([loadLista(), loadAbierto(), loadConteos()])
+  await Promise.all([loadLista(), loadAbiertos(), loadConteos()])
   loading.value = false
 }
 
-// ── Ciclo de vida ──────────────────────────────────────────
 onMounted(async () => {
   await ensureSession()
   if (!puedeVer.value) { loading.value = false; return }
@@ -123,13 +144,9 @@ onMounted(async () => {
 // para no arrastrar un filtro que no aplica al otro tipo.
 watch(flujoActivo, () => {
   page.value = 1
-  fQ.value = ''
-  fFecha.value = ''
-  fEstado.value = ''
-  fUsuario.value = ''
+  fQ.value = ''; fFecha.value = ''; fEstado.value = ''; fUsuario.value = ''
   void cargarTodo()
 })
-
 watch(page, () => { void loadLista() })
 watch([fQ, fFecha, fEstado, fUsuario], () => {
   page.value = 1
@@ -142,11 +159,12 @@ const formDirty = ref(false)
 useAutoRefresh({
   onRefresh: () => {
     if (!puedeVer.value) return
-    // Nunca refrescar con un registro abierto: el panel de ubicación tiene el
-    // foco en su input y un re-render le robaría lo que el operario escribe.
-    if (abierto.value || formDirty.value || saving.value || cerrando.value || editando.value) return
+    // Nunca refrescar con trabajo a medias: las tarjetas abiertas tienen inputs
+    // con foco y un re-render le robaría al operario lo que está escribiendo.
+    if (formDirty.value || saving.value || guardando.value || editando.value) return
+    if (abiertos.value.length > 0) return
     void loadLista()
-    void loadAbierto()
+    void loadAbiertos()
     void loadConteos()
   },
 })
@@ -154,85 +172,133 @@ useAutoRefresh({
 async function refreshAll() {
   if (refreshing.value) return
   refreshing.value = true
-  await Promise.all([loadLista(), loadAbierto(), loadConteos()])
+  await Promise.all([loadLista(), loadAbiertos(), loadConteos()])
   refreshing.value = false
 }
 
 function limpiarFiltros() { fQ.value = ''; fFecha.value = ''; fEstado.value = ''; fUsuario.value = '' }
 function onKpiFilter(key: string) { fEstado.value = key }
 
-// ── Paso 1: registrar ──────────────────────────────────────
+// ── Abrir registro (arranca el reloj) ──────────────────────
 const capturaRef = ref<{ reset: () => void } | null>(null)
 const saving = ref(false)
 
-async function crear(payload: {
-  codigo: string
-  cajas: number
-  unidadesPorCaja: number
-  hayReguero: boolean
-  unidadesSueltas: number
-  ubicacionInicial?: string
-}) {
+async function abrir(payload: { codigo: string; ubicacionInicial?: string }) {
   saving.value = true
   try {
-    const res = await $fetch<{ data: Movimiento }>(API_MONTACARGAS, {
-      method: 'POST',
-      body: { ...payload, tipo: tipo.value },
-    })
-    abierto.value = res.data
-    await Promise.all([loadLista(), loadConteos()])
+    await $fetch(API_MONTACARGAS, { method: 'POST', body: { ...payload, tipo: tipo.value } })
+    capturaRef.value?.reset()
+    await Promise.all([loadAbiertos(), loadLista(), loadConteos()])
   } catch (e: any) {
     // 409: ya había un registro abierto de este tipo. El servidor lo devuelve
-    // para que la UI salte al paso de ubicar en vez de dejar al operario
-    // atascado creando.
+    // para que la UI lo muestre en vez de dejar al operario atascado.
     const yaAbierto = e?.data?.data?.movimiento as Movimiento | undefined
     if (yaAbierto) {
-      abierto.value = yaAbierto
-      showToast('Ya tenías un registro en curso: asígnale la ubicación final', true)
+      await loadAbiertos()
+      showToast('Ya tenías un registro en curso: ciérralo o descártalo', true)
     } else {
-      showToast(apiErr(e, 'No se pudo crear el registro'), true)
+      showToast(apiErr(e, 'No se pudo abrir el registro'), true)
     }
   } finally {
     saving.value = false
   }
 }
 
-// ── Paso 2: ubicar (cierra el registro) ────────────────────
-const cerrando = ref(false)
+// ── Acciones sobre un registro abierto ─────────────────────
+const guardando = ref('')
 const exito = ref<Movimiento | null>(null)
 let exitoTimer: ReturnType<typeof setTimeout> | null = null
 
-async function asignarUbicacion(ubicacionFinal: string) {
-  if (!abierto.value) return
-  cerrando.value = true
+async function accion<T>(id: string, fn: () => Promise<T>, fallback: string): Promise<T | null> {
+  guardando.value = id
   try {
-    const res = await $fetch<{ data: Movimiento }>(`${API_MONTACARGAS}/${abierto.value.id}/ubicacion`, {
-      method: 'POST',
-      body: { ubicacionFinal },
-    })
-    abierto.value = null
-
-    // Confirmación de proceso exitoso: overlay + sonido/vibración, para que el
-    // operario lo perciba sin mirar la pantalla y encadene el siguiente.
-    exito.value = res.data
-    sonarVeredicto('VALIDO')
-    if (exitoTimer) clearTimeout(exitoTimer)
-    exitoTimer = setTimeout(() => { exito.value = null }, 1800)
-
-    // Captura vuelve a montarse (era el v-else de `abierto`), con el foco en el
-    // código. El reset es la red por si en algún flujo no llegara a desmontarse.
-    await nextTick()
-    capturaRef.value?.reset()
-
-    await Promise.all([loadLista(), loadConteos()])
+    return await fn()
   } catch (e) {
-    showToast(apiErr(e, 'No se pudo cerrar el registro'), true)
+    showToast(apiErr(e, fallback), true)
+    return null
   } finally {
-    cerrando.value = false
+    guardando.value = ''
   }
 }
 
-// ── Edición y borrado ──────────────────────────────────────
+async function guardarCantidades(m: Movimiento, payload: Record<string, unknown>) {
+  const ok = await accion(m.id, () =>
+    $fetch(`${API_MONTACARGAS}/${m.id}/cantidades`, { method: 'PATCH', body: payload }),
+    'No se pudieron guardar las cantidades')
+  if (ok) await loadAbiertos()
+}
+
+async function ubicar(m: Movimiento, ubicacionFinal: string) {
+  const res = await accion(m.id, () =>
+    $fetch<{ data: Movimiento }>(`${API_MONTACARGAS}/${m.id}/ubicacion`, {
+      method: 'POST', body: { ubicacionFinal },
+    }), 'No se pudo cerrar el registro')
+  if (!res) return
+
+  // Confirmación de proceso exitoso: overlay + sonido/vibración, para que el
+  // operario lo perciba sin mirar la pantalla y encadene el siguiente.
+  exito.value = res.data
+  sonarVeredicto('VALIDO')
+  if (exitoTimer) clearTimeout(exitoTimer)
+  exitoTimer = setTimeout(() => { exito.value = null }, 1800)
+
+  await Promise.all([loadAbiertos(), loadLista(), loadConteos()])
+  await nextTick()
+  capturaRef.value?.reset()
+}
+
+async function descartar(m: Movimiento) {
+  const ok = await accion(m.id, () =>
+    $fetch(`${API_MONTACARGAS}/${m.id}/descartar`, { method: 'POST', body: {} }),
+    'No se pudo descartar')
+  if (ok) {
+    showToast('Registro descartado')
+    await Promise.all([loadAbiertos(), loadLista(), loadConteos()])
+  }
+}
+
+// ── Traspaso y novedades ───────────────────────────────────
+const traspasando = ref<Movimiento | null>(null)
+const marcandoNovedad = ref<Movimiento | null>(null)
+const resolviendo = ref<Movimiento | null>(null)
+
+async function onTraspasado(nombre: string) {
+  traspasando.value = null
+  showToast(`PLU pasado a ${nombre} ✓`)
+  await Promise.all([loadAbiertos(), loadLista(), loadConteos()])
+}
+async function onNovedadCreada() {
+  marcandoNovedad.value = null
+  showToast('Novedad marcada: el reloj se detuvo', true)
+  await Promise.all([loadAbiertos(), loadLista(), loadConteos()])
+}
+async function onNovedadResuelta() {
+  resolviendo.value = null
+  showToast('Novedad resuelta ✓')
+  await Promise.all([loadAbiertos(), loadLista(), loadConteos()])
+}
+
+// ── Escaneo en la bandeja del ayudante ─────────────────────
+// El ayudante puede tener varios PLUs cargados: escanea el que trae en la mano
+// y la tarjeta correspondiente se resalta y toma el foco. Es lo que hace la
+// confirmación de una sola pulsación.
+const escaneo = ref('')
+const destacadoId = ref('')
+function onEscanear() {
+  const codigo = normalizarCodigoProducto(escaneo.value)
+  if (!codigo) return
+  const encontrado = abiertos.value.find((m) => m.plu === codigo || m.ean === codigo)
+  if (!encontrado) {
+    showToast('Ese PLU no está en tu bandeja', true)
+    sonarVeredicto('CAJA_AJENA')
+    return
+  }
+  destacadoId.value = encontrado.id
+  sonarVeredicto('VALIDO')
+  escaneo.value = ''
+}
+
+// ── Edición y borrado (gestión) ────────────────────────────
 const editando = ref<Movimiento | null>(null)
 const borrando = ref<Movimiento | null>(null)
 const deleting = ref(false)
@@ -247,7 +313,7 @@ async function confirmarBorrado() {
     })
     borrando.value = null
     showToast('Registro borrado')
-    await Promise.all([loadLista(), loadAbierto(), loadConteos()])
+    await Promise.all([loadLista(), loadAbiertos(), loadConteos()])
   } catch (e) {
     showToast(apiErr(e, 'No se pudo borrar'), true)
   } finally {
@@ -258,7 +324,7 @@ async function confirmarBorrado() {
 async function onEditado() {
   editando.value = null
   showToast('Registro actualizado ✓')
-  await Promise.all([loadLista(), loadAbierto(), loadConteos()])
+  await Promise.all([loadLista(), loadAbiertos(), loadConteos()])
 }
 
 // ── Excel ──────────────────────────────────────────────────
@@ -317,7 +383,7 @@ async function exportar() {
     <ListSkeleton v-if="!sessionLoaded" />
     <EmptyState
       v-else-if="!puedeVer" title="Sin acceso"
-      description="Este módulo está disponible para montacarguistas y supervisión de almacenamiento."
+      description="Este módulo está disponible para montacarguistas, ayudantes y supervisión de almacenamiento."
     />
 
     <template v-else>
@@ -334,16 +400,47 @@ async function exportar() {
         </button>
       </nav>
 
-      <!-- Un paso o el otro, nunca los dos: con un registro abierto lo único
-           que se puede hacer es ubicarlo. Así no hay forma de arrancar dos a la
-           vez y el tiempo medido sigue significando algo. -->
-      <MontacargasUbicacionPanel
-        v-if="abierto" class="bloque" :movimiento="abierto" :saving="cerrando"
-        @submit="asignarUbicacion"
-      />
+      <!-- Bandeja del ayudante: escanea el PLU que trae en la mano y su tarjeta
+           se resalta y toma el foco. -->
+      <div v-if="ayudante" class="escaneo card bloque">
+        <label class="f">
+          <span class="lbl">Escanea el PLU que traes</span>
+          <div class="scan-wrap">
+            <ScanLine :size="15" class="scan-ic" />
+            <input
+              v-model="escaneo" class="field" placeholder="26403 o 7703596000036"
+              inputmode="numeric" autocomplete="off" autocapitalize="characters"
+              enterkeyhint="search" autofocus
+              @keydown.enter.prevent="onEscanear"
+            >
+          </div>
+        </label>
+      </div>
+
+      <!-- Captura: solo para quien inicia registros, y solo si puede abrir otro -->
       <MontacargasCaptura
-        v-else ref="capturaRef" class="bloque" :flujo="flujoActivo" :saving="saving"
-        @submit="crear" @dirty="formDirty = $event"
+        v-if="puedeAbrirOtro" ref="capturaRef" class="bloque"
+        :flujo="flujoActivo" :saving="saving"
+        @submit="abrir" @dirty="formDirty = $event"
+      />
+
+      <!-- Registros con el reloj corriendo. En resurtido pueden ser varios. -->
+      <MontacargasRegistroAbierto
+        v-for="m in abiertos" :key="m.id" class="bloque"
+        :movimiento="m" :ahora="ahora" :es-ayudante="ayudante"
+        :destacado="destacadoId === m.id" :guardando="guardando === m.id"
+        @cantidades="guardarCantidades(m, $event)"
+        @ubicar="ubicar(m, $event)"
+        @traspasar="traspasando = m"
+        @novedad="marcandoNovedad = m"
+        @resolver="resolviendo = m"
+        @descartar="descartar(m)"
+      />
+
+      <EmptyState
+        v-if="ayudante && abiertos.length === 0 && !loading"
+        title="Sin PLUs asignados"
+        description="Cuando un montacarguista te pase un PLU, aparecerá aquí."
       />
 
       <MontacargasKpiRail class="bloque" :counts="conteos" @filter="onKpiFilter" />
@@ -363,6 +460,18 @@ async function exportar() {
       </template>
     </template>
 
+    <MontacargasTraspasarModal
+      v-if="traspasando" :movimiento="traspasando"
+      @close="traspasando = null" @traspasado="onTraspasado"
+    />
+    <MontacargasNovedadModal
+      v-if="marcandoNovedad" :movimiento="marcandoNovedad"
+      @close="marcandoNovedad = null" @creada="onNovedadCreada"
+    />
+    <MontacargasResolverNovedadModal
+      v-if="resolviendo" :movimiento="resolviendo"
+      @close="resolviendo = null" @resuelta="onNovedadResuelta"
+    />
     <MontacargasEditarModal
       v-if="editando" :item="editando" :can-manage="canManage"
       @close="editando = null" @saved="onEditado"
@@ -398,6 +507,13 @@ async function exportar() {
 .tab:hover { color: var(--ink-2); }
 .tab.on { color: var(--brand); border-bottom-color: var(--brand); }
 .tab:focus-visible { outline: none; box-shadow: var(--ring); border-radius: var(--r-xs); }
+
+.escaneo { padding: 14px 16px; border-top: 3px solid var(--brand); }
+.escaneo .f { display: flex; flex-direction: column; gap: 5px; }
+.lbl { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); }
+.scan-wrap { position: relative; }
+.scan-wrap .field { padding-left: 34px; width: 100%; height: 44px; font-size: 16px; }
+.scan-ic { position: absolute; left: 11px; top: 50%; transform: translateY(-50%); color: var(--brand); pointer-events: none; }
 
 .bloque { margin-bottom: 18px; }
 .pagenav { margin-top: 16px; }

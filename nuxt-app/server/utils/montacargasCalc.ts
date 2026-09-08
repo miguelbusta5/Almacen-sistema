@@ -4,6 +4,7 @@
 // de Prisma al bundle (ver BUG-004 en docs/cerebro/bugs.md). Las dos copias
 // deben mantenerse en sync.
 
+// Montacarguistas: crean registros y pueden pasarlos a un ayudante.
 export const ROLES_MONTACARGAS = [
   'MONTACARGAS',
   'SUPERVISOR_ALMACENAMIENTO',
@@ -11,25 +12,41 @@ export const ROLES_MONTACARGAS = [
   'ADMIN',
 ] as const
 
-// Quienes ven los registros de todo el mundo y pueden exportar, corregir horas o
-// borrar. Un MONTACARGAS solo ve y cierra los suyos.
+// Ayudantes: NO crean registros, solo reciben PLUs, los ubican o abren novedad.
+export const ROL_AYUDANTE = 'OPERARIO_ALMACENAMIENTO'
+
+// Quienes ven los registros de todo el mundo y pueden exportar, corregir horas,
+// resolver novedades o borrar. Un MONTACARGAS solo ve y cierra los suyos.
 export const GESTORES_MONTACARGAS = [
   'SUPERVISOR_ALMACENAMIENTO',
   'GERENTE',
   'ADMIN',
 ] as const
 
+/** ¿Puede entrar al módulo? Incluye a los ayudantes, que ven su bandeja. */
 export function puedeUsarMontacargas(role: string | null | undefined): boolean {
-  return !!role && (ROLES_MONTACARGAS as readonly string[]).includes(role)
+  return (
+    !!role &&
+    ((ROLES_MONTACARGAS as readonly string[]).includes(role) || role === ROL_AYUDANTE)
+  )
 }
 
 export function puedeGestionarMontacargas(role: string | null | undefined): boolean {
   return !!role && (GESTORES_MONTACARGAS as readonly string[]).includes(role)
 }
 
+/** Solo los montacarguistas (y gestión) inician registros. El ayudante recibe. */
+export function puedeCrearMovimiento(role: string | null | undefined): boolean {
+  return !!role && (ROLES_MONTACARGAS as readonly string[]).includes(role)
+}
+
+export function esAyudante(role: string | null | undefined): boolean {
+  return role === ROL_AYUDANTE
+}
+
 // ── Tipos de registro ────────────────────────────────────────────────
-// Los tres comparten tabla y flujo (crear → ubicar). Se diferencian en si la
-// mercancía tiene ubicación de origen y en qué módulo se captura.
+// Los tres comparten tabla y flujo. Se diferencian en si la mercancía tiene
+// ubicación de origen, en qué módulo se captura y en si admiten varios abiertos.
 export type TipoMovimiento = 'RECEPCION' | 'MOVIMIENTO' | 'RESURTIDO'
 
 export const TIPOS_MOVIMIENTO: readonly TipoMovimiento[] = [
@@ -58,6 +75,47 @@ export function esTipoMovimiento(value: unknown): value is TipoMovimiento {
  */
 export function requiereUbicacionInicial(tipo: TipoMovimiento): boolean {
   return tipo !== 'RECEPCION'
+}
+
+/**
+ * ¿Se pueden tener varios registros abiertos a la vez?
+ *
+ * En resurtido sí: el operario baja varios PLUs de una pasada y cada uno corre
+ * su propio reloj. En recepción y movimientos se trabaja una estiba a la vez,
+ * y permitir varios abiertos solo serviría para dejar relojes olvidados.
+ */
+export function admiteVariosAbiertos(tipo: TipoMovimiento): boolean {
+  return tipo === 'RESURTIDO'
+}
+
+// ── Estados ──────────────────────────────────────────────────────────
+export type EstadoMovimiento = 'EN_CURSO' | 'NOVEDAD' | 'CERRADO'
+
+export const ESTADO_MOVIMIENTO_LABEL: Record<EstadoMovimiento, string> = {
+  EN_CURSO: 'En curso',
+  NOVEDAD: 'Con novedad',
+  CERRADO: 'Cerrado',
+}
+
+// ── Novedades ────────────────────────────────────────────────────────
+// El ayudante no corrige cantidades ni ubicaciones: si no cuadran, abre una
+// novedad. Qué se verifica depende del tipo de registro.
+export type TipoNovedad = 'UNIDADES' | 'UBICACION_INICIAL'
+
+export const TIPO_NOVEDAD_LABEL: Record<TipoNovedad, string> = {
+  UNIDADES: 'Las unidades no coinciden',
+  UBICACION_INICIAL: 'La ubicación inicial no coincide',
+}
+
+/**
+ * Qué se verifica cuando el ayudante reporta un descuadre.
+ *
+ * En recepción lo que puede no cuadrar son las unidades de la estiba (no hay
+ * ubicación de origen que revisar). En movimientos y resurtido lo que se revisa
+ * primero es de dónde salió la mercancía.
+ */
+export function novedadEsperada(tipo: TipoMovimiento): TipoNovedad {
+  return tipo === 'RECEPCION' ? 'UNIDADES' : 'UBICACION_INICIAL'
 }
 
 // ── Normalización de entrada ─────────────────────────────────────────
@@ -101,20 +159,36 @@ export function validarUbicacion(ubicacion: string, etiqueta = 'La ubicación fi
   return null
 }
 
-export interface CapturaMontacargas {
+/**
+ * Apertura del registro: solo hace falta el PLU y, si el tipo lo pide, de dónde
+ * sale la mercancía. Las cantidades llegan después — el reloj ya está corriendo.
+ */
+export function validarApertura(input: {
   tipo?: unknown
   codigo?: string
+  ubicacionInicial?: string
+}): string | null {
+  if (!esTipoMovimiento(input.tipo)) return 'Tipo de registro inválido'
+  if (!input.codigo?.trim()) return 'El PLU o código de barras es obligatorio'
+  if (requiereUbicacionInicial(input.tipo)) {
+    const err = validarUbicacion(
+      normalizarUbicacion(input.ubicacionInicial),
+      'La ubicación inicial',
+    )
+    if (err) return err
+  }
+  return null
+}
+
+export interface CantidadesMontacargas {
   cajas?: number
   unidadesPorCaja?: number
   hayReguero?: boolean
   unidadesSueltas?: number
-  ubicacionInicial?: string
 }
 
-export function validarCaptura(input: CapturaMontacargas): string | null {
-  if (!esTipoMovimiento(input.tipo)) return 'Tipo de registro inválido'
-  if (!input.codigo?.trim()) return 'El PLU o código de barras es obligatorio'
-
+/** Cantidades del registro. Se exigen completas al cerrar, no al abrir. */
+export function validarCantidades(input: CantidadesMontacargas): string | null {
   const cajas = input.cajas ?? 0
   if (!Number.isInteger(cajas) || cajas < 0) {
     return 'La cantidad de cajas debe ser un entero mayor o igual a 0'
@@ -145,15 +219,6 @@ export function validarCaptura(input: CapturaMontacargas): string | null {
   if (cajas < 1 && sueltas < 1) {
     return 'Registra al menos una caja o unidades sueltas'
   }
-
-  if (requiereUbicacionInicial(input.tipo)) {
-    const err = validarUbicacion(
-      normalizarUbicacion(input.ubicacionInicial),
-      'La ubicación inicial',
-    )
-    if (err) return err
-  }
-
   return null
 }
 
@@ -174,16 +239,38 @@ export function calcularCantidadTotal(
   return enCajas + sueltas
 }
 
-export type EstadoMovimiento = 'EN_CURSO' | 'CERRADO'
-
-/** El estado no es una columna: se deriva de si ya se asignó la ubicación final. */
-export function estadoMovimiento(
-  horaFinalizacion: Date | string | null | undefined,
-): EstadoMovimiento {
-  return horaFinalizacion ? 'CERRADO' : 'EN_CURSO'
+export interface TramoLike {
+  usuarioId: string
+  inicio: Date | string
+  fin?: Date | string | null
 }
 
-export const ESTADO_MOVIMIENTO_LABEL: Record<EstadoMovimiento, string> = {
-  EN_CURSO: 'En curso',
-  CERRADO: 'Cerrado',
+/**
+ * Minutos trabajados, sumando solo los tramos cerrados.
+ *
+ * No es `fin - inicio` del registro: entre medias puede haber una novedad, y
+ * verificar no se cronometra. Sumar la ventana completa cargaría a los operarios
+ * un tiempo que no estuvieron trabajando.
+ */
+export function minutosTrabajados(tramos: readonly TramoLike[], hasta?: Date): number {
+  let ms = 0
+  for (const t of tramos) {
+    const inicio = t.inicio instanceof Date ? t.inicio : new Date(t.inicio)
+    const finRaw = t.fin ?? hasta ?? null
+    if (!finRaw) continue
+    const fin = finRaw instanceof Date ? finRaw : new Date(finRaw)
+    if (Number.isNaN(inicio.getTime()) || Number.isNaN(fin.getTime())) continue
+    ms += Math.max(0, fin.getTime() - inicio.getTime())
+  }
+  return Math.round(ms / 60000)
+}
+
+/** Minutos por persona, para medir productividad sin castigar al que recibió. */
+export function minutosPorUsuario(tramos: readonly TramoLike[]): Record<string, number> {
+  const acc: Record<string, number> = {}
+  for (const t of tramos) {
+    if (!t.fin) continue
+    acc[t.usuarioId] = (acc[t.usuarioId] ?? 0) + minutosTrabajados([t])
+  }
+  return acc
 }

@@ -46,8 +46,8 @@ export const MODULE_ACCESS: Record<ModuleKey, string[]> = {
   'cargue-gourmet': ['ADMIN', 'GERENTE', 'OPERACIONES_GOURMET', 'TRANSPORTE', 'SUPERVISOR_TRANSPORTE'],
   // Montacarguistas y quien responde por el almacenamiento. Los supervisores de
   // inventario y de transporte quedan fuera: el trabajo de montacargas no es su area.
-  'control-montacargas': ['MONTACARGAS', 'SUPERVISOR_ALMACENAMIENTO', 'GERENTE', 'ADMIN'],
-  resurtido: ['MONTACARGAS', 'SUPERVISOR_ALMACENAMIENTO', 'GERENTE', 'ADMIN'],
+  'control-montacargas': ['MONTACARGAS', 'OPERARIO_ALMACENAMIENTO', 'SUPERVISOR_ALMACENAMIENTO', 'GERENTE', 'ADMIN'],
+  resurtido: ['MONTACARGAS', 'OPERARIO_ALMACENAMIENTO', 'SUPERVISOR_ALMACENAMIENTO', 'GERENTE', 'ADMIN'],
 }
 
 export function canSeeModule(role: string | undefined | null, moduleKey: ModuleKey): boolean {

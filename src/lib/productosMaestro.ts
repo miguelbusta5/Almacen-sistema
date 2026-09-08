@@ -7,7 +7,7 @@ export const MAESTRO_SHEET_NAME = "ResultadosMaestrodeproductosPV";
 // montacargas trae su catálogo en "MAESTRO REF"; sin esta lista el importador
 // caía a worksheets[0], que en ese archivo es la pestaña de un operario y no el
 // maestro.
-export const MAESTRO_SHEET_NAMES = [MAESTRO_SHEET_NAME, "MAESTRO REF"] as const;
+export const MAESTRO_SHEET_NAMES = [MAESTRO_SHEET_NAME, "MAESTRO REF", "MEDIDAS"] as const;
 
 export interface ProductoMaestroDTO {
   plu: string;
@@ -136,12 +136,27 @@ export function columnasPresentes(rows: ProductoMaestroRow[]): string[] {
     .map(([columna]) => columna);
 }
 
+// Marcadores que el maestro usa como descripcion cuando la fila NO corresponde a
+// un producto real del catalogo. Importarlos dejaria esa frase como descripcion.
+const DESCRIPCION_MARCADOR = /^plu no existe/i;
+
 export function mapExcelProductoRow(row: ProductoMaestroRow): ProductoMaestroDTO | null {
   const plu = normalizePlu(row.PLU ?? row.plu ?? row["Referencia Original"]);
   if (!plu) return null;
+  // "0" no es un PLU: es la fila de sub-encabezados que traen las hojas con
+  // cabecera de dos niveles (MEDIDAS, MAESTRO REF), donde la columna PLU va en
+  // blanco o en cero y el resto son etiquetas ("PB", "ALTO", "ANCHO"...).
+  if (plu === "0") return null;
+
+  const descripcion = nullableText(
+    row.DESCRIPCION ?? row.descripcion ?? row["Nombre para mostrar"],
+  );
+  // Se descarta la fila entera, no solo la descripcion: escribir null sobre una
+  // descripcion buena seria peor que perder las unidades por caja de esa fila.
+  if (descripcion && DESCRIPCION_MARCADOR.test(descripcion)) return null;
   return {
     plu,
-    descripcion: nullableText(row.DESCRIPCION ?? row.descripcion ?? row["Nombre para mostrar"]),
+    descripcion,
     fabricante: nullableText(row.Fabricante ?? row.fabricante),
     precio: parsePrecio(row.PRECIO ?? row.precio ?? row["Precio unitario"]),
     marca: nullableText(row.MARCAS ?? row.marcas),

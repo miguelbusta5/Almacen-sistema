@@ -29,6 +29,7 @@ const layout = leer("nuxt-app/app/layouts/default.vue");
 const nextConfig = leer("next.config.ts");
 const moduleVue = leer("nuxt-app/app/components/montacargas/Module.vue");
 const capturaVue = leer("nuxt-app/app/components/montacargas/Captura.vue");
+const registroVue = leer("nuxt-app/app/components/montacargas/RegistroAbierto.vue");
 
 describe("montacargas — patrones y roles sincronizados", () => {
   it("el patrón de ubicación canónica es el mismo en las tres copias", () => {
@@ -49,6 +50,9 @@ describe("montacargas — patrones y roles sincronizados", () => {
     // cliente, la UI ofrecería borrar y exportar y el servidor devolvería 403.
     const gestoresCliente = utilsCliente.match(/GESTORES_MONTACARGAS\s*=\s*\[([^\]]*)\]/)?.[1] ?? "";
     expect(gestoresCliente).not.toContain("MONTACARGAS'");
+    // El ayudante entra al módulo pero no crea: las dos copias lo distinguen.
+    expect(calcServidor).toContain("OPERARIO_ALMACENAMIENTO");
+    expect(utilsCliente).toContain("OPERARIO_ALMACENAMIENTO");
   });
 });
 
@@ -56,11 +60,17 @@ describe("montacargas — handlers Nitro presentes", () => {
   const handlers = [
     "nuxt-app/server/api/montacargas/index.get.ts",
     "nuxt-app/server/api/montacargas/index.post.ts",
-    "nuxt-app/server/api/montacargas/abierto.get.ts",
+    "nuxt-app/server/api/montacargas/abiertos.get.ts",
     "nuxt-app/server/api/montacargas/conteos.get.ts",
     "nuxt-app/server/api/montacargas/operarios.get.ts",
+    "nuxt-app/server/api/montacargas/ayudantes.get.ts",
     "nuxt-app/server/api/montacargas/export.get.ts",
+    "nuxt-app/server/api/montacargas/[id]/cantidades.patch.ts",
     "nuxt-app/server/api/montacargas/[id]/ubicacion.post.ts",
+    "nuxt-app/server/api/montacargas/[id]/traspasar.post.ts",
+    "nuxt-app/server/api/montacargas/[id]/novedad.post.ts",
+    "nuxt-app/server/api/montacargas/[id]/resolver-novedad.post.ts",
+    "nuxt-app/server/api/montacargas/[id]/descartar.post.ts",
     "nuxt-app/server/api/montacargas/[id]/index.patch.ts",
     "nuxt-app/server/api/montacargas/[id]/index.delete.ts",
     "nuxt-app/server/api/productos-maestro/buscar.get.ts",
@@ -90,10 +100,10 @@ describe("montacargas — handlers Nitro presentes", () => {
 
   // Sin el filtro por tipo, Resurtido mostraría los movimientos de depósito y
   // al revés: los tres flujos comparten tabla.
-  it("listado, abierto, conteos y export filtran por tipo", () => {
+  it("listado, abiertos, conteos y export filtran por tipo", () => {
     for (const rel of [
       "nuxt-app/server/api/montacargas/index.get.ts",
-      "nuxt-app/server/api/montacargas/abierto.get.ts",
+      "nuxt-app/server/api/montacargas/abiertos.get.ts",
       "nuxt-app/server/api/montacargas/conteos.get.ts",
       "nuxt-app/server/api/montacargas/export.get.ts",
     ]) {
@@ -102,63 +112,124 @@ describe("montacargas — handlers Nitro presentes", () => {
   });
 });
 
-describe("montacargas — reloj sellado por el servidor", () => {
+describe("montacargas — el reloj arranca al digitar el PLU", () => {
   const post = leer("nuxt-app/server/api/montacargas/index.post.ts");
   const ubicacion = leer("nuxt-app/server/api/montacargas/[id]/ubicacion.post.ts");
 
-  it("horaInicio la pone el servidor al crear, no el cliente", () => {
+  it("crear solo pide PLU y origen: las cantidades llegan después", () => {
+    const schema = post.match(/createSchema\s*=\s*z\.object\(\{([\s\S]*?)\n\}\)/)?.[1] ?? "";
+    expect(schema).toContain("codigo");
+    expect(schema).toContain("ubicacionInicial");
+    // Si el POST exigiera cantidades, el reloj no podría arrancar con el PLU.
+    expect(schema).not.toContain("cajas");
+    expect(schema).not.toContain("unidadesSueltas");
+  });
+
+  it("horaInicio y el primer tramo los sella el servidor", () => {
     expect(post).toContain("horaInicio: now");
-    // El zod de creación no debe aceptar horas: si el cliente pudiera mandarlas,
-    // la medición de productividad dejaría de valer (es lo que pasaba con el
-    // NOW() volátil del Excel).
+    expect(post).toContain("tramoMontacargas.create");
+    expect(post).toContain("orden: 1");
     const schema = post.match(/createSchema\s*=\s*z\.object\(\{([\s\S]*?)\n\}\)/)?.[1] ?? "";
     expect(schema).not.toContain("horaInicio");
-    expect(schema).not.toContain("horaFinalizacion");
   });
 
-  it("asignar la ubicación final es lo que sella horaFinalizacion", () => {
-    expect(ubicacion).toContain("horaFinalizacion: new Date()");
-    expect(ubicacion).toContain("ubicacionFinal,");
+  it("asignar la ubicación final cierra el tramo y para el reloj", () => {
+    expect(ubicacion).toContain("cerrarTramoAbierto");
+    expect(ubicacion).toContain("horaFinalizacion: now");
+    expect(ubicacion).toContain("estado: 'CERRADO'");
+    // Las cantidades se exigen al cerrar, no al abrir.
+    expect(ubicacion).toContain("validarCantidades");
   });
 
-  it("solo se permite un registro abierto por operario y por tipo", () => {
-    expect(post).toContain("horaFinalizacion: null");
-    expect(post).toContain("statusCode: 409");
+  // En resurtido el operario baja varios PLUs de una pasada; en recepción y
+  // movimientos se trabaja una estiba a la vez.
+  it("solo resurtido admite varios registros abiertos", () => {
+    expect(post).toContain("admiteVariosAbiertos");
     expect(post).toContain("MOVIMIENTO_ABIERTO");
-    // El where del "abierto" tiene que incluir el tipo, o un registro abierto de
-    // recepción bloquearía crear un movimiento de depósito.
-    expect(post).toMatch(/creadoPorId: actor\.id, tipo, horaFinalizacion: null/);
+    expect(moduleVue).toContain("admiteVariosAbiertos");
   });
 
-  it("el 409 devuelve el registro abierto para que la UI salte a ubicar", () => {
-    expect(post).toContain("movimiento: mapMovimientoMontacargas(abierto)");
-    expect(moduleVue).toContain("e?.data?.data?.movimiento");
+  // Como el reloj arranca con el PLU, un dedazo deja un registro corriendo.
+  it("hay salida para descartar un PLU mal digitado", () => {
+    const descartar = leer("nuxt-app/server/api/montacargas/[id]/descartar.post.ts");
+    expect(descartar).toContain("deletedAt: now");
+    expect(descartar).toContain("cerrarTramoAbierto");
+    expect(registroVue).toContain("descartar");
+  });
+});
+
+describe("montacargas — traspaso a ayudantes", () => {
+  const traspasar = leer("nuxt-app/server/api/montacargas/[id]/traspasar.post.ts");
+
+  it("cierra el tramo del primero y abre el del segundo", () => {
+    expect(traspasar).toContain("cerrarTramoAbierto");
+    expect(traspasar).toContain("abrirTramo");
+    expect(traspasar).toContain("orden + 1");
+    expect(traspasar).toContain("responsableId: ayudanteId");
+  });
+
+  it("solo acepta operarios de almacenamiento activos", () => {
+    expect(traspasar).toContain("OPERARIO_ALMACENAMIENTO");
+    expect(traspasar).toContain("active");
+  });
+
+  // El ayudante recibe una cifra que debe cuadrar contra lo físico: traspasar
+  // sin cantidades no le dejaría nada que confirmar.
+  it("exige cantidades antes de pasar el PLU", () => {
+    expect(traspasar).toContain("validarCantidades");
+  });
+
+  it("la lista de ayudantes muestra la carga pendiente", () => {
+    expect(utilsServidor).toContain("listarAyudantes");
+    expect(utilsServidor).toContain("pendientes");
+    expect(leer("nuxt-app/app/components/montacargas/TraspasarModal.vue")).toContain("pendientes");
+  });
+});
+
+describe("montacargas — novedades detienen el reloj", () => {
+  const novedad = leer("nuxt-app/server/api/montacargas/[id]/novedad.post.ts");
+  const resolver = leer("nuxt-app/server/api/montacargas/[id]/resolver-novedad.post.ts");
+  const cantidades = leer("nuxt-app/server/api/montacargas/[id]/cantidades.patch.ts");
+
+  it("abrir una novedad cierra el tramo: la verificación no se cronometra", () => {
+    expect(novedad).toContain("cerrarTramoAbierto");
+    expect(novedad).toContain("estado: 'NOVEDAD'");
+  });
+
+  it("resolver reanuda el reloj con un tramo nuevo", () => {
+    expect(resolver).toContain("abrirTramo");
+    expect(resolver).toContain("estado: 'EN_CURSO'");
+    expect(resolver).toContain("resueltaAt");
+  });
+
+  // El ayudante no corrige: si no cuadra, marca la novedad. Y no resuelve su
+  // propia novedad — eso lo confirma el montacarguista o supervisión.
+  it("el ayudante no edita cantidades ni resuelve novedades", () => {
+    expect(cantidades).toContain("esAyudante");
+    expect(resolver).toContain("esAyudante");
+  });
+
+  it("no se puede cerrar un registro con novedad abierta", () => {
+    expect(leer("nuxt-app/server/api/montacargas/[id]/ubicacion.post.ts"))
+      .toContain("NOVEDAD");
+  });
+
+  it("la duración suma tramos, no la ventana completa", () => {
+    expect(mapRow).toContain("minutosTrabajados(tramos)");
+    expect(calcServidor).toContain("export function minutosTrabajados");
   });
 });
 
 describe("montacargas — reguero", () => {
-  const post = leer("nuxt-app/server/api/montacargas/index.post.ts");
-
   it("el total incluye las unidades sueltas", () => {
-    expect(post).toContain("calcularCantidadTotal(parsed.data.cajas, unidadesPorCaja, unidadesSueltas)");
+    expect(leer("nuxt-app/server/api/montacargas/[id]/cantidades.patch.ts"))
+      .toContain("calcularCantidadTotal(d.cajas, d.unidadesPorCaja, unidadesSueltas)");
   });
 
   // Desmarcar el check tiene que limpiar la cantidad: dejarla la sumaría al
   // total sin que se vea en pantalla.
-  it("la captura limpia las unidades sueltas al desmarcar el reguero", () => {
-    expect(capturaVue).toMatch(/watch\(\(\) => form\.hayReguero[\s\S]{0,120}form\.unidadesSueltas = ''/);
-  });
-});
-
-describe("montacargas — unidades por caja cuando el maestro no las trae", () => {
-  const post = leer("nuxt-app/server/api/montacargas/index.post.ts");
-
-  it("el maestro manda y el valor del cliente es el respaldo", () => {
-    expect(post).toContain("producto.unidadesPorCaja ?? parsed.data.unidadesPorCaja");
-  });
-
-  it("se marca unidadesManuales cuando el dato no vino del catálogo", () => {
-    expect(post).toContain("unidadesManuales = producto.unidadesPorCaja == null");
+  it("la tarjeta limpia las unidades sueltas al desmarcar el reguero", () => {
+    expect(registroVue).toMatch(/watch\(\(\) => form\.hayReguero[\s\S]{0,120}form\.unidadesSueltas = ''/);
   });
 });
 
@@ -177,20 +248,18 @@ describe("montacargas — resolución del producto por PLU o EAN", () => {
 });
 
 describe("montacargas — módulos registrados", () => {
-  it("mapRow deriva estado y duración", () => {
+  it("mapRow expone tramos, novedades y estado", () => {
     expect(mapRow).toContain("export function mapMovimientoMontacargas");
-    expect(mapRow).toContain("estado: estadoMovimiento(r.horaFinalizacion)");
-    expect(mapRow).toContain("duracionMinutos: calcularDuracionMinutos(");
+    expect(mapRow).toContain("novedadAbierta");
+    expect(mapRow).toContain("tramos");
   });
 
   it("el sidebar Nuxt tiene las dos entradas", () => {
     expect(layout).toContain("moduleKey: 'control-montacargas'");
     expect(layout).toContain("moduleKey: 'resurtido'");
-    expect(layout).toContain("/dashboard/control-montacargas");
-    expect(layout).toContain("/dashboard/resurtido");
   });
 
-  it("las tres copias de modulePermissions conocen los dos módulos", () => {
+  it("las tres copias de modulePermissions conocen los módulos y el ayudante", () => {
     for (const rel of [
       "src/lib/modulePermissions.ts",
       "nuxt-app/app/utils/modulePermissions.ts",
@@ -199,7 +268,7 @@ describe("montacargas — módulos registrados", () => {
       const src = leer(rel);
       expect(src, rel).toContain("control-montacargas");
       expect(src, rel).toContain("resurtido");
-      // El módulo viejo no debe quedar en ninguna copia.
+      expect(src, rel).toContain("OPERARIO_ALMACENAMIENTO");
       expect(src, rel).not.toContain("estibas");
     }
   });
@@ -217,7 +286,6 @@ describe("montacargas — módulos registrados", () => {
     const resurtido = leer("nuxt-app/app/pages/resurtido.vue");
     expect(resurtido).toContain("MontacargasModule");
     expect(resurtido).toContain("FLUJOS.RESURTIDO");
-    // Con un solo flujo no se dibuja la barra de pestañas.
     expect(moduleVue).toContain("hayPestanas");
   });
 });

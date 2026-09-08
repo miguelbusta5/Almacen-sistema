@@ -47,7 +47,7 @@ export const HOME_ACTIONS: HomeAction[] = [
     icon: "Forklift",
     color: getModuleColor("control-montacargas"),
     moduleKey: "control-montacargas",
-    roles: ["MONTACARGAS", "SUPERVISOR_ALMACENAMIENTO", "GERENTE", "ADMIN"],
+    roles: ["MONTACARGAS", "OPERARIO_ALMACENAMIENTO", "SUPERVISOR_ALMACENAMIENTO", "GERENTE", "ADMIN"],
     priority: 1,
   },
   {

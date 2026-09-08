@@ -48,6 +48,7 @@ const hasFilters = computed(() => Boolean(props.q || props.fecha || props.estado
     <select class="field sel" :value="estado" @change="emit('update:estado', ($event.target as HTMLSelectElement).value)">
       <option value="">Todos los estados</option>
       <option value="en-curso">En curso</option>
+      <option value="novedad">Con novedad</option>
       <option value="cerrado">Cerrado</option>
     </select>
 

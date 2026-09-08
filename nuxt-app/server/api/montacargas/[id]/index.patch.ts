@@ -8,6 +8,10 @@ import {
   calcularCantidadTotal, normalizarUbicacion, puedeGestionarMontacargas,
 } from '../../../utils/montacargasCalc'
 
+// Correccion a posteriori. El flujo normal del operario NO pasa por aqui:
+// abrir es POST /, completar cantidades es PATCH /:id/cantidades y cerrar es
+// POST /:id/ubicacion. Esto existe para arreglar un registro ya guardado.
+
 const patchSchema = z.object({
   codigo: z.string().min(1).max(100).optional(),
   cajas: z.number().int().min(0).optional(),
@@ -38,7 +42,7 @@ export default defineEventHandler(async (event) => {
   const current = await prisma.movimientoMontacargas.findUnique({
     where: { id },
     select: {
-      deletedAt: true, creadoPorId: true, cajas: true,
+      deletedAt: true, creadoPorId: true, responsableId: true, cajas: true,
       unidadesPorCaja: true, unidadesSueltas: true,
     },
   })
@@ -47,7 +51,7 @@ export default defineEventHandler(async (event) => {
   }
 
   const isGestor = puedeGestionarMontacargas(actor.role)
-  if (!isGestor && current.creadoPorId !== actor.id) {
+  if (!isGestor && current.creadoPorId !== actor.id && current.responsableId !== actor.id) {
     throw createError({ statusCode: 403, statusMessage: 'Solo puedes editar tus propios registros' })
   }
 

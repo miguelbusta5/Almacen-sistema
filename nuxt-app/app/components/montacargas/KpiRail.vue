@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-import { Layers, Clock, Boxes, Timer } from '@lucide/vue'
+import { Layers, Clock, Boxes, TriangleAlert } from '@lucide/vue'
 import type { MovimientoConteos } from '~/utils/montacargas'
 
 const props = defineProps<{ counts: MovimientoConteos }>()
@@ -14,9 +14,11 @@ const cards = computed(() => [
     hint: `${props.counts.cajasHoy} cajas · ${props.counts.sueltasHoy} sueltas`,
   },
   {
-    key: 'prom', label: 'Prom. min/registro', value: props.counts.promedioMin ?? 0,
-    tone: 'var(--ink)', icon: Timer, filter: 'cerrado',
-    hint: props.counts.promedioMin === null ? 'sin datos' : 'por registro',
+    // La ventana de una novedad no se cronometra: el registro sale del reloj
+    // hasta que alguien verifique, y por eso tiene su propia tarjeta.
+    key: 'nov', label: 'Con novedad', value: props.counts.conNovedad,
+    tone: 'var(--u-aviso)', icon: TriangleAlert, filter: 'novedad',
+    hint: props.counts.promedioMin === null ? 'sin cronometrar' : `prom. ${props.counts.promedioMin} min`,
   },
 ])
 </script>

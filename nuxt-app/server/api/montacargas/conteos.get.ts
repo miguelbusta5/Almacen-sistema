@@ -1,7 +1,8 @@
 import { defineEventHandler, getQuery, createError } from 'h3'
 import { prisma } from '../../utils/prisma'
 import { requireAuth } from '../../utils/auth'
-import { calcularDuracionMinutos, todayBogota } from '../../utils/exportacionesCalc'
+import { todayBogota } from '../../utils/exportacionesCalc'
+import { minutosTrabajados } from '../../utils/montacargasCalc'
 import { assertUsuarioMontacargas, whereScopeMontacargas } from '../../utils/montacargas'
 import { esTipoMovimiento } from '../../utils/montacargasCalc'
 
@@ -19,16 +20,19 @@ export default defineEventHandler(async (event) => {
   const scope = whereScopeMontacargas(actor)
   const hoy = todayBogota()
 
-  const [delDia, enCurso] = await Promise.all([
+  const [delDia, enCurso, conNovedad] = await Promise.all([
     prisma.movimientoMontacargas.findMany({
       where: { ...scope, tipo, deletedAt: null, fecha: hoy } as never,
       select: {
-        cajas: true, cantidadTotal: true, unidadesSueltas: true,
-        horaInicio: true, horaFinalizacion: true,
+        cajas: true, cantidadTotal: true, unidadesSueltas: true, estado: true,
+        tramos: { select: { usuarioId: true, inicio: true, fin: true } },
       },
     }),
     prisma.movimientoMontacargas.count({
-      where: { ...scope, tipo, deletedAt: null, horaFinalizacion: null } as never,
+      where: { ...scope, tipo, deletedAt: null, estado: 'EN_CURSO' } as never,
+    }),
+    prisma.movimientoMontacargas.count({
+      where: { ...scope, tipo, deletedAt: null, estado: 'NOVEDAD' } as never,
     }),
   ])
 
@@ -41,10 +45,10 @@ export default defineEventHandler(async (event) => {
     cajasHoy += r.cajas
     unidadesHoy += r.cantidadTotal
     sueltasHoy += r.unidadesSueltas
-    if (r.horaFinalizacion) {
+    if (r.estado === 'CERRADO') {
       cerrados += 1
-      const min = calcularDuracionMinutos(r.horaInicio, r.horaFinalizacion)
-      if (min) duracionTotal += min
+      // Solo tramos trabajados: la ventana de una novedad no cuenta.
+      duracionTotal += minutosTrabajados(r.tramos)
     }
   }
 
@@ -56,6 +60,7 @@ export default defineEventHandler(async (event) => {
       unidadesHoy,
       sueltasHoy,
       enCurso,
+      conNovedad,
       promedioMin: cerrados > 0 ? Math.round((duracionTotal / cerrados) * 10) / 10 : null,
     },
   }

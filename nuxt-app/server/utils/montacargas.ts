@@ -1,12 +1,13 @@
 // SERVER-ONLY. Capa Prisma de Control Montacargas y Resurtido: scope por rol,
-// filtros del listado y resolución del producto contra el maestro.
-// La lógica pura (validaciones, cálculo, estado) vive en montacargasCalc.ts.
+// filtros del listado, resolución del producto y manejo de tramos de tiempo.
+// La lógica pura (validaciones, cálculo, estados) vive en montacargasCalc.ts.
 //
 // Sin re-exports de montacargasCalc a propósito: Nitro auto-importa todo lo que
 // hay en server/utils, así que reexportar aquí lo que ya vive allí genera un
 // "Duplicated imports" y el auto-import se queda con una de las dos al azar.
 // Cada handler importa de su módulo real.
 import { createError } from 'h3'
+import type { Prisma, PrismaClient } from '@prisma/client'
 import { prisma } from './prisma'
 import {
   normalizarCodigoProducto,
@@ -18,7 +19,19 @@ import {
 
 export const MOVIMIENTO_INCLUDE = {
   creadoPor: { select: { name: true } },
+  responsable: { select: { name: true } },
   actualizadoPor: { select: { name: true } },
+  tramos: {
+    orderBy: { orden: 'asc' },
+    include: { usuario: { select: { name: true } } },
+  },
+  novedades: {
+    orderBy: { abiertaAt: 'desc' },
+    include: {
+      abiertaPor: { select: { name: true } },
+      resueltaPor: { select: { name: true } },
+    },
+  },
 } as const
 
 export function assertUsuarioMontacargas(role: string) {
@@ -33,13 +46,19 @@ export function assertGestorMontacargas(role: string, mensaje = 'No autorizado')
   }
 }
 
-/** Un MONTACARGAS solo ve lo suyo; los gestores ven todo (o filtran por operario). */
+/**
+ * Alcance del listado.
+ *
+ * Gestión ve todo. El resto ve lo que tiene en la mano AHORA (responsableId), no
+ * lo que creó: tras un traspaso el registro deja de ser problema del primero y
+ * pasa a la bandeja del ayudante.
+ */
 export function whereScopeMontacargas(
   actor: { id: string; role: string },
   usuarioId?: string,
 ): Record<string, unknown> {
-  if (!puedeGestionarMontacargas(actor.role)) return { creadoPorId: actor.id }
-  return usuarioId ? { creadoPorId: usuarioId } : {}
+  if (!puedeGestionarMontacargas(actor.role)) return { responsableId: actor.id }
+  return usuarioId ? { responsableId: usuarioId } : {}
 }
 
 /**
@@ -60,12 +79,13 @@ export function buildMovimientoWhere(
     deletedAt: null,
     ...(opts.scoped === false
       ? usuarioId
-        ? { creadoPorId: usuarioId }
+        ? { responsableId: usuarioId }
         : {}
       : whereScopeMontacargas(actor, usuarioId)),
     ...(fecha ? { fecha: new Date(`${fecha}T00:00:00.000Z`) } : {}),
-    ...(estado === 'en-curso' ? { horaFinalizacion: null } : {}),
-    ...(estado === 'cerrado' ? { horaFinalizacion: { not: null } } : {}),
+    ...(estado === 'en-curso' ? { estado: 'EN_CURSO' } : {}),
+    ...(estado === 'novedad' ? { estado: 'NOVEDAD' } : {}),
+    ...(estado === 'cerrado' ? { estado: 'CERRADO' } : {}),
     ...(q
       ? {
           OR: [
@@ -107,3 +127,83 @@ export async function resolverProducto(codigoCrudo: string): Promise<ProductoRes
   const [primero, segundo] = pareceEan(codigo) ? [porEan, porPlu] : [porPlu, porEan]
   return (await primero()) ?? (await segundo())
 }
+
+// ── Tramos de tiempo ─────────────────────────────────────────────────
+type Tx = Prisma.TransactionClient | PrismaClient
+
+/**
+ * Cierra el tramo abierto del registro. Devuelve el orden del último tramo.
+ *
+ * Se llama al traspasar, al abrir una novedad y al cerrar: son los tres momentos
+ * en los que alguien deja de tener el PLU en la mano.
+ */
+export async function cerrarTramoAbierto(tx: Tx, movimientoId: string, fin: Date): Promise<number> {
+  const abierto = await tx.tramoMontacargas.findFirst({
+    where: { movimientoId, fin: null },
+    orderBy: { orden: 'desc' },
+  })
+  if (!abierto) {
+    const ultimo = await tx.tramoMontacargas.findFirst({
+      where: { movimientoId },
+      orderBy: { orden: 'desc' },
+      select: { orden: true },
+    })
+    return ultimo?.orden ?? 0
+  }
+  await tx.tramoMontacargas.update({ where: { id: abierto.id }, data: { fin } })
+  return abierto.orden
+}
+
+/** Abre un tramo nuevo para quien toma el PLU (traspaso o reanudación). */
+export async function abrirTramo(
+  tx: Tx,
+  movimientoId: string,
+  usuarioId: string,
+  inicio: Date,
+  orden: number,
+): Promise<void> {
+  await tx.tramoMontacargas.create({
+    data: { movimientoId, usuarioId, inicio, orden },
+  })
+}
+
+/**
+ * Ayudantes disponibles con su carga pendiente, para que el operario reparta con
+ * criterio en vez de a ciegas.
+ */
+export async function listarAyudantes(): Promise<
+  { id: string; nombre: string; pendientes: number }[]
+> {
+  const usuarios = await prisma.user.findMany({
+    where: { active: true, role: 'OPERARIO_ALMACENAMIENTO' },
+    select: { id: true, name: true },
+    orderBy: { name: 'asc' },
+  })
+  if (usuarios.length === 0) return []
+
+  const cargas = await prisma.movimientoMontacargas.groupBy({
+    by: ['responsableId'],
+    where: {
+      responsableId: { in: usuarios.map((u) => u.id) },
+      estado: { in: ['EN_CURSO', 'NOVEDAD'] },
+      deletedAt: null,
+    },
+    _count: { _all: true },
+  })
+  const porUsuario = new Map(cargas.map((c) => [c.responsableId, c._count._all]))
+
+  return usuarios.map((u) => ({
+    id: u.id,
+    nombre: u.name,
+    pendientes: porUsuario.get(u.id) ?? 0,
+  }))
+}
+
+/** ¿Este actor puede tomar/soltar este registro? Dueño actual o gestión. */
+export function esResponsableOGestor(
+  actor: { id: string; role: string },
+  movimiento: { responsableId: string },
+): boolean {
+  return movimiento.responsableId === actor.id || puedeGestionarMontacargas(actor.role)
+}
+

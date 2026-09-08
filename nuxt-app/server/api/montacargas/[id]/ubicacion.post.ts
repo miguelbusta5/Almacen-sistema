@@ -3,8 +3,10 @@ import { z } from 'zod'
 import { prisma } from '../../../utils/prisma'
 import { requireAuth } from '../../../utils/auth'
 import { mapMovimientoMontacargas } from '../../../utils/mapRow'
-import { assertUsuarioMontacargas, MOVIMIENTO_INCLUDE } from '../../../utils/montacargas'
-import { normalizarUbicacion, validarUbicacion } from '../../../utils/montacargasCalc'
+import {
+  assertUsuarioMontacargas, cerrarTramoAbierto, esResponsableOGestor, MOVIMIENTO_INCLUDE,
+} from '../../../utils/montacargas'
+import { normalizarUbicacion, validarCantidades, validarUbicacion } from '../../../utils/montacargasCalc'
 
 const schema = z.object({ ubicacionFinal: z.string().min(1).max(120) })
 
@@ -27,22 +29,47 @@ export default defineEventHandler(async (event) => {
 
   const record = await prisma.movimientoMontacargas.findUnique({
     where: { id },
-    select: { creadoPorId: true, horaFinalizacion: true, deletedAt: true },
+    select: {
+      responsableId: true, estado: true, deletedAt: true,
+      cajas: true, unidadesPorCaja: true, hayReguero: true, unidadesSueltas: true,
+    },
   })
   if (!record || record.deletedAt) {
     throw createError({ statusCode: 404, statusMessage: 'Registro no encontrado' })
   }
-  if (record.creadoPorId !== actor.id) {
-    throw createError({ statusCode: 403, statusMessage: 'Solo puedes cerrar tus propios registros' })
+  if (!esResponsableOGestor(actor, record)) {
+    throw createError({ statusCode: 403, statusMessage: 'Solo puedes cerrar los registros que tienes en la mano' })
   }
-  if (record.horaFinalizacion) {
+  if (record.estado === 'CERRADO') {
     throw createError({ statusCode: 409, statusMessage: 'El registro ya esta cerrado' })
   }
+  if (record.estado === 'NOVEDAD') {
+    throw createError({
+      statusCode: 409,
+      statusMessage: 'El registro tiene una novedad sin resolver: primero hay que verificarlo',
+    })
+  }
 
-  const updated = await prisma.movimientoMontacargas.update({
-    where: { id },
-    data: { ubicacionFinal, horaFinalizacion: new Date(), actualizadoPorId: actor.id },
-    include: MOVIMIENTO_INCLUDE,
+  // Las cantidades se exigen aqui y no al abrir: al abrir solo se tiene el PLU.
+  const faltan = validarCantidades(record)
+  if (faltan) throw createError({ statusCode: 400, statusMessage: faltan })
+
+  const now = new Date()
+  const updated = await prisma.$transaction(async (tx) => {
+    await cerrarTramoAbierto(tx, id, now)
+    await tx.movimientoMontacargas.update({
+      where: { id },
+      data: {
+        ubicacionFinal,
+        estado: 'CERRADO',
+        horaFinalizacion: now,
+        actualizadoPorId: actor.id,
+      },
+    })
+    return tx.movimientoMontacargas.findUniqueOrThrow({
+      where: { id },
+      include: MOVIMIENTO_INCLUDE,
+    })
   })
 
   await prisma.activityLog.create({

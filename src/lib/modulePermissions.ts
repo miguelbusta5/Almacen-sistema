@@ -72,8 +72,8 @@ export const MODULE_ACCESS: Record<ModuleKey, AppRole[]> = {
   ],
   // Montacarguistas y quien responde por el almacenamiento. Los supervisores de
   // inventario y de transporte quedan fuera: el trabajo de montacargas no es su area.
-  "control-montacargas": ["MONTACARGAS", "SUPERVISOR_ALMACENAMIENTO", "GERENTE", "ADMIN"],
-  resurtido: ["MONTACARGAS", "SUPERVISOR_ALMACENAMIENTO", "GERENTE", "ADMIN"],
+  "control-montacargas": ["MONTACARGAS", "OPERARIO_ALMACENAMIENTO", "SUPERVISOR_ALMACENAMIENTO", "GERENTE", "ADMIN"],
+  resurtido: ["MONTACARGAS", "OPERARIO_ALMACENAMIENTO", "SUPERVISOR_ALMACENAMIENTO", "GERENTE", "ADMIN"],
 };
 
 export function canSeeModule(role: string | undefined | null, moduleKey: ModuleKey): boolean {
@@ -102,6 +102,7 @@ export const ROLE_LABEL_EXT: Record<AppRole, string> = {
   ETIQUETADO: "Etiquetado",
   SUPERVISOR_ALMACENAMIENTO: "Supervisor de Almacenamiento",
   MONTACARGAS: "Montacarguista",
+  OPERARIO_ALMACENAMIENTO: "Operario de Almacenamiento",
 };
 
 export const ROLE_DESCRIPTION: Record<AppRole, string> = {
@@ -120,4 +121,5 @@ export const ROLE_DESCRIPTION: Record<AppRole, string> = {
   ETIQUETADO: "Solo ve y captura etiquetas de Exportaciones.",
   SUPERVISOR_ALMACENAMIENTO: "Gestiona Exportaciones, etiquetado y Estibas.",
   MONTACARGAS: "Control Montacargas y Resurtido.",
+  OPERARIO_ALMACENAMIENTO: "Ayudante: recibe PLUs y los ubica.",
 };

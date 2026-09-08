@@ -2,7 +2,7 @@
 // cliente de Prisma para el delegate por país, y mapRow lo usan los handlers de
 // TODOS los módulos. Ver la nota en exportacionesCalc.ts.
 import { calcularDuracionMinutos, formatDateOnly } from './exportacionesCalc'
-import { estadoMovimiento } from './montacargasCalc'
+import { minutosTrabajados } from './montacargasCalc'
 
 // Mapea la fila de TransporteGuardado al shape del cliente (igual que la app Next).
 export function mapGuardado(r: any) {
@@ -362,13 +362,38 @@ export function mapExportacion(r: any) {
   }
 }
 
-// Mapea la fila de MovimientoMontacargas al shape del cliente. `estado` y
-// `duracionMinutos` no son columnas: se derivan de horaFinalizacion, igual que
-// en Exportaciones.
+// Mapea la fila de MovimientoMontacargas al shape del cliente.
+//
+// `duracionMinutos` suma SOLO los tramos cerrados, no `fin - inicio`: entre
+// medias puede haber una novedad, y verificar no se cronometra.
 export function mapMovimientoMontacargas(r: any) {
+  const tramos = (r.tramos ?? []).map((t: any) => ({
+    id: t.id,
+    orden: t.orden,
+    usuarioId: t.usuarioId,
+    usuarioNombre: t.usuario?.name ?? null,
+    inicio: t.inicio.toISOString(),
+    fin: t.fin ? t.fin.toISOString() : null,
+  }))
+  const novedades = (r.novedades ?? []).map((n: any) => ({
+    id: n.id,
+    tipo: n.tipo,
+    detalle: n.detalle ?? null,
+    cantidadEncontrada: n.cantidadEncontrada ?? null,
+    ubicacionEncontrada: n.ubicacionEncontrada ?? null,
+    abiertaPorId: n.abiertaPorId,
+    abiertaPorNombre: n.abiertaPor?.name ?? null,
+    abiertaAt: n.abiertaAt.toISOString(),
+    resueltaPorId: n.resueltaPorId ?? null,
+    resueltaPorNombre: n.resueltaPor?.name ?? null,
+    resueltaAt: n.resueltaAt ? n.resueltaAt.toISOString() : null,
+    notaResolucion: n.notaResolucion ?? null,
+  }))
+
   return {
     id: r.id,
     tipo: r.tipo,
+    estado: r.estado,
     plu: r.plu,
     ean: r.ean ?? null,
     descripcion: r.descripcion,
@@ -383,12 +408,16 @@ export function mapMovimientoMontacargas(r: any) {
     fecha: formatDateOnly(r.fecha),
     horaInicio: r.horaInicio.toISOString(),
     horaFinalizacion: r.horaFinalizacion ? r.horaFinalizacion.toISOString() : null,
-    duracionMinutos: calcularDuracionMinutos(r.horaInicio, r.horaFinalizacion),
-    estado: estadoMovimiento(r.horaFinalizacion),
+    duracionMinutos: r.horaFinalizacion ? minutosTrabajados(tramos) : null,
     motivoCorreccion: r.motivoCorreccion ?? null,
     creadoPorId: r.creadoPorId,
     creadoPorNombre: r.creadoPor?.name ?? null,
+    responsableId: r.responsableId,
+    responsableNombre: r.responsable?.name ?? null,
     actualizadoPorId: r.actualizadoPorId ?? null,
     actualizadoPorNombre: r.actualizadoPor?.name ?? null,
+    tramos,
+    novedades,
+    novedadAbierta: novedades.find((n: any) => !n.resueltaAt) ?? null,
   }
 }
