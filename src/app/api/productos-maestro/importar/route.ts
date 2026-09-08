@@ -1,6 +1,4 @@
-import { randomUUID } from "crypto";
 import { NextRequest, NextResponse } from "next/server";
-import { Prisma } from "@prisma/client";
 import { requireRole } from "@/lib/authz";
 import { prisma } from "@/lib/prisma";
 import {
@@ -9,12 +7,13 @@ import {
   MAESTRO_SHEET_NAMES,
   ProductoMaestroDTO,
 } from "@/lib/productosMaestro";
-import { readWorkbook, worksheetObjects } from "@/lib/excel";
+import { mapMedicionRows, tieneColumnasDeMedicion } from "@/lib/medidasCajaMaster";
+import { guardarMediciones } from "@/lib/medidasCajaMasterDb";
+import { guardarProductosMaestro } from "@/lib/productosMaestroDb";
+import { readWorkbook, worksheetObjects, worksheetRows } from "@/lib/excel";
 import { validateImportFile, validateRowLimit } from "@/lib/fileSecurity";
-import { getErrorMessage } from "@/lib/errors";
 
 const MAX_MAESTRO_ROWS = 25000;
-const BATCH_SIZE = 500;
 
 export const maxDuration = 60;
 
@@ -44,6 +43,11 @@ export async function POST(req: NextRequest) {
   const rowLimitError = validateRowLimit(rows.length, MAX_MAESTRO_ROWS);
   if (rowLimitError) return NextResponse.json({ error: rowLimitError }, { status: 400 });
 
+  // Las mediciones se leen aparte porque el archivo de medicion trae una
+  // cabecera de DOS niveles y worksheetObjects() solo mira la primera fila: ahi
+  // "PARTE 1 PESO CAJA MASTER (KG)" nombra a la vez el peso bruto y el neto.
+  const filasCrudas = worksheetRows(sheet);
+
   // Solo se actualizan las columnas que el archivo TRAE. Sin esto, importar un
   // maestro parcial (la planilla de montacargas no lleva Fabricante, PRECIO ni
   // MARCAS) vaciaba esos campos en los ~19k productos existentes — y `precio`
@@ -70,53 +74,30 @@ export async function POST(req: NextRequest) {
   });
   const productos = [...productosPorPlu.values()];
 
-  // Un solo query para saber cuales PLUs ya existian (para el conteo de
-  // importados vs actualizados), en vez de un findUnique por fila.
-  const existentes = productos.length
-    ? await prisma.$queryRaw<{ plu: string }[]>(
-        Prisma.sql`SELECT plu FROM productos_maestro WHERE plu = ANY(${productos.map((p) => p.plu)}::text[])`
-      )
-    : [];
-  const existentesSet = new Set(existentes.map((p) => p.plu));
-
-  let importados = 0;
-  let actualizados = 0;
-  const errores: string[] = [];
-
-  // Se sobrescriben solo las columnas presentes en el archivo: así el roundtrip
-  // export -> editar -> import sigue pudiendo VACIAR un campo (el export las trae
-  // todas), pero un archivo parcial no arrasa lo que no menciona.
-  const setClause = Prisma.join(
-    columnas.map((col) => Prisma.raw(`${col} = EXCLUDED.${col}`)),
-    ", "
+  const { importados, actualizados, errores } = await guardarProductosMaestro(
+    prisma,
+    productos,
+    columnas
   );
 
-  // UPSERT masivo por lotes (INSERT ... ON CONFLICT) en vez de una fila a la
-  // vez: con ~19k productos, hacerlo fila por fila tardaba varios minutos.
-  for (let i = 0; i < productos.length; i += BATCH_SIZE) {
-    const lote = productos.slice(i, i + BATCH_SIZE);
-    const values = Prisma.join(
-      lote.map(
-        (p) =>
-          Prisma.sql`(${randomUUID()}, ${p.plu}, ${p.descripcion}, ${p.fabricante}, ${p.precio}, ${p.marca}, ${p.ean}, ${p.unidadesPorCaja}, now(), now())`
-      )
-    );
-    try {
-      await prisma.$executeRaw`
-        INSERT INTO productos_maestro (id, plu, descripcion, fabricante, precio, marca, ean, unidades_por_caja, created_at, updated_at)
-        VALUES ${values}
-        ON CONFLICT (plu) DO UPDATE SET
-          ${setClause},
-          updated_at = now()
-      `;
-      for (const p of lote) {
-        if (existentesSet.has(p.plu)) actualizados += 1;
-        else importados += 1;
-      }
-    } catch (error) {
-      errores.push(`Filas ${i + 1}-${i + lote.length}: ${getErrorMessage(error, "error al importar")}`);
+  // Mediciones de caja master: solo si el archivo TRAE esa cabecera. Misma
+  // filosofia que columnasPresentes — un maestro de precios no debe vaciar unas
+  // medidas que no menciona.
+  let mediciones = { productos: 0, cajas: 0 };
+  if (tieneColumnasDeMedicion(filasCrudas)) {
+    const medidos = mapMedicionRows(filasCrudas);
+    if (medidos.length) {
+      const res = await guardarMediciones(prisma, medidos);
+      mediciones = { productos: res.productos, cajas: res.cajas };
+      errores.push(...res.errores);
     }
   }
+
+  const resumen =
+    `${importados} importados, ${actualizados} actualizados, ${ignorados} ignorados` +
+    (mediciones.productos
+      ? `, ${mediciones.productos} con medidas (${mediciones.cajas} cajas)`
+      : "");
 
   await prisma.activityLog.create({
     data: {
@@ -124,12 +105,12 @@ export async function POST(req: NextRequest) {
       action: "IMPORT",
       module: "productos-maestro",
       recordId: file.name,
-      details: `${importados} importados, ${actualizados} actualizados, ${ignorados} ignorados`,
+      details: resumen,
     },
   }).catch(() => {});
 
   return NextResponse.json({
     success: true,
-    data: { importados, actualizados, ignorados, errores, columnas },
+    data: { importados, actualizados, ignorados, errores, columnas, mediciones },
   });
 }

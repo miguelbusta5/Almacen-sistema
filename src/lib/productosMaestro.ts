@@ -7,7 +7,14 @@ export const MAESTRO_SHEET_NAME = "ResultadosMaestrodeproductosPV";
 // montacargas trae su catálogo en "MAESTRO REF"; sin esta lista el importador
 // caía a worksheets[0], que en ese archivo es la pestaña de un operario y no el
 // maestro.
-export const MAESTRO_SHEET_NAMES = [MAESTRO_SHEET_NAME, "MAESTRO REF", "MEDIDAS"] as const;
+export const MAESTRO_SHEET_NAMES = [
+  MAESTRO_SHEET_NAME,
+  "MAESTRO REF",
+  "MEDIDAS",
+  // Hoja del archivo de medicion de caja master. Hoy caeria igual al
+  // worksheets[0] por ser la unica hoja, pero depender de eso es fragil.
+  "MEDICION",
+] as const;
 
 export interface ProductoMaestroDTO {
   plu: string;

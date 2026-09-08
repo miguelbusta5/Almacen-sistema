@@ -3,6 +3,7 @@ import {
   columnasPresentes,
   deriveNovedadFromMaestro,
   derivePlinFromMaestro,
+  MAESTRO_SHEET_NAMES,
   mapExcelProductoRow,
   normalizePlu,
   parsePrecio,
@@ -19,6 +20,13 @@ const producto = {
 };
 
 describe("productos maestro", () => {
+  // Sin el nombre en la lista, el importador cae a worksheets[0]: en la
+  // planilla de montacargas eso es la pestaña de un operario, no el maestro.
+  it("acepta las hojas de los archivos que alimentan el maestro", () => {
+    expect(MAESTRO_SHEET_NAMES).toContain("MAESTRO REF");
+    expect(MAESTRO_SHEET_NAMES).toContain("MEDICION");
+  });
+
   it("normaliza PLU", () => {
     expect(normalizePlu(" abc123 ")).toBe("ABC123");
   });
@@ -185,5 +193,16 @@ describe("columnas presentes en el archivo importado", () => {
 
   it("un archivo sin ninguna columna reconocida no declara ninguna", () => {
     expect(columnasPresentes([{ PLU: "1" }])).toEqual([]);
+  });
+
+  // El archivo de medicion no trae precio ni marca: si los declarara, una carga
+  // de medidas vaciaria el costo de los 19k productos.
+  it("el archivo de medicion solo declara descripcion y unidades", () => {
+    const columnas = columnasPresentes([
+      { PLU: 1, REF: "A1736", DESCRIPCION: "PLATO S.CUAD.PEQ.", ZONA: "GOURMET", ["Und\nEmp"]: 24 },
+    ]);
+    expect(columnas.sort()).toEqual(["descripcion", "unidades_por_caja"]);
+    expect(columnas).not.toContain("ean");
+    expect(columnas).not.toContain("precio");
   });
 });

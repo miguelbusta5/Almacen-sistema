@@ -1190,3 +1190,60 @@ model NovedadMontacargas {
   @@index([resueltaAt])
   @@map("novedades_montacargas")
 }
+
+/// Medida de UNA caja master, tal como la levanta el equipo de medicion.
+///
+/// Un producto puede llegar en varias cajas ("partes"): en la ultima medicion,
+/// 240 vienen en 2, 53 en 3, 7 en 4 y 2 en 5. Por eso es una fila por parte y
+/// no columnas en productos_maestro.
+///
+/// Sin FK a productos_maestro a proposito: el maestro se recarga entero cada
+/// tanto y una FK convertiria cada recarga en un problema de orden. El PLU es
+/// la clave de negocio, igual que en el resto del proyecto.
+model MedidaCajaMaster {
+  id          String   @id @default(cuid())
+  plu         String   @db.VarChar(100)
+  parte       Int
+  pesoBrutoKg Decimal? @map("peso_bruto_kg") @db.Decimal(8, 3)
+  pesoNetoKg  Decimal? @map("peso_neto_kg") @db.Decimal(8, 3)
+  altoCm      Decimal? @map("alto_cm") @db.Decimal(8, 2)
+  anchoCm     Decimal? @map("ancho_cm") @db.Decimal(8, 2)
+  profCm      Decimal? @map("prof_cm") @db.Decimal(8, 2)
+  /// alto x ancho x prof / 1.000.000. Se sella al importar en vez de calcularse
+  /// al vuelo: es el numero con el que se compara ocupacion, y una medida que se
+  /// corrige despues no debe cambiar en silencio lo ya calculado.
+  volumenM3   Decimal? @map("volumen_m3") @db.Decimal(10, 6)
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  @@unique([plu, parte])
+  @@index([plu])
+  @@map("medidas_caja_master")
+}
+
+/// Ficha de medicion del producto: lo que se midio y NO es de la caja master.
+///
+/// Tabla aparte de productos_maestro para no meter estas columnas en el
+/// INSERT ... ON CONFLICT del importador de precios, que es justo donde un
+/// descuido ya vacio datos de 19k productos una vez.
+model MedidaProducto {
+  id             String   @id @default(cuid())
+  plu            String   @unique @db.VarChar(100)
+  /// GOURMET, MUEBLES... viene de la hoja de medicion, no del maestro.
+  zona           String?  @db.VarChar(60)
+  /// "Producto/Partes": cuantas cajas declara el archivo. Se guarda aparte de
+  /// las medidas reales porque no siempre coinciden.
+  partes         Int?
+  unidadesSet    Int?     @map("unidades_set")
+  subEmpaque     Int?     @map("sub_empaque")
+  empaqueAltoCm  Decimal? @map("empaque_alto_cm") @db.Decimal(8, 2)
+  empaqueAnchoCm Decimal? @map("empaque_ancho_cm") @db.Decimal(8, 2)
+  empaqueProfCm  Decimal? @map("empaque_prof_cm") @db.Decimal(8, 2)
+  piezaAltoCm    Decimal? @map("pieza_alto_cm") @db.Decimal(8, 2)
+  piezaAnchoCm   Decimal? @map("pieza_ancho_cm") @db.Decimal(8, 2)
+  piezaProfCm    Decimal? @map("pieza_prof_cm") @db.Decimal(8, 2)
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  @@map("medidas_producto")
+}
