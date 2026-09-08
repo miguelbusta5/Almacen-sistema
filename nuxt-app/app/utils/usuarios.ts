@@ -75,6 +75,8 @@ export interface Usuario {
   role: UserRole
   active: boolean
   mustChangePassword?: boolean
+  /** Permiso por persona para cerrar novedades de montacargas. */
+  puedeResolverNovedades?: boolean
   createdAt?: string
 }
 

@@ -3,7 +3,13 @@ export interface MeInfo {
   name: string
   email: string
   role: string
-  can: { create: boolean; edit: boolean; delete: boolean }
+  can: {
+    create: boolean
+    edit: boolean
+    delete: boolean
+    /** Permiso por persona para cerrar novedades de montacargas. */
+    resolverNovedades?: boolean
+  }
 }
 
 // Sesión compartida entre todas las páginas/módulos (una sola llamada a /api/me).

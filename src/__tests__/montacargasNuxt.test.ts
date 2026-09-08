@@ -196,17 +196,76 @@ describe("montacargas — novedades detienen el reloj", () => {
     expect(novedad).toContain("estado: 'NOVEDAD'");
   });
 
-  it("resolver reanuda el reloj con un tramo nuevo", () => {
+  // Solo se reanuda el reloj si el registro no llego a ubicarse (casos anteriores
+  // a que marcar la novedad exigiera la ubicacion). Con ubicacion, cierra.
+  it("resolver reanuda el reloj solo si falta ubicar", () => {
     expect(resolver).toContain("abrirTramo");
-    expect(resolver).toContain("estado: 'EN_CURSO'");
+    expect(resolver).toContain("if (!yaUbicada)");
     expect(resolver).toContain("resueltaAt");
   });
 
-  // El ayudante no corrige: si no cuadra, marca la novedad. Y no resuelve su
-  // propia novedad — eso lo confirma el montacarguista o supervisión.
-  it("el ayudante no edita cantidades ni resuelve novedades", () => {
+  // El ayudante no corrige: si no cuadra, marca la novedad. Y no la cierra el:
+  // cerrarla exige el permiso explicito, que el no tiene.
+  it("el ayudante no edita cantidades ni cierra novedades", () => {
     expect(cantidades).toContain("esAyudante");
-    expect(resolver).toContain("esAyudante");
+    expect(resolver).toContain("assertPuedeResolverNovedades");
+  });
+
+  // La estiba no se queda en el aire mientras se verifica: al marcar la novedad
+  // hay que decir donde quedo, o nadie sabe donde buscarla.
+  it("marcar la novedad exige y guarda la ubicacion final", () => {
+    // Sin .optional(): es obligatoria.
+    expect(novedad).toMatch(/ubicacionFinal: z\.string\(/);
+    const linea = novedad.split(/\r?\n/).find((l) => l.includes("ubicacionFinal: z.")) ?? "";
+    expect(linea).not.toContain("optional()");
+    expect(novedad).toContain("ubicacionFinal, actualizadoPorId");
+    expect(leer("nuxt-app/app/components/montacargas/NovedadModal.vue"))
+      .toContain("¿Dónde dejaste la mercancía?");
+  });
+
+  // Cerrar una novedad es dar por buena una diferencia de inventario: es un
+  // permiso por persona, no por rol.
+  it("solo quien tiene el permiso explicito cierra una novedad", () => {
+    expect(resolver).toContain("assertPuedeResolverNovedades");
+    expect(utilsServidor).toContain("puedeResolverNovedades: true");
+    // Se lee de la base y no del token, para que conceder o quitarlo no exija
+    // volver a iniciar sesion.
+    expect(leer("nuxt-app/server/api/me.get.ts")).toContain("puedeResolverNovedades");
+    expect(registroVue).toContain("puedeResolverNovedades");
+  });
+
+  // El permiso no sirve de nada si la novedad nunca aparece delante de quien
+  // puede cerrarla: la tarjeta con el boton solo se dibuja desde la bandeja, y
+  // la bandeja solo traia lo del responsable.
+  it("la novedad llega a la bandeja de quien puede verificarla", () => {
+    const abiertos = leer("nuxt-app/server/api/montacargas/abiertos.get.ts");
+    expect(abiertos).toContain("puedeResolverNovedades");
+    expect(abiertos).toContain("estado: 'NOVEDAD' as const");
+    // Sin perder lo propio: sigue trayendo lo del responsable.
+    expect(abiertos).toContain("responsableId: actor.id");
+    // Y la pestaña lleva al verificador a donde esta la novedad.
+    expect(leer("nuxt-app/server/api/montacargas/mis-pendientes.get.ts"))
+      .toContain("puedeResolverNovedades");
+  });
+
+  // Lo ajeno no es trabajo suyo: no puede bloquearle el formulario ni contar
+  // como PLU en su bandeja.
+  it("los registros ajenos no cuentan como carga propia", () => {
+    const modulo = leer("nuxt-app/app/components/montacargas/Module.vue");
+    expect(modulo).toContain("const mios = computed(");
+    expect(modulo).toContain("m.responsableId === userId.value");
+    expect(modulo).toContain("mios.value.length === 0");
+    // El escaner de la bandeja del ayudante solo encuentra lo suyo.
+    expect(modulo).toContain("mios.value.find(");
+    // Y la tarjeta ajena no ofrece descartar el registro de otro.
+    expect(registroVue).toContain("ajeno");
+    expect(registroVue).toContain("v-if=\"!ajeno\" class=\"btn-link danger\"");
+  });
+
+  // Con la mercancia ya ubicada, verificarla era lo ultimo que faltaba.
+  it("resolver cierra el registro cuando ya tiene ubicacion", () => {
+    expect(resolver).toContain("yaUbicada");
+    expect(resolver).toContain("estado: yaUbicada ? 'CERRADO' : 'EN_CURSO'");
   });
 
   it("no se puede cerrar un registro con novedad abierta", () => {

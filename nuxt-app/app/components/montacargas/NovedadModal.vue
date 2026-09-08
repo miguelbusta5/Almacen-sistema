@@ -8,8 +8,8 @@
 import { ref, reactive, computed } from 'vue'
 import { TriangleAlert } from '@lucide/vue'
 import {
-  API_MONTACARGAS, normalizarUbicacion, novedadEsperada, TIPO_NOVEDAD_LABEL,
-  type Movimiento,
+  API_MONTACARGAS, esUbicacionCanonica, normalizarUbicacion, novedadEsperada,
+  TIPO_NOVEDAD_LABEL, type Movimiento,
 } from '~/utils/montacargas'
 
 const props = defineProps<{ movimiento: Movimiento }>()
@@ -21,18 +21,25 @@ const form = reactive({
   detalle: '',
   cantidadEncontrada: '',
   ubicacionEncontrada: '',
+  // Donde queda fisicamente la mercancia mientras se verifica: la estiba no se
+  // queda en el aire, y sin este dato nadie sabe donde buscarla.
+  ubicacionFinal: '',
 })
 const enviando = ref(false)
 const error = ref('')
 
 const esUnidades = computed(() => form.tipo === 'UNIDADES')
-const puedeEnviar = computed(() => !enviando.value)
+const ubicacionFinalNorm = computed(() => normalizarUbicacion(form.ubicacionFinal))
+const finalEsLibre = computed(
+  () => Boolean(ubicacionFinalNorm.value) && !esUbicacionCanonica(ubicacionFinalNorm.value),
+)
+const puedeEnviar = computed(() => !enviando.value && Boolean(ubicacionFinalNorm.value))
 
 async function submit() {
   if (!puedeEnviar.value) return
   enviando.value = true
   error.value = ''
-  const body: Record<string, unknown> = { tipo: form.tipo }
+  const body: Record<string, unknown> = { tipo: form.tipo, ubicacionFinal: ubicacionFinalNorm.value }
   if (form.detalle.trim()) body.detalle = form.detalle.trim()
   if (esUnidades.value && form.cantidadEncontrada !== '') {
     body.cantidadEncontrada = Number(form.cantidadEncontrada)
@@ -91,6 +98,18 @@ async function submit() {
       </label>
 
       <label class="f">
+        <span class="lbl">¿Dónde dejaste la mercancía?</span>
+        <input
+          v-model="form.ubicacionFinal" class="field" placeholder="05-B-25-03-01"
+          autocomplete="off" autocapitalize="characters"
+        >
+        <span v-if="finalEsLibre" class="hint">
+          Ubicación libre, fuera del formato 05-B-25-03-01
+        </span>
+        <span v-else class="hint">Queda registrada aunque la novedad siga abierta.</span>
+      </label>
+
+      <label class="f">
         <span class="lbl">Detalle (opcional)</span>
         <textarea v-model="form.detalle" class="field" rows="2" placeholder="Qué encontraste al recibir" />
       </label>
@@ -115,6 +134,7 @@ async function submit() {
 .form { display: flex; flex-direction: column; gap: 12px; }
 .f { display: flex; flex-direction: column; gap: 5px; }
 .lbl { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); }
+.hint { font-size: 11px; color: var(--faint); }
 .err { font-size: 12.5px; color: var(--error); background: var(--error-tint); padding: 9px 11px; border-radius: var(--r-sm); margin: 0; }
 .acciones { display: flex; justify-content: flex-end; gap: 9px; margin-top: 4px; }
 .btn-danger { background: var(--u-critico); color: #fff; border-color: transparent; }

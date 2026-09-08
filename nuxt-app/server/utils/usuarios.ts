@@ -24,6 +24,7 @@ export const USER_PUBLIC_SELECT = {
   role: true,
   active: true,
   mustChangePassword: true,
+  puedeResolverNovedades: true,
   createdAt: true,
 } as const
 
@@ -44,6 +45,9 @@ export const updateUserSchema = z.object({
   role: roleSchema.optional(),
   active: z.boolean().optional(),
   password: z.string().min(8, 'Contraseña mínimo 8 caracteres').optional(),
+  // Permiso por persona para cerrar novedades de montacargas. No va por rol a
+  // proposito: ver assertPuedeResolverNovedades en utils/montacargas.ts.
+  puedeResolverNovedades: z.boolean().optional(),
 })
 
 export const vehiculoSchema = z.object({

@@ -4,9 +4,10 @@ import { prisma } from '../../../utils/prisma'
 import { requireAuth } from '../../../utils/auth'
 import { mapMovimientoMontacargas } from '../../../utils/mapRow'
 import {
-  abrirTramo, assertUsuarioMontacargas, cerrarTramoAbierto, MOVIMIENTO_INCLUDE,
+  abrirTramo, assertPuedeResolverNovedades, assertUsuarioMontacargas, cerrarTramoAbierto,
+  MOVIMIENTO_INCLUDE,
 } from '../../../utils/montacargas'
-import { calcularCantidadTotal, esAyudante } from '../../../utils/montacargasCalc'
+import { calcularCantidadTotal } from '../../../utils/montacargasCalc'
 
 const schema = z.object({
   nota: z.string().min(3).max(500),
@@ -23,17 +24,13 @@ const schema = z.object({
 // de verificacion queda fuera del tiempo medido (no se cronometra), pero lo que
 // falte de almacenar si se mide.
 //
-// El ayudante no resuelve su propia novedad: quien confirma es el montacarguista
-// o supervision, que es el sentido de "los usuarios entran y confirman".
+// Cerrar una novedad es dar por buena una diferencia de inventario, asi que no
+// lo hace cualquiera: solo las personas con el permiso explicito
+// (users.puede_resolver_novedades), que un ADMIN concede desde Usuarios.
 export default defineEventHandler(async (event) => {
   const actor = await requireAuth(event)
   assertUsuarioMontacargas(actor.role)
-  if (esAyudante(actor.role)) {
-    throw createError({
-      statusCode: 403,
-      statusMessage: 'La novedad la confirma el montacarguista o supervision',
-    })
-  }
+  await assertPuedeResolverNovedades(actor.id)
 
   const id = getRouterParam(event, 'id')!
   const parsed = schema.safeParse(await readBody(event).catch(() => null))
@@ -46,7 +43,7 @@ export default defineEventHandler(async (event) => {
     where: { id },
     select: {
       estado: true, deletedAt: true, plu: true, responsableId: true,
-      cajas: true, unidadesPorCaja: true, unidadesSueltas: true,
+      cajas: true, unidadesPorCaja: true, unidadesSueltas: true, ubicacionFinal: true,
     },
   })
   if (!record || record.deletedAt) {
@@ -60,19 +57,26 @@ export default defineEventHandler(async (event) => {
   const unidadesPorCaja = d.unidadesPorCaja ?? record.unidadesPorCaja
   const unidadesSueltas = d.unidadesSueltas ?? record.unidadesSueltas
 
+  // La mercancia ya quedo ubicada al marcar la novedad, asi que verificarla es
+  // lo ultimo que faltaba: el registro se cierra. Solo se reanuda el reloj si
+  // por lo que sea no tiene ubicacion (registros anteriores a este cambio).
+  const yaUbicada = Boolean(record.ubicacionFinal)
+
   const now = new Date()
   const updated = await prisma.$transaction(async (tx) => {
     await tx.novedadMontacargas.updateMany({
       where: { movimientoId: id, resueltaAt: null },
       data: { resueltaPorId: actor.id, resueltaAt: now, notaResolucion: d.nota.trim() },
     })
-    // El reloj se reanuda para quien tiene el PLU en la mano.
-    const orden = await cerrarTramoAbierto(tx, id, now)
-    await abrirTramo(tx, id, record.responsableId, now, orden + 1)
+    if (!yaUbicada) {
+      const orden = await cerrarTramoAbierto(tx, id, now)
+      await abrirTramo(tx, id, record.responsableId, now, orden + 1)
+    }
     await tx.movimientoMontacargas.update({
       where: { id },
       data: {
-        estado: 'EN_CURSO',
+        estado: yaUbicada ? 'CERRADO' : 'EN_CURSO',
+        ...(yaUbicada && { horaFinalizacion: now }),
         cajas,
         unidadesPorCaja,
         unidadesSueltas,

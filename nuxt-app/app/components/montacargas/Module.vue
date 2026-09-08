@@ -40,6 +40,10 @@ const puedeVer = computed(() => puedeUsarMontacargas(role.value))
 const canManage = computed(() => puedeGestionarMontacargas(role.value))
 const puedeCrear = computed(() => puedeCrearMovimiento(role.value))
 const ayudante = computed(() => esRolAyudante(role.value))
+// Permiso por persona (users.puede_resolver_novedades), no por rol: lo expone
+// /api/me leyendolo de la base para que conceder o quitarlo tenga efecto sin
+// tener que volver a iniciar sesion.
+const puedeResolverNovedades = computed(() => me.value?.can?.resolverNovedades === true)
 
 // ── Pestaña activa ─────────────────────────────────────────────────
 // `null` = pestaña de indicadores, que no pertenece a ningún flujo.
@@ -109,7 +113,12 @@ async function loadLista() {
 // Plural: en resurtido pueden correr varios relojes a la vez. Endpoint propio y
 // no derivado de la lista: la bandeja tiene que sobrevivir a filtros,
 // paginación y a recargar la página.
+// Ojo: la bandeja tambien trae las novedades de otros cuando el actor puede
+// verificarlas — si no, quien tiene el permiso las veia en el listado pero nunca
+// el boton. Esas no son trabajo suyo, asi que todo lo operativo (abrir otro
+// registro, escanear, el vacio del ayudante) mira `mios`, no `abiertos`.
 const abiertos = ref<Movimiento[]>([])
+const mios = computed(() => abiertos.value.filter((m) => m.responsableId === userId.value))
 async function loadAbiertos() {
   try {
     const res = await $fetch<{ data: Movimiento[] }>(`${API_MONTACARGAS}/abiertos`, {
@@ -122,7 +131,7 @@ async function loadAbiertos() {
 // En recepción y movimientos se trabaja una estiba a la vez: con una abierta se
 // esconde el formulario para que no haya forma de arrancar dos relojes.
 const puedeAbrirOtro = computed(
-  () => puedeCrear.value && (admiteVariosAbiertos(tipo.value) || abiertos.value.length === 0),
+  () => puedeCrear.value && (admiteVariosAbiertos(tipo.value) || mios.value.length === 0),
 )
 
 // ── KPIs ───────────────────────────────────────────────────
@@ -188,7 +197,7 @@ useAutoRefresh({
     // Nunca refrescar con trabajo a medias: las tarjetas abiertas tienen inputs
     // con foco y un re-render le robaría al operario lo que está escribiendo.
     if (formDirty.value || saving.value || guardando.value || editando.value) return
-    if (abiertos.value.length > 0) return
+    if (mios.value.length > 0) return
     void loadLista()
     void loadAbiertos()
     void loadConteos()
@@ -313,7 +322,7 @@ const destacadoId = ref('')
 function onEscanear() {
   const codigo = normalizarCodigoProducto(escaneo.value)
   if (!codigo) return
-  const encontrado = abiertos.value.find((m) => m.plu === codigo || m.ean === codigo)
+  const encontrado = mios.value.find((m) => m.plu === codigo || m.ean === codigo)
   if (!encontrado) {
     showToast('Ese PLU no está en tu bandeja', true)
     sonarVeredicto('CAJA_AJENA')
@@ -480,6 +489,8 @@ async function exportar() {
         v-for="m in abiertos" :key="m.id" class="bloque"
         :movimiento="m" :ahora="ahora" :es-ayudante="ayudante"
         :destacado="destacadoId === m.id" :guardando="guardando === m.id"
+        :puede-resolver-novedades="puedeResolverNovedades"
+        :ajeno="m.responsableId !== userId"
         @cantidades="guardarCantidades(m, $event)"
         @ubicar="ubicar(m, $event)"
         @traspasar="traspasando = m"
@@ -489,7 +500,7 @@ async function exportar() {
       />
 
       <EmptyState
-        v-if="ayudante && abiertos.length === 0 && !loading"
+        v-if="ayudante && mios.length === 0 && !loading"
         title="Sin PLUs asignados"
         description="Cuando un montacarguista te pase un PLU, aparecerá aquí."
       />

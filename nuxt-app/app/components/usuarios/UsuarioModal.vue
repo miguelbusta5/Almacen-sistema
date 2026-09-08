@@ -18,6 +18,10 @@ const name = ref(props.initial?.name ?? '')
 const email = ref(props.initial?.email ?? '')
 const password = ref('')
 const role = ref<UserRole>(props.initial?.role ?? 'OPERADOR')
+// Permiso por persona, no por rol: cerrar una novedad es dar por buena una
+// diferencia de inventario, y atarlo al rol se lo daria en silencio a cualquier
+// supervisor que se cree despues.
+const resolverNovedades = ref(props.initial?.puedeResolverNovedades ?? false)
 const active = ref(props.initial?.active ?? true)
 const transportistaId = ref('')
 
@@ -65,7 +69,10 @@ async function submit() {
   try {
     if (esEdicion.value) {
       const body: Record<string, unknown> = {
-        name: name.value.trim(), role: role.value, active: active.value,
+        name: name.value.trim(),
+        role: role.value,
+        active: active.value,
+        puedeResolverNovedades: resolverNovedades.value,
       }
       if (password.value) body.password = password.value
       await $fetch(`/api/users/${props.initial!.id}`, { method: 'PUT', body })
@@ -127,6 +134,18 @@ async function submit() {
         <span class="hint">{{ ROLE_DESCRIPTION[role] }}</span>
       </label>
 
+      <label v-if="esEdicion" class="f">
+        <span class="lbl">Novedades de montacargas</span>
+        <span class="check">
+          <input v-model="resolverNovedades" type="checkbox">
+          <span>Puede cerrar novedades</span>
+        </span>
+        <span class="hint">
+          Dar por buena una diferencia de inventario. Se concede persona a persona,
+          no por rol.
+        </span>
+      </label>
+
       <label v-if="role === 'TRANSPORTISTA' && !esEdicion" class="f">
         <span class="lbl">Conductor a vincular</span>
         <select v-model="transportistaId" class="field" :disabled="cargandoDisp">
@@ -164,6 +183,9 @@ async function submit() {
 </template>
 
 <style scoped>
+.check { display: flex; align-items: center; gap: 8px; height: 38px; padding: 0 11px; border: 1px solid var(--border); border-radius: var(--r-sm); background: var(--surface-2); font-size: 12.5px; color: var(--ink-2); cursor: pointer; }
+.check input { width: 16px; height: 16px; accent-color: var(--brand); cursor: pointer; }
+
 .form { display: flex; flex-direction: column; gap: 13px; }
 .f { display: flex; flex-direction: column; gap: 5px; }
 .lbl { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); }

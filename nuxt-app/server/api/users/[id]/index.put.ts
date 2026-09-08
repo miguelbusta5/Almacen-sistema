@@ -29,6 +29,9 @@ export default defineEventHandler(async (event) => {
   if (d.name !== undefined) data.name = d.name
   if (d.role !== undefined) data.role = d.role
   if (d.active !== undefined) data.active = d.active
+  if (d.puedeResolverNovedades !== undefined) {
+    data.puedeResolverNovedades = d.puedeResolverNovedades
+  }
   if (d.password) {
     data.password = await bcrypt.hash(d.password, BCRYPT_ROUNDS)
     // Un reseteo hecho por ADMIN también es temporal.
@@ -38,7 +41,10 @@ export default defineEventHandler(async (event) => {
   const user = await prisma.user.update({
     where: { id },
     data: data as never,
-    select: { id: true, email: true, name: true, role: true, active: true },
+    select: {
+      id: true, email: true, name: true, role: true, active: true,
+      puedeResolverNovedades: true,
+    },
   })
 
   return { success: true, data: user }

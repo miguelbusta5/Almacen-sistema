@@ -21,6 +21,10 @@ const props = defineProps<{
   esAyudante: boolean
   /** Resaltado tras escanear su PLU en la bandeja. */
   destacado?: boolean
+  /** Cerrar una novedad es un permiso por persona, no por rol. */
+  puedeResolverNovedades?: boolean
+  /** El registro es de otra persona y solo se ve para poder verificarlo. */
+  ajeno?: boolean
   guardando: boolean
 }>()
 const emit = defineEmits<{
@@ -134,8 +138,12 @@ function ubicar() {
           </template>
         </span>
         <span v-if="m.novedadAbierta.detalle" class="det-nov">{{ m.novedadAbierta.detalle }}</span>
+        <!-- Donde quedo fisicamente la mercancia mientras se verifica: sin este
+             dato nadie sabe donde buscarla. -->
+        <span v-if="m.ubicacionFinal" class="ubic-nov">Ubicada en <b>{{ m.ubicacionFinal }}</b></span>
       </div>
-      <button v-if="!esAyudante" class="btn btn-sm" @click="emit('resolver')">Verificar</button>
+      <button v-if="puedeResolverNovedades" class="btn btn-sm" @click="emit('resolver')">Verificar</button>
+      <span v-else class="espera">Pendiente de verificación</span>
     </div>
 
     <!-- Cantidades: el montacarguista las completa con el reloj ya corriendo.
@@ -206,7 +214,7 @@ function ubicar() {
       </button>
     </form>
 
-    <footer class="acc">
+    <footer v-if="!ajeno || !enNovedad" class="acc">
       <button
         v-if="!enNovedad" class="btn-link" :disabled="guardando || !listo"
         :title="listo ? 'Pasar el PLU a un ayudante' : 'Guarda las cantidades antes de pasarlo'"
@@ -217,7 +225,7 @@ function ubicar() {
       <span v-if="!enNovedad && !listo" class="acc-nota">
         el ayudante necesita las cantidades para confirmarlas
       </span>
-      <button class="btn-link danger" :disabled="guardando" @click="emit('descartar')">
+      <button v-if="!ajeno" class="btn-link danger" :disabled="guardando" @click="emit('descartar')">
         <Trash2 :size="13" /> Descartar
       </button>
     </footer>
@@ -252,6 +260,9 @@ function ubicar() {
 .banda-txt b { font-size: 12.5px; color: var(--ink); }
 .banda-txt span { font-size: 11.5px; color: var(--muted); }
 .det-nov { font-style: italic; }
+.ubic-nov { font-size: 11.5px; color: var(--muted); }
+.ubic-nov b { color: var(--ink); font-family: var(--mono, monospace); }
+.espera { font-size: 11.5px; font-weight: 700; color: var(--u-aviso); white-space: nowrap; }
 
 .cant { display: flex; gap: 10px; flex-wrap: wrap; align-items: flex-end; margin-bottom: 11px; }
 .f { display: flex; flex-direction: column; gap: 4px; min-width: 0; flex: 0 1 110px; }

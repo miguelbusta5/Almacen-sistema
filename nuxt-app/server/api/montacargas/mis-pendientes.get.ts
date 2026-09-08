@@ -1,7 +1,7 @@
 import { defineEventHandler } from 'h3'
 import { prisma } from '../../utils/prisma'
 import { requireAuth } from '../../utils/auth'
-import { assertUsuarioMontacargas } from '../../utils/montacargas'
+import { assertUsuarioMontacargas, puedeResolverNovedades } from '../../utils/montacargas'
 
 /**
  * GET /api/montacargas/mis-pendientes
@@ -13,17 +13,25 @@ import { assertUsuarioMontacargas } from '../../utils/montacargas'
  * cuando lo pendiente está en el otro módulo (Resurtido vive aparte).
  *
  * Sin filtro de tipo a propósito: la gracia es justamente ver los tres a la vez.
+ *
+ * Quien puede cerrar novedades cuenta ademas las que esperan verificacion aunque
+ * las tenga otra persona: para el tambien son trabajo pendiente, y sin esto la
+ * pestaña no lo llevaria donde esta.
  */
 export default defineEventHandler(async (event) => {
   const actor = await requireAuth(event)
   assertUsuarioMontacargas(actor.role)
 
+  const verifica = await puedeResolverNovedades(actor.id)
+
   const filas = await prisma.movimientoMontacargas.groupBy({
     by: ['tipo'],
     where: {
-      responsableId: actor.id,
-      estado: { in: ['EN_CURSO', 'NOVEDAD'] },
       deletedAt: null,
+      OR: [
+        { responsableId: actor.id, estado: { in: ['EN_CURSO', 'NOVEDAD'] } },
+        ...(verifica ? [{ estado: 'NOVEDAD' as const }] : []),
+      ],
     },
     _count: { _all: true },
   })

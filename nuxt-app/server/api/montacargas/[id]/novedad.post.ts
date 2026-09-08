@@ -6,11 +6,14 @@ import { mapMovimientoMontacargas } from '../../../utils/mapRow'
 import {
   assertUsuarioMontacargas, cerrarTramoAbierto, esResponsableOGestor, MOVIMIENTO_INCLUDE,
 } from '../../../utils/montacargas'
-import { normalizarUbicacion } from '../../../utils/montacargasCalc'
+import { normalizarUbicacion, validarUbicacion } from '../../../utils/montacargasCalc'
 
 const schema = z.object({
   tipo: z.enum(['UNIDADES', 'UBICACION_INICIAL']),
   detalle: z.string().max(500).optional(),
+  // Donde quedo fisicamente la mercancia. Obligatoria: la estiba no se queda en
+  // el aire mientras se verifica, y sin este dato nadie sabe donde buscarla.
+  ubicacionFinal: z.string({ error: 'Indica dónde dejaste la mercancía' }).min(1, 'Indica dónde dejaste la mercancía').max(120),
   // Lo que el ayudante encontro de verdad, para que quien verifica vea el
   // descuadre sin tener que preguntar.
   cantidadEncontrada: z.number().int().min(0).optional(),
@@ -52,6 +55,10 @@ export default defineEventHandler(async (event) => {
     })
   }
 
+  const ubicacionFinal = normalizarUbicacion(d.ubicacionFinal)
+  const errUbic = validarUbicacion(ubicacionFinal)
+  if (errUbic) throw createError({ statusCode: 400, statusMessage: errUbic })
+
   const now = new Date()
   const updated = await prisma.$transaction(async (tx) => {
     await cerrarTramoAbierto(tx, id, now)
@@ -70,7 +77,9 @@ export default defineEventHandler(async (event) => {
     })
     await tx.movimientoMontacargas.update({
       where: { id },
-      data: { estado: 'NOVEDAD', actualizadoPorId: actor.id },
+      // Se guarda la ubicacion pero NO se cierra el registro: la mercancia ya
+      // esta puesta, lo que falta es que alguien verifique la diferencia.
+      data: { estado: 'NOVEDAD', ubicacionFinal, actualizadoPorId: actor.id },
     })
     return tx.movimientoMontacargas.findUniqueOrThrow({
       where: { id },
@@ -84,7 +93,7 @@ export default defineEventHandler(async (event) => {
       action: 'UPDATE',
       module: 'control-montacargas',
       recordId: id,
-      details: `Novedad ${d.tipo} en PLU ${record.plu} - reloj detenido`,
+      details: `Novedad ${d.tipo} en PLU ${record.plu} en ${ubicacionFinal} - reloj detenido`,
     },
   }).catch(() => {})
 

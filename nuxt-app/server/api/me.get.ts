@@ -1,12 +1,20 @@
 import { defineEventHandler } from 'h3'
 import { getSessionUser } from '../utils/auth'
 import { can } from '../utils/permissions'
+import { prisma } from '../utils/prisma'
 
 // Devuelve la sesión actual (o authenticated:false). La UI usa el rol para
 // ocultar acciones; el servidor siempre revalida con requireCan.
 export default defineEventHandler(async (event) => {
   const user = await getSessionUser(event)
   if (!user) return { authenticated: false }
+
+  // Se lee de la base y no del token: un ADMIN concede o quita este permiso
+  // desde Usuarios, y sacarlo del JWT lo dejaria obsoleto hasta el proximo login.
+  const extra = await prisma.user
+    .findUnique({ where: { id: user.id }, select: { puedeResolverNovedades: true } })
+    .catch(() => null)
+
   return {
     authenticated: true,
     user: {
@@ -15,6 +23,7 @@ export default defineEventHandler(async (event) => {
         create: can(user.role, 'create'),
         edit: can(user.role, 'edit'),
         delete: can(user.role, 'delete'),
+        resolverNovedades: extra?.puedeResolverNovedades ?? false,
       },
     },
   }

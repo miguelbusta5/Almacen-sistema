@@ -47,6 +47,32 @@ export function assertGestorMontacargas(role: string, mensaje = 'No autorizado')
 }
 
 /**
+ * Cerrar una novedad es dar por buena una diferencia de inventario, asi que es
+ * un permiso POR PERSONA (users.puede_resolver_novedades) y no por rol: atarlo
+ * al rol se lo daria en silencio a cualquier supervisor que se cree despues.
+ *
+ * Se consulta contra la base y no contra el token porque un ADMIN lo concede y
+ * lo quita desde Usuarios: leerlo del JWT lo dejaria obsoleto hasta el proximo
+ * inicio de sesion.
+ */
+export async function puedeResolverNovedades(usuarioId: string): Promise<boolean> {
+  const u = await prisma.user.findUnique({
+    where: { id: usuarioId },
+    select: { puedeResolverNovedades: true },
+  })
+  return u?.puedeResolverNovedades === true
+}
+
+export async function assertPuedeResolverNovedades(usuarioId: string) {
+  if (!(await puedeResolverNovedades(usuarioId))) {
+    throw createError({
+      statusCode: 403,
+      statusMessage: 'No tienes permiso para cerrar novedades. Pideselo a un administrador.',
+    })
+  }
+}
+
+/**
  * Alcance del listado.
  *
  * Gestión ve todo. El resto ve lo que tiene en la mano AHORA (responsableId), no

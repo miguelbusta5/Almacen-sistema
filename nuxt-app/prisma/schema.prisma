@@ -117,6 +117,10 @@ model User {
   // trivial de esquivar repartiendo los intentos.
   intentosFallidos   Int       @default(0) @map("intentos_fallidos")
   bloqueadoHasta     DateTime? @map("bloqueado_hasta")
+  // Quien puede cerrar una novedad de montacargas. Es un permiso POR PERSONA y
+  // no por rol a proposito: lo tienen dos personas concretas, y atarlo al rol
+  // se lo daria en silencio a cualquier supervisor que se cree despues.
+  puedeResolverNovedades Boolean @default(false) @map("puede_resolver_novedades")
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
