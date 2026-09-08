@@ -12,10 +12,6 @@ import {
 const props = defineProps<{ movimiento: Movimiento }>()
 const emit = defineEmits<{ (e: 'close'): void; (e: 'resuelta'): void }>()
 
-function apiErr(e: any, fallback: string) {
-  return e?.data?.error || e?.data?.statusMessage || e?.statusMessage || fallback
-}
-
 const nov = props.movimiento.novedadAbierta
 const pideOrigen = computed(() => requiereUbicacionInicial(props.movimiento.tipo))
 

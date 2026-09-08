@@ -28,10 +28,6 @@ const saving = ref(false)
 const error = ref('')
 const missing = computed(() => !f.numeroDocumento.trim())
 
-function apiErr(e: any, fallback: string) {
-  return e?.data?.error || e?.data?.statusMessage || e?.statusMessage || fallback
-}
-
 async function submit() {
   touched.value = true
   error.value = ''

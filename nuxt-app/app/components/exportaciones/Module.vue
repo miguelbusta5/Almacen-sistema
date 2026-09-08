@@ -16,10 +16,6 @@ const props = defineProps<{ cfg: PaisConfig }>()
 const { me, sessionLoaded } = useSessionState()
 const { show: showToast } = useToast()
 
-function apiErr(e: any, fallback: string) {
-  return e?.data?.error || e?.data?.statusMessage || e?.statusMessage || fallback
-}
-
 const role = computed(() => me.value?.role ?? '')
 const userId = computed(() => me.value?.id)
 const puedeVer = computed(() => puedeUsarExportaciones(role.value))

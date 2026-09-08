@@ -197,10 +197,6 @@ function onKpiFilter(key: string) {
 }
 function openDetail(g: Guardado) { panelItem.value = g }
 
-function apiErr(e: any, fallback: string) {
-  return e?.data?.statusMessage || e?.statusMessage || e?.data?.message || fallback
-}
-
 // ── Feedback async: una sola acción de escritura a la vez ──────────────────
 // `busy` guarda la clave de la acción en curso; los botones muestran spinner
 // cuando su clave coincide y todos quedan deshabilitados mientras haya una.

@@ -15,10 +15,6 @@ const route = useRoute()
 const { me, sessionLoaded } = useSessionState()
 const { show: showToast } = useToast()
 
-function apiErr(e: any, fallback: string) {
-  return e?.data?.error || e?.data?.statusMessage || e?.statusMessage || fallback
-}
-
 const role = computed(() => me.value?.role ?? '')
 const userId = computed(() => me.value?.id)
 const puedeVer = computed(() => puedeVerSolicitudes(role.value))

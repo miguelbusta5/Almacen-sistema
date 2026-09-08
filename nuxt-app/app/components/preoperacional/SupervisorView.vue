@@ -7,10 +7,6 @@ import { PREOP_ESTADO_LABEL, PREOP_ESTADO_TONE, type HistorialRow } from '~/util
 const props = defineProps<{ role: string }>()
 const { show: showToast } = useToast()
 
-function apiErr(e: any, fallback: string) {
-  return e?.data?.statusMessage || e?.statusMessage || e?.data?.message || fallback
-}
-
 const page = ref(1)
 const total = ref(0)
 const pages = ref(1)

@@ -14,10 +14,6 @@ import {
 const { me, sessionLoaded } = useSessionState()
 const { show: showToast } = useToast()
 
-function apiErr(e: any, fallback: string) {
-  return e?.data?.error || e?.data?.statusMessage || e?.statusMessage || fallback
-}
-
 const puedeVer = computed(() => canSeeModule(me.value?.role, 'usuarios'))
 const selfId = computed(() => me.value?.id)
 

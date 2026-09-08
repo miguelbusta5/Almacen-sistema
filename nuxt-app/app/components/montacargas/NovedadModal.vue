@@ -15,10 +15,6 @@ import {
 const props = defineProps<{ movimiento: Movimiento }>()
 const emit = defineEmits<{ (e: 'close'): void; (e: 'creada'): void }>()
 
-function apiErr(e: any, fallback: string) {
-  return e?.data?.error || e?.data?.statusMessage || e?.statusMessage || fallback
-}
-
 const sugerido = novedadEsperada(props.movimiento.tipo)
 const form = reactive({
   tipo: sugerido,

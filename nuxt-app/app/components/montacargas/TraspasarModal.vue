@@ -8,10 +8,6 @@ import { API_MONTACARGAS, type Ayudante, type Movimiento } from '~/utils/montaca
 const props = defineProps<{ movimiento: Movimiento }>()
 const emit = defineEmits<{ (e: 'close'): void; (e: 'traspasado', ayudante: string): void }>()
 
-function apiErr(e: any, fallback: string) {
-  return e?.data?.error || e?.data?.statusMessage || e?.statusMessage || fallback
-}
-
 const ayudantes = ref<Ayudante[]>([])
 const cargando = ref(true)
 const enviando = ref('')

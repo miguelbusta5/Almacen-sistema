@@ -7,10 +7,6 @@ import { PAISES_EXPORT_LIST, type PaisConfig } from '~/utils/exportaciones'
 const props = defineProps<{ ids: string[]; cfg: PaisConfig }>()
 const emit = defineEmits<{ (e: 'close'): void; (e: 'moved', n: number): void }>()
 
-function apiErr(e: any, fallback: string) {
-  return e?.data?.error || e?.data?.statusMessage || e?.statusMessage || fallback
-}
-
 const destinos = computed(() => PAISES_EXPORT_LIST.filter((p) => p.pais !== props.cfg.pais))
 const destino = ref(destinos.value[0]?.pais ?? '')
 const motivo = ref('')

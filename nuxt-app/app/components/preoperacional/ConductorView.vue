@@ -17,10 +17,6 @@ const observaciones = ref('')
 const saving = ref(false)
 const refreshing = ref(false)
 
-function apiErr(e: any, fallback: string) {
-  return e?.data?.statusMessage || e?.statusMessage || e?.data?.message || fallback
-}
-
 async function load() {
   try {
     const res = await $fetch<ConductorData>('/api/preoperacional')

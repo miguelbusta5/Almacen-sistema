@@ -139,8 +139,6 @@ function patchListado(id: string, patch: Partial<PedidoGourmet>) {
 function agregarAListado(p: PedidoGourmet) { pedidos.value = [p, ...pedidos.value]; total.value++; void loadConteos() }
 function quitarDeListado(id: string) { pedidos.value = pedidos.value.filter((p) => p.id !== id); total.value = Math.max(0, total.value - 1); void loadConteos() }
 
-function apiErr(e: any, fallback: string) { return e?.data?.statusMessage || e?.statusMessage || fallback }
-
 const busy = ref<string | null>(null)
 async function run(key: string, fn: () => Promise<void>) {
   if (busy.value) return

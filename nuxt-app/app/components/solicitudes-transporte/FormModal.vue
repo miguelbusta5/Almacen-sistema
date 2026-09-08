@@ -14,10 +14,6 @@ import {
 const props = defineProps<{ catalogos: Catalogos | null; initial: Solicitud | null }>()
 const emit = defineEmits<{ (e: 'close'): void; (e: 'saved', data: Solicitud): void }>()
 
-function apiErr(e: any, fallback: string) {
-  return e?.data?.error || e?.data?.statusMessage || e?.statusMessage || fallback
-}
-
 const i = props.initial
 const form = reactive({
   fechaSolicitud: i?.fechaSolicitud ?? hoyISO(),

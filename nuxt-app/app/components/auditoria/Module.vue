@@ -12,10 +12,6 @@ import type { LogItem, LogUser } from '~/utils/auditoria'
 const { me, sessionLoaded } = useSessionState()
 const { show: showToast } = useToast()
 
-function apiErr(e: any, fallback: string) {
-  return e?.data?.error || e?.data?.statusMessage || e?.statusMessage || fallback
-}
-
 const puedeVer = computed(() => canSeeModule(me.value?.role, 'auditoria'))
 
 const PAGE_SIZE = 25

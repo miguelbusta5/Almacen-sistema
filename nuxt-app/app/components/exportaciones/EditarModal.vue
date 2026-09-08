@@ -5,10 +5,6 @@ import { normalizePlu, type Exportacion, type PaisConfig } from '~/utils/exporta
 const props = defineProps<{ item: Exportacion; cfg: PaisConfig; canManage: boolean }>()
 const emit = defineEmits<{ (e: 'close'): void; (e: 'saved'): void }>()
 
-function apiErr(e: any, fallback: string) {
-  return e?.data?.error || e?.data?.statusMessage || e?.statusMessage || fallback
-}
-
 // `datetime-local` habla en hora local del navegador; el operario está en Bogotá,
 // que es la misma zona del servidor, así que el ida y vuelta no desplaza nada.
 function toLocalInput(iso: string | null): string {

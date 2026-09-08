@@ -9,10 +9,6 @@ const observaciones = ref('')
 const saving = ref(false)
 const error = ref('')
 
-function apiErr(e: any, fallback: string) {
-  return e?.data?.error || e?.data?.statusMessage || e?.statusMessage || fallback
-}
-
 async function submit() {
   error.value = ''
   saving.value = true

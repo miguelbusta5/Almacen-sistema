@@ -12,10 +12,6 @@ const props = defineProps<{
 }>()
 const emit = defineEmits<{ (e: 'reload'): void; (e: 'toast', msg: string, err?: boolean): void }>()
 
-function apiErr(e: any, fallback: string) {
-  return e?.data?.error || e?.data?.statusMessage || e?.statusMessage || fallback
-}
-
 // ── Vehículo nuevo ─────────────────────────────────────────
 const placa = ref('')
 const tipo = ref('CAMION')

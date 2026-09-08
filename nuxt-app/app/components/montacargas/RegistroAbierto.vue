@@ -7,7 +7,7 @@
 // botones. El ayudante NO edita cantidades: confirma lo que recibe o marca la
 // novedad — por eso su vista es de una sola pulsación.
 import { ref, reactive, computed, watch, nextTick } from 'vue'
-import { MapPin, UserPlus, Trash2, TriangleAlert, CheckCircle2, Boxes } from '@lucide/vue'
+import { UserPlus, Trash2, TriangleAlert, CheckCircle2, Boxes } from '@lucide/vue'
 import {
   calcularCantidadTotal, esUbicacionCanonica, fmtHoraMovimiento, normalizarUbicacion,
   requiereUbicacionInicial, tieneCantidades, TIPO_NOVEDAD_LABEL, cronometroTramo,
@@ -207,9 +207,16 @@ function ubicar() {
     </form>
 
     <footer class="acc">
-      <button v-if="!enNovedad" class="btn-link" :disabled="guardando" @click="emit('traspasar')">
+      <button
+        v-if="!enNovedad" class="btn-link" :disabled="guardando || !listo"
+        :title="listo ? 'Pasar el PLU a un ayudante' : 'Guarda las cantidades antes de pasarlo'"
+        @click="emit('traspasar')"
+      >
         <UserPlus :size="13" /> Pasar a ayudante
       </button>
+      <span v-if="!enNovedad && !listo" class="acc-nota">
+        el ayudante necesita las cantidades para confirmarlas
+      </span>
       <button class="btn-link danger" :disabled="guardando" @click="emit('descartar')">
         <Trash2 :size="13" /> Descartar
       </button>
@@ -268,7 +275,8 @@ function ubicar() {
 .warn-txt { color: var(--u-aviso); }
 .submit { height: 36px; white-space: nowrap; }
 
-.acc { display: flex; gap: 12px; margin-top: 10px; padding-top: 9px; border-top: 1px solid var(--border); }
+.acc { display: flex; align-items: center; gap: 12px; margin-top: 10px; padding-top: 9px; border-top: 1px solid var(--border); }
+.acc-nota { font-size: 11px; color: var(--faint); flex: 1; }
 .btn-link { display: inline-flex; align-items: center; gap: 5px; background: none; border: none; color: var(--muted); cursor: pointer; font-size: 12px; padding: 3px 0; }
 .btn-link:hover:not(:disabled) { color: var(--ink-2); }
 .btn-link.danger:hover:not(:disabled) { color: var(--u-critico); }

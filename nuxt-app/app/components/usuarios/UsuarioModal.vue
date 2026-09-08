@@ -11,10 +11,6 @@ import {
 const props = defineProps<{ initial: Usuario | null; selfId?: string }>()
 const emit = defineEmits<{ (e: 'close'): void; (e: 'saved', msg: string): void }>()
 
-function apiErr(e: any, fallback: string) {
-  return e?.data?.error || e?.data?.statusMessage || e?.statusMessage || fallback
-}
-
 const esEdicion = computed(() => !!props.initial)
 const esYoMismo = computed(() => !!props.initial && props.initial.id === props.selfId)
 

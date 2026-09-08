@@ -14,7 +14,7 @@
 // nuxt-app/app/utils/montacargas.ts (Vue). Si una copia se desvía, el cliente
 // valida distinto que el servidor y el operario ve rechazos inexplicables.
 import { describe, it, expect } from "vitest";
-import { readFileSync } from "fs";
+import { readFileSync, readdirSync } from "fs";
 import path from "path";
 import { UBICACION_PATTERN, GESTORES_MONTACARGAS, ROLES_MONTACARGAS } from "@/lib/montacargas";
 
@@ -287,5 +287,44 @@ describe("montacargas — módulos registrados", () => {
     expect(resurtido).toContain("MontacargasModule");
     expect(resurtido).toContain("FLUJOS.RESURTIDO");
     expect(moduleVue).toContain("hayPestanas");
+  });
+});
+
+// Nitro serializa los errores como { error: true, statusCode, statusMessage, ... }.
+// Cada componente tenía su propia copia de apiErr que leía `data.error` primero,
+// así que el operario veía un cuadro rojo con la palabra "true" en vez del
+// motivo (visto en producción al pasar un PLU a un ayudante). Vivía duplicada en
+// 24 archivos: si alguien vuelve a pegar una copia local, esto lo caza.
+describe("apiErr — mensaje de error legible", () => {
+  const util = leer("nuxt-app/app/utils/apiError.ts");
+
+  it("el helper compartido existe y descarta el flag booleano", () => {
+    expect(util).toContain("export function apiErr");
+    // Solo acepta cadenas no vacías: un `error: true` cae al texto de respaldo.
+    expect(util).toContain("typeof value === 'string'");
+    expect(util).toContain("statusMessage");
+  });
+
+  it("no queda ninguna copia local que lo sombree", () => {
+    const dir = path.join(raiz, "nuxt-app/app");
+    const pendientes: string[] = [];
+    const recorrer = (d: string) => {
+      for (const entrada of readdirSync(d, { withFileTypes: true })) {
+        const full = path.join(d, entrada.name);
+        if (entrada.isDirectory()) { recorrer(full); continue; }
+        if (!/\.(vue|ts)$/.test(entrada.name)) continue;
+        if (full.endsWith("apiError.ts")) continue;
+        if (readFileSync(full, "utf8").includes("function apiErr")) {
+          pendientes.push(path.relative(raiz, full));
+        }
+      }
+    };
+    recorrer(dir);
+    expect(pendientes).toEqual([]);
+  });
+
+  it("nadie lee data.error como si fuera el mensaje", () => {
+    expect(leer("nuxt-app/app/components/montacargas/Module.vue"))
+      .not.toContain("e?.data?.error ||");
   });
 });

@@ -29,10 +29,6 @@ function canCompleteArea2(item: Integracion) {
   return a !== item.areaIniciadora
 }
 
-function apiErr(e: any, fallback: string) {
-  return e?.data?.error || e?.data?.statusMessage || e?.statusMessage || fallback
-}
-
 const integraciones = ref<Integracion[]>([])
 const total = ref(0)
 const loading = ref(true)
