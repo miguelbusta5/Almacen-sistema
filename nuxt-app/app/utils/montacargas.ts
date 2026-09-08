@@ -137,6 +137,10 @@ export interface Movimiento {
   horaInicio: string
   horaFinalizacion: string | null
   duracionMinutos: number | null
+  /** Tramos por persona: el montacarguista hasta el traspaso, el ayudante desde
+   *  ahi. `minutosAyudante` es null cuando nunca se traspaso. */
+  minutosMontacarguista: number
+  minutosAyudante: number | null
   motivoCorreccion: string | null
   creadoPorId: string
   creadoPorNombre: string | null

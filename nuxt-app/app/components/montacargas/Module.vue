@@ -11,16 +11,17 @@
 // Montacargas le pasa dos flujos (pestañas), Resurtido uno solo; y el ayudante
 // ve su bandeja en vez del formulario de captura.
 import { ref, computed, watch, onMounted, onBeforeUnmount, nextTick } from 'vue'
-import { RefreshCw, Download, Forklift, ScanLine } from '@lucide/vue'
+import { RefreshCw, Download, Forklift, ScanLine, BarChart3, ExternalLink } from '@lucide/vue'
 import { ensureSession, useSessionState } from '~/composables/useSession'
 import { useToast } from '~/composables/useToast'
 import { useAutoRefresh } from '~/composables/useAutoRefresh'
 import { sonarVeredicto } from '~/utils/escaneoFeedback'
 import {
-  API_MONTACARGAS, admiteVariosAbiertos, esAyudante as esRolAyudante,
+  API_MONTACARGAS, admiteVariosAbiertos, esAyudante as esRolAyudante, FLUJOS,
   normalizarCodigoProducto, puedeCrearMovimiento, puedeGestionarMontacargas,
-  puedeUsarMontacargas,
+  puedeUsarMontacargas, TIPO_MOVIMIENTO_LABEL,
   type FlujoConfig, type Movimiento, type MovimientoConteos, type Operario,
+  type TipoMovimiento,
 } from '~/utils/montacargas'
 
 const props = defineProps<{
@@ -41,9 +42,31 @@ const puedeCrear = computed(() => puedeCrearMovimiento(role.value))
 const ayudante = computed(() => esRolAyudante(role.value))
 
 // ── Pestaña activa ─────────────────────────────────────────────────
+// `null` = pestaña de indicadores, que no pertenece a ningún flujo.
 const flujoActivo = ref<FlujoConfig>(props.flujos[0]!)
+const verIndicadores = ref(false)
 const tipo = computed(() => flujoActivo.value.tipo)
-const hayPestanas = computed(() => props.flujos.length > 1)
+
+// ── Pendientes por tipo (a dónde llevar al operario) ───────────────
+// Un ayudante que recibía un movimiento de depósito abría el módulo en la
+// pestaña de Recepción y no veía nada, porque el traspaso no le decía dónde
+// mirar. Con esto se selecciona la pestaña que tiene trabajo y se avisa cuando
+// lo pendiente está en el otro módulo (Resurtido vive aparte).
+const pendientes = ref<Record<TipoMovimiento, number>>({ RECEPCION: 0, MOVIMIENTO: 0, RESURTIDO: 0 })
+async function loadPendientes() {
+  try {
+    const res = await $fetch<{ data: Record<TipoMovimiento, number> }>(`${API_MONTACARGAS}/mis-pendientes`)
+    pendientes.value = res.data
+  } catch { /* la bandeja sigue funcionando sin esto */ }
+}
+
+// Flujos de OTROS módulos con trabajo pendiente: el enlace que falta para no
+// dejar PLUs olvidados en la otra pantalla.
+const pendientesFuera = computed(() =>
+  (Object.keys(pendientes.value) as TipoMovimiento[])
+    .filter((t) => pendientes.value[t] > 0 && !props.flujos.some((f) => f.tipo === t))
+    .map((t) => ({ tipo: t, n: pendientes.value[t], flujo: FLUJOS[t] })),
+)
 
 // ── Reloj compartido ───────────────────────────────────────────────
 // Un solo setInterval para todos los cronómetros de la pantalla, no uno por
@@ -133,6 +156,13 @@ async function cargarTodo() {
 onMounted(async () => {
   await ensureSession()
   if (!puedeVer.value) { loading.value = false; return }
+  await loadPendientes()
+  // Se abre directamente donde hay trabajo. Solo para quien recibe traspasos:
+  // al montacarguista se le respeta la primera pestaña, que es donde captura.
+  if (ayudante.value) {
+    const conTrabajo = props.flujos.find((f) => pendientes.value[f.tipo] > 0)
+    if (conTrabajo) flujoActivo.value = conTrabajo
+  }
   await Promise.all([cargarTodo(), loadOperarios()])
 })
 
@@ -184,7 +214,7 @@ async function abrir(payload: { codigo: string; ubicacionInicial?: string }) {
   try {
     await $fetch(API_MONTACARGAS, { method: 'POST', body: { ...payload, tipo: tipo.value } })
     capturaRef.value?.reset()
-    await Promise.all([loadAbiertos(), loadLista(), loadConteos()])
+    await Promise.all([loadAbiertos(), loadLista(), loadConteos(), loadPendientes()])
   } catch (e: any) {
     // 409: ya había un registro abierto de este tipo. El servidor lo devuelve
     // para que la UI lo muestre en vez de dejar al operario atascado.
@@ -238,7 +268,7 @@ async function ubicar(m: Movimiento, ubicacionFinal: string) {
   if (exitoTimer) clearTimeout(exitoTimer)
   exitoTimer = setTimeout(() => { exito.value = null }, 1800)
 
-  await Promise.all([loadAbiertos(), loadLista(), loadConteos()])
+  await Promise.all([loadAbiertos(), loadLista(), loadConteos(), loadPendientes()])
   await nextTick()
   capturaRef.value?.reset()
 }
@@ -261,7 +291,7 @@ const resolviendo = ref<Movimiento | null>(null)
 async function onTraspasado(nombre: string) {
   traspasando.value = null
   showToast(`PLU pasado a ${nombre} ✓`)
-  await Promise.all([loadAbiertos(), loadLista(), loadConteos()])
+  await Promise.all([loadAbiertos(), loadLista(), loadConteos(), loadPendientes()])
 }
 async function onNovedadCreada() {
   marcandoNovedad.value = null
@@ -383,18 +413,43 @@ async function exportar() {
     />
 
     <template v-else>
-      <!-- Con un solo flujo (Resurtido) no se dibuja la barra: una pestaña
-           única es ruido que no decide nada. -->
-      <nav v-if="hayPestanas" class="tabs" role="tablist">
+      <!-- Con varios flujos hay una pestaña por flujo; los indicadores son otra
+           pestaña más, así que la barra se dibuja también en Resurtido. -->
+      <nav class="tabs" role="tablist">
         <button
           v-for="f in flujos" :key="f.tipo" class="tab" role="tab"
-          :class="{ on: f.tipo === flujoActivo.tipo }"
-          :aria-selected="f.tipo === flujoActivo.tipo"
-          @click="flujoActivo = f"
+          :class="{ on: !verIndicadores && f.tipo === flujoActivo.tipo }"
+          :aria-selected="!verIndicadores && f.tipo === flujoActivo.tipo"
+          @click="verIndicadores = false; flujoActivo = f"
         >
           {{ f.tab }}
+          <!-- Cuántos PLUs tiene el operario en la mano en esa pestaña: sin esto
+               hay que entrar a cada una para descubrir dónde está el trabajo. -->
+          <span v-if="pendientes[f.tipo] > 0" class="badge-tab">{{ pendientes[f.tipo] }}</span>
+        </button>
+        <button
+          v-if="canManage" class="tab" role="tab"
+          :class="{ on: verIndicadores }" :aria-selected="verIndicadores"
+          @click="verIndicadores = true"
+        >
+          <BarChart3 :size="13" /> Indicadores
         </button>
       </nav>
+
+      <!-- Trabajo pendiente en el OTRO módulo: Resurtido vive aparte y sin este
+           aviso los PLUs se quedan olvidados ahí. -->
+      <NuxtLink
+        v-for="p in pendientesFuera" :key="p.tipo"
+        class="aviso-fuera bloque" :to="`/dashboard/${p.flujo.moduleKey}`"
+      >
+        <ExternalLink :size="14" />
+        Tienes <b>{{ p.n }}</b> PLU{{ p.n !== 1 ? 's' : '' }} pendiente{{ p.n !== 1 ? 's' : '' }}
+        en {{ TIPO_MOVIMIENTO_LABEL[p.tipo] }}
+      </NuxtLink>
+
+      <MontacargasIndicadores v-if="verIndicadores" :tipo="flujoActivo.tipo" />
+
+      <template v-else>
 
       <!-- Bandeja del ayudante: escanea el PLU que trae en la mano y su tarjeta
            se resalta y toma el foco. -->
@@ -446,13 +501,14 @@ async function exportar() {
         :operarios="operarios" :can-manage="canManage" @clear="limpiarFiltros"
       />
 
-      <ListSkeleton v-if="loading" />
-      <template v-else>
-        <MontacargasTabla
-          :items="items" :tipo="flujoActivo.tipo" :can-manage="canManage" :user-id="userId"
-          @editar="editando = $event" @borrar="borrando = $event"
-        />
-        <PageNav v-if="pages > 1" v-model:page="page" :pages="pages" class="pagenav" />
+        <ListSkeleton v-if="loading" />
+        <template v-else>
+          <MontacargasTabla
+            :items="items" :tipo="flujoActivo.tipo" :can-manage="canManage" :user-id="userId"
+            @editar="editando = $event" @borrar="borrando = $event"
+          />
+          <PageNav v-if="pages > 1" v-model:page="page" :pages="pages" class="pagenav" />
+        </template>
       </template>
     </template>
 
@@ -496,12 +552,24 @@ async function exportar() {
 .tabs { display: flex; gap: 4px; margin-bottom: 16px; border-bottom: 1px solid var(--border); }
 .tab {
   appearance: none; border: none; background: none; cursor: pointer;
+  display: inline-flex; align-items: center; gap: 6px;
   padding: 9px 15px; font-size: 13px; font-weight: 600; color: var(--muted);
   border-bottom: 2px solid transparent; margin-bottom: -1px;
   transition: color .15s, border-color .15s;
 }
 .tab:hover { color: var(--ink-2); }
 .tab.on { color: var(--brand); border-bottom-color: var(--brand); }
+.badge-tab { display: inline-grid; place-items: center; min-width: 18px; height: 18px; padding: 0 5px; border-radius: 999px; background: var(--brand); color: var(--on-brand); font-size: 11px; font-weight: 800; }
+
+.aviso-fuera {
+  display: flex; align-items: center; gap: 8px; text-decoration: none;
+  padding: 10px 13px; border-radius: var(--r-sm); font-size: 12.5px;
+  background: color-mix(in srgb, var(--info) 9%, transparent);
+  border: 1px solid color-mix(in srgb, var(--info) 32%, transparent);
+  color: var(--ink-2);
+}
+.aviso-fuera:hover { background: color-mix(in srgb, var(--info) 15%, transparent); }
+.aviso-fuera b { color: var(--ink); }
 .tab:focus-visible { outline: none; box-shadow: var(--ring); border-radius: var(--r-xs); }
 
 .escaneo { padding: 14px 16px; border-top: 3px solid var(--brand); }
@@ -516,6 +584,6 @@ async function exportar() {
 
 @media (max-width: 700px) {
   .hero-title { font-size: 24px; }
-  .tab { flex: 1; padding: 11px 8px; }
+  .tab { flex: 1; padding: 11px 6px; font-size: 12.5px; }
 }
 </style>

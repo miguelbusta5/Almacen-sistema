@@ -3,7 +3,10 @@ import ExcelJS from 'exceljs'
 import { prisma } from '../../utils/prisma'
 import { requireAuth } from '../../utils/auth'
 import { formatDateOnly } from '../../utils/exportacionesCalc'
-import { ESTADO_MOVIMIENTO_LABEL, minutosTrabajados } from '../../utils/montacargasCalc'
+import {
+  ESTADO_MOVIMIENTO_LABEL, huboTraspaso, minutosDeAyudantes, minutosDelCreador,
+  minutosTrabajados,
+} from '../../utils/montacargasCalc'
 import { assertGestorMontacargas, buildMovimientoWhere, MOVIMIENTO_INCLUDE } from '../../utils/montacargas'
 import { esTipoMovimiento, TIPO_MOVIMIENTO_LABEL } from '../../utils/montacargasCalc'
 
@@ -48,6 +51,7 @@ export default defineEventHandler(async (event) => {
     'PLU', 'EAN', 'DESCRIPCION', 'CAJAS', 'UNIDADES X CAJA', 'REGUERO',
     'UNIDADES SUELTAS', 'CANTIDAD TOTAL', 'UBICACION INICIAL', 'DEPOSITO FINAL',
     'FECHA', 'FECHA Y HORA INICIO', 'FECHA Y HORA FINAL', 'TIEMPO (MIN)',
+    'T. MONTACARGUISTA (MIN)', 'T. AYUDANTE (MIN)',
     'ESTADO', 'UND MANUALES', 'NOVEDAD', 'MOTIVO CORRECCION',
     'MONTACARGUISTA', 'RESPONSABLE ACTUAL',
   ]
@@ -68,6 +72,8 @@ export default defineEventHandler(async (event) => {
     r.horaFinalizacion ? fmtHora(r.horaFinalizacion) : '',
     // Solo tramos trabajados: la ventana de una novedad no se cronometra.
     r.estado === 'CERRADO' ? minutosTrabajados(r.tramos) : '',
+    minutosDelCreador(r.tramos, r.creadoPorId),
+    huboTraspaso(r.tramos, r.creadoPorId) ? minutosDeAyudantes(r.tramos, r.creadoPorId) : '',
     ESTADO_MOVIMIENTO_LABEL[r.estado],
     r.unidadesManuales ? 'Si' : 'No',
     r.novedades?.find((n) => !n.resueltaAt) ? 'Abierta' : (r.novedades?.length ? 'Resuelta' : ''),
@@ -79,7 +85,7 @@ export default defineEventHandler(async (event) => {
   const wb = new ExcelJS.Workbook()
   const ws = wb.addWorksheet(TIPO_MOVIMIENTO_LABEL[tipo].slice(0, 31))
   ws.addRows([headers, ...rows])
-  ws.columns = [12, 16, 40, 8, 16, 10, 17, 16, 18, 18, 12, 18, 18, 13, 12, 14, 11, 28, 22, 22]
+  ws.columns = [12, 16, 40, 8, 16, 10, 17, 16, 18, 18, 12, 18, 18, 13, 22, 19, 12, 14, 11, 28, 22, 22]
     .map((width) => ({ width }))
 
   const buf = await wb.xlsx.writeBuffer()

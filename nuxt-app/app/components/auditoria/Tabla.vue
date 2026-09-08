@@ -51,7 +51,12 @@ const esCompacto = useMediaQuery('(max-width: 760px)')
 </template>
 
 <style scoped>
-.table-card { overflow: hidden; }
+/* La tabla es mas ancha que la tarjeta en pantallas normales: con
+   `overflow: hidden` las ultimas columnas (estado, tiempo, acciones) se
+   recortaban y no habia forma de verlas. Scroll horizontal DENTRO de la
+   tarjeta, nunca en el body de la pagina. */
+.table-card { overflow-x: auto; overflow-y: hidden; }
+.table { min-width: 900px; }
 .table { width: 100%; border-collapse: collapse; }
 .table th { text-align: left; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); padding: 12px 14px; background: var(--surface-2); border-bottom: 1px solid var(--border); }
 .table td { padding: 10px 14px; font-size: 13px; color: var(--ink-2); border-bottom: 1px solid var(--border); vertical-align: top; }

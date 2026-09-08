@@ -274,3 +274,26 @@ export function minutosPorUsuario(tramos: readonly TramoLike[]): Record<string, 
   }
   return acc
 }
+
+/**
+ * Minutos del montacarguista que abrió el registro: sus tramos, no los del resto.
+ *
+ * El PLU puede pasar de mano en mano, y quien lo abrió deja de ser responsable en
+ * cuanto lo traspasa. Cargarle el tiempo del ayudante distorsionaría su
+ * productividad, que es justo lo que este modulo mide.
+ */
+export function minutosDelCreador(tramos: readonly TramoLike[], creadoPorId: string): number {
+  return minutosTrabajados(tramos.filter((t) => t.usuarioId === creadoPorId))
+}
+
+/** Minutos de quien(es) recibieron el PLU. Suma todos los ayudantes por los que
+ *  pasó, porque el ayudante puede volver a pasarlo a otro. */
+export function minutosDeAyudantes(tramos: readonly TramoLike[], creadoPorId: string): number {
+  return minutosTrabajados(tramos.filter((t) => t.usuarioId !== creadoPorId))
+}
+
+/** ¿El registro llegó a pasar por un ayudante? Si no, el segundo tiempo se
+ *  muestra vacío en vez de como un cero, que se leería como 'tardó nada'. */
+export function huboTraspaso(tramos: readonly TramoLike[], creadoPorId: string): boolean {
+  return tramos.some((t) => t.usuarioId !== creadoPorId)
+}

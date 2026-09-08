@@ -286,7 +286,24 @@ describe("montacargas — módulos registrados", () => {
     const resurtido = leer("nuxt-app/app/pages/resurtido.vue");
     expect(resurtido).toContain("MontacargasModule");
     expect(resurtido).toContain("FLUJOS.RESURTIDO");
-    expect(moduleVue).toContain("hayPestanas");
+  });
+
+  // Los dos módulos llevan pestaña de indicadores, y es solo para gestión: son
+  // los números con los que se evalúa al equipo.
+  it("ambos módulos tienen pestaña de indicadores, solo para gestión", () => {
+    expect(moduleVue).toContain("MontacargasIndicadores");
+    expect(moduleVue).toMatch(/v-if="canManage"[\s\S]{0,200}Indicadores/);
+    expect(leer("nuxt-app/server/api/montacargas/indicadores.get.ts"))
+      .toContain("assertGestorMontacargas");
+  });
+
+  // Un ayudante que recibía un movimiento abría el módulo en Recepción y no veía
+  // nada: el traspaso no le decía dónde mirar.
+  it("la UI lleva al operario a donde está su trabajo", () => {
+    expect(leer("nuxt-app/server/api/montacargas/mis-pendientes.get.ts")).toContain("groupBy");
+    expect(moduleVue).toContain("pendientes[f.tipo]");
+    // Resurtido vive en otro módulo: sin el aviso los PLUs se quedan olvidados.
+    expect(moduleVue).toContain("pendientesFuera");
   });
 });
 
@@ -295,6 +312,57 @@ describe("montacargas — módulos registrados", () => {
 // así que el operario veía un cuadro rojo con la palabra "true" en vez del
 // motivo (visto en producción al pasar un PLU a un ayudante). Vivía duplicada en
 // 24 archivos: si alguien vuelve a pegar una copia local, esto lo caza.
+// Una sola cifra de tiempo escondía quién hizo qué parte del trabajo cuando el
+// PLU pasaba por un ayudante.
+describe("montacargas — dos tiempos, uno por persona", () => {
+  it("el mapeo expone el tramo del montacarguista y el del ayudante", () => {
+    expect(mapRow).toContain("minutosMontacarguista");
+    expect(mapRow).toContain("minutosAyudante");
+    // Sin traspaso el segundo va en null, no en cero: un cero se leería como
+    // "el ayudante tardó nada" en vez de "no hubo ayudante".
+    expect(mapRow).toContain("huboTraspaso(tramos, r.creadoPorId)");
+  });
+
+  it("los helpers reparten por persona y están en las dos copias", () => {
+    for (const src of [calcServidor]) {
+      expect(src).toContain("export function minutosDelCreador");
+      expect(src).toContain("export function minutosDeAyudantes");
+      expect(src).toContain("export function huboTraspaso");
+    }
+  });
+
+  it("la tabla y el Excel muestran las dos columnas", () => {
+    const tabla = leer("nuxt-app/app/components/montacargas/Tabla.vue");
+    expect(tabla).toContain("minutosMontacarguista");
+    expect(tabla).toContain("minutosAyudante");
+    expect(leer("nuxt-app/server/api/montacargas/export.get.ts"))
+      .toContain("T. AYUDANTE (MIN)");
+  });
+});
+
+// Las tablas eran mas anchas que su tarjeta y `overflow: hidden` recortaba las
+// ultimas columnas (estado, tiempo, acciones) sin forma de verlas.
+describe("tablas — scroll horizontal dentro de la tarjeta", () => {
+  const tablas = [
+    "nuxt-app/app/components/auditoria/Tabla.vue",
+    "nuxt-app/app/components/exportaciones/Tabla.vue",
+    "nuxt-app/app/components/integracion/Table.vue",
+    "nuxt-app/app/components/montacargas/Tabla.vue",
+    "nuxt-app/app/components/preoperacional/SupervisorView.vue",
+    "nuxt-app/app/components/solicitudes-transporte/Tabla.vue",
+    "nuxt-app/app/components/usuarios/Tabla.vue",
+  ];
+
+  it.each(tablas)("%s no recorta sus columnas", (rel) => {
+    const src = leer(rel);
+    expect(src).not.toContain(".table-card { overflow: hidden; }");
+    expect(src).toContain("overflow-x: auto");
+    // Sin min-width el navegador comprime las columnas hasta hacerlas ilegibles
+    // antes de desbordar, y el scroll nunca aparece.
+    expect(src).toMatch(/\.table \{ min-width: \d+px; \}/);
+  });
+});
+
 describe("apiErr — mensaje de error legible", () => {
   const util = leer("nuxt-app/app/utils/apiError.ts");
 

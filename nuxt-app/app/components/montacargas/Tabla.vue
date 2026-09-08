@@ -57,7 +57,7 @@ const librs = computed(
           <th>Fecha</th><th>Montacarguista</th><th>PLU</th><th>Descripción</th>
           <th>Cajas</th><th>Und/caja</th><th>Reguero</th><th>Total</th><th>Responsable</th>
           <th v-if="muestraOrigen">Ubic. inicial</th>
-          <th>Depósito final</th><th>Inicio</th><th>Estado</th><th>Tiempo</th><th />
+          <th>Depósito final</th><th>Inicio</th><th>Estado</th><th>T. montacarguista</th><th>T. ayudante</th><th />
         </tr>
       </thead>
       <tbody>
@@ -93,7 +93,13 @@ const librs = computed(
             <Badge v-bind="badge(item)" />
             <span v-if="item.horaFinalizacion" class="fin tnum">{{ fmtHoraMovimiento(item.horaFinalizacion) }}</span>
           </td>
-          <td class="tnum">{{ fmtDuracion(item.duracionMinutos) }}</td>
+          <!-- Dos tiempos separados: hasta el traspaso y desde el traspaso. Una
+               sola cifra escondia quien hizo que parte del trabajo. -->
+          <td class="tnum">{{ fmtDuracion(item.minutosMontacarguista) }}</td>
+          <td class="tnum">
+            <span v-if="item.minutosAyudante == null" class="muted" title="No se paso a un ayudante">—</span>
+            <template v-else>{{ fmtDuracion(item.minutosAyudante) }}</template>
+          </td>
           <td class="acciones">
             <button v-if="puedeEditar(item)" class="btn-icon" title="Editar" @click="emit('editar', item)">
               <Pencil :size="13" />
@@ -121,7 +127,11 @@ const librs = computed(
           <div><dt>Total</dt><dd class="tnum strong">{{ item.cantidadTotal }}</dd></div>
           <div v-if="muestraOrigen"><dt>Inicial</dt><dd class="mono">{{ item.ubicacionInicial ?? '—' }}</dd></div>
           <div><dt>Final</dt><dd class="mono">{{ item.ubicacionFinal ?? '—' }}</dd></div>
-          <div><dt>Tiempo</dt><dd class="tnum">{{ fmtDuracion(item.duracionMinutos) }}</dd></div>
+          <div><dt>T. montacarg.</dt><dd class="tnum">{{ fmtDuracion(item.minutosMontacarguista) }}</dd></div>
+          <div>
+            <dt>T. ayudante</dt>
+            <dd class="tnum">{{ item.minutosAyudante == null ? '—' : fmtDuracion(item.minutosAyudante) }}</dd>
+          </div>
         </dl>
         <footer v-if="puedeEditar(item) || canManage" class="rc-acc">
           <button v-if="puedeEditar(item)" class="btn-icon" @click="emit('editar', item)"><Pencil :size="13" /> Editar</button>
@@ -138,7 +148,12 @@ const librs = computed(
 </template>
 
 <style scoped>
-.table-card { overflow: hidden; }
+/* La tabla es mas ancha que la tarjeta en pantallas normales: con
+   `overflow: hidden` las ultimas columnas (estado, tiempo, acciones) se
+   recortaban y no habia forma de verlas. Scroll horizontal DENTRO de la
+   tarjeta, nunca en el body de la pagina. */
+.table-card { overflow-x: auto; overflow-y: hidden; }
+.table { min-width: 1320px; }
 .table { width: 100%; border-collapse: collapse; }
 .table th { text-align: left; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); padding: 12px 14px; background: var(--surface-2); border-bottom: 1px solid var(--border); }
 .table td { padding: 11px 14px; font-size: 13px; color: var(--ink-2); border-bottom: 1px solid var(--border); }

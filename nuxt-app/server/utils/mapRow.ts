@@ -2,7 +2,7 @@
 // cliente de Prisma para el delegate por país, y mapRow lo usan los handlers de
 // TODOS los módulos. Ver la nota en exportacionesCalc.ts.
 import { calcularDuracionMinutos, formatDateOnly } from './exportacionesCalc'
-import { minutosTrabajados } from './montacargasCalc'
+import { huboTraspaso, minutosDeAyudantes, minutosDelCreador, minutosTrabajados } from './montacargasCalc'
 
 // Mapea la fila de TransporteGuardado al shape del cliente (igual que la app Next).
 export function mapGuardado(r: any) {
@@ -409,6 +409,13 @@ export function mapMovimientoMontacargas(r: any) {
     horaInicio: r.horaInicio.toISOString(),
     horaFinalizacion: r.horaFinalizacion ? r.horaFinalizacion.toISOString() : null,
     duracionMinutos: r.horaFinalizacion ? minutosTrabajados(tramos) : null,
+    // Los dos tramos por separado: el del montacarguista hasta que lo paso, y
+    // el del ayudante desde ahi hasta que termino. Sumarlos en una sola cifra
+    // escondia quien hizo que parte del trabajo.
+    minutosMontacarguista: minutosDelCreador(tramos, r.creadoPorId),
+    minutosAyudante: huboTraspaso(tramos, r.creadoPorId)
+      ? minutosDeAyudantes(tramos, r.creadoPorId)
+      : null,
     motivoCorreccion: r.motivoCorreccion ?? null,
     creadoPorId: r.creadoPorId,
     creadoPorNombre: r.creadoPor?.name ?? null,

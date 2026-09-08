@@ -185,7 +185,12 @@ async function delInspeccion() {
 .btn-link { background: none; border: none; color: var(--muted); cursor: pointer; font-size: 12px; padding: 8px 10px; }
 .btn-link:hover { color: var(--ink-2); }
 
-.table-card { overflow: hidden; }
+/* La tabla es mas ancha que la tarjeta en pantallas normales: con
+   `overflow: hidden` las ultimas columnas (estado, tiempo, acciones) se
+   recortaban y no habia forma de verlas. Scroll horizontal DENTRO de la
+   tarjeta, nunca en el body de la pagina. */
+.table-card { overflow-x: auto; overflow-y: hidden; }
+.table { min-width: 900px; }
 .table { width: 100%; border-collapse: collapse; }
 .table th { text-align: left; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); padding: 12px 16px; background: var(--surface-2); border-bottom: 1px solid var(--border); }
 .table td { padding: 12px 16px; font-size: 13px; color: var(--ink-2); border-bottom: 1px solid var(--border); }
