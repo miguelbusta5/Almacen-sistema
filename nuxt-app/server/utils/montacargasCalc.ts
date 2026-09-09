@@ -275,13 +275,18 @@ export interface TramoLike {
 }
 
 /**
- * Minutos trabajados, sumando solo los tramos cerrados.
+ * Segundos trabajados, sumando solo los tramos cerrados.
  *
  * No es `fin - inicio` del registro: entre medias puede haber una novedad, y
- * verificar no se cronometra. Sumar la ventana completa cargaría a los operarios
+ * verificar no se cronometra. Sumar la ventana completa cargaria a los operarios
  * un tiempo que no estuvieron trabajando.
+ *
+ * En SEGUNDOS y no en minutos porque en resurtido el trabajo dura eso: se vieron
+ * registros reales de 14, 21 y 24 segundos, que redondeados al minuto quedaban
+ * en cero y hacian ver como si nadie hubiera trabajado. Se redondea una sola vez,
+ * al presentar; los acumulados suman segundos exactos.
  */
-export function minutosTrabajados(tramos: readonly TramoLike[], hasta?: Date): number {
+export function segundosTrabajados(tramos: readonly TramoLike[], hasta?: Date): number {
   let ms = 0
   for (const t of tramos) {
     const inicio = t.inicio instanceof Date ? t.inicio : new Date(t.inicio)
@@ -291,7 +296,13 @@ export function minutosTrabajados(tramos: readonly TramoLike[], hasta?: Date): n
     if (Number.isNaN(inicio.getTime()) || Number.isNaN(fin.getTime())) continue
     ms += Math.max(0, fin.getTime() - inicio.getTime())
   }
-  return Math.round(ms / 60000)
+  return Math.round(ms / 1000)
+}
+
+/** Los mismos segundos redondeados a minutos. Todo lo que se acumula deberia
+ *  usar los segundos y redondear al final, no ir sumando minutos redondeados. */
+export function minutosTrabajados(tramos: readonly TramoLike[], hasta?: Date): number {
+  return Math.round(segundosTrabajados(tramos, hasta) / 60)
 }
 
 /** Minutos por persona, para medir productividad sin castigar al que recibió. */
@@ -305,20 +316,20 @@ export function minutosPorUsuario(tramos: readonly TramoLike[]): Record<string, 
 }
 
 /**
- * Minutos del montacarguista que abrió el registro: sus tramos, no los del resto.
+ * Segundos del montacarguista que abrió el registro: sus tramos, no los del resto.
  *
  * El PLU puede pasar de mano en mano, y quien lo abrió deja de ser responsable en
  * cuanto lo traspasa. Cargarle el tiempo del ayudante distorsionaría su
  * productividad, que es justo lo que este modulo mide.
  */
-export function minutosDelCreador(tramos: readonly TramoLike[], creadoPorId: string): number {
-  return minutosTrabajados(tramos.filter((t) => t.usuarioId === creadoPorId))
+export function segundosDelCreador(tramos: readonly TramoLike[], creadoPorId: string): number {
+  return segundosTrabajados(tramos.filter((t) => t.usuarioId === creadoPorId))
 }
 
-/** Minutos de quien(es) recibieron el PLU. Suma todos los ayudantes por los que
+/** Segundos de quien(es) recibieron el PLU. Suma todos los ayudantes por los que
  *  pasó, porque el ayudante puede volver a pasarlo a otro. */
-export function minutosDeAyudantes(tramos: readonly TramoLike[], creadoPorId: string): number {
-  return minutosTrabajados(tramos.filter((t) => t.usuarioId !== creadoPorId))
+export function segundosDeAyudantes(tramos: readonly TramoLike[], creadoPorId: string): number {
+  return segundosTrabajados(tramos.filter((t) => t.usuarioId !== creadoPorId))
 }
 
 /** ¿El registro llegó a pasar por un ayudante? Si no, el segundo tiempo se

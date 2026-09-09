@@ -5,7 +5,7 @@
 // Mismo formato que VeredictoOverlay de Cargue Gourmet - el operario de CEDI ya
 // conoce ese lenguaje visual.
 import { CheckCircle2 } from '@lucide/vue'
-import { fmtDuracion, type Movimiento } from '~/utils/montacargas'
+import { fmtTiempo, type Movimiento } from '~/utils/montacargas'
 
 defineProps<{ movimiento: Movimiento | null }>()
 </script>
@@ -22,7 +22,7 @@ defineProps<{ movimiento: Movimiento | null }>()
           <template v-if="movimiento.hayReguero"> + {{ movimiento.unidadesSueltas }} sueltas</template>
           · {{ movimiento.cantidadTotal }} unidades
         </div>
-        <div class="full-tiempo">Tiempo: {{ fmtDuracion(movimiento.duracionMinutos) }}</div>
+        <div class="full-tiempo">Tiempo: {{ fmtTiempo(movimiento.duracionSegundos) }}</div>
       </div>
     </Transition>
   </Teleport>

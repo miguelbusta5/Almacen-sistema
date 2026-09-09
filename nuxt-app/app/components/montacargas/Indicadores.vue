@@ -5,7 +5,7 @@
 // verificar no se cronometra.
 import { ref, computed, onMounted, watch } from 'vue'
 import { RefreshCw } from '@lucide/vue'
-import { API_MONTACARGAS, fmtDuracion, type TipoMovimiento } from '~/utils/montacargas'
+import { API_MONTACARGAS, fmtTiempo, type TipoMovimiento } from '~/utils/montacargas'
 // hoyBogota/sumarDias son genericas y ya viven en utils/exportaciones; duplicarlas
 // en utils/montacargas provocaria un "Duplicated imports" en el auto-import de Nuxt.
 import { hoyBogota, sumarDias } from '~/utils/exportaciones'
@@ -19,18 +19,18 @@ interface Resumen {
   registros: number
   cerrados: number
   unidades: number
-  minutos: number
-  promedioMin: number | null
+  segundos: number
+  promedioSeg: number | null
   traspasados: number
   conNovedadAbierta: number
   novedadesResueltas: number
 }
 interface FilaMontacarguista {
   id: string; nombre: string; registros: number; unidades: number
-  cajas: number; sueltas: number; minutos: number; promedioMin: number | null
+  cajas: number; sueltas: number; segundos: number; promedioSeg: number | null
 }
 interface FilaAyudante {
-  id: string; nombre: string; recibidos: number; minutos: number; promedioMin: number | null
+  id: string; nombre: string; recibidos: number; segundos: number; promedioSeg: number | null
 }
 
 const desde = ref(sumarDias(hoyBogota(), -6))
@@ -72,7 +72,7 @@ const kpis = computed(() => {
     { label: 'Unidades', valor: String(r.unidades), hint: 'almacenadas' },
     {
       label: 'Prom. por registro',
-      valor: r.promedioMin === null ? '—' : `${r.promedioMin} min`,
+      valor: fmtTiempo(r.promedioSeg),
       hint: 'sin contar novedades',
     },
     {
@@ -134,8 +134,8 @@ const kpis = computed(() => {
               <td class="tnum">{{ m.cajas }}</td>
               <td class="tnum">{{ m.sueltas }}</td>
               <td class="tnum strong">{{ m.unidades }}</td>
-              <td class="tnum">{{ fmtDuracion(m.minutos) }}</td>
-              <td class="tnum">{{ m.promedioMin === null ? '—' : `${m.promedioMin} min` }}</td>
+              <td class="tnum">{{ fmtTiempo(m.segundos) }}</td>
+              <td class="tnum">{{ fmtTiempo(m.promedioSeg) }}</td>
             </tr>
           </tbody>
         </table>
@@ -152,8 +152,8 @@ const kpis = computed(() => {
             <tr v-for="a in ayudantes" :key="a.id">
               <td class="nom">{{ a.nombre }}</td>
               <td class="tnum">{{ a.recibidos }}</td>
-              <td class="tnum">{{ fmtDuracion(a.minutos) }}</td>
-              <td class="tnum">{{ a.promedioMin === null ? '—' : `${a.promedioMin} min` }}</td>
+              <td class="tnum">{{ fmtTiempo(a.segundos) }}</td>
+              <td class="tnum">{{ fmtTiempo(a.promedioSeg) }}</td>
             </tr>
           </tbody>
         </table>

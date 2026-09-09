@@ -319,8 +319,8 @@ describe("montacargas — novedades detienen el reloj", () => {
   });
 
   it("la duración suma tramos, no la ventana completa", () => {
-    expect(mapRow).toContain("minutosTrabajados(tramos)");
-    expect(calcServidor).toContain("export function minutosTrabajados");
+    expect(mapRow).toContain("segundosTrabajados(tramos)");
+    expect(calcServidor).toContain("export function segundosTrabajados");
   });
 });
 
@@ -420,8 +420,8 @@ describe("montacargas — módulos registrados", () => {
 // PLU pasaba por un ayudante.
 describe("montacargas — dos tiempos, uno por persona", () => {
   it("el mapeo expone el tramo del montacarguista y el del ayudante", () => {
-    expect(mapRow).toContain("minutosMontacarguista");
-    expect(mapRow).toContain("minutosAyudante");
+    expect(mapRow).toContain("segundosMontacarguista");
+    expect(mapRow).toContain("segundosAyudante");
     // Sin traspaso el segundo va en null, no en cero: un cero se leería como
     // "el ayudante tardó nada" en vez de "no hubo ayudante".
     expect(mapRow).toContain("huboTraspaso(tramos, r.creadoPorId)");
@@ -429,18 +429,54 @@ describe("montacargas — dos tiempos, uno por persona", () => {
 
   it("los helpers reparten por persona y están en las dos copias", () => {
     for (const src of [calcServidor]) {
-      expect(src).toContain("export function minutosDelCreador");
-      expect(src).toContain("export function minutosDeAyudantes");
+      expect(src).toContain("export function segundosDelCreador");
+      expect(src).toContain("export function segundosDeAyudantes");
       expect(src).toContain("export function huboTraspaso");
     }
   });
 
   it("la tabla y el Excel muestran las dos columnas", () => {
     const tabla = leer("nuxt-app/app/components/montacargas/Tabla.vue");
-    expect(tabla).toContain("minutosMontacarguista");
-    expect(tabla).toContain("minutosAyudante");
+    expect(tabla).toContain("segundosMontacarguista");
+    expect(tabla).toContain("segundosAyudante");
     expect(leer("nuxt-app/server/api/montacargas/export.get.ts"))
-      .toContain("T. AYUDANTE (MIN)");
+      .toContain("T. AYUDANTE (SEG)");
+  });
+});
+
+// En resurtido el trabajo dura segundos: se vieron tramos reales de 14, 21 y 24
+// segundos que, redondeados al minuto, salian como "0 min" y hacian ver como si
+// nadie hubiera trabajado. Se acumula en segundos y se redondea al presentar.
+describe("montacargas — el tiempo se mide en segundos", () => {
+  it("los acumulados no van sumando minutos ya redondeados", () => {
+    const indicadores = leer("nuxt-app/server/api/montacargas/indicadores.get.ts");
+    expect(indicadores).toContain("segundosTrabajados");
+    expect(indicadores).toContain("totalSegundos");
+    expect(indicadores).not.toContain("minutosTrabajados");
+    const conteos = leer("nuxt-app/server/api/montacargas/conteos.get.ts");
+    expect(conteos).toContain("segundosTrabajados(r.tramos)");
+    expect(conteos).toContain("promedioSeg");
+  });
+
+  it("el promedio se redondea una sola vez, al final", () => {
+    const indicadores = leer("nuxt-app/server/api/montacargas/indicadores.get.ts");
+    expect(indicadores).toContain("const promedio = (seg: number, n: number)");
+    expect(indicadores).toContain("Math.round(seg / n)");
+  });
+
+  it("bajo el minuto la UI muestra segundos y no un cero", () => {
+    const utils = leer("nuxt-app/app/utils/montacargas.ts");
+    expect(utils).toContain("export function fmtTiempo");
+    expect(utils).toContain("if (seg < 60) return `${seg} s`");
+    // Y nadie se quedo con el formateador viejo, que recibia minutos.
+    for (const rel of [
+      "nuxt-app/app/components/montacargas/Tabla.vue",
+      "nuxt-app/app/components/montacargas/Indicadores.vue",
+      "nuxt-app/app/components/montacargas/KpiRail.vue",
+      "nuxt-app/app/components/montacargas/ExitoOverlay.vue",
+    ]) {
+      expect(leer(rel)).not.toContain("fmtDuracion");
+    }
   });
 });
 

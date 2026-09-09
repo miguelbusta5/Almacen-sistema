@@ -4,7 +4,7 @@ import { requireAuth } from '../../utils/auth'
 import { parseDay, todayBogota } from '../../utils/exportacionesCalc'
 import { assertGestorMontacargas } from '../../utils/montacargas'
 import {
-  esTipoMovimiento, huboTraspaso, minutosDelCreador, minutosTrabajados,
+  esTipoMovimiento, huboTraspaso, segundosDelCreador, segundosTrabajados,
 } from '../../utils/montacargasCalc'
 
 /**
@@ -14,8 +14,12 @@ import {
  * con los que se evalua al equipo, no informacion operativa del turno.
  *
  * La agregacion se hace en memoria y no con groupBy a proposito: el tiempo no es
- * una columna, sale de sumar los tramos de cada persona (ver minutosTrabajados),
+ * una columna, sale de sumar los tramos de cada persona (ver segundosTrabajados),
  * y la ventana de una novedad tiene que quedar fuera.
+ *
+ * Todo se acumula en SEGUNDOS y se redondea una sola vez, al presentar. Sumando
+ * minutos ya redondeados, los registros de menos de medio minuto —la mayoria en
+ * resurtido— aportaban cero y el equipo aparecia sin haber trabajado.
  */
 export default defineEventHandler(async (event) => {
   const actor = await requireAuth(event)
@@ -52,40 +56,39 @@ export default defineEventHandler(async (event) => {
     unidades: number
     cajas: number
     sueltas: number
-    minutos: number
+    segundos: number
     cerrados: number
   }
   const porPersona = new Map<string, Acc>()
   const suma = (id: string, nombre: string, patch: Partial<Acc>) => {
     const a = porPersona.get(id) ?? {
-      nombre, registros: 0, unidades: 0, cajas: 0, sueltas: 0, minutos: 0, cerrados: 0,
+      nombre, registros: 0, unidades: 0, cajas: 0, sueltas: 0, segundos: 0, cerrados: 0,
     }
     a.nombre = nombre || a.nombre
     a.registros += patch.registros ?? 0
     a.unidades += patch.unidades ?? 0
     a.cajas += patch.cajas ?? 0
     a.sueltas += patch.sueltas ?? 0
-    a.minutos += patch.minutos ?? 0
+    a.segundos += patch.segundos ?? 0
     a.cerrados += patch.cerrados ?? 0
     porPersona.set(id, a)
   }
 
   let totalRegistros = 0
   let totalUnidades = 0
-  let totalMinutos = 0
+  let totalSegundos = 0
   let cerrados = 0
   let conNovedadAbierta = 0
   let novedadesResueltas = 0
   let traspasados = 0
 
-  // Minutos por ayudante: cada tramo que no es del creador es trabajo suyo.
-  const ayudantes = new Map<string, { nombre: string; minutos: number; recibidos: number }>()
+  // Segundos por ayudante: cada tramo que no es del creador es trabajo suyo.
+  const ayudantes = new Map<string, { nombre: string; segundos: number; recibidos: number }>()
 
   for (const r of registros) {
     totalRegistros += 1
     totalUnidades += r.cantidadTotal
-    const min = minutosTrabajados(r.tramos)
-    totalMinutos += min
+    totalSegundos += segundosTrabajados(r.tramos)
     if (r.estado === 'CERRADO') cerrados += 1
     if (r.estado === 'NOVEDAD') conNovedadAbierta += 1
     novedadesResueltas += r.novedades.filter((n) => n.resueltaAt).length
@@ -95,7 +98,7 @@ export default defineEventHandler(async (event) => {
       unidades: r.cantidadTotal,
       cajas: r.cajas,
       sueltas: r.unidadesSueltas,
-      minutos: minutosDelCreador(r.tramos, r.creadoPorId),
+      segundos: segundosDelCreador(r.tramos, r.creadoPorId),
       cerrados: r.estado === 'CERRADO' ? 1 : 0,
     })
 
@@ -105,8 +108,8 @@ export default defineEventHandler(async (event) => {
         r.tramos.filter((t) => t.usuarioId !== r.creadoPorId).map((t) => t.usuarioId),
       )
       for (const uid of suyos) {
-        const previo = ayudantes.get(uid) ?? { nombre: '', minutos: 0, recibidos: 0 }
-        previo.minutos += minutosTrabajados(r.tramos.filter((t) => t.usuarioId === uid))
+        const previo = ayudantes.get(uid) ?? { nombre: '', segundos: 0, recibidos: 0 }
+        previo.segundos += segundosTrabajados(r.tramos.filter((t) => t.usuarioId === uid))
         previo.recibidos += 1
         ayudantes.set(uid, previo)
       }
@@ -125,7 +128,8 @@ export default defineEventHandler(async (event) => {
     }
   }
 
-  const promedio = (min: number, n: number) => (n > 0 ? Math.round((min / n) * 10) / 10 : null)
+  // Se divide sobre los segundos exactos y se redondea aqui, una sola vez.
+  const promedio = (seg: number, n: number) => (n > 0 ? Math.round(seg / n) : null)
 
   return {
     success: true,
@@ -135,8 +139,8 @@ export default defineEventHandler(async (event) => {
         registros: totalRegistros,
         cerrados,
         unidades: totalUnidades,
-        minutos: totalMinutos,
-        promedioMin: promedio(totalMinutos, cerrados),
+        segundos: totalSegundos,
+        promedioSeg: promedio(totalSegundos, cerrados),
         traspasados,
         conNovedadAbierta,
         novedadesResueltas,
@@ -149,8 +153,8 @@ export default defineEventHandler(async (event) => {
           unidades: a.unidades,
           cajas: a.cajas,
           sueltas: a.sueltas,
-          minutos: a.minutos,
-          promedioMin: promedio(a.minutos, a.cerrados),
+          segundos: a.segundos,
+          promedioSeg: promedio(a.segundos, a.cerrados),
         }))
         .sort((x, y) => y.registros - x.registros),
       ayudantes: [...ayudantes.entries()]
@@ -158,8 +162,8 @@ export default defineEventHandler(async (event) => {
           id,
           nombre: a.nombre || 'Usuario',
           recibidos: a.recibidos,
-          minutos: a.minutos,
-          promedioMin: promedio(a.minutos, a.recibidos),
+          segundos: a.segundos,
+          promedioSeg: promedio(a.segundos, a.recibidos),
         }))
         .sort((x, y) => y.recibidos - x.recibidos),
     },

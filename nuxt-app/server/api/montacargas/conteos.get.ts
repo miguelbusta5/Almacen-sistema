@@ -2,7 +2,7 @@ import { defineEventHandler, getQuery, createError } from 'h3'
 import { prisma } from '../../utils/prisma'
 import { requireAuth } from '../../utils/auth'
 import { todayBogota } from '../../utils/exportacionesCalc'
-import { minutosTrabajados } from '../../utils/montacargasCalc'
+import { segundosTrabajados } from '../../utils/montacargasCalc'
 import { assertUsuarioMontacargas, whereScopeMontacargas } from '../../utils/montacargas'
 import { esTipoMovimiento } from '../../utils/montacargasCalc'
 
@@ -40,6 +40,8 @@ export default defineEventHandler(async (event) => {
   let unidadesHoy = 0
   let sueltasHoy = 0
   let cerrados = 0
+  // En segundos: acumular minutos ya redondeados perdia los registros cortos,
+  // que en resurtido son la mayoria.
   let duracionTotal = 0
   for (const r of delDia) {
     cajasHoy += r.cajas
@@ -48,7 +50,7 @@ export default defineEventHandler(async (event) => {
     if (r.estado === 'CERRADO') {
       cerrados += 1
       // Solo tramos trabajados: la ventana de una novedad no cuenta.
-      duracionTotal += minutosTrabajados(r.tramos)
+      duracionTotal += segundosTrabajados(r.tramos)
     }
   }
 
@@ -61,7 +63,7 @@ export default defineEventHandler(async (event) => {
       sueltasHoy,
       enCurso,
       conNovedad,
-      promedioMin: cerrados > 0 ? Math.round((duracionTotal / cerrados) * 10) / 10 : null,
+      promedioSeg: cerrados > 0 ? Math.round(duracionTotal / cerrados) : null,
     },
   }
 })

@@ -13,6 +13,9 @@ import {
   esUbicacionCanonica,
   minutosPorUsuario,
   minutosTrabajados,
+  segundosDeAyudantes,
+  segundosDelCreador,
+  segundosTrabajados,
   normalizarCodigoProducto,
   normalizarUbicacion,
   novedadEsperada,
@@ -180,6 +183,36 @@ describe("montacargas — cantidades", () => {
 
 describe("montacargas — tiempo por tramos", () => {
   const t = (min: number) => new Date(Date.UTC(2026, 8, 8, 10, min)).toISOString();
+  const seg = (s: number) => new Date(Date.UTC(2026, 8, 8, 10, 0, s)).toISOString();
+
+  // Caso real de produccion: SEBASTIAN JURADO abrio el PLU 2253, lo paso a
+  // carlos ibarra y se cerro a los 45 segundos. Con el redondeo al minuto los
+  // dos tramos salian en "0 min" y parecia que nadie habia trabajado.
+  it("un registro de 45 segundos no se pierde en el redondeo", () => {
+    const tramos = [
+      { usuarioId: "sebastian", inicio: seg(0), fin: seg(24) },
+      { usuarioId: "carlos", inicio: seg(24), fin: seg(45) },
+    ];
+    expect(segundosTrabajados(tramos)).toBe(45);
+    expect(segundosDelCreador(tramos, "sebastian")).toBe(24);
+    expect(segundosDeAyudantes(tramos, "sebastian")).toBe(21);
+    // Y asi es como se veia antes: los dos en cero.
+    expect(minutosTrabajados([tramos[0]])).toBe(0);
+    expect(minutosTrabajados([tramos[1]])).toBe(0);
+  });
+
+  // Lo que se rompia al acumular: 20 registros de 24 s son 8 minutos de trabajo,
+  // pero sumando minutos ya redondeados daban cero.
+  it("acumular en segundos no pierde los registros cortos", () => {
+    const uno = [{ usuarioId: "a", inicio: seg(0), fin: seg(24) }];
+    const porSegundos = Array.from({ length: 20 }, () => segundosTrabajados(uno))
+      .reduce((n, x) => n + x, 0);
+    const porMinutos = Array.from({ length: 20 }, () => minutosTrabajados(uno))
+      .reduce((n, x) => n + x, 0);
+    expect(porSegundos).toBe(480);
+    expect(Math.round(porSegundos / 60)).toBe(8);
+    expect(porMinutos).toBe(0);
+  });
 
   // No es `fin - inicio` del registro: entre medias puede haber una novedad, y
   // verificar no se cronometra.

@@ -136,11 +136,14 @@ export interface Movimiento {
   fecha: string | null
   horaInicio: string
   horaFinalizacion: string | null
-  duracionMinutos: number | null
-  /** Tramos por persona: el montacarguista hasta el traspaso, el ayudante desde
-   *  ahi. `minutosAyudante` es null cuando nunca se traspaso. */
-  minutosMontacarguista: number
-  minutosAyudante: number | null
+  duracionSegundos: number | null
+  /** Tramos por persona, EN SEGUNDOS: el montacarguista hasta el traspaso, el
+   *  ayudante desde ahi. `segundosAyudante` es null cuando nunca se traspaso.
+   *
+   *  En segundos porque en resurtido el trabajo dura eso: redondeado al minuto,
+   *  un tramo real de 24 s se leia como "0 min". */
+  segundosMontacarguista: number
+  segundosAyudante: number | null
   motivoCorreccion: string | null
   creadoPorId: string
   creadoPorNombre: string | null
@@ -160,7 +163,7 @@ export interface MovimientoConteos {
   sueltasHoy: number
   enCurso: number
   conNovedad: number
-  promedioMin: number | null
+  promedioSeg: number | null
 }
 
 export interface Operario { id: string; nombre: string }
@@ -279,8 +282,18 @@ export function fmtHoraMovimiento(iso: string | null): string {
   }).format(new Date(iso))
 }
 
-export function fmtDuracion(min: number | null): string {
-  if (min == null) return '—'
+/**
+ * Duracion legible a partir de SEGUNDOS.
+ *
+ * Bajo el minuto se muestran los segundos: en resurtido el trabajo dura eso, y
+ * redondear al minuto convertia tramos reales de 14 o 24 segundos en un "0 min"
+ * que se leia como que nadie habia hecho nada.
+ */
+export function fmtTiempo(segundos: number | null): string {
+  if (segundos == null) return '—'
+  const seg = Math.max(0, Math.round(segundos))
+  if (seg < 60) return `${seg} s`
+  const min = Math.round(seg / 60)
   if (min < 60) return `${min} min`
   const h = Math.floor(min / 60)
   const m = min % 60

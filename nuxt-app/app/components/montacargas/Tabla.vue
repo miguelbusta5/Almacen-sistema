@@ -6,7 +6,7 @@ import { computed } from 'vue'
 import { useMediaQuery } from '@vueuse/core'
 import { Pencil, Trash2, TriangleAlert } from '@lucide/vue'
 import {
-  ESTADO_MOVIMIENTO_LABEL, ESTADO_MOVIMIENTO_TONE, esUbicacionCanonica, fmtDuracion,
+  ESTADO_MOVIMIENTO_LABEL, ESTADO_MOVIMIENTO_TONE, esUbicacionCanonica, fmtTiempo,
   fmtFechaCorta, fmtHoraMovimiento, requiereUbicacionInicial,
   type Movimiento, type TipoMovimiento,
 } from '~/utils/montacargas'
@@ -95,10 +95,10 @@ const librs = computed(
           </td>
           <!-- Dos tiempos separados: hasta el traspaso y desde el traspaso. Una
                sola cifra escondia quien hizo que parte del trabajo. -->
-          <td class="tnum">{{ fmtDuracion(item.minutosMontacarguista) }}</td>
+          <td class="tnum">{{ fmtTiempo(item.segundosMontacarguista) }}</td>
           <td class="tnum">
-            <span v-if="item.minutosAyudante == null" class="muted" title="No se paso a un ayudante">—</span>
-            <template v-else>{{ fmtDuracion(item.minutosAyudante) }}</template>
+            <span v-if="item.segundosAyudante == null" class="muted" title="No se paso a un ayudante">—</span>
+            <template v-else>{{ fmtTiempo(item.segundosAyudante) }}</template>
           </td>
           <td class="acciones">
             <button v-if="puedeEditar(item)" class="btn-icon" title="Editar" @click="emit('editar', item)">
@@ -127,10 +127,10 @@ const librs = computed(
           <div><dt>Total</dt><dd class="tnum strong">{{ item.cantidadTotal }}</dd></div>
           <div v-if="muestraOrigen"><dt>Inicial</dt><dd class="mono">{{ item.ubicacionInicial ?? '—' }}</dd></div>
           <div><dt>Final</dt><dd class="mono">{{ item.ubicacionFinal ?? '—' }}</dd></div>
-          <div><dt>T. montacarg.</dt><dd class="tnum">{{ fmtDuracion(item.minutosMontacarguista) }}</dd></div>
+          <div><dt>T. montacarg.</dt><dd class="tnum">{{ fmtTiempo(item.segundosMontacarguista) }}</dd></div>
           <div>
             <dt>T. ayudante</dt>
-            <dd class="tnum">{{ item.minutosAyudante == null ? '—' : fmtDuracion(item.minutosAyudante) }}</dd>
+            <dd class="tnum">{{ item.segundosAyudante == null ? '—' : fmtTiempo(item.segundosAyudante) }}</dd>
           </div>
         </dl>
         <footer v-if="puedeEditar(item) || canManage" class="rc-acc">

@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { Layers, Clock, Boxes, TriangleAlert } from '@lucide/vue'
-import type { MovimientoConteos } from '~/utils/montacargas'
+import { fmtTiempo, type MovimientoConteos } from '~/utils/montacargas'
 
 const props = defineProps<{ counts: MovimientoConteos }>()
 const emit = defineEmits<{ (e: 'filter', key: string): void }>()
@@ -18,7 +18,9 @@ const cards = computed(() => [
     // hasta que alguien verifique, y por eso tiene su propia tarjeta.
     key: 'nov', label: 'Con novedad', value: props.counts.conNovedad,
     tone: 'var(--u-aviso)', icon: TriangleAlert, filter: 'novedad',
-    hint: props.counts.promedioMin === null ? 'sin cronometrar' : `prom. ${props.counts.promedioMin} min`,
+    hint: props.counts.promedioSeg === null
+      ? 'sin cronometrar'
+      : `prom. ${fmtTiempo(props.counts.promedioSeg)}`,
   },
 ])
 </script>

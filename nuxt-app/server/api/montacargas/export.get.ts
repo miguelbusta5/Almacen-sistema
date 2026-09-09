@@ -4,8 +4,8 @@ import { prisma } from '../../utils/prisma'
 import { requireAuth } from '../../utils/auth'
 import { formatDateOnly } from '../../utils/exportacionesCalc'
 import {
-  ESTADO_MOVIMIENTO_LABEL, huboTraspaso, minutosDeAyudantes, minutosDelCreador,
-  minutosTrabajados,
+  ESTADO_MOVIMIENTO_LABEL, huboTraspaso, segundosDeAyudantes, segundosDelCreador,
+  segundosTrabajados,
 } from '../../utils/montacargasCalc'
 import { assertGestorMontacargas, buildMovimientoWhere, MOVIMIENTO_INCLUDE } from '../../utils/montacargas'
 import { esTipoMovimiento, TIPO_MOVIMIENTO_LABEL } from '../../utils/montacargasCalc'
@@ -50,8 +50,10 @@ export default defineEventHandler(async (event) => {
   const headers = [
     'PLU', 'EAN', 'DESCRIPCION', 'CAJAS', 'UNIDADES X CAJA', 'REGUERO',
     'UNIDADES SUELTAS', 'CANTIDAD TOTAL', 'UBICACION INICIAL', 'DEPOSITO FINAL',
-    'FECHA', 'FECHA Y HORA INICIO', 'FECHA Y HORA FINAL', 'TIEMPO (MIN)',
-    'T. MONTACARGUISTA (MIN)', 'T. AYUDANTE (MIN)',
+    // En SEGUNDOS: el trabajo de resurtido dura eso, y en minutos redondeados
+    // la mitad de las filas salia en cero y no habia nada que sumar en Excel.
+    'FECHA', 'FECHA Y HORA INICIO', 'FECHA Y HORA FINAL', 'TIEMPO (SEG)',
+    'T. MONTACARGUISTA (SEG)', 'T. AYUDANTE (SEG)',
     'ESTADO', 'UND MANUALES', 'NOVEDAD', 'MOTIVO CORRECCION',
     'MONTACARGUISTA', 'RESPONSABLE ACTUAL',
   ]
@@ -71,9 +73,9 @@ export default defineEventHandler(async (event) => {
     fmtHora(r.horaInicio),
     r.horaFinalizacion ? fmtHora(r.horaFinalizacion) : '',
     // Solo tramos trabajados: la ventana de una novedad no se cronometra.
-    r.estado === 'CERRADO' ? minutosTrabajados(r.tramos) : '',
-    minutosDelCreador(r.tramos, r.creadoPorId),
-    huboTraspaso(r.tramos, r.creadoPorId) ? minutosDeAyudantes(r.tramos, r.creadoPorId) : '',
+    r.estado === 'CERRADO' ? segundosTrabajados(r.tramos) : '',
+    segundosDelCreador(r.tramos, r.creadoPorId),
+    huboTraspaso(r.tramos, r.creadoPorId) ? segundosDeAyudantes(r.tramos, r.creadoPorId) : '',
     ESTADO_MOVIMIENTO_LABEL[r.estado],
     r.unidadesManuales ? 'Si' : 'No',
     r.novedades?.find((n) => !n.resueltaAt) ? 'Abierta' : (r.novedades?.length ? 'Resuelta' : ''),

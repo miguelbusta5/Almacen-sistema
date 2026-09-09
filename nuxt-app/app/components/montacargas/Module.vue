@@ -140,7 +140,7 @@ const puedeAbrirOtro = computed(
 
 // ── KPIs ───────────────────────────────────────────────────
 const conteos = ref<MovimientoConteos>({
-  registrosHoy: 0, cajasHoy: 0, unidadesHoy: 0, sueltasHoy: 0, enCurso: 0, conNovedad: 0, promedioMin: null,
+  registrosHoy: 0, cajasHoy: 0, unidadesHoy: 0, sueltasHoy: 0, enCurso: 0, conNovedad: 0, promedioSeg: null,
 })
 async function loadConteos() {
   try {
