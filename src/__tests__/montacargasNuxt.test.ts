@@ -53,6 +53,16 @@ describe("montacargas — patrones y roles sincronizados", () => {
     // El ayudante entra al módulo pero no crea: las dos copias lo distinguen.
     expect(calcServidor).toContain("OPERARIO_ALMACENAMIENTO");
     expect(utilsCliente).toContain("OPERARIO_ALMACENAMIENTO");
+    // Y las tres copias saben quién puede RECIBIR un traspaso, que no es lo
+    // mismo que quién puede crear: ahí entra MONTACARGAS pero no gestión.
+    for (const copia of [calcServidor, utilsCliente]) {
+      expect(copia).toContain("ROLES_RECEPTORES");
+      expect(copia).toContain("puedeRecibirTraspaso");
+      expect(copia).toContain("recibioTraspaso");
+      const receptores = copia.match(/ROLES_RECEPTORES\s*=\s*\[([^\]]*)\]/)?.[1] ?? "";
+      expect(receptores).toContain("MONTACARGAS");
+      expect(receptores).not.toContain("GERENTE");
+    }
   });
 });
 
@@ -168,9 +178,22 @@ describe("montacargas — traspaso a ayudantes", () => {
     expect(traspasar).toContain("responsableId: ayudanteId");
   });
 
-  it("solo acepta operarios de almacenamiento activos", () => {
-    expect(traspasar).toContain("OPERARIO_ALMACENAMIENTO");
+  // Un montacarguista tambien hace de ayudante cuando hace falta, asi que
+  // tambien puede recibir. La comprobacion pasa por la lista de receptores en
+  // vez de comparar contra un rol suelto.
+  it("acepta operarios de almacenamiento y montacarguistas activos", () => {
+    expect(traspasar).toContain("puedeRecibirTraspaso(ayudante.role)");
     expect(traspasar).toContain("active");
+    expect(traspasar).not.toContain("role !== 'OPERARIO_ALMACENAMIENTO'");
+    // Y la lista que alimenta el modal sale de la misma constante.
+    expect(utilsServidor).toContain("role: { in: [...ROLES_RECEPTORES] }");
+  });
+
+  // Uno no se pasa el PLU a si mismo: verse en la lista solo estorba.
+  it("la lista excluye a quien la esta pidiendo", () => {
+    expect(leer("nuxt-app/server/api/montacargas/ayudantes.get.ts"))
+      .toContain("listarAyudantes(actor.id)");
+    expect(utilsServidor).toContain("id: { not: excluirId }");
   });
 
   // El ayudante recibe una cifra que debe cuadrar contra lo físico: traspasar
@@ -204,11 +227,33 @@ describe("montacargas — novedades detienen el reloj", () => {
     expect(resolver).toContain("resueltaAt");
   });
 
-  // El ayudante no corrige: si no cuadra, marca la novedad. Y no la cierra el:
+  // Quien recibe no corrige: si no cuadra, marca la novedad. Y no la cierra el:
   // cerrarla exige el permiso explicito, que el no tiene.
-  it("el ayudante no edita cantidades ni cierra novedades", () => {
-    expect(cantidades).toContain("esAyudante");
+  //
+  // La guarda mira el REGISTRO y no el rol: desde que un montacarguista tambien
+  // puede recibir, su rol ya no dice en que modo esta, y con la comprobacion
+  // vieja habria podido corregir un PLU que le pasaron.
+  it("quien recibio el PLU no edita cantidades ni cierra novedades", () => {
+    expect(cantidades).toContain("recibioTraspaso(current, actor.id)");
+    expect(cantidades).toContain("creadoPorId: true");
+    expect(cantidades).not.toContain("esAyudante(actor.role)");
     expect(resolver).toContain("assertPuedeResolverNovedades");
+  });
+
+  // Un montacarguista que recibe necesita lo mismo que un ayudante: escanear el
+  // PLU que trae en la mano. Atado al registro, no al rol.
+  it("la caja de escaneo sale para cualquiera que tenga un PLU recibido", () => {
+    const modulo = leer("nuxt-app/app/components/montacargas/Module.vue");
+    expect(modulo).toContain("const recibidos = computed(");
+    expect(modulo).toContain('v-if="ayudante || recibidos.length > 0"');
+  });
+
+  // Y lo mismo en la tarjeta: el modo de la UI va por registro.
+  it("la tarjeta entra en modo confirmacion por registro, no por rol", () => {
+    expect(registroVue).toContain("recibido: boolean");
+    expect(registroVue).toContain('v-if="!recibido && !enNovedad"');
+    expect(leer("nuxt-app/app/components/montacargas/Module.vue"))
+      .toContain(':recibido="recibioTraspaso(m, userId)"');
   });
 
   // La estiba no se queda en el aire mientras se verifica: al marcar la novedad

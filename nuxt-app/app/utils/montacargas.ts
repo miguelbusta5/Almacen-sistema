@@ -164,7 +164,8 @@ export interface MovimientoConteos {
 }
 
 export interface Operario { id: string; nombre: string }
-export interface Ayudante { id: string; nombre: string; pendientes: number }
+/** Quien puede recibir un PLU: operarios de almacenamiento y montacarguistas. */
+export interface Ayudante { id: string; nombre: string; rol: string; pendientes: number }
 
 /** Lo que devuelve /api/productos-maestro/buscar. */
 export interface ProductoBuscado {
@@ -198,6 +199,35 @@ export function puedeCrearMovimiento(role: string | null | undefined): boolean {
 
 export function esAyudante(role: string | null | undefined): boolean {
   return role === ROL_AYUDANTE
+}
+
+// Quien puede RECIBIR un PLU traspasado. Un montacarguista tambien hace de
+// ayudante cuando hace falta, asi que entra aqui; gestion no, porque supervisar
+// no es almacenar. Es una lista aparte de ROLES_MONTACARGAS a proposito: lo que
+// define a un receptor es que almacena mercancia, no que pueda crear registros.
+export const ROLES_RECEPTORES = [ROL_AYUDANTE, 'MONTACARGAS']
+
+export function puedeRecibirTraspaso(role: string | null | undefined): boolean {
+  return !!role && ROLES_RECEPTORES.includes(role)
+}
+
+/**
+ * ¿Este registro le llego a esta persona por un traspaso?
+ *
+ * Por REGISTRO y no por rol: desde que un montacarguista tambien puede recibir,
+ * el rol ya no dice en que modo esta. Quien recibe confirma lo que le pasaron y
+ * no lo corrige — si no cuadra, abre novedad — y eso vale igual para un operario
+ * de almacenamiento que para un montacarguista que esta ayudando.
+ */
+export function recibioTraspaso(
+  movimiento: { creadoPorId: string; responsableId: string },
+  usuarioId: string | null | undefined
+): boolean {
+  return (
+    !!usuarioId &&
+    movimiento.responsableId === usuarioId &&
+    movimiento.creadoPorId !== usuarioId
+  )
 }
 
 // ── Normalización (espejo de montacargasCalc.ts) ─────────────────────

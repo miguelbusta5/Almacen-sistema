@@ -14,6 +14,7 @@ import {
   pareceEan,
   puedeGestionarMontacargas,
   puedeUsarMontacargas,
+  ROLES_RECEPTORES,
   type TipoMovimiento,
 } from './montacargasCalc'
 
@@ -197,12 +198,19 @@ export async function abrirTramo(
  * Ayudantes disponibles con su carga pendiente, para que el operario reparta con
  * criterio en vez de a ciegas.
  */
-export async function listarAyudantes(): Promise<
-  { id: string; nombre: string; pendientes: number }[]
+export async function listarAyudantes(excluirId?: string): Promise<
+  { id: string; nombre: string; rol: string; pendientes: number }[]
 > {
   const usuarios = await prisma.user.findMany({
-    where: { active: true, role: 'OPERARIO_ALMACENAMIENTO' },
-    select: { id: true, name: true },
+    // Los montacarguistas tambien entran: cuando hace falta hacen de ayudantes.
+    // Gestion no, porque supervisar no es almacenar.
+    where: {
+      active: true,
+      role: { in: [...ROLES_RECEPTORES] },
+      // Uno no se pasa el PLU a si mismo, y verse en la lista solo estorba.
+      ...(excluirId && { id: { not: excluirId } }),
+    },
+    select: { id: true, name: true, role: true },
     orderBy: { name: 'asc' },
   })
   if (usuarios.length === 0) return []
@@ -221,6 +229,7 @@ export async function listarAyudantes(): Promise<
   return usuarios.map((u) => ({
     id: u.id,
     nombre: u.name,
+    rol: u.role,
     pendientes: porUsuario.get(u.id) ?? 0,
   }))
 }

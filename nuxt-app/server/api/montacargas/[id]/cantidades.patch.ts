@@ -6,7 +6,7 @@ import { mapMovimientoMontacargas } from '../../../utils/mapRow'
 import {
   assertUsuarioMontacargas, esResponsableOGestor, MOVIMIENTO_INCLUDE,
 } from '../../../utils/montacargas'
-import { calcularCantidadTotal, esAyudante } from '../../../utils/montacargasCalc'
+import { calcularCantidadTotal, recibioTraspaso } from '../../../utils/montacargasCalc'
 
 const schema = z.object({
   cajas: z.number().int().min(0),
@@ -18,17 +18,14 @@ const schema = z.object({
 // PATCH /api/montacargas/:id/cantidades - completa las cantidades sin parar el
 // reloj. Es el paso intermedio entre abrir (PLU) y cerrar (ubicacion).
 //
-// El ayudante NO entra aqui: el no corrige cantidades. Si lo que recibe no
+// Quien RECIBIO el PLU no entra aqui: no corrige lo que le pasaron. Si no
 // cuadra, abre una novedad (POST /:id/novedad).
+//
+// La guarda mira el REGISTRO y no el rol: desde que un montacarguista tambien
+// puede recibir un traspaso, el rol ya no dice en que modo esta.
 export default defineEventHandler(async (event) => {
   const actor = await requireAuth(event)
   assertUsuarioMontacargas(actor.role)
-  if (esAyudante(actor.role)) {
-    throw createError({
-      statusCode: 403,
-      statusMessage: 'Un ayudante no modifica cantidades: si no cuadran, marca una novedad',
-    })
-  }
 
   const id = getRouterParam(event, 'id')!
   const parsed = schema.safeParse(await readBody(event).catch(() => null))
@@ -39,13 +36,19 @@ export default defineEventHandler(async (event) => {
 
   const current = await prisma.movimientoMontacargas.findUnique({
     where: { id },
-    select: { deletedAt: true, responsableId: true, estado: true },
+    select: { deletedAt: true, responsableId: true, creadoPorId: true, estado: true },
   })
   if (!current || current.deletedAt) {
     throw createError({ statusCode: 404, statusMessage: 'Registro no encontrado' })
   }
   if (!esResponsableOGestor(actor, current)) {
     throw createError({ statusCode: 403, statusMessage: 'El registro ya no esta en tus manos' })
+  }
+  if (recibioTraspaso(current, actor.id)) {
+    throw createError({
+      statusCode: 403,
+      statusMessage: 'No se corrige un PLU que te pasaron: si no cuadra, marca una novedad',
+    })
   }
   if (current.estado === 'CERRADO') {
     throw createError({ statusCode: 409, statusMessage: 'El registro ya esta cerrado' })

@@ -7,6 +7,8 @@ import {
   admiteVariosAbiertos,
   calcularCantidadTotal,
   esAyudante,
+  puedeRecibirTraspaso,
+  recibioTraspaso,
   esTipoMovimiento,
   esUbicacionCanonica,
   minutosPorUsuario,
@@ -233,6 +235,35 @@ describe("montacargas — permisos", () => {
     expect(puedeGestionarMontacargas("OPERARIO_ALMACENAMIENTO")).toBe(false);
     expect(esAyudante("OPERARIO_ALMACENAMIENTO")).toBe(true);
     expect(esAyudante("MONTACARGAS")).toBe(false);
+  });
+
+  // Un montacarguista tambien hace de ayudante cuando hace falta, asi que puede
+  // RECIBIR un PLU. Gestion no: supervisar no es almacenar.
+  it("montacarguistas y ayudantes pueden recibir un traspaso", () => {
+    expect(puedeRecibirTraspaso("OPERARIO_ALMACENAMIENTO")).toBe(true);
+    expect(puedeRecibirTraspaso("MONTACARGAS")).toBe(true);
+    for (const rol of ["SUPERVISOR_ALMACENAMIENTO", "GERENTE", "ADMIN", "TIENDA"]) {
+      expect(puedeRecibirTraspaso(rol)).toBe(false);
+    }
+    expect(puedeRecibirTraspaso(null)).toBe(false);
+    // Recibir y crear son cosas distintas: el ayudante recibe pero no crea.
+    expect(puedeCrearMovimiento("OPERARIO_ALMACENAMIENTO")).toBe(false);
+  });
+
+  // El modo va por REGISTRO: con un montacarguista recibiendo traspasos, el rol
+  // ya no dice si esta creando o confirmando lo que le pasaron.
+  it("recibioTraspaso distingue al que abrio el registro del que lo recibio", () => {
+    const mov = { creadoPorId: "u-monta", responsableId: "u-ayud" };
+    expect(recibioTraspaso(mov, "u-ayud")).toBe(true);
+    // Quien lo abrio no "recibe" nada, aunque siga siendo el responsable.
+    expect(recibioTraspaso({ creadoPorId: "u-monta", responsableId: "u-monta" }, "u-monta"))
+      .toBe(false);
+    // Un tercero que solo mira tampoco esta en modo confirmacion.
+    expect(recibioTraspaso(mov, "u-otro")).toBe(false);
+    expect(recibioTraspaso(mov, null)).toBe(false);
+    // Si el ayudante se lo devuelve, vuelve a mandar quien lo abrio.
+    expect(recibioTraspaso({ creadoPorId: "u-monta", responsableId: "u-monta" }, "u-monta"))
+      .toBe(false);
   });
 
   it("almacenamiento y dirección gestionan", () => {

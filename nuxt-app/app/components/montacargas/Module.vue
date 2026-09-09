@@ -17,7 +17,7 @@ import { useToast } from '~/composables/useToast'
 import { useAutoRefresh } from '~/composables/useAutoRefresh'
 import { sonarVeredicto } from '~/utils/escaneoFeedback'
 import {
-  API_MONTACARGAS, admiteVariosAbiertos, esAyudante as esRolAyudante, FLUJOS,
+  API_MONTACARGAS, admiteVariosAbiertos, esAyudante as esRolAyudante, FLUJOS, recibioTraspaso,
   normalizarCodigoProducto, puedeCrearMovimiento, puedeGestionarMontacargas,
   puedeUsarMontacargas, TIPO_MOVIMIENTO_LABEL,
   type FlujoConfig, type Movimiento, type MovimientoConteos, type Operario,
@@ -119,6 +119,10 @@ async function loadLista() {
 // registro, escanear, el vacio del ayudante) mira `mios`, no `abiertos`.
 const abiertos = ref<Movimiento[]>([])
 const mios = computed(() => abiertos.value.filter((m) => m.responsableId === userId.value))
+// Los que le pasaron a esta persona. Un montacarguista tambien recibe, y cuando
+// lo hace necesita lo mismo que un ayudante: escanear el PLU que trae en la
+// mano para no confundirse entre varios.
+const recibidos = computed(() => mios.value.filter((m) => recibioTraspaso(m, userId.value)))
 async function loadAbiertos() {
   try {
     const res = await $fetch<{ data: Movimiento[] }>(`${API_MONTACARGAS}/abiertos`, {
@@ -460,9 +464,10 @@ async function exportar() {
 
       <template v-else>
 
-      <!-- Bandeja del ayudante: escanea el PLU que trae en la mano y su tarjeta
-           se resalta y toma el foco. -->
-      <div v-if="ayudante" class="escaneo card bloque">
+      <!-- Bandeja de quien recibe: escanea el PLU que trae en la mano y su
+           tarjeta se resalta y toma el foco. Sale para el ayudante siempre, y
+           para el montacarguista solo cuando le han pasado algo. -->
+      <div v-if="ayudante || recibidos.length > 0" class="escaneo card bloque">
         <label class="f">
           <span class="lbl">Escanea el PLU que traes</span>
           <div class="scan-wrap">
@@ -487,7 +492,7 @@ async function exportar() {
       <!-- Registros con el reloj corriendo. En resurtido pueden ser varios. -->
       <MontacargasRegistroAbierto
         v-for="m in abiertos" :key="m.id" class="bloque"
-        :movimiento="m" :ahora="ahora" :es-ayudante="ayudante"
+        :movimiento="m" :ahora="ahora" :recibido="recibioTraspaso(m, userId)"
         :destacado="destacadoId === m.id" :guardando="guardando === m.id"
         :puede-resolver-novedades="puedeResolverNovedades"
         :ajeno="m.responsableId !== userId"

@@ -3,9 +3,12 @@
 // después de digitar el PLU: completar cantidades, pasarlo a un ayudante,
 // marcar una novedad o cerrarlo con la ubicación final.
 //
-// El mismo componente sirve al montacarguista y al ayudante; cambian los
-// botones. El ayudante NO edita cantidades: confirma lo que recibe o marca la
-// novedad — por eso su vista es de una sola pulsación.
+// El mismo componente sirve a quien abrió el registro y a quien lo recibió;
+// cambian los botones. Quien recibe NO edita cantidades: confirma lo que le
+// pasaron o marca la novedad — por eso su vista es de una sola pulsación.
+//
+// El modo va por REGISTRO y no por rol: un montacarguista también hace de
+// ayudante, y entonces está en modo confirmación aunque su rol sea el de crear.
 import { ref, reactive, computed, watch, nextTick } from 'vue'
 import { UserPlus, Trash2, TriangleAlert, CheckCircle2, Boxes } from '@lucide/vue'
 import {
@@ -17,8 +20,8 @@ import {
 const props = defineProps<{
   movimiento: Movimiento
   ahora: number
-  /** El ayudante confirma y ubica; no edita cantidades ni resuelve novedades. */
-  esAyudante: boolean
+  /** Le pasaron el PLU: confirma y ubica, no edita cantidades. */
+  recibido: boolean
   /** Resaltado tras escanear su PLU en la bandeja. */
   destacado?: boolean
   /** Cerrar una novedad es un permiso por persona, no por rol. */
@@ -146,9 +149,9 @@ function ubicar() {
       <span v-else class="espera">Pendiente de verificación</span>
     </div>
 
-    <!-- Cantidades: el montacarguista las completa con el reloj ya corriendo.
-         El ayudante nunca las edita — confirma o marca novedad. -->
-    <form v-if="!esAyudante && !enNovedad" class="cant" @submit.prevent="guardarCantidades">
+    <!-- Cantidades: las completa quien abrió el registro, con el reloj ya
+         corriendo. Quien lo recibe nunca las edita — confirma o marca novedad. -->
+    <form v-if="!recibido && !enNovedad" class="cant" @submit.prevent="guardarCantidades">
       <label class="f">
         <span class="lbl">Cajas master</span>
         <input v-model="form.cajas" class="field tnum" type="number" min="0" inputmode="numeric" :disabled="guardando">
@@ -180,9 +183,9 @@ function ubicar() {
       </div>
     </form>
 
-    <!-- Confirmación del ayudante: una sola pulsación. Ve lo que debe almacenar
-         y decide; si no cuadra, no corrige, marca la novedad. -->
-    <div v-if="esAyudante && !enNovedad" class="confirmar">
+    <!-- Confirmación de quien recibió el PLU: una sola pulsación. Ve lo que debe
+         almacenar y decide; si no cuadra, no corrige, marca la novedad. -->
+    <div v-if="recibido && !enNovedad" class="confirmar">
       <div class="esperado">
         <span class="lbl">Debes almacenar</span>
         <b class="tnum">{{ m.cantidadTotal }}</b>

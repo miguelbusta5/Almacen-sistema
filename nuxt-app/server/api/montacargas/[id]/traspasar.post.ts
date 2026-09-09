@@ -7,7 +7,7 @@ import {
   abrirTramo, assertUsuarioMontacargas, cerrarTramoAbierto, esResponsableOGestor,
   MOVIMIENTO_INCLUDE,
 } from '../../../utils/montacargas'
-import { validarCantidades } from '../../../utils/montacargasCalc'
+import { puedeRecibirTraspaso, validarCantidades } from '../../../utils/montacargasCalc'
 
 const schema = z.object({ ayudanteId: z.string().min(1) })
 
@@ -66,8 +66,12 @@ export default defineEventHandler(async (event) => {
     where: { id: ayudanteId },
     select: { id: true, name: true, role: true, active: true },
   })
-  if (!ayudante || !ayudante.active || ayudante.role !== 'OPERARIO_ALMACENAMIENTO') {
-    throw createError({ statusCode: 400, statusMessage: 'El destinatario no es un operario de almacenamiento activo' })
+  // Un montacarguista tambien puede recibir: hace de ayudante cuando hace falta.
+  if (!ayudante || !ayudante.active || !puedeRecibirTraspaso(ayudante.role)) {
+    throw createError({
+      statusCode: 400,
+      statusMessage: 'El destinatario no puede recibir PLUs: debe ser un operario de almacenamiento o un montacarguista activo',
+    })
   }
 
   const now = new Date()

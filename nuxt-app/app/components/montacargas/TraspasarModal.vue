@@ -1,9 +1,15 @@
 <script setup lang="ts">
-// Pasar el PLU a un ayudante. Se muestra la carga pendiente de cada uno para
-// que el operario reparta con criterio en vez de a ciegas.
+// Pasar el PLU a otra persona. Se muestra la carga pendiente de cada una para
+// repartir con criterio en vez de a ciegas.
+//
+// La lista trae operarios de almacenamiento Y montacarguistas: un montacarguista
+// tambien hace de ayudante cuando hace falta. Se marca cual es cual para no
+// llamar a un montacarguista que esta en su propia estiba sin saberlo.
 import { ref, onMounted, computed } from 'vue'
 import { UserPlus } from '@lucide/vue'
-import { API_MONTACARGAS, type Ayudante, type Movimiento } from '~/utils/montacargas'
+import {
+  API_MONTACARGAS, ROL_AYUDANTE, type Ayudante, type Movimiento,
+} from '~/utils/montacargas'
 
 const props = defineProps<{ movimiento: Movimiento }>()
 const emit = defineEmits<{ (e: 'close'): void; (e: 'traspasado', ayudante: string): void }>()
@@ -18,7 +24,7 @@ onMounted(async () => {
     const res = await $fetch<{ data: Ayudante[] }>(`${API_MONTACARGAS}/ayudantes`)
     ayudantes.value = res.data
   } catch (e) {
-    error.value = apiErr(e, 'No se pudo cargar la lista de ayudantes')
+    error.value = apiErr(e, 'No se pudo cargar la lista')
   } finally {
     cargando.value = false
   }
@@ -46,24 +52,25 @@ async function traspasar(a: Ayudante) {
 
 <template>
   <ModalShell
-    title="Pasar a un ayudante"
+    title="Pasar el PLU a otra persona"
     :sub="`PLU ${movimiento.plu} · ${movimiento.cantidadTotal} unidades`"
     @close="emit('close')"
   >
     <p class="intro">
-      Al pasarlo, tu tiempo se detiene y arranca el del ayudante.
+      Al pasarlo, tu tiempo se detiene y arranca el de quien lo recibe.
     </p>
 
     <ListSkeleton v-if="cargando" />
     <EmptyState
-      v-else-if="vacio" title="Sin ayudantes disponibles"
-      description="No hay operarios de almacenamiento activos. Pide a un administrador que los cree."
+      v-else-if="vacio" title="No hay a quien pasarlo"
+      description="No hay operarios de almacenamiento ni montacarguistas activos aparte de ti. Pide a un administrador que los cree."
     />
 
     <ul v-else class="lista">
       <li v-for="a in ayudantes" :key="a.id">
         <button class="fila" :disabled="Boolean(enviando)" @click="traspasar(a)">
           <span class="nombre">{{ a.nombre }}</span>
+          <span v-if="a.rol !== ROL_AYUDANTE" class="rol">montacarguista</span>
           <span class="carga" :class="{ libre: a.pendientes === 0 }">
             {{ a.pendientes === 0 ? 'sin pendientes' : `${a.pendientes} pendiente${a.pendientes !== 1 ? 's' : ''}` }}
           </span>
@@ -93,6 +100,7 @@ async function traspasar(a: Ayudante) {
 .fila:hover:not(:disabled) { border-color: color-mix(in srgb, var(--brand) 45%, var(--border)); background: var(--surface-2); }
 .fila:disabled { opacity: .6; cursor: default; }
 .nombre { flex: 1; font-size: 13.5px; font-weight: 600; color: var(--ink); }
+.rol { font-size: 10.5px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: var(--faint); flex-shrink: 0; }
 .carga { font-size: 11.5px; font-weight: 700; color: var(--u-aviso); }
 .carga.libre { color: var(--u-ok); }
 .ic { color: var(--muted); flex-shrink: 0; }
