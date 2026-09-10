@@ -498,8 +498,9 @@ describe("tablas — scroll horizontal dentro de la tarjeta", () => {
     expect(src).not.toContain(".table-card { overflow: hidden; }");
     expect(src).toContain("overflow-x: auto");
     // Sin min-width el navegador comprime las columnas hasta hacerlas ilegibles
-    // antes de desbordar, y el scroll nunca aparece.
-    expect(src).toMatch(/\.table \{ min-width: \d+px; \}/);
+    // antes de desbordar, y el scroll nunca aparece. Da igual si va en su propia
+    // regla o junto al resto: lo que se exige es que exista.
+    expect(src).toMatch(/\.table \{[^}]*min-width: \d+px/);
   });
 });
 

@@ -123,8 +123,9 @@ const kpis = computed(() => {
         <table class="table">
           <thead>
             <tr>
-              <th>Montacarguista</th><th>Registros</th><th>Cajas</th>
-              <th>Sueltas</th><th>Unidades</th><th>Tiempo</th><th>Prom.</th>
+              <th>Montacarguista</th><th class="num">Registros</th><th class="num">Cajas</th>
+              <th class="num">Sueltas</th><th class="num">Unidades</th>
+              <th class="num">Tiempo</th><th class="num">Prom.</th>
             </tr>
           </thead>
           <tbody>
@@ -146,7 +147,10 @@ const kpis = computed(() => {
         <p class="sub">Tiempo desde que recibieron el PLU hasta que lo ubicaron.</p>
         <table v-if="ayudantes.length" class="table">
           <thead>
-            <tr><th>Ayudante</th><th>PLUs recibidos</th><th>Tiempo</th><th>Prom. por PLU</th></tr>
+            <tr>
+              <th>Ayudante</th><th class="num">PLUs recibidos</th>
+              <th class="num">Tiempo</th><th class="num">Prom. por PLU</th>
+            </tr>
           </thead>
           <tbody>
             <tr v-for="a in ayudantes" :key="a.id">
@@ -181,10 +185,22 @@ const kpis = computed(() => {
 .sub { margin: 0 16px 12px; font-size: 12px; color: var(--muted); }
 .vacio { margin: 0 16px 16px; font-size: 12.5px; color: var(--faint); }
 
-.table { width: 100%; min-width: 620px; border-collapse: collapse; }
-.table th { text-align: left; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); padding: 10px 14px; background: var(--surface-2); border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); }
-.table td { padding: 10px 14px; font-size: 13px; color: var(--ink-2); border-bottom: 1px solid var(--border); }
-.table tr:last-child td { border-bottom: none; }
+.table { width: 100%; min-width: 620px; border-collapse: separate; border-spacing: 0; }
+.table th {
+  text-align: left; font-size: 10.5px; font-weight: 700; text-transform: uppercase;
+  letter-spacing: .05em; color: var(--muted); padding: 10px 14px; white-space: nowrap;
+  background: var(--surface-2);
+  border-top: 1px solid var(--border); border-bottom: 1px solid var(--border-strong);
+}
+.table th.num { text-align: right; }
+.table td {
+  padding: 10px 14px; font-size: 13px; color: var(--ink-2); white-space: nowrap;
+  border-bottom: 1px solid var(--border);
+}
+.table td.tnum { text-align: right; }
+.table tbody tr:nth-child(even) td { background: color-mix(in srgb, var(--surface-2) 55%, transparent); }
+.table tbody tr:hover td { background: var(--brand-tint); }
+.table tbody tr:last-child td { border-bottom: none; }
 .nom { font-weight: 600; color: var(--ink); }
 .strong { font-weight: 600; color: var(--ink); }
 

@@ -55,9 +55,11 @@ const librs = computed(
       <thead>
         <tr>
           <th>Fecha</th><th>Montacarguista</th><th>PLU</th><th>Descripción</th>
-          <th>Cajas</th><th>Und/caja</th><th>Reguero</th><th>Total</th><th>Responsable</th>
+          <th class="num">Cajas</th><th class="num">Und/caja</th><th class="num">Reguero</th>
+          <th class="num">Total</th><th>Responsable</th>
           <th v-if="muestraOrigen">Ubic. inicial</th>
-          <th>Depósito final</th><th>Inicio</th><th>Estado</th><th>T. montacarguista</th><th>T. ayudante</th><th />
+          <th>Depósito final</th><th>Inicio</th><th>Estado</th>
+          <th class="num">T. montacarguista</th><th class="num">T. ayudante</th><th />
         </tr>
       </thead>
       <tbody>
@@ -84,10 +86,13 @@ const librs = computed(
           </td>
           <td class="tnum strong">{{ item.cantidadTotal }}</td>
           <td class="op">{{ item.responsableNombre ?? '—' }}</td>
-          <td v-if="muestraOrigen" class="mono">{{ item.ubicacionInicial ?? '—' }}</td>
-          <td class="mono">
+          <td v-if="muestraOrigen">
+            <span v-if="item.ubicacionInicial" class="ubic">{{ item.ubicacionInicial }}</span>
+            <span v-else class="muted">—</span>
+          </td>
+          <td>
             <template v-if="item.ubicacionFinal">
-              {{ item.ubicacionFinal }}
+              <span class="ubic" :class="{ libre: librs.has(item.id) }">{{ item.ubicacionFinal }}</span>
               <TriangleAlert
                 v-if="librs.has(item.id)" :size="11" class="ub-libre"
                 aria-label="Ubicación fuera del formato canónico"
@@ -162,20 +167,50 @@ const librs = computed(
    `overflow: hidden` las ultimas columnas (estado, tiempo, acciones) se
    recortaban y no habia forma de verlas. Scroll horizontal DENTRO de la
    tarjeta, nunca en el body de la pagina. */
-.table-card { overflow-x: auto; overflow-y: hidden; }
-.table { min-width: 1320px; }
-.table { width: 100%; border-collapse: collapse; }
-.table th { text-align: left; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); padding: 12px 14px; background: var(--surface-2); border-bottom: 1px solid var(--border); }
-.table td { padding: 11px 14px; font-size: 13px; color: var(--ink-2); border-bottom: 1px solid var(--border); }
-.table tr:last-child td { border-bottom: none; }
+.table-card { overflow-x: auto; overflow-y: visible; }
+/* Ancho suficiente para que ninguna columna se comprima: con menos, los codigos
+   de ubicacion (05-J-14-05-01) y las horas se partian en tres lineas y la fila
+   crecia a 100px de alto. */
+.table { width: 100%; min-width: 1480px; border-collapse: separate; border-spacing: 0; }
+
+/* Cabecera fija dentro del scroll de la tarjeta: al desplazarse a la derecha o
+   hacia abajo se sigue sabiendo que columna se esta mirando. */
+.table thead th { position: sticky; top: 0; z-index: 1; }
+.table th {
+  text-align: left; font-size: 10.5px; font-weight: 700; text-transform: uppercase;
+  letter-spacing: .05em; color: var(--muted); padding: 11px 14px; white-space: nowrap;
+  background: var(--surface-2); border-bottom: 1px solid var(--border-strong);
+}
+.table th.num { text-align: right; }
+
+/* Una linea por celda: lo que rompia la tabla era el salto de linea, no el ancho. */
+.table td {
+  padding: 10px 14px; font-size: 13px; color: var(--ink-2); white-space: nowrap;
+  border-bottom: 1px solid var(--border);
+}
+.table td.tnum { text-align: right; }
+.table tbody tr:nth-child(even) td { background: color-mix(in srgb, var(--surface-2) 55%, transparent); }
+.table tbody tr:hover td { background: var(--brand-tint); }
+.table tbody tr:last-child td { border-bottom: none; }
+
 .strong { font-weight: 600; color: var(--ink); }
 .muted { color: var(--muted); }
 .op { font-size: 12.5px; }
-.desc { max-width: 230px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* La unica columna que puede recortarse: el resto son cifras y codigos. */
+.desc { max-width: 260px; overflow: hidden; text-overflow: ellipsis; }
 .fin { display: block; font-size: 11px; color: var(--muted); margin-top: 2px; }
 .manual { font-size: 10px; font-weight: 700; color: var(--u-aviso); }
 .reguero { font-weight: 600; color: var(--u-aviso); }
-.ub-libre { color: var(--u-aviso); vertical-align: -1px; }
+.ub-libre { color: var(--u-aviso); vertical-align: -1px; margin-left: 3px; }
+
+/* La ubicacion es una matricula, no una frase: se lee mejor como etiqueta. */
+.ubic {
+  display: inline-block; padding: 2px 7px; border-radius: var(--r-xs);
+  background: var(--surface-3); border: 1px solid var(--border);
+  font-family: var(--mono); font-size: 12px; font-variant-numeric: tabular-nums;
+  letter-spacing: .01em; color: var(--ink-2);
+}
+.ubic.libre { border-color: color-mix(in srgb, var(--u-aviso) 45%, transparent); background: var(--u-aviso-tint); color: var(--ink); }
 .acciones { display: flex; gap: 6px; }
 .btn-icon { display: inline-flex; align-items: center; gap: 4px; padding: 5px 9px; border-radius: var(--r-xs); border: 1px solid var(--border); background: var(--surface); color: var(--muted); cursor: pointer; font-size: 12px; }
 .btn-icon:hover { background: var(--surface-3); color: var(--ink); }
