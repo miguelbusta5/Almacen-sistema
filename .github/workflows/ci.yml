@@ -54,6 +54,21 @@ jobs:
             '${{ secrets.VERCEL_PROJECT_ID }}' \
             '${{ secrets.VERCEL_ORG_ID }}' > .vercel/project.json
 
+      # ¿Tiene el proyecto la clave de Vercel Blob? Sin ella la subida de fotos
+      # falla. Se comprueba SOLO que exista y no este vacia: el valor NO se
+      # imprime nunca (no es un secreto de GitHub, asi que no saldria enmascarado).
+      - name: Comprobar almacenamiento de fotos (Vercel Blob)
+        run: |
+          F=.vercel/.env.production.local
+          if [ ! -f "$F" ]; then
+            vercel pull --yes --environment=production --token=${{ secrets.VERCEL_TOKEN }} >/dev/null 2>&1 || true
+          fi
+          if [ -f "$F" ] && grep -qE '^BLOB_READ_WRITE_TOKEN=.{5,}' "$F"; then
+            echo "BLOB_READ_WRITE_TOKEN: CONFIGURADO en Next.js (raiz)"
+          else
+            echo "BLOB_READ_WRITE_TOKEN: FALTA en Next.js (raiz)"
+          fi
+
       - name: Deploy a producción
         run: vercel deploy --prod --yes --token=${{ secrets.VERCEL_TOKEN }}
 
@@ -109,6 +124,21 @@ jobs:
           echo "--- rootDirectory guardado en Vercel ---"
           vercel pull --yes --environment=production --token=${{ secrets.VERCEL_TOKEN }} >/dev/null 2>&1 || echo "(vercel pull fallo)"
           node -e "const s=require('./.vercel/project.json').settings||{}; console.log('rootDirectory:', JSON.stringify(s.rootDirectory)); console.log('framework:', JSON.stringify(s.framework))" || cat .vercel/project.json
+
+      # ¿Tiene el proyecto la clave de Vercel Blob? Sin ella la subida de fotos
+      # falla. Se comprueba SOLO que exista y no este vacia: el valor NO se
+      # imprime nunca (no es un secreto de GitHub, asi que no saldria enmascarado).
+      - name: Comprobar almacenamiento de fotos (Vercel Blob)
+        run: |
+          F=.vercel/.env.production.local
+          if [ ! -f "$F" ]; then
+            vercel pull --yes --environment=production --token=${{ secrets.VERCEL_TOKEN }} >/dev/null 2>&1 || true
+          fi
+          if [ -f "$F" ] && grep -qE '^BLOB_READ_WRITE_TOKEN=.{5,}' "$F"; then
+            echo "BLOB_READ_WRITE_TOKEN: CONFIGURADO en nuxt-app"
+          else
+            echo "BLOB_READ_WRITE_TOKEN: FALTA en nuxt-app"
+          fi
 
       - name: Deploy a producción
         run: vercel deploy --prod --yes --token=${{ secrets.VERCEL_TOKEN }}
