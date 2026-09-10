@@ -157,11 +157,15 @@ describe("resurtido — las tres pestanas", () => {
       .toContain('<section v-if="!sinHero" class="hero fade-in">');
   });
 
-  // Movimientos se fue a Resurtido: Control Montacargas queda solo con Recepcion.
-  it("control montacargas se queda solo con recepcion", () => {
+  // Movimientos esta en los DOS sitios a proposito: es el mismo flujo y los
+  // mismos registros, pero el montacarguista lo busca en Control Montacargas y
+  // el operario lo tiene junto al resto de sus tareas en Resurtido. Quitarlo de
+  // Control Montacargas le escondio la pantalla a quien mas la usa.
+  it("control montacargas conserva recepcion y movimientos", () => {
     const cm = leer("nuxt-app/app/pages/control-montacargas.vue");
-    expect(cm).toContain("[FLUJOS.RECEPCION]");
-    expect(cm).not.toContain("FLUJOS_MONTACARGAS");
+    expect(cm).toContain("FLUJOS_MONTACARGAS");
+    expect(leer("nuxt-app/app/utils/montacargas.ts"))
+      .toContain("export const FLUJOS_MONTACARGAS: FlujoConfig[] = [FLUJOS.RECEPCION, FLUJOS.MOVIMIENTO]");
   });
 });
 
