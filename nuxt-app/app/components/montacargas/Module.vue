@@ -29,6 +29,9 @@ const props = defineProps<{
   kicker: string
   /** Uno o más flujos. Con más de uno se dibuja la barra de pestañas. */
   flujos: FlujoConfig[]
+  /** Embebido dentro de otra pantalla que ya tiene su cabecera: dos cabeceras
+   *  seguidas se leen como dos módulos distintos. */
+  sinHero?: boolean
 }>()
 
 const { me, sessionLoaded } = useSessionState()
@@ -406,7 +409,7 @@ async function exportar() {
 
 <template>
   <div>
-    <section class="hero fade-in">
+    <section v-if="!sinHero" class="hero fade-in">
       <div class="hero-left">
         <div class="hero-kicker">
           <span class="hero-ic"><Forklift :size="13" /></span>

@@ -121,6 +121,12 @@ model User {
   // no por rol a proposito: lo tienen dos personas concretas, y atarlo al rol
   // se lo daria en silencio a cualquier supervisor que se cree despues.
   puedeResolverNovedades Boolean @default(false) @map("puede_resolver_novedades")
+
+  /// Quien puede montar un resurtido y asignar pendientes. Permiso POR PERSONA y
+  /// no por rol, igual que el de cerrar novedades: hoy lo tienen Felipe Ossa y
+  /// Eduardo Zurita, y un supervisor que se cree manana no debe heredarlo solo
+  /// por serlo.
+  puedeMontarResurtido Boolean @default(false) @map("puede_montar_resurtido")
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
@@ -145,6 +151,11 @@ model User {
   exportacionesEeuuCreadas       EtiquetadoExportacionEeuu[]    @relation("ExportacionesEeuuEtiquetadoCreadas")
   exportacionesEeuuActualizadas  EtiquetadoExportacionEeuu[]    @relation("ExportacionesEeuuEtiquetadoActualizadas")
   gourmetPedidosCreados          GourmetPedido[]                @relation("GourmetPedidosCreados")
+  resurtidosAsignados   MontajeResurtido[]   @relation("ResurtidosAsignados")
+  resurtidosMontados    MontajeResurtido[]   @relation("ResurtidosMontados")
+  pendientesSolicitados PendienteGourmet[]   @relation("PendientesSolicitados")
+  pendientesAsignados   PendienteGourmet[]   @relation("PendientesAsignados")
+  pendientesRecibidos   PendienteGourmet[]   @relation("PendientesRecibidos")
   recepcionesCreadas      RecepcionContenedor[]  @relation("RecepcionesCreadas")
   recepcionesActualizadas RecepcionContenedor[]  @relation("RecepcionesActualizadas")
   descargasRecepcion      DescargadorRecepcion[] @relation("DescargasRecepcion")
@@ -1374,3 +1385,140 @@ model NovedadRecepcion {
   @@index([plu])
   @@map("novedades_recepcion")
 }
+
+enum EstadoMontajeResurtido {
+  EN_CURSO
+  COMPLETADO
+}
+
+enum EstadoTareaResurtido {
+  PENDIENTE
+  EN_CURSO
+  COMPLETADA
+}
+
+enum EstadoPendienteGourmet {
+  SOLICITADO
+  ASIGNADO
+  EN_CURSO
+  COMPLETADO
+}
+
+/// Un archivo de resurtido subido y asignado a un operario.
+///
+/// El montaje no se cronometra: quien lo sube no esta haciendo el trabajo, solo
+/// repartiendolo. Lo que se mide es cada tarea, una por una.
+model MontajeResurtido {
+  id            String                 @id @default(cuid())
+  estado        EstadoMontajeResurtido @default(EN_CURSO)
+  nombreArchivo String                 @map("nombre_archivo") @db.VarChar(255)
+
+  /// A quien le toca ejecutarlo. Se reasigna cambiando este campo.
+  operarioId String @map("operario_id")
+  operario   User   @relation("ResurtidosAsignados", fields: [operarioId], references: [id])
+
+  creadoPorId String @map("creado_por_id")
+  creadoPor   User   @relation("ResurtidosMontados", fields: [creadoPorId], references: [id])
+
+  fecha        DateTime  @db.Date
+  /// Desde aqui corre el tiempo transcurrido que ve quien lo monto.
+  montadoAt    DateTime  @default(now()) @map("montado_at")
+  completadoAt DateTime? @map("completado_at")
+  deletedAt    DateTime? @map("deleted_at")
+
+  tareas TareaResurtido[]
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([operarioId, estado, deletedAt])
+  @@index([fecha])
+  @@map("montajes_resurtido")
+}
+
+/// Una linea del archivo convertida en tarea.
+///
+/// El reloj de la tarea arranca al ESCANEAR LA POSICION de origen —no al abrirla—
+/// para que el tiempo mida caminar hasta el sitio y bajar la mercancia, no el
+/// rato que la tarea estuvo abierta en la pantalla.
+model TareaResurtido {
+  id        String               @id @default(cuid())
+  montajeId String               @map("montaje_id")
+  montaje   MontajeResurtido     @relation(fields: [montajeId], references: [id], onDelete: Cascade)
+  estado    EstadoTareaResurtido @default(PENDIENTE)
+
+  /// Posicion en la ruta: se ordena por la ubicacion de origen para que el
+  /// operario recorra el almacen una sola vez y en linea recta.
+  orden Int
+
+  plu         String @db.VarChar(100)
+  /// Del maestro, no del archivo: el archivo trae un NOMBRE que puede estar viejo.
+  descripcion String @db.VarChar(255)
+  /// De donde hay que bajar el producto.
+  altura      String @db.VarChar(120)
+  /// Ubicacion de picking recomendada por el archivo.
+  pickingSugerido     String @map("picking_sugerido") @db.VarChar(120)
+  unidadesSolicitadas Int    @map("unidades_solicitadas")
+
+  /// Lo que realmente bajo: depende del espacio que haya en el picking, asi que
+  /// puede no coincidir con lo solicitado.
+  unidadesBajadas Int?    @map("unidades_bajadas")
+  pickingFinal    String? @map("picking_final") @db.VarChar(120)
+
+  horaInicio DateTime? @map("hora_inicio")
+  horaFin    DateTime? @map("hora_fin")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([montajeId, orden])
+  @@index([montajeId, estado])
+  @@index([plu])
+  @@map("tareas_resurtido")
+}
+
+/// Un pendiente que pide operaciones gourmet y que almacenamiento resuelve.
+///
+/// Quien lo solicita no lo ejecuta y quien lo asigna tampoco: el reloj corre
+/// solo mientras el operario lo esta bajando. El tiempo transcurrido desde la
+/// solicitud es otra cosa —lo que lleva esperando— y se calcula sobre solicitadoAt.
+model PendienteGourmet {
+  id     String                 @id @default(cuid())
+  estado EstadoPendienteGourmet @default(SOLICITADO)
+
+  plu                 String @db.VarChar(100)
+  descripcion         String @db.VarChar(255)
+  unidadesSolicitadas Int    @map("unidades_solicitadas")
+  observacion         String?
+
+  solicitadoPorId String   @map("solicitado_por_id")
+  solicitadoPor   User     @relation("PendientesSolicitados", fields: [solicitadoPorId], references: [id])
+  solicitadoAt    DateTime @default(now()) @map("solicitado_at")
+
+  asignadoPorId String?   @map("asignado_por_id")
+  asignadoPor   User?     @relation("PendientesAsignados", fields: [asignadoPorId], references: [id])
+  operarioId    String?   @map("operario_id")
+  operario      User?     @relation("PendientesRecibidos", fields: [operarioId], references: [id])
+  asignadoAt    DateTime? @map("asignado_at")
+
+  /// Ejecucion, igual que un movimiento de deposito: el reloj arranca al
+  /// escanear el PLU y se cierra al escribir la ubicacion final.
+  unidadesBajadas Int?      @map("unidades_bajadas")
+  ubicacionFinal  String?   @map("ubicacion_final") @db.VarChar(120)
+  horaInicio      DateTime? @map("hora_inicio")
+  horaFin         DateTime? @map("hora_fin")
+  completadoAt    DateTime? @map("completado_at")
+
+  fecha     DateTime  @db.Date
+  deletedAt DateTime? @map("deleted_at")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([estado, deletedAt])
+  @@index([operarioId, estado])
+  @@index([solicitadoPorId])
+  @@index([fecha])
+  @@map("pendientes_gourmet")
+}
+

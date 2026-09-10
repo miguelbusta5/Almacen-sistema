@@ -107,8 +107,10 @@ describe("recepcion — el modulo esta registrado en todas partes", () => {
   // Sin la regla de rewrite la ruta da 404 en produccion: no hay pagina React
   // de respaldo, el modulo se construyo directo en Nuxt.
   it("el proxy de Next enruta el modulo", () => {
-    expect(leer("next.config.ts"))
-      .toContain('for (const modulo of ["control-montacargas", "resurtido", "recepcion-contenedores"])');
+    // Da igual como este formateada la lista: lo que se exige es que el modulo
+    // este dentro del bloque que emite los rewrites del CEDI.
+    const cfg = leer("next.config.ts");
+    expect(cfg).toMatch(/for \(const modulo of \[[\s\S]*?"recepcion-contenedores"[\s\S]*?\]\)/);
   });
 
   it("aparece en la navegacion de los dos stacks", () => {

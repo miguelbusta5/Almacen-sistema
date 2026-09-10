@@ -386,10 +386,13 @@ describe("montacargas — módulos registrados", () => {
     expect(shared).toContain("NUXT_PILOT_MONTACARGAS_URL");
   });
 
-  it("Resurtido usa el mismo Module con un solo flujo", () => {
+  // Resurtido dejo de ser una sola pantalla: ahora son tres pestanas y la de
+  // Movimientos reutiliza este mismo Module, embebido y sin su cabecera.
+  it("Resurtido reutiliza el Module para la pestana de movimientos", () => {
     const resurtido = leer("nuxt-app/app/pages/resurtido.vue");
     expect(resurtido).toContain("MontacargasModule");
-    expect(resurtido).toContain("FLUJOS.RESURTIDO");
+    expect(resurtido).toContain("FLUJOS.MOVIMIENTO");
+    expect(resurtido).toContain("sin-hero");
   });
 
   // Los dos módulos llevan pestaña de indicadores, y es solo para gestión: son

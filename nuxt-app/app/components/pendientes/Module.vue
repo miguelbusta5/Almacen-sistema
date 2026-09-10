@@ -1,0 +1,324 @@
+<script setup lang="ts">
+// Pendientes: operaciones gourmet pide mercancía a picking y almacenamiento la
+// reparte.
+//
+// La misma pantalla sirve a los dos, con lo que cada uno necesita: quien pide ve
+// SUS solicitudes y cuánto llevan esperando; quien reparte las ve todas y puede
+// asignarlas. A ninguno de los dos se le mide tiempo de trabajo — pedir y
+// repartir no es bajar mercancía.
+import { ref, computed, onMounted, onBeforeUnmount, nextTick } from 'vue'
+import { RefreshCw, Plus, PackageSearch, UserPlus, CheckCircle2 } from '@lucide/vue'
+import { useDebounceFn } from '@vueuse/core'
+import { ensureSession, useSessionState } from '~/composables/useSession'
+import { useToast } from '~/composables/useToast'
+import { useAutoRefresh } from '~/composables/useAutoRefresh'
+import {
+  API_MONTAJE, API_PENDIENTES, cronometroDesde, ESTADO_PENDIENTE_LABEL,
+  esSolicitante, fmtDuracionTarea, type PendienteDTO,
+} from '~/utils/resurtidoTareas'
+import { canSeeModule } from '~/utils/modulePermissions'
+
+const { me, sessionLoaded } = useSessionState()
+const { show: showToast } = useToast()
+
+const puedeVer = computed(() => canSeeModule(me.value?.role, 'pendientes'))
+const solicita = computed(() => esSolicitante(me.value?.role ?? ''))
+// Asignar es permiso por persona, igual que montar un resurtido.
+const puedeAsignar = computed(() => me.value?.can?.montarResurtido === true)
+
+const ahora = ref(Date.now())
+let tick: ReturnType<typeof setInterval> | null = null
+onMounted(() => {
+  ensureSession()
+  tick = setInterval(() => { ahora.value = Date.now() }, 1000)
+})
+onBeforeUnmount(() => { if (tick) clearInterval(tick) })
+
+const items = ref<PendienteDTO[]>([])
+const operarios = ref<{ id: string; nombre: string }[]>([])
+const loading = ref(true)
+const guardando = ref<string | null>(null)
+const creando = ref(false)
+
+// ── Nueva solicitud ────────────────────────────────────────────────
+const plu = ref('')
+const unidades = ref('')
+const observacion = ref('')
+const descripcion = ref('')
+const buscando = ref(false)
+const pluInput = ref<HTMLInputElement | null>(null)
+
+const buscar = useDebounceFn(async () => {
+  const codigo = plu.value.trim()
+  if (!codigo) { descripcion.value = ''; return }
+  buscando.value = true
+  try {
+    const res = await $fetch<{ data: { descripcion: string | null } | null }>(
+      '/api/productos-maestro/buscar', { query: { codigo } },
+    )
+    descripcion.value = res.data?.descripcion ?? ''
+  } catch {
+    descripcion.value = ''
+  } finally {
+    buscando.value = false
+  }
+}, 350)
+
+const puedeCrear = computed(() =>
+  !creando.value && descripcion.value.length > 0 && Number(unidades.value) >= 1)
+
+async function crear() {
+  if (!puedeCrear.value) return
+  creando.value = true
+  try {
+    await $fetch(API_PENDIENTES, {
+      method: 'POST',
+      body: {
+        plu: plu.value.trim(),
+        unidadesSolicitadas: Number(unidades.value),
+        observacion: observacion.value.trim() || null,
+      },
+    })
+    showToast('Pendiente solicitado')
+    plu.value = ''
+    unidades.value = ''
+    observacion.value = ''
+    descripcion.value = ''
+    await cargar()
+    await nextTick()
+    pluInput.value?.focus()
+  } catch (e) {
+    showToast(apiErr(e, 'No se pudo solicitar'), true)
+  } finally {
+    creando.value = false
+  }
+}
+
+// ── Datos ──────────────────────────────────────────────────────────
+async function cargar() {
+  loading.value = true
+  try {
+    const res = await $fetch<{ data: PendienteDTO[] }>(API_PENDIENTES)
+    items.value = res.data
+  } catch (e) {
+    showToast(apiErr(e, 'No se pudieron cargar los pendientes'), true)
+  } finally {
+    loading.value = false
+  }
+}
+
+async function cargarOperarios() {
+  if (!puedeAsignar.value) return
+  try {
+    const res = await $fetch<{ data: { id: string; nombre: string }[] }>(`${API_MONTAJE}/operarios`)
+    operarios.value = res.data
+  } catch { /* sin lista no se puede asignar, y el select lo muestra */ }
+}
+
+onMounted(() => { void cargar() })
+watch(() => me.value?.id, () => { void cargarOperarios() }, { immediate: true })
+
+useAutoRefresh({
+  onRefresh: () => {
+    if (!puedeVer.value || creando.value || guardando.value) return
+    void cargar()
+  },
+})
+
+async function asignar(p: PendienteDTO, operarioId: string) {
+  if (!operarioId) return
+  guardando.value = p.id
+  try {
+    await $fetch(`${API_PENDIENTES}/${p.id}/asignar`, { method: 'POST', body: { operarioId } })
+    showToast('Pendiente asignado')
+    await cargar()
+  } catch (e) {
+    showToast(apiErr(e, 'No se pudo asignar'), true)
+  } finally {
+    guardando.value = null
+  }
+}
+
+// Lo que lleva esperando desde que se pidió: mide al sistema, no al operario.
+function espera(p: PendienteDTO): string {
+  if (p.completadoAt) return fmtDuracionTarea(p.esperaSegundos)
+  return cronometroDesde(p.solicitadoAt, ahora.value) ?? '—'
+}
+
+const abiertos = computed(() => items.value.filter((p) => p.estado !== 'COMPLETADO'))
+const cerrados = computed(() => items.value.filter((p) => p.estado === 'COMPLETADO'))
+</script>
+
+<template>
+  <div class="mod">
+    <section class="hero">
+      <div>
+        <span class="hero-kicker">
+          <span class="hero-ic"><PackageSearch :size="13" /></span>
+          Gourmet · Picking
+        </span>
+        <h1 class="hero-title">Pendientes</h1>
+        <p class="hero-desc">
+          {{ solicita ? 'Pide mercancía a picking y sigue cuánto lleva esperando.'
+            : 'Solicitudes de gourmet para repartir entre los operarios.' }}
+        </p>
+      </div>
+      <div class="hero-actions">
+        <button class="btn btn-sm" @click="cargar"><RefreshCw :size="14" /> Actualizar</button>
+      </div>
+    </section>
+
+    <ListSkeleton v-if="!sessionLoaded" />
+    <EmptyState
+      v-else-if="!puedeVer" title="Sin acceso"
+      description="Este módulo es para operaciones gourmet y supervisión de almacenamiento."
+    />
+
+    <template v-else>
+      <!-- Solicitar: solo gourmet -->
+      <section v-if="solicita" class="card nueva bloque">
+        <label class="f f-plu">
+          <span class="lbl">PLU</span>
+          <input
+            ref="pluInput" v-model="plu" class="field mono" placeholder="Escanea o escribe"
+            autocomplete="off" inputmode="numeric" :disabled="creando" @input="buscar"
+          >
+        </label>
+        <div class="f f-desc">
+          <span class="lbl">Descripción</span>
+          <div class="desc-box" :class="{ vacia: !descripcion }">
+            <Spinner v-if="buscando" :size="13" />
+            <span v-else-if="descripcion">{{ descripcion }}</span>
+            <span v-else-if="plu.trim()">El PLU no existe en el maestro</span>
+            <span v-else>Se completa sola</span>
+          </div>
+        </div>
+        <label class="f f-und">
+          <span class="lbl">Unidades</span>
+          <input v-model="unidades" class="field tnum" type="number" min="1" inputmode="numeric" :disabled="creando">
+        </label>
+        <label class="f f-obs">
+          <span class="lbl">Observación (opcional)</span>
+          <input v-model="observacion" class="field" maxlength="500" :disabled="creando">
+        </label>
+        <div class="f f-btn">
+          <button class="btn btn-primary submit" :disabled="!puedeCrear" @click="crear">
+            <Spinner v-if="creando" :size="15" /><Plus v-else :size="15" />
+            Solicitar
+          </button>
+        </div>
+      </section>
+
+      <ListSkeleton v-if="loading" />
+
+      <template v-else>
+        <h2 v-if="abiertos.length" class="sec">En curso</h2>
+        <div v-if="abiertos.length" class="grid bloque">
+          <article v-for="p in abiertos" :key="p.id" class="card vin">
+            <header class="vin-top">
+              <b class="mono vin-plu">{{ p.plu }}</b>
+              <Badge :label="ESTADO_PENDIENTE_LABEL[p.estado]" :tone="p.estado === 'SOLICITADO' ? 'warn' : 'info'" />
+            </header>
+            <p class="vin-desc" :title="p.descripcion">{{ p.descripcion }}</p>
+            <p class="vin-und"><b class="tnum">{{ p.unidadesSolicitadas }}</b> unidades solicitadas</p>
+            <p v-if="p.observacion" class="vin-obs">{{ p.observacion }}</p>
+
+            <dl class="vin-meta">
+              <div>
+                <dt>Esperando</dt>
+                <dd class="tnum espera">{{ espera(p) }}</dd>
+              </div>
+              <div>
+                <dt>Operario</dt>
+                <dd>{{ p.operarioNombre ?? 'Sin asignar' }}</dd>
+              </div>
+            </dl>
+
+            <!-- Asignar: permiso por persona -->
+            <div v-if="puedeAsignar" class="vin-asig">
+              <select
+                class="field field-sm" :disabled="guardando === p.id"
+                @change="asignar(p, ($event.target as HTMLSelectElement).value)"
+              >
+                <option value="">{{ p.operarioNombre ? 'Reasignar a…' : 'Asignar a…' }}</option>
+                <option v-for="o in operarios" :key="o.id" :value="o.id">{{ o.nombre }}</option>
+              </select>
+              <UserPlus :size="14" class="asig-ic" />
+            </div>
+          </article>
+        </div>
+
+        <h2 v-if="cerrados.length" class="sec">Ubicados</h2>
+        <div v-if="cerrados.length" class="grid">
+          <article v-for="p in cerrados" :key="p.id" class="card vin hecho">
+            <header class="vin-top">
+              <b class="mono vin-plu">{{ p.plu }}</b>
+              <span class="ok"><CheckCircle2 :size="13" /> Ubicado</span>
+            </header>
+            <p class="vin-desc" :title="p.descripcion">{{ p.descripcion }}</p>
+            <p class="vin-und">
+              <b class="tnum">{{ p.unidadesBajadas }}</b> de {{ p.unidadesSolicitadas }} en
+              <span class="ubic">{{ p.ubicacionFinal }}</span>
+            </p>
+            <dl class="vin-meta">
+              <div><dt>Espera total</dt><dd class="tnum">{{ fmtDuracionTarea(p.esperaSegundos) }}</dd></div>
+              <div><dt>Lo bajó</dt><dd>{{ p.operarioNombre ?? '—' }}</dd></div>
+            </dl>
+          </article>
+        </div>
+
+        <EmptyState
+          v-if="!items.length" title="Sin pendientes"
+          :description="solicita ? 'Todavía no has solicitado nada.' : 'No hay solicitudes de gourmet.'"
+        />
+      </template>
+    </template>
+  </div>
+</template>
+
+<style scoped>
+.mod { position: relative; }
+.hero { display: flex; align-items: flex-end; justify-content: space-between; gap: 18px; margin-bottom: 22px; flex-wrap: wrap; }
+.hero-kicker { display: flex; align-items: center; gap: 7px; font-size: 11px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); }
+.hero-ic { display: grid; place-items: center; width: 22px; height: 22px; border-radius: 7px; color: var(--brand); background: color-mix(in srgb, var(--brand) 12%, transparent); }
+.hero-title { margin: 7px 0 3px; font-family: var(--display); font-size: 30px; font-weight: 800; letter-spacing: -.035em; color: var(--ink); }
+.hero-desc { margin: 0; font-size: 13px; color: var(--muted); }
+.bloque { margin-bottom: 18px; }
+.sec { margin: 4px 0 11px; font-size: 12px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase; color: var(--muted); }
+
+.nueva { display: grid; grid-template-columns: 130px 1fr 110px 1fr auto; gap: 12px; align-items: end; padding: 16px 18px; }
+.f { display: flex; flex-direction: column; gap: 5px; min-width: 0; }
+.lbl { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); }
+.desc-box { display: flex; align-items: center; gap: 7px; height: 38px; padding: 0 11px; border: 1px solid var(--border); border-radius: var(--r-sm); background: var(--surface-2); font-size: 13px; color: var(--ink-2); overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.desc-box.vacia { color: var(--faint); }
+.submit { height: 38px; padding: 0 18px; }
+
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(268px, 1fr)); gap: 14px; }
+.vin { padding: 14px 16px 13px; display: flex; flex-direction: column; gap: 8px; }
+.vin.hecho { border-color: color-mix(in srgb, var(--brand) 32%, var(--border)); }
+.vin-top { display: flex; align-items: center; justify-content: space-between; gap: 9px; }
+.vin-plu { font-size: 14px; font-weight: 700; color: var(--ink); }
+.vin-desc { margin: 0; font-size: 12.5px; color: var(--ink-2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.vin-und { margin: 0; font-size: 12.5px; color: var(--muted); }
+.vin-und b { color: var(--ink); font-size: 14px; }
+.vin-obs { margin: 0; font-size: 12px; color: var(--faint); font-style: italic; }
+.ok { display: inline-flex; align-items: center; gap: 5px; font-size: 11.5px; font-weight: 700; color: var(--brand); }
+
+.vin-meta { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin: 2px 0 0; padding-top: 9px; border-top: 1px solid var(--border); }
+.vin-meta dt { font-size: 10px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; color: var(--faint); }
+.vin-meta dd { margin: 2px 0 0; font-size: 12.5px; color: var(--ink-2); }
+/* El reloj de espera es lo que mira quien pidio: grande y en ambar cuando corre. */
+.espera { font-family: var(--display); font-size: 15px; font-weight: 700; color: var(--u-aviso); }
+
+.vin-asig { position: relative; margin-top: 4px; }
+.field-sm { height: 34px; font-size: 12.5px; padding-right: 30px; }
+.asig-ic { position: absolute; right: 9px; top: 50%; transform: translateY(-50%); color: var(--muted); pointer-events: none; }
+.ubic { display: inline-block; padding: 1px 6px; border-radius: var(--r-xs); background: var(--surface-3); border: 1px solid var(--border); font-family: var(--mono); font-size: 11.5px; }
+
+@media (max-width: 900px) {
+  .nueva { grid-template-columns: 1fr 1fr; }
+  .f-obs, .f-btn { grid-column: 1 / -1; }
+  .submit { width: 100%; height: 44px; }
+  .hero-title { font-size: 24px; }
+}
+</style>

@@ -6,6 +6,7 @@ import {
   huboTraspaso, segundosDeAyudantes, segundosDelCreador, segundosTrabajados,
 } from './montacargasCalc'
 import { segundosRecepcion } from './recepcionCalc'
+import { progresoMontaje, segundosEntre } from './resurtidoCalc'
 
 // Mapea la fila de TransporteGuardado al shape del cliente (igual que la app Next).
 export function mapGuardado(r: any) {
@@ -481,5 +482,69 @@ export function mapRecepcion(r: any) {
       creadoPorNombre: n.creadoPor?.name ?? null,
       createdAt: n.createdAt.toISOString(),
     })),
+  }
+}
+
+
+// ── Montaje de resurtido, tareas y pendientes ────────────────────────
+export function mapTareaResurtido(t: any) {
+  return {
+    id: t.id,
+    orden: t.orden,
+    estado: t.estado,
+    plu: t.plu,
+    descripcion: t.descripcion,
+    altura: t.altura,
+    pickingSugerido: t.pickingSugerido,
+    unidadesSolicitadas: t.unidadesSolicitadas,
+    unidadesBajadas: t.unidadesBajadas ?? null,
+    pickingFinal: t.pickingFinal ?? null,
+    horaInicio: t.horaInicio ? t.horaInicio.toISOString() : null,
+    horaFin: t.horaFin ? t.horaFin.toISOString() : null,
+    // Null mientras no se ha escaneado la posicion: el reloj aun no arranco.
+    duracionSegundos: segundosEntre(t.horaInicio, t.horaFin),
+  }
+}
+
+export function mapMontaje(m: any) {
+  const tareas = (m.tareas ?? []).map(mapTareaResurtido)
+  return {
+    id: m.id,
+    estado: m.estado,
+    nombreArchivo: m.nombreArchivo,
+    operarioId: m.operarioId,
+    operarioNombre: m.operario?.name ?? null,
+    creadoPorNombre: m.creadoPor?.name ?? null,
+    fecha: formatDateOnly(m.fecha),
+    montadoAt: m.montadoAt.toISOString(),
+    completadoAt: m.completadoAt ? m.completadoAt.toISOString() : null,
+    progreso: progresoMontaje(tareas),
+    tareas,
+  }
+}
+
+export function mapPendiente(p: any) {
+  return {
+    id: p.id,
+    estado: p.estado,
+    plu: p.plu,
+    descripcion: p.descripcion,
+    unidadesSolicitadas: p.unidadesSolicitadas,
+    observacion: p.observacion ?? null,
+    solicitadoPorNombre: p.solicitadoPor?.name ?? null,
+    solicitadoAt: p.solicitadoAt.toISOString(),
+    asignadoPorNombre: p.asignadoPor?.name ?? null,
+    operarioId: p.operarioId ?? null,
+    operarioNombre: p.operario?.name ?? null,
+    asignadoAt: p.asignadoAt ? p.asignadoAt.toISOString() : null,
+    unidadesBajadas: p.unidadesBajadas ?? null,
+    ubicacionFinal: p.ubicacionFinal ?? null,
+    horaInicio: p.horaInicio ? p.horaInicio.toISOString() : null,
+    horaFin: p.horaFin ? p.horaFin.toISOString() : null,
+    completadoAt: p.completadoAt ? p.completadoAt.toISOString() : null,
+    // Lo que lleva ESPERANDO desde que se pidio. Es otra cosa que el tiempo de
+    // trabajo: mide al sistema, no al operario.
+    esperaSegundos: segundosEntre(p.solicitadoAt, p.completadoAt, new Date()) ?? 0,
+    duracionSegundos: segundosEntre(p.horaInicio, p.horaFin),
   }
 }

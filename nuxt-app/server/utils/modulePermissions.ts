@@ -24,6 +24,8 @@ export type ModuleKey =
   | 'control-montacargas'
   | 'resurtido'
   | 'recepcion-contenedores'
+  | 'montaje-resurtido'
+  | 'pendientes'
 
 export const MODULE_ACCESS: Record<ModuleKey, string[]> = {
   transporte: ['TRANSPORTE', 'SUPERVISOR_TRANSPORTE', 'GERENTE', 'ADMIN', 'OPERADOR'],
@@ -58,6 +60,12 @@ export const MODULE_ACCESS: Record<ModuleKey, string[]> = {
   // Sin MONTACARGAS a proposito: descargan el contenedor y salen en la lista
   // de personas descargando, pero la planilla la lleva siempre el operario.
   'recepcion-contenedores': ['OPERARIO_ALMACENAMIENTO', 'SUPERVISOR_ALMACENAMIENTO', 'GERENTE', 'ADMIN'],
+  // Ver el modulo es una cosa; montar un resurtido o asignar un pendiente es
+  // otra, y esa va por permiso POR PERSONA (users.puede_montar_resurtido).
+  'montaje-resurtido': ['SUPERVISOR_ALMACENAMIENTO', 'GERENTE', 'ADMIN'],
+  // Gourmet pide; almacenamiento asigna. Los operarios ven SUS tareas dentro
+  // de Resurtido, no aqui.
+  pendientes: ['OPERACIONES_GOURMET', 'SUPERVISOR_ALMACENAMIENTO', 'GERENTE', 'ADMIN'],
 }
 
 export function canSeeModule(role: string | undefined | null, moduleKey: ModuleKey): boolean {

@@ -9,6 +9,7 @@ export interface MeInfo {
     delete: boolean
     /** Permiso por persona para cerrar novedades de montacargas. */
     resolverNovedades?: boolean
+    montarResurtido?: boolean
   }
 }
 

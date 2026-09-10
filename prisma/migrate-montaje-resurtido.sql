@@ -1,0 +1,91 @@
+-- Montaje de resurtido, tareas y pendientes de operaciones gourmet.
+--
+-- El montaje NO se cronometra: quien sube el archivo reparte trabajo, no lo
+-- hace. Lo que se mide es cada tarea. En resurtido el reloj arranca al escanear
+-- la posicion de origen; en un pendiente, al escanear el PLU (igual que un
+-- movimiento de deposito).
+--
+-- Aditivo e idempotente.
+
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'EstadoMontajeResurtido') THEN
+    CREATE TYPE "EstadoMontajeResurtido" AS ENUM ('EN_CURSO', 'COMPLETADO');
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'EstadoTareaResurtido') THEN
+    CREATE TYPE "EstadoTareaResurtido" AS ENUM ('PENDIENTE', 'EN_CURSO', 'COMPLETADA');
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'EstadoPendienteGourmet') THEN
+    CREATE TYPE "EstadoPendienteGourmet" AS ENUM ('SOLICITADO', 'ASIGNADO', 'EN_CURSO', 'COMPLETADO');
+  END IF;
+END $$;
+
+-- Permiso POR PERSONA, igual que el de cerrar novedades: hoy lo tienen Felipe
+-- Ossa y Eduardo Zurita, y un supervisor nuevo no debe heredarlo por serlo.
+ALTER TABLE users ADD COLUMN IF NOT EXISTS puede_montar_resurtido BOOLEAN NOT NULL DEFAULT false;
+
+CREATE TABLE IF NOT EXISTS montajes_resurtido (
+  id             TEXT PRIMARY KEY,
+  estado         "EstadoMontajeResurtido" NOT NULL DEFAULT 'EN_CURSO',
+  nombre_archivo VARCHAR(255) NOT NULL,
+  operario_id    TEXT NOT NULL REFERENCES users(id),
+  creado_por_id  TEXT NOT NULL REFERENCES users(id),
+  fecha          DATE NOT NULL,
+  montado_at     TIMESTAMP(3) NOT NULL DEFAULT now(),
+  completado_at  TIMESTAMP(3),
+  deleted_at     TIMESTAMP(3),
+  created_at     TIMESTAMP(3) NOT NULL DEFAULT now(),
+  updated_at     TIMESTAMP(3) NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS montajes_resurtido_operario_estado_idx ON montajes_resurtido (operario_id, estado, deleted_at);
+CREATE INDEX IF NOT EXISTS montajes_resurtido_fecha_idx ON montajes_resurtido (fecha);
+
+CREATE TABLE IF NOT EXISTS tareas_resurtido (
+  id                   TEXT PRIMARY KEY,
+  montaje_id           TEXT NOT NULL REFERENCES montajes_resurtido(id) ON DELETE CASCADE,
+  estado               "EstadoTareaResurtido" NOT NULL DEFAULT 'PENDIENTE',
+  -- Se ordena por la ubicacion de origen para recorrer el almacen en linea recta.
+  orden                INTEGER NOT NULL,
+  plu                  VARCHAR(100) NOT NULL,
+  descripcion          VARCHAR(255) NOT NULL,
+  altura               VARCHAR(120) NOT NULL,
+  picking_sugerido     VARCHAR(120) NOT NULL,
+  unidades_solicitadas INTEGER NOT NULL,
+  -- Lo que realmente cupo en el picking: puede no coincidir con lo solicitado.
+  unidades_bajadas     INTEGER,
+  picking_final        VARCHAR(120),
+  hora_inicio          TIMESTAMP(3),
+  hora_fin             TIMESTAMP(3),
+  created_at           TIMESTAMP(3) NOT NULL DEFAULT now(),
+  updated_at           TIMESTAMP(3) NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS tareas_resurtido_montaje_orden_idx ON tareas_resurtido (montaje_id, orden);
+CREATE INDEX IF NOT EXISTS tareas_resurtido_montaje_estado_idx ON tareas_resurtido (montaje_id, estado);
+CREATE INDEX IF NOT EXISTS tareas_resurtido_plu_idx ON tareas_resurtido (plu);
+
+CREATE TABLE IF NOT EXISTS pendientes_gourmet (
+  id                   TEXT PRIMARY KEY,
+  estado               "EstadoPendienteGourmet" NOT NULL DEFAULT 'SOLICITADO',
+  plu                  VARCHAR(100) NOT NULL,
+  descripcion          VARCHAR(255) NOT NULL,
+  unidades_solicitadas INTEGER NOT NULL,
+  observacion          TEXT,
+  solicitado_por_id    TEXT NOT NULL REFERENCES users(id),
+  solicitado_at        TIMESTAMP(3) NOT NULL DEFAULT now(),
+  asignado_por_id      TEXT REFERENCES users(id),
+  operario_id          TEXT REFERENCES users(id),
+  asignado_at          TIMESTAMP(3),
+  unidades_bajadas     INTEGER,
+  ubicacion_final      VARCHAR(120),
+  hora_inicio          TIMESTAMP(3),
+  hora_fin             TIMESTAMP(3),
+  completado_at        TIMESTAMP(3),
+  fecha                DATE NOT NULL,
+  deleted_at           TIMESTAMP(3),
+  created_at           TIMESTAMP(3) NOT NULL DEFAULT now(),
+  updated_at           TIMESTAMP(3) NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS pendientes_gourmet_estado_idx ON pendientes_gourmet (estado, deleted_at);
+CREATE INDEX IF NOT EXISTS pendientes_gourmet_operario_idx ON pendientes_gourmet (operario_id, estado);
+CREATE INDEX IF NOT EXISTS pendientes_gourmet_solicitado_por_idx ON pendientes_gourmet (solicitado_por_id);
+CREATE INDEX IF NOT EXISTS pendientes_gourmet_fecha_idx ON pendientes_gourmet (fecha);

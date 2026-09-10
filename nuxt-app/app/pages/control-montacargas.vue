@@ -1,7 +1,9 @@
 <script setup lang="ts">
-// Pagina thin: toda la logica vive en components/montacargas/Module.vue, que es
-// el mismo para este modulo y para Resurtido.
-import { FLUJOS_MONTACARGAS } from '~/utils/montacargas'
+// Pagina thin: la logica vive en components/montacargas/Module.vue.
+//
+// Solo Recepcion de contenedor. Movimientos de deposito se fue al modulo de
+// Resurtido, que es donde el operario tiene el resto de sus tareas.
+import { FLUJOS } from '~/utils/montacargas'
 
 definePageMeta({ title: 'Control Montacargas' })
 </script>
@@ -10,6 +12,6 @@ definePageMeta({ title: 'Control Montacargas' })
   <MontacargasModule
     titulo="Control Montacargas"
     kicker="Montacargas · Flujo CEDI"
-    :flujos="FLUJOS_MONTACARGAS"
+    :flujos="[FLUJOS.RECEPCION]"
   />
 </template>

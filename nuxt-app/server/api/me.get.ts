@@ -12,7 +12,10 @@ export default defineEventHandler(async (event) => {
   // Se lee de la base y no del token: un ADMIN concede o quita este permiso
   // desde Usuarios, y sacarlo del JWT lo dejaria obsoleto hasta el proximo login.
   const extra = await prisma.user
-    .findUnique({ where: { id: user.id }, select: { puedeResolverNovedades: true } })
+    .findUnique({
+      where: { id: user.id },
+      select: { puedeResolverNovedades: true, puedeMontarResurtido: true },
+    })
     .catch(() => null)
 
   return {
@@ -24,6 +27,9 @@ export default defineEventHandler(async (event) => {
         edit: can(user.role, 'edit'),
         delete: can(user.role, 'delete'),
         resolverNovedades: extra?.puedeResolverNovedades ?? false,
+        // Montar un resurtido y asignar pendientes: permiso por persona, igual
+        // que el de cerrar novedades.
+        montarResurtido: extra?.puedeMontarResurtido ?? false,
       },
     },
   }

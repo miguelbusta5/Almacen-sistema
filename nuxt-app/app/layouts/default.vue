@@ -3,7 +3,7 @@ import { computed, nextTick, onMounted, ref, watch } from 'vue'
 import {
   ShieldCheck, Store, GitMerge, ScanLine, Forklift, PackageOpen, Tags, Globe, FileText, Truck,
   BarChart3, Users, ScrollText, Search, Bell, CheckCircle2, TriangleAlert, Container,
-  Menu, X, LogOut, KeyRound, CornerDownLeft, Inbox,
+  Menu, X, LogOut, KeyRound, CornerDownLeft, Inbox, ClipboardList, PackageSearch, BellRing,
 } from '@lucide/vue'
 import { ensureSession, useSessionState } from '~/composables/useSession'
 import { useToastState } from '~/composables/useToast'
@@ -58,6 +58,8 @@ const NAV_GROUPS: NavGroup[] = [
     titulo: 'Centro de distribución',
     items: [
       { icon: Container, label: 'Recepción Contenedores', href: '/dashboard/recepcion-contenedores', key: 'recepcion-contenedores', moduleKey: 'recepcion-contenedores' },
+      { icon: ClipboardList, label: 'Montaje Resurtido', href: '/dashboard/montaje-resurtido', key: 'montaje-resurtido', moduleKey: 'montaje-resurtido' },
+      { icon: PackageSearch, label: 'Pendientes', href: '/dashboard/pendientes', key: 'pendientes', moduleKey: 'pendientes' },
       { icon: Forklift, label: 'Control Montacargas', href: '/dashboard/control-montacargas', key: 'control-montacargas', moduleKey: 'control-montacargas' },
       { icon: PackageOpen, label: 'Resurtido', href: '/dashboard/resurtido', key: 'resurtido', moduleKey: 'resurtido' },
       { icon: ScanLine, label: 'Cargue Gourmet', href: '/dashboard/cargue-gourmet', key: 'cargue-gourmet', moduleKey: 'cargue-gourmet' },
@@ -128,6 +130,7 @@ function abrir(p: Exclude<Panel, null>) {
   if (panel.value === 'buscar') {
     void nextTick(() => buscarInput.value?.focus())
   }
+  if (panel.value === 'avisos') void marcarVistos()
 }
 function cerrarPaneles() { panel.value = null }
 
@@ -150,12 +153,23 @@ function irA(item: { href: string }) {
 }
 
 // ── Avisos ──────────────────────────────────────────────────────────
-// Trabajo pendiente de verdad, no un punto rojo decorativo: los PLUs que el
-// usuario tiene en la mano ahora mismo, por flujo. El punto solo se enciende si
-// hay algo, para que deje de significar "siempre hay algo" (o sea, nada).
+// Dos cosas distintas en la misma campana: el trabajo que el usuario tiene en la
+// mano ahora (sus PLUs por flujo) y los avisos que le han llegado (un pendiente
+// ubicado, un resurtido terminado). El punto rojo solo se enciende si hay algo:
+// uno permanente acaba significando "siempre hay algo", o sea nada.
 interface Pendiente { label: string; total: number; href: string }
 const pendientes = ref<Pendiente[]>([])
-const totalPendiente = computed(() => pendientes.value.reduce((n, p) => n + p.total, 0))
+
+interface Aviso {
+  id: string; tipo: string; titulo: string
+  descripcion: string | null; enlace: string | null; leida: boolean; createdAt: string
+}
+const avisos = ref<Aviso[]>([])
+const sinLeer = computed(() => avisos.value.filter((a) => !a.leida).length)
+
+const totalPendiente = computed(
+  () => pendientes.value.reduce((n, p) => n + p.total, 0) + sinLeer.value,
+)
 
 async function cargarPendientes() {
   if (!me.value || !puedeUsarMontacargas(me.value.role)) {
@@ -167,7 +181,7 @@ async function cargarPendientes() {
     const res = await $fetch<{ data: Record<string, number> }>('/api/montacargas/mis-pendientes')
     pendientes.value = [
       { label: 'Recepcion', total: res.data.RECEPCION ?? 0, href: '/dashboard/control-montacargas' },
-      { label: 'Movimientos de deposito', total: res.data.MOVIMIENTO ?? 0, href: '/dashboard/control-montacargas' },
+      { label: 'Movimientos de deposito', total: res.data.MOVIMIENTO ?? 0, href: '/dashboard/resurtido' },
       { label: 'Resurtido', total: res.data.RESURTIDO ?? 0, href: '/dashboard/resurtido' },
     ].filter((p) => p.total > 0)
   } catch {
@@ -175,7 +189,40 @@ async function cargarPendientes() {
     pendientes.value = []
   }
 }
-watch(() => me.value?.id, () => { void cargarPendientes() }, { immediate: true })
+
+async function cargarAvisos() {
+  if (!me.value) { avisos.value = []; return }
+  try {
+    const res = await $fetch<{ data: Aviso[] }>('/api/notificaciones')
+    avisos.value = res.data
+  } catch {
+    avisos.value = []
+  }
+}
+
+/**
+ * Marca como vistos al abrir el panel.
+ *
+ * Abrirlo ES verlos: hasta ese momento la alerta persiste, que es justo lo que
+ * hace que un aviso sirva para enterarse de algo que paso mientras no mirabas.
+ */
+async function marcarVistos() {
+  if (sinLeer.value === 0) return
+  try {
+    await $fetch('/api/notificaciones/leer', { method: 'POST', body: {} })
+    avisos.value = avisos.value.map((a) => ({ ...a, leida: true }))
+  } catch { /* se reintenta al proximo abrir */ }
+}
+
+watch(() => me.value?.id, () => {
+  void cargarPendientes()
+  void cargarAvisos()
+}, { immediate: true })
+
+// Los avisos llegan solos: sin esto habria que recargar para enterarse.
+let latido: ReturnType<typeof setInterval> | null = null
+onMounted(() => { latido = setInterval(() => { void cargarAvisos() }, 60_000) })
+onBeforeUnmount(() => { if (latido) clearInterval(latido) })
 
 // ── Sesion ──────────────────────────────────────────────────────────
 const cerrando = ref(false)
@@ -293,6 +340,24 @@ async function cerrarSesion() {
               <span v-if="totalPendiente > 0" class="dot" />
             </button>
             <div v-if="panel === 'avisos'" class="pop pop-avisos">
+              <template v-if="avisos.length">
+                <div class="pop-head">Avisos</div>
+                <ul class="pop-list">
+                  <li v-for="a in avisos.slice(0, 8)" :key="a.id">
+                    <button
+                      class="pop-row aviso" :class="{ nuevo: !a.leida }"
+                      @click="a.enlace ? irA({ href: a.enlace }) : cerrarPaneles()"
+                    >
+                      <BellRing :size="15" />
+                      <span class="aviso-txt">
+                        <b>{{ a.titulo }}</b>
+                        <em v-if="a.descripcion">{{ a.descripcion }}</em>
+                      </span>
+                    </button>
+                  </li>
+                </ul>
+              </template>
+
               <div class="pop-head">Pendiente por ubicar</div>
               <ul v-if="pendientes.length" class="pop-list">
                 <li v-for="p in pendientes" :key="p.label">
@@ -335,6 +400,17 @@ async function cerrarSesion() {
       </header>
 
       <main class="content">
+        <!-- Alerta que PERMANECE hasta que se ve: la campana hay que mirarla, y
+             un pendiente ubicado o un resurtido terminado no puede depender de
+             que a alguien se le ocurra abrirla. -->
+        <button v-if="sinLeer > 0" class="alerta" @click="abrir('avisos')">
+          <BellRing :size="16" />
+          <span>
+            Tienes <b>{{ sinLeer }}</b> aviso{{ sinLeer !== 1 ? 's' : '' }} sin leer
+          </span>
+          <span class="alerta-cta">Ver</span>
+        </button>
+
         <slot />
       </main>
     </div>
@@ -482,4 +558,26 @@ async function cerrarSesion() {
   font-family: var(--display); font-size: 12px; font-weight: 700; letter-spacing: -.01em;
   background: var(--brand-grad); -webkit-background-clip: text; background-clip: text; color: transparent;
 }
+/* Aviso dentro del panel de la campana */
+.pop-row.aviso { align-items: flex-start; }
+.aviso-txt { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.aviso-txt b { font-size: 12.5px; font-weight: 600; color: var(--ink); }
+.aviso-txt em { font-size: 11.5px; font-style: normal; color: var(--muted); }
+/* Sin leer: una barra a la izquierda, que se ve sin tener que comparar. */
+.pop-row.aviso.nuevo { box-shadow: inset 2px 0 0 var(--brand); background: var(--brand-tint); }
+
+/* Alerta persistente: se queda hasta que se abre la campana. */
+.alerta {
+  display: flex; align-items: center; gap: 10px; width: 100%;
+  margin: 0 0 18px; padding: 11px 15px; cursor: pointer;
+  border: 1px solid color-mix(in srgb, var(--brand) 40%, var(--border));
+  border-radius: var(--r-md); background: var(--brand-tint);
+  color: var(--ink); font-size: 13px; text-align: left;
+  animation: auroraFade .3s cubic-bezier(.16,1,.3,1) both;
+}
+.alerta:hover { border-color: var(--brand); }
+.alerta > span { flex: 1; }
+.alerta b { font-weight: 700; }
+.alerta :deep(svg) { color: var(--brand); flex-shrink: 0; }
+.alerta-cta { flex: 0 0 auto !important; font-weight: 700; color: var(--brand); }
 </style>
