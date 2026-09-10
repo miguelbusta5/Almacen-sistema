@@ -13,9 +13,11 @@ import {
   esUbicacionCanonica,
   minutosPorUsuario,
   minutosTrabajados,
+  repartirEnCajas,
   segundosDeAyudantes,
   segundosDelCreador,
   segundosTrabajados,
+  validarUnidadesAlmacenadas,
   normalizarCodigoProducto,
   normalizarUbicacion,
   novedadEsperada,
@@ -318,5 +320,45 @@ describe("montacargas — permisos", () => {
       expect(puedeUsarMontacargas(rol)).toBe(false);
     }
     expect(puedeUsarMontacargas(null)).toBe(false);
+  });
+});
+
+// Caso real: la ubicacion no da para toda la estiba. El ayudante guarda lo que
+// cabe, el registro pasa a valer eso, y el resto vuelve al montacarguista como
+// un registro propio con su reloj.
+describe("montacargas — sobrantes cuando no cabe todo", () => {
+  it("reparte las unidades en cajas completas mas sueltas", () => {
+    // 30 de 72, con 24 por caja: 1 caja entera y 6 sueltas.
+    expect(repartirEnCajas(30, 24)).toEqual({ cajas: 1, unidadesSueltas: 6 });
+    // El sobrante de ese mismo caso: 42 -> 1 caja y 18 sueltas.
+    expect(repartirEnCajas(42, 24)).toEqual({ cajas: 1, unidadesSueltas: 18 });
+  });
+
+  // La invariante de la que dependen KPIs y Excel.
+  it("lo repartido siempre vuelve a sumar la misma cantidad", () => {
+    for (const [u, porCaja] of [[30, 24], [42, 24], [7, 12], [100, 1], [55, 6]]) {
+      const r = repartirEnCajas(u, porCaja);
+      expect(calcularCantidadTotal(r.cajas, porCaja, r.unidadesSueltas)).toBe(u);
+    }
+  });
+
+  // Sin unidades por caja no hay cajas que formar: el 71% del catalogo no las
+  // trae y ahi todo es reguero.
+  it("sin unidades por caja todo queda como suelto", () => {
+    expect(repartirEnCajas(9, 0)).toEqual({ cajas: 0, unidadesSueltas: 9 });
+  });
+
+  it("acepta almacenar menos de lo declarado, pero no mas", () => {
+    expect(validarUnidadesAlmacenadas(30, 72)).toBeNull();
+    expect(validarUnidadesAlmacenadas(72, 72)).toBeNull();
+    expect(validarUnidadesAlmacenadas(73, 72)).toMatch(/mas de las 72/);
+  });
+
+  // Cero no se acepta: si no cupo NADA no hay nada que cerrar, y para eso esta
+  // el boton de pasarle el PLU a otra persona.
+  it("no deja cerrar un registro sin haber almacenado nada", () => {
+    expect(validarUnidadesAlmacenadas(0, 72)).toMatch(/pasa el PLU/);
+    expect(validarUnidadesAlmacenadas(-3, 72)).toMatch(/pasa el PLU/);
+    expect(validarUnidadesAlmacenadas(1.5, 72)).toMatch(/cuantas unidades/);
   });
 });

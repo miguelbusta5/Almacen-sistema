@@ -536,3 +536,49 @@ describe("apiErr — mensaje de error legible", () => {
       .not.toContain("e?.data?.error ||");
   });
 });
+
+// Cuando al ayudante no le caben todas las unidades: almacena lo que cabe y el
+// resto vuelve al montacarguista como un registro propio, con su reloj.
+describe("montacargas — sobrantes", () => {
+  const ubicacion = leer("nuxt-app/server/api/montacargas/[id]/ubicacion.post.ts");
+
+  it("el cierre acepta cuantas unidades se almacenaron de verdad", () => {
+    expect(ubicacion).toContain("unidadesAlmacenadas");
+    expect(ubicacion).toContain("validarUnidadesAlmacenadas");
+    // Opcional: si no viene, se cierra con todo, que es el caso normal.
+    expect(ubicacion).toContain("parsed.data.unidadesAlmacenadas ?? record.cantidadTotal");
+  });
+
+  it("el registro cerrado queda valiendo lo que si se almaceno", () => {
+    expect(ubicacion).toContain("repartirEnCajas(almacenadas, record.unidadesPorCaja)");
+    expect(ubicacion).toContain("cantidadTotal: almacenadas");
+  });
+
+  it("el sobrante nace como registro propio del montacarguista y con reloj", () => {
+    expect(ubicacion).toContain("origenId: id");
+    // Vuelve a quien abrio el PLU, no a quien lo cerro.
+    expect(ubicacion).toContain("responsableId: record.creadoPorId");
+    expect(ubicacion).toContain("estado: 'EN_CURSO'");
+    expect(ubicacion).toContain("abrirTramo(tx, creado.id, record.creadoPorId, now, 1)");
+    // Todo en la misma transaccion: o se parte entero o no se parte.
+    expect(ubicacion).toContain("prisma.$transaction");
+  });
+
+  it("se marca en la UI para no leerlo como una estiba nueva", () => {
+    expect(leer("nuxt-app/server/utils/mapRow.ts")).toContain("origenId: r.origenId ?? null");
+    expect(leer("nuxt-app/app/components/montacargas/Tabla.vue")).toContain("item.origenId");
+    const reg = leer("nuxt-app/app/components/montacargas/RegistroAbierto.vue");
+    expect(reg).toContain("m.origenId");
+    // La pregunta es solo para el ayudante: el montacarguista elige la
+    // ubicacion del sobrante, asi que a el le cabe por definicion.
+    expect(reg).toContain('v-if="esAyudante" class="f f-cant"');
+  });
+
+  it("el enlace al registro de origen esta en los dos schemas", () => {
+    for (const rel of ["prisma/schema.prisma", "nuxt-app/prisma/schema.prisma"]) {
+      const schema = leer(rel);
+      expect(schema).toContain("origenId  String?");
+      expect(schema).toContain('@relation("SobrantesMontacargas"');
+    }
+  });
+});

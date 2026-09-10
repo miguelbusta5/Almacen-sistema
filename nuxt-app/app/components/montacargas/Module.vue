@@ -267,12 +267,24 @@ async function guardarCantidades(m: Movimiento, payload: Record<string, unknown>
   if (ok) await loadAbiertos()
 }
 
-async function ubicar(m: Movimiento, ubicacionFinal: string) {
+async function ubicar(
+  m: Movimiento,
+  payload: { ubicacionFinal: string; unidadesAlmacenadas: number },
+) {
   const res = await accion(m.id, () =>
-    $fetch<{ data: Movimiento }>(`${API_MONTACARGAS}/${m.id}/ubicacion`, {
-      method: 'POST', body: { ubicacionFinal },
-    }), 'No se pudo cerrar el registro')
+    $fetch<{ data: Movimiento; sobrante: { id: string; unidades: number } | null }>(
+      `${API_MONTACARGAS}/${m.id}/ubicacion`, { method: 'POST', body: payload },
+    ), 'No se pudo cerrar el registro')
   if (!res) return
+
+  // Si no cupo todo, el resto sigue vivo en manos del montacarguista: se avisa
+  // aparte del overlay de exito, que solo habla del registro que se cerro.
+  if (res.sobrante) {
+    showToast(
+      `Se cerro con ${res.data.cantidadTotal} unidades. `
+      + `${res.sobrante.unidades} volvieron a ${m.creadoPorNombre ?? 'el montacarguista'}`,
+    )
+  }
 
   // Confirmación de proceso exitoso: overlay + sonido/vibración, para que el
   // operario lo perciba sin mirar la pantalla y encadene el siguiente.

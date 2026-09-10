@@ -268,6 +268,48 @@ export function calcularCantidadTotal(
   return enCajas + sueltas
 }
 
+/**
+ * Reparte una cantidad de unidades en cajas master completas + sueltas.
+ *
+ * Hace falta al partir un registro: si de 72 unidades el ayudante solo almaceno
+ * 30, ese registro pasa a valer 30 y hay que expresarlo como 1 caja de 24 mas 6
+ * sueltas, porque `cantidadTotal = cajas * unidadesPorCaja + sueltas` es una
+ * invariante de la que dependen los KPIs y el Excel.
+ */
+export function repartirEnCajas(
+  unidades: number,
+  unidadesPorCaja: number,
+): { cajas: number; unidadesSueltas: number } {
+  const u = Math.max(0, Math.round(Number.isFinite(unidades) ? unidades : 0))
+  const porCaja = Math.max(0, Math.round(Number.isFinite(unidadesPorCaja) ? unidadesPorCaja : 0))
+  // Sin unidades por caja no hay cajas que formar: todo es reguero.
+  if (porCaja < 1) return { cajas: 0, unidadesSueltas: u }
+  return { cajas: Math.floor(u / porCaja), unidadesSueltas: u % porCaja }
+}
+
+/**
+ * Valida cuantas unidades dice el ayudante que alcanzo a almacenar.
+ *
+ * El caso real: la ubicacion no da para toda la estiba. Guarda lo que cabe y el
+ * resto vuelve al montacarguista. Cero no se acepta: si no cupo NADA no hay nada
+ * que cerrar, y para eso esta el boton de pasarle el PLU a otra persona.
+ */
+export function validarUnidadesAlmacenadas(
+  almacenadas: number,
+  total: number,
+): string | null {
+  if (!Number.isFinite(almacenadas) || !Number.isInteger(almacenadas)) {
+    return "Indica cuantas unidades almacenaste"
+  }
+  if (almacenadas < 1) {
+    return "Si no almacenaste nada, pasa el PLU en vez de cerrarlo"
+  }
+  if (almacenadas > total) {
+    return `No puedes almacenar mas de las ${total} unidades declaradas`
+  }
+  return null
+}
+
 export interface TramoLike {
   usuarioId: string
   inicio: Date | string

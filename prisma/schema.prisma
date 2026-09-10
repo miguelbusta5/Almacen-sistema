@@ -1118,6 +1118,14 @@ model MovimientoMontacargas {
   motivoCorreccion String?   @map("motivo_correccion")
   deletedAt        DateTime? @map("deleted_at")
 
+  // De donde salio este registro cuando es un SOBRANTE: al ayudante no le cabieron
+  // todas las unidades, almaceno las que pudo y el resto volvio al montacarguista
+  // como un registro propio, con su ubicacion y su reloj. Se enlaza para poder
+  // reconstruir la estiba completa: dos filas, dos ubicaciones, un solo PLU.
+  origenId  String?                @map("origen_id")
+  origen    MovimientoMontacargas? @relation("SobrantesMontacargas", fields: [origenId], references: [id])
+  sobrantes MovimientoMontacargas[] @relation("SobrantesMontacargas")
+
   creadoPorId String @map("creado_por_id")
   creadoPor   User   @relation("MovimientosMontacargasCreados", fields: [creadoPorId], references: [id])
   // Quien tiene el PLU en la mano ahora mismo. Cambia con cada traspaso; es lo
@@ -1137,6 +1145,7 @@ model MovimientoMontacargas {
   @@index([responsableId, tipo, estado, deletedAt])
   @@index([tipo, fecha])
   @@index([plu])
+  @@index([origenId])
   @@map("movimientos_montacargas")
 }
 

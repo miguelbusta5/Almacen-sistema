@@ -14,6 +14,7 @@ import { UserPlus, Trash2, TriangleAlert, CheckCircle2, Boxes } from '@lucide/vu
 import {
   calcularCantidadTotal, esUbicacionCanonica, fmtHoraMovimiento, normalizarUbicacion,
   requiereUbicacionInicial, tieneCantidades, TIPO_NOVEDAD_LABEL, cronometroTramo,
+  validarUnidadesAlmacenadas,
   type Movimiento,
 } from '~/utils/montacargas'
 
@@ -32,7 +33,7 @@ const props = defineProps<{
 }>()
 const emit = defineEmits<{
   (e: 'cantidades', payload: { cajas: number; unidadesPorCaja: number; hayReguero: boolean; unidadesSueltas: number }): void
-  (e: 'ubicar', ubicacionFinal: string): void
+  (e: 'ubicar', payload: { ubicacionFinal: string; unidadesAlmacenadas: number }): void
   (e: 'traspasar'): void
   (e: 'novedad'): void
   (e: 'resolver'): void
@@ -90,13 +91,35 @@ const ubicInput = ref<HTMLInputElement | null>(null)
 const ubicacion = ref('')
 const normalizada = computed(() => normalizarUbicacion(ubicacion.value))
 const esLibre = computed(() => Boolean(normalizada.value) && !esUbicacionCanonica(normalizada.value))
-const puedeUbicar = computed(() => !props.guardando && Boolean(normalizada.value) && listo.value && !enNovedad.value)
+
+// Cuantas unidades cupieron de verdad. Solo se le pregunta al ayudante: el
+// montacarguista elige la ubicacion del sobrante, asi que a el le cabe por
+// definicion. Arranca con el total, que es el caso normal.
+const almacenadas = ref(String(m.value.cantidadTotal || ''))
+watch(() => m.value.id, () => { almacenadas.value = String(m.value.cantidadTotal || '') })
+watch(() => m.value.cantidadTotal, (v) => { almacenadas.value = String(v || '') })
+
+const almacenadasNum = computed(() => Number(almacenadas.value || 0))
+const errorAlmacenadas = computed(() =>
+  props.esAyudante ? validarUnidadesAlmacenadas(almacenadasNum.value, m.value.cantidadTotal) : null,
+)
+const sobrante = computed(() =>
+  props.esAyudante ? Math.max(0, m.value.cantidadTotal - almacenadasNum.value) : 0,
+)
+
+const puedeUbicar = computed(() =>
+  !props.guardando && Boolean(normalizada.value) && listo.value && !enNovedad.value
+  && !errorAlmacenadas.value,
+)
 
 watch(() => props.destacado, (v) => { if (v) void nextTick(() => ubicInput.value?.focus()) })
 
 function ubicar() {
   if (!puedeUbicar.value) return
-  emit('ubicar', normalizada.value)
+  emit('ubicar', {
+    ubicacionFinal: normalizada.value,
+    unidadesAlmacenadas: props.esAyudante ? almacenadasNum.value : m.value.cantidadTotal,
+  })
 }
 </script>
 
@@ -107,6 +130,9 @@ function ubicar() {
       <div class="cab-txt">
         <b class="mono">{{ m.plu }}</b>
         <span class="desc">{{ m.descripcion }}</span>
+        <span v-if="m.origenId" class="chip-sob" title="Es lo que no cupo en la ubicacion anterior">
+          Sobrante
+        </span>
       </div>
       <div class="cab-der">
         <span v-if="enNovedad" class="chip-nov"><TriangleAlert :size="12" /> Reloj detenido</span>
@@ -198,6 +224,23 @@ function ubicar() {
 
     <!-- Ubicación final: cierra el registro y para el reloj -->
     <form v-if="!enNovedad" class="cerrar" @submit.prevent="ubicar">
+      <!-- Cuanto cupo de verdad. Solo al ayudante: el montacarguista elige donde
+           va el sobrante, asi que a el le cabe por definicion. -->
+      <label v-if="esAyudante" class="f f-cant">
+        <span class="lbl">Unidades que almacenaste</span>
+        <input
+          v-model="almacenadas" class="field tnum" type="number" min="1"
+          :max="m.cantidadTotal" inputmode="numeric" :disabled="guardando"
+        >
+        <span v-if="errorAlmacenadas" class="hint warn-txt">
+          <TriangleAlert :size="11" /> {{ errorAlmacenadas }}
+        </span>
+        <span v-else-if="sobrante > 0" class="hint sob-txt">
+          <TriangleAlert :size="11" />
+          Quedan {{ sobrante }} sin almacenar: vuelven a
+          {{ m.creadoPorNombre ?? 'el montacarguista' }} para que las ubique
+        </span>
+      </label>
       <label class="f f-ubic">
         <span class="lbl">Ubicación final</span>
         <input
@@ -285,6 +328,20 @@ function ubicar() {
 
 .cerrar { display: flex; align-items: flex-end; gap: 10px; }
 .f-ubic { flex: 1 1 auto; }
+/* Angosto a proposito: es un numero de tres cifras, no un campo de texto. */
+.f-cant { flex: 0 0 150px; }
+.sob-txt { color: var(--u-aviso); }
+.chip-sob {
+  align-self: flex-start;
+  padding: 1px 7px;
+  border: 1px solid var(--u-aviso);
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+  color: var(--u-aviso);
+}
 .hint { display: flex; align-items: center; gap: 4px; font-size: 11px; }
 .warn-txt { color: var(--u-aviso); }
 .submit { height: 36px; white-space: nowrap; }
@@ -300,6 +357,7 @@ function ubicar() {
   .cant { flex-direction: column; align-items: stretch; }
   .f, .f-chk, .f-btn { flex: 1 1 auto; }
   .cerrar { flex-direction: column; align-items: stretch; }
+  .f-cant { flex: 1 1 auto; }
   .cerrar :deep(.field) { height: 46px; font-size: 16px; }
   .submit { height: 46px; justify-content: center; }
   .esperado b { font-size: 30px; }

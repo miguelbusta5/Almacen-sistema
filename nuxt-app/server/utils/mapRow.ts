@@ -419,6 +419,10 @@ export function mapMovimientoMontacargas(r: any) {
       ? segundosDeAyudantes(tramos, r.creadoPorId)
       : null,
     motivoCorreccion: r.motivoCorreccion ?? null,
+    // Cuando el ayudante no pudo almacenar todo, lo que quedo nacio como un
+    // registro aparte que apunta aqui. La UI lo marca para que nadie lo lea como
+    // una estiba nueva que salio de la nada.
+    origenId: r.origenId ?? null,
     creadoPorId: r.creadoPorId,
     creadoPorNombre: r.creadoPor?.name ?? null,
     responsableId: r.responsableId,

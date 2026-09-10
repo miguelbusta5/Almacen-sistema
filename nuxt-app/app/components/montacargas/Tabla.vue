@@ -65,7 +65,14 @@ const librs = computed(
           <td class="muted">{{ fmtFechaCorta(item.fecha) }}</td>
           <td class="op">{{ item.creadoPorNombre ?? '—' }}</td>
           <td class="mono strong">{{ item.plu }}</td>
-          <td class="desc" :title="item.descripcion">{{ item.descripcion }}</td>
+          <td class="desc" :title="item.descripcion">
+            {{ item.descripcion }}
+            <!-- Es lo que no cupo en otra ubicacion: sin esto se lee como una
+                 estiba nueva salida de la nada, con un total que no cuadra. -->
+            <span v-if="item.origenId" class="chip-sob" title="Sobrante de otro registro">
+              Sobrante
+            </span>
+          </td>
           <td class="tnum">{{ item.cajas }}</td>
           <td class="tnum">
             {{ item.unidadesPorCaja }}
@@ -119,7 +126,10 @@ const librs = computed(
           <span class="mono strong">{{ item.plu }}</span>
           <Badge v-bind="badge(item)" />
         </header>
-        <p class="rc-desc">{{ item.descripcion }}</p>
+        <p class="rc-desc">
+          {{ item.descripcion }}
+          <span v-if="item.origenId" class="chip-sob">Sobrante</span>
+        </p>
         <dl class="rc-meta">
           <div><dt>Fecha</dt><dd>{{ fmtFechaCorta(item.fecha) }}</dd></div>
           <div><dt>Cajas</dt><dd class="tnum">{{ item.cajas }} × {{ item.unidadesPorCaja }}</dd></div>
@@ -181,4 +191,17 @@ const librs = computed(
 .rc-meta dt { font-size: 10px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; color: var(--faint); }
 .rc-meta dd { margin: 1px 0 0; font-size: 12.5px; color: var(--ink-2); }
 .rc-acc { display: flex; gap: 8px; margin-top: 11px; }
+.chip-sob {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 0 6px;
+  border: 1px solid var(--u-aviso);
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: .03em;
+  text-transform: uppercase;
+  color: var(--u-aviso);
+  vertical-align: middle;
+}
 </style>
