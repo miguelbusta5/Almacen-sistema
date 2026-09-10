@@ -60,6 +60,10 @@ export const MODULE_THEME: Record<ModuleThemeKey, ModuleTheme> = {
   "cargue-gourmet": mod("cargue-gourmet", "Cargue Gourmet", "Cargue Gourmet", "Ubicacion y cargue verificado de pedidos Gourmet"),
   "control-montacargas": mod("control-montacargas", "Control Montacargas", "Montacargas", "Recepcion de contenedor y movimientos de deposito"),
   resurtido: mod("resurtido", "Resurtido", "Resurtido", "Reposicion de mercancia desde deposito"),
+  "recepcion-contenedores": mod(
+    "recepcion-contenedores", "Recepcion de Contenedores", "Recepcion",
+    "Planilla de descarga de contenedor con tiempos y novedades",
+  ),
 };
 
 export function getModuleTheme(key: ModuleThemeKey | string | null | undefined): ModuleTheme {

@@ -19,7 +19,10 @@ const NUXT_PILOT_SOLICITUDES_URL = process.env.NUXT_PILOT_SOLICITUDES_URL; // So
 const NUXT_PILOT_AUDITORIA_URL = process.env.NUXT_PILOT_AUDITORIA_URL; // Auditoría
 const NUXT_PILOT_USUARIOS_URL = process.env.NUXT_PILOT_USUARIOS_URL; // Usuarios
 const NUXT_PILOT_LOGIN_URL = process.env.NUXT_PILOT_LOGIN_URL; // Login
-const NUXT_PILOT_MONTACARGAS_URL = process.env.NUXT_PILOT_MONTACARGAS_URL; // Control Montacargas + Resurtido
+// Control Montacargas + Resurtido + Recepcion de Contenedores. Una sola
+// variable para los tres: son el mismo deploy de nuxt-app y comparten el flujo
+// del CEDI, asi que un modulo nuevo entra sin tocar Vercel.
+const NUXT_PILOT_MONTACARGAS_URL = process.env.NUXT_PILOT_MONTACARGAS_URL;
 
 // Todas apuntan al mismo deploy de nuxt-app (app.baseURL: '/dashboard/' compartido
 // en nuxt.config.ts) — sus assets (/_nuxt/*) y su $fetch interno a /api/* viven
@@ -99,12 +102,11 @@ const nextConfig: NextConfig = {
         { source: "/dashboard/auditoria/:path*", destination: `${NUXT_PILOT_AUDITORIA_URL}/dashboard/auditoria/:path*` },
       );
     }
-    // Una sola variable activa los dos módulos: comparten componente, API y
-    // deploy, así que no tiene sentido poder encender uno sin el otro.
-    // Ninguno tiene página React de respaldo (se construyeron directo en Nuxt),
+    // Una sola variable activa los tres módulos del CEDI: comparten deploy, y
+    // ninguno tiene página React de respaldo (se construyeron directo en Nuxt),
     // así que sin esta variable las rutas dan 404 en vez de degradar.
     if (NUXT_PILOT_MONTACARGAS_URL) {
-      for (const modulo of ["control-montacargas", "resurtido"]) {
+      for (const modulo of ["control-montacargas", "resurtido", "recepcion-contenedores"]) {
         beforeFiles.push(
           { source: `/dashboard/${modulo}`, destination: `${NUXT_PILOT_MONTACARGAS_URL}/dashboard/${modulo}` },
           { source: `/dashboard/${modulo}/:path*`, destination: `${NUXT_PILOT_MONTACARGAS_URL}/dashboard/${modulo}/:path*` },

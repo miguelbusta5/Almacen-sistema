@@ -145,6 +145,10 @@ model User {
   exportacionesEeuuCreadas       EtiquetadoExportacionEeuu[]    @relation("ExportacionesEeuuEtiquetadoCreadas")
   exportacionesEeuuActualizadas  EtiquetadoExportacionEeuu[]    @relation("ExportacionesEeuuEtiquetadoActualizadas")
   gourmetPedidosCreados          GourmetPedido[]                @relation("GourmetPedidosCreados")
+  recepcionesCreadas      RecepcionContenedor[]  @relation("RecepcionesCreadas")
+  recepcionesActualizadas RecepcionContenedor[]  @relation("RecepcionesActualizadas")
+  descargasRecepcion      DescargadorRecepcion[] @relation("DescargasRecepcion")
+  novedadesRecepcion      NovedadRecepcion[]     @relation("NovedadesRecepcionCreadas")
   movimientosMontacargasCreados      MovimientoMontacargas[] @relation("MovimientosMontacargasCreados")
   movimientosMontacargasResponsable  MovimientoMontacargas[] @relation("MovimientosMontacargasResponsable")
   movimientosMontacargasActualizados MovimientoMontacargas[] @relation("MovimientosMontacargasActualizados")
@@ -1256,4 +1260,118 @@ model MedidaProducto {
   updatedAt      DateTime @updatedAt @map("updated_at")
 
   @@map("medidas_producto")
+}
+
+enum TipoProductoRecepcion {
+  GOURMET
+  MUEBLES
+}
+
+enum EstadoRecepcion {
+  EN_CURSO
+  CERRADO
+}
+
+/// Tipos de novedad de un contenedor. Faltante y sobrante van separados en vez
+/// de un solo tipo con signo: en la planilla de papel son dos casillas distintas
+/// y contarlos juntos escondia cual de los dos problema tiene el proveedor.
+enum TipoNovedadRecepcion {
+  FALTANTE
+  SOBRANTE
+  AVERIA
+  MALTRATADA
+}
+
+/// Planilla de recepcion de un contenedor.
+///
+/// El reloj arranca al registrar el numero de pedido y se cierra cuando el
+/// operario vuelve a la planilla con las estibas usadas: es el tiempo real que
+/// tomo bajar el contenedor. Los reportes de novedad llegan DESPUES de cerrar y
+/// no cuentan tiempo, igual que la verificacion en Control Montacargas.
+model RecepcionContenedor {
+  id     String          @id @default(cuid())
+  estado EstadoRecepcion @default(EN_CURSO)
+
+  numeroPedido String                @map("numero_pedido") @db.VarChar(50)
+  proveedor    String                @db.VarChar(160)
+  tipoProducto TipoProductoRecepcion @map("tipo_producto")
+
+  /// Peso del contenedor en kilos, tal como viene en la documentacion.
+  pesoKg                Decimal @map("peso_kg") @db.Decimal(10, 2)
+  referenciasEsperadas  Int     @map("referencias_esperadas")
+  cajas                 Int
+  unidades              Int
+
+  /// Se llenan al cerrar, cuando ya se sabe como quedo la descarga.
+  estibasUsadas     Int? @map("estibas_usadas")
+  referenciasNuevas Int? @map("referencias_nuevas")
+  unidadesNuevas    Int? @map("unidades_nuevas")
+
+  fecha            DateTime  @db.Date
+  horaInicio       DateTime  @map("hora_inicio")
+  horaFinalizacion DateTime? @map("hora_finalizacion")
+
+  motivoCorreccion String?   @map("motivo_correccion")
+  deletedAt        DateTime? @map("deleted_at")
+
+  creadoPorId      String  @map("creado_por_id")
+  creadoPor        User    @relation("RecepcionesCreadas", fields: [creadoPorId], references: [id])
+  actualizadoPorId String? @map("actualizado_por_id")
+  actualizadoPor   User?   @relation("RecepcionesActualizadas", fields: [actualizadoPorId], references: [id])
+
+  descargadores DescargadorRecepcion[]
+  novedades     NovedadRecepcion[]
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([estado, deletedAt])
+  @@index([fecha])
+  @@index([numeroPedido])
+  @@index([creadoPorId])
+  @@map("recepciones_contenedor")
+}
+
+/// Quien estuvo descargando. Tabla propia y no un campo de texto: son usuarios
+/// reales del sistema, y asi el indicador puede repartir el trabajo por persona.
+model DescargadorRecepcion {
+  id          String              @id @default(cuid())
+  recepcionId String              @map("recepcion_id")
+  recepcion   RecepcionContenedor @relation(fields: [recepcionId], references: [id], onDelete: Cascade)
+  usuarioId   String              @map("usuario_id")
+  usuario     User                @relation("DescargasRecepcion", fields: [usuarioId], references: [id])
+  createdAt   DateTime            @default(now()) @map("created_at")
+
+  @@unique([recepcionId, usuarioId])
+  @@index([usuarioId])
+  @@map("descargadores_recepcion")
+}
+
+/// Una linea de novedad del contenedor: un PLU con su cantidad.
+///
+/// Cada fila es una linea, no un "reporte": un contenedor puede traer varios
+/// faltantes a la vez, y preguntar "hay reporte de averias?" es mirar si existe
+/// alguna fila de ese tipo. La foto es por linea porque se fotografia la caja
+/// averiada concreta, no el contenedor entero.
+model NovedadRecepcion {
+  id          String               @id @default(cuid())
+  recepcionId String               @map("recepcion_id")
+  recepcion   RecepcionContenedor  @relation(fields: [recepcionId], references: [id], onDelete: Cascade)
+  tipo        TipoNovedadRecepcion
+
+  plu         String  @db.VarChar(100)
+  /// Copiada del maestro al registrarla: si el maestro cambia despues, el
+  /// reporte tiene que seguir diciendo lo que se vio ese dia.
+  descripcion String  @db.VarChar(255)
+  cantidad    Int
+  fotoUrl     String? @map("foto_url")
+  observacion String?
+
+  creadoPorId String   @map("creado_por_id")
+  creadoPor   User     @relation("NovedadesRecepcionCreadas", fields: [creadoPorId], references: [id])
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  @@index([recepcionId, tipo])
+  @@index([plu])
+  @@map("novedades_recepcion")
 }

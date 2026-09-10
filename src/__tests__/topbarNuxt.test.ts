@@ -40,8 +40,8 @@ describe("barra superior — controles funcionales", () => {
   it("el buscador solo ofrece módulos que el usuario puede ver", () => {
     // visibleGroups ya está filtrado por canSeeModule; buscar sobre NAV_GROUPS
     // ofrecería módulos que llevan a una pantalla de "sin permiso".
-    expect(layout).toContain("visibleGroups.value.flat()");
-    expect(layout).not.toContain("NAV_GROUPS.flat()");
+    expect(layout).toContain("visibleGroups.value.flatMap((g) => g.items)");
+    expect(layout).not.toContain("NAV_GROUPS.flat");
   });
 
   // Un punto rojo permanente no avisa de nada: acaba significando "siempre hay

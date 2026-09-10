@@ -5,6 +5,7 @@ import { calcularDuracionMinutos, formatDateOnly } from './exportacionesCalc'
 import {
   huboTraspaso, segundosDeAyudantes, segundosDelCreador, segundosTrabajados,
 } from './montacargasCalc'
+import { segundosRecepcion } from './recepcionCalc'
 
 // Mapea la fila de TransporteGuardado al shape del cliente (igual que la app Next).
 export function mapGuardado(r: any) {
@@ -432,5 +433,53 @@ export function mapMovimientoMontacargas(r: any) {
     tramos,
     novedades,
     novedadAbierta: novedades.find((n: any) => !n.resueltaAt) ?? null,
+  }
+}
+
+
+// ── Recepcion de Contenedores ────────────────────────────────────────
+/**
+ * Fila de recepcion -> DTO del cliente.
+ *
+ * `duracionSegundos` va en null mientras la recepcion esta abierta: el reloj
+ * sigue corriendo y quien lo pinta es el cronometro del cliente, no el servidor.
+ */
+export function mapRecepcion(r: any) {
+  return {
+    id: r.id,
+    estado: r.estado,
+    numeroPedido: r.numeroPedido,
+    proveedor: r.proveedor,
+    tipoProducto: r.tipoProducto,
+    // Decimal de Prisma: al cliente va como number, que es lo que espera el DTO.
+    pesoKg: Number(r.pesoKg),
+    referenciasEsperadas: r.referenciasEsperadas,
+    cajas: r.cajas,
+    unidades: r.unidades,
+    estibasUsadas: r.estibasUsadas ?? null,
+    referenciasNuevas: r.referenciasNuevas ?? null,
+    unidadesNuevas: r.unidadesNuevas ?? null,
+    fecha: formatDateOnly(r.fecha),
+    horaInicio: r.horaInicio.toISOString(),
+    horaFinalizacion: r.horaFinalizacion ? r.horaFinalizacion.toISOString() : null,
+    duracionSegundos: segundosRecepcion(r.horaInicio, r.horaFinalizacion),
+    motivoCorreccion: r.motivoCorreccion ?? null,
+    creadoPorId: r.creadoPorId,
+    creadoPorNombre: r.creadoPor?.name ?? null,
+    descargadores: (r.descargadores ?? []).map((d: any) => ({
+      id: d.usuarioId,
+      nombre: d.usuario?.name ?? 'Usuario',
+    })),
+    novedades: (r.novedades ?? []).map((n: any) => ({
+      id: n.id,
+      tipo: n.tipo,
+      plu: n.plu,
+      descripcion: n.descripcion,
+      cantidad: n.cantidad,
+      fotoUrl: n.fotoUrl ?? null,
+      observacion: n.observacion ?? null,
+      creadoPorNombre: n.creadoPor?.name ?? null,
+      createdAt: n.createdAt.toISOString(),
+    })),
   }
 }

@@ -19,7 +19,8 @@ export type ModuleKey =
   | "integracion"
   | "cargue-gourmet"
   | "control-montacargas"
-  | "resurtido";
+  | "resurtido"
+  | "recepcion-contenedores";
 
 export const MODULE_ACCESS: Record<ModuleKey, AppRole[]> = {
   transporte: ["TRANSPORTE", "SUPERVISOR_TRANSPORTE", "GERENTE", "ADMIN", "OPERADOR"],
@@ -74,6 +75,9 @@ export const MODULE_ACCESS: Record<ModuleKey, AppRole[]> = {
   // inventario y de transporte quedan fuera: el trabajo de montacargas no es su area.
   "control-montacargas": ["MONTACARGAS", "OPERARIO_ALMACENAMIENTO", "SUPERVISOR_ALMACENAMIENTO", "GERENTE", "ADMIN"],
   resurtido: ["MONTACARGAS", "OPERARIO_ALMACENAMIENTO", "SUPERVISOR_ALMACENAMIENTO", "GERENTE", "ADMIN"],
+  // Sin MONTACARGAS a proposito: descargan el contenedor y salen en la lista
+  // de personas descargando, pero la planilla la lleva siempre el operario.
+  "recepcion-contenedores": ["OPERARIO_ALMACENAMIENTO", "SUPERVISOR_ALMACENAMIENTO", "GERENTE", "ADMIN"],
 };
 
 export function canSeeModule(role: string | undefined | null, moduleKey: ModuleKey): boolean {

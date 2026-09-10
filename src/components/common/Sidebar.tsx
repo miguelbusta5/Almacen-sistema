@@ -13,6 +13,7 @@ import {
   
   Menu,
   PackageOpen,
+  Container,
   ScanLine,
   ScrollText,
   ShieldCheck,
@@ -47,6 +48,7 @@ const ALL_ITEMS: NavItem[] = [
   { href: "/dashboard/cargue-gourmet", label: "Cargue Gourmet", icon: <ScanLine size={16} strokeWidth={2.1} />, moduleKey: "cargue-gourmet" },
   { href: "/dashboard/control-montacargas", label: "Control Montacargas", icon: <Forklift size={16} strokeWidth={2.1} />, moduleKey: "control-montacargas" },
   { href: "/dashboard/resurtido", label: "Resurtido", icon: <PackageOpen size={16} strokeWidth={2.1} />, moduleKey: "resurtido" },
+  { href: "/dashboard/recepcion-contenedores", label: "Recepcion Contenedores", icon: <Container size={16} strokeWidth={2.1} />, moduleKey: "recepcion-contenedores" },
   { href: "/dashboard/exportaciones", label: "Exportaciones Ecuador", icon: <Tags size={16} strokeWidth={2.1} />, moduleKey: "exportaciones" },
   { href: "/dashboard/exportaciones-mexico", label: "Exportaciones México", icon: <Globe size={16} strokeWidth={2.1} />, moduleKey: "exportaciones-mexico" },
   { href: "/dashboard/exportaciones-eeuu", label: "Exportaciones EE.UU", icon: <Globe size={16} strokeWidth={2.1} />, moduleKey: "exportaciones-eeuu" },
@@ -65,6 +67,7 @@ const GROUPS = [
     "/dashboard/cargue-gourmet",
     "/dashboard/control-montacargas",
     "/dashboard/resurtido",
+    "/dashboard/recepcion-contenedores",
     "/dashboard/exportaciones",
     "/dashboard/exportaciones-mexico",
     "/dashboard/exportaciones-eeuu",

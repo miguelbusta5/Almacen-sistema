@@ -2,7 +2,7 @@
 import { computed, nextTick, onMounted, ref, watch } from 'vue'
 import {
   ShieldCheck, Store, GitMerge, ScanLine, Forklift, PackageOpen, Tags, Globe, FileText, Truck,
-  BarChart3, Users, ScrollText, Search, Bell, CheckCircle2, TriangleAlert,
+  BarChart3, Users, ScrollText, Search, Bell, CheckCircle2, TriangleAlert, Container,
   Menu, X, LogOut, KeyRound, CornerDownLeft, Inbox,
 } from '@lucide/vue'
 import { ensureSession, useSessionState } from '~/composables/useSession'
@@ -35,36 +35,66 @@ watch(sessionInvalid, (invalid) => {
 // Mismo listado y agrupación que src/components/common/Sidebar.tsx (Next.js) —
 // mantener ambos en sync.
 interface NavItem { icon: unknown; label: string; href: string; key: string | null; moduleKey: ModuleKey | null }
-const NAV_GROUPS: NavItem[][] = [
+/**
+ * Menu por bloques con nombre.
+ *
+ * Once modulos seguidos son una pared: hay que leerlos todos para encontrar uno.
+ * Los titulos agrupan por como trabaja la gente —lo que pasa en el CEDI, lo que
+ * sale a la calle, lo que se mira desde una oficina— sin mover ningun enlace de
+ * sitio. Un grupo cuyos items no pueda ver el rol no pinta ni su titulo.
+ */
+interface NavGroup { titulo: string | null; items: NavItem[] }
+const NAV_GROUPS: NavGroup[] = [
   // Sin ítem "Inicio": /dashboard ya no es una página, redirige al primer módulo
   // visible del rol (src/app/(dashboard)/dashboard/page.tsx), así que para muchos
   // roles el enlace devolvía al usuario justo donde ya estaba.
-  [
-    { icon: ShieldCheck, label: 'Preoperacional', href: '/dashboard/preoperacional', key: 'preoperacional', moduleKey: 'preoperacional' },
-  ],
-  [
-    { icon: Store, label: 'Facturas Contado', href: '/dashboard/tienda', key: 'tienda', moduleKey: 'tienda' },
-    { icon: GitMerge, label: 'Integración Pedidos', href: '/dashboard/integracion', key: 'integracion', moduleKey: 'integracion' },
-    { icon: ScanLine, label: 'Cargue Gourmet', href: '/dashboard/cargue-gourmet', key: 'cargue-gourmet', moduleKey: 'cargue-gourmet' },
-    { icon: Forklift, label: 'Control Montacargas', href: '/dashboard/control-montacargas', key: 'control-montacargas', moduleKey: 'control-montacargas' },
-    { icon: PackageOpen, label: 'Resurtido', href: '/dashboard/resurtido', key: 'resurtido', moduleKey: 'resurtido' },
-    { icon: Tags, label: 'Exportaciones Ecuador', href: '/dashboard/exportaciones', key: 'exportaciones', moduleKey: 'exportaciones' },
-    { icon: Globe, label: 'Exportaciones México', href: '/dashboard/exportaciones-mexico', key: 'exportaciones-mexico', moduleKey: 'exportaciones-mexico' },
-    { icon: Globe, label: 'Exportaciones EE.UU', href: '/dashboard/exportaciones-eeuu', key: 'exportaciones-eeuu', moduleKey: 'exportaciones-eeuu' },
-    { icon: FileText, label: 'Solicitudes Transporte', href: '/dashboard/solicitudes-transporte', key: 'solicitudes-transporte', moduleKey: 'solicitudes-transporte' },
-    { icon: Truck, label: 'Guardados', href: '/dashboard/transporte', key: 'transporte', moduleKey: 'transporte' },
-  ],
-  [
-    { icon: BarChart3, label: 'Centro de Control', href: '/dashboard/centro-control', key: null, moduleKey: 'centro-control' },
-  ],
-  [
-    { icon: Users, label: 'Usuarios', href: '/dashboard/usuarios', key: 'usuarios', moduleKey: 'usuarios' },
-    { icon: ScrollText, label: 'Auditoría', href: '/dashboard/auditoria', key: 'auditoria', moduleKey: 'auditoria' },
-  ],
+  {
+    titulo: null,
+    items: [
+      { icon: ShieldCheck, label: 'Preoperacional', href: '/dashboard/preoperacional', key: 'preoperacional', moduleKey: 'preoperacional' },
+    ],
+  },
+  {
+    titulo: 'Centro de distribución',
+    items: [
+      { icon: Container, label: 'Recepción Contenedores', href: '/dashboard/recepcion-contenedores', key: 'recepcion-contenedores', moduleKey: 'recepcion-contenedores' },
+      { icon: Forklift, label: 'Control Montacargas', href: '/dashboard/control-montacargas', key: 'control-montacargas', moduleKey: 'control-montacargas' },
+      { icon: PackageOpen, label: 'Resurtido', href: '/dashboard/resurtido', key: 'resurtido', moduleKey: 'resurtido' },
+      { icon: ScanLine, label: 'Cargue Gourmet', href: '/dashboard/cargue-gourmet', key: 'cargue-gourmet', moduleKey: 'cargue-gourmet' },
+    ],
+  },
+  {
+    titulo: 'Pedidos y exportación',
+    items: [
+      { icon: Store, label: 'Facturas Contado', href: '/dashboard/tienda', key: 'tienda', moduleKey: 'tienda' },
+      { icon: GitMerge, label: 'Integración Pedidos', href: '/dashboard/integracion', key: 'integracion', moduleKey: 'integracion' },
+      { icon: Tags, label: 'Exportaciones Ecuador', href: '/dashboard/exportaciones', key: 'exportaciones', moduleKey: 'exportaciones' },
+      { icon: Globe, label: 'Exportaciones México', href: '/dashboard/exportaciones-mexico', key: 'exportaciones-mexico', moduleKey: 'exportaciones-mexico' },
+      { icon: Globe, label: 'Exportaciones EE.UU', href: '/dashboard/exportaciones-eeuu', key: 'exportaciones-eeuu', moduleKey: 'exportaciones-eeuu' },
+    ],
+  },
+  {
+    titulo: 'Transporte',
+    items: [
+      { icon: FileText, label: 'Solicitudes Transporte', href: '/dashboard/solicitudes-transporte', key: 'solicitudes-transporte', moduleKey: 'solicitudes-transporte' },
+      { icon: Truck, label: 'Guardados', href: '/dashboard/transporte', key: 'transporte', moduleKey: 'transporte' },
+    ],
+  },
+  {
+    titulo: 'Gestión',
+    items: [
+      { icon: BarChart3, label: 'Centro de Control', href: '/dashboard/centro-control', key: null, moduleKey: 'centro-control' },
+      { icon: Users, label: 'Usuarios', href: '/dashboard/usuarios', key: 'usuarios', moduleKey: 'usuarios' },
+      { icon: ScrollText, label: 'Auditoría', href: '/dashboard/auditoria', key: 'auditoria', moduleKey: 'auditoria' },
+    ],
+  },
 ]
 const visibleGroups = computed(() => NAV_GROUPS
-  .map((group) => group.filter((item) => item.moduleKey === null || canSeeModule(me.value?.role, item.moduleKey)))
-  .filter((group) => group.length > 0))
+  .map((g) => ({
+    titulo: g.titulo,
+    items: g.items.filter((item) => item.moduleKey === null || canSeeModule(me.value?.role, item.moduleKey)),
+  }))
+  .filter((g) => g.items.length > 0))
 // Igualdad exacta, NO startsWith: con `startsWith`, la clave 'exportaciones'
 // también matchea 'exportaciones-mexico' y 'exportaciones-eeuu', y estando en
 // México se resaltaban dos ítems a la vez. Ninguna ruta tiene sub-rutas, así que
@@ -110,7 +140,7 @@ const sinTildes = (t: string) =>
   t.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')
 const resultados = computed(() => {
   const q = sinTildes(consulta.value.trim())
-  const todos = visibleGroups.value.flat()
+  const todos = visibleGroups.value.flatMap((g) => g.items)
   if (!q) return todos
   return todos.filter((n) => sinTildes(n.label).includes(q))
 })
@@ -199,7 +229,11 @@ async function cerrarSesion() {
           <span v-for="i in 5" :key="i" class="nav-skel" />
         </div>
         <div v-for="(group, gi) in visibleGroups" v-else :key="gi" class="nav-group">
-          <a v-for="n in group" :key="n.label" :href="n.href" class="nav-item" :class="{ active: isActive(n.key) }">
+          <span v-if="group.titulo" class="nav-titulo">{{ group.titulo }}</span>
+          <a
+            v-for="n in group.items" :key="n.label" :href="n.href"
+            class="nav-item" :class="{ active: isActive(n.key) }"
+          >
             <component :is="n.icon" :size="17" />
             <span>{{ n.label }}</span>
           </a>
@@ -325,8 +359,18 @@ async function cerrarSesion() {
 .nav-close:hover { color: #fff; }
 .brand-mark { width: 30px; height: 30px; border-radius: 9px; background: var(--brand-grad); color: var(--on-brand); display: grid; place-items: center; font-family: var(--display); font-weight: 800; font-size: 13px; }
 .brand-name { font-family: var(--display); font-weight: 700; font-size: 14px; color: #fff; }
-.nav { display: flex; flex-direction: column; gap: 14px; overflow-y: auto; }
+.nav { display: flex; flex-direction: column; gap: 18px; overflow-y: auto; }
 .nav-group { display: flex; flex-direction: column; gap: 2px; }
+/* Titulo de bloque: lo justo para cortar la lista sin competir con los enlaces.
+   Por eso va en un gris apagado y a menor tamano que los propios items. */
+.nav-titulo {
+  padding: 0 12px 6px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: .11em;
+  text-transform: uppercase;
+  color: #5D6775;
+}
 .nav-skel { height: 37px; border-radius: var(--r-sm); background: rgba(255,255,255,.05); animation: nav-skel-pulse 1.3s ease-in-out infinite; }
 @keyframes nav-skel-pulse { 0%, 100% { opacity: 1 } 50% { opacity: .45 } }
 .nav-item { position: relative; display: flex; align-items: center; gap: 11px; padding: 10px 12px; border-radius: var(--r-sm); font-size: 13px; font-weight: 500; color: #97A1AF; cursor: pointer; transition: background .14s, color .14s, transform .14s; }
