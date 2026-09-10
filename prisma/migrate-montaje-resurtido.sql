@@ -89,3 +89,12 @@ CREATE INDEX IF NOT EXISTS pendientes_gourmet_estado_idx ON pendientes_gourmet (
 CREATE INDEX IF NOT EXISTS pendientes_gourmet_operario_idx ON pendientes_gourmet (operario_id, estado);
 CREATE INDEX IF NOT EXISTS pendientes_gourmet_solicitado_por_idx ON pendientes_gourmet (solicitado_por_id);
 CREATE INDEX IF NOT EXISTS pendientes_gourmet_fecha_idx ON pendientes_gourmet (fecha);
+
+-- Devolucion: el operario ve que el PLU no le corresponde (tipicamente porque es
+-- de muebles y no de gourmet) y lo regresa a quien lo pidio. No es un fallo
+-- suyo, asi que el reloj se descarta entero.
+ALTER TYPE "EstadoPendienteGourmet" ADD VALUE IF NOT EXISTS 'DEVUELTO';
+ALTER TABLE pendientes_gourmet
+  ADD COLUMN IF NOT EXISTS devuelto_por_id TEXT REFERENCES users(id),
+  ADD COLUMN IF NOT EXISTS devuelto_at TIMESTAMP(3),
+  ADD COLUMN IF NOT EXISTS motivo_devolucion TEXT;

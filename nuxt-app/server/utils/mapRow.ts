@@ -542,6 +542,9 @@ export function mapPendiente(p: any) {
     horaInicio: p.horaInicio ? p.horaInicio.toISOString() : null,
     horaFin: p.horaFin ? p.horaFin.toISOString() : null,
     completadoAt: p.completadoAt ? p.completadoAt.toISOString() : null,
+    devueltoPorNombre: p.devueltoPor?.name ?? null,
+    devueltoAt: p.devueltoAt ? p.devueltoAt.toISOString() : null,
+    motivoDevolucion: p.motivoDevolucion ?? null,
     // Lo que lleva ESPERANDO desde que se pidio. Es otra cosa que el tiempo de
     // trabajo: mide al sistema, no al operario.
     esperaSegundos: segundosEntre(p.solicitadoAt, p.completadoAt, new Date()) ?? 0,

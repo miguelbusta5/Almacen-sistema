@@ -343,7 +343,15 @@ function onEscanear() {
   if (!codigo) return
   const encontrado = mios.value.find((m) => m.plu === codigo || m.ean === codigo)
   if (!encontrado) {
-    showToast('Ese PLU no está en tu bandeja', true)
+    // Decir QUE tiene, no solo que eso no es: si no, el operario se queda sin
+    // saber si el PLU es otro o si no le han pasado nada.
+    const tiene = mios.value.map((m) => m.plu).join(', ')
+    showToast(
+      tiene
+        ? `El ${codigo} no es tuyo. Tienes: ${tiene}`
+        : 'No tienes ningún PLU asignado. Pídele al montacarguista que te lo pase.',
+      true,
+    )
     sonarVeredicto('CAJA_AJENA')
     return
   }
@@ -480,9 +488,11 @@ async function exportar() {
       <template v-else>
 
       <!-- Bandeja de quien recibe: escanea el PLU que trae en la mano y su
-           tarjeta se resalta y toma el foco. Sale para el ayudante siempre, y
-           para el montacarguista solo cuando le han pasado algo. -->
-      <div v-if="ayudante || recibidos.length > 0" class="escaneo card bloque">
+           tarjeta se resalta y toma el foco.
+           Solo cuando hay ALGO que escanear: con la bandeja vacia, la caja
+           invitaba a escanear y respondia "ese PLU no esta en tu bandeja" a
+           todo, que es exactamente lo que estaba pasando en el CEDI. -->
+      <div v-if="mios.length > 0" class="escaneo card bloque">
         <label class="f">
           <span class="lbl">Escanea el PLU que traes</span>
           <div class="scan-wrap">
@@ -522,7 +532,7 @@ async function exportar() {
       <EmptyState
         v-if="ayudante && mios.length === 0 && !loading"
         title="Sin PLUs asignados"
-        description="Cuando un montacarguista te pase un PLU, aparecerá aquí."
+        description="Cuando un montacarguista te pase un PLU, aparecerá aquí para que lo escanees."
       />
 
       <MontacargasKpiRail class="bloque" :counts="conteos" @filter="onKpiFilter" />

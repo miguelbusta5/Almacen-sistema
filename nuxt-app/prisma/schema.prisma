@@ -156,6 +156,7 @@ model User {
   pendientesSolicitados PendienteGourmet[]   @relation("PendientesSolicitados")
   pendientesAsignados   PendienteGourmet[]   @relation("PendientesAsignados")
   pendientesRecibidos   PendienteGourmet[]   @relation("PendientesRecibidos")
+  pendientesDevueltos   PendienteGourmet[]   @relation("PendientesDevueltos")
   recepcionesCreadas      RecepcionContenedor[]  @relation("RecepcionesCreadas")
   recepcionesActualizadas RecepcionContenedor[]  @relation("RecepcionesActualizadas")
   descargasRecepcion      DescargadorRecepcion[] @relation("DescargasRecepcion")
@@ -1402,6 +1403,7 @@ enum EstadoPendienteGourmet {
   ASIGNADO
   EN_CURSO
   COMPLETADO
+  DEVUELTO
 }
 
 /// Un archivo de resurtido subido y asignado a un operario.
@@ -1500,6 +1502,14 @@ model PendienteGourmet {
   operarioId    String?   @map("operario_id")
   operario      User?     @relation("PendientesRecibidos", fields: [operarioId], references: [id])
   asignadoAt    DateTime? @map("asignado_at")
+
+  /// Devuelto al solicitante: el operario vio que el PLU no le corresponde
+  /// -tipicamente porque es de muebles y no de gourmet- y lo regresa en vez de
+  /// bajarlo. No es un fallo suyo, asi que no cuenta como tarea hecha ni fallida.
+  devueltoPorId    String?   @map("devuelto_por_id")
+  devueltoPor      User?     @relation("PendientesDevueltos", fields: [devueltoPorId], references: [id])
+  devueltoAt       DateTime? @map("devuelto_at")
+  motivoDevolucion String?   @map("motivo_devolucion")
 
   /// Ejecucion, igual que un movimiento de deposito: el reloj arranca al
   /// escanear el PLU y se cierra al escribir la ubicacion final.

@@ -5,11 +5,12 @@
 // PLU y se cierra al escribir la ubicación final. Al cerrarlo, el servidor avisa
 // a quien lo pidió y a quien lo repartió — es justo el dato que estaban esperando.
 import { ref, computed, nextTick } from 'vue'
-import { ScanLine, ArrowDown, Package, CheckCircle2 } from '@lucide/vue'
+import { ScanLine, ArrowDown, Package, CheckCircle2, Undo2 } from '@lucide/vue'
 import { useToast } from '~/composables/useToast'
 import { sonarVeredicto } from '~/utils/escaneoFeedback'
 import {
-  API_PENDIENTES, cronometroDesde, fmtDuracionTarea, type PendienteDTO,
+  API_PENDIENTES, cronometroDesde, fmtDuracionTarea, MOTIVO_DEVOLUCION_LABEL,
+  MOTIVOS_DEVOLUCION, type MotivoDevolucion, type PendienteDTO,
 } from '~/utils/resurtidoTareas'
 
 const props = defineProps<{ ahora: number }>()
@@ -105,6 +106,37 @@ async function completar() {
   }
 }
 
+// ── Devolver sin bajarlo ───────────────────────────────────────────
+// El caso que lo motiva: el PLU resulta ser de MUEBLES y no de gourmet, asi que
+// no es trabajo suyo. Devolver no es fallar — el reloj se descarta entero.
+const devolviendo = ref(false)
+const motivo = ref<MotivoDevolucion>('MUEBLES')
+const detalleDev = ref('')
+
+const puedeDevolver = computed(() =>
+  motivo.value !== 'OTRO' || detalleDev.value.trim().length > 0)
+
+async function devolver() {
+  const p = abierto.value
+  if (!p || !puedeDevolver.value) return
+  guardando.value = p.id
+  try {
+    await $fetch(`${API_PENDIENTES}/${p.id}/devolver`, {
+      method: 'POST',
+      body: { motivo: motivo.value, detalle: detalleDev.value.trim() || undefined },
+    })
+    showToast('Devuelto. Ya avisamos a quien lo pidió.')
+    abierto.value = null
+    devolviendo.value = false
+    detalleDev.value = ''
+    await cargar()
+  } catch (e) {
+    showToast(apiErr(e, 'No se pudo devolver'), true)
+  } finally {
+    guardando.value = null
+  }
+}
+
 cargar()
 </script>
 
@@ -193,6 +225,38 @@ cargar()
             </form>
             <p v-if="!enCurso" class="p-bloq">Escanea primero el producto.</p>
           </section>
+
+          <!-- Devolver: cuando el PLU no le corresponde. -->
+          <section class="devolver">
+            <button v-if="!devolviendo" class="dev-link" @click="devolviendo = true">
+              <Undo2 :size="13" /> Este PLU no me corresponde
+            </button>
+            <template v-else>
+              <h3 class="p-title"><Undo2 :size="14" /> Devolver a quien lo pidió</h3>
+              <div class="dev-motivos">
+                <button
+                  v-for="m in MOTIVOS_DEVOLUCION" :key="m" type="button" class="dev-btn"
+                  :class="{ on: motivo === m }" @click="motivo = m"
+                >
+                  {{ MOTIVO_DEVOLUCION_LABEL[m] }}
+                </button>
+              </div>
+              <input
+                v-if="motivo === 'OTRO'" v-model="detalleDev" class="field dev-detalle"
+                placeholder="¿Por qué lo devuelves?" maxlength="500"
+              >
+              <div class="dev-acc">
+                <button class="btn btn-sm" @click="devolviendo = false">Cancelar</button>
+                <button
+                  class="btn btn-sm dev-ok" :disabled="!puedeDevolver || guardando === abierto.id"
+                  @click="devolver"
+                >
+                  <Spinner v-if="guardando === abierto.id" :size="13" /><Undo2 v-else :size="13" />
+                  Devolver
+                </button>
+              </div>
+            </template>
+          </section>
         </div>
       </section>
     </div>
@@ -243,6 +307,17 @@ cargar()
 .lbl { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); }
 .hint { font-size: 11px; color: var(--faint); }
 .submit { width: 100%; height: 44px; }
+
+.devolver { padding-top: 4px; border-top: 1px dashed var(--border-strong); }
+.dev-link { display: inline-flex; align-items: center; gap: 6px; margin-top: 12px; background: none; border: none; padding: 0; font-size: 12.5px; font-weight: 600; color: var(--muted); cursor: pointer; }
+.dev-link:hover { color: var(--u-aviso); }
+.dev-motivos { display: flex; flex-direction: column; gap: 6px; margin-bottom: 10px; }
+.dev-btn { padding: 9px 12px; text-align: left; border: 1px solid var(--border-strong); border-radius: var(--r-sm); background: var(--surface); font-size: 12.5px; font-weight: 600; color: var(--muted); cursor: pointer; }
+.dev-btn:hover:not(.on) { color: var(--ink-2); border-color: var(--faint); }
+.dev-btn.on { background: var(--u-aviso-tint); border-color: var(--u-aviso); color: var(--ink); }
+.dev-detalle { margin-bottom: 10px; }
+.dev-acc { display: flex; gap: 9px; justify-content: flex-end; }
+.dev-ok { border-color: var(--u-aviso); color: var(--u-aviso); }
 
 @media (max-width: 560px) {
   .p-grid { grid-template-columns: 1fr; }

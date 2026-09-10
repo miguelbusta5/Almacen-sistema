@@ -241,11 +241,14 @@ describe("montacargas — novedades detienen el reloj", () => {
   });
 
   // Un montacarguista que recibe necesita lo mismo que un ayudante: escanear el
-  // PLU que trae en la mano. Atado al registro, no al rol.
-  it("la caja de escaneo sale para cualquiera que tenga un PLU recibido", () => {
+  // PLU que trae en la mano. Atado al registro, no al rol — y solo cuando hay
+  // algo en la bandeja: con ella vacia, la caja invitaba a escanear y respondia
+  // "ese PLU no esta en tu bandeja" a todo.
+  it("la caja de escaneo sale por bandeja, no por rol", () => {
     const modulo = leer("nuxt-app/app/components/montacargas/Module.vue");
     expect(modulo).toContain("const recibidos = computed(");
-    expect(modulo).toContain('v-if="ayudante || recibidos.length > 0"');
+    expect(modulo).toContain('v-if="mios.length > 0" class="escaneo card bloque"');
+    expect(modulo).not.toContain('v-if="ayudante || recibidos.length > 0"');
   });
 
   // Y lo mismo en la tarjeta: el modo de la UI va por registro.

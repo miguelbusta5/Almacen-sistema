@@ -7,14 +7,16 @@
 // asignarlas. A ninguno de los dos se le mide tiempo de trabajo — pedir y
 // repartir no es bajar mercancía.
 import { ref, computed, onMounted, onBeforeUnmount, nextTick } from 'vue'
-import { RefreshCw, Plus, PackageSearch, UserPlus, CheckCircle2 } from '@lucide/vue'
+import {
+  RefreshCw, Plus, PackageSearch, UserPlus, CheckCircle2, Pencil, Undo2, X,
+} from '@lucide/vue'
 import { useDebounceFn } from '@vueuse/core'
 import { ensureSession, useSessionState } from '~/composables/useSession'
 import { useToast } from '~/composables/useToast'
 import { useAutoRefresh } from '~/composables/useAutoRefresh'
 import {
   API_MONTAJE, API_PENDIENTES, cronometroDesde, ESTADO_PENDIENTE_LABEL,
-  esSolicitante, fmtDuracionTarea, type PendienteDTO,
+  esSolicitante, fmtDuracionTarea, puedeEditarPendiente, type PendienteDTO,
 } from '~/utils/resurtidoTareas'
 import { canSeeModule } from '~/utils/modulePermissions'
 
@@ -125,6 +127,73 @@ useAutoRefresh({
   },
 })
 
+// ── Corregir lo pedido ─────────────────────────────────────────────
+// Se puede corregir aunque YA ESTE ASIGNADO: el operario todavia no lo bajo, asi
+// que cambiar la cantidad o el producto sigue sirviendo. Un pendiente ya ubicado
+// no se toca: eso es historia.
+const editando = ref<PendienteDTO | null>(null)
+const edPlu = ref('')
+const edUnidades = ref('')
+const edObs = ref('')
+const edDesc = ref('')
+const edBuscando = ref(false)
+
+const buscarEd = useDebounceFn(async () => {
+  const codigo = edPlu.value.trim()
+  if (!codigo) { edDesc.value = ''; return }
+  edBuscando.value = true
+  try {
+    const res = await $fetch<{ data: { descripcion: string | null } | null }>(
+      '/api/productos-maestro/buscar', { query: { codigo } },
+    )
+    edDesc.value = res.data?.descripcion ?? ''
+  } catch {
+    edDesc.value = ''
+  } finally {
+    edBuscando.value = false
+  }
+}, 350)
+
+function abrirEdicion(p: PendienteDTO) {
+  editando.value = p
+  edPlu.value = p.plu
+  edUnidades.value = String(p.unidadesSolicitadas)
+  edObs.value = p.observacion ?? ''
+  edDesc.value = p.descripcion
+}
+
+const puedeGuardarEd = computed(() =>
+  Boolean(editando.value) && edDesc.value.length > 0 && Number(edUnidades.value) >= 1)
+
+async function guardarEdicion() {
+  const p = editando.value
+  if (!p || !puedeGuardarEd.value) return
+  guardando.value = p.id
+  try {
+    await $fetch(`${API_PENDIENTES}/${p.id}`, {
+      method: 'PATCH',
+      body: {
+        plu: edPlu.value.trim(),
+        unidadesSolicitadas: Number(edUnidades.value),
+        observacion: edObs.value.trim() || null,
+      },
+    })
+    showToast('Pendiente corregido')
+    editando.value = null
+    await cargar()
+  } catch (e) {
+    showToast(apiErr(e, 'No se pudo corregir'), true)
+  } finally {
+    guardando.value = null
+  }
+}
+
+// Puede corregirlo quien lo pidio, mientras no se haya ubicado.
+function editable(p: PendienteDTO): boolean {
+  return solicita.value && p.solicitadoPorNombre === (me.value?.name ?? '')
+    && puedeEditarPendiente(p.estado)
+}
+
 async function asignar(p: PendienteDTO, operarioId: string) {
   if (!operarioId) return
   guardando.value = p.id
@@ -234,6 +303,17 @@ const cerrados = computed(() => items.value.filter((p) => p.estado === 'COMPLETA
               </div>
             </dl>
 
+            <!-- Devuelto por el operario: no es un fallo suyo, el PLU no le
+                 correspondia. Quien lo pidio decide si lo corrige o lo deja. -->
+            <p v-if="p.estado === 'DEVUELTO'" class="vin-dev">
+              <Undo2 :size="13" />
+              {{ p.devueltoPorNombre }} lo devolvió — {{ p.motivoDevolucion }}
+            </p>
+
+            <button v-if="editable(p)" class="vin-editar" @click="abrirEdicion(p)">
+              <Pencil :size="12" /> Corregir
+            </button>
+
             <!-- Asignar: permiso por persona -->
             <div v-if="puedeAsignar" class="vin-asig">
               <select
@@ -273,6 +353,49 @@ const cerrados = computed(() => items.value.filter((p) => p.estado === 'COMPLETA
         />
       </template>
     </template>
+
+    <!-- Corregir un pendiente ya pedido -->
+    <div v-if="editando" class="overlay" @click.self="editando = null">
+      <section class="card modal">
+        <header class="m-head">
+          <h2 class="m-title">Corregir pendiente</h2>
+          <button class="x" aria-label="Cerrar" @click="editando = null"><X :size="18" /></button>
+        </header>
+        <div class="m-body">
+          <p v-if="editando.operarioNombre" class="m-aviso">
+            Ya está asignado a <b>{{ editando.operarioNombre }}</b>. Si cambias algo, se le avisa.
+          </p>
+          <label class="f">
+            <span class="lbl">PLU</span>
+            <input v-model="edPlu" class="field mono" autocomplete="off" inputmode="numeric" @input="buscarEd">
+          </label>
+          <div class="f">
+            <span class="lbl">Descripción</span>
+            <div class="desc-box" :class="{ vacia: !edDesc }">
+              <Spinner v-if="edBuscando" :size="13" />
+              <span v-else-if="edDesc">{{ edDesc }}</span>
+              <span v-else>El PLU no existe en el maestro</span>
+            </div>
+          </div>
+          <label class="f">
+            <span class="lbl">Unidades</span>
+            <input v-model="edUnidades" class="field tnum" type="number" min="1" inputmode="numeric">
+          </label>
+          <label class="f">
+            <span class="lbl">Observación</span>
+            <input v-model="edObs" class="field" maxlength="500">
+          </label>
+          <button
+            class="btn btn-primary submit"
+            :disabled="!puedeGuardarEd || guardando === editando.id"
+            @click="guardarEdicion"
+          >
+            <Spinner v-if="guardando === editando.id" :size="15" /><CheckCircle2 v-else :size="15" />
+            Guardar cambios
+          </button>
+        </div>
+      </section>
+    </div>
   </div>
 </template>
 
@@ -314,6 +437,20 @@ const cerrados = computed(() => items.value.filter((p) => p.estado === 'COMPLETA
 .field-sm { height: 34px; font-size: 12.5px; padding-right: 30px; }
 .asig-ic { position: absolute; right: 9px; top: 50%; transform: translateY(-50%); color: var(--muted); pointer-events: none; }
 .ubic { display: inline-block; padding: 1px 6px; border-radius: var(--r-xs); background: var(--surface-3); border: 1px solid var(--border); font-family: var(--mono); font-size: 11.5px; }
+
+.vin-dev { display: flex; align-items: flex-start; gap: 6px; margin: 0; padding: 8px 10px; border-radius: var(--r-sm); background: var(--u-aviso-tint); font-size: 12px; color: var(--ink-2); }
+.vin-dev :deep(svg) { flex-shrink: 0; margin-top: 1px; color: var(--u-aviso); }
+.vin-editar { align-self: flex-start; display: inline-flex; align-items: center; gap: 5px; background: none; border: none; padding: 0; font-size: 12.5px; font-weight: 600; color: var(--brand); cursor: pointer; }
+
+.overlay { position: fixed; inset: 0; z-index: 60; display: grid; place-items: center; padding: 18px; background: rgba(10,15,28,.55); backdrop-filter: blur(3px); }
+.modal { width: min(440px, 100%); max-height: 88vh; display: flex; flex-direction: column; padding: 0; overflow: hidden; }
+.m-head { display: flex; align-items: center; gap: 12px; padding: 15px 18px; border-bottom: 1px solid var(--border); }
+.m-title { flex: 1; margin: 0; font-family: var(--display); font-size: 16px; font-weight: 700; color: var(--ink); }
+.x { background: none; border: none; color: var(--muted); cursor: pointer; padding: 4px; border-radius: var(--r-xs); }
+.x:hover { background: var(--surface-3); color: var(--ink); }
+.m-body { overflow-y: auto; padding: 16px 18px 18px; display: flex; flex-direction: column; gap: 12px; }
+.m-aviso { margin: 0; padding: 9px 11px; border-radius: var(--r-sm); background: var(--brand-tint); font-size: 12.5px; color: var(--ink-2); }
+.submit { width: 100%; height: 42px; margin-top: 3px; }
 
 @media (max-width: 900px) {
   .nueva { grid-template-columns: 1fr 1fr; }

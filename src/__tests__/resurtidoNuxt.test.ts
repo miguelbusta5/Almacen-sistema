@@ -192,3 +192,54 @@ describe("los modulos nuevos estan registrados", () => {
     }
   });
 });
+
+describe("pendientes — correccion y devolucion", () => {
+  const patch = leer("nuxt-app/server/api/pendientes/[id]/index.patch.ts");
+  const devolver = leer("nuxt-app/server/api/pendientes/[id]/devolver.post.ts");
+
+  it("solo quien lo pidio lo corrige, y solo si no se ubico", () => {
+    expect(patch).toContain("p.solicitadoPorId !== actor.id");
+    expect(patch).toContain("puedeEditarPendiente(p.estado)");
+  });
+
+  // El operario puede estar caminando hacia el sitio con la cifra vieja.
+  it("si ya tenia operario, el cambio le avisa", () => {
+    expect(patch).toContain("PENDIENTE_CORREGIDO");
+    expect(patch).toContain("cambio && p.operarioId");
+  });
+
+  // Devolver no es fallar: no era su tarea.
+  it("devolver descarta el reloj y avisa a quien lo pidio", () => {
+    expect(devolver).toContain("estado: 'DEVUELTO'");
+    expect(devolver).toContain("horaInicio: null");
+    expect(devolver).toContain("PENDIENTE_DEVUELTO");
+    expect(devolver).toContain("p.solicitadoPorId");
+  });
+
+  it("un pendiente devuelto sale de la lista del operario", () => {
+    expect(leer("nuxt-app/server/api/pendientes/mis-tareas.get.ts"))
+      .toContain("estado: { in: ['ASIGNADO', 'EN_CURSO'] }");
+  });
+
+  it("la pantalla del operario ofrece devolverlo", () => {
+    const vue = leer("nuxt-app/app/components/resurtido/PendientesTareas.vue");
+    expect(vue).toContain("Este PLU no me corresponde");
+    expect(vue).toContain("MOTIVOS_DEVOLUCION");
+  });
+});
+
+// La caja invitaba a escanear con la bandeja vacia y respondia "ese PLU no esta
+// en tu bandeja" a todo, que es lo que estaba pasando en el CEDI.
+describe("bandeja — no invitar a escanear sin nada que escanear", () => {
+  const modulo = leer("nuxt-app/app/components/montacargas/Module.vue");
+
+  it("la caja de escaneo solo sale si hay PLUs en la bandeja", () => {
+    expect(modulo).toContain('v-if="mios.length > 0" class="escaneo card bloque"');
+    expect(modulo).not.toContain('v-if="ayudante || recibidos.length > 0" class="escaneo');
+  });
+
+  it("el error dice que PLUs tiene, no solo que ese no es", () => {
+    expect(modulo).toContain("No tienes ningún PLU asignado");
+    expect(modulo).toContain("no es tuyo. Tienes:");
+  });
+});

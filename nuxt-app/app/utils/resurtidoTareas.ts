@@ -10,7 +10,7 @@ export type EstadoMontajeResurtido = (typeof ESTADOS_MONTAJE)[number]
 export const ESTADOS_TAREA = ["PENDIENTE", "EN_CURSO", "COMPLETADA"] as const
 export type EstadoTareaResurtido = (typeof ESTADOS_TAREA)[number]
 
-export const ESTADOS_PENDIENTE = ["SOLICITADO", "ASIGNADO", "EN_CURSO", "COMPLETADO"] as const
+export const ESTADOS_PENDIENTE = ["SOLICITADO", "ASIGNADO", "EN_CURSO", "COMPLETADO", "DEVUELTO"] as const
 export type EstadoPendienteGourmet = (typeof ESTADOS_PENDIENTE)[number]
 
 /** Quién ejecuta las tareas: los que mueven la mercancía. */
@@ -43,6 +43,7 @@ export const ESTADO_PENDIENTE_LABEL: Record<EstadoPendienteGourmet, string> = {
   ASIGNADO: "Asignado",
   EN_CURSO: "En curso",
   COMPLETADO: "Ubicado",
+  DEVUELTO: "Devuelto",
 }
 
 // ── Archivo de resurtido ─────────────────────────────────────────────
@@ -241,6 +242,37 @@ export function validarCierrePendiente(d: CierrePendiente): string | null {
   return null
 }
 
+
+/**
+ * Un pendiente se puede corregir mientras NO se haya ubicado.
+ *
+ * Aunque ya este asignado: el operario todavia no lo ha bajado, asi que cambiar
+ * la cantidad o el producto sigue siendo util. Una vez ubicado ya es historia y
+ * tocarlo falsearia lo que de verdad paso.
+ */
+export function puedeEditarPendiente(estado: EstadoPendienteGourmet): boolean {
+  return estado !== "COMPLETADO"
+}
+
+/** Motivo por el que un operario devuelve un pendiente sin bajarlo. */
+export const MOTIVOS_DEVOLUCION = ["MUEBLES", "NO_HAY", "OTRO"] as const
+export type MotivoDevolucion = (typeof MOTIVOS_DEVOLUCION)[number]
+
+export const MOTIVO_DEVOLUCION_LABEL: Record<MotivoDevolucion, string> = {
+  MUEBLES: "Es de muebles, no de gourmet",
+  NO_HAY: "No hay existencia en deposito",
+  OTRO: "Otro motivo",
+}
+
+export function validarDevolucion(motivo: unknown, detalle: string): string | null {
+  if (!MOTIVOS_DEVOLUCION.includes(motivo as MotivoDevolucion)) {
+    return "Elige por que lo devuelves"
+  }
+  // "Otro" sin explicacion no le dice nada a quien lo pidio.
+  if (motivo === "OTRO" && !detalle.trim()) return "Explica por que lo devuelves"
+  return null
+}
+
 // ── Tiempo ───────────────────────────────────────────────────────────
 /**
  * Segundos entre dos instantes, o contra `ahora` si aún no hay fin.
@@ -315,6 +347,9 @@ export interface PendienteDTO {
   horaInicio: string | null
   horaFin: string | null
   completadoAt: string | null
+  devueltoPorNombre: string | null
+  devueltoAt: string | null
+  motivoDevolucion: string | null
   /** Lo que lleva esperando desde que se pidio, este o no en curso. */
   esperaSegundos: number
   /** Lo que tardo el operario en bajarlo. Null si aun no lo empezo. */

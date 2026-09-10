@@ -20,6 +20,7 @@ export const PENDIENTE_INCLUDE = {
   solicitadoPor: { select: { name: true } },
   asignadoPor: { select: { name: true } },
   operario: { select: { name: true } },
+  devueltoPor: { select: { name: true } },
 } as const
 
 export function puedeVerAlmacenamiento(role: string): boolean {

@@ -13,7 +13,9 @@ import {
   validarCierreTarea,
   validarEscaneoPlu,
   validarEscaneoPosicion,
+  validarDevolucion,
   validarSolicitudPendiente,
+  puedeEditarPendiente,
 } from "@/lib/resurtidoTareas";
 
 // Cabecera real del archivo que suben: PLU · NOMBRE · ALTURA · PICKING ·
@@ -160,5 +162,34 @@ describe("tiempo", () => {
     expect(segundosEntre(null, t(8, 0))).toBeNull();
     expect(segundosEntre(t(8, 0), null)).toBeNull();
     expect(segundosEntre(t(8, 0), null, new Date(Date.UTC(2026, 8, 10, 8, 1)))).toBe(60);
+  });
+});
+
+// Quien lo pidio lo puede corregir mientras el operario todavia no lo bajo.
+describe("pendientes — correccion y devolucion", () => {
+  it("se corrige aunque ya este asignado, pero no una vez ubicado", () => {
+    expect(puedeEditarPendiente("SOLICITADO")).toBe(true);
+    expect(puedeEditarPendiente("ASIGNADO")).toBe(true);
+    expect(puedeEditarPendiente("EN_CURSO")).toBe(true);
+    expect(puedeEditarPendiente("DEVUELTO")).toBe(true);
+    // Ya ubicado es historia: cambiarlo falsearia lo que de verdad paso.
+    expect(puedeEditarPendiente("COMPLETADO")).toBe(false);
+  });
+
+  // El caso real: el PLU es de muebles y no de gourmet, asi que no es trabajo
+  // del operario.
+  it("el operario puede devolverlo por muebles sin escribir nada mas", () => {
+    expect(validarDevolucion("MUEBLES", "")).toBeNull();
+    expect(validarDevolucion("NO_HAY", "")).toBeNull();
+  });
+
+  // "Otro" sin explicacion no le dice nada a quien lo pidio.
+  it("otro motivo exige explicacion", () => {
+    expect(validarDevolucion("OTRO", "")).toMatch(/Explica/);
+    expect(validarDevolucion("OTRO", "esta averiado")).toBeNull();
+  });
+
+  it("no acepta un motivo inventado", () => {
+    expect(validarDevolucion("PORQUE_SI", "x")).toMatch(/por que lo devuelves/);
   });
 });
