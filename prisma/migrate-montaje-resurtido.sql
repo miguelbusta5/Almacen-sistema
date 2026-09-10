@@ -98,3 +98,28 @@ ALTER TABLE pendientes_gourmet
   ADD COLUMN IF NOT EXISTS devuelto_por_id TEXT REFERENCES users(id),
   ADD COLUMN IF NOT EXISTS devuelto_at TIMESTAMP(3),
   ADD COLUMN IF NOT EXISTS motivo_devolucion TEXT;
+
+-- Reglas de prioridad y novedades de los pendientes.
+--
+-- Un pendiente es alguien esperando en la tienda, asi que va antes que el
+-- resurtido de rutina. Si su PLU ya esta en el resurtido del operario no es una
+-- tarea aparte: se suma a esa tarea, que sube al principio y se pinta en rojo, y
+-- el pendiente se da por ubicado cuando la tarea se completa.
+--
+-- El operario puede reportar novedades. Solo el area de muebles DEVUELVE el
+-- pendiente a quien lo pidio; el resto se queda en almacenamiento en rojo.
+ALTER TYPE "EstadoPendienteGourmet" ADD VALUE IF NOT EXISTS 'NOVEDAD';
+
+ALTER TABLE tareas_resurtido
+  ADD COLUMN IF NOT EXISTS prioridad BOOLEAN NOT NULL DEFAULT false,
+  ADD COLUMN IF NOT EXISTS unidades_pendientes INTEGER NOT NULL DEFAULT 0;
+
+ALTER TABLE pendientes_gourmet
+  ADD COLUMN IF NOT EXISTS tipo_novedad VARCHAR(40),
+  ADD COLUMN IF NOT EXISTS novedad_at TIMESTAMP(3),
+  ADD COLUMN IF NOT EXISTS novedad_por_id TEXT REFERENCES users(id),
+  ADD COLUMN IF NOT EXISTS tarea_resurtido_id TEXT REFERENCES tareas_resurtido(id) ON DELETE SET NULL,
+  ADD COLUMN IF NOT EXISTS pasado_por_id TEXT REFERENCES users(id);
+
+CREATE INDEX IF NOT EXISTS pendientes_gourmet_tarea_resurtido_idx ON pendientes_gourmet (tarea_resurtido_id);
+CREATE INDEX IF NOT EXISTS tareas_resurtido_prioridad_idx ON tareas_resurtido (montaje_id, prioridad);

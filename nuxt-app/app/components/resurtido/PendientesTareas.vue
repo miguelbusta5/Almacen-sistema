@@ -5,13 +5,14 @@
 // PLU y se cierra al escribir la ubicación final. Al cerrarlo, el servidor avisa
 // a quien lo pidió y a quien lo repartió — es justo el dato que estaban esperando.
 import { ref, computed, nextTick } from 'vue'
-import { ScanLine, ArrowDown, Package, CheckCircle2, Undo2 } from '@lucide/vue'
+import { ScanLine, ArrowDown, Package, CheckCircle2, TriangleAlert, UserPlus } from '@lucide/vue'
 import { useToast } from '~/composables/useToast'
 import { sonarVeredicto } from '~/utils/escaneoFeedback'
 import {
-  API_PENDIENTES, cronometroDesde, fmtDuracionTarea, MOTIVO_DEVOLUCION_LABEL,
-  MOTIVOS_DEVOLUCION, type MotivoDevolucion, type PendienteDTO,
+  API_MONTAJE, API_PENDIENTES, cronometroDesde, devuelveASolicitante, fmtDuracionTarea,
+  NOVEDAD_PENDIENTE_LABEL, NOVEDADES_PENDIENTE, type NovedadPendiente, type PendienteDTO,
 } from '~/utils/resurtidoTareas'
+import { useSessionState } from '~/composables/useSession'
 
 const props = defineProps<{ ahora: number }>()
 
@@ -106,32 +107,68 @@ async function completar() {
   }
 }
 
-// ── Devolver sin bajarlo ───────────────────────────────────────────
-// El caso que lo motiva: el PLU resulta ser de MUEBLES y no de gourmet, asi que
-// no es trabajo suyo. Devolver no es fallar — el reloj se descarta entero.
-const devolviendo = ref(false)
-const motivo = ref<MotivoDevolucion>('MUEBLES')
-const detalleDev = ref('')
+// ── Reportar una novedad ───────────────────────────────────────────
+// Solo el area de muebles vuelve a quien lo pidio: no es un problema del
+// deposito, se pidio al area equivocada. El resto se queda en almacenamiento, en
+// rojo, para que alguien decida. En los dos casos el reloj se descarta.
+const reportando = ref(false)
+const novedad = ref<NovedadPendiente>('SIN_EXISTENCIAS')
 
-const puedeDevolver = computed(() =>
-  motivo.value !== 'OTRO' || detalleDev.value.trim().length > 0)
-
-async function devolver() {
+async function reportar() {
   const p = abierto.value
-  if (!p || !puedeDevolver.value) return
+  if (!p) return
   guardando.value = p.id
   try {
-    await $fetch(`${API_PENDIENTES}/${p.id}/devolver`, {
-      method: 'POST',
-      body: { motivo: motivo.value, detalle: detalleDev.value.trim() || undefined },
+    await $fetch(`${API_PENDIENTES}/${p.id}/novedad`, {
+      method: 'POST', body: { tipo: novedad.value },
     })
-    showToast('Devuelto. Ya avisamos a quien lo pidió.')
+    showToast(devuelveASolicitante(novedad.value)
+      ? 'Devuelto a quien lo pidió.'
+      : 'Novedad reportada. Almacenamiento decide qué hacer.')
     abierto.value = null
-    devolviendo.value = false
-    detalleDev.value = ''
+    reportando.value = false
     await cargar()
   } catch (e) {
-    showToast(apiErr(e, 'No se pudo devolver'), true)
+    showToast(apiErr(e, 'No se pudo reportar'), true)
+  } finally {
+    guardando.value = null
+  }
+}
+
+// ── Pasar a un ayudante ────────────────────────────────────────────
+// El reloj es de quien lo termina: arranca cuando el ayudante escanea el PLU.
+const { me } = useSessionState()
+const pasando = ref(false)
+const ayudantes = ref<{ id: string; nombre: string }[]>([])
+const ayudanteId = ref('')
+
+async function abrirPaso() {
+  pasando.value = true
+  reportando.value = false
+  if (ayudantes.value.length) return
+  try {
+    const res = await $fetch<{ data: { id: string; nombre: string }[] }>(`${API_MONTAJE}/operarios`)
+    // Uno no se lo pasa a si mismo, y verse en la lista solo estorba.
+    ayudantes.value = res.data.filter((o) => o.id !== me.value?.id)
+  } catch { /* sin lista el boton se queda deshabilitado */ }
+}
+
+async function pasar() {
+  const p = abierto.value
+  if (!p || !ayudanteId.value) return
+  guardando.value = p.id
+  try {
+    await $fetch(`${API_PENDIENTES}/${p.id}/traspasar`, {
+      method: 'POST', body: { operarioId: ayudanteId.value },
+    })
+    const nombre = ayudantes.value.find((a) => a.id === ayudanteId.value)?.nombre ?? 'el ayudante'
+    showToast(`Pasado a ${nombre}`)
+    abierto.value = null
+    pasando.value = false
+    ayudanteId.value = ''
+    await cargar()
+  } catch (e) {
+    showToast(apiErr(e, 'No se pudo pasar'), true)
   } finally {
     guardando.value = null
   }
@@ -226,33 +263,49 @@ cargar()
             <p v-if="!enCurso" class="p-bloq">Escanea primero el producto.</p>
           </section>
 
-          <!-- Devolver: cuando el PLU no le corresponde. -->
-          <section class="devolver">
-            <button v-if="!devolviendo" class="dev-link" @click="devolviendo = true">
-              <Undo2 :size="13" /> Este PLU no me corresponde
-            </button>
-            <template v-else>
-              <h3 class="p-title"><Undo2 :size="14" /> Devolver a quien lo pidió</h3>
+          <!-- No lo puede bajar, o se lo pasa a otro. -->
+          <section class="otras">
+            <div v-if="!reportando && !pasando" class="otras-acc">
+              <button class="dev-link" @click="reportando = true; pasando = false">
+                <TriangleAlert :size="13" /> Reportar novedad
+              </button>
+              <button class="dev-link" @click="abrirPaso">
+                <UserPlus :size="13" /> Pasar a un ayudante
+              </button>
+            </div>
+
+            <template v-if="reportando">
+              <h3 class="p-title"><TriangleAlert :size="14" /> ¿Qué encontraste?</h3>
               <div class="dev-motivos">
                 <button
-                  v-for="m in MOTIVOS_DEVOLUCION" :key="m" type="button" class="dev-btn"
-                  :class="{ on: motivo === m }" @click="motivo = m"
+                  v-for="n in NOVEDADES_PENDIENTE" :key="n" type="button" class="dev-btn"
+                  :class="{ on: novedad === n }" @click="novedad = n"
                 >
-                  {{ MOTIVO_DEVOLUCION_LABEL[m] }}
+                  {{ NOVEDAD_PENDIENTE_LABEL[n] }}
+                  <span v-if="devuelveASolicitante(n)" class="dev-nota">vuelve a quien lo pidió</span>
                 </button>
               </div>
-              <input
-                v-if="motivo === 'OTRO'" v-model="detalleDev" class="field dev-detalle"
-                placeholder="¿Por qué lo devuelves?" maxlength="500"
-              >
               <div class="dev-acc">
-                <button class="btn btn-sm" @click="devolviendo = false">Cancelar</button>
-                <button
-                  class="btn btn-sm dev-ok" :disabled="!puedeDevolver || guardando === abierto.id"
-                  @click="devolver"
-                >
-                  <Spinner v-if="guardando === abierto.id" :size="13" /><Undo2 v-else :size="13" />
-                  Devolver
+                <button class="btn btn-sm" @click="reportando = false">Cancelar</button>
+                <button class="btn btn-sm dev-ok" :disabled="guardando === abierto.id" @click="reportar">
+                  <Spinner v-if="guardando === abierto.id" :size="13" /><TriangleAlert v-else :size="13" />
+                  Reportar
+                </button>
+              </div>
+            </template>
+
+            <template v-if="pasando">
+              <h3 class="p-title"><UserPlus :size="14" /> Pasar a un ayudante</h3>
+              <select v-model="ayudanteId" class="field" :disabled="guardando === abierto.id">
+                <option value="">Elige a quién</option>
+                <option v-for="a in ayudantes" :key="a.id" :value="a.id">{{ a.nombre }}</option>
+              </select>
+              <p class="hint">Su reloj empieza cuando escanee el PLU.</p>
+              <div class="dev-acc">
+                <button class="btn btn-sm" @click="pasando = false">Cancelar</button>
+                <button class="btn btn-sm btn-primary" :disabled="!ayudanteId || guardando === abierto.id" @click="pasar">
+                  <Spinner v-if="guardando === abierto.id" :size="13" /><UserPlus v-else :size="13" />
+                  Pasar
                 </button>
               </div>
             </template>
@@ -308,7 +361,9 @@ cargar()
 .hint { font-size: 11px; color: var(--faint); }
 .submit { width: 100%; height: 44px; }
 
-.devolver { padding-top: 4px; border-top: 1px dashed var(--border-strong); }
+.otras { padding-top: 4px; border-top: 1px dashed var(--border-strong); }
+.otras-acc { display: flex; flex-wrap: wrap; gap: 16px; }
+.dev-nota { display: block; margin-top: 2px; font-size: 11px; font-weight: 500; color: var(--u-critico); }
 .dev-link { display: inline-flex; align-items: center; gap: 6px; margin-top: 12px; background: none; border: none; padding: 0; font-size: 12.5px; font-weight: 600; color: var(--muted); cursor: pointer; }
 .dev-link:hover { color: var(--u-aviso); }
 .dev-motivos { display: flex; flex-direction: column; gap: 6px; margin-bottom: 10px; }

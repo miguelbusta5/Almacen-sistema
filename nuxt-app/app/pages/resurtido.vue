@@ -59,7 +59,9 @@ const pestanas = [
     <!-- Las tareas asignadas son para quien las ejecuta; supervisión las ve en
          Montaje Resurtido, que es donde tiene sentido mirarlas. -->
     <template v-if="activa === 'resurtido'">
-      <ResurtidoTareas v-if="ejecuta" :ahora="ahora" />
+      <!-- Un pendiente prioritario sale primero en esta lista, pero se hace en su
+           pestaña: su flujo arranca con el PLU, no con la ubicacion. -->
+      <ResurtidoTareas v-if="ejecuta" :ahora="ahora" @ir-a-pendientes="activa = 'pendientes'" />
       <EmptyState
         v-else title="Solo para operarios"
         description="Las tareas de resurtido las ejecutan los operarios. Para ver cómo van, entra a Montaje Resurtido."

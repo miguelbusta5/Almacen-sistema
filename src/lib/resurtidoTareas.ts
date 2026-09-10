@@ -10,7 +10,9 @@ export type EstadoMontajeResurtido = (typeof ESTADOS_MONTAJE)[number];
 export const ESTADOS_TAREA = ["PENDIENTE", "EN_CURSO", "COMPLETADA"] as const;
 export type EstadoTareaResurtido = (typeof ESTADOS_TAREA)[number];
 
-export const ESTADOS_PENDIENTE = ["SOLICITADO", "ASIGNADO", "EN_CURSO", "COMPLETADO", "DEVUELTO"] as const;
+export const ESTADOS_PENDIENTE = [
+  "SOLICITADO", "ASIGNADO", "EN_CURSO", "COMPLETADO", "DEVUELTO", "NOVEDAD",
+] as const;
 export type EstadoPendienteGourmet = (typeof ESTADOS_PENDIENTE)[number];
 
 /** Quién ejecuta las tareas: los que mueven la mercancía. */
@@ -44,6 +46,7 @@ export const ESTADO_PENDIENTE_LABEL: Record<EstadoPendienteGourmet, string> = {
   EN_CURSO: "En curso",
   COMPLETADO: "Ubicado",
   DEVUELTO: "Devuelto",
+  NOVEDAD: "Con novedad",
 };
 
 // ── Archivo de resurtido ─────────────────────────────────────────────
@@ -254,23 +257,91 @@ export function puedeEditarPendiente(estado: EstadoPendienteGourmet): boolean {
   return estado !== "COMPLETADO";
 }
 
-/** Motivo por el que un operario devuelve un pendiente sin bajarlo. */
-export const MOTIVOS_DEVOLUCION = ["MUEBLES", "NO_HAY", "OTRO"] as const;
-export type MotivoDevolucion = (typeof MOTIVOS_DEVOLUCION)[number];
+/**
+ * Novedades que el operario puede reportar sobre un pendiente.
+ *
+ * Solo una DEVUELVE el pendiente a quien lo pidio: el area de muebles, porque no
+ * es un problema de almacenamiento sino que se pidio al area equivocada. El
+ * resto son problemas del deposito y se quedan en almacenamiento, en rojo, para
+ * que alguien decida.
+ */
+export const NOVEDADES_PENDIENTE = [
+  "SIN_EXISTENCIAS",
+  "EN_INSPECCION",
+  "AREA_MUEBLES",
+  "EN_PASILLO",
+] as const;
+export type NovedadPendiente = (typeof NOVEDADES_PENDIENTE)[number];
 
-export const MOTIVO_DEVOLUCION_LABEL: Record<MotivoDevolucion, string> = {
-  MUEBLES: "Es de muebles, no de gourmet",
-  NO_HAY: "No hay existencia en deposito",
-  OTRO: "Otro motivo",
+export const NOVEDAD_PENDIENTE_LABEL: Record<NovedadPendiente, string> = {
+  SIN_EXISTENCIAS: "Sin existencias",
+  EN_INSPECCION: "PLU en inspeccion",
+  AREA_MUEBLES: "PLU del area de muebles",
+  EN_PASILLO: "Mercancia en pasillo",
 };
 
-export function validarDevolucion(motivo: unknown, detalle: string): string | null {
-  if (!MOTIVOS_DEVOLUCION.includes(motivo as MotivoDevolucion)) {
-    return "Elige por que lo devuelves";
+export function esNovedadPendiente(v: unknown): v is NovedadPendiente {
+  return typeof v === "string" && (NOVEDADES_PENDIENTE as readonly string[]).includes(v);
+}
+
+/** El area de muebles es la unica que vuelve a quien lo pidio. */
+export function devuelveASolicitante(n: NovedadPendiente): boolean {
+  return n === "AREA_MUEBLES";
+}
+
+// ── Color de la vineta ───────────────────────────────────────────────
+/**
+ * Color de un pendiente, para verlo de un vistazo.
+ *
+ * - sin color: nadie lo tiene todavia
+ * - amarillo:  un operario lo esta haciendo
+ * - verde:     ya esta ubicado
+ * - rojo:      tiene una novedad, o se devolvio
+ */
+export type ColorPendiente = "ninguno" | "amarillo" | "verde" | "rojo";
+
+export function colorPendiente(estado: EstadoPendienteGourmet): ColorPendiente {
+  switch (estado) {
+    case "SOLICITADO":
+      return "ninguno";
+    case "ASIGNADO":
+    case "EN_CURSO":
+      return "amarillo";
+    case "COMPLETADO":
+      return "verde";
+    case "NOVEDAD":
+    case "DEVUELTO":
+      return "rojo";
   }
-  // "Otro" sin explicacion no le dice nada a quien lo pidio.
-  if (motivo === "OTRO" && !detalle.trim()) return "Explica por que lo devuelves";
-  return null;
+}
+
+// ── Orden de la lista del operario ───────────────────────────────────
+/**
+ * Lo prioritario va primero; lo demas, por la ruta.
+ *
+ * Un pendiente es alguien esperando en la tienda, asi que se hace antes que el
+ * resurtido de rutina. Entre iguales se respeta la posicion para no romper el
+ * recorrido en linea recta.
+ */
+export function compararPorPrioridad(
+  a: { prioridad: boolean; orden: number },
+  b: { prioridad: boolean; orden: number },
+): number {
+  if (a.prioridad !== b.prioridad) return a.prioridad ? -1 : 1;
+  return a.orden - b.orden;
+}
+
+/**
+ * Quien puede asignar un pendiente.
+ *
+ * Almacenamiento con el permiso por persona, o quien lo pidio: quien solicita
+ * sabe mejor que nadie a quien tiene cerca y cuanta prisa hay.
+ */
+export function puedeAsignarPendiente(opts: {
+  tienePermisoMontar: boolean;
+  esQuienLoPidio: boolean;
+}): boolean {
+  return opts.tienePermisoMontar || opts.esQuienLoPidio;
 }
 
 // ── Tiempo ───────────────────────────────────────────────────────────

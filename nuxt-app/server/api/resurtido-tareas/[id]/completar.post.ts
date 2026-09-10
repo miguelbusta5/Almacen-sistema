@@ -3,7 +3,7 @@ import { z } from 'zod'
 import { prisma } from '../../../utils/prisma'
 import { requireAuth } from '../../../utils/auth'
 import { mapMontaje } from '../../../utils/mapRow'
-import { assertEjecutor, avisar, MONTAJE_INCLUDE } from '../../../utils/resurtido'
+import { assertEjecutor, avisar, idsAlmacenamiento, MONTAJE_INCLUDE } from '../../../utils/resurtido'
 import { validarCierreTarea, validarEscaneoPlu } from '../../../utils/resurtidoCalc'
 // normalizarUbicacion es del modulo de montacargas: una sola forma de escribir
 // una ubicacion en todo el proyecto.
@@ -73,6 +73,37 @@ export default defineEventHandler(async (event) => {
         horaFin: now,
       },
     })
+
+    // Los pendientes que iban DENTRO de esta tarea quedan ubicados con ella: es
+    // la misma bajada. Y se avisa, que es justo lo que estaban esperando.
+    const enTarea = await tx.pendienteGourmet.findMany({
+      where: { tareaResurtidoId: id, estado: { not: 'COMPLETADO' } },
+      select: { id: true, descripcion: true, solicitadoPorId: true, asignadoPorId: true, unidadesSolicitadas: true },
+    })
+    const ubicacion = normalizarUbicacion(d.pickingFinal)
+    for (const pen of enTarea) {
+      await tx.pendienteGourmet.update({
+        where: { id: pen.id },
+        data: {
+          estado: 'COMPLETADO',
+          unidadesBajadas: pen.unidadesSolicitadas,
+          ubicacionFinal: ubicacion,
+          horaInicio: tarea.horaInicio,
+          horaFin: now,
+          completadoAt: now,
+        },
+      })
+      await avisar(tx, [
+        pen.solicitadoPorId,
+        ...(pen.asignadoPorId ? [pen.asignadoPorId] : []),
+        ...(await idsAlmacenamiento()),
+      ], {
+        tipo: 'PENDIENTE_COMPLETADO',
+        titulo: 'Pendiente ubicado',
+        descripcion: `${pen.descripcion} en ${ubicacion}, con el resurtido`,
+        enlace: '/dashboard/pendientes',
+      })
+    }
 
     // El montaje se cierra solo cuando ya no queda ninguna tarea por hacer.
     const quedan = await tx.tareaResurtido.count({

@@ -21,6 +21,10 @@ describe("resurtido por tareas — las tres copias de la logica", () => {
     "validarSolicitudPendiente",
     "validarCierrePendiente",
     "segundosEntre",
+    "colorPendiente",
+    "compararPorPrioridad",
+    "devuelveASolicitante",
+    "puedeAsignarPendiente",
   ];
 
   it.each(funciones)("%s existe en las tres", (fn) => {
@@ -197,9 +201,8 @@ describe("los modulos nuevos estan registrados", () => {
   });
 });
 
-describe("pendientes — correccion y devolucion", () => {
+describe("pendientes — correccion", () => {
   const patch = leer("nuxt-app/server/api/pendientes/[id]/index.patch.ts");
-  const devolver = leer("nuxt-app/server/api/pendientes/[id]/devolver.post.ts");
 
   it("solo quien lo pidio lo corrige, y solo si no se ubico", () => {
     expect(patch).toContain("p.solicitadoPorId !== actor.id");
@@ -209,26 +212,99 @@ describe("pendientes — correccion y devolucion", () => {
   // El operario puede estar caminando hacia el sitio con la cifra vieja.
   it("si ya tenia operario, el cambio le avisa", () => {
     expect(patch).toContain("PENDIENTE_CORREGIDO");
-    expect(patch).toContain("cambio && p.operarioId");
+  });
+});
+
+describe("pendientes — novedades del operario", () => {
+  const novedad = leer("nuxt-app/server/api/pendientes/[id]/novedad.post.ts");
+
+  // Muebles vuelve a quien lo pidio; el resto se queda en almacenamiento.
+  it("muebles se devuelve y el resto queda con novedad", () => {
+    expect(novedad).toContain("devuelveASolicitante(tipo)");
+    expect(novedad).toContain("estado: 'DEVUELTO'");
+    expect(novedad).toContain("estado: 'NOVEDAD'");
   });
 
-  // Devolver no es fallar: no era su tarea.
-  it("devolver descarta el reloj y avisa a quien lo pidio", () => {
-    expect(devolver).toContain("estado: 'DEVUELTO'");
-    expect(devolver).toContain("horaInicio: null");
-    expect(devolver).toContain("PENDIENTE_DEVUELTO");
-    expect(devolver).toContain("p.solicitadoPorId");
+  // No pudo hacerlo: contarle tiempo por eso seria medirle algo que no hizo.
+  it("en los dos casos el reloj se descarta", () => {
+    expect(novedad.match(/horaInicio: null/g)?.length).toBe(2);
   });
 
-  it("un pendiente devuelto sale de la lista del operario", () => {
-    expect(leer("nuxt-app/server/api/pendientes/mis-tareas.get.ts"))
-      .toContain("estado: { in: ['ASIGNADO', 'EN_CURSO'] }");
+  it("la devolucion vieja se retiro", () => {
+    const { existsSync } = require("node:fs") as typeof import("node:fs");
+    expect(existsSync(path.join(process.cwd(), "nuxt-app/server/api/pendientes/[id]/devolver.post.ts")))
+      .toBe(false);
   });
 
-  it("la pantalla del operario ofrece devolverlo", () => {
+  it("la pantalla del operario ofrece las cuatro novedades", () => {
     const vue = leer("nuxt-app/app/components/resurtido/PendientesTareas.vue");
-    expect(vue).toContain("Este PLU no me corresponde");
-    expect(vue).toContain("MOTIVOS_DEVOLUCION");
+    expect(vue).toContain("NOVEDADES_PENDIENTE");
+    expect(vue).toContain("Reportar novedad");
+  });
+});
+
+describe("pendientes — pasar a un ayudante", () => {
+  const traspasar = leer("nuxt-app/server/api/pendientes/[id]/traspasar.post.ts");
+
+  it("existe y avisa al ayudante", () => {
+    expect(traspasar).toContain("pasadoPorId: actor.id");
+    expect(traspasar).toContain("operarioId: ayudante.id");
+  });
+
+  // El reloj es de quien lo termina.
+  it("el reloj arranca de cero para el ayudante", () => {
+    expect(traspasar).toContain("horaInicio: null");
+  });
+
+  // Uno sumado a un resurtido va con esa tarea: pasarlo suelto la partiria.
+  it("no se pasa suelto uno que va dentro de un resurtido", () => {
+    expect(traspasar).toContain("if (p.tareaResurtidoId)");
+  });
+});
+
+// Un pendiente es alguien esperando en la tienda: va antes que la rutina.
+describe("pendientes — prioridad sobre el resurtido", () => {
+  const asignar = leer("nuxt-app/server/api/pendientes/[id]/asignar.post.ts");
+  const completar = leer("nuxt-app/server/api/resurtido-tareas/[id]/completar.post.ts");
+  const lista = leer("nuxt-app/server/api/resurtido-tareas/index.get.ts");
+
+  // Si el PLU ya esta en su resurtido, no es una tarea aparte.
+  it("si el PLU ya esta en el resurtido, se suma a esa tarea", () => {
+    expect(asignar).toContain("plu: p.plu");
+    expect(asignar).toContain("prioridad: true");
+    expect(asignar).toContain("unidadesPendientes: tarea.unidadesPendientes + p.unidadesSolicitadas");
+    expect(asignar).toContain("tareaResurtidoId: tarea.id");
+  });
+
+  // Completar la tarea ES ubicar el pendiente que iba dentro.
+  it("completar la tarea ubica y avisa los pendientes que llevaba", () => {
+    expect(completar).toContain("tareaResurtidoId: id");
+    expect(completar).toContain("estado: 'COMPLETADO'");
+    expect(completar).toContain("PENDIENTE_COMPLETADO");
+  });
+
+  it("los pendientes sueltos salen delante en la lista del operario", () => {
+    expect(lista).toContain("prioritarios: pendientes.map(mapPendiente)");
+    // Los sumados a una tarea no salen sueltos.
+    expect(lista).toContain("tareaResurtidoId: null");
+  });
+
+  it("quien lo pidio tambien puede asignarlo", () => {
+    expect(asignar).toContain("esQuienLoPidio: p.solicitadoPorId === actor.id");
+  });
+
+  it("reasignar limpia la novedad", () => {
+    expect(asignar).toContain("tipoNovedad: null");
+  });
+});
+
+describe("pendientes — color de la vineta", () => {
+  it("la vineta toma su color del estado", () => {
+    const vue = leer("nuxt-app/app/components/pendientes/Module.vue");
+    expect(vue).toContain("colorPendiente(p.estado)");
+    expect(vue).toContain(".vin.c-rojo");
+    expect(vue).toContain(".vin.c-amarillo");
+    expect(vue).toContain(".vin.c-verde");
   });
 });
 

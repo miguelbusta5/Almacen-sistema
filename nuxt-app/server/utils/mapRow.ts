@@ -497,6 +497,10 @@ export function mapTareaResurtido(t: any) {
     altura: t.altura,
     pickingSugerido: t.pickingSugerido,
     unidadesSolicitadas: t.unidadesSolicitadas,
+    // Se sumo un pendiente: va primero y en rojo. Las unidades del pendiente van
+    // aparte para ver cuanto pidio el archivo y cuanto se sumo encima.
+    prioridad: t.prioridad ?? false,
+    unidadesPendientes: t.unidadesPendientes ?? 0,
     unidadesBajadas: t.unidadesBajadas ?? null,
     pickingFinal: t.pickingFinal ?? null,
     horaInicio: t.horaInicio ? t.horaInicio.toISOString() : null,
@@ -545,6 +549,11 @@ export function mapPendiente(p: any) {
     devueltoPorNombre: p.devueltoPor?.name ?? null,
     devueltoAt: p.devueltoAt ? p.devueltoAt.toISOString() : null,
     motivoDevolucion: p.motivoDevolucion ?? null,
+    tipoNovedad: p.tipoNovedad ?? null,
+    novedadPorNombre: p.novedadPor?.name ?? null,
+    novedadAt: p.novedadAt ? p.novedadAt.toISOString() : null,
+    tareaResurtidoId: p.tareaResurtidoId ?? null,
+    pasadoPorNombre: p.pasadoPor?.name ?? null,
     // Lo que lleva ESPERANDO desde que se pidio. Es otra cosa que el tiempo de
     // trabajo: mide al sistema, no al operario.
     esperaSegundos: segundosEntre(p.solicitadoAt, p.completadoAt, new Date()) ?? 0,

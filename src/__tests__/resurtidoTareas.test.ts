@@ -13,9 +13,13 @@ import {
   validarCierreTarea,
   validarEscaneoPlu,
   validarEscaneoPosicion,
-  validarDevolucion,
   validarSolicitudPendiente,
   puedeEditarPendiente,
+  colorPendiente,
+  compararPorPrioridad,
+  devuelveASolicitante,
+  esNovedadPendiente,
+  puedeAsignarPendiente,
 } from "@/lib/resurtidoTareas";
 
 // Cabecera real del archivo que suben: PLU · NOMBRE · ALTURA · PICKING ·
@@ -166,30 +170,78 @@ describe("tiempo", () => {
 });
 
 // Quien lo pidio lo puede corregir mientras el operario todavia no lo bajo.
-describe("pendientes — correccion y devolucion", () => {
+describe("pendientes — correccion", () => {
   it("se corrige aunque ya este asignado, pero no una vez ubicado", () => {
     expect(puedeEditarPendiente("SOLICITADO")).toBe(true);
     expect(puedeEditarPendiente("ASIGNADO")).toBe(true);
     expect(puedeEditarPendiente("EN_CURSO")).toBe(true);
-    expect(puedeEditarPendiente("DEVUELTO")).toBe(true);
+    expect(puedeEditarPendiente("NOVEDAD")).toBe(true);
     // Ya ubicado es historia: cambiarlo falsearia lo que de verdad paso.
     expect(puedeEditarPendiente("COMPLETADO")).toBe(false);
   });
+});
 
-  // El caso real: el PLU es de muebles y no de gourmet, asi que no es trabajo
-  // del operario.
-  it("el operario puede devolverlo por muebles sin escribir nada mas", () => {
-    expect(validarDevolucion("MUEBLES", "")).toBeNull();
-    expect(validarDevolucion("NO_HAY", "")).toBeNull();
+// Las novedades que puede reportar el operario, y a donde va cada una.
+describe("pendientes — novedades del operario", () => {
+  it("son las cuatro que se usan en el CEDI", () => {
+    for (const n of ["SIN_EXISTENCIAS", "EN_INSPECCION", "AREA_MUEBLES", "EN_PASILLO"]) {
+      expect(esNovedadPendiente(n)).toBe(true);
+    }
+    expect(esNovedadPendiente("OTRA_COSA")).toBe(false);
   });
 
-  // "Otro" sin explicacion no le dice nada a quien lo pidio.
-  it("otro motivo exige explicacion", () => {
-    expect(validarDevolucion("OTRO", "")).toMatch(/Explica/);
-    expect(validarDevolucion("OTRO", "esta averiado")).toBeNull();
+  // Muebles no es un problema del deposito: se pidio al area equivocada.
+  it("solo el area de muebles vuelve a quien lo pidio", () => {
+    expect(devuelveASolicitante("AREA_MUEBLES")).toBe(true);
+    expect(devuelveASolicitante("SIN_EXISTENCIAS")).toBe(false);
+    expect(devuelveASolicitante("EN_INSPECCION")).toBe(false);
+    expect(devuelveASolicitante("EN_PASILLO")).toBe(false);
+  });
+});
+
+// El color es lo que se lee primero en una pila de vinetas.
+describe("pendientes — color de la vineta", () => {
+  it("sin color si nadie lo tiene", () => {
+    expect(colorPendiente("SOLICITADO")).toBe("ninguno");
+  });
+  it("amarillo mientras un operario lo hace", () => {
+    expect(colorPendiente("ASIGNADO")).toBe("amarillo");
+    expect(colorPendiente("EN_CURSO")).toBe("amarillo");
+  });
+  it("verde cuando ya esta ubicado", () => {
+    expect(colorPendiente("COMPLETADO")).toBe("verde");
+  });
+  it("rojo si tiene una novedad o se devolvio", () => {
+    expect(colorPendiente("NOVEDAD")).toBe("rojo");
+    expect(colorPendiente("DEVUELTO")).toBe("rojo");
+  });
+});
+
+// Un pendiente es alguien esperando en la tienda: va antes que la rutina.
+describe("pendientes — prioridad sobre el resurtido", () => {
+  it("lo prioritario va primero aunque este mas lejos en la ruta", () => {
+    const tareas = [
+      { id: "a", prioridad: false, orden: 1 },
+      { id: "b", prioridad: true, orden: 40 },
+      { id: "c", prioridad: false, orden: 2 },
+    ];
+    expect([...tareas].sort(compararPorPrioridad).map((t) => t.id)).toEqual(["b", "a", "c"]);
   });
 
-  it("no acepta un motivo inventado", () => {
-    expect(validarDevolucion("PORQUE_SI", "x")).toMatch(/por que lo devuelves/);
+  // Entre iguales se respeta la ruta, para no romper el recorrido en linea recta.
+  it("entre iguales manda la posicion", () => {
+    const tareas = [
+      { id: "x", prioridad: true, orden: 9 },
+      { id: "y", prioridad: true, orden: 3 },
+    ];
+    expect([...tareas].sort(compararPorPrioridad).map((t) => t.id)).toEqual(["y", "x"]);
+  });
+});
+
+describe("pendientes — quien asigna", () => {
+  it("almacenamiento con el permiso, o quien lo pidio", () => {
+    expect(puedeAsignarPendiente({ tienePermisoMontar: true, esQuienLoPidio: false })).toBe(true);
+    expect(puedeAsignarPendiente({ tienePermisoMontar: false, esQuienLoPidio: true })).toBe(true);
+    expect(puedeAsignarPendiente({ tienePermisoMontar: false, esQuienLoPidio: false })).toBe(false);
   });
 });

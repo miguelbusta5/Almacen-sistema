@@ -15,8 +15,9 @@ import { ensureSession, useSessionState } from '~/composables/useSession'
 import { useToast } from '~/composables/useToast'
 import { useAutoRefresh } from '~/composables/useAutoRefresh'
 import {
-  API_MONTAJE, API_PENDIENTES, cronometroDesde, ESTADO_PENDIENTE_LABEL,
-  esSolicitante, fmtDuracionTarea, puedeEditarPendiente, type PendienteDTO,
+  API_MONTAJE, API_PENDIENTES, colorPendiente, cronometroDesde, ESTADO_PENDIENTE_LABEL,
+  esSolicitante, fmtDuracionTarea, NOVEDAD_PENDIENTE_LABEL, puedeEditarPendiente,
+  type NovedadPendiente, type PendienteDTO,
 } from '~/utils/resurtidoTareas'
 import { canSeeModule } from '~/utils/modulePermissions'
 
@@ -110,7 +111,8 @@ async function cargar() {
 }
 
 async function cargarOperarios() {
-  if (!puedeAsignar.value) return
+  // Quien pide tambien reparte lo suyo: sabe mejor que nadie cuanta prisa hay.
+  if (!puedeAsignar.value && !solicita.value) return
   try {
     const res = await $fetch<{ data: { id: string; nombre: string }[] }>(`${API_MONTAJE}/operarios`)
     operarios.value = res.data
@@ -186,6 +188,17 @@ async function guardarEdicion() {
   } finally {
     guardando.value = null
   }
+}
+
+// Asigna almacenamiento (permiso por persona) o quien lo pidio. Uno ya sumado a
+// un resurtido no se reasigna: va con esa tarea.
+function asignable(p: PendienteDTO): boolean {
+  if (p.estado === 'COMPLETADO' || p.tareaResurtidoId) return false
+  return puedeAsignar.value || esMio(p)
+}
+
+function esMio(p: PendienteDTO): boolean {
+  return solicita.value && p.solicitadoPorNombre === (me.value?.name ?? '')
 }
 
 // Puede corregirlo quien lo pidio, mientras no se haya ubicado.
@@ -283,10 +296,10 @@ const cerrados = computed(() => items.value.filter((p) => p.estado === 'COMPLETA
       <template v-else>
         <h2 v-if="abiertos.length" class="sec">En curso</h2>
         <div v-if="abiertos.length" class="grid bloque">
-          <article v-for="p in abiertos" :key="p.id" class="card vin">
+          <article v-for="p in abiertos" :key="p.id" class="card vin" :class="`c-${colorPendiente(p.estado)}`">
             <header class="vin-top">
               <b class="mono vin-plu">{{ p.plu }}</b>
-              <Badge :label="ESTADO_PENDIENTE_LABEL[p.estado]" :tone="p.estado === 'SOLICITADO' ? 'warn' : 'info'" />
+              <span class="estado" :class="`e-${colorPendiente(p.estado)}`">{{ ESTADO_PENDIENTE_LABEL[p.estado] }}</span>
             </header>
             <p class="vin-desc" :title="p.descripcion">{{ p.descripcion }}</p>
             <p class="vin-und"><b class="tnum">{{ p.unidadesSolicitadas }}</b> unidades solicitadas</p>
@@ -303,6 +316,17 @@ const cerrados = computed(() => items.value.filter((p) => p.estado === 'COMPLETA
               </div>
             </dl>
 
+            <!-- Novedad del operario: sin existencias, en inspeccion, en pasillo.
+                 Queda en rojo hasta que alguien lo reasigne. -->
+            <p v-if="p.estado === 'NOVEDAD' && p.tipoNovedad" class="vin-dev">
+              <Undo2 :size="13" />
+              {{ p.novedadPorNombre }}: {{ NOVEDAD_PENDIENTE_LABEL[p.tipoNovedad as NovedadPendiente] ?? p.tipoNovedad }}
+            </p>
+
+            <p v-if="p.tareaResurtidoId" class="vin-res">
+              Va dentro del resurtido de {{ p.operarioNombre }}
+            </p>
+
             <!-- Devuelto por el operario: no es un fallo suyo, el PLU no le
                  correspondia. Quien lo pidio decide si lo corrige o lo deja. -->
             <p v-if="p.estado === 'DEVUELTO'" class="vin-dev">
@@ -314,8 +338,8 @@ const cerrados = computed(() => items.value.filter((p) => p.estado === 'COMPLETA
               <Pencil :size="12" /> Corregir
             </button>
 
-            <!-- Asignar: permiso por persona -->
-            <div v-if="puedeAsignar" class="vin-asig">
+            <!-- Asignar: almacenamiento o quien lo pidio -->
+            <div v-if="asignable(p)" class="vin-asig">
               <select
                 class="field field-sm" :disabled="guardando === p.id"
                 @change="asignar(p, ($event.target as HTMLSelectElement).value)"
@@ -330,7 +354,7 @@ const cerrados = computed(() => items.value.filter((p) => p.estado === 'COMPLETA
 
         <h2 v-if="cerrados.length" class="sec">Ubicados</h2>
         <div v-if="cerrados.length" class="grid">
-          <article v-for="p in cerrados" :key="p.id" class="card vin hecho">
+          <article v-for="p in cerrados" :key="p.id" class="card vin c-verde">
             <header class="vin-top">
               <b class="mono vin-plu">{{ p.plu }}</b>
               <span class="ok"><CheckCircle2 :size="13" /> Ubicado</span>
@@ -418,7 +442,20 @@ const cerrados = computed(() => items.value.filter((p) => p.estado === 'COMPLETA
 
 .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(268px, 1fr)); gap: 14px; }
 .vin { padding: 14px 16px 13px; display: flex; flex-direction: column; gap: 8px; }
-.vin.hecho { border-color: color-mix(in srgb, var(--brand) 32%, var(--border)); }
+/* Color por estado, para leer la pila de un vistazo:
+   sin color = nadie lo tiene · amarillo = en proceso · verde = ubicado · rojo = novedad.
+   Borde izquierdo grueso y fondo tenue: el color se ve, el texto se sigue leyendo. */
+.vin { border-left-width: 4px; }
+.vin.c-ninguno { border-left-color: var(--border-strong); }
+.vin.c-amarillo { border-left-color: var(--u-aviso); background: color-mix(in srgb, var(--u-aviso) 6%, var(--surface)); }
+.vin.c-verde { border-left-color: var(--brand); background: color-mix(in srgb, var(--brand) 6%, var(--surface)); }
+.vin.c-rojo { border-left-color: var(--u-critico); background: color-mix(in srgb, var(--u-critico) 6%, var(--surface)); }
+.estado { padding: 2px 9px; border-radius: var(--r-pill); font-size: 10.5px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; }
+.estado.e-ninguno { background: var(--surface-3); color: var(--muted); }
+.estado.e-amarillo { background: var(--u-aviso-tint); color: color-mix(in srgb, var(--u-aviso) 80%, #000); }
+.estado.e-verde { background: var(--brand-tint); color: var(--brand-deep); }
+.estado.e-rojo { background: color-mix(in srgb, var(--u-critico) 14%, transparent); color: var(--u-critico); }
+.vin-res { margin: 0; font-size: 12px; font-weight: 600; color: var(--u-critico); }
 .vin-top { display: flex; align-items: center; justify-content: space-between; gap: 9px; }
 .vin-plu { font-size: 14px; font-weight: 700; color: var(--ink); }
 .vin-desc { margin: 0; font-size: 12.5px; color: var(--ink-2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

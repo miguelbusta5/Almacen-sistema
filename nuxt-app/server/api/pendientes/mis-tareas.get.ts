@@ -14,8 +14,10 @@ export default defineEventHandler(async (event) => {
   const rows = await prisma.pendienteGourmet.findMany({
     where: {
       operarioId: actor.id,
-      // DEVUELTO no: ya no es trabajo suyo, volvio a quien lo pidio.
+      // DEVUELTO y NOVEDAD no: ya no es trabajo suyo hasta que alguien decida.
       estado: { in: ['ASIGNADO', 'EN_CURSO'] },
+      // Los sumados a un resurtido se hacen con esa tarea, no sueltos.
+      tareaResurtidoId: null,
       deletedAt: null,
     },
     include: PENDIENTE_INCLUDE,

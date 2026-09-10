@@ -157,6 +157,8 @@ model User {
   pendientesAsignados   PendienteGourmet[]   @relation("PendientesAsignados")
   pendientesRecibidos   PendienteGourmet[]   @relation("PendientesRecibidos")
   pendientesDevueltos   PendienteGourmet[]   @relation("PendientesDevueltos")
+  pendientesConNovedad  PendienteGourmet[]   @relation("PendientesConNovedad")
+  pendientesPasados     PendienteGourmet[]   @relation("PendientesPasados")
   recepcionesCreadas      RecepcionContenedor[]  @relation("RecepcionesCreadas")
   recepcionesActualizadas RecepcionContenedor[]  @relation("RecepcionesActualizadas")
   descargasRecepcion      DescargadorRecepcion[] @relation("DescargasRecepcion")
@@ -1405,6 +1407,9 @@ enum EstadoPendienteGourmet {
   EN_CURSO
   COMPLETADO
   DEVUELTO
+  /// El operario encontro un problema (sin existencias, en inspeccion, en
+  /// pasillo). Sale de su lista y queda en rojo para que alguien decida.
+  NOVEDAD
 }
 
 /// Un archivo de resurtido subido y asignado a un operario.
@@ -1463,6 +1468,14 @@ model TareaResurtido {
   pickingSugerido     String @map("picking_sugerido") @db.VarChar(120)
   unidadesSolicitadas Int    @map("unidades_solicitadas")
 
+  /// Se sumo un pendiente a esta tarea: sube al principio de la lista y se pinta
+  /// en rojo, porque un pendiente es alguien esperando en la tienda.
+  prioridad          Boolean            @default(false)
+  /// Unidades que llegaron de pendientes. Aparte de las del archivo para que se
+  /// pueda ver cuanto pidio el resurtido y cuanto se sumo encima.
+  unidadesPendientes Int                @default(0) @map("unidades_pendientes")
+  pendientes         PendienteGourmet[] @relation("PendientesEnResurtido")
+
   /// Lo que realmente bajo: depende del espacio que haya en el picking, asi que
   /// puede no coincidir con lo solicitado.
   unidadesBajadas Int?    @map("unidades_bajadas")
@@ -1511,6 +1524,22 @@ model PendienteGourmet {
   devueltoPor      User?     @relation("PendientesDevueltos", fields: [devueltoPorId], references: [id])
   devueltoAt       DateTime? @map("devuelto_at")
   motivoDevolucion String?   @map("motivo_devolucion")
+
+  /// Novedad que reporto el operario. El area de muebles no llega aqui: esa se
+  /// DEVUELVE a quien lo pidio, porque no es un problema de almacenamiento.
+  tipoNovedad  String?   @map("tipo_novedad") @db.VarChar(40)
+  novedadAt    DateTime? @map("novedad_at")
+  novedadPorId String?   @map("novedad_por_id")
+  novedadPor   User?     @relation("PendientesConNovedad", fields: [novedadPorId], references: [id])
+
+  /// Si el PLU ya estaba en el resurtido del operario, el pendiente no es una
+  /// tarea aparte: se suma a esa, y se da por ubicado cuando esa se completa.
+  tareaResurtidoId String?         @map("tarea_resurtido_id")
+  tareaResurtido   TareaResurtido? @relation("PendientesEnResurtido", fields: [tareaResurtidoId], references: [id], onDelete: SetNull)
+
+  /// Quien se lo paso a un ayudante, si fue asi.
+  pasadoPorId String? @map("pasado_por_id")
+  pasadoPor   User?   @relation("PendientesPasados", fields: [pasadoPorId], references: [id])
 
   /// Ejecucion, igual que un movimiento de deposito: el reloj arranca al
   /// escanear el PLU y se cierra al escribir la ubicacion final.

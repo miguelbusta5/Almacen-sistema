@@ -7,19 +7,23 @@
 // al abrirla— para medir caminar y bajar la mercancía, y no el rato que la
 // pantalla estuvo abierta.
 import { ref, computed, watch, nextTick } from 'vue'
-import { ScanLine, CheckCircle2, MapPin, ArrowDown, Package } from '@lucide/vue'
+import { ScanLine, CheckCircle2, MapPin, ArrowDown, Package, Flame } from '@lucide/vue'
 import { useToast } from '~/composables/useToast'
 import { sonarVeredicto } from '~/utils/escaneoFeedback'
 import {
-  API_MONTAJE, cronometroDesde, fmtDuracionTarea,
-  type MontajeResurtidoDTO, type TareaResurtidoDTO,
+  compararPorPrioridad, cronometroDesde, fmtDuracionTarea,
+  type MontajeResurtidoDTO, type PendienteDTO, type TareaResurtidoDTO,
 } from '~/utils/resurtidoTareas'
 
 const props = defineProps<{ ahora: number }>()
+// Un pendiente prioritario se hace desde su propia pestaña (su flujo es por
+// PLU, no por ubicacion); aqui solo se muestra primero y se lleva alli.
+const emit = defineEmits<{ (e: 'irAPendientes'): void }>()
 
 const { show: showToast } = useToast()
 
 const montajes = ref<MontajeResurtidoDTO[]>([])
+const prioritarios = ref<PendienteDTO[]>([])
 const loading = ref(true)
 const guardando = ref<string | null>(null)
 const abierta = ref<TareaResurtidoDTO | null>(null)
@@ -34,8 +38,11 @@ const pluInput = ref<HTMLInputElement | null>(null)
 async function cargar() {
   loading.value = true
   try {
-    const res = await $fetch<{ data: MontajeResurtidoDTO[] }>('/api/resurtido-tareas')
+    const res = await $fetch<{ data: MontajeResurtidoDTO[]; prioritarios: PendienteDTO[] }>(
+      '/api/resurtido-tareas',
+    )
     montajes.value = res.data
+    prioritarios.value = res.prioritarios ?? []
     // Si la tarea abierta ya no existe (otro la completó o se borró el montaje),
     // se cierra sola en vez de dejar una pantalla que no lleva a ninguna parte.
     if (abierta.value) {
@@ -51,7 +58,9 @@ async function cargar() {
 defineExpose({ cargar })
 
 const todas = computed(() => montajes.value.flatMap((m) => m.tareas))
-const pendientes = computed(() => todas.value.filter((t) => t.estado !== 'COMPLETADA'))
+// Lo prioritario primero; lo demas por la ruta, para no romper el recorrido.
+const pendientes = computed(() =>
+  todas.value.filter((t) => t.estado !== 'COMPLETADA').sort(compararPorPrioridad))
 const progresoTotal = computed(() => {
   const total = todas.value.length
   const hechas = total - pendientes.value.length
@@ -62,7 +71,8 @@ function abrir(t: TareaResurtidoDTO) {
   abierta.value = t
   escaneoUbic.value = ''
   escaneoPlu.value = ''
-  unidades.value = String(t.unidadesSolicitadas)
+  // Lo del archivo mas lo que se sumo de pendientes: es lo que tiene que bajar.
+  unidades.value = String(t.unidadesSolicitadas + t.unidadesPendientes)
   // El picking llega SUGERIDO del archivo, pero se puede cambiar: el hueco real
   // manda sobre el papel.
   pickingFinal.value = t.pickingFinal ?? t.pickingSugerido
@@ -136,7 +146,7 @@ cargar()
     <ListSkeleton v-if="loading" />
 
     <EmptyState
-      v-else-if="!todas.length" title="Sin resurtido asignado"
+      v-else-if="!todas.length && !prioritarios.length" title="Sin resurtido asignado"
       description="Cuando te monten un resurtido, tus tareas aparecerán aquí en orden de posición."
     />
 
@@ -154,20 +164,41 @@ cargar()
       </div>
 
       <EmptyState
-        v-if="!pendientes.length" title="Resurtido terminado"
+        v-if="!pendientes.length && !prioritarios.length" title="Resurtido terminado"
         description="Completaste todas las tareas asignadas."
       />
 
-      <!-- Lista de trabajo, en orden de posición -->
-      <ol v-else class="lista">
+      <!-- Pendientes sueltos: van ANTES que todo el resurtido. Un pendiente es
+           alguien esperando en la tienda. -->
+      <ol v-if="prioritarios.length" class="lista">
+        <li v-for="p in prioritarios" :key="p.id">
+          <button class="tarea card prio" @click="emit('irAPendientes')">
+            <span class="t-orden prio-ic"><Flame :size="14" /></span>
+            <span class="t-cuerpo">
+              <span class="t-etiq">Pendiente prioritario</span>
+              <span class="t-desc">{{ p.descripcion }}</span>
+              <span class="t-meta">
+                <b class="mono">{{ p.plu }}</b> · {{ p.unidadesSolicitadas }} und ·
+                pedido por {{ p.solicitadoPorNombre ?? 'gourmet' }}
+              </span>
+            </span>
+            <span class="t-ir">Hacer ahora</span>
+          </button>
+        </li>
+      </ol>
+
+      <!-- Lista de trabajo: lo prioritario primero, lo demás por la ruta -->
+      <ol v-if="pendientes.length" class="lista">
         <li v-for="t in pendientes" :key="t.id">
-          <button class="tarea card" :class="{ activa: t.horaInicio }" @click="abrir(t)">
-            <span class="t-orden tnum">{{ t.orden }}</span>
+          <button class="tarea card" :class="{ activa: t.horaInicio, prio: t.prioridad }" @click="abrir(t)">
+            <span v-if="t.prioridad" class="t-orden prio-ic"><Flame :size="14" /></span>
+            <span v-else class="t-orden tnum">{{ t.orden }}</span>
             <span class="t-cuerpo">
               <span class="t-ubic"><MapPin :size="13" /> {{ t.altura }}</span>
               <span class="t-desc">{{ t.descripcion }}</span>
               <span class="t-meta">
-                <b class="mono">{{ t.plu }}</b> · {{ t.unidadesSolicitadas }} und ·
+                <b class="mono">{{ t.plu }}</b> · {{ t.unidadesSolicitadas + t.unidadesPendientes }} und
+                <b v-if="t.unidadesPendientes" class="t-mas">(+{{ t.unidadesPendientes }} de pendiente)</b> ·
                 a <span class="mono">{{ t.pickingSugerido }}</span>
               </span>
             </span>
@@ -228,7 +259,12 @@ cargar()
                   v-model="unidades" class="field tnum" type="number" min="1" inputmode="numeric"
                   :disabled="!enCurso || guardando === abierta.id"
                 >
-                <span class="hint">Solicitadas: {{ abierta.unidadesSolicitadas }}</span>
+                <span class="hint">
+                  Solicitadas: {{ abierta.unidadesSolicitadas + abierta.unidadesPendientes }}
+                  <template v-if="abierta.unidadesPendientes">
+                    ({{ abierta.unidadesSolicitadas }} del resurtido + {{ abierta.unidadesPendientes }} de pendiente)
+                  </template>
+                </span>
               </label>
               <label class="f f-pick">
                 <span class="lbl">Ubicación de picking</span>
@@ -278,6 +314,17 @@ cargar()
 .t-desc { font-size: 12.5px; color: var(--ink-2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .t-meta { font-size: 11.5px; color: var(--faint); }
 .t-crono { flex-shrink: 0; font-family: var(--display); font-size: 15px; font-weight: 700; color: var(--brand); }
+
+/* Prioridad: en rojo, para que se vea antes de leer nada. */
+.tarea.prio {
+  border-color: var(--u-critico); border-left-width: 4px;
+  background: color-mix(in srgb, var(--u-critico) 6%, var(--surface));
+}
+.tarea.prio:hover { border-color: var(--u-critico); }
+.prio-ic { background: var(--u-critico) !important; color: #fff !important; }
+.t-etiq { font-size: 10.5px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--u-critico); }
+.t-ir { flex-shrink: 0; font-size: 12px; font-weight: 700; color: var(--u-critico); }
+.t-mas { color: var(--u-critico); font-weight: 700; }
 
 .overlay { position: fixed; inset: 0; z-index: 60; display: grid; place-items: center; padding: 16px; background: rgba(10,15,28,.55); backdrop-filter: blur(3px); }
 .modal { width: min(620px, 100%); max-height: 90vh; display: flex; flex-direction: column; padding: 0; overflow: hidden; }
