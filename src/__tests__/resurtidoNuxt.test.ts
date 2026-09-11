@@ -25,6 +25,7 @@ describe("resurtido por tareas — las tres copias de la logica", () => {
     "compararPorPrioridad",
     "devuelveASolicitante",
     "puedeAsignarPendiente",
+    "puedeBorrarPendiente",
   ];
 
   it.each(funciones)("%s existe en las tres", (fn) => {
@@ -321,5 +322,56 @@ describe("bandeja — no invitar a escanear sin nada que escanear", () => {
   it("el error dice que PLUs tiene, no solo que ese no es", () => {
     expect(modulo).toContain("No tienes ningún PLU asignado");
     expect(modulo).toContain("no es tuyo. Tienes:");
+  });
+});
+
+// Borrar pendientes: Viviana (quien lo pide), Felipe Ossa y Eduardo Zurita
+// (permiso por persona) y el administrador.
+describe("pendientes — borrar", () => {
+  const del = leer("nuxt-app/server/api/pendientes/[id]/index.delete.ts");
+  const ui = leer("nuxt-app/app/components/pendientes/Module.vue");
+
+  it("el servidor aplica la misma regla que la pantalla", () => {
+    expect(del).toContain("puedeBorrarPendiente({");
+    expect(del).toContain("esAdmin: actor.role === 'ADMIN'");
+    expect(del).toContain("tienePermisoMontar: await puedeMontarResurtido(actor.id)");
+    expect(del).toContain("esQuienLoPidio: p.solicitadoPorId === actor.id");
+    expect(ui).toContain("puedeBorrarPendiente({");
+  });
+
+  // Se borra con deleted_at: queda en auditoria y no rompe lo que lo referencia.
+  it("es un borrado logico y queda en auditoria", () => {
+    expect(del).toContain("data: { deletedAt: new Date() }");
+    expect(del).not.toMatch(/pendienteGourmet\.delete\(|deleteMany/);
+    expect(del).toContain("activityLog.create");
+  });
+
+  // Si iba sumado a un resurtido, el operario no debe bajar unidades que ya
+  // nadie espera, ni seguir viendo la tarea en rojo por un pendiente borrado.
+  it("devuelve las unidades de la tarea de resurtido y le quita la prioridad", () => {
+    expect(del).toContain("unidadesPendientes: Math.max(0, tarea.unidadesPendientes - p.unidadesSolicitadas)");
+    expect(del).toContain("...(quedan === 0 && { prioridad: false })");
+  });
+
+  it("un pendiente borrado no se da por ubicado al completar la tarea", () => {
+    expect(leer("nuxt-app/server/api/resurtido-tareas/[id]/completar.post.ts"))
+      .toContain("where: { tareaResurtidoId: id, estado: { not: 'COMPLETADO' }, deletedAt: null }");
+  });
+
+  it("se avisa al operario que lo tenia y a quien lo pidio", () => {
+    expect(del).toContain("tipo: 'PENDIENTE_BORRADO'");
+    expect(del).toContain("if (p.solicitadoPorId !== actor.id)");
+  });
+
+  it("se confirma antes de borrar", () => {
+    expect(ui).toContain('title="Borrar pendiente"');
+  });
+
+  // Con un solo limite para todo, al acumularse ubicados las devoluciones y
+  // novedades desaparecian de la pantalla.
+  it("lo abierto nunca se queda fuera de la lista por el limite", () => {
+    const get = leer("nuxt-app/server/api/pendientes/index.get.ts");
+    expect(get).toContain("where: { ...base, estado: { not: 'COMPLETADO' } }");
+    expect(get).toContain("where: { ...base, estado: 'COMPLETADO' }");
   });
 });

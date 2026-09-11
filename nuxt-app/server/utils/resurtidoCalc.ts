@@ -344,6 +344,24 @@ export function puedeAsignarPendiente(opts: {
   return opts.tienePermisoMontar || opts.esQuienLoPidio
 }
 
+/**
+ * Quien puede borrar un pendiente, y cuando.
+ *
+ * Quien lo pidio (lo pidio por error, o ya no hace falta), almacenamiento con
+ * el permiso por persona y el administrador. Uno ya ubicado no se borra: es
+ * historia, igual que no se corrige, y borrarlo le quitaria al operario de los
+ * indicadores el tiempo que de verdad trabajo.
+ */
+export function puedeBorrarPendiente(opts: {
+  estado: EstadoPendienteGourmet
+  esAdmin: boolean
+  tienePermisoMontar: boolean
+  esQuienLoPidio: boolean
+}): boolean {
+  if (opts.estado === "COMPLETADO") return false
+  return opts.esAdmin || opts.tienePermisoMontar || opts.esQuienLoPidio
+}
+
 // ── Tiempo ───────────────────────────────────────────────────────────
 /**
  * Segundos entre dos instantes, o contra `ahora` si aún no hay fin.

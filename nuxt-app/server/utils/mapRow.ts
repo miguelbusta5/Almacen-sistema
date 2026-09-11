@@ -535,6 +535,7 @@ export function mapPendiente(p: any) {
     descripcion: p.descripcion,
     unidadesSolicitadas: p.unidadesSolicitadas,
     observacion: p.observacion ?? null,
+    solicitadoPorId: p.solicitadoPorId,
     solicitadoPorNombre: p.solicitadoPor?.name ?? null,
     solicitadoAt: p.solicitadoAt.toISOString(),
     asignadoPorNombre: p.asignadoPor?.name ?? null,

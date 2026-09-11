@@ -8,7 +8,7 @@
 // repartir no es bajar mercancía.
 import { ref, computed, onMounted, onBeforeUnmount, nextTick } from 'vue'
 import {
-  RefreshCw, Plus, PackageSearch, UserPlus, CheckCircle2, Pencil, Undo2, X,
+  RefreshCw, Plus, PackageSearch, UserPlus, CheckCircle2, Pencil, Undo2, X, Trash2,
 } from '@lucide/vue'
 import { useDebounceFn } from '@vueuse/core'
 import { ensureSession, useSessionState } from '~/composables/useSession'
@@ -16,7 +16,7 @@ import { useToast } from '~/composables/useToast'
 import { useAutoRefresh } from '~/composables/useAutoRefresh'
 import {
   API_MONTAJE, API_PENDIENTES, colorPendiente, cronometroDesde, ESTADO_PENDIENTE_LABEL,
-  esSolicitante, fmtDuracionTarea, NOVEDAD_PENDIENTE_LABEL, puedeEditarPendiente,
+  esSolicitante, fmtDuracionTarea, NOVEDAD_PENDIENTE_LABEL, puedeBorrarPendiente, puedeEditarPendiente,
   type NovedadPendiente, type PendienteDTO,
 } from '~/utils/resurtidoTareas'
 import { canSeeModule } from '~/utils/modulePermissions'
@@ -197,14 +197,60 @@ function asignable(p: PendienteDTO): boolean {
   return puedeAsignar.value || esMio(p)
 }
 
+// Por id y no por nombre: dos personas con el mismo nombre se veian como la misma.
 function esMio(p: PendienteDTO): boolean {
-  return solicita.value && p.solicitadoPorNombre === (me.value?.name ?? '')
+  return !!me.value?.id && p.solicitadoPorId === me.value.id
 }
 
 // Puede corregirlo quien lo pidio, mientras no se haya ubicado.
 function editable(p: PendienteDTO): boolean {
-  return solicita.value && p.solicitadoPorNombre === (me.value?.name ?? '')
-    && puedeEditarPendiente(p.estado)
+  return esMio(p) && puedeEditarPendiente(p.estado)
+}
+
+// Borran quien lo pidio, almacenamiento con el permiso y el administrador. El
+// servidor lo vuelve a comprobar.
+function borrable(p: PendienteDTO): boolean {
+  return puedeBorrarPendiente({
+    estado: p.estado,
+    esAdmin: me.value?.role === 'ADMIN',
+    tienePermisoMontar: puedeAsignar.value,
+    esQuienLoPidio: esMio(p),
+  })
+}
+
+const borrando = ref<PendienteDTO | null>(null)
+const borrandoGuardar = ref(false)
+// Lo que pasa al borrar depende de donde este: se dice antes de confirmar.
+const mensajeBorrar = computed(() => {
+  const p = borrando.value
+  if (!p) return ''
+  const que = `Se borrará el pendiente de ${p.unidadesSolicitadas} de ${p.descripcion}.`
+  if (p.tareaResurtidoId) {
+    return `${que} Va dentro del resurtido de ${p.operarioNombre ?? 'un operario'}: a esa tarea se le restan esas unidades y se le avisa.`
+  }
+  if (p.operarioNombre && p.estado === 'EN_CURSO') {
+    return `${que} ${p.operarioNombre} ya lo está bajando: sale de su lista y se le avisa.`
+  }
+  if (p.operarioNombre && p.estado === 'ASIGNADO') {
+    return `${que} Está asignado a ${p.operarioNombre}: sale de su lista y se le avisa.`
+  }
+  return que
+})
+
+async function borrar() {
+  const p = borrando.value
+  if (!p) return
+  borrandoGuardar.value = true
+  try {
+    await $fetch(`${API_PENDIENTES}/${p.id}`, { method: 'DELETE' })
+    showToast('Pendiente borrado')
+    borrando.value = null
+    await cargar()
+  } catch (e) {
+    showToast(apiErr(e, 'No se pudo borrar el pendiente'), true)
+  } finally {
+    borrandoGuardar.value = false
+  }
 }
 
 async function asignar(p: PendienteDTO, operarioId: string) {
@@ -334,9 +380,14 @@ const cerrados = computed(() => items.value.filter((p) => p.estado === 'COMPLETA
               {{ p.devueltoPorNombre }} lo devolvió — {{ p.motivoDevolucion }}
             </p>
 
-            <button v-if="editable(p)" class="vin-editar" @click="abrirEdicion(p)">
-              <Pencil :size="12" /> Corregir
-            </button>
+            <div v-if="editable(p) || borrable(p)" class="vin-acc">
+              <button v-if="editable(p)" class="vin-editar" @click="abrirEdicion(p)">
+                <Pencil :size="12" /> Corregir
+              </button>
+              <button v-if="borrable(p)" class="vin-borrar" @click="borrando = p">
+                <Trash2 :size="12" /> Borrar
+              </button>
+            </div>
 
             <!-- Asignar: almacenamiento o quien lo pidio -->
             <div v-if="asignable(p)" class="vin-asig">
@@ -420,6 +471,14 @@ const cerrados = computed(() => items.value.filter((p) => p.estado === 'COMPLETA
         </div>
       </section>
     </div>
+
+    <ConfirmModal
+      v-if="borrando"
+      title="Borrar pendiente"
+      :message="mensajeBorrar"
+      confirm-label="Borrar" :confirming="borrandoGuardar"
+      @close="borrando = null" @confirm="borrar"
+    />
   </div>
 </template>
 
@@ -477,6 +536,9 @@ const cerrados = computed(() => items.value.filter((p) => p.estado === 'COMPLETA
 
 .vin-dev { display: flex; align-items: flex-start; gap: 6px; margin: 0; padding: 8px 10px; border-radius: var(--r-sm); background: var(--u-aviso-tint); font-size: 12px; color: var(--ink-2); }
 .vin-dev :deep(svg) { flex-shrink: 0; margin-top: 1px; color: var(--u-aviso); }
+.vin-acc { display: flex; align-items: center; gap: 16px; }
+.vin-borrar { display: inline-flex; align-items: center; gap: 5px; background: none; border: none; padding: 0; font-size: 12.5px; font-weight: 600; color: var(--error); cursor: pointer; }
+.vin-borrar:hover { text-decoration: underline; }
 .vin-editar { align-self: flex-start; display: inline-flex; align-items: center; gap: 5px; background: none; border: none; padding: 0; font-size: 12.5px; font-weight: 600; color: var(--brand); cursor: pointer; }
 
 .overlay { position: fixed; inset: 0; z-index: 60; display: grid; place-items: center; padding: 18px; background: rgba(10,15,28,.55); backdrop-filter: blur(3px); }

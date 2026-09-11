@@ -20,6 +20,7 @@ import {
   devuelveASolicitante,
   esNovedadPendiente,
   puedeAsignarPendiente,
+  puedeBorrarPendiente,
 } from "@/lib/resurtidoTareas";
 
 // Cabecera real del archivo que suben: PLU · NOMBRE · ALTURA · PICKING ·
@@ -243,5 +244,25 @@ describe("pendientes — quien asigna", () => {
     expect(puedeAsignarPendiente({ tienePermisoMontar: true, esQuienLoPidio: false })).toBe(true);
     expect(puedeAsignarPendiente({ tienePermisoMontar: false, esQuienLoPidio: true })).toBe(true);
     expect(puedeAsignarPendiente({ tienePermisoMontar: false, esQuienLoPidio: false })).toBe(false);
+  });
+});
+
+describe("pendientes — quien borra", () => {
+  const base = { estado: "ASIGNADO" as const, esAdmin: false, tienePermisoMontar: false, esQuienLoPidio: false };
+
+  // Viviana (lo pidio), Felipe Ossa y Eduardo Zurita (permiso por persona) y el admin.
+  it("quien lo pidio, almacenamiento con el permiso y el administrador", () => {
+    expect(puedeBorrarPendiente({ ...base, esQuienLoPidio: true })).toBe(true);
+    expect(puedeBorrarPendiente({ ...base, tienePermisoMontar: true })).toBe(true);
+    expect(puedeBorrarPendiente({ ...base, esAdmin: true })).toBe(true);
+    expect(puedeBorrarPendiente(base)).toBe(false);
+  });
+
+  it("se puede borrar en cualquier estado menos ya ubicado", () => {
+    for (const estado of ["SOLICITADO", "ASIGNADO", "EN_CURSO", "DEVUELTO", "NOVEDAD"] as const) {
+      expect(puedeBorrarPendiente({ ...base, estado, esAdmin: true })).toBe(true);
+    }
+    // Ni el administrador: es historia, y cuenta en los indicadores del operario.
+    expect(puedeBorrarPendiente({ ...base, estado: "COMPLETADO", esAdmin: true })).toBe(false);
   });
 });

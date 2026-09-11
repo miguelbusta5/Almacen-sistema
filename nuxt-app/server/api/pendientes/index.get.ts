@@ -18,15 +18,23 @@ export default defineEventHandler(async (event) => {
 
   const soloMios = esSolicitante(actor.role) && !puedeVerAlmacenamiento(actor.role)
 
-  const rows = await prisma.pendienteGourmet.findMany({
-    where: {
-      deletedAt: null,
-      ...(soloMios && { solicitadoPorId: actor.id }),
-    },
-    include: PENDIENTE_INCLUDE,
-    orderBy: [{ estado: 'asc' }, { solicitadoAt: 'desc' }],
-    take: 120,
-  })
+  const base = { deletedAt: null, ...(soloMios && { solicitadoPorId: actor.id }) }
+  // Lo abierto va entero: es lo que alguien tiene que resolver. De lo ya
+  // ubicado basta con lo reciente. Con un solo limite para todo, cuando se
+  // acumulaban ubicados las devoluciones y novedades se quedaban fuera.
+  const [abiertos, ubicados] = await Promise.all([
+    prisma.pendienteGourmet.findMany({
+      where: { ...base, estado: { not: 'COMPLETADO' } },
+      include: PENDIENTE_INCLUDE,
+      orderBy: [{ estado: 'asc' }, { solicitadoAt: 'desc' }],
+    }),
+    prisma.pendienteGourmet.findMany({
+      where: { ...base, estado: 'COMPLETADO' },
+      include: PENDIENTE_INCLUDE,
+      orderBy: { completadoAt: 'desc' },
+      take: 60,
+    }),
+  ])
 
-  return { success: true, data: rows.map(mapPendiente) }
+  return { success: true, data: [...abiertos, ...ubicados].map(mapPendiente) }
 })

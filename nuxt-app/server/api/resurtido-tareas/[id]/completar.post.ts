@@ -77,7 +77,7 @@ export default defineEventHandler(async (event) => {
     // Los pendientes que iban DENTRO de esta tarea quedan ubicados con ella: es
     // la misma bajada. Y se avisa, que es justo lo que estaban esperando.
     const enTarea = await tx.pendienteGourmet.findMany({
-      where: { tareaResurtidoId: id, estado: { not: 'COMPLETADO' } },
+      where: { tareaResurtidoId: id, estado: { not: 'COMPLETADO' }, deletedAt: null },
       select: { id: true, descripcion: true, solicitadoPorId: true, asignadoPorId: true, unidadesSolicitadas: true },
     })
     const ubicacion = normalizarUbicacion(d.pickingFinal)
