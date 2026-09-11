@@ -7,9 +7,10 @@ import { puedeBorrarPendiente } from '../../../utils/resurtidoCalc'
 /**
  * DELETE /api/pendientes/:id — borrado logico (deleted_at).
  *
- * Lo borran quien lo pidio, almacenamiento con el permiso por persona (Felipe
- * Ossa, Eduardo Zurita) y el administrador. Uno ya ubicado no: es historia y
- * cuenta en los indicadores del operario (ver puedeBorrarPendiente).
+ * Sin asignar lo borran quien lo pidio, almacenamiento con el permiso por
+ * persona (Felipe Ossa, Eduardo Zurita) y el administrador; asignado o en curso,
+ * solo el administrador. Uno ya ubicado no: es historia y cuenta en los
+ * indicadores del operario (ver puedeBorrarPendiente).
  *
  * Si iba sumado a una tarea de resurtido que aun no se hizo, se le restan sus
  * unidades a esa tarea, y si era el ultimo pendiente que la hacia prioritaria,
@@ -36,11 +37,14 @@ export default defineEventHandler(async (event) => {
     esQuienLoPidio: p.solicitadoPorId === actor.id,
   })
   if (!permitido) {
+    const asignado = p.estado === 'ASIGNADO' || p.estado === 'EN_CURSO'
     throw createError({
       statusCode: p.estado === 'COMPLETADO' ? 409 : 403,
       statusMessage: p.estado === 'COMPLETADO'
         ? 'Ese pendiente ya se ubico: no se puede borrar'
-        : 'No puedes borrar este pendiente',
+        : asignado
+          ? 'Un pendiente asignado solo lo puede borrar el administrador'
+          : 'No puedes borrar este pendiente',
     })
   }
 

@@ -347,10 +347,14 @@ export function puedeAsignarPendiente(opts: {
 /**
  * Quien puede borrar un pendiente, y cuando.
  *
- * Quien lo pidio (lo pidio por error, o ya no hace falta), almacenamiento con
- * el permiso por persona y el administrador. Uno ya ubicado no se borra: es
- * historia, igual que no se corrige, y borrarlo le quitaria al operario de los
- * indicadores el tiempo que de verdad trabajo.
+ * - Sin asignar (solicitado, devuelto, con novedad): quien lo pidio (lo pidio
+ *   por error, o ya no hace falta), almacenamiento con el permiso por persona
+ *   y el administrador.
+ * - Asignado o en curso: solo el administrador. Ya esta en la lista de un
+ *   operario, que puede ir camino del sitio, y quitarselo es una decision que
+ *   la operacion reserva al administrador.
+ * - Ubicado: nadie. Es historia, igual que no se corrige, y borrarlo le
+ *   quitaria al operario de los indicadores el tiempo que de verdad trabajo.
  */
 export function puedeBorrarPendiente(opts: {
   estado: EstadoPendienteGourmet
@@ -359,6 +363,7 @@ export function puedeBorrarPendiente(opts: {
   esQuienLoPidio: boolean
 }): boolean {
   if (opts.estado === "COMPLETADO") return false
+  if (opts.estado === "ASIGNADO" || opts.estado === "EN_CURSO") return opts.esAdmin
   return opts.esAdmin || opts.tienePermisoMontar || opts.esQuienLoPidio
 }
 

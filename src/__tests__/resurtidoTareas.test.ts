@@ -248,14 +248,25 @@ describe("pendientes — quien asigna", () => {
 });
 
 describe("pendientes — quien borra", () => {
-  const base = { estado: "ASIGNADO" as const, esAdmin: false, tienePermisoMontar: false, esQuienLoPidio: false };
+  const base = { estado: "SOLICITADO" as const, esAdmin: false, tienePermisoMontar: false, esQuienLoPidio: false };
 
   // Viviana (lo pidio), Felipe Ossa y Eduardo Zurita (permiso por persona) y el admin.
-  it("quien lo pidio, almacenamiento con el permiso y el administrador", () => {
-    expect(puedeBorrarPendiente({ ...base, esQuienLoPidio: true })).toBe(true);
-    expect(puedeBorrarPendiente({ ...base, tienePermisoMontar: true })).toBe(true);
-    expect(puedeBorrarPendiente({ ...base, esAdmin: true })).toBe(true);
-    expect(puedeBorrarPendiente(base)).toBe(false);
+  it("sin asignar: quien lo pidio, almacenamiento con el permiso y el administrador", () => {
+    for (const estado of ["SOLICITADO", "DEVUELTO", "NOVEDAD"] as const) {
+      expect(puedeBorrarPendiente({ ...base, estado, esQuienLoPidio: true })).toBe(true);
+      expect(puedeBorrarPendiente({ ...base, estado, tienePermisoMontar: true })).toBe(true);
+      expect(puedeBorrarPendiente({ ...base, estado, esAdmin: true })).toBe(true);
+      expect(puedeBorrarPendiente({ ...base, estado })).toBe(false);
+    }
+  });
+
+  // Ya esta en la lista de un operario: solo el administrador.
+  it("asignado o en curso: solo el administrador", () => {
+    for (const estado of ["ASIGNADO", "EN_CURSO"] as const) {
+      expect(puedeBorrarPendiente({ ...base, estado, esAdmin: true })).toBe(true);
+      expect(puedeBorrarPendiente({ ...base, estado, esQuienLoPidio: true })).toBe(false);
+      expect(puedeBorrarPendiente({ ...base, estado, tienePermisoMontar: true })).toBe(false);
+    }
   });
 
   it("se puede borrar en cualquier estado menos ya ubicado", () => {
