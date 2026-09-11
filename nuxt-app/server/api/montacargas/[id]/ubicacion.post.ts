@@ -8,9 +8,10 @@ import {
   MOVIMIENTO_INCLUDE,
 } from '../../../utils/montacargas'
 import { todayBogota } from '../../../utils/exportacionesCalc'
+import { avisar } from '../../../utils/resurtido'
 import {
-  normalizarUbicacion, quienPasoElPlu, repartirEnCajas, validarCantidades, validarUbicacion,
-  validarUnidadesAlmacenadas,
+  normalizarUbicacion, puedeRecibirTraspaso, quienPasoElPlu, repartirEnCajas, validarCantidades,
+  validarUbicacion, validarUnidadesAlmacenadas,
 } from '../../../utils/montacargasCalc'
 
 const schema = z.object({
@@ -18,6 +19,9 @@ const schema = z.object({
   // Cuantas unidades cupieron de verdad. Opcional: si no viene, se asume que se
   // almaceno todo, que es el caso normal.
   unidadesAlmacenadas: z.number().int().optional(),
+  // A quien vuelve lo que no cupo. Lo elige quien cierra, para que no haya
+  // dudas de quien tiene que ubicarlo; si no viene, a quien le paso el PLU.
+  devolverAId: z.string().min(1).max(60).optional(),
 })
 
 // POST /api/montacargas/:id/ubicacion - asigna el deposito final y PARA EL RELOJ.
@@ -79,7 +83,26 @@ export default defineEventHandler(async (event) => {
 
   const sobrante = record.cantidadTotal - almacenadas
   const paso = quienPasoElPlu(record.tramos, record.responsableId)
-  const devolverA = paso?.usuarioId ?? record.creadoPorId
+  let devolverA = paso?.usuarioId ?? record.creadoPorId
+  let devolverANombre: string | null = paso?.usuario.name ?? null
+
+  if (sobrante > 0 && parsed.data.devolverAId) {
+    // Quien lo cierra no se lo devuelve a si mismo: si le cupiera, lo habria
+    // almacenado.
+    if (parsed.data.devolverAId === record.responsableId) {
+      throw createError({ statusCode: 400, statusMessage: 'El sobrante tiene que volver a otra persona' })
+    }
+    const destino = await prisma.user.findFirst({
+      where: { id: parsed.data.devolverAId, active: true },
+      select: { id: true, name: true, role: true },
+    })
+    // Las mismas personas a las que se puede pasar un PLU: quien almacena.
+    if (!destino || !puedeRecibirTraspaso(destino.role)) {
+      throw createError({ statusCode: 400, statusMessage: 'Esa persona no puede recibir el sobrante' })
+    }
+    devolverA = destino.id
+    devolverANombre = destino.name
+  }
 
   const now = new Date()
   const { updated, sobranteId } = await prisma.$transaction(async (tx) => {
@@ -124,8 +147,8 @@ export default defineEventHandler(async (event) => {
           fecha: todayBogota(now),
           horaInicio: now,
           origenId: id,
-          // Vuelve a quien le paso el PLU: es quien lo tenia antes y quien
-          // elige donde cabe el resto. Queda como suyo, no como recibido.
+          // Vuelve a quien eligio quien lo cerro (por defecto, quien se lo
+          // paso): es quien elige donde cabe el resto. Queda como suyo.
           creadoPorId: devolverA,
           responsableId: devolverA,
           actualizadoPorId: actor.id,
@@ -135,6 +158,15 @@ export default defineEventHandler(async (event) => {
       // Reloj nuevo desde ya: el sobrante es trabajo que sigue corriendo.
       await abrirTramo(tx, creado.id, devolverA, now, 1)
       nuevoId = creado.id
+      // Le llega el aviso aunque no este mirando la bandeja.
+      if (devolverA !== actor.id) {
+        await avisar(tx, [devolverA], {
+          tipo: 'SOBRANTE_DEVUELTO',
+          titulo: 'Te devolvieron un sobrante',
+          descripcion: `${sobrante} de ${record.descripcion} no cupieron: te toca ubicarlas`,
+          enlace: record.tipo === 'RESURTIDO' ? '/dashboard/resurtido' : '/dashboard/control-montacargas',
+        })
+      }
     }
 
     return {
@@ -154,7 +186,7 @@ export default defineEventHandler(async (event) => {
       recordId: id,
       details: sobranteId
         ? `Ubicacion final ${ubicacionFinal} con ${almacenadas} de ${record.cantidadTotal} unidades; `
-          + `${sobrante} devueltas a ${paso?.usuario.name ?? 'quien lo abrio'} (registro ${sobranteId})`
+          + `${sobrante} devueltas a ${devolverANombre ?? 'quien lo abrio'} (registro ${sobranteId})`
         : `Ubicacion final asignada: ${ubicacionFinal}`,
     },
   }).catch(() => {})
@@ -164,7 +196,7 @@ export default defineEventHandler(async (event) => {
     data: mapMovimientoMontacargas(updated),
     // La UI lo usa para avisar de que el sobrante volvio al montacarguista.
     sobrante: sobranteId
-      ? { id: sobranteId, unidades: sobrante, responsableNombre: paso?.usuario.name ?? null }
+      ? { id: sobranteId, unidades: sobrante, responsableNombre: devolverANombre }
       : null,
   }
 })

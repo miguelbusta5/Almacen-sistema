@@ -263,7 +263,7 @@ async function guardarCantidades(m: Movimiento, payload: Record<string, unknown>
 
 async function ubicar(
   m: Movimiento,
-  payload: { ubicacionFinal: string; unidadesAlmacenadas: number },
+  payload: { ubicacionFinal: string; unidadesAlmacenadas: number; devolverAId?: string },
 ) {
   const res = await accion(m.id, () =>
     $fetch<{

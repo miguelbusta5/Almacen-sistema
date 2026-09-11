@@ -14,8 +14,8 @@ import { UserPlus, Trash2, TriangleAlert, CheckCircle2, Boxes } from '@lucide/vu
 import {
   calcularCantidadTotal, esUbicacionCanonica, fmtHoraMovimiento, normalizarUbicacion,
   requiereUbicacionInicial, tieneCantidades, TIPO_NOVEDAD_LABEL, cronometroTramo,
-  quienPasoElPlu, validarUnidadesAlmacenadas,
-  type Movimiento,
+  API_MONTACARGAS, quienPasoElPlu, validarUnidadesAlmacenadas,
+  type Ayudante, type Movimiento,
 } from '~/utils/montacargas'
 
 const props = defineProps<{
@@ -33,7 +33,7 @@ const props = defineProps<{
 }>()
 const emit = defineEmits<{
   (e: 'cantidades', payload: { cajas: number; unidadesPorCaja: number; hayReguero: boolean; unidadesSueltas: number }): void
-  (e: 'ubicar', payload: { ubicacionFinal: string; unidadesAlmacenadas: number }): void
+  (e: 'ubicar', payload: { ubicacionFinal: string; unidadesAlmacenadas: number; devolverAId?: string }): void
   (e: 'traspasar'): void
   (e: 'novedad'): void
   (e: 'resolver'): void
@@ -110,14 +110,30 @@ const errorAlmacenadas = computed(() =>
 const sobrante = computed(() =>
   props.recibido ? Math.max(0, m.value.cantidadTotal - almacenadasNum.value) : 0,
 )
-// A quien vuelve lo que no cupo: a quien le paso el PLU, no a quien lo abrio.
-const devolverA = computed(() =>
-  quienPasoElPlu(m.value.tramos, m.value.responsableId)?.usuarioNombre ?? m.value.creadoPorNombre,
-)
+// A quien vuelve lo que no cupo. Se le PREGUNTA a quien cierra, para que no
+// haya dudas de quien tiene que ubicarlo; viene propuesto quien le paso el PLU.
+const pasoId = computed(() => quienPasoElPlu(m.value.tramos, m.value.responsableId)?.usuarioId ?? '')
+const devolverAId = ref('')
+const receptores = ref<Ayudante[]>([])
+const cargandoReceptores = ref(false)
+async function cargarReceptores() {
+  if (receptores.value.length || cargandoReceptores.value) return
+  cargandoReceptores.value = true
+  try {
+    const res = await $fetch<{ data: Ayudante[] }>(`${API_MONTACARGAS}/ayudantes`)
+    receptores.value = res.data
+    if (!devolverAId.value && res.data.some((a) => a.id === pasoId.value)) devolverAId.value = pasoId.value
+  } catch { /* sin lista no se puede elegir: el boton se queda deshabilitado */ } finally {
+    cargandoReceptores.value = false
+  }
+}
+// La lista se pide la primera vez que sobra algo, no con cada tarjeta.
+watch(sobrante, (v) => { if (v > 0) void cargarReceptores() })
+const faltaDestino = computed(() => sobrante.value > 0 && !devolverAId.value)
 
 const puedeUbicar = computed(() =>
   !props.guardando && Boolean(normalizada.value) && listo.value && !enNovedad.value
-  && !errorAlmacenadas.value,
+  && !errorAlmacenadas.value && !faltaDestino.value,
 )
 
 watch(() => props.destacado, (v) => { if (v) void nextTick(() => ubicInput.value?.focus()) })
@@ -127,6 +143,7 @@ function ubicar() {
   emit('ubicar', {
     ubicacionFinal: normalizada.value,
     unidadesAlmacenadas: props.recibido ? almacenadasNum.value : m.value.cantidadTotal,
+    ...(sobrante.value > 0 && { devolverAId: devolverAId.value }),
   })
 }
 </script>
@@ -244,10 +261,20 @@ function ubicar() {
           <TriangleAlert :size="11" /> {{ errorAlmacenadas }}
         </span>
         <span v-else-if="sobrante > 0" class="hint sob-txt">
-          <TriangleAlert :size="11" />
-          Quedan {{ sobrante }} sin almacenar: vuelven a
-          {{ devolverA ?? 'quien te lo pasó' }} para que las ubique
+          <TriangleAlert :size="11" /> Quedan {{ sobrante }} sin almacenar
         </span>
+      </label>
+      <!-- A quien vuelve el sobrante: se pregunta siempre, con quien le paso el
+           PLU ya propuesto, para que no haya dudas de quien lo ubica. -->
+      <label v-if="sobrante > 0" class="f f-dev">
+        <span class="lbl">¿A quién le devuelves las {{ sobrante }}?</span>
+        <select v-model="devolverAId" class="field" :disabled="guardando || cargandoReceptores">
+          <option value="" disabled>{{ cargandoReceptores ? 'Cargando…' : 'Elige a quién' }}</option>
+          <option v-for="a in receptores" :key="a.id" :value="a.id">
+            {{ a.nombre }}{{ a.id === pasoId ? ' · te lo pasó' : '' }}
+          </option>
+        </select>
+        <span class="hint">Le llega como un registro nuevo, con su reloj, para que las ubique.</span>
       </label>
       <label class="f f-ubic">
         <span class="lbl">Ubicación final</span>
@@ -338,6 +365,9 @@ function ubicar() {
 .f-ubic { flex: 1 1 auto; }
 /* Angosto a proposito: es un numero de tres cifras, no un campo de texto. */
 .f-cant { flex: 0 0 150px; }
+/* La pregunta del sobrante: ancha, porque lleva nombres y es lo que no se puede pasar por alto. */
+.f-dev { flex: 0 0 280px; }
+.f-dev .field { border-color: var(--u-aviso); }
 .sob-txt { color: var(--u-aviso); }
 .chip-sob {
   align-self: flex-start;
@@ -365,7 +395,7 @@ function ubicar() {
   .cant { flex-direction: column; align-items: stretch; }
   .f, .f-chk, .f-btn { flex: 1 1 auto; }
   .cerrar { flex-direction: column; align-items: stretch; }
-  .f-cant { flex: 1 1 auto; }
+  .f-cant, .f-dev { flex: 1 1 auto; }
   .cerrar :deep(.field) { height: 46px; font-size: 16px; }
   .submit { height: 46px; justify-content: center; }
   .esperado b { font-size: 30px; }

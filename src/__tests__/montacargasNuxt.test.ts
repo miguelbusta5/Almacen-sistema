@@ -613,3 +613,28 @@ describe("montacargas — sobrantes", () => {
     }
   });
 });
+
+// Al cerrar con sobrante se pregunta a quien se devuelve, para evitar
+// confusiones: viene propuesto quien paso el PLU, pero lo decide quien cierra.
+describe("montacargas — a quien se devuelve el sobrante", () => {
+  const ubic = leer("nuxt-app/server/api/montacargas/[id]/ubicacion.post.ts");
+  const reg = leer("nuxt-app/app/components/montacargas/RegistroAbierto.vue");
+
+  it("la pantalla lo pregunta y no deja cerrar sin elegir", () => {
+    expect(reg).toContain('<label v-if="sobrante > 0" class="f f-dev">');
+    expect(reg).toContain("const faltaDestino = computed(() => sobrante.value > 0 && !devolverAId.value)");
+    expect(reg).toContain("&& !errorAlmacenadas.value && !faltaDestino.value");
+    // Propuesto: quien le paso el PLU.
+    expect(reg).toContain("devolverAId.value = pasoId.value");
+  });
+
+  it("el servidor valida a quien se elige", () => {
+    expect(ubic).toContain("devolverAId: z.string().min(1).max(60).optional()");
+    expect(ubic).toContain("parsed.data.devolverAId === record.responsableId");
+    expect(ubic).toContain("!puedeRecibirTraspaso(destino.role)");
+  });
+
+  it("a quien recibe el sobrante le llega un aviso", () => {
+    expect(ubic).toContain("tipo: 'SOBRANTE_DEVUELTO'");
+  });
+});
