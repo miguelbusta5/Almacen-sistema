@@ -7,14 +7,24 @@ const MAX_SIZE = 5 * 1024 * 1024 // 5 MB
 
 // POST /api/uploads/foto — port de src/app/api/uploads/foto/route.ts.
 //
-// Las fotos van a Vercel Blob, que necesita BLOB_READ_WRITE_TOKEN en el proyecto
-// de Vercel. Sin esa variable `put` lanzaba y el operario veia un "error de
-// servidor" sin mas: en produccion nunca se llego a guardar ni una foto. Ahora
-// se comprueba antes y el mensaje dice que falta y a quien avisar.
+// Las fotos van a Vercel Blob. La libreria acepta dos formas de autenticarse, y
+// basta con una:
+//  - OIDC: BLOB_STORE_ID. Es lo que Vercel recomienda y lo que queda si se
+//    revoca la clave de lectura/escritura.
+//  - Clave estatica: BLOB_READ_WRITE_TOKEN.
+// Sin ninguna de las dos `put` lanzaba y el operario veia un "error de servidor"
+// sin mas. Se comprueba antes para decir que falta.
+//
+// Comprobar SOLO la clave estatica era un error: con OIDC y la clave revocada,
+// bloqueaba fotos que si se podian subir.
+function blobConfigurado(env: NodeJS.ProcessEnv = process.env): boolean {
+  return Boolean(env.BLOB_STORE_ID || env.BLOB_READ_WRITE_TOKEN)
+}
+
 export default defineEventHandler(async (event) => {
   const actor = await requireAuth(event)
 
-  if (!process.env.BLOB_READ_WRITE_TOKEN) {
+  if (!blobConfigurado()) {
     throw createError({
       statusCode: 503,
       statusMessage: 'El almacenamiento de fotos no esta configurado. Avisa al administrador.',

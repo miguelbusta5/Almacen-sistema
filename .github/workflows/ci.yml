@@ -54,19 +54,25 @@ jobs:
             '${{ secrets.VERCEL_PROJECT_ID }}' \
             '${{ secrets.VERCEL_ORG_ID }}' > .vercel/project.json
 
-      # ¿Tiene el proyecto la clave de Vercel Blob? Sin ella la subida de fotos
-      # falla. Se comprueba SOLO que exista y no este vacia: el valor NO se
-      # imprime nunca (no es un secreto de GitHub, asi que no saldria enmascarado).
+      # ¿Esta Vercel Blob bien conectado al proyecto? Sin el, la subida de fotos
+      # falla. Se comprueba SOLO que las variables existan: su valor NO se
+      # imprime nunca (no son secretos de GitHub, asi que no saldrian enmascarados).
       - name: Comprobar almacenamiento de fotos (Vercel Blob)
         run: |
           F=.vercel/.env.production.local
           if [ ! -f "$F" ]; then
             vercel pull --yes --environment=production --token=${{ secrets.VERCEL_TOKEN }} >/dev/null 2>&1 || true
           fi
-          if [ -f "$F" ] && grep -qE '^BLOB_READ_WRITE_TOKEN=.{5,}' "$F"; then
-            echo "BLOB_READ_WRITE_TOKEN: CONFIGURADO en Next.js (raiz)"
+          # Basta con una de las dos: BLOB_STORE_ID (OIDC, lo que recomienda
+          # Vercel) o BLOB_READ_WRITE_TOKEN (clave estatica).
+          if [ -f "$F" ] && grep -qE '^(BLOB_STORE_ID|BLOB_READ_WRITE_TOKEN)=.{5,}' "$F"; then
+            echo "VERCEL BLOB: CONFIGURADO en Next.js (raiz)"
+          elif [ -f "$F" ] && grep -qE '^[A-Z_]+_(STORE_ID|READ_WRITE_TOKEN)=' "$F"; then
+            # El Blob esta conectado, pero con un prefijo distinto de BLOB: las
+            # variables salen con otro nombre y la libreria no las encuentra.
+            echo "VERCEL BLOB: CONECTADO CON PREFIJO INCORRECTO en Next.js (raiz) (reconecta con el prefijo BLOB)"
           else
-            echo "BLOB_READ_WRITE_TOKEN: FALTA en Next.js (raiz)"
+            echo "VERCEL BLOB: FALTA en Next.js (raiz)"
           fi
 
       - name: Deploy a producción
@@ -125,19 +131,25 @@ jobs:
           vercel pull --yes --environment=production --token=${{ secrets.VERCEL_TOKEN }} >/dev/null 2>&1 || echo "(vercel pull fallo)"
           node -e "const s=require('./.vercel/project.json').settings||{}; console.log('rootDirectory:', JSON.stringify(s.rootDirectory)); console.log('framework:', JSON.stringify(s.framework))" || cat .vercel/project.json
 
-      # ¿Tiene el proyecto la clave de Vercel Blob? Sin ella la subida de fotos
-      # falla. Se comprueba SOLO que exista y no este vacia: el valor NO se
-      # imprime nunca (no es un secreto de GitHub, asi que no saldria enmascarado).
+      # ¿Esta Vercel Blob bien conectado al proyecto? Sin el, la subida de fotos
+      # falla. Se comprueba SOLO que las variables existan: su valor NO se
+      # imprime nunca (no son secretos de GitHub, asi que no saldrian enmascarados).
       - name: Comprobar almacenamiento de fotos (Vercel Blob)
         run: |
           F=.vercel/.env.production.local
           if [ ! -f "$F" ]; then
             vercel pull --yes --environment=production --token=${{ secrets.VERCEL_TOKEN }} >/dev/null 2>&1 || true
           fi
-          if [ -f "$F" ] && grep -qE '^BLOB_READ_WRITE_TOKEN=.{5,}' "$F"; then
-            echo "BLOB_READ_WRITE_TOKEN: CONFIGURADO en nuxt-app"
+          # Basta con una de las dos: BLOB_STORE_ID (OIDC, lo que recomienda
+          # Vercel) o BLOB_READ_WRITE_TOKEN (clave estatica).
+          if [ -f "$F" ] && grep -qE '^(BLOB_STORE_ID|BLOB_READ_WRITE_TOKEN)=.{5,}' "$F"; then
+            echo "VERCEL BLOB: CONFIGURADO en nuxt-app"
+          elif [ -f "$F" ] && grep -qE '^[A-Z_]+_(STORE_ID|READ_WRITE_TOKEN)=' "$F"; then
+            # El Blob esta conectado, pero con un prefijo distinto de BLOB: las
+            # variables salen con otro nombre y la libreria no las encuentra.
+            echo "VERCEL BLOB: CONECTADO CON PREFIJO INCORRECTO en nuxt-app (reconecta con el prefijo BLOB)"
           else
-            echo "BLOB_READ_WRITE_TOKEN: FALTA en nuxt-app"
+            echo "VERCEL BLOB: FALTA en nuxt-app"
           fi
 
       - name: Deploy a producción
