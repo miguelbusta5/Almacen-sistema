@@ -160,6 +160,7 @@ model User {
   pendientesConNovedad  PendienteGourmet[]   @relation("PendientesConNovedad")
   pendientesPasados     PendienteGourmet[]   @relation("PendientesPasados")
   pendientesBorrados    PendienteGourmet[]   @relation("PendientesBorrados")
+  tramosPendiente       TramoPendiente[]     @relation("TramosPendiente")
   recepcionesCreadas      RecepcionContenedor[]  @relation("RecepcionesCreadas")
   recepcionesActualizadas RecepcionContenedor[]  @relation("RecepcionesActualizadas")
   descargasRecepcion      DescargadorRecepcion[] @relation("DescargasRecepcion")
@@ -1550,6 +1551,10 @@ model PendienteGourmet {
   borradoPorId  String? @map("borrado_por_id")
   borradoPor    User?   @relation("PendientesBorrados", fields: [borradoPorId], references: [id])
 
+  /// De donde se saco: se escanea con el PLU y los dos arrancan el reloj.
+  ubicacionInicial String?          @map("ubicacion_inicial") @db.VarChar(120)
+  tramos           TramoPendiente[]
+
   /// Ejecucion, igual que un movimiento de deposito: el reloj arranca al
   /// escanear el PLU y se cierra al escribir la ubicacion final.
   unidadesBajadas Int?      @map("unidades_bajadas")
@@ -1600,4 +1605,24 @@ model JustificacionTiempoMuerto {
   @@index([usuarioId, inicio], map: "justificaciones_tiempo_muerto_usuario_inicio_idx")
   @@index([justificadoPorId], map: "justificaciones_tiempo_muerto_justificado_por_idx")
   @@map("justificaciones_tiempo_muerto")
+}
+
+/// Un tramo por cada persona que tuvo el pendiente en la mano, igual que
+/// tramos_montacargas: quien lo empezo hasta que se lo paso a un ayudante, y el
+/// ayudante desde ahi hasta ubicarlo. Pasarlo no reinicia el reloj.
+model TramoPendiente {
+  id          String           @id @default(cuid())
+  pendienteId String           @map("pendiente_id")
+  pendiente   PendienteGourmet @relation(fields: [pendienteId], references: [id], onDelete: Cascade)
+  usuarioId   String           @map("usuario_id")
+  usuario     User             @relation("TramosPendiente", fields: [usuarioId], references: [id])
+  orden       Int
+  inicio      DateTime
+  /// Null mientras la persona todavia lo tiene en la mano.
+  fin         DateTime?
+  createdAt   DateTime         @default(now()) @map("created_at")
+
+  @@index([pendienteId, orden], map: "tramos_pendiente_pendiente_orden_idx")
+  @@index([usuarioId, fin], map: "tramos_pendiente_usuario_fin_idx")
+  @@map("tramos_pendiente")
 }

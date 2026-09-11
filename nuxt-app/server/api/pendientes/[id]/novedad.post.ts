@@ -4,7 +4,7 @@ import { prisma } from '../../../utils/prisma'
 import { requireAuth } from '../../../utils/auth'
 import { mapPendiente } from '../../../utils/mapRow'
 import {
-  assertEjecutor, avisar, idsAlmacenamiento, PENDIENTE_INCLUDE,
+  assertEjecutor, avisar, cerrarTramoPendiente, idsAlmacenamiento, PENDIENTE_INCLUDE,
 } from '../../../utils/resurtido'
 import {
   devuelveASolicitante, NOVEDAD_PENDIENTE_LABEL,
@@ -56,6 +56,8 @@ export default defineEventHandler(async (event) => {
   const now = new Date()
 
   const actualizado = await prisma.$transaction(async (tx) => {
+    // El reloj se para: el tramo de quien lo tenia queda cerrado aqui.
+    await cerrarTramoPendiente(tx, id, now)
     await tx.pendienteGourmet.update({
       where: { id },
       data: devuelve

@@ -118,7 +118,11 @@ export default defineEventHandler(async (event) => {
           { estado: 'EN_CURSO', horaFin: null },
         ],
       },
-      select: { id: true, estado: true, operarioId: true, horaInicio: true, horaFin: true, unidadesBajadas: true },
+      select: {
+        id: true, estado: true, operarioId: true, horaInicio: true, horaFin: true, unidadesBajadas: true,
+        // Tiempo por persona: quien lo empezo y el ayudante que lo cerro.
+        tramos: { select: { usuarioId: true, inicio: true, fin: true } },
+      },
     }),
     // 4. Recepcion de contenedores: trabaja quien lleva la planilla Y cada
     // persona descargando, porque la descarga la hacen todos ellos.
@@ -177,12 +181,19 @@ export default defineEventHandler(async (event) => {
   for (const p of pendientes) {
     if (!p.operarioId || !p.horaInicio) continue
     const registro = `p:${p.id}`
-    if (p.estado !== 'COMPLETADO' || !p.horaFin) {
-      enCurso.push({ usuarioId: p.operarioId, inicio: p.horaInicio, fin: finAbierto(p.horaInicio), tipo: 'pendiente', registro })
-      continue
+    const cerrado = p.estado === 'COMPLETADO' && p.horaFin
+    // Con tramos (desde que se pueden pasar con el reloj corriendo), cada persona
+    // su parte. Los de antes no tienen tramos: todo es de quien lo ubico.
+    const tramos = p.tramos.length > 0
+      ? p.tramos
+      : [{ usuarioId: p.operarioId, inicio: p.horaInicio, fin: p.horaFin }]
+    for (const t of tramos) {
+      const base = { usuarioId: t.usuarioId, inicio: t.inicio, tipo: 'pendiente' as const, registro }
+      if (cerrado && t.fin) tiempos.push({ ...base, fin: t.fin })
+      else enCurso.push({ ...base, fin: t.fin ?? finAbierto(t.inicio) })
     }
-    tiempos.push({ usuarioId: p.operarioId, inicio: p.horaInicio, fin: p.horaFin, tipo: 'pendiente', registro })
-    unidades.push({ usuarioId: p.operarioId, cuando: p.horaFin, unidades: p.unidadesBajadas ?? 0 })
+    // Las unidades son de quien lo ubico.
+    if (cerrado) unidades.push({ usuarioId: p.operarioId, cuando: p.horaFin!, unidades: p.unidadesBajadas ?? 0 })
   }
   // Un contenedor no es un PLU: su tiempo cuenta, pero no entra en el promedio
   // por PLU ni en und/hora (registro null).

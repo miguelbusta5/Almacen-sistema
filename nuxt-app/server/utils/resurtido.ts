@@ -117,6 +117,21 @@ export async function avisar(
   })
 }
 
+// ── Tramos de un pendiente ─────────────────────────────────────────
+// Igual que en montacargas: el tramo de cada persona se cierra al pasarlo y se
+// abre el del siguiente en el mismo instante, asi el reloj no se corta.
+
+/** Cierra el tramo abierto del pendiente, si lo hay. */
+export async function cerrarTramoPendiente(tx: Tx, pendienteId: string, fin: Date): Promise<void> {
+  await tx.tramoPendiente.updateMany({ where: { pendienteId, fin: null }, data: { fin } })
+}
+
+/** Abre el tramo de una persona, a continuacion de los que ya tenga el pendiente. */
+export async function abrirTramoPendiente(tx: Tx, pendienteId: string, usuarioId: string, inicio: Date): Promise<void> {
+  const orden = (await tx.tramoPendiente.count({ where: { pendienteId } })) + 1
+  await tx.tramoPendiente.create({ data: { pendienteId, usuarioId, orden, inicio } })
+}
+
 /** Quienes deben enterarse de lo que pasa con los pendientes y los montajes. */
 export async function idsAlmacenamiento(): Promise<string[]> {
   const us = await prisma.user.findMany({

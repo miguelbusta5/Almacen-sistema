@@ -4,7 +4,7 @@ import { prisma } from '../../../utils/prisma'
 import { requireAuth } from '../../../utils/auth'
 import { mapPendiente } from '../../../utils/mapRow'
 import {
-  assertVePendientes, avisar, PENDIENTE_INCLUDE, puedeMontarResurtido,
+  assertVePendientes, avisar, cerrarTramoPendiente, PENDIENTE_INCLUDE, puedeMontarResurtido,
 } from '../../../utils/resurtido'
 import { puedeAsignarPendiente } from '../../../utils/resurtidoCalc'
 
@@ -83,10 +83,15 @@ export default defineEventHandler(async (event) => {
 
   const now = new Date()
   const actualizado = await prisma.$transaction(async (tx) => {
+    // Reasignar uno que ya estaba en marcha: el tramo de quien lo tenia se
+    // cierra y el nuevo operario empieza desde cero, escaneando.
+    await cerrarTramoPendiente(tx, id, now)
     await tx.pendienteGourmet.update({
       where: { id },
       data: {
         estado: 'ASIGNADO',
+        horaInicio: null,
+        horaFin: null,
         operarioId: operario.id,
         asignadoPorId: actor.id,
         asignadoAt: now,

@@ -3,7 +3,9 @@ import { z } from 'zod'
 import { prisma } from '../../../utils/prisma'
 import { requireAuth } from '../../../utils/auth'
 import { mapPendiente } from '../../../utils/mapRow'
-import { assertEjecutor, avisar, idsAlmacenamiento, PENDIENTE_INCLUDE } from '../../../utils/resurtido'
+import {
+  abrirTramoPendiente, assertEjecutor, avisar, cerrarTramoPendiente, idsAlmacenamiento, PENDIENTE_INCLUDE,
+} from '../../../utils/resurtido'
 import { validarCierrePendiente } from '../../../utils/resurtidoCalc'
 // normalizarUbicacion es del modulo de montacargas: una sola forma de escribir
 // una ubicacion en todo el proyecto.
@@ -36,7 +38,8 @@ export default defineEventHandler(async (event) => {
     where: { id },
     select: {
       estado: true, deletedAt: true, operarioId: true, horaInicio: true,
-      descripcion: true, solicitadoPorId: true, asignadoPorId: true,
+      descripcion: true, solicitadoPorId: true, asignadoPorId: true, pasadoPorId: true,
+      tramos: { select: { id: true } },
     },
   })
   if (!p || p.deletedAt) throw createError({ statusCode: 404, statusMessage: 'Pendiente no encontrado' })
@@ -60,6 +63,10 @@ export default defineEventHandler(async (event) => {
   const now = new Date()
 
   const actualizado = await prisma.$transaction(async (tx) => {
+    // Uno empezado antes de que existieran los tramos: todo su tiempo es de
+    // quien lo cierra.
+    if (p.tramos.length === 0) await abrirTramoPendiente(tx, id, actor.id, p.horaInicio!)
+    await cerrarTramoPendiente(tx, id, now)
     await tx.pendienteGourmet.update({
       where: { id },
       data: {
@@ -75,6 +82,8 @@ export default defineEventHandler(async (event) => {
     const destinatarios = [
       p.solicitadoPorId,
       ...(p.asignadoPorId ? [p.asignadoPorId] : []),
+      // Quien lo empezo y se lo paso al ayudante tambien quiere saber que cerro.
+      ...(p.pasadoPorId && p.pasadoPorId !== actor.id ? [p.pasadoPorId] : []),
       ...(await idsAlmacenamiento()),
     ]
     await avisar(tx, destinatarios, {

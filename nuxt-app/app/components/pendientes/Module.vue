@@ -15,7 +15,7 @@ import { ensureSession, useSessionState } from '~/composables/useSession'
 import { useToast } from '~/composables/useToast'
 import { useAutoRefresh } from '~/composables/useAutoRefresh'
 import {
-  API_MONTAJE, API_PENDIENTES, colorPendiente, cronometroDesde, ESTADO_PENDIENTE_LABEL,
+  API_PENDIENTES, colorPendiente, cronometroDesde, ESTADO_PENDIENTE_LABEL,
   esSolicitante, fmtDuracionTarea, NOVEDAD_PENDIENTE_LABEL, puedeBorrarPendiente, puedeEditarPendiente,
   type NovedadPendiente, type PendienteDTO,
 } from '~/utils/resurtidoTareas'
@@ -114,9 +114,13 @@ async function cargarOperarios() {
   // Quien pide tambien reparte lo suyo: sabe mejor que nadie cuanta prisa hay.
   if (!puedeAsignar.value && !solicita.value) return
   try {
-    const res = await $fetch<{ data: { id: string; nombre: string }[] }>(`${API_MONTAJE}/operarios`)
+    // De Pendientes, no de Montaje Resurtido: ese es solo de supervision y a
+    // quien pide le respondia 403, con el selector vacio.
+    const res = await $fetch<{ data: { id: string; nombre: string }[] }>(`${API_PENDIENTES}/operarios`)
     operarios.value = res.data
-  } catch { /* sin lista no se puede asignar, y el select lo muestra */ }
+  } catch (e) {
+    showToast(apiErr(e, 'No se pudo cargar la lista de operarios'), true)
+  }
 }
 
 onMounted(() => { void cargar() })

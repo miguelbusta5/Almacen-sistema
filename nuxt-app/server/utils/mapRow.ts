@@ -543,6 +543,7 @@ export function mapPendiente(p: any) {
     operarioNombre: p.operario?.name ?? null,
     asignadoAt: p.asignadoAt ? p.asignadoAt.toISOString() : null,
     unidadesBajadas: p.unidadesBajadas ?? null,
+    ubicacionInicial: p.ubicacionInicial ?? null,
     ubicacionFinal: p.ubicacionFinal ?? null,
     horaInicio: p.horaInicio ? p.horaInicio.toISOString() : null,
     horaFin: p.horaFin ? p.horaFin.toISOString() : null,

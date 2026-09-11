@@ -51,16 +51,21 @@ describe("resurtido por tareas — donde arranca el reloj", () => {
     expect(iniciarTarea).toContain("horaInicio: new Date()");
   });
 
-  // En un pendiente arranca con el PLU, igual que un movimiento de deposito.
-  it("el pendiente arranca escaneando el PLU", () => {
+  // En un pendiente arranca con el PLU y la ubicacion inicial, igual que un
+  // movimiento de deposito, y abre el tramo de quien lo empieza.
+  it("el pendiente arranca escaneando el PLU y la ubicacion inicial", () => {
     expect(iniciarPend).toContain("validarEscaneoPlu");
-    expect(iniciarPend).toContain("horaInicio: new Date()");
+    expect(iniciarPend).toContain("validarUbicacion(ubicacionInicial, 'La ubicación inicial')");
+    expect(iniciarPend).toContain("data: { estado: 'EN_CURSO', horaInicio: now, ubicacionInicial }");
+    expect(iniciarPend).toContain("abrirTramoPendiente(tx, id, actor.id, now)");
   });
 
   // Volver a escanear no puede borrar el tiempo que ya llevaba.
   it("volver a escanear no reinicia el reloj", () => {
     expect(iniciarTarea).toContain("tarea.horaInicio ? {} : { horaInicio: new Date() }");
-    expect(iniciarPend).toContain("p.horaInicio ? {} : { horaInicio: new Date() }");
+    // Si ya corre, solo se confirma el estado: no se toca horaInicio.
+    expect(iniciarPend).toContain("if (p.horaInicio) {");
+    expect(iniciarPend).toContain("where: { id }, data: { estado: 'EN_CURSO' }, include: PENDIENTE_INCLUDE,");
   });
 
   it("no se puede cerrar una tarea que nunca se inicio", () => {
@@ -115,8 +120,12 @@ describe("pendientes de gourmet", () => {
   });
 
   // Repartir no es hacer: a quien asigna no se le mide tiempo.
+  // Asignar no arranca ningun reloj; reasignar uno en marcha cierra el tramo de
+  // quien lo tenia y el nuevo operario empieza desde cero.
   it("asignar no arranca ningun reloj", () => {
-    expect(asignar).not.toContain("horaInicio");
+    expect(asignar).not.toContain("horaInicio: now");
+    expect(asignar).toContain("horaInicio: null");
+    expect(asignar).toContain("await cerrarTramoPendiente(tx, id, now)");
     expect(asignar).toContain("asignadoAt: now");
   });
 
@@ -254,9 +263,40 @@ describe("pendientes — pasar a un ayudante", () => {
     expect(traspasar).toContain("operarioId: ayudante.id");
   });
 
-  // El reloj es de quien lo termina.
-  it("el reloj arranca de cero para el ayudante", () => {
-    expect(traspasar).toContain("horaInicio: null");
+  // Como en todos los procesos del CEDI: pasarlo empezado no reinicia el reloj.
+  // Se cierra el tramo de quien lo tenia y se abre el del ayudante.
+  it("pasarlo empezado no reinicia el reloj: cada uno queda con su tramo", () => {
+    expect(traspasar).not.toContain("horaInicio: null");
+    expect(traspasar).toContain("await cerrarTramoPendiente(tx, id, now)");
+    expect(traspasar).toContain("await abrirTramoPendiente(tx, id, ayudante.id, now)");
+    expect(traspasar).toContain("estado: empezado ? 'EN_CURSO' : 'ASIGNADO'");
+  });
+
+  it("ubicarlo cierra el tramo del ayudante y avisa tambien a quien se lo paso", () => {
+    const completarPend = leer("nuxt-app/server/api/pendientes/[id]/completar.post.ts");
+    expect(completarPend).toContain("await cerrarTramoPendiente(tx, id, now)");
+    expect(completarPend).toContain("p.pasadoPorId && p.pasadoPorId !== actor.id");
+  });
+
+  it("la pantalla pide la ubicacion inicial y dice quien se lo paso", () => {
+    const ui = leer("nuxt-app/app/components/resurtido/PendientesTareas.vue");
+    expect(ui).toContain("body: { plu: escaneoPlu.value.trim(), ubicacionInicial: ubicacionInicial.value.trim() }");
+    expect(ui).toContain("te lo pasó: tú lo ubicas y cierras");
+  });
+
+  it("en indicadores cada persona suma su tramo del pendiente", () => {
+    const ind = leer("nuxt-app/server/api/indicadores/index.get.ts");
+    expect(ind).toContain("tramos: { select: { usuarioId: true, inicio: true, fin: true } }");
+    expect(ind).toContain("const base = { usuarioId: t.usuarioId, inicio: t.inicio, tipo: 'pendiente' as const, registro }");
+  });
+
+  it("la tabla de tramos esta en los dos schemas, en un script aditivo y con RLS", () => {
+    for (const rel of ["prisma/schema.prisma", "nuxt-app/prisma/schema.prisma"]) {
+      expect(leer(rel)).toContain("model TramoPendiente {");
+    }
+    const sql = leer("prisma/migrate-tramos-pendiente.sql");
+    expect(sql).toContain("CREATE TABLE IF NOT EXISTS tramos_pendiente");
+    expect(sql).toContain("ALTER TABLE tramos_pendiente ENABLE ROW LEVEL SECURITY");
   });
 
   // Uno sumado a un resurtido va con esa tarea: pasarlo suelto la partiria.
@@ -422,5 +462,18 @@ describe("pendientes — pasar a un ayudante", () => {
   it("el servidor deja pasar a operarios y montacarguistas, igual que la lista", () => {
     const tras = leer("nuxt-app/server/api/pendientes/[id]/traspasar.post.ts");
     expect(tras).toContain("role: { in: ['OPERARIO_ALMACENAMIENTO', 'MONTACARGAS'] }");
+  });
+});
+
+// Viviana tambien reparte lo suyo: su selector sacaba la lista de Montaje
+// Resurtido, que es solo de supervision, y le salia vacio.
+describe("pendientes — a quien asignar", () => {
+  it("la lista sale de Pendientes y la puede leer quien pide", () => {
+    const get = leer("nuxt-app/server/api/pendientes/operarios.get.ts");
+    expect(get).toContain("assertVePendientes(actor.role)");
+    expect(get).toContain("listarOperarios()");
+    const ui = leer("nuxt-app/app/components/pendientes/Module.vue");
+    expect(ui).toContain("`${API_PENDIENTES}/operarios`");
+    expect(ui).not.toContain("API_MONTAJE}/operarios");
   });
 });

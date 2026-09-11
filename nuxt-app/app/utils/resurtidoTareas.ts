@@ -463,6 +463,7 @@ export interface PendienteDTO {
   operarioNombre: string | null
   asignadoAt: string | null
   unidadesBajadas: number | null
+  ubicacionInicial: string | null
   ubicacionFinal: string | null
   horaInicio: string | null
   horaFin: string | null

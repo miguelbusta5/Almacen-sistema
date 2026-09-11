@@ -2,7 +2,9 @@
 // Los pendientes que le tocan al operario.
 //
 // Se ejecutan como un movimiento de depósito: el reloj arranca al ESCANEAR EL
-// PLU y se cierra al escribir la ubicación final. Al cerrarlo, el servidor avisa
+// PLU Y LA UBICACIÓN INICIAL y se cierra al escribir la ubicación final. Quien
+// lo empezó puede pasárselo a un ayudante para que lo cierre, y el reloj sigue:
+// cada uno queda con su tramo. Al cerrarlo, el servidor avisa
 // a quien lo pidió y a quien lo repartió — es justo el dato que estaban esperando.
 import { ref, computed, nextTick, watch } from 'vue'
 import { ScanLine, ArrowDown, Package, CheckCircle2, TriangleAlert, UserPlus } from '@lucide/vue'
@@ -31,6 +33,8 @@ const guardando = ref<string | null>(null)
 const abierto = ref<PendienteDTO | null>(null)
 
 const escaneoPlu = ref('')
+const ubicacionInicial = ref('')
+const ubicIniInput = ref<HTMLInputElement | null>(null)
 const unidades = ref('')
 const ubicacionFinal = ref('')
 const pluInput = ref<HTMLInputElement | null>(null)
@@ -55,6 +59,7 @@ defineExpose({ cargar })
 function abrir(p: PendienteDTO, enfocarEscaneo = true) {
   abierto.value = p
   escaneoPlu.value = ''
+  ubicacionInicial.value = ''
   unidades.value = String(p.unidadesSolicitadas)
   ubicacionFinal.value = ''
   reportando.value = false
@@ -70,13 +75,23 @@ const enCurso = computed(() => Boolean(abierto.value?.horaInicio))
 const crono = computed(() =>
   abierto.value?.horaInicio ? cronometroDesde(abierto.value.horaInicio, props.ahora) : null)
 
+const puedeIniciar = computed(() => escaneoPlu.value.trim().length > 0 && ubicacionInicial.value.trim().length > 0)
+
+// Enter en el PLU lleva a la ubicación inicial: la pistola escanea uno tras otro.
+function siguienteAUbicacion() {
+  if (!escaneoPlu.value.trim()) return
+  if (!ubicacionInicial.value.trim()) { ubicIniInput.value?.focus(); return }
+  void iniciar()
+}
+
 async function iniciar() {
   const p = abierto.value
-  if (!p || !escaneoPlu.value.trim()) return
+  if (!p || !puedeIniciar.value) return
   guardando.value = p.id
   try {
     const res = await $fetch<{ data: PendienteDTO }>(`${API_PENDIENTES}/${p.id}/iniciar`, {
-      method: 'POST', body: { plu: escaneoPlu.value.trim() },
+      method: 'POST',
+      body: { plu: escaneoPlu.value.trim(), ubicacionInicial: ubicacionInicial.value.trim() },
     })
     abierto.value = res.data
     sonarVeredicto('VALIDO')
@@ -236,6 +251,7 @@ cargar()
             <span class="t-desc">{{ p.descripcion }}</span>
             <span class="t-meta">
               {{ p.unidadesSolicitadas }} und · pedido por {{ p.solicitadoPorNombre ?? 'gourmet' }}
+              <template v-if="p.pasadoPorNombre && p.horaInicio"> · te lo pasó {{ p.pasadoPorNombre }}</template>
             </span>
           </span>
           <span class="t-der">
@@ -264,19 +280,39 @@ cargar()
         <div class="m-body">
           <!-- Paso 1: el PLU arranca el reloj, igual que en movimientos -->
           <section class="paso" :class="{ hecho: enCurso }">
-            <h3 class="p-title"><Package :size="14" /> 1 · Escanea el producto</h3>
-            <form v-if="!enCurso" class="p-form" @submit.prevent="iniciar">
-              <input
-                ref="pluInput" v-model="escaneoPlu" class="field mono grande"
-                :placeholder="abierto.plu" autocomplete="off" inputmode="numeric"
-                enterkeyhint="go" :disabled="guardando === abierto.id"
-              >
-              <button class="btn btn-primary" :disabled="!escaneoPlu.trim() || guardando === abierto.id">
+            <h3 class="p-title"><Package :size="14" /> 1 · Escanea el producto y la ubicación inicial</h3>
+            <form v-if="!enCurso" class="p-form p-form-2" @submit.prevent="iniciar">
+              <label class="f">
+                <span class="lbl">PLU</span>
+                <input
+                  ref="pluInput" v-model="escaneoPlu" class="field mono grande"
+                  :placeholder="abierto.plu" autocomplete="off" inputmode="numeric"
+                  enterkeyhint="next" :disabled="guardando === abierto.id"
+                  @keydown.enter.prevent="siguienteAUbicacion"
+                >
+              </label>
+              <label class="f">
+                <span class="lbl">Ubicación inicial</span>
+                <input
+                  ref="ubicIniInput" v-model="ubicacionInicial" class="field mono grande"
+                  placeholder="De dónde lo sacas" autocomplete="off" autocapitalize="characters"
+                  enterkeyhint="go" :disabled="guardando === abierto.id"
+                >
+              </label>
+              <button class="btn btn-primary" :disabled="!puedeIniciar || guardando === abierto.id">
                 <Spinner v-if="guardando === abierto.id" :size="15" /><ScanLine v-else :size="15" />
                 Empezar
               </button>
             </form>
-            <p v-else class="p-ok"><CheckCircle2 :size="13" /> Producto confirmado, el reloj corre</p>
+            <template v-else>
+              <p class="p-ok">
+                <CheckCircle2 :size="13" /> Producto confirmado{{ abierto.ubicacionInicial ? ` en ${abierto.ubicacionInicial}` : '' }}, el reloj corre
+              </p>
+              <!-- Se lo pasaron ya empezado: el reloj no se reinicio, le toca ubicarlo. -->
+              <p v-if="abierto.pasadoPorNombre" class="p-recibido">
+                <UserPlus :size="13" /> {{ abierto.pasadoPorNombre }} te lo pasó: tú lo ubicas y cierras
+              </p>
+            </template>
           </section>
 
           <!-- Paso 2: unidades y ubicación final -->
@@ -367,6 +403,10 @@ cargar()
 
 <style scoped>
 .pend { display: flex; flex-direction: column; gap: 14px; }
+.p-form.p-form-2 { display: grid; grid-template-columns: 1fr 1fr auto; gap: 10px; align-items: end; }
+.p-form-2 .f { display: flex; flex-direction: column; gap: 5px; min-width: 0; }
+.p-recibido { display: flex; align-items: center; gap: 6px; margin: 6px 0 0; font-size: 12.5px; font-weight: 600; color: var(--info); }
+@media (max-width: 560px) { .p-form.p-form-2 { grid-template-columns: 1fr; } }
 .fila { display: flex; align-items: stretch; gap: 8px; }
 .fila .tarea { flex: 1; min-width: 0; }
 .pasar-lista { flex-shrink: 0; height: auto; align-self: stretch; white-space: nowrap; }
