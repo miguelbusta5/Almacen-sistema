@@ -398,3 +398,29 @@ describe("pendientes — borrar", () => {
     expect(get).toContain("where: { ...base, estado: 'COMPLETADO' }");
   });
 });
+
+// "Pasar a un ayudante" en un pendiente sin resurtido: la lista de ayudantes
+// se pedia a Montaje Resurtido, que es solo de supervision; al operario le
+// respondia 403 en silencio y la lista quedaba vacia.
+describe("pendientes — pasar a un ayudante", () => {
+  const pend = leer("nuxt-app/app/components/resurtido/PendientesTareas.vue");
+  const tareas = leer("nuxt-app/app/components/resurtido/Tareas.vue");
+
+  it("la lista de ayudantes sale de un servicio que el operario si puede leer", () => {
+    expect(pend).toContain("`${API_MONTACARGAS}/ayudantes`");
+    expect(pend).not.toContain("API_MONTAJE}/operarios");
+    // Si falla, se dice; no se deja la lista vacia sin explicacion.
+    expect(pend).toContain("No se pudo cargar la lista de ayudantes");
+  });
+
+  it("la opcion esta a la vista en la lista y en la tarjeta roja de Resurtido", () => {
+    expect(pend).toContain('@click="pasarDesdeLista(p)"');
+    expect(tareas).toContain("emit('irAPendientes', { id: p.id, pasar: true })");
+    expect(leer("nuxt-app/app/pages/resurtido.vue")).toContain(':enfocar="enfocar"');
+  });
+
+  it("el servidor deja pasar a operarios y montacarguistas, igual que la lista", () => {
+    const tras = leer("nuxt-app/server/api/pendientes/[id]/traspasar.post.ts");
+    expect(tras).toContain("role: { in: ['OPERARIO_ALMACENAMIENTO', 'MONTACARGAS'] }");
+  });
+});

@@ -7,7 +7,7 @@
 // al abrirla— para medir caminar y bajar la mercancía, y no el rato que la
 // pantalla estuvo abierta.
 import { ref, computed, watch, nextTick } from 'vue'
-import { ScanLine, CheckCircle2, MapPin, ArrowDown, Package, Flame } from '@lucide/vue'
+import { ScanLine, CheckCircle2, MapPin, ArrowDown, Package, Flame, UserPlus } from '@lucide/vue'
 import { useToast } from '~/composables/useToast'
 import { sonarVeredicto } from '~/utils/escaneoFeedback'
 import {
@@ -18,7 +18,7 @@ import {
 const props = defineProps<{ ahora: number }>()
 // Un pendiente prioritario se hace desde su propia pestaña (su flujo es por
 // PLU, no por ubicacion); aqui solo se muestra primero y se lleva alli.
-const emit = defineEmits<{ (e: 'irAPendientes'): void }>()
+const emit = defineEmits<{ (e: 'irAPendientes', destino: { id: string; pasar: boolean }): void }>()
 
 const { show: showToast } = useToast()
 
@@ -171,8 +171,8 @@ cargar()
       <!-- Pendientes sueltos: van ANTES que todo el resurtido. Un pendiente es
            alguien esperando en la tienda. -->
       <ol v-if="prioritarios.length" class="lista">
-        <li v-for="p in prioritarios" :key="p.id">
-          <button class="tarea card prio" @click="emit('irAPendientes')">
+        <li v-for="p in prioritarios" :key="p.id" class="fila">
+          <button class="tarea card prio" @click="emit('irAPendientes', { id: p.id, pasar: false })">
             <span class="t-orden prio-ic"><Flame :size="14" /></span>
             <span class="t-cuerpo">
               <span class="t-etiq">Pendiente prioritario</span>
@@ -183,6 +183,10 @@ cargar()
               </span>
             </span>
             <span class="t-ir">Hacer ahora</span>
+          </button>
+          <!-- Sin resurtido de por medio, el pendiente tambien se puede pasar. -->
+          <button class="btn btn-sm pasar-lista" type="button" @click="emit('irAPendientes', { id: p.id, pasar: true })">
+            <UserPlus :size="14" /> Pasar a un ayudante
           </button>
         </li>
       </ol>
@@ -300,6 +304,13 @@ cargar()
 .pct { float: right; font-weight: 700; color: var(--brand); }
 
 .lista { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 9px; }
+.fila { display: flex; align-items: stretch; gap: 8px; }
+.fila .tarea { flex: 1; min-width: 0; }
+.pasar-lista { flex-shrink: 0; height: auto; align-self: stretch; white-space: nowrap; }
+@media (max-width: 560px) {
+  .fila { flex-direction: column; }
+  .pasar-lista { align-self: flex-end; height: 32px; }
+}
 .tarea {
   width: 100%; display: flex; align-items: center; gap: 13px; padding: 13px 15px;
   text-align: left; cursor: pointer; border: 1px solid var(--border);

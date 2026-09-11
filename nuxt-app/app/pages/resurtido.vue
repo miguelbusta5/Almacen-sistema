@@ -20,6 +20,14 @@ const ejecuta = computed(() => esEjecutor(me.value?.role ?? ''))
 type Pestana = 'resurtido' | 'movimientos' | 'pendientes'
 const activa = ref<Pestana>('resurtido')
 
+// La tarjeta roja de un pendiente lleva a su pestaña con ese pendiente abierto
+// (y, si se pidio, directo en "Pasar a un ayudante").
+const enfocar = ref<{ id: string; pasar: boolean } | null>(null)
+function irAPendientes(destino: { id: string; pasar: boolean }) {
+  enfocar.value = destino
+  activa.value = 'pendientes'
+}
+
 // Reloj compartido: un intervalo para toda la pantalla en vez de uno por tarjeta.
 const ahora = ref(Date.now())
 let tick: ReturnType<typeof setInterval> | null = null
@@ -61,7 +69,7 @@ const pestanas = [
     <template v-if="activa === 'resurtido'">
       <!-- Un pendiente prioritario sale primero en esta lista, pero se hace en su
            pestaña: su flujo arranca con el PLU, no con la ubicacion. -->
-      <ResurtidoTareas v-if="ejecuta" :ahora="ahora" @ir-a-pendientes="activa = 'pendientes'" />
+      <ResurtidoTareas v-if="ejecuta" :ahora="ahora" @ir-a-pendientes="irAPendientes" />
       <EmptyState
         v-else title="Solo para operarios"
         description="Las tareas de resurtido las ejecutan los operarios. Para ver cómo van, entra a Montaje Resurtido."
@@ -78,7 +86,7 @@ const pestanas = [
     />
 
     <template v-else>
-      <ResurtidoPendientesTareas v-if="ejecuta" :ahora="ahora" />
+      <ResurtidoPendientesTareas v-if="ejecuta" :ahora="ahora" :enfocar="enfocar" @enfocado="enfocar = null" />
       <EmptyState
         v-else title="Solo para operarios"
         description="Los pendientes asignados los ejecutan los operarios. Para solicitarlos o repartirlos, entra al módulo Pendientes."

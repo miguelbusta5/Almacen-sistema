@@ -4,17 +4,24 @@
 // Se ejecutan como un movimiento de depósito: el reloj arranca al ESCANEAR EL
 // PLU y se cierra al escribir la ubicación final. Al cerrarlo, el servidor avisa
 // a quien lo pidió y a quien lo repartió — es justo el dato que estaban esperando.
-import { ref, computed, nextTick } from 'vue'
+import { ref, computed, nextTick, watch } from 'vue'
 import { ScanLine, ArrowDown, Package, CheckCircle2, TriangleAlert, UserPlus } from '@lucide/vue'
 import { useToast } from '~/composables/useToast'
 import { sonarVeredicto } from '~/utils/escaneoFeedback'
 import {
-  API_MONTAJE, API_PENDIENTES, cronometroDesde, devuelveASolicitante, fmtDuracionTarea,
+  API_PENDIENTES, cronometroDesde, devuelveASolicitante, fmtDuracionTarea,
   NOVEDAD_PENDIENTE_LABEL, NOVEDADES_PENDIENTE, type NovedadPendiente, type PendienteDTO,
 } from '~/utils/resurtidoTareas'
+import { API_MONTACARGAS, type Ayudante } from '~/utils/montacargas'
 import { useSessionState } from '~/composables/useSession'
 
-const props = defineProps<{ ahora: number }>()
+const props = defineProps<{
+  ahora: number
+  /** Viene de la tarjeta roja de Resurtido: abrir ese pendiente, y si
+   *  `pasar`, directo en "Pasar a un ayudante". */
+  enfocar?: { id: string; pasar: boolean } | null
+}>()
+const emit = defineEmits<{ (e: 'enfocado'): void }>()
 
 const { show: showToast } = useToast()
 
@@ -45,11 +52,14 @@ async function cargar() {
 }
 defineExpose({ cargar })
 
-function abrir(p: PendienteDTO) {
+function abrir(p: PendienteDTO, enfocarEscaneo = true) {
   abierto.value = p
   escaneoPlu.value = ''
   unidades.value = String(p.unidadesSolicitadas)
   ubicacionFinal.value = ''
+  reportando.value = false
+  pasando.value = false
+  if (!enfocarEscaneo) return
   void nextTick(() => {
     if (p.horaInicio) ubicInput.value?.focus()
     else pluInput.value?.focus()
@@ -137,21 +147,53 @@ async function reportar() {
 
 // ── Pasar a un ayudante ────────────────────────────────────────────
 // El reloj es de quien lo termina: arranca cuando el ayudante escanea el PLU.
+//
+// La lista sale de /api/montacargas/ayudantes, la misma de pasar un PLU. Antes
+// se pedia a Montaje Resurtido, que es solo para supervision: al operario le
+// respondia 403, el error se tragaba en silencio y la lista quedaba vacia, asi
+// que no habia a quien pasarselo.
 const { me } = useSessionState()
 const pasando = ref(false)
-const ayudantes = ref<{ id: string; nombre: string }[]>([])
+const ayudantes = ref<Ayudante[]>([])
 const ayudanteId = ref('')
+const cargandoAyudantes = ref(false)
 
 async function abrirPaso() {
   pasando.value = true
   reportando.value = false
-  if (ayudantes.value.length) return
+  if (ayudantes.value.length || cargandoAyudantes.value) return
+  cargandoAyudantes.value = true
   try {
-    const res = await $fetch<{ data: { id: string; nombre: string }[] }>(`${API_MONTAJE}/operarios`)
-    // Uno no se lo pasa a si mismo, y verse en la lista solo estorba.
+    const res = await $fetch<{ data: Ayudante[] }>(`${API_MONTACARGAS}/ayudantes`)
+    // El servidor ya saca a quien pregunta: uno no se lo pasa a si mismo.
     ayudantes.value = res.data.filter((o) => o.id !== me.value?.id)
-  } catch { /* sin lista el boton se queda deshabilitado */ }
+  } catch (e) {
+    showToast(apiErr(e, 'No se pudo cargar la lista de ayudantes'), true)
+  } finally {
+    cargandoAyudantes.value = false
+  }
 }
+
+// Desde la lista, sin tener que abrir el pendiente y bajar hasta el final: la
+// ventana va directo a la seccion, sin enfocar el escaner (en el celular
+// abriria el teclado).
+const otrasRef = ref<HTMLElement | null>(null)
+function pasarDesdeLista(p: PendienteDTO) {
+  abrir(p, false)
+  void abrirPaso()
+  void nextTick(() => otrasRef.value?.scrollIntoView({ block: 'nearest', behavior: 'smooth' }))
+}
+
+// Llegar desde la tarjeta roja de Resurtido abre ese pendiente directamente.
+watch([() => props.enfocar, items], ([destino]) => {
+  if (!destino || loading.value) return
+  const p = items.value.find((x) => x.id === destino.id)
+  if (p) {
+    if (destino.pasar) pasarDesdeLista(p)
+    else abrir(p)
+  }
+  emit('enfocado')
+}, { immediate: true })
 
 async function pasar() {
   const p = abierto.value
@@ -187,7 +229,7 @@ cargar()
     />
 
     <ol v-else class="lista">
-      <li v-for="p in items" :key="p.id">
+      <li v-for="p in items" :key="p.id" class="fila">
         <button class="tarea card" :class="{ activa: p.horaInicio }" @click="abrir(p)">
           <span class="t-cuerpo">
             <span class="t-plu mono">{{ p.plu }}</span>
@@ -200,6 +242,10 @@ cargar()
             <span v-if="p.horaInicio" class="t-crono tnum">{{ cronometroDesde(p.horaInicio, ahora) }}</span>
             <span v-else class="t-espera tnum">esperando {{ fmtDuracionTarea(p.esperaSegundos) }}</span>
           </span>
+        </button>
+        <!-- A la vista, no escondido al fondo de la ventana del pendiente. -->
+        <button class="btn btn-sm pasar-lista" type="button" @click="pasarDesdeLista(p)">
+          <UserPlus :size="14" /> Pasar a un ayudante
         </button>
       </li>
     </ol>
@@ -264,7 +310,7 @@ cargar()
           </section>
 
           <!-- No lo puede bajar, o se lo pasa a otro. -->
-          <section class="otras">
+          <section ref="otrasRef" class="otras">
             <div v-if="!reportando && !pasando" class="otras-acc">
               <button class="dev-link" @click="reportando = true; pasando = false">
                 <TriangleAlert :size="13" /> Reportar novedad
@@ -296,10 +342,13 @@ cargar()
 
             <template v-if="pasando">
               <h3 class="p-title"><UserPlus :size="14" /> Pasar a un ayudante</h3>
-              <select v-model="ayudanteId" class="field" :disabled="guardando === abierto.id">
-                <option value="">Elige a quién</option>
-                <option v-for="a in ayudantes" :key="a.id" :value="a.id">{{ a.nombre }}</option>
+              <select v-model="ayudanteId" class="field" :disabled="guardando === abierto.id || cargandoAyudantes">
+                <option value="">{{ cargandoAyudantes ? 'Cargando…' : 'Elige a quién' }}</option>
+                <option v-for="a in ayudantes" :key="a.id" :value="a.id">
+                  {{ a.nombre }}{{ a.pendientes ? ` · ${a.pendientes} en curso` : '' }}
+                </option>
               </select>
+              <p v-if="!cargandoAyudantes && !ayudantes.length" class="hint">No hay nadie más activo a quien pasárselo.</p>
               <p class="hint">Su reloj empieza cuando escanee el PLU.</p>
               <div class="dev-acc">
                 <button class="btn btn-sm" @click="pasando = false">Cancelar</button>
@@ -318,6 +367,13 @@ cargar()
 
 <style scoped>
 .pend { display: flex; flex-direction: column; gap: 14px; }
+.fila { display: flex; align-items: stretch; gap: 8px; }
+.fila .tarea { flex: 1; min-width: 0; }
+.pasar-lista { flex-shrink: 0; height: auto; align-self: stretch; white-space: nowrap; }
+@media (max-width: 560px) {
+  .fila { flex-direction: column; }
+  .pasar-lista { align-self: flex-end; height: 32px; }
+}
 .lista { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 9px; }
 .tarea {
   width: 100%; display: flex; align-items: center; gap: 13px; padding: 13px 15px;
