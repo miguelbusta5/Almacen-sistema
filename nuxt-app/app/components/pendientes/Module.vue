@@ -225,6 +225,9 @@ const mensajeBorrar = computed(() => {
   const p = borrando.value
   if (!p) return ''
   const que = `Se borrará el pendiente de ${p.unidadesSolicitadas} de ${p.descripcion}.`
+  if (p.estado === 'COMPLETADO') {
+    return `${que} Ya se ubicó: al borrarlo, ese trabajo de ${p.operarioNombre ?? 'el operario'} deja de contar en sus indicadores. Por eso hay que escribir el motivo.`
+  }
   if (p.tareaResurtidoId) {
     return `${que} Va dentro del resurtido de ${p.operarioNombre ?? 'un operario'}: a esa tarea se le restan esas unidades y se le avisa.`
   }
@@ -237,12 +240,12 @@ const mensajeBorrar = computed(() => {
   return que
 })
 
-async function borrar() {
+async function borrar(motivo: string) {
   const p = borrando.value
   if (!p) return
   borrandoGuardar.value = true
   try {
-    await $fetch(`${API_PENDIENTES}/${p.id}`, { method: 'DELETE' })
+    await $fetch(`${API_PENDIENTES}/${p.id}`, { method: 'DELETE', body: { motivo: motivo || undefined } })
     showToast('Pendiente borrado')
     borrando.value = null
     await cargar()
@@ -419,6 +422,12 @@ const cerrados = computed(() => items.value.filter((p) => p.estado === 'COMPLETA
               <div><dt>Espera total</dt><dd class="tnum">{{ fmtDuracionTarea(p.esperaSegundos) }}</dd></div>
               <div><dt>Lo bajó</dt><dd>{{ p.operarioNombre ?? '—' }}</dd></div>
             </dl>
+            <!-- Solo el administrador, y con justificante. -->
+            <div v-if="borrable(p)" class="vin-acc">
+              <button class="vin-borrar" @click="borrando = p">
+                <Trash2 :size="12" /> Borrar
+              </button>
+            </div>
           </article>
         </div>
 
@@ -472,11 +481,9 @@ const cerrados = computed(() => items.value.filter((p) => p.estado === 'COMPLETA
       </section>
     </div>
 
-    <ConfirmModal
+    <PendientesBorrarModal
       v-if="borrando"
-      title="Borrar pendiente"
-      :message="mensajeBorrar"
-      confirm-label="Borrar" :confirming="borrandoGuardar"
+      :pendiente="borrando" :mensaje="mensajeBorrar" :guardando="borrandoGuardar"
       @close="borrando = null" @confirm="borrar"
     />
   </div>

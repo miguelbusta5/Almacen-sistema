@@ -159,6 +159,7 @@ model User {
   pendientesDevueltos   PendienteGourmet[]   @relation("PendientesDevueltos")
   pendientesConNovedad  PendienteGourmet[]   @relation("PendientesConNovedad")
   pendientesPasados     PendienteGourmet[]   @relation("PendientesPasados")
+  pendientesBorrados    PendienteGourmet[]   @relation("PendientesBorrados")
   recepcionesCreadas      RecepcionContenedor[]  @relation("RecepcionesCreadas")
   recepcionesActualizadas RecepcionContenedor[]  @relation("RecepcionesActualizadas")
   descargasRecepcion      DescargadorRecepcion[] @relation("DescargasRecepcion")
@@ -1542,6 +1543,12 @@ model PendienteGourmet {
   /// Quien se lo paso a un ayudante, si fue asi.
   pasadoPorId String? @map("pasado_por_id")
   pasadoPor   User?   @relation("PendientesPasados", fields: [pasadoPorId], references: [id])
+
+  /// Borrado con justificante: quien lo borro y por que. Obligatorio para uno
+  /// ya ubicado (historia que cuenta en los indicadores del operario).
+  motivoBorrado String? @map("motivo_borrado")
+  borradoPorId  String? @map("borrado_por_id")
+  borradoPor    User?   @relation("PendientesBorrados", fields: [borradoPorId], references: [id])
 
   /// Ejecucion, igual que un movimiento de deposito: el reloj arranca al
   /// escanear el PLU y se cierra al escribir la ubicacion final.

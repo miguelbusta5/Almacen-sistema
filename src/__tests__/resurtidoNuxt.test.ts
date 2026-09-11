@@ -26,6 +26,8 @@ describe("resurtido por tareas — las tres copias de la logica", () => {
     "devuelveASolicitante",
     "puedeAsignarPendiente",
     "puedeBorrarPendiente",
+    "exigeMotivoBorrado",
+    "validarMotivoBorrado",
   ];
 
   it.each(funciones)("%s existe en las tres", (fn) => {
@@ -341,7 +343,7 @@ describe("pendientes — borrar", () => {
 
   // Se borra con deleted_at: queda en auditoria y no rompe lo que lo referencia.
   it("es un borrado logico y queda en auditoria", () => {
-    expect(del).toContain("data: { deletedAt: new Date() }");
+    expect(del).toContain("data: { deletedAt: new Date(), borradoPorId: actor.id, motivoBorrado: motivo }");
     expect(del).not.toMatch(/pendienteGourmet\.delete\(|deleteMany/);
     expect(del).toContain("activityLog.create");
   });
@@ -363,8 +365,29 @@ describe("pendientes — borrar", () => {
     expect(del).toContain("if (p.solicitadoPorId !== actor.id)");
   });
 
-  it("se confirma antes de borrar", () => {
-    expect(ui).toContain('title="Borrar pendiente"');
+  it("se confirma antes de borrar, con el motivo", () => {
+    const modal = leer("nuxt-app/app/components/pendientes/BorrarModal.vue");
+    expect(modal).toContain('title="Borrar pendiente"');
+    expect(modal).toContain("validarMotivoBorrado(props.pendiente.estado, motivo.value)");
+    expect(ui).toContain("<PendientesBorrarModal");
+    expect(ui).toContain("body: { motivo: motivo || undefined }");
+  });
+
+  // Los ubicados tambien se borran, solo el administrador y con justificante,
+  // que queda guardado en el pendiente y en auditoria.
+  it("el servidor exige y guarda el justificante", () => {
+    expect(del).toContain("validarMotivoBorrado(p.estado, body.motivo)");
+    expect(del).toContain("data: { deletedAt: new Date(), borradoPorId: actor.id, motivoBorrado: motivo }");
+    expect(del).toContain("(motivo ? ` — motivo: ${motivo}` : '')");
+    for (const rel of ["prisma/schema.prisma", "nuxt-app/prisma/schema.prisma"]) {
+      expect(leer(rel)).toContain('motivoBorrado String? @map("motivo_borrado")');
+    }
+    expect(leer("prisma/migrate-borrado-pendientes.sql")).toContain("ADD COLUMN IF NOT EXISTS motivo_borrado");
+  });
+
+  it("las tarjetas de ubicados tambien ofrecen borrar a quien puede", () => {
+    const ubicados = ui.slice(ui.indexOf('v-for="p in cerrados"'));
+    expect(ubicados.slice(0, 1500)).toContain('v-if="borrable(p)"');
   });
 
   // Con un solo limite para todo, al acumularse ubicados las devoluciones y

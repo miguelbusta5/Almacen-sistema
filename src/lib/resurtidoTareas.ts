@@ -353,8 +353,9 @@ export function puedeAsignarPendiente(opts: {
  * - Asignado o en curso: solo el administrador. Ya esta en la lista de un
  *   operario, que puede ir camino del sitio, y quitarselo es una decision que
  *   la operacion reserva al administrador.
- * - Ubicado: nadie. Es historia, igual que no se corrige, y borrarlo le
- *   quitaria al operario de los indicadores el tiempo que de verdad trabajo.
+ * - Ubicado: solo el administrador y con justificante (exigeMotivoBorrado). Es
+ *   historia, y borrarlo le quita al operario de los indicadores el tiempo que
+ *   trabajo en el: tiene que quedar explicado por que.
  */
 export function puedeBorrarPendiente(opts: {
   estado: EstadoPendienteGourmet;
@@ -362,9 +363,29 @@ export function puedeBorrarPendiente(opts: {
   tienePermisoMontar: boolean;
   esQuienLoPidio: boolean;
 }): boolean {
-  if (opts.estado === "COMPLETADO") return false;
-  if (opts.estado === "ASIGNADO" || opts.estado === "EN_CURSO") return opts.esAdmin;
+  if (opts.estado === "COMPLETADO" || opts.estado === "ASIGNADO" || opts.estado === "EN_CURSO") {
+    return opts.esAdmin;
+  }
   return opts.esAdmin || opts.tienePermisoMontar || opts.esQuienLoPidio;
+}
+
+/** Borrar un pendiente ya ubicado exige escribir por que. */
+export function exigeMotivoBorrado(estado: EstadoPendienteGourmet): boolean {
+  return estado === "COMPLETADO";
+}
+
+export const MIN_MOTIVO_BORRADO = 10;
+const MAX_MOTIVO_BORRADO = 500;
+
+/** Valida el justificante del borrado. Devuelve el error o null. */
+export function validarMotivoBorrado(estado: EstadoPendienteGourmet, motivo: unknown): string | null {
+  if (motivo != null && typeof motivo !== "string") return "El motivo no es valido";
+  const texto = typeof motivo === "string" ? motivo.trim() : "";
+  if (texto.length > MAX_MOTIVO_BORRADO) return `El motivo admite hasta ${MAX_MOTIVO_BORRADO} caracteres`;
+  if (exigeMotivoBorrado(estado) && texto.length < MIN_MOTIVO_BORRADO) {
+    return `Para borrar un pendiente ya ubicado escribe por que (minimo ${MIN_MOTIVO_BORRADO} caracteres)`;
+  }
+  return null;
 }
 
 // ── Tiempo ───────────────────────────────────────────────────────────

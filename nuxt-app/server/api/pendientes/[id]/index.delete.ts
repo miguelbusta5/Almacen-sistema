@@ -1,16 +1,17 @@
-import { defineEventHandler, getRouterParam, createError } from 'h3'
+import { defineEventHandler, getRouterParam, readBody, createError } from 'h3'
 import { prisma } from '../../../utils/prisma'
 import { requireAuth } from '../../../utils/auth'
 import { assertVePendientes, avisar, puedeMontarResurtido } from '../../../utils/resurtido'
-import { puedeBorrarPendiente } from '../../../utils/resurtidoCalc'
+import { puedeBorrarPendiente, validarMotivoBorrado } from '../../../utils/resurtidoCalc'
 
 /**
  * DELETE /api/pendientes/:id — borrado logico (deleted_at).
  *
  * Sin asignar lo borran quien lo pidio, almacenamiento con el permiso por
- * persona (Felipe Ossa, Eduardo Zurita) y el administrador; asignado o en curso,
- * solo el administrador. Uno ya ubicado no: es historia y cuenta en los
- * indicadores del operario (ver puedeBorrarPendiente).
+ * persona (Felipe Ossa, Eduardo Zurita) y el administrador; asignado, en curso
+ * o ya ubicado, solo el administrador. El ubicado ademas exige justificante
+ * ({ motivo }): es historia y cuenta en los indicadores del operario, asi que
+ * borrarlo tiene que quedar explicado (ver puedeBorrarPendiente).
  *
  * Si iba sumado a una tarea de resurtido que aun no se hizo, se le restan sus
  * unidades a esa tarea, y si era el ultimo pendiente que la hacia prioritaria,
@@ -30,6 +31,8 @@ export default defineEventHandler(async (event) => {
   })
   if (!p || p.deletedAt) throw createError({ statusCode: 404, statusMessage: 'Pendiente no encontrado' })
 
+  const body = (await readBody<{ motivo?: unknown }>(event).catch(() => null)) ?? {}
+
   const permitido = puedeBorrarPendiente({
     estado: p.estado,
     esAdmin: actor.role === 'ADMIN',
@@ -37,19 +40,24 @@ export default defineEventHandler(async (event) => {
     esQuienLoPidio: p.solicitadoPorId === actor.id,
   })
   if (!permitido) {
-    const asignado = p.estado === 'ASIGNADO' || p.estado === 'EN_CURSO'
     throw createError({
-      statusCode: p.estado === 'COMPLETADO' ? 409 : 403,
+      statusCode: 403,
       statusMessage: p.estado === 'COMPLETADO'
-        ? 'Ese pendiente ya se ubico: no se puede borrar'
-        : asignado
+        ? 'Un pendiente ya ubicado solo lo puede borrar el administrador'
+        : p.estado === 'ASIGNADO' || p.estado === 'EN_CURSO'
           ? 'Un pendiente asignado solo lo puede borrar el administrador'
           : 'No puedes borrar este pendiente',
     })
   }
+  const errMotivo = validarMotivoBorrado(p.estado, body.motivo)
+  if (errMotivo) throw createError({ statusCode: 400, statusMessage: errMotivo })
+  const motivo = typeof body.motivo === 'string' && body.motivo.trim() ? body.motivo.trim() : null
 
   await prisma.$transaction(async (tx) => {
-    await tx.pendienteGourmet.update({ where: { id }, data: { deletedAt: new Date() } })
+    await tx.pendienteGourmet.update({
+      where: { id },
+      data: { deletedAt: new Date(), borradoPorId: actor.id, motivoBorrado: motivo },
+    })
 
     if (p.tareaResurtidoId) {
       const tarea = await tx.tareaResurtido.findUnique({
@@ -84,7 +92,7 @@ export default defineEventHandler(async (event) => {
       await avisar(tx, [p.solicitadoPorId], {
         tipo: 'PENDIENTE_BORRADO',
         titulo: 'Se borro un pendiente tuyo',
-        descripcion: `${p.descripcion} (${p.unidadesSolicitadas} unidades)`,
+        descripcion: `${p.descripcion} (${p.unidadesSolicitadas} unidades)${motivo ? `: ${motivo}` : ''}`,
         enlace: '/dashboard/pendientes',
       })
     }
@@ -93,7 +101,9 @@ export default defineEventHandler(async (event) => {
   await prisma.activityLog.create({
     data: {
       userId: actor.id, action: 'DELETE', module: 'pendientes',
-      recordId: id, details: `Pendiente borrado: PLU ${p.plu} x${p.unidadesSolicitadas}`,
+      recordId: id,
+      details: `Pendiente ${p.estado === 'COMPLETADO' ? 'ya ubicado ' : ''}borrado: PLU ${p.plu} x${p.unidadesSolicitadas}`
+        + (motivo ? ` — motivo: ${motivo}` : ''),
     },
   }).catch(() => {})
 

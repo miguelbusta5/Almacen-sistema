@@ -20,7 +20,9 @@ import {
   devuelveASolicitante,
   esNovedadPendiente,
   puedeAsignarPendiente,
+  exigeMotivoBorrado,
   puedeBorrarPendiente,
+  validarMotivoBorrado,
 } from "@/lib/resurtidoTareas";
 
 // Cabecera real del archivo que suben: PLU · NOMBRE · ALTURA · PICKING ·
@@ -269,11 +271,29 @@ describe("pendientes — quien borra", () => {
     }
   });
 
-  it("se puede borrar en cualquier estado menos ya ubicado", () => {
-    for (const estado of ["SOLICITADO", "ASIGNADO", "EN_CURSO", "DEVUELTO", "NOVEDAD"] as const) {
+  // Ubicado: solo el administrador, y con justificante.
+  it("ubicado: solo el administrador", () => {
+    expect(puedeBorrarPendiente({ ...base, estado: "COMPLETADO", esAdmin: true })).toBe(true);
+    expect(puedeBorrarPendiente({ ...base, estado: "COMPLETADO", esQuienLoPidio: true })).toBe(false);
+    expect(puedeBorrarPendiente({ ...base, estado: "COMPLETADO", tienePermisoMontar: true })).toBe(false);
+  });
+
+  it("el administrador puede borrar en cualquier estado", () => {
+    for (const estado of ["SOLICITADO", "ASIGNADO", "EN_CURSO", "DEVUELTO", "NOVEDAD", "COMPLETADO"] as const) {
       expect(puedeBorrarPendiente({ ...base, estado, esAdmin: true })).toBe(true);
     }
-    // Ni el administrador: es historia, y cuenta en los indicadores del operario.
-    expect(puedeBorrarPendiente({ ...base, estado: "COMPLETADO", esAdmin: true })).toBe(false);
+  });
+
+  // Borrar uno ubicado le quita al operario ese tiempo de los indicadores:
+  // tiene que quedar escrito por que.
+  it("borrar uno ubicado exige escribir por que", () => {
+    expect(exigeMotivoBorrado("COMPLETADO")).toBe(true);
+    expect(exigeMotivoBorrado("ASIGNADO")).toBe(false);
+    expect(validarMotivoBorrado("COMPLETADO", "")).toMatch(/escribe por que/);
+    expect(validarMotivoBorrado("COMPLETADO", "   prueba   ")).toMatch(/minimo 10/);
+    expect(validarMotivoBorrado("COMPLETADO", "Registro de prueba del piloto")).toBeNull();
+    // En los demas estados es opcional.
+    expect(validarMotivoBorrado("SOLICITADO", undefined)).toBeNull();
+    expect(validarMotivoBorrado("SOLICITADO", "x".repeat(501))).toMatch(/hasta 500/);
   });
 });
