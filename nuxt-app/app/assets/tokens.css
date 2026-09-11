@@ -59,6 +59,11 @@
      que una barra de productividad no se lea como "recepción". */
   --viz-medida: #4A3AA7;
   --viz-grid:   #EDF1F5;
+  /* Estados de un tiempo muerto: paleta de estado (critico / aviso / bien),
+     validada en este orden. Rojo y verde nunca van pegados en una barra. */
+  --viz-sin-justificar: #D03B3B;
+  --viz-por-justificar: #E9A100;
+  --viz-justificado:    #0CA30C;
 
   /* ── Semánticos auxiliares ── */
   --info:    #2B93E6;  --info-tint:  #E1F0FC;

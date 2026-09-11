@@ -3,6 +3,7 @@
 // server/utils/indicadoresCalc.ts; aqui solo se presenta.
 
 export const API_INDICADORES = '/api/indicadores'
+export const API_TIEMPOS_MUERTOS = '/api/indicadores/tiempos-muertos'
 
 // Mismo orden y mismas etiquetas que src/lib/indicadores.ts (hay un test que
 // lo comprueba). El orden fija el color: nunca se reparte por posicion.
@@ -71,6 +72,7 @@ export interface RespuestaIndicadores {
   rango: { desde: string; hasta: string }
   equipo: { id: string; nombre: string; rol: string }[]
   data: IndicadoresPeriodo
+  muertos: TiemposMuertosPeriodo
 }
 
 // ── Piezas de los graficos ──────────────────────────────────────────
@@ -89,6 +91,17 @@ export interface BarraH {
   color?: string
   /** Filas extra del tooltip, debajo del valor. */
   detalle?: FilaTooltip[]
+}
+
+/** Una fila de un grafico de barras apiladas. */
+export interface FilaApilada {
+  id: string
+  etiqueta: string
+  total: number
+  /** Lo que se lee en la punta de la barra. */
+  texto: string
+  segmentos: { key: string; valor: number; color: string }[]
+  tooltip: FilaTooltip[]
 }
 
 /** Punto donde anclar el tooltip cuando llega por teclado (sin raton). */
@@ -173,4 +186,117 @@ export function ticksLimpios(max: number, cuantos = 4): number[] {
   const ticks: number[] = []
   for (let v = 0; v <= tope + paso / 2; v += paso) ticks.push(Number(v.toFixed(6)))
   return ticks
+}
+
+// ── Tiempos muertos ──────────────────────────────────────────────────
+// Mismos codigos y etiquetas que src/lib/indicadores.ts (hay un test).
+export const MOTIVOS_TIEMPO_MUERTO = [
+  'ALMUERZO',
+  'PAUSA',
+  'ESPERA_MERCANCIA',
+  'EQUIPO',
+  'NOVEDAD',
+  'REUNION',
+  'ORDEN_ASEO',
+  'APOYO_OTRA_AREA',
+  'TAREA_SIN_REGISTRO',
+  'PERMISO',
+  'OTRO',
+  'SIN_JUSTIFICACION',
+] as const
+export type MotivoTiempoMuerto = (typeof MOTIVOS_TIEMPO_MUERTO)[number]
+
+export const MOTIVO_TIEMPO_MUERTO_LABEL: Record<MotivoTiempoMuerto, string> = {
+  ALMUERZO: 'Almuerzo',
+  PAUSA: 'Pausa activa o descanso',
+  ESPERA_MERCANCIA: 'Esperando mercancía o contenedor',
+  EQUIPO: 'Montacargas o equipo no disponible',
+  NOVEDAD: 'Verificando una novedad',
+  REUNION: 'Reunión o capacitación',
+  ORDEN_ASEO: 'Orden y aseo',
+  APOYO_OTRA_AREA: 'Apoyo a otra área',
+  TAREA_SIN_REGISTRO: 'Tarea sin toma de tiempo',
+  PERMISO: 'Permiso o ausencia',
+  OTRO: 'Otro',
+  SIN_JUSTIFICACION: 'Sin justificación',
+}
+
+export type EstadoTiempoMuerto = 'pendiente' | 'justificado' | 'sin_justificacion'
+
+// "Por justificar" y no "Pendiente": en esta app Pendientes es un modulo.
+// El orden es el de las barras apiladas: rojo y verde nunca van juntos.
+export const ESTADOS_TIEMPO_MUERTO: { key: EstadoTiempoMuerto; label: string; color: string }[] = [
+  { key: 'sin_justificacion', label: 'Sin justificación', color: 'var(--viz-sin-justificar)' },
+  { key: 'pendiente', label: 'Por justificar', color: 'var(--viz-por-justificar)' },
+  { key: 'justificado', label: 'Justificado', color: 'var(--viz-justificado)' },
+]
+export const ESTADO_TIEMPO_MUERTO_LABEL: Record<EstadoTiempoMuerto, string> = {
+  sin_justificacion: 'Sin justificación',
+  pendiente: 'Por justificar',
+  justificado: 'Justificado',
+}
+
+export interface TiempoMuertoDetalle {
+  usuarioId: string
+  nombre: string
+  rol: string
+  dia: string
+  inicio: string
+  fin: string
+  segundos: number
+  estado: EstadoTiempoMuerto
+  segundosPendientes: number
+  justificacion: {
+    id: string
+    motivo: MotivoTiempoMuerto
+    observacion: string | null
+    justificadoPor: string
+    justificadoAt: string
+  } | null
+}
+
+export interface TiemposMuertosPeriodo {
+  minimoSegundos: number
+  maximoSegundos: number
+  resumen: {
+    segundos: number
+    justificados: number
+    sinJustificacion: number
+    pendientes: number
+    cantidad: number
+    cantidadPendientes: number
+  }
+  personas: {
+    id: string
+    nombre: string
+    rol: string
+    segundos: number
+    justificados: number
+    sinJustificacion: number
+    pendientes: number
+    cantidad: number
+  }[]
+  porMotivo: { motivo: MotivoTiempoMuerto; segundos: number }[]
+  tramos: TiempoMuertoDetalle[]
+}
+
+const fmtHoraBogota = new Intl.DateTimeFormat('es-CO', {
+  timeZone: 'America/Bogota', hour: '2-digit', minute: '2-digit', hour12: false,
+})
+
+/** "2026-09-10T13:51:00Z" → "08:51", en hora de Bogota. */
+export function fmtHora(iso: string): string {
+  return fmtHoraBogota.format(new Date(iso))
+}
+
+/**
+ * Eje de tiempo con marcas que se leen: horas si algo pasa de una hora,
+ * minutos si pasa de dos minutos, si no segundos.
+ */
+export function ejeDeTiempo(maxSegundos: number): { escala: number; formato: (v: number) => string } {
+  if (maxSegundos >= 3600) {
+    return { escala: 3600, formato: (v) => `${(v / 3600).toLocaleString('es-CO', { maximumFractionDigits: 1 })} h` }
+  }
+  if (maxSegundos >= 120) return { escala: 60, formato: (v) => `${Math.round(v / 60)} min` }
+  return { escala: 1, formato: (v) => `${Math.round(v)} s` }
 }

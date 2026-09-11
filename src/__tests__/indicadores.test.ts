@@ -1,13 +1,18 @@
 import { describe, expect, it } from "vitest";
 import {
   agregarIndicadores,
+  agregarTiemposMuertos,
+  detectarTiemposMuertos,
   diaBogota,
   diasDelRango,
+  finDelDiaBogota,
   partirPorDia,
   promedio,
   repartirTiempo,
   unidadesPorHora,
+  validarJustificacion,
   type Intervalo,
+  type MotivoTiempoMuerto,
 } from "@/lib/indicadores";
 
 // Hora de Bogotá -> Date (UTC-5, sin horario de verano).
@@ -289,5 +294,207 @@ describe("indicadores del periodo", () => {
       "2026-09-01",
       "2026-09-02",
     ]);
+  });
+});
+
+// Alias: dentro de los tests de huecos, "h" es el resultado.
+const h8 = h;
+
+describe("tiempos muertos — dónde están", () => {
+  it("un rato de 10 minutos o más sin nada en la mano es tiempo muerto", () => {
+    const h = detectarTiemposMuertos([i("08:00:00", "08:30:00"), i("08:45:00", "09:00:00")]);
+    expect(h).toHaveLength(1);
+    expect(h[0].inicio).toEqual(h8("08:30:00"));
+    expect(h[0].fin).toEqual(h8("08:45:00"));
+  });
+
+  // Ir por el siguiente PLU no es un tiempo muerto.
+  it("un hueco corto no lo es", () => {
+    expect(detectarTiemposMuertos([i("08:00:00", "08:30:00"), i("08:35:00", "09:00:00")])).toHaveLength(0);
+  });
+
+  // El ejemplo del usuario: PLUs que se pisan, sin ningún rato vacío.
+  it("PLUs que se pisan no dejan huecos", () => {
+    expect(detectarTiemposMuertos([
+      i("08:40:00", "08:50:00"),
+      i("08:43:00", "08:51:00"),
+      i("08:50:00", "08:55:00"),
+    ])).toHaveLength(0);
+  });
+
+  // El hueco se mide desde el final del BLOQUE, no del primer PLU: el que
+  // seguía abierto tapaba ese rato.
+  it("el hueco empieza cuando se cierra el último PLU abierto", () => {
+    const h = detectarTiemposMuertos([
+      i("09:00:00", "09:30:00"),
+      i("09:10:00", "09:20:00"),
+      i("09:50:00", "10:00:00"),
+    ]);
+    expect(h).toHaveLength(1);
+    expect((h[0].fin.getTime() - h[0].inicio.getTime()) / 60000).toBe(20);
+  });
+
+  it("de un día al siguiente no hay hueco: es la noche", () => {
+    const h = detectarTiemposMuertos([
+      { inicio: h8("17:00:00", "2026-09-09"), fin: h8("18:00:00", "2026-09-09"), tipo: "movimiento" },
+      { inicio: h8("07:00:00", "2026-09-10"), fin: h8("08:00:00", "2026-09-10"), tipo: "movimiento" },
+    ]);
+    expect(h).toHaveLength(0);
+  });
+
+  // Caso real: Ronny trabaja de 22:00 a 05:00. Cortando por día de calendario,
+  // de las 04:55 a las 22:13 salían 17 horas de "tiempo muerto".
+  it("en turno de noche, el rato entre un turno y el siguiente no es tiempo muerto", () => {
+    const d = (hhmm: string, dia: string) => h8(`${hhmm}:00`, dia);
+    const noche = (a: string, diaA: string, b: string, diaB: string) =>
+      ({ inicio: d(a, diaA), fin: d(b, diaB), tipo: "movimiento" as const });
+    const h = detectarTiemposMuertos([
+      noche("23:58", "2026-09-08", "00:07", "2026-09-09"),
+      noche("00:23", "2026-09-09", "00:24", "2026-09-09"),
+      noche("02:15", "2026-09-09", "04:55", "2026-09-09"),
+      noche("22:13", "2026-09-09", "22:16", "2026-09-09"),
+    ]);
+    // 00:07-00:23 (16 min) y 00:24-02:15 (1 h 51) sí son tiempos muertos del
+    // turno; 04:55-22:13 es el cambio de turno.
+    expect(h.map((x) => (x.fin.getTime() - x.inicio.getTime()) / 60000)).toEqual([16, 111]);
+    expect(h.every((x) => x.dia === "2026-09-09")).toBe(true);
+  });
+
+  // Un hueco que cruza la medianoche dentro del turno sigue siendo uno solo.
+  it("un hueco que cruza la medianoche no se parte", () => {
+    const h = detectarTiemposMuertos([
+      { inicio: h8("23:00:00", "2026-09-09"), fin: h8("23:40:00", "2026-09-09"), tipo: "movimiento" },
+      { inicio: h8("00:20:00", "2026-09-10"), fin: h8("01:00:00", "2026-09-10"), tipo: "movimiento" },
+    ]);
+    expect(h).toHaveLength(1);
+    expect(h[0].dia).toBe("2026-09-09");
+    expect((h[0].fin.getTime() - h[0].inicio.getTime()) / 60000).toBe(40);
+  });
+});
+
+describe("tiempos muertos — justificación", () => {
+  const personas = [{ id: "seb", nombre: "SEBASTIAN JURADO", rol: "MONTACARGAS" }];
+  const t = (desde: string, hasta: string) =>
+    ({ usuarioId: "seb", inicio: h8(desde), fin: h8(hasta), tipo: "movimiento" as const, registro: "m" });
+  const j = (
+    id: string,
+    desde: string,
+    hasta: string,
+    motivo: MotivoTiempoMuerto,
+    justificadoA = "14:00:00",
+  ) => ({
+    id, usuarioId: "seb", inicio: h8(desde), fin: h8(hasta), motivo, observacion: null,
+    justificadoPor: "Felipe Ossa", justificadoAt: h8(justificadoA),
+  });
+  // 8:30 a 9:30 sin nada en la mano: una hora de tiempo muerto.
+  const tiempos = [t("08:00:00", "08:30:00"), t("09:30:00", "10:00:00")];
+  const periodo = { desde: "2026-09-10", hasta: "2026-09-10" };
+
+  it("sin justificar queda pendiente", () => {
+    const r = agregarTiemposMuertos({ personas, tiempos, justificaciones: [], ...periodo });
+    expect(r.tramos[0].estado).toBe("pendiente");
+    expect(r.resumen.pendientes).toBe(3600);
+    expect(r.resumen.cantidadPendientes).toBe(1);
+  });
+
+  it("justificado entero deja de estar pendiente", () => {
+    const r = agregarTiemposMuertos({
+      personas, tiempos, justificaciones: [j("a", "08:30:00", "09:30:00", "ALMUERZO")], ...periodo,
+    });
+    expect(r.tramos[0].estado).toBe("justificado");
+    expect(r.tramos[0].justificacion?.motivo).toBe("ALMUERZO");
+    expect(r.resumen.justificados).toBe(3600);
+    expect(r.resumen.pendientes).toBe(0);
+    expect(r.porMotivo).toEqual([{ motivo: "ALMUERZO", segundos: 3600 }]);
+  });
+
+  // Si el hueco creció después (se borró un PLU), lo nuevo vuelve a pedir
+  // explicación en vez de quedar tapado por la justificación vieja.
+  it("lo que no cubre la justificación sigue pendiente", () => {
+    const r = agregarTiemposMuertos({
+      personas, tiempos, justificaciones: [j("a", "08:30:00", "09:00:00", "ALMUERZO")], ...periodo,
+    });
+    expect(r.tramos[0].estado).toBe("pendiente");
+    expect(r.tramos[0].segundosPendientes).toBe(1800);
+    expect(r.resumen.justificados).toBe(1800);
+  });
+
+  it("un resto de segundos no deja el tiempo muerto pendiente", () => {
+    const r = agregarTiemposMuertos({
+      personas, tiempos, justificaciones: [j("a", "08:30:00", "09:29:30", "REUNION")], ...periodo,
+    });
+    expect(r.tramos[0].estado).toBe("justificado");
+    expect(r.resumen.justificados).toBe(3600);
+  });
+
+  // "Sin justificación" es una respuesta: se revisó y fue tiempo perdido.
+  it("sin justificación ya no está pendiente, pero no cuenta como justificado", () => {
+    const r = agregarTiemposMuertos({
+      personas, tiempos, justificaciones: [j("a", "08:30:00", "09:30:00", "SIN_JUSTIFICACION")], ...periodo,
+    });
+    expect(r.tramos[0].estado).toBe("sin_justificacion");
+    expect(r.resumen.sinJustificacion).toBe(3600);
+    expect(r.resumen.justificados).toBe(0);
+    expect(r.resumen.pendientes).toBe(0);
+  });
+
+  // Justificar otra vez un rato es corregir la anterior.
+  it("si dos justificaciones se pisan, manda la más reciente", () => {
+    const r = agregarTiemposMuertos({
+      personas,
+      tiempos,
+      justificaciones: [
+        j("vieja", "08:30:00", "09:30:00", "PAUSA", "12:00:00"),
+        j("nueva", "08:30:00", "09:30:00", "ESPERA_MERCANCIA", "15:00:00"),
+      ],
+      ...periodo,
+    });
+    expect(r.tramos[0].justificacion?.id).toBe("nueva");
+    expect(r.porMotivo).toEqual([{ motivo: "ESPERA_MERCANCIA", segundos: 3600 }]);
+  });
+
+  it("el resumen cuadra: justificado + sin justificación + pendiente = total", () => {
+    const r = agregarTiemposMuertos({
+      personas,
+      tiempos: [t("08:00:00", "08:30:00"), t("09:30:00", "10:00:00"), t("10:20:00", "11:00:00")],
+      justificaciones: [j("a", "08:30:00", "09:00:00", "ALMUERZO")],
+      ...periodo,
+    });
+    const p = r.personas[0];
+    expect(p.justificados + p.sinJustificacion + p.pendientes).toBe(p.segundos);
+    expect(p.segundos).toBe(3600 + 1200);
+    expect(p.cantidad).toBe(2);
+  });
+});
+
+describe("tiempos muertos — validar la justificación", () => {
+  const ahora = h8("18:00:00");
+  const tramo = { usuarioId: "seb", inicio: h8("08:30:00").toISOString(), fin: h8("09:30:00").toISOString() };
+
+  it("acepta una justificación normal", () => {
+    expect(validarJustificacion({ motivo: "ALMUERZO", tramos: [tramo], ahora })).toBeNull();
+  });
+
+  it("exige un motivo de la lista", () => {
+    expect(validarJustificacion({ motivo: "CHISME", tramos: [tramo], ahora })).toMatch(/motivo/);
+  });
+
+  it("con Otro hay que escribir qué pasó", () => {
+    expect(validarJustificacion({ motivo: "OTRO", tramos: [tramo], ahora })).toMatch(/qué pasó/);
+    expect(validarJustificacion({ motivo: "OTRO", observacion: "Se fue la luz", tramos: [tramo], ahora })).toBeNull();
+  });
+
+  it("rechaza tramos vacíos, al revés o en el futuro", () => {
+    expect(validarJustificacion({ motivo: "PAUSA", tramos: [], ahora })).toMatch(/No hay/);
+    expect(validarJustificacion({
+      motivo: "PAUSA", tramos: [{ ...tramo, fin: tramo.inicio, inicio: tramo.fin }], ahora,
+    })).toMatch(/antes de empezar/);
+    expect(validarJustificacion({
+      motivo: "PAUSA", tramos: [{ ...tramo, fin: h8("19:00:00").toISOString() }], ahora,
+    })).toMatch(/todavía no ha pasado/);
+  });
+
+  it("el fin del día es el de Bogotá", () => {
+    expect(finDelDiaBogota(h8("21:00:00")).toISOString()).toBe("2026-09-11T04:59:59.999Z");
   });
 });

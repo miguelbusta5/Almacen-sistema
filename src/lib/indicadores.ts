@@ -384,3 +384,373 @@ export function agregarIndicadores(entrada: {
     porTipo,
   };
 }
+
+// ── Tiempos muertos ──────────────────────────────────────────────────
+// Un tiempo muerto es un rato sin NINGÚN PLU en la mano entre el primero y el
+// último del día de una persona. No se guarda: sale de los mismos tramos que el
+// tiempo laborado. Lo que se guarda es la justificación que le da un supervisor,
+// con el rato de reloj que cubre.
+//
+// Lo de antes del primer PLU y después del último no se cuenta todavía: sin el
+// horario del turno no se sabe si la persona ya había entrado o ya se había ido.
+
+/** Menos que esto es ir por el siguiente PLU, no un tiempo muerto. */
+export const MIN_TIEMPO_MUERTO_SEG = 10 * 60;
+
+/**
+ * Un hueco de esto o más es un cambio de turno, no un tiempo muerto.
+ *
+ * No se puede cortar por día de calendario: hay turnos de noche (de 22:00 a
+ * 05:00) y cortando a medianoche el rato entre un turno y el siguiente —de las
+ * 05:00 a las 22:00— salía como 17 horas de tiempo muerto. Mientras no estén
+ * cargados los horarios de los turnos, un hueco así de largo es la persona que
+ * se fue a su casa.
+ */
+export const MAX_HUECO_EN_TURNO_SEG = 4 * 60 * 60;
+
+/** Un resto sin cubrir menor que esto es ruido de reloj, no algo que revisar. */
+const TOLERANCIA_PENDIENTE_SEG = 60;
+
+export const MOTIVOS_TIEMPO_MUERTO = [
+  "ALMUERZO",
+  "PAUSA",
+  "ESPERA_MERCANCIA",
+  "EQUIPO",
+  "NOVEDAD",
+  "REUNION",
+  "ORDEN_ASEO",
+  "APOYO_OTRA_AREA",
+  "TAREA_SIN_REGISTRO",
+  "PERMISO",
+  "OTRO",
+  "SIN_JUSTIFICACION",
+] as const;
+export type MotivoTiempoMuerto = (typeof MOTIVOS_TIEMPO_MUERTO)[number];
+
+export const MOTIVO_TIEMPO_MUERTO_LABEL: Record<MotivoTiempoMuerto, string> = {
+  ALMUERZO: "Almuerzo",
+  PAUSA: "Pausa activa o descanso",
+  ESPERA_MERCANCIA: "Esperando mercancía o contenedor",
+  EQUIPO: "Montacargas o equipo no disponible",
+  NOVEDAD: "Verificando una novedad",
+  REUNION: "Reunión o capacitación",
+  ORDEN_ASEO: "Orden y aseo",
+  APOYO_OTRA_AREA: "Apoyo a otra área",
+  TAREA_SIN_REGISTRO: "Tarea sin toma de tiempo",
+  PERMISO: "Permiso o ausencia",
+  OTRO: "Otro",
+  // También es una respuesta: el supervisor lo revisó y fue tiempo perdido.
+  SIN_JUSTIFICACION: "Sin justificación",
+};
+
+export function esMotivoTiempoMuerto(v: unknown): v is MotivoTiempoMuerto {
+  return typeof v === "string" && (MOTIVOS_TIEMPO_MUERTO as readonly string[]).includes(v);
+}
+
+export const MAX_TRAMOS_POR_JUSTIFICACION = 200;
+const MAX_OBSERVACION = 500;
+
+/**
+ * Valida una justificación (uno o varios tiempos muertos con el mismo motivo).
+ * Devuelve el mensaje de error o null.
+ */
+export function validarJustificacion(entrada: {
+  motivo: unknown;
+  observacion?: unknown;
+  tramos: unknown;
+  ahora?: Date;
+}): string | null {
+  if (!esMotivoTiempoMuerto(entrada.motivo)) return "Elige un motivo de la lista";
+  const obs = entrada.observacion;
+  if (obs != null && typeof obs !== "string") return "La observación no es válida";
+  const texto = typeof obs === "string" ? obs.trim() : "";
+  if (texto.length > MAX_OBSERVACION) return `La observación admite hasta ${MAX_OBSERVACION} caracteres`;
+  // "Otro" sin explicar no justifica nada.
+  if (entrada.motivo === "OTRO" && texto.length < 3) return "Con el motivo Otro, escribe qué pasó";
+
+  const tramos = entrada.tramos;
+  if (!Array.isArray(tramos) || tramos.length === 0) return "No hay tiempos muertos que justificar";
+  if (tramos.length > MAX_TRAMOS_POR_JUSTIFICACION) {
+    return `Como máximo ${MAX_TRAMOS_POR_JUSTIFICACION} tiempos muertos a la vez`;
+  }
+  const limite = (entrada.ahora ?? new Date()).getTime() + 60_000;
+  for (const t of tramos) {
+    const r = t as { usuarioId?: unknown; inicio?: unknown; fin?: unknown };
+    if (typeof r?.usuarioId !== "string" || !r.usuarioId) return "Falta la persona de un tiempo muerto";
+    const ini = new Date(String(r.inicio));
+    const fin = new Date(String(r.fin));
+    if (Number.isNaN(ini.getTime()) || Number.isNaN(fin.getTime())) return "Hay un tiempo muerto con horas inválidas";
+    if (fin.getTime() <= ini.getTime()) return "Hay un tiempo muerto que termina antes de empezar";
+    if (fin.getTime() - ini.getTime() > MS_DIA) return "Un tiempo muerto no puede pasar de un día";
+    if (fin.getTime() > limite) return "No se puede justificar un tiempo que todavía no ha pasado";
+  }
+  return null;
+}
+
+/** Final del día de Bogotá en que cae `d` (el último milisegundo). */
+export function finDelDiaBogota(d: Date): Date {
+  const local = d.getTime() + DESFASE_BOGOTA_MS;
+  return new Date(Math.floor(local / MS_DIA) * MS_DIA + MS_DIA - DESFASE_BOGOTA_MS - 1);
+}
+
+export interface Hueco {
+  dia: string;
+  inicio: Date;
+  fin: Date;
+}
+
+/**
+ * Los ratos sin nada en la mano de UNA persona.
+ *
+ * Primero se juntan los intervalos que se pisan o se tocan en bloques de
+ * trabajo; los huecos son lo que queda entre un bloque y el siguiente. Se mira
+ * la línea de tiempo entera, sin cortar a medianoche (turnos de noche), y un
+ * hueco de MAX_HUECO_EN_TURNO_SEG o más se toma como cambio de turno. El hueco
+ * se apunta al día en que empezó.
+ */
+export function detectarTiemposMuertos(
+  intervalos: readonly Intervalo[],
+  minimoSeg: number = MIN_TIEMPO_MUERTO_SEG,
+  maximoSeg: number = MAX_HUECO_EN_TURNO_SEG,
+): Hueco[] {
+  const lista = intervalos
+    .filter((it) => it.fin.getTime() > it.inicio.getTime())
+    .map((it) => ({ a: it.inicio.getTime(), b: it.fin.getTime() }))
+    .sort((x, y) => x.a - y.a);
+  if (lista.length === 0) return [];
+
+  const huecos: Hueco[] = [];
+  let finBloque = lista[0].b;
+  for (const it of lista.slice(1)) {
+    if (it.a > finBloque) {
+      const seg = (it.a - finBloque) / 1000;
+      if (seg >= minimoSeg && seg < maximoSeg) {
+        const inicio = new Date(finBloque);
+        huecos.push({ dia: diaBogota(inicio), inicio, fin: new Date(it.a) });
+      }
+      finBloque = it.b;
+    } else if (it.b > finBloque) {
+      finBloque = it.b;
+    }
+  }
+  return huecos;
+}
+
+export interface JustificacionTiempoMuerto {
+  id: string;
+  usuarioId: string;
+  inicio: Date;
+  fin: Date;
+  motivo: MotivoTiempoMuerto;
+  observacion: string | null;
+  justificadoPor: string;
+  justificadoAt: Date;
+}
+
+export type EstadoTiempoMuerto = "pendiente" | "justificado" | "sin_justificacion";
+
+export interface TiempoMuertoDetalle {
+  usuarioId: string;
+  nombre: string;
+  rol: string;
+  dia: string;
+  inicio: Date;
+  fin: Date;
+  segundos: number;
+  estado: EstadoTiempoMuerto;
+  /** Lo que todavía nadie ha explicado. */
+  segundosPendientes: number;
+  /** La justificación que cubre la mayor parte del rato, si hay alguna. */
+  justificacion: {
+    id: string;
+    motivo: MotivoTiempoMuerto;
+    observacion: string | null;
+    justificadoPor: string;
+    justificadoAt: Date;
+  } | null;
+}
+
+export interface TiempoMuertoPersona {
+  id: string;
+  nombre: string;
+  rol: string;
+  segundos: number;
+  justificados: number;
+  sinJustificacion: number;
+  pendientes: number;
+  cantidad: number;
+}
+
+export interface TiemposMuertosPeriodo {
+  minimoSegundos: number;
+  /** Desde aquí, un hueco es cambio de turno y no tiempo muerto. */
+  maximoSegundos: number;
+  resumen: {
+    segundos: number;
+    justificados: number;
+    sinJustificacion: number;
+    pendientes: number;
+    cantidad: number;
+    cantidadPendientes: number;
+  };
+  personas: TiempoMuertoPersona[];
+  /** Tiempo revisado por motivo (incluye "Sin justificación"), de más a menos. */
+  porMotivo: { motivo: MotivoTiempoMuerto; segundos: number }[];
+  /** Cada tiempo muerto, el más reciente primero. */
+  tramos: TiempoMuertoDetalle[];
+}
+
+/**
+ * Reparte un hueco entre las justificaciones que lo tocan. Si dos se pisan,
+ * manda la más reciente: justificar otra vez un rato es corregir la anterior.
+ */
+function cubrirHueco(
+  hueco: Hueco,
+  justificaciones: readonly JustificacionTiempoMuerto[],
+): { porJustificacion: Map<string, number>; cubierto: number } {
+  const a = hueco.inicio.getTime();
+  const b = hueco.fin.getTime();
+  const tocan = justificaciones.filter((j) => j.inicio.getTime() < b && j.fin.getTime() > a);
+  const porJustificacion = new Map<string, number>();
+  if (tocan.length === 0) return { porJustificacion, cubierto: 0 };
+
+  const cortes = new Set<number>([a, b]);
+  for (const j of tocan) {
+    cortes.add(Math.max(a, j.inicio.getTime()));
+    cortes.add(Math.min(b, j.fin.getTime()));
+  }
+  const puntos = [...cortes].sort((x, y) => x - y);
+  const recientes = [...tocan].sort((x, y) => y.justificadoAt.getTime() - x.justificadoAt.getTime());
+  let cubierto = 0;
+  for (let k = 0; k < puntos.length - 1; k++) {
+    const desde = puntos[k];
+    const hasta = puntos[k + 1];
+    const j = recientes.find((x) => x.inicio.getTime() <= desde && x.fin.getTime() >= hasta);
+    if (!j) continue;
+    const seg = (hasta - desde) / 1000;
+    porJustificacion.set(j.id, (porJustificacion.get(j.id) ?? 0) + seg);
+    cubierto += seg;
+  }
+  return { porJustificacion, cubierto };
+}
+
+/**
+ * Tiempos muertos de un periodo, con lo que ya justificaron los supervisores.
+ *
+ * `tiempos` debe traer también lo que sigue en curso (con el fin puesto en
+ * "ahora"): una persona con un PLU abierto está trabajando, no parada.
+ */
+export function agregarTiemposMuertos(entrada: {
+  personas: readonly PersonaMedida[];
+  tiempos: readonly TiempoRegistrado[];
+  justificaciones: readonly JustificacionTiempoMuerto[];
+  desde: string;
+  hasta: string;
+  minimoSeg?: number;
+}): TiemposMuertosPeriodo {
+  const minimo = entrada.minimoSeg ?? MIN_TIEMPO_MUERTO_SEG;
+  const maximo = MAX_HUECO_EN_TURNO_SEG;
+  const { inicio: ini, fin } = limitesRango(entrada.desde, entrada.hasta);
+  const medidas = new Map(entrada.personas.map((p) => [p.id, p]));
+
+  const intervalos = new Map<string, Intervalo[]>();
+  for (const t of entrada.tiempos) {
+    if (!medidas.has(t.usuarioId)) continue;
+    const a = Math.max(t.inicio.getTime(), ini.getTime());
+    const b = Math.min(t.fin.getTime(), fin.getTime());
+    if (b <= a) continue;
+    const lista = intervalos.get(t.usuarioId) ?? [];
+    lista.push({ inicio: new Date(a), fin: new Date(b), tipo: t.tipo });
+    intervalos.set(t.usuarioId, lista);
+  }
+  const justPorPersona = new Map<string, JustificacionTiempoMuerto[]>();
+  for (const j of entrada.justificaciones) {
+    const lista = justPorPersona.get(j.usuarioId) ?? [];
+    lista.push(j);
+    justPorPersona.set(j.usuarioId, lista);
+  }
+
+  const tramos: TiempoMuertoDetalle[] = [];
+  const personas: TiempoMuertoPersona[] = [];
+  const porMotivo = new Map<MotivoTiempoMuerto, number>();
+
+  for (const [id, ints] of intervalos) {
+    const persona = medidas.get(id)!;
+    const justs = justPorPersona.get(id) ?? [];
+    const acc: TiempoMuertoPersona = {
+      id, nombre: persona.nombre, rol: persona.rol,
+      segundos: 0, justificados: 0, sinJustificacion: 0, pendientes: 0, cantidad: 0,
+    };
+
+    for (const h of detectarTiemposMuertos(ints, minimo, maximo)) {
+      const segundos = Math.round((h.fin.getTime() - h.inicio.getTime()) / 1000);
+      const { porJustificacion } = cubrirHueco(h, justs);
+      // Segundos enteros por justificación, y la mayor recibe el resto del
+      // redondeo y lo que quede sin cubrir por debajo de la tolerancia.
+      const cubiertos = [...porJustificacion.entries()]
+        .map(([jid, seg]) => ({ j: justs.find((x) => x.id === jid)!, seg: Math.round(seg) }))
+        .sort((x, y) => y.seg - x.seg);
+      let pendientes = segundos - cubiertos.reduce((s, c) => s + c.seg, 0);
+      if (cubiertos.length > 0 && pendientes < TOLERANCIA_PENDIENTE_SEG) {
+        cubiertos[0].seg += pendientes;
+        pendientes = 0;
+      }
+
+      for (const c of cubiertos) {
+        if (c.j.motivo === "SIN_JUSTIFICACION") acc.sinJustificacion += c.seg;
+        else acc.justificados += c.seg;
+        porMotivo.set(c.j.motivo, (porMotivo.get(c.j.motivo) ?? 0) + c.seg);
+      }
+      acc.pendientes += pendientes;
+      acc.segundos += segundos;
+      acc.cantidad += 1;
+
+      const principal = cubiertos[0]?.j ?? null;
+      tramos.push({
+        usuarioId: id,
+        nombre: persona.nombre,
+        rol: persona.rol,
+        dia: h.dia,
+        inicio: h.inicio,
+        fin: h.fin,
+        segundos,
+        estado: pendientes > 0 || !principal
+          ? "pendiente"
+          : principal.motivo === "SIN_JUSTIFICACION" ? "sin_justificacion" : "justificado",
+        segundosPendientes: pendientes,
+        justificacion: principal
+          ? {
+            id: principal.id,
+            motivo: principal.motivo,
+            observacion: principal.observacion,
+            justificadoPor: principal.justificadoPor,
+            justificadoAt: principal.justificadoAt,
+          }
+          : null,
+      });
+    }
+    if (acc.cantidad > 0) personas.push(acc);
+  }
+
+  personas.sort((x, y) => y.segundos - x.segundos || x.nombre.localeCompare(y.nombre));
+  tramos.sort((x, y) => y.inicio.getTime() - x.inicio.getTime());
+  const sumar = (f: (p: TiempoMuertoPersona) => number) => personas.reduce((s, p) => s + f(p), 0);
+
+  return {
+    minimoSegundos: minimo,
+    maximoSegundos: maximo,
+    resumen: {
+      segundos: sumar((p) => p.segundos),
+      justificados: sumar((p) => p.justificados),
+      sinJustificacion: sumar((p) => p.sinJustificacion),
+      pendientes: sumar((p) => p.pendientes),
+      cantidad: tramos.length,
+      cantidadPendientes: tramos.filter((t) => t.estado === "pendiente").length,
+    },
+    personas,
+    porMotivo: [...porMotivo.entries()]
+      .map(([motivo, segundos]) => ({ motivo, segundos }))
+      .sort((x, y) => y.segundos - x.segundos),
+    tramos,
+  };
+}

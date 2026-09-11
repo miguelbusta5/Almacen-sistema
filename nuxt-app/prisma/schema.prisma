@@ -169,6 +169,8 @@ model User {
   tramosMontacargas                  TramoMontacargas[]      @relation("TramosMontacargas")
   novedadesMontacargasAbiertas       NovedadMontacargas[]    @relation("NovedadesMontacargasAbiertas")
   novedadesMontacargasResueltas      NovedadMontacargas[]    @relation("NovedadesMontacargasResueltas")
+  tiemposMuertos                     JustificacionTiempoMuerto[] @relation("TiemposMuertos")
+  tiemposMuertosJustificados         JustificacionTiempoMuerto[] @relation("TiemposMuertosJustificados")
 
   @@index([email])
   @@map("users")
@@ -1561,3 +1563,33 @@ model PendienteGourmet {
   @@map("pendientes_gourmet")
 }
 
+/// Justificacion de un tiempo muerto: un rato de 10 minutos o mas sin ningun
+/// PLU en la mano dentro del dia de una persona.
+///
+/// El tiempo muerto no se guarda: se calcula de los tramos de trabajo cada vez
+/// (ver src/lib/indicadores.ts). Lo que se guarda es la explicacion del
+/// supervisor y el rato de reloj que cubre, asi que si el hueco cambia despues
+/// (se borra un PLU) lo nuevo vuelve a pedir explicacion.
+///
+/// No se sobrescriben: justificar otra vez el mismo rato crea otra fila, que
+/// manda sobre la anterior, y la anterior queda como historia.
+model JustificacionTiempoMuerto {
+  id               String    @id @default(cuid())
+  usuarioId        String    @map("usuario_id")
+  usuario          User      @relation("TiemposMuertos", fields: [usuarioId], references: [id])
+  inicio           DateTime
+  fin              DateTime
+  /// Codigo de MOTIVOS_TIEMPO_MUERTO (texto y no enum: la lista la ajusta
+  /// operacion y cambiarla no deberia pedir una migracion).
+  motivo           String    @db.VarChar(40)
+  observacion      String?
+  justificadoPorId String    @map("justificado_por_id")
+  justificadoPor   User      @relation("TiemposMuertosJustificados", fields: [justificadoPorId], references: [id])
+  deletedAt        DateTime? @map("deleted_at")
+  createdAt        DateTime  @default(now()) @map("created_at")
+  updatedAt        DateTime  @updatedAt @map("updated_at")
+
+  @@index([usuarioId, inicio], map: "justificaciones_tiempo_muerto_usuario_inicio_idx")
+  @@index([justificadoPorId], map: "justificaciones_tiempo_muerto_justificado_por_idx")
+  @@map("justificaciones_tiempo_muerto")
+}

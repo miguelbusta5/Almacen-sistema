@@ -16,11 +16,11 @@ import { canSeeModule } from '~/utils/modulePermissions'
 import { fmtTiempo } from '~/utils/montacargas'
 import { hoyBogota } from '~/utils/exportaciones'
 import {
-  API_INDICADORES, fmtDiaCorto, fmtHorasDecimal, fmtNumero, fmtPorcentaje,
+  API_INDICADORES, ejeDeTiempo, fmtDiaCorto, fmtHorasDecimal, fmtNumero, fmtPorcentaje,
   MIN_SEGUNDOS_PRODUCTIVIDAD, PRESETS_RANGO, rangoDePreset, ROL_MEDIDO_LABEL,
   TIPO_TAREA_COLOR, TIPO_TAREA_LABEL, TIPOS_TAREA,
   type BarraH, type ColumnaTabla, type IndicadoresPeriodo, type PresetRango,
-  type RespuestaIndicadores,
+  type RespuestaIndicadores, type TiemposMuertosPeriodo,
 } from '~/utils/indicadores'
 
 const { me, sessionLoaded } = useSessionState()
@@ -52,7 +52,13 @@ watch(rol, () => {
 
 // ── Datos ──────────────────────────────────────────────────────────
 const datos = ref<IndicadoresPeriodo | null>(null)
+const muertos = ref<TiemposMuertosPeriodo | null>(null)
 const cargando = ref(false)
+
+// Tiempo laborado y tiempos muertos salen de la misma consulta y de los mismos
+// filtros: cambiar de pestaña no recarga nada.
+const pestana = ref<'laborado' | 'muertos'>('laborado')
+const porJustificar = computed(() => muertos.value?.resumen.cantidadPendientes ?? 0)
 
 async function cargar() {
   if (!desde.value || !hasta.value) return
@@ -67,6 +73,7 @@ async function cargar() {
       },
     })
     datos.value = res.data
+    muertos.value = res.muertos
     equipo.value = res.equipo
   } catch (e) {
     showToast(apiErr(e, 'No se pudieron cargar los indicadores'), true)
@@ -156,7 +163,7 @@ const barrasPromedio = computed<BarraH[]>(() => (datos.value?.personas ?? [])
     texto: fmtTiempo(p.promedioPorPlu),
     detalle: [{ etiqueta: 'PLUs', valor: fmtNumero(p.plus) }],
   })))
-const promedioEnMinutos = computed(() => Math.max(0, ...barrasPromedio.value.map((b) => b.valor)) >= 120)
+const ejePromedio = computed(() => ejeDeTiempo(Math.max(0, ...barrasPromedio.value.map((b) => b.valor))))
 
 const columnasProd: ColumnaTabla[] = [
   { key: 'nombre', label: 'Persona' },
@@ -190,7 +197,7 @@ const barrasReparto = computed<BarraH[]>(() => TIPOS_TAREA
     texto: `${fmtTiempo(v)} · ${fmtPorcentaje(v, totalTipos.value)}`,
     color: TIPO_TAREA_COLOR[t],
   })))
-const repartoEnHoras = computed(() => Math.max(0, ...barrasReparto.value.map((b) => b.valor)) >= 3600)
+const ejeReparto = computed(() => ejeDeTiempo(Math.max(0, ...barrasReparto.value.map((b) => b.valor))))
 const columnasReparto: ColumnaTabla[] = [
   { key: 'tipo', label: 'Tipo de tarea' },
   { key: 'tiempo', label: 'Tiempo', num: true },
@@ -200,8 +207,6 @@ const tablaReparto = computed(() => barrasReparto.value.map((b) => ({
   tipo: b.etiqueta, tiempo: fmtTiempo(b.valor), pct: fmtPorcentaje(b.valor, totalTipos.value),
 })))
 
-const formatoMinutos = (v: number) => `${Math.round(v / 60)} min`
-const formatoSegundos = (v: number) => `${Math.round(v)} s`
 const formatoHoras = (v: number) => fmtHorasDecimal(v)
 </script>
 
@@ -269,6 +274,23 @@ const formatoHoras = (v: number) => fmtHorasDecimal(v)
         </label>
       </div>
 
+      <nav class="tabs" role="tablist">
+        <button
+          class="tab" role="tab" :class="{ on: pestana === 'laborado' }"
+          :aria-selected="pestana === 'laborado'" @click="pestana = 'laborado'"
+        >
+          Tiempo laborado
+        </button>
+        <button
+          class="tab" role="tab" :class="{ on: pestana === 'muertos' }"
+          :aria-selected="pestana === 'muertos'" @click="pestana = 'muertos'"
+        >
+          Tiempos muertos
+          <!-- Lo que falta por justificar: sin esto hay que entrar a mirar. -->
+          <span v-if="porJustificar > 0" class="badge-tab">{{ porJustificar }}</span>
+        </button>
+      </nav>
+
       <ListSkeleton v-if="!datos" />
 
       <EmptyState
@@ -278,6 +300,11 @@ const formatoHoras = (v: number) => fmtHorasDecimal(v)
 
       <!-- Al recargar se queda lo anterior, atenuado: sin saltos ni parpadeos. -->
       <div v-else class="contenido" :class="{ recargando: cargando }">
+        <IndicadoresTiemposMuertos
+          v-if="pestana === 'muertos' && muertos" :muertos="muertos" @actualizar="cargar"
+        />
+
+        <template v-else>
         <div class="cifras">
           <div class="heroe card">
             <span class="kpi-label">Tiempo real laborado</span>
@@ -349,8 +376,7 @@ const formatoHoras = (v: number) => fmtHorasDecimal(v)
           >
             <IndicadoresBarrasH
               v-if="barrasPromedio.length" :items="barrasPromedio" medida="por PLU"
-              :escala-eje="promedioEnMinutos ? 60 : 1"
-              :formato-eje="promedioEnMinutos ? formatoMinutos : formatoSegundos"
+              :escala-eje="ejePromedio.escala" :formato-eje="ejePromedio.formato"
             />
             <p v-else class="aviso">Sin PLUs cerrados en este periodo.</p>
             <template #tabla>
@@ -365,13 +391,13 @@ const formatoHoras = (v: number) => fmtHorasDecimal(v)
         >
           <IndicadoresBarrasH
             :items="barrasReparto" medida="del tiempo" :ancho-etiqueta="190" :reserva="136"
-            :escala-eje="repartoEnHoras ? 3600 : 60"
-            :formato-eje="repartoEnHoras ? formatoHoras : formatoMinutos"
+            :escala-eje="ejeReparto.escala" :formato-eje="ejeReparto.formato"
           />
           <template #tabla>
             <IndicadoresTabla :columnas="columnasReparto" :filas="tablaReparto" principal="tipo" />
           </template>
         </IndicadoresTarjeta>
+        </template>
       </div>
     </template>
   </div>
@@ -401,6 +427,22 @@ const formatoHoras = (v: number) => fmtHorasDecimal(v)
 .preset:hover { color: var(--ink-2); }
 .preset.on { background: var(--surface); color: var(--ink); box-shadow: var(--shadow-xs); }
 .preset:focus-visible { outline: none; box-shadow: var(--ring); }
+
+.tabs { display: flex; gap: 4px; margin-bottom: 16px; border-bottom: 1px solid var(--border); }
+.tab {
+  appearance: none; border: none; background: none; cursor: pointer;
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 9px 15px; font-size: 13px; font-weight: 600; color: var(--muted);
+  border-bottom: 2px solid transparent; margin-bottom: -1px;
+}
+.tab:hover { color: var(--ink-2); }
+.tab.on { color: var(--brand); border-bottom-color: var(--brand); }
+.tab:focus-visible { outline: none; box-shadow: var(--ring); border-radius: var(--r-xs); }
+.badge-tab {
+  display: inline-grid; place-items: center; min-width: 18px; height: 18px; padding: 0 5px;
+  border-radius: 999px; background: var(--viz-por-justificar); color: var(--ink);
+  font-size: 11px; font-weight: 800;
+}
 
 .contenido { transition: opacity .18s; }
 .contenido.recargando { opacity: .55; pointer-events: none; }
