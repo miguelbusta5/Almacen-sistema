@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import {
   BarChart3,
+  ChartColumnIncreasing,
   FileText,
   Forklift,
   GitMerge,
@@ -58,6 +59,7 @@ const ALL_ITEMS: NavItem[] = [
   { href: "/dashboard/exportaciones-eeuu", label: "Exportaciones EE.UU", icon: <Globe size={16} strokeWidth={2.1} />, moduleKey: "exportaciones-eeuu" },
   { href: "/dashboard/solicitudes-transporte", label: "Solicitudes Transporte", icon: <FileText size={16} strokeWidth={2.1} />, moduleKey: "solicitudes-transporte" },
   { href: "/dashboard/transporte", label: "Guardados", icon: <Truck size={16} strokeWidth={2.1} />, moduleKey: "transporte" },
+  { href: "/dashboard/indicadores", label: "Indicadores", icon: <ChartColumnIncreasing size={16} strokeWidth={2.1} />, moduleKey: "indicadores" },
   { href: "/dashboard/centro-control", label: "Centro de Control", icon: <BarChart3 size={16} strokeWidth={2.1} />, moduleKey: "centro-control" },
   { href: "/dashboard/usuarios", label: "Usuarios", icon: <Users size={16} strokeWidth={2.1} />, moduleKey: "usuarios" },
   { href: "/dashboard/auditoria", label: "Auditoria", icon: <ScrollText size={16} strokeWidth={2.1} />, moduleKey: "auditoria" },
@@ -80,7 +82,7 @@ const GROUPS = [
     "/dashboard/solicitudes-transporte",
     "/dashboard/transporte",
   ],
-  ["/dashboard/centro-control"],
+  ["/dashboard/indicadores", "/dashboard/centro-control"],
   ["/dashboard/usuarios", "/dashboard/auditoria"],
 ];
 

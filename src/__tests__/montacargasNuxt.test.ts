@@ -14,7 +14,7 @@
 // nuxt-app/app/utils/montacargas.ts (Vue). Si una copia se desvía, el cliente
 // valida distinto que el servidor y el operario ve rechazos inexplicables.
 import { describe, it, expect } from "vitest";
-import { readFileSync, readdirSync } from "fs";
+import { existsSync, readFileSync, readdirSync } from "fs";
 import path from "path";
 import { UBICACION_PATTERN, GESTORES_MONTACARGAS, ROLES_MONTACARGAS } from "@/lib/montacargas";
 
@@ -398,13 +398,19 @@ describe("montacargas — módulos registrados", () => {
     expect(resurtido).toContain("sin-hero");
   });
 
-  // Los dos módulos llevan pestaña de indicadores, y es solo para gestión: son
-  // los números con los que se evalúa al equipo.
-  it("ambos módulos tienen pestaña de indicadores, solo para gestión", () => {
-    expect(moduleVue).toContain("MontacargasIndicadores");
-    expect(moduleVue).toMatch(/v-if="canManage"[\s\S]{0,200}Indicadores/);
-    expect(leer("nuxt-app/server/api/montacargas/indicadores.get.ts"))
-      .toContain("assertGestorMontacargas");
+  // Los indicadores salieron de los módulos: cada pestaña sumaba los relojes de
+  // sus PLUs y, con varios a la vez, contaba el mismo minuto dos y tres veces.
+  // Ahora hay un solo módulo que cuenta el tiempo real de la persona.
+  it("los indicadores ya no son una pestaña del módulo", () => {
+    expect(moduleVue).not.toContain("MontacargasIndicadores");
+    expect(moduleVue).not.toContain("verIndicadores");
+    expect(existsSync(path.join(process.cwd(), "nuxt-app/server/api/montacargas/indicadores.get.ts"))).toBe(false);
+  });
+
+  // Con un solo flujo (Movimientos dentro de Resurtido) una barra con una sola
+  // pestaña no deja elegir nada.
+  it("la barra de pestañas solo sale con varios flujos", () => {
+    expect(moduleVue).toContain('<nav v-if="flujos.length > 1" class="tabs"');
   });
 
   // Un ayudante que recibía un movimiento abría el módulo en Recepción y no veía
@@ -455,19 +461,17 @@ describe("montacargas — dos tiempos, uno por persona", () => {
 // nadie hubiera trabajado. Se acumula en segundos y se redondea al presentar.
 describe("montacargas — el tiempo se mide en segundos", () => {
   it("los acumulados no van sumando minutos ya redondeados", () => {
-    const indicadores = leer("nuxt-app/server/api/montacargas/indicadores.get.ts");
-    expect(indicadores).toContain("segundosTrabajados");
-    expect(indicadores).toContain("totalSegundos");
+    const indicadores = leer("src/lib/indicadores.ts");
     expect(indicadores).not.toContain("minutosTrabajados");
+    expect(indicadores).toContain("return { total: Math.round(total)");
     const conteos = leer("nuxt-app/server/api/montacargas/conteos.get.ts");
     expect(conteos).toContain("segundosTrabajados(r.tramos)");
     expect(conteos).toContain("promedioSeg");
   });
 
   it("el promedio se redondea una sola vez, al final", () => {
-    const indicadores = leer("nuxt-app/server/api/montacargas/indicadores.get.ts");
-    expect(indicadores).toContain("const promedio = (seg: number, n: number)");
-    expect(indicadores).toContain("Math.round(seg / n)");
+    const indicadores = leer("src/lib/indicadores.ts");
+    expect(indicadores).toContain("Math.round(valores.reduce((a, b) => a + b, 0) / valores.length)");
   });
 
   it("bajo el minuto la UI muestra segundos y no un cero", () => {
@@ -477,8 +481,9 @@ describe("montacargas — el tiempo se mide en segundos", () => {
     // Y nadie se quedo con el formateador viejo, que recibia minutos.
     for (const rel of [
       "nuxt-app/app/components/montacargas/Tabla.vue",
-      "nuxt-app/app/components/montacargas/Indicadores.vue",
       "nuxt-app/app/components/montacargas/KpiRail.vue",
+      "nuxt-app/app/components/indicadores/TiempoPersonas.vue",
+      "nuxt-app/app/components/indicadores/Module.vue",
       "nuxt-app/app/components/montacargas/ExitoOverlay.vue",
     ]) {
       expect(leer(rel)).not.toContain("fmtDuracion");

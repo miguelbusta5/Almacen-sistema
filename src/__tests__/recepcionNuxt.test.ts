@@ -23,7 +23,6 @@ describe("recepcion — las tres copias de la logica pura", () => {
     "validarLineaNovedad",
     "exigeFoto",
     "segundosRecepcion",
-    "unidadesPorHora",
     "normalizarPedido",
   ];
 

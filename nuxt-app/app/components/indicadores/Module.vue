@@ -1,0 +1,441 @@
+<script setup lang="ts">
+// Indicadores del CEDI: el tiempo laborado de montacarguistas y operarios,
+// sacado de todas las tomas de tiempo (recepcion, movimientos, resurtido,
+// pendientes y recepcion de contenedores).
+//
+// Sustituye a las pestañas de indicadores que tenia cada modulo. Aquellas
+// sumaban los relojes de cada PLU, y con varios PLUs a la vez el mismo minuto
+// se contaba dos y tres veces. Aqui el tiempo de una persona es RELOJ DE PARED:
+// cada PLU conserva su tiempo en su modulo, pero a la persona se le cuenta el
+// rato que tuvo trabajo en la mano, una sola vez.
+import { computed, onMounted, ref, watch } from 'vue'
+import { BarChart3, RefreshCw } from '@lucide/vue'
+import { ensureSession, useSessionState } from '~/composables/useSession'
+import { useToast } from '~/composables/useToast'
+import { canSeeModule } from '~/utils/modulePermissions'
+import { fmtTiempo } from '~/utils/montacargas'
+import { hoyBogota } from '~/utils/exportaciones'
+import {
+  API_INDICADORES, fmtDiaCorto, fmtHorasDecimal, fmtNumero, fmtPorcentaje,
+  MIN_SEGUNDOS_PRODUCTIVIDAD, PRESETS_RANGO, rangoDePreset, ROL_MEDIDO_LABEL,
+  TIPO_TAREA_COLOR, TIPO_TAREA_LABEL, TIPOS_TAREA,
+  type BarraH, type ColumnaTabla, type IndicadoresPeriodo, type PresetRango,
+  type RespuestaIndicadores,
+} from '~/utils/indicadores'
+
+const { me, sessionLoaded } = useSessionState()
+const { show: showToast } = useToast()
+const puedeVer = computed(() => canSeeModule(me.value?.role, 'indicadores'))
+
+// ── Filtros: una sola fila, arriba, y mandan sobre todo lo de abajo ────
+const hoy = hoyBogota()
+const preset = ref<PresetRango>('7d')
+const desde = ref(rangoDePreset('7d', hoy).desde)
+const hasta = ref(hoy)
+const rol = ref('')
+const usuarioId = ref('')
+
+function elegirPreset(p: Exclude<PresetRango, 'custom'>) {
+  preset.value = p
+  const r = rangoDePreset(p, hoyBogota())
+  desde.value = r.desde
+  hasta.value = r.hasta
+}
+function fechaEditada() { preset.value = 'custom' }
+
+const equipo = ref<RespuestaIndicadores['equipo']>([])
+const equipoDelRol = computed(() => equipo.value.filter((u) => !rol.value || u.rol === rol.value))
+// Cambiar de rol con una persona del otro rol elegida la dejaria sin datos.
+watch(rol, () => {
+  if (usuarioId.value && !equipoDelRol.value.some((u) => u.id === usuarioId.value)) usuarioId.value = ''
+})
+
+// ── Datos ──────────────────────────────────────────────────────────
+const datos = ref<IndicadoresPeriodo | null>(null)
+const cargando = ref(false)
+
+async function cargar() {
+  if (!desde.value || !hasta.value) return
+  cargando.value = true
+  try {
+    const res = await $fetch<RespuestaIndicadores>(API_INDICADORES, {
+      query: {
+        desde: desde.value,
+        hasta: hasta.value,
+        rol: rol.value || undefined,
+        usuarioId: usuarioId.value || undefined,
+      },
+    })
+    datos.value = res.data
+    equipo.value = res.equipo
+  } catch (e) {
+    showToast(apiErr(e, 'No se pudieron cargar los indicadores'), true)
+  } finally {
+    cargando.value = false
+  }
+}
+
+onMounted(ensureSession)
+// La sesion puede llegar despues del montaje (o ya estar cargada): se carga en
+// cuanto se sabe que la persona puede verlo.
+watch(puedeVer, (v) => { if (v && !datos.value) cargar() }, { immediate: true })
+watch([desde, hasta, rol, usuarioId], () => { if (puedeVer.value) cargar() })
+
+const vacio = computed(() => {
+  const r = datos.value?.resumen
+  return !!r && r.segundos === 0 && r.unidades === 0
+})
+
+// ── Cifras del periodo ─────────────────────────────────────────────
+const resumen = computed(() => datos.value?.resumen ?? null)
+const contadoDeMas = computed(() => {
+  const r = resumen.value
+  if (!r || r.sumaRelojes <= r.segundos) return null
+  return { suma: fmtTiempo(r.sumaRelojes), pct: fmtPorcentaje(r.sumaRelojes - r.segundos, r.segundos) }
+})
+// Promedio por PLU del equipo: pesado por PLUs, no promedio de promedios.
+const promedioEquipo = computed(() => {
+  const ps = datos.value?.personas ?? []
+  const n = ps.reduce((s, p) => s + p.plus, 0)
+  if (!n) return null
+  return Math.round(ps.reduce((s, p) => s + (p.promedioPorPlu ?? 0) * p.plus, 0) / n)
+})
+const tiles = computed(() => {
+  const r = resumen.value
+  if (!r) return []
+  return [
+    { label: 'Unidades ubicadas', valor: fmtNumero(r.unidades), hint: 'de quien cerró el PLU' },
+    { label: 'Unidades por hora', valor: fmtNumero(r.unidadesPorHora), hint: 'sobre el tiempo real' },
+    // PLUs distintos: uno que pasó al ayudante es un PLU, aunque lo tocaran dos.
+    { label: 'PLUs trabajados', valor: fmtNumero(r.registros), hint: `entre ${r.personas} persona${r.personas !== 1 ? 's' : ''}` },
+    { label: 'Promedio por PLU', valor: fmtTiempo(promedioEquipo.value), hint: 'reloj de cada PLU' },
+  ]
+})
+
+// ── Evolucion dia a dia ────────────────────────────────────────────
+const porDia = computed(() => datos.value?.porDia ?? [])
+const puntosTiempo = computed(() => porDia.value.map((d) => ({ dia: d.dia, valor: d.segundos })))
+const puntosUnidades = computed(() => porDia.value.map((d) => ({ dia: d.dia, valor: d.unidades })))
+const columnasDia: ColumnaTabla[] = [
+  { key: 'dia', label: 'Día' },
+  { key: 'tiempo', label: 'Tiempo laborado', num: true },
+  { key: 'und', label: 'Unidades', num: true },
+]
+const tablaDia = computed(() => porDia.value.map((d) => ({
+  dia: fmtDiaCorto(d.dia), tiempo: d.segundos ? fmtTiempo(d.segundos) : '—', und: fmtNumero(d.unidades),
+})))
+
+// ── Productividad ─────────────────────────────────────────────────
+const segundosPlu = (p: IndicadoresPeriodo['personas'][number]) => p.segundos - p.porTipo.contenedor
+const barrasUndHora = computed<BarraH[]>(() => (datos.value?.personas ?? [])
+  .filter((p) => p.unidadesPorHora != null && segundosPlu(p) >= MIN_SEGUNDOS_PRODUCTIVIDAD)
+  .sort((a, b) => (b.unidadesPorHora ?? 0) - (a.unidadesPorHora ?? 0))
+  .map((p) => ({
+    id: p.id,
+    etiqueta: p.nombre,
+    valor: p.unidadesPorHora ?? 0,
+    texto: fmtNumero(p.unidadesPorHora),
+    detalle: [
+      { etiqueta: 'unidades', valor: fmtNumero(p.unidades) },
+      { etiqueta: 'tiempo en PLUs', valor: fmtTiempo(segundosPlu(p)) },
+    ],
+  })))
+// Quien trabajo muy poco no entra en el grafico (en la tabla si): con 36
+// segundos salian 6.565 und/hora y esa barra aplastaba a todos los demas.
+const pocoTiempo = computed(() => (datos.value?.personas ?? [])
+  .filter((p) => p.unidades > 0 && segundosPlu(p) < MIN_SEGUNDOS_PRODUCTIVIDAD)
+  .map((p) => p.nombre))
+
+const barrasPromedio = computed<BarraH[]>(() => (datos.value?.personas ?? [])
+  .filter((p) => p.promedioPorPlu != null && p.plus > 0)
+  .sort((a, b) => (a.promedioPorPlu ?? 0) - (b.promedioPorPlu ?? 0))
+  .map((p) => ({
+    id: p.id,
+    etiqueta: p.nombre,
+    valor: p.promedioPorPlu ?? 0,
+    texto: fmtTiempo(p.promedioPorPlu),
+    detalle: [{ etiqueta: 'PLUs', valor: fmtNumero(p.plus) }],
+  })))
+const promedioEnMinutos = computed(() => Math.max(0, ...barrasPromedio.value.map((b) => b.valor)) >= 120)
+
+const columnasProd: ColumnaTabla[] = [
+  { key: 'nombre', label: 'Persona' },
+  { key: 'rol', label: 'Rol' },
+  { key: 'und', label: 'Unidades', num: true },
+  { key: 'tiempo', label: 'Tiempo en PLUs', num: true },
+  { key: 'undh', label: 'Und/hora', num: true },
+  { key: 'plus', label: 'PLUs', num: true },
+  { key: 'prom', label: 'Prom. por PLU', num: true },
+]
+const tablaProd = computed(() => (datos.value?.personas ?? []).map((p) => ({
+  nombre: p.nombre,
+  rol: ROL_MEDIDO_LABEL[p.rol] ?? p.rol,
+  und: fmtNumero(p.unidades),
+  tiempo: fmtTiempo(segundosPlu(p)),
+  undh: fmtNumero(p.unidadesPorHora),
+  plus: fmtNumero(p.plus),
+  prom: fmtTiempo(p.promedioPorPlu),
+})))
+
+// ── Reparto por tipo de tarea ─────────────────────────────────────
+const totalTipos = computed(() => TIPOS_TAREA.reduce((s, t) => s + (datos.value?.porTipo[t] ?? 0), 0))
+const barrasReparto = computed<BarraH[]>(() => TIPOS_TAREA
+  .map((t) => ({ t, v: datos.value?.porTipo[t] ?? 0 }))
+  .filter((x) => x.v > 0)
+  .sort((a, b) => b.v - a.v)
+  .map(({ t, v }) => ({
+    id: t,
+    etiqueta: TIPO_TAREA_LABEL[t],
+    valor: v,
+    texto: `${fmtTiempo(v)} · ${fmtPorcentaje(v, totalTipos.value)}`,
+    color: TIPO_TAREA_COLOR[t],
+  })))
+const repartoEnHoras = computed(() => Math.max(0, ...barrasReparto.value.map((b) => b.valor)) >= 3600)
+const columnasReparto: ColumnaTabla[] = [
+  { key: 'tipo', label: 'Tipo de tarea' },
+  { key: 'tiempo', label: 'Tiempo', num: true },
+  { key: 'pct', label: '% del total', num: true },
+]
+const tablaReparto = computed(() => barrasReparto.value.map((b) => ({
+  tipo: b.etiqueta, tiempo: fmtTiempo(b.valor), pct: fmtPorcentaje(b.valor, totalTipos.value),
+})))
+
+const formatoMinutos = (v: number) => `${Math.round(v / 60)} min`
+const formatoSegundos = (v: number) => `${Math.round(v)} s`
+const formatoHoras = (v: number) => fmtHorasDecimal(v)
+</script>
+
+<template>
+  <div class="mod">
+    <section class="hero">
+      <div>
+        <span class="hero-kicker">
+          <span class="hero-ic"><BarChart3 :size="13" /></span>
+          CEDI · Tiempos
+        </span>
+        <h1 class="hero-title">Indicadores</h1>
+        <p class="hero-desc">
+          Tiempo laborado de montacarguistas y operarios en todos los módulos del CEDI.
+        </p>
+      </div>
+      <div class="hero-actions">
+        <button class="btn btn-sm" :disabled="cargando" @click="cargar">
+          <Spinner v-if="cargando" :size="14" /><RefreshCw v-else :size="14" />
+          Actualizar
+        </button>
+      </div>
+    </section>
+
+    <ListSkeleton v-if="!sessionLoaded" />
+    <EmptyState
+      v-else-if="!puedeVer" title="Sin acceso"
+      description="Los indicadores son para la supervisión de almacenamiento y la gerencia."
+    />
+
+    <template v-else>
+      <!-- Filtros: una fila, arriba de todo, y lo de abajo siempre cuadra con ellos. -->
+      <div class="filtros card">
+        <div class="presets" role="group" aria-label="Periodo">
+          <button
+            v-for="p in PRESETS_RANGO" :key="p.key" type="button" class="preset"
+            :class="{ on: preset === p.key }" :aria-pressed="preset === p.key"
+            @click="elegirPreset(p.key)"
+          >
+            {{ p.label }}
+          </button>
+        </div>
+        <label class="f">
+          <span class="lbl">Desde</span>
+          <input v-model="desde" class="field" type="date" :max="hasta" @input="fechaEditada">
+        </label>
+        <label class="f">
+          <span class="lbl">Hasta</span>
+          <input v-model="hasta" class="field" type="date" :min="desde" @input="fechaEditada">
+        </label>
+        <label class="f">
+          <span class="lbl">Rol</span>
+          <select v-model="rol" class="field">
+            <option value="">Todos</option>
+            <option value="MONTACARGAS">Montacarguistas</option>
+            <option value="OPERARIO_ALMACENAMIENTO">Operarios</option>
+          </select>
+        </label>
+        <label class="f f-persona">
+          <span class="lbl">Persona</span>
+          <select v-model="usuarioId" class="field">
+            <option value="">Todo el equipo</option>
+            <option v-for="u in equipoDelRol" :key="u.id" :value="u.id">{{ u.nombre }}</option>
+          </select>
+        </label>
+      </div>
+
+      <ListSkeleton v-if="!datos" />
+
+      <EmptyState
+        v-else-if="vacio" title="Sin tiempos en el periodo"
+        description="No hay PLUs cerrados en estas fechas. Prueba con un rango más amplio."
+      />
+
+      <!-- Al recargar se queda lo anterior, atenuado: sin saltos ni parpadeos. -->
+      <div v-else class="contenido" :class="{ recargando: cargando }">
+        <div class="cifras">
+          <div class="heroe card">
+            <span class="kpi-label">Tiempo real laborado</span>
+            <span class="heroe-valor">{{ fmtTiempo(resumen!.segundos) }}</span>
+            <p v-if="contadoDeMas" class="heroe-nota">
+              Sumando los relojes de cada PLU daría <b>{{ contadoDeMas.suma }}</b>:
+              un {{ contadoDeMas.pct }} contado de más, porque varios PLUs a la vez contaban el mismo minuto.
+            </p>
+            <p v-else class="heroe-nota">Nadie tuvo varios PLUs a la vez: el tiempo real coincide con los relojes.</p>
+          </div>
+          <div v-for="t in tiles" :key="t.label" class="kpi card">
+            <span class="kpi-label">{{ t.label }}</span>
+            <span class="kpi-valor">{{ t.valor }}</span>
+            <span class="kpi-hint">{{ t.hint }}</span>
+          </div>
+        </div>
+        <p class="nota-cerrados">
+          Solo cuenta lo cerrado: un PLU que sigue en curso entra cuando se ubica.
+        </p>
+
+        <IndicadoresTiempoPersonas class="bloque" :personas="datos.personas" />
+
+        <IndicadoresTarjeta
+          class="bloque" titulo="Evolución día a día"
+          subtitulo="Tiempo real laborado y unidades ubicadas por día, de todo el equipo filtrado."
+        >
+          <div v-if="porDia.length > 1" class="dos">
+            <div>
+              <h4 class="mini-titulo">Tiempo laborado</h4>
+              <IndicadoresLineaDiaria
+                :puntos="puntosTiempo" etiqueta="tiempo laborado"
+                :formato="fmtTiempo" :formato-fin="formatoHoras" :escala-eje="3600" sufijo-eje=" h"
+              />
+            </div>
+            <div>
+              <h4 class="mini-titulo">Unidades ubicadas</h4>
+              <IndicadoresLineaDiaria
+                :puntos="puntosUnidades" etiqueta="unidades" :formato="fmtNumero"
+              />
+            </div>
+          </div>
+          <p v-else class="aviso">Con un solo día no hay evolución que ver: elige 7 o 30 días.</p>
+          <template #tabla>
+            <IndicadoresTabla :columnas="columnasDia" :filas="tablaDia" principal="dia" />
+          </template>
+        </IndicadoresTarjeta>
+
+        <div class="dos bloque">
+          <IndicadoresTarjeta
+            titulo="Unidades por hora"
+            subtitulo="Unidades ubicadas por hora real en PLUs. La descarga de contenedores no entra."
+          >
+            <IndicadoresBarrasH
+              v-if="barrasUndHora.length" :items="barrasUndHora" medida="und/hora"
+              :formato-eje="fmtNumero"
+            />
+            <p v-else class="aviso">Nadie llega a 15 minutos en PLUs en este periodo.</p>
+            <p v-if="pocoTiempo.length" class="pie">
+              Con menos de 15 min en PLUs no se grafica (está en la tabla): {{ pocoTiempo.join(', ') }}.
+            </p>
+            <template #tabla>
+              <IndicadoresTabla :columnas="columnasProd" :filas="tablaProd" principal="nombre" />
+            </template>
+          </IndicadoresTarjeta>
+
+          <IndicadoresTarjeta
+            titulo="Tiempo promedio por PLU"
+            subtitulo="Lo que tarda cada PLU en su propio reloj. Más rápido arriba."
+          >
+            <IndicadoresBarrasH
+              v-if="barrasPromedio.length" :items="barrasPromedio" medida="por PLU"
+              :escala-eje="promedioEnMinutos ? 60 : 1"
+              :formato-eje="promedioEnMinutos ? formatoMinutos : formatoSegundos"
+            />
+            <p v-else class="aviso">Sin PLUs cerrados en este periodo.</p>
+            <template #tabla>
+              <IndicadoresTabla :columnas="columnasProd" :filas="tablaProd" principal="nombre" />
+            </template>
+          </IndicadoresTarjeta>
+        </div>
+
+        <IndicadoresTarjeta
+          class="bloque" titulo="Reparto por tipo de tarea"
+          subtitulo="En qué se fue el tiempo real del equipo."
+        >
+          <IndicadoresBarrasH
+            :items="barrasReparto" medida="del tiempo" :ancho-etiqueta="190" :reserva="136"
+            :escala-eje="repartoEnHoras ? 3600 : 60"
+            :formato-eje="repartoEnHoras ? formatoHoras : formatoMinutos"
+          />
+          <template #tabla>
+            <IndicadoresTabla :columnas="columnasReparto" :filas="tablaReparto" principal="tipo" />
+          </template>
+        </IndicadoresTarjeta>
+      </div>
+    </template>
+  </div>
+</template>
+
+<style scoped>
+.mod { position: relative; }
+.hero { position: relative; z-index: 5; display: flex; align-items: flex-end; justify-content: space-between; gap: 18px; margin-bottom: 22px; flex-wrap: wrap; }
+.hero-kicker { display: flex; align-items: center; gap: 7px; font-size: 11px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); }
+.hero-ic { display: grid; place-items: center; width: 22px; height: 22px; border-radius: 7px; color: var(--brand); background: color-mix(in srgb, var(--brand) 12%, transparent); }
+.hero-title { margin: 7px 0 3px; font-family: var(--display); font-size: 30px; font-weight: 800; letter-spacing: -.035em; color: var(--ink); }
+.hero-desc { margin: 0; font-size: 13px; color: var(--muted); }
+.hero-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+
+.bloque { margin-bottom: 18px; }
+
+.filtros { display: flex; align-items: flex-end; gap: 12px; padding: 13px 15px; margin-bottom: 18px; flex-wrap: wrap; }
+.f { display: flex; flex-direction: column; gap: 5px; }
+.f .field { min-width: 140px; }
+.f-persona .field { min-width: 200px; }
+.lbl { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); }
+.presets { display: inline-flex; padding: 3px; gap: 2px; border-radius: var(--r-sm); background: var(--surface-3); align-self: flex-end; }
+.preset {
+  height: 32px; padding: 0 12px; border: none; border-radius: var(--r-xs); background: none;
+  font-size: 12.5px; font-weight: 600; color: var(--muted); cursor: pointer; white-space: nowrap;
+}
+.preset:hover { color: var(--ink-2); }
+.preset.on { background: var(--surface); color: var(--ink); box-shadow: var(--shadow-xs); }
+.preset:focus-visible { outline: none; box-shadow: var(--ring); }
+
+.contenido { transition: opacity .18s; }
+.contenido.recargando { opacity: .55; pointer-events: none; }
+
+.cifras { display: grid; grid-template-columns: 2fr repeat(4, 1fr); gap: 14px; }
+.heroe { display: flex; flex-direction: column; gap: 4px; padding: 16px 18px; }
+/* Una sola cifra grande por pantalla, en la misma letra que el resto. */
+.heroe-valor { font-size: 48px; font-weight: 700; letter-spacing: -.03em; line-height: 1.05; color: var(--ink); }
+.heroe-nota { margin: 4px 0 0; font-size: 12.5px; line-height: 1.45; color: var(--muted); }
+.heroe-nota b { color: var(--ink-2); }
+.kpi { display: flex; flex-direction: column; gap: 3px; padding: 16px; }
+.kpi-label { font-size: 12px; font-weight: 600; color: var(--muted); }
+.kpi-valor { font-size: 26px; font-weight: 700; letter-spacing: -.02em; line-height: 1.15; color: var(--ink); }
+.kpi-hint { font-size: 11.5px; color: var(--faint); }
+.nota-cerrados { margin: 8px 2px 18px; font-size: 12px; color: var(--muted); }
+
+.dos { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+.dos > * { min-width: 0; }
+.mini-titulo { margin: 0 0 6px; font-family: inherit; font-size: 12.5px; font-weight: 700; color: var(--ink-2); letter-spacing: 0; }
+.aviso { margin: 8px 0; font-size: 13px; color: var(--muted); }
+.pie { margin: 10px 0 0; font-size: 11.5px; line-height: 1.4; color: var(--muted); }
+
+@media (max-width: 1100px) {
+  .cifras { grid-template-columns: repeat(2, 1fr); }
+  .heroe { grid-column: 1 / -1; }
+}
+@media (max-width: 900px) {
+  .dos { grid-template-columns: 1fr; }
+}
+@media (max-width: 720px) {
+  .hero-title { font-size: 24px; }
+  .heroe-valor { font-size: 40px; }
+  .presets { width: 100%; }
+  .preset { flex: 1; }
+  .f, .f-persona { flex: 1 1 140px; }
+  .f .field, .f-persona .field { min-width: 0; width: 100%; }
+}
+</style>

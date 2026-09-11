@@ -20,6 +20,7 @@ export type ModuleKey =
   | 'recepcion-contenedores'
   | 'montaje-resurtido'
   | 'pendientes'
+  | 'indicadores'
 
 export const MODULE_ACCESS: Record<ModuleKey, string[]> = {
   transporte: ['TRANSPORTE', 'SUPERVISOR_TRANSPORTE', 'GERENTE', 'ADMIN', 'OPERADOR'],
@@ -60,6 +61,9 @@ export const MODULE_ACCESS: Record<ModuleKey, string[]> = {
   // Gourmet pide; almacenamiento asigna. Los operarios ven SUS tareas dentro
   // de Resurtido, no aqui.
   pendientes: ['OPERACIONES_GOURMET', 'SUPERVISOR_ALMACENAMIENTO', 'GERENTE', 'ADMIN'],
+  // Tiempo laborado de todo el CEDI: son los numeros con los que se evalua al
+  // equipo, asi que solo gestion. El servidor lo exige tambien.
+  indicadores: ['SUPERVISOR_ALMACENAMIENTO', 'GERENTE', 'ADMIN'],
 }
 
 export function canSeeModule(role: string | undefined | null, moduleKey: ModuleKey): boolean {

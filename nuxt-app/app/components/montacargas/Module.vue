@@ -11,7 +11,7 @@
 // Montacargas le pasa dos flujos (pestañas), Resurtido uno solo; y el ayudante
 // ve su bandeja en vez del formulario de captura.
 import { ref, computed, watch, onMounted, onBeforeUnmount, nextTick } from 'vue'
-import { RefreshCw, Download, Forklift, ScanLine, BarChart3, ExternalLink } from '@lucide/vue'
+import { RefreshCw, Download, Forklift, ScanLine, ExternalLink } from '@lucide/vue'
 import { ensureSession, useSessionState } from '~/composables/useSession'
 import { useToast } from '~/composables/useToast'
 import { useAutoRefresh } from '~/composables/useAutoRefresh'
@@ -49,9 +49,10 @@ const ayudante = computed(() => esRolAyudante(role.value))
 const puedeResolverNovedades = computed(() => me.value?.can?.resolverNovedades === true)
 
 // ── Pestaña activa ─────────────────────────────────────────────────
-// `null` = pestaña de indicadores, que no pertenece a ningún flujo.
+// Los indicadores ya no viven aqui: tienen modulo propio (/dashboard/indicadores),
+// que junta el tiempo de todos los modulos del CEDI sin contar dos veces el
+// mismo minuto.
 const flujoActivo = ref<FlujoConfig>(props.flujos[0]!)
-const verIndicadores = ref(false)
 const tipo = computed(() => flujoActivo.value.tipo)
 
 // ── Pendientes por tipo (a dónde llevar al operario) ───────────────
@@ -449,26 +450,19 @@ async function exportar() {
     />
 
     <template v-else>
-      <!-- Con varios flujos hay una pestaña por flujo; los indicadores son otra
-           pestaña más, así que la barra se dibuja también en Resurtido. -->
-      <nav class="tabs" role="tablist">
+      <!-- Una pestaña por flujo. Con uno solo (Movimientos dentro de Resurtido)
+           no hay nada que elegir y la barra sobra. -->
+      <nav v-if="flujos.length > 1" class="tabs" role="tablist">
         <button
           v-for="f in flujos" :key="f.tipo" class="tab" role="tab"
-          :class="{ on: !verIndicadores && f.tipo === flujoActivo.tipo }"
-          :aria-selected="!verIndicadores && f.tipo === flujoActivo.tipo"
-          @click="verIndicadores = false; flujoActivo = f"
+          :class="{ on: f.tipo === flujoActivo.tipo }"
+          :aria-selected="f.tipo === flujoActivo.tipo"
+          @click="flujoActivo = f"
         >
           {{ f.tab }}
           <!-- Cuántos PLUs tiene el operario en la mano en esa pestaña: sin esto
                hay que entrar a cada una para descubrir dónde está el trabajo. -->
           <span v-if="pendientes[f.tipo] > 0" class="badge-tab">{{ pendientes[f.tipo] }}</span>
-        </button>
-        <button
-          v-if="canManage" class="tab" role="tab"
-          :class="{ on: verIndicadores }" :aria-selected="verIndicadores"
-          @click="verIndicadores = true"
-        >
-          <BarChart3 :size="13" /> Indicadores
         </button>
       </nav>
 
@@ -482,10 +476,6 @@ async function exportar() {
         Tienes <b>{{ p.n }}</b> PLU{{ p.n !== 1 ? 's' : '' }} pendiente{{ p.n !== 1 ? 's' : '' }}
         en {{ TIPO_MOVIMIENTO_LABEL[p.tipo] }}
       </NuxtLink>
-
-      <MontacargasIndicadores v-if="verIndicadores" :tipo="flujoActivo.tipo" />
-
-      <template v-else>
 
       <!-- Bandeja de quien recibe: escanea el PLU que trae en la mano y su
            tarjeta se resalta y toma el foco.
@@ -550,7 +540,6 @@ async function exportar() {
           />
           <PageNav v-if="pages > 1" v-model:page="page" :pages="pages" class="pagenav" />
         </template>
-      </template>
     </template>
 
     <MontacargasTraspasarModal

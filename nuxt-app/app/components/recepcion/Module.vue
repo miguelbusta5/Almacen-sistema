@@ -9,7 +9,7 @@
 // Una planilla abierta por persona: el operario está en un contenedor, no en
 // dos. Por eso, con una abierta, se esconde el formulario de captura.
 import { ref, computed, watch, onMounted, onBeforeUnmount, nextTick } from 'vue'
-import { RefreshCw, Container, BarChart3 } from '@lucide/vue'
+import { RefreshCw, Container } from '@lucide/vue'
 import { ensureSession, useSessionState } from '~/composables/useSession'
 import { useToast } from '~/composables/useToast'
 import { useAutoRefresh } from '~/composables/useAutoRefresh'
@@ -26,8 +26,8 @@ const role = computed(() => me.value?.role ?? '')
 const userId = computed(() => me.value?.id)
 const puedeVer = computed(() => puedeUsarRecepcion(role.value))
 const canManage = computed(() => puedeGestionarRecepcion(role.value))
-
-const verIndicadores = ref(false)
+// Los indicadores de tiempo ya no viven aqui: tienen modulo propio
+// (/dashboard/indicadores), junto con el resto de tomas de tiempo del CEDI.
 
 // ── Reloj compartido ───────────────────────────────────────────────
 // Un solo intervalo para todo el módulo: un cronómetro por tarjeta multiplicaría
@@ -264,24 +264,6 @@ const totalPaginas = computed(() => Math.max(1, Math.ceil(total.value / pageSize
     />
 
     <template v-else>
-      <nav v-if="canManage" class="tabs" role="tablist">
-        <button
-          class="tab" role="tab" :class="{ on: !verIndicadores }"
-          :aria-selected="!verIndicadores" @click="verIndicadores = false"
-        >
-          Planilla
-        </button>
-        <button
-          class="tab" role="tab" :class="{ on: verIndicadores }"
-          :aria-selected="verIndicadores" @click="verIndicadores = true"
-        >
-          <BarChart3 :size="13" /> Indicadores
-        </button>
-      </nav>
-
-      <RecepcionIndicadores v-if="verIndicadores" />
-
-      <template v-else>
         <RecepcionKpiRail class="bloque" :counts="conteos" @filter="filtrarPor" />
 
         <!-- Con una planilla abierta se esconde la captura: el operario está en
@@ -322,7 +304,6 @@ const totalPaginas = computed(() => Math.max(1, Math.ceil(total.value / pageSize
           <span class="pag-txt">Página {{ page }} de {{ totalPaginas }}</span>
           <button class="btn btn-sm" :disabled="page >= totalPaginas" @click="page += 1">Siguiente</button>
         </div>
-      </template>
     </template>
 
     <RecepcionNovedadModal
@@ -344,17 +325,6 @@ const totalPaginas = computed(() => Math.max(1, Math.ceil(total.value / pageSize
 .refresh.spin :deep(svg) { animation: gira 1s linear infinite; }
 @keyframes gira { to { transform: rotate(360deg) } }
 
-.tabs { display: flex; gap: 4px; margin-bottom: 16px; border-bottom: 1px solid var(--border); }
-.tab {
-  display: inline-flex; align-items: center; gap: 6px; padding: 10px 14px;
-  background: none; border: none; border-bottom: 2px solid transparent;
-  font-size: 13px; font-weight: 600; color: var(--muted); cursor: pointer;
-  transition: color .14s, border-color .14s;
-}
-.tab:hover { color: var(--ink-2); }
-.tab.on { color: var(--brand); border-bottom-color: var(--brand); }
-.tab:focus-visible { outline: none; box-shadow: var(--ring); border-radius: var(--r-xs); }
-
 .bloque { margin-bottom: 18px; }
 .filtros { display: flex; gap: 10px; padding: 12px 14px; flex-wrap: wrap; }
 .filtros .field { flex: 1 1 190px; }
@@ -364,6 +334,5 @@ const totalPaginas = computed(() => Math.max(1, Math.ceil(total.value / pageSize
 
 @media (max-width: 720px) {
   .hero-title { font-size: 24px; }
-  .tab { flex: 1; padding: 11px 6px; font-size: 12.5px; }
 }
 </style>

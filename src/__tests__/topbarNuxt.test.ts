@@ -65,7 +65,7 @@ describe("firma", () => {
 describe("tablas de montacargas — una línea por fila", () => {
   const tablas = [
     "nuxt-app/app/components/montacargas/Tabla.vue",
-    "nuxt-app/app/components/montacargas/Indicadores.vue",
+    "nuxt-app/app/components/indicadores/Tabla.vue",
   ];
 
   it.each(tablas)("%s no deja que las celdas se partan", (rel) => {

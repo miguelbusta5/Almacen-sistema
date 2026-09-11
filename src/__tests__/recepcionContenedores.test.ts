@@ -7,7 +7,6 @@ import {
   puedeGestionarRecepcion,
   puedeUsarRecepcion,
   segundosRecepcion,
-  unidadesPorHora,
   validarApertura,
   validarCierre,
   validarLineaNovedad,
@@ -139,13 +138,5 @@ describe("recepcion — tiempo", () => {
   it("sin cierre no hay duracion, salvo que se pida contra ahora", () => {
     expect(segundosRecepcion(t(8, 0), null)).toBeNull();
     expect(segundosRecepcion(t(8, 0), null, new Date(Date.UTC(2026, 8, 10, 8, 5)))).toBe(300);
-  });
-
-  // El ritmo es lo que permite comparar un contenedor con otro: ni las unidades
-  // ni los minutos sueltos dicen si se fue rapido.
-  it("calcula el ritmo en unidades por hora", () => {
-    expect(unidadesPorHora(21600, 9000)).toBe(8640);
-    expect(unidadesPorHora(100, 0)).toBeNull();
-    expect(unidadesPorHora(100, null)).toBeNull();
   });
 });

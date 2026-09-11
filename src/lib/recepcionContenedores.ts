@@ -201,8 +201,3 @@ export function segundosRecepcion(
   return Math.max(0, Math.round((fin.getTime() - ini.getTime()) / 1000));
 }
 
-/** Unidades por hora: la cifra con la que se compara una descarga con otra. */
-export function unidadesPorHora(unidades: number, segundos: number | null): number | null {
-  if (!segundos || segundos <= 0 || !Number.isFinite(unidades)) return null;
-  return Math.round((unidades / segundos) * 3600);
-}

@@ -65,6 +65,10 @@ export const MODULE_THEME: Record<ModuleThemeKey, ModuleTheme> = {
     "Subida del archivo de resurtido y reparto por operario",
   ),
   pendientes: mod("pendientes", "Pendientes", "Pendientes", "Solicitudes de mercancia a picking"),
+  indicadores: mod(
+    "indicadores", "Indicadores", "Indicadores",
+    "Tiempo laborado de montacarguistas y operarios del CEDI",
+  ),
   "recepcion-contenedores": mod(
     "recepcion-contenedores", "Recepcion de Contenedores", "Recepcion",
     "Planilla de descarga de contenedor con tiempos y novedades",

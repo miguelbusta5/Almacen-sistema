@@ -102,13 +102,13 @@ const nextConfig: NextConfig = {
         { source: "/dashboard/auditoria/:path*", destination: `${NUXT_PILOT_AUDITORIA_URL}/dashboard/auditoria/:path*` },
       );
     }
-    // Una sola variable activa los tres módulos del CEDI: comparten deploy, y
+    // Una sola variable activa todos los módulos del CEDI: comparten deploy, y
     // ninguno tiene página React de respaldo (se construyeron directo en Nuxt),
     // así que sin esta variable las rutas dan 404 en vez de degradar.
     if (NUXT_PILOT_MONTACARGAS_URL) {
       for (const modulo of [
         "control-montacargas", "resurtido", "recepcion-contenedores",
-        "montaje-resurtido", "pendientes",
+        "montaje-resurtido", "pendientes", "indicadores",
       ]) {
         beforeFiles.push(
           { source: `/dashboard/${modulo}`, destination: `${NUXT_PILOT_MONTACARGAS_URL}/dashboard/${modulo}` },

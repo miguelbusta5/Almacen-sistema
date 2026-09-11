@@ -44,6 +44,22 @@
   --bill-deep: #5B32D6;
   --bill-tint: #EEE8FF;
 
+  /* ── Gráficos (módulo Indicadores) ──
+     Paleta categórica validada para daltonismo (protan/deutan/tritan) sobre
+     blanco. El color sigue a la TAREA, nunca a su posición: recepción es azul
+     en todos los gráficos. Aqua, amarillo y magenta quedan bajo 3:1 sobre el
+     fondo, así que ningún gráfico depende solo del color: leyenda, etiquetas
+     y vista de tabla. Nunca se usan como color de texto. */
+  --viz-1: #2A78D6;   /* recepción */
+  --viz-2: #EB6834;   /* movimientos */
+  --viz-3: #1BAF7A;   /* resurtido */
+  --viz-4: #EDA100;   /* pendientes */
+  --viz-5: #E87BA4;   /* recepción de contenedores */
+  /* Serie única (und/hora, tiempos): un tono que no es de ninguna tarea, para
+     que una barra de productividad no se lea como "recepción". */
+  --viz-medida: #4A3AA7;
+  --viz-grid:   #EDF1F5;
+
   /* ── Semánticos auxiliares ── */
   --info:    #2B93E6;  --info-tint:  #E1F0FC;
   --success: #10B981;  --success-tint: #E4F8F0;
