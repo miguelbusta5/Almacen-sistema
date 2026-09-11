@@ -21,12 +21,6 @@ export function requiereUbicacionInicial(tipo: TipoMovimiento): boolean {
   return tipo !== 'RECEPCION'
 }
 
-/** En resurtido el operario baja varios PLUs de una pasada y cada uno corre su
- *  propio reloj; en recepción y movimientos se trabaja una estiba a la vez. */
-export function admiteVariosAbiertos(tipo: TipoMovimiento): boolean {
-  return tipo === 'RESURTIDO'
-}
-
 /** En recepción no hay ubicación de origen que revisar: lo que puede no cuadrar
  *  son las unidades de la estiba. */
 export function novedadEsperada(tipo: TipoMovimiento): TipoNovedad {
@@ -233,6 +227,21 @@ export function recibioTraspaso(
     movimiento.responsableId === usuarioId &&
     movimiento.creadoPorId !== usuarioId
   )
+}
+
+/**
+ * A quien vuelve el sobrante: a quien le paso el PLU a la persona que lo tiene.
+ *
+ * Es el dueño del ultimo tramo que no es de quien lo tiene ahora. Casi siempre
+ * es el montacarguista que lo abrio, pero si el PLU paso por varias manos
+ * (A se lo pasa a B y B a C) el sobrante de C vuelve a B, que es quien se lo
+ * entrego. Null si nadie se lo paso.
+ */
+export function quienPasoElPlu<T extends { usuarioId: string; orden: number }>(
+  tramos: readonly T[],
+  responsableId: string,
+): T | null {
+  return [...tramos].sort((a, b) => b.orden - a.orden).find((t) => t.usuarioId !== responsableId) ?? null
 }
 
 // ── Normalización (espejo de montacargasCalc.ts) ─────────────────────

@@ -72,6 +72,21 @@ export function recibioTraspaso(
   );
 }
 
+/**
+ * A quien vuelve el sobrante: a quien le paso el PLU a la persona que lo tiene.
+ *
+ * Es el dueño del ultimo tramo que no es de quien lo tiene ahora. Casi siempre
+ * es el montacarguista que lo abrio, pero si el PLU paso por varias manos
+ * (A se lo pasa a B y B a C) el sobrante de C vuelve a B, que es quien se lo
+ * entrego. Null si nadie se lo paso.
+ */
+export function quienPasoElPlu<T extends { usuarioId: string; orden: number }>(
+  tramos: readonly T[],
+  responsableId: string,
+): T | null {
+  return [...tramos].sort((a, b) => b.orden - a.orden).find((t) => t.usuarioId !== responsableId) ?? null;
+}
+
 // ── Tipos de registro ────────────────────────────────────────────────
 // Los tres comparten tabla y flujo. Se diferencian en si la mercancía tiene
 // ubicación de origen, en qué módulo se captura y en si admiten varios abiertos.
@@ -103,17 +118,6 @@ export function esTipoMovimiento(value: unknown): value is TipoMovimiento {
  */
 export function requiereUbicacionInicial(tipo: TipoMovimiento): boolean {
   return tipo !== "RECEPCION";
-}
-
-/**
- * ¿Se pueden tener varios registros abiertos a la vez?
- *
- * En resurtido sí: el operario baja varios PLUs de una pasada y cada uno corre
- * su propio reloj. En recepción y movimientos se trabaja una estiba a la vez,
- * y permitir varios abiertos solo serviría para dejar relojes olvidados.
- */
-export function admiteVariosAbiertos(tipo: TipoMovimiento): boolean {
-  return tipo === "RESURTIDO";
 }
 
 // ── Estados ──────────────────────────────────────────────────────────

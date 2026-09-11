@@ -6,7 +6,7 @@ import { mapMovimientoMontacargas } from '../../utils/mapRow'
 import { todayBogota } from '../../utils/exportacionesCalc'
 import { assertUsuarioMontacargas, MOVIMIENTO_INCLUDE, resolverProducto } from '../../utils/montacargas'
 import {
-  admiteVariosAbiertos, normalizarUbicacion, puedeCrearMovimiento,
+  normalizarUbicacion, puedeCrearMovimiento,
   requiereUbicacionInicial, validarApertura,
 } from '../../utils/montacargasCalc'
 
@@ -39,27 +39,10 @@ export default defineEventHandler(async (event) => {
   const validation = validarApertura(parsed.data)
   if (validation) throw createError({ statusCode: 400, statusMessage: validation })
 
-  // En recepcion y movimientos se trabaja una estiba a la vez. En resurtido no:
-  // el operario baja varios PLUs de una pasada y cada uno corre su propio reloj.
-  if (!admiteVariosAbiertos(tipo)) {
-    const abierto = await prisma.movimientoMontacargas.findFirst({
-      where: {
-        responsableId: actor.id,
-        tipo,
-        estado: { in: ['EN_CURSO', 'NOVEDAD'] },
-        deletedAt: null,
-      },
-      include: MOVIMIENTO_INCLUDE,
-      orderBy: { horaInicio: 'desc' },
-    })
-    if (abierto) {
-      throw createError({
-        statusCode: 409,
-        statusMessage: 'Ya tienes un registro en curso. Cierralo o descartalo antes de abrir otro.',
-        data: { code: 'MOVIMIENTO_ABIERTO', movimiento: mapMovimientoMontacargas(abierto) },
-      })
-    }
-  }
+  // Varios PLUs en curso a la vez, en todos los flujos: el montacarguista baja
+  // varias estibas seguidas y cada una lleva su propio reloj. Los indicadores
+  // cuentan el tiempo de la persona como reloj de pared, asi que tenerlos
+  // abiertos a la vez no le infla el tiempo trabajado.
 
   const producto = await resolverProducto(parsed.data.codigo)
   if (!producto) {

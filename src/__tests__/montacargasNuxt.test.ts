@@ -151,12 +151,30 @@ describe("montacargas — el reloj arranca al digitar el PLU", () => {
     expect(ubicacion).toContain("validarCantidades");
   });
 
-  // En resurtido el operario baja varios PLUs de una pasada; en recepción y
-  // movimientos se trabaja una estiba a la vez.
-  it("solo resurtido admite varios registros abiertos", () => {
-    expect(post).toContain("admiteVariosAbiertos");
-    expect(post).toContain("MOVIMIENTO_ABIERTO");
-    expect(moduleVue).toContain("admiteVariosAbiertos");
+  // Varios PLUs en curso en todos los flujos: antes, en recepción y
+  // movimientos, abrir otro pedía terminar el que ya estaba registrado.
+  it("se pueden tener varios PLUs en curso en cualquier flujo", () => {
+    expect(post).not.toContain("MOVIMIENTO_ABIERTO");
+    expect(post).not.toContain("admiteVariosAbiertos");
+    expect(moduleVue).toContain("const puedeAbrirOtro = computed(() => puedeCrear.value)");
+  });
+
+  // Quien recibe el PLU dice cuánto cupo; el resto vuelve a quien se lo pasó.
+  // La casilla dependía de una prop `esAyudante` que ya no se pasaba, así que
+  // nunca salía y el sobrante no volvía a nadie.
+  it("la casilla de unidades almacenadas sale a quien recibió el PLU", () => {
+    const reg = leer("nuxt-app/app/components/montacargas/RegistroAbierto.vue");
+    expect(reg).not.toMatch(/props\.esAyudante|v-if="esAyudante"/);
+    expect(reg).toContain('<label v-if="recibido" class="f f-cant">');
+    expect(reg).toContain("unidadesAlmacenadas: props.recibido ? almacenadasNum.value : m.value.cantidadTotal");
+  });
+
+  it("el sobrante vuelve a quien pasó el PLU, no a quien lo abrió", () => {
+    const ubic = leer("nuxt-app/server/api/montacargas/[id]/ubicacion.post.ts");
+    expect(ubic).toContain("const paso = quienPasoElPlu(record.tramos, record.responsableId)");
+    expect(ubic).toContain("responsableId: devolverA");
+    expect(ubic).toContain("await abrirTramo(tx, creado.id, devolverA, now, 1)");
+    for (const copia of [calcServidor, utilsCliente]) expect(copia).toContain("export function quienPasoElPlu");
   });
 
   // Como el reloj arranca con el PLU, un dedazo deja un registro corriendo.
@@ -302,7 +320,8 @@ describe("montacargas — novedades detienen el reloj", () => {
     const modulo = leer("nuxt-app/app/components/montacargas/Module.vue");
     expect(modulo).toContain("const mios = computed(");
     expect(modulo).toContain("m.responsableId === userId.value");
-    expect(modulo).toContain("mios.value.length === 0");
+    // El vacio del ayudante mira solo lo suyo.
+    expect(modulo).toContain('v-if="ayudante && mios.length === 0 && !loading"');
     // El escaner de la bandeja del ayudante solo encuentra lo suyo.
     expect(modulo).toContain("mios.value.find(");
     // Y la tarjeta ajena no ofrece descartar el registro de otro.
@@ -566,12 +585,12 @@ describe("montacargas — sobrantes", () => {
     expect(ubicacion).toContain("cantidadTotal: almacenadas");
   });
 
-  it("el sobrante nace como registro propio del montacarguista y con reloj", () => {
+  it("el sobrante nace como registro propio de quien paso el PLU y con reloj", () => {
     expect(ubicacion).toContain("origenId: id");
-    // Vuelve a quien abrio el PLU, no a quien lo cerro.
-    expect(ubicacion).toContain("responsableId: record.creadoPorId");
+    // Vuelve a quien le paso el PLU, no a quien lo cerro ni a quien lo abrio.
+    expect(ubicacion).toContain("responsableId: devolverA");
     expect(ubicacion).toContain("estado: 'EN_CURSO'");
-    expect(ubicacion).toContain("abrirTramo(tx, creado.id, record.creadoPorId, now, 1)");
+    expect(ubicacion).toContain("abrirTramo(tx, creado.id, devolverA, now, 1)");
     // Todo en la misma transaccion: o se parte entero o no se parte.
     expect(ubicacion).toContain("prisma.$transaction");
   });
@@ -581,9 +600,9 @@ describe("montacargas — sobrantes", () => {
     expect(leer("nuxt-app/app/components/montacargas/Tabla.vue")).toContain("item.origenId");
     const reg = leer("nuxt-app/app/components/montacargas/RegistroAbierto.vue");
     expect(reg).toContain("m.origenId");
-    // La pregunta es solo para el ayudante: el montacarguista elige la
+    // La pregunta es solo para quien lo recibio: quien se lo paso elige la
     // ubicacion del sobrante, asi que a el le cabe por definicion.
-    expect(reg).toContain('v-if="esAyudante" class="f f-cant"');
+    expect(reg).toContain('v-if="recibido" class="f f-cant"');
   });
 
   it("el enlace al registro de origen esta en los dos schemas", () => {

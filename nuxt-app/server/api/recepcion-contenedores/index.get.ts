@@ -12,7 +12,9 @@ export default defineEventHandler(async (event) => {
   assertUsuarioRecepcion(actor.role)
 
   const sp = getQuery(event)
-  const { page, pageSize, skip } = sanearPaginacion(sp.page, sp.pageSize)
+  // sanearPaginacion devuelve pagina y tamano, no `skip`: leerlo de ahi daba
+  // undefined y la pagina 2 repetia la 1.
+  const { page, pageSize } = sanearPaginacion(sp.page, sp.pageSize)
 
   const q = String(sp.q ?? '').trim()
   const estado = String(sp.estado ?? '').trim()
@@ -38,7 +40,7 @@ export default defineEventHandler(async (event) => {
       where,
       include: RECEPCION_INCLUDE,
       orderBy: { horaInicio: 'desc' },
-      skip,
+      skip: (page - 1) * pageSize,
       take: pageSize,
     }),
     prisma.recepcionContenedor.count({ where }),

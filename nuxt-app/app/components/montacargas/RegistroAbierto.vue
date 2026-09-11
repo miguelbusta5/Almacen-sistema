@@ -14,7 +14,7 @@ import { UserPlus, Trash2, TriangleAlert, CheckCircle2, Boxes } from '@lucide/vu
 import {
   calcularCantidadTotal, esUbicacionCanonica, fmtHoraMovimiento, normalizarUbicacion,
   requiereUbicacionInicial, tieneCantidades, TIPO_NOVEDAD_LABEL, cronometroTramo,
-  validarUnidadesAlmacenadas,
+  quienPasoElPlu, validarUnidadesAlmacenadas,
   type Movimiento,
 } from '~/utils/montacargas'
 
@@ -92,19 +92,27 @@ const ubicacion = ref('')
 const normalizada = computed(() => normalizarUbicacion(ubicacion.value))
 const esLibre = computed(() => Boolean(normalizada.value) && !esUbicacionCanonica(normalizada.value))
 
-// Cuantas unidades cupieron de verdad. Solo se le pregunta al ayudante: el
-// montacarguista elige la ubicacion del sobrante, asi que a el le cabe por
-// definicion. Arranca con el total, que es el caso normal.
+// Cuantas unidades cupieron de verdad. Se le pregunta a quien RECIBIO el PLU
+// —operario o montacarguista ayudando—: quien lo abrio elige la ubicacion del
+// sobrante, asi que a el le cabe por definicion. Arranca con el total, que es
+// el caso normal.
+//
+// Antes dependia de una prop `esAyudante` que ya no se pasaba: la casilla no
+// salia nunca, se cerraba siempre con el total y el sobrante no volvia a nadie.
 const almacenadas = ref(String(m.value.cantidadTotal || ''))
 watch(() => m.value.id, () => { almacenadas.value = String(m.value.cantidadTotal || '') })
 watch(() => m.value.cantidadTotal, (v) => { almacenadas.value = String(v || '') })
 
 const almacenadasNum = computed(() => Number(almacenadas.value || 0))
 const errorAlmacenadas = computed(() =>
-  props.esAyudante ? validarUnidadesAlmacenadas(almacenadasNum.value, m.value.cantidadTotal) : null,
+  props.recibido ? validarUnidadesAlmacenadas(almacenadasNum.value, m.value.cantidadTotal) : null,
 )
 const sobrante = computed(() =>
-  props.esAyudante ? Math.max(0, m.value.cantidadTotal - almacenadasNum.value) : 0,
+  props.recibido ? Math.max(0, m.value.cantidadTotal - almacenadasNum.value) : 0,
+)
+// A quien vuelve lo que no cupo: a quien le paso el PLU, no a quien lo abrio.
+const devolverA = computed(() =>
+  quienPasoElPlu(m.value.tramos, m.value.responsableId)?.usuarioNombre ?? m.value.creadoPorNombre,
 )
 
 const puedeUbicar = computed(() =>
@@ -118,7 +126,7 @@ function ubicar() {
   if (!puedeUbicar.value) return
   emit('ubicar', {
     ubicacionFinal: normalizada.value,
-    unidadesAlmacenadas: props.esAyudante ? almacenadasNum.value : m.value.cantidadTotal,
+    unidadesAlmacenadas: props.recibido ? almacenadasNum.value : m.value.cantidadTotal,
   })
 }
 </script>
@@ -224,9 +232,9 @@ function ubicar() {
 
     <!-- Ubicación final: cierra el registro y para el reloj -->
     <form v-if="!enNovedad" class="cerrar" @submit.prevent="ubicar">
-      <!-- Cuanto cupo de verdad. Solo al ayudante: el montacarguista elige donde
-           va el sobrante, asi que a el le cabe por definicion. -->
-      <label v-if="esAyudante" class="f f-cant">
+      <!-- Cuanto cupo de verdad. Solo a quien lo recibio: quien lo paso elige
+           donde va el sobrante, asi que a el le cabe por definicion. -->
+      <label v-if="recibido" class="f f-cant">
         <span class="lbl">Unidades que almacenaste</span>
         <input
           v-model="almacenadas" class="field tnum" type="number" min="1"
@@ -238,7 +246,7 @@ function ubicar() {
         <span v-else-if="sobrante > 0" class="hint sob-txt">
           <TriangleAlert :size="11" />
           Quedan {{ sobrante }} sin almacenar: vuelven a
-          {{ m.creadoPorNombre ?? 'el montacarguista' }} para que las ubique
+          {{ devolverA ?? 'quien te lo pasó' }} para que las ubique
         </span>
       </label>
       <label class="f f-ubic">

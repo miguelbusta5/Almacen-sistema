@@ -17,7 +17,7 @@ import { useToast } from '~/composables/useToast'
 import { useAutoRefresh } from '~/composables/useAutoRefresh'
 import { sonarVeredicto } from '~/utils/escaneoFeedback'
 import {
-  API_MONTACARGAS, admiteVariosAbiertos, esAyudante as esRolAyudante, FLUJOS, recibioTraspaso,
+  API_MONTACARGAS, esAyudante as esRolAyudante, FLUJOS, recibioTraspaso,
   normalizarCodigoProducto, puedeCrearMovimiento, puedeGestionarMontacargas,
   puedeUsarMontacargas, TIPO_MOVIMIENTO_LABEL,
   type FlujoConfig, type Movimiento, type MovimientoConteos, type Operario,
@@ -136,11 +136,9 @@ async function loadAbiertos() {
   } catch { /* no bloquea la vista */ }
 }
 
-// En recepción y movimientos se trabaja una estiba a la vez: con una abierta se
-// esconde el formulario para que no haya forma de arrancar dos relojes.
-const puedeAbrirOtro = computed(
-  () => puedeCrear.value && (admiteVariosAbiertos(tipo.value) || mios.value.length === 0),
-)
+// Se pueden tener varios PLUs en curso en cualquier flujo: el formulario de
+// captura sigue a la vista aunque ya haya registros abiertos.
+const puedeAbrirOtro = computed(() => puedeCrear.value)
 
 // ── KPIs ───────────────────────────────────────────────────
 const conteos = ref<MovimientoConteos>({
@@ -232,16 +230,8 @@ async function abrir(payload: { codigo: string; ubicacionInicial?: string }) {
     await $fetch(API_MONTACARGAS, { method: 'POST', body: { ...payload, tipo: tipo.value } })
     capturaRef.value?.reset()
     await Promise.all([loadAbiertos(), loadLista(), loadConteos(), loadPendientes()])
-  } catch (e: any) {
-    // 409: ya había un registro abierto de este tipo. El servidor lo devuelve
-    // para que la UI lo muestre en vez de dejar al operario atascado.
-    const yaAbierto = e?.data?.data?.movimiento as Movimiento | undefined
-    if (yaAbierto) {
-      await loadAbiertos()
-      showToast('Ya tenías un registro en curso: ciérralo o descártalo', true)
-    } else {
-      showToast(apiErr(e, 'No se pudo abrir el registro'), true)
-    }
+  } catch (e) {
+    showToast(apiErr(e, 'No se pudo abrir el registro'), true)
   } finally {
     saving.value = false
   }
@@ -276,17 +266,20 @@ async function ubicar(
   payload: { ubicacionFinal: string; unidadesAlmacenadas: number },
 ) {
   const res = await accion(m.id, () =>
-    $fetch<{ data: Movimiento; sobrante: { id: string; unidades: number } | null }>(
+    $fetch<{
+      data: Movimiento
+      sobrante: { id: string; unidades: number; responsableNombre: string | null } | null
+    }>(
       `${API_MONTACARGAS}/${m.id}/ubicacion`, { method: 'POST', body: payload },
     ), 'No se pudo cerrar el registro')
   if (!res) return
 
-  // Si no cupo todo, el resto sigue vivo en manos del montacarguista: se avisa
-  // aparte del overlay de exito, que solo habla del registro que se cerro.
+  // Si no cupo todo, el resto vuelve a quien le paso el PLU: se avisa aparte
+  // del overlay de exito, que solo habla del registro que se cerro.
   if (res.sobrante) {
     showToast(
       `Se cerro con ${res.data.cantidadTotal} unidades. `
-      + `${res.sobrante.unidades} volvieron a ${m.creadoPorNombre ?? 'el montacarguista'}`,
+      + `${res.sobrante.unidades} volvieron a ${res.sobrante.responsableNombre ?? 'quien te lo paso'}`,
     )
   }
 

@@ -139,3 +139,13 @@ describe("menu lateral — bloques con nombre", () => {
     expect(layout).toContain("filter((g) => g.items.length > 0)");
   });
 });
+
+// sanearPaginacion no devuelve `skip`: leerlo de ahi daba undefined y la
+// pagina 2 del listado repetia la 1.
+describe("recepcion — paginacion del listado", () => {
+  it("calcula el salto a partir de la pagina", () => {
+    const get = leer("nuxt-app/server/api/recepcion-contenedores/index.get.ts");
+    expect(get).toContain("skip: (page - 1) * pageSize");
+    expect(get).not.toMatch(/\{ page, pageSize, skip \}/);
+  });
+});

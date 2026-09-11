@@ -4,10 +4,10 @@
 // montacargasNuxt.test.ts.
 import { describe, it, expect } from "vitest";
 import {
-  admiteVariosAbiertos,
   calcularCantidadTotal,
   esAyudante,
   puedeRecibirTraspaso,
+  quienPasoElPlu,
   recibioTraspaso,
   esTipoMovimiento,
   esUbicacionCanonica,
@@ -66,12 +66,27 @@ describe("montacargas — tipos de registro", () => {
     expect(requiereUbicacionInicial("RESURTIDO")).toBe(true);
   });
 
-  // En resurtido el operario baja varios PLUs de una pasada y cada uno corre su
-  // propio reloj; en recepción y movimientos se trabaja una estiba a la vez.
-  it("solo resurtido admite varios registros abiertos", () => {
-    expect(admiteVariosAbiertos("RESURTIDO")).toBe(true);
-    expect(admiteVariosAbiertos("RECEPCION")).toBe(false);
-    expect(admiteVariosAbiertos("MOVIMIENTO")).toBe(false);
+  // El sobrante vuelve a quien le paso el PLU a quien no le cupo todo.
+  describe("a quien vuelve el sobrante", () => {
+    const t = (usuarioId: string, orden: number) => ({ usuarioId, orden });
+
+    it("al montacarguista que se lo paso al ayudante", () => {
+      expect(quienPasoElPlu([t("monta", 1), t("ayud", 2)], "ayud")?.usuarioId).toBe("monta");
+    });
+
+    // A se lo pasa a B y B a C: lo de C vuelve a B, que es quien se lo entrego.
+    it("si paso por varias manos, al ultimo que se lo entrego", () => {
+      expect(quienPasoElPlu([t("a", 1), t("b", 2), t("c", 3)], "c")?.usuarioId).toBe("b");
+    });
+
+    // Un PLU con novedad deja dos tramos seguidos de la misma persona.
+    it("salta los tramos repetidos de quien lo tiene", () => {
+      expect(quienPasoElPlu([t("monta", 1), t("ayud", 2), t("ayud", 3)], "ayud")?.usuarioId).toBe("monta");
+    });
+
+    it("si nadie se lo paso, no hay a quien devolverlo", () => {
+      expect(quienPasoElPlu([t("monta", 1)], "monta")).toBeNull();
+    });
   });
 
   // En recepción no hay ubicación de origen que revisar: lo que puede no cuadrar

@@ -72,7 +72,7 @@ export function repartirTiempo(intervalos: readonly Intervalo[]): Reparto {
 
   const abiertos = vacio()
   let total = 0
-  let previo = eventos[0].t
+  let previo = eventos[0]!.t
 
   for (const e of eventos) {
     const trozo = (e.t - previo) / 1000
@@ -513,7 +513,7 @@ export function detectarTiemposMuertos(
   if (lista.length === 0) return []
 
   const huecos: Hueco[] = []
-  let finBloque = lista[0].b
+  let finBloque = lista[0]!.b
   for (const it of lista.slice(1)) {
     if (it.a > finBloque) {
       const seg = (it.a - finBloque) / 1000
@@ -616,8 +616,8 @@ function cubrirHueco(
   const recientes = [...tocan].sort((x, y) => y.justificadoAt.getTime() - x.justificadoAt.getTime())
   let cubierto = 0
   for (let k = 0; k < puntos.length - 1; k++) {
-    const desde = puntos[k]
-    const hasta = puntos[k + 1]
+    const desde = puntos[k]!
+    const hasta = puntos[k + 1]!
     const j = recientes.find((x) => x.inicio.getTime() <= desde && x.fin.getTime() >= hasta)
     if (!j) continue
     const seg = (hasta - desde) / 1000
@@ -685,7 +685,7 @@ export function agregarTiemposMuertos(entrada: {
         .sort((x, y) => y.seg - x.seg)
       let pendientes = segundos - cubiertos.reduce((s, c) => s + c.seg, 0)
       if (cubiertos.length > 0 && pendientes < TOLERANCIA_PENDIENTE_SEG) {
-        cubiertos[0].seg += pendientes
+        cubiertos[0]!.seg += pendientes
         pendientes = 0
       }
 

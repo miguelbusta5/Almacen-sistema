@@ -9,7 +9,7 @@ import {
 } from '../../../utils/montacargas'
 import { todayBogota } from '../../../utils/exportacionesCalc'
 import {
-  normalizarUbicacion, repartirEnCajas, validarCantidades, validarUbicacion,
+  normalizarUbicacion, quienPasoElPlu, repartirEnCajas, validarCantidades, validarUbicacion,
   validarUnidadesAlmacenadas,
 } from '../../../utils/montacargasCalc'
 
@@ -25,9 +25,10 @@ const schema = z.object({
 // aparte.
 //
 // Si no cupo todo, el registro se cierra con lo que SI se almaceno y el resto
-// nace como un registro nuevo enlazado a este, en manos del montacarguista que
-// abrio el PLU y con el reloj corriendo de nuevo: el sobrante sigue siendo
-// trabajo pendiente hasta que alguien le de una ubicacion.
+// nace como un registro nuevo enlazado a este, en manos de QUIEN LE PASO EL PLU
+// y con el reloj corriendo de nuevo: el sobrante sigue siendo trabajo pendiente
+// hasta que alguien le de una ubicacion. Si paso por varias manos, vuelve al
+// ultimo que se lo entrego, no a quien lo abrio (ver quienPasoElPlu).
 export default defineEventHandler(async (event) => {
   const actor = await requireAuth(event)
   assertUsuarioMontacargas(actor.role)
@@ -49,6 +50,7 @@ export default defineEventHandler(async (event) => {
       cajas: true, unidadesPorCaja: true, hayReguero: true, unidadesSueltas: true,
       cantidadTotal: true, plu: true, ean: true, descripcion: true,
       unidadesManuales: true, ubicacionInicial: true, creadoPorId: true,
+      tramos: { select: { usuarioId: true, orden: true, usuario: { select: { name: true } } } },
     },
   })
   if (!record || record.deletedAt) {
@@ -76,6 +78,8 @@ export default defineEventHandler(async (event) => {
   if (errCantidad) throw createError({ statusCode: 400, statusMessage: errCantidad })
 
   const sobrante = record.cantidadTotal - almacenadas
+  const paso = quienPasoElPlu(record.tramos, record.responsableId)
+  const devolverA = paso?.usuarioId ?? record.creadoPorId
 
   const now = new Date()
   const { updated, sobranteId } = await prisma.$transaction(async (tx) => {
@@ -120,16 +124,16 @@ export default defineEventHandler(async (event) => {
           fecha: todayBogota(now),
           horaInicio: now,
           origenId: id,
-          // Vuelve a quien abrio el PLU: es el montacarguista que lo tenia y el
-          // que elige donde cabe el resto.
-          creadoPorId: record.creadoPorId,
-          responsableId: record.creadoPorId,
+          // Vuelve a quien le paso el PLU: es quien lo tenia antes y quien
+          // elige donde cabe el resto. Queda como suyo, no como recibido.
+          creadoPorId: devolverA,
+          responsableId: devolverA,
           actualizadoPorId: actor.id,
         },
         select: { id: true },
       })
       // Reloj nuevo desde ya: el sobrante es trabajo que sigue corriendo.
-      await abrirTramo(tx, creado.id, record.creadoPorId, now, 1)
+      await abrirTramo(tx, creado.id, devolverA, now, 1)
       nuevoId = creado.id
     }
 
@@ -150,7 +154,7 @@ export default defineEventHandler(async (event) => {
       recordId: id,
       details: sobranteId
         ? `Ubicacion final ${ubicacionFinal} con ${almacenadas} de ${record.cantidadTotal} unidades; `
-          + `${sobrante} devueltas al montacarguista (registro ${sobranteId})`
+          + `${sobrante} devueltas a ${paso?.usuario.name ?? 'quien lo abrio'} (registro ${sobranteId})`
         : `Ubicacion final asignada: ${ubicacionFinal}`,
     },
   }).catch(() => {})
@@ -159,6 +163,8 @@ export default defineEventHandler(async (event) => {
     success: true,
     data: mapMovimientoMontacargas(updated),
     // La UI lo usa para avisar de que el sobrante volvio al montacarguista.
-    sobrante: sobranteId ? { id: sobranteId, unidades: sobrante } : null,
+    sobrante: sobranteId
+      ? { id: sobranteId, unidades: sobrante, responsableNombre: paso?.usuario.name ?? null }
+      : null,
   }
 })
