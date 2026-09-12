@@ -91,14 +91,22 @@ type OrdenConLineas = { equipo: { capacidadM3: unknown } | null; lineas: Array<{
  * Carga del equipo para una orden. Se calcula sobre las lineas de LA ORDEN
  * ABIERTA: al pasarla a inspeccion el operario descarga, asi que la capacidad
  * vuelve a cero sola, sin un campo que alguien tenga que acordarse de resetear.
+ *
+ * `equipoDelDia` es el respaldo para cuando NO hay orden abierta: sin el, la
+ * barra decia "falta medir la capacidad" con el equipo medido y asignado, solo
+ * porque la capacidad salia de orden.equipo y no habia orden. Con orden abierta
+ * manda la de la orden, que es la que quedo sellada al crearla.
  */
-export function capacidadDeOrden(orden: OrdenConLineas | null): CapacidadEquipo {
+export function capacidadDeOrden(
+  orden: OrdenConLineas | null,
+  equipoDelDia?: { capacidadM3: unknown } | null,
+): CapacidadEquipo {
   const lineas = (orden?.lineas ?? []).map((l) => ({
     volumenTotalM3: l.volumenTotalM3 == null ? null : Number(l.volumenTotalM3),
     pesoTotalKg: l.pesoTotalKg == null ? null : Number(l.pesoTotalKg),
     horaFin: l.horaFin,
   }))
-  const cap = orden?.equipo?.capacidadM3
+  const cap = orden?.equipo?.capacidadM3 ?? equipoDelDia?.capacidadM3 ?? null
   return capacidadEquipo(lineas, cap == null ? null : Number(cap))
 }
 

@@ -23,6 +23,11 @@ const NUXT_PILOT_LOGIN_URL = process.env.NUXT_PILOT_LOGIN_URL; // Login
 // variable para los tres: son el mismo deploy de nuxt-app y comparten el flujo
 // del CEDI, asi que un modulo nuevo entra sin tocar Vercel.
 const NUXT_PILOT_MONTACARGAS_URL = process.env.NUXT_PILOT_MONTACARGAS_URL;
+// Picking e Inspeccion de Muebles. Variable APARTE de la del resto del CEDI a
+// proposito: el modulo esta en prototipo y mientras esta variable no exista en
+// Vercel Production, /dashboard/picking-muebles no se sirve en produccion. Es el
+// segundo candado, ademas de que ningun usuario real tiene los roles nuevos.
+const NUXT_PILOT_MUEBLES_URL = process.env.NUXT_PILOT_MUEBLES_URL;
 
 // Todas apuntan al mismo deploy de nuxt-app (app.baseURL: '/dashboard/' compartido
 // en nuxt.config.ts) — sus assets (/_nuxt/*) y su $fetch interno a /api/* viven
@@ -30,7 +35,7 @@ const NUXT_PILOT_MONTACARGAS_URL = process.env.NUXT_PILOT_MONTACARGAS_URL;
 // IMPORTANTE: toda variable nueva tiene que entrar en esta cadena. Si fuera la única
 // definida y no estuviera aquí, no se emitirían las reglas de /dashboard/api/* ni
 // /dashboard/_nuxt/* y su página cargaría en blanco.
-const SHARED_NUXT_URL = NUXT_PILOT_URL || NUXT_PILOT_TIENDA_URL || NUXT_PILOT_GOURMET_URL || NUXT_PILOT_PREOP_URL || NUXT_PILOT_INTEGRACION_URL || NUXT_PILOT_EXPORT_URL || NUXT_PILOT_SOLICITUDES_URL || NUXT_PILOT_AUDITORIA_URL || NUXT_PILOT_USUARIOS_URL || NUXT_PILOT_LOGIN_URL || NUXT_PILOT_MONTACARGAS_URL;
+const SHARED_NUXT_URL = NUXT_PILOT_MUEBLES_URL || NUXT_PILOT_URL || NUXT_PILOT_TIENDA_URL || NUXT_PILOT_GOURMET_URL || NUXT_PILOT_PREOP_URL || NUXT_PILOT_INTEGRACION_URL || NUXT_PILOT_EXPORT_URL || NUXT_PILOT_SOLICITUDES_URL || NUXT_PILOT_AUDITORIA_URL || NUXT_PILOT_USUARIOS_URL || NUXT_PILOT_LOGIN_URL || NUXT_PILOT_MONTACARGAS_URL;
 
 // Cabeceras de seguridad. La app no tenia ninguna: sin ellas el navegador no
 // impide que la pongan en un iframe (clickjacking sobre una sesion abierta), ni
@@ -113,6 +118,14 @@ const nextConfig: NextConfig = {
         beforeFiles.push(
           { source: `/dashboard/${modulo}`, destination: `${NUXT_PILOT_MONTACARGAS_URL}/dashboard/${modulo}` },
           { source: `/dashboard/${modulo}/:path*`, destination: `${NUXT_PILOT_MONTACARGAS_URL}/dashboard/${modulo}/:path*` },
+        );
+      }
+    }
+    if (NUXT_PILOT_MUEBLES_URL) {
+      for (const modulo of ["picking-muebles", "inspeccion-muebles"]) {
+        beforeFiles.push(
+          { source: `/dashboard/${modulo}`, destination: `${NUXT_PILOT_MUEBLES_URL}/dashboard/${modulo}` },
+          { source: `/dashboard/${modulo}/:path*`, destination: `${NUXT_PILOT_MUEBLES_URL}/dashboard/${modulo}/:path*` },
         );
       }
     }

@@ -4,7 +4,7 @@ import {
   ShieldCheck, Store, GitMerge, ScanLine, Forklift, PackageOpen, Tags, Globe, FileText, Truck,
   BarChart3, Users, ScrollText, Search, Bell, CheckCircle2, TriangleAlert, Container,
   Menu, X, LogOut, KeyRound, CornerDownLeft, Inbox, ClipboardList, PackageSearch, BellRing,
-  ChartColumnIncreasing,
+  ChartColumnIncreasing, Hammer, ClipboardCheck,
 } from '@lucide/vue'
 import { ensureSession, useSessionState } from '~/composables/useSession'
 import { useToastState } from '~/composables/useToast'
@@ -64,6 +64,8 @@ const NAV_GROUPS: NavGroup[] = [
       { icon: Forklift, label: 'Control Montacargas', href: '/dashboard/control-montacargas', key: 'control-montacargas', moduleKey: 'control-montacargas' },
       { icon: PackageOpen, label: 'Resurtido', href: '/dashboard/resurtido', key: 'resurtido', moduleKey: 'resurtido' },
       { icon: ScanLine, label: 'Cargue Gourmet', href: '/dashboard/cargue-gourmet', key: 'cargue-gourmet', moduleKey: 'cargue-gourmet' },
+      { icon: Hammer, label: 'Picking Muebles', href: '/dashboard/picking-muebles', key: 'picking-muebles', moduleKey: 'picking-muebles' },
+      { icon: ClipboardCheck, label: 'Inspección Muebles', href: '/dashboard/inspeccion-muebles', key: 'inspeccion-muebles', moduleKey: 'inspeccion-muebles' },
     ],
   },
   {

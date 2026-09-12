@@ -15,7 +15,7 @@ export default defineEventHandler(async (event) => {
     data: {
       orden: orden ? mapOrdenMuebles(orden) : null,
       equipo: equipo ? mapEquipoMuebles(equipo) : null,
-      capacidad: capacidadDeOrden(orden),
+      capacidad: capacidadDeOrden(orden, equipo),
     },
   }
 })

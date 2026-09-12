@@ -1,5 +1,118 @@
 # Decisiones de Arquitectura y Producto
 
+## 2026-09-12 - Picking e Inspeccion de Muebles (PROTOTIPO, no desplegado)
+
+Dos modulos nuevos para el area de Muebles, que hasta hoy trabajaba sin ninguna
+medicion: nadie sabia cuanto tarda un PLU, cuanta carga lleva el equipo de
+altura, ni cuanto tiempo pasa un mueble en ebanisteria.
+
+**Estado: prototipo.** No sale a produccion hasta validarlo en el area. Dos
+candados, no uno: ningun usuario real tiene los roles nuevos, y las rutas viven
+en Nuxt detras de `NUXT_PILOT_MUEBLES_URL`, que NO esta configurada en Vercel
+Production (sin ella, /dashboard/picking-muebles da 404 alli).
+
+### Cinco relojes, no uno
+
+| Reloj | Arranca | Para |
+|---|---|---|
+| Orden - picking | crear la orden | pasar a inspeccion |
+| PLU - picking | escanear el PLU | escanear el QR del rotulo |
+| Orden - inspeccion | pasar a inspeccion | ultimo PLU listo |
+| PLU - inspeccion | el inspector selecciona el PLU | marcar completado |
+| PLU - ebanisteria | enviar al taller | marcar entregado |
+
+Los dos de la orden se encadenan en la MISMA transaccion: si fueran dos llamadas
+quedaria un hueco de tiempo sin dueno entre que el operario suelta la orden y el
+area la recibe.
+
+La ventana de ebanisteria se DESCUENTA del tiempo de inspeccion del PLU
+(`duracionInspeccionNetaMinutos`): mientras el mueble esta en el taller nadie lo
+esta inspeccionando, y cargarle ese rato al inspector falsea su productividad.
+Mismo criterio que la ventana de novedad en montacargas, que tampoco se cronometra.
+
+Ninguna duracion se persiste: se calculan en `mapRow`, igual que en
+Exportaciones. Las horas las sella siempre el servidor.
+
+### El maestro ya existia sin que nadie lo leyera
+
+`medidas_caja_master` (una fila por PARTE, con el volumen ya sellado al importar)
+y `medidas_producto` estaban en el schema desde la medicion de productos, pero
+ningun modulo las consultaba. `maestroMuebles.ts` las agrega por PLU: partes =
+numero de filas de medida, volumen y peso = suma de las partes.
+
+`partes` sale de contar las filas reales y no del campo declarado en
+`medidas_producto`: el propio schema advierte que no siempre coinciden, y lo que
+el operario tiene delante son las cajas que existen.
+
+Peso, volumen y partes se COPIAN a la linea al escanear el PLU y se sellan alli.
+Corregir el maestro despues no debe mover en silencio una capacidad ya calculada
+— mismo criterio por el que `volumen_m3` se sella al importar.
+
+Un PLU sin medir deja los totales en NULL, nunca en cero: un cero diria que el
+mueble no ocupa nada. La UI cuenta esas lineas y avisa de que el porcentaje va
+corto.
+
+### La capacidad no tiene campo que resetear
+
+Se calcula sobre las lineas cerradas de la ORDEN ABIERTA. Al pasar la orden a
+inspeccion el operario descarga el equipo, y como ya no hay orden abierta, la
+capacidad vuelve a cero sola. Un contador persistido habria que acordarse de
+ponerlo a cero, y el dia que alguien olvide hacerlo el dato queda mintiendo.
+
+Se muestra % y m3. Con el equipo sin medir (el Order Picker y el Genie estan
+pendientes de medicion) se muestran los m3 SIN porcentaje: un dato falso es peor
+que uno ausente cuando el operario decide si le cabe algo mas. La capacidad es
+configuracion (`equipos_muebles.capacidad_m3`), no codigo.
+
+### Inspeccion: un login, cinco personas
+
+El area tiene 2 PCs para ~5 inspectores, asi que un usuario por persona no es
+viable. Se resuelve con un **catalogo de inspectores** (tabla `Inspector`, sin
+contrasena) y un desplegable: la trazabilidad del tiempo la da el catalogo, no la
+autenticacion.
+
+Consecuencia asumida: cualquiera con ese login puede registrar tiempo a nombre de
+otro. Si algun dia importa, el paso siguiente es un PIN por inspector, sin tocar
+el modelo de datos.
+
+**Salir de una orden NO existe como endpoint.** Salir es solo navegar: todo el
+estado vive en la DB, asi que un inspector puede dejarle la PC a otro y volver a
+encontrar su orden en el punto exacto en que la dejo. Si hubiera un endpoint de
+"salir" que tocara relojes, un inspector dejaria a otro sin su tiempo. Hay un
+test que verifica que ese archivo no exista.
+
+El inspector activo se recuerda en `sessionStorage` de esa PC como comodidad para
+no reelegir el nombre en cada accion, no como sesion. Los botones no se
+deshabilitan sin nombre elegido: pulsarlos abre el selector y luego ejecutan la
+accion, que en una PC compartida ahorra un paso que no aporta nada.
+
+### Reglas del flujo
+
+- Una sola orden abierta por operario; sin equipo asignado hoy no se abre ninguna.
+- Un PLU = una linea por orden (el duplicado se rechaza).
+- No se escanea otro PLU con uno en curso, ni se pasa a inspeccion con uno a medias.
+- El codigo de orden EXIGE prefijo TSDM/OVDM. A diferencia de Gourmet, que acepta
+  cualquier texto y cae a OVDM, aqui el codigo es la llave unica del modulo: una
+  orden mal escrita crea una orden fantasma que nadie encuentra en NetSuite.
+- El rotulo se guarda tal cual (hoy son codigos tipo "M123134"): el formato no
+  esta cerrado y bloquear al operario por un patron que no conocemos cuesta mas
+  de lo que evita. La ubicacion, igual: texto libre de la pistola.
+- Un faltante NO bloquea la orden. Nace sin dueno y lo asigna un supervisor:
+  quien esta libre lo sabe el, no el inspector.
+- Escaneo con pistola en modo teclado, sin camara. Los cuatro campos avanzan el
+  foco solos.
+
+### Donde vive
+
+Logica pura en `src/lib/pickingMuebles.ts` (fuente de verdad, testeada) con copia
+en `nuxt-app/server/utils/mueblesCalc.ts` y guard de sincronia en
+`src/__tests__/mueblesNuxt.test.ts`, igual que montacargas y resurtido.
+
+Ojo: el schema esta DUPLICADO (`prisma/schema.prisma` y
+`nuxt-app/prisma/schema.prisma`). Hay que tocar los dos o el cliente de Nitro se
+genera sin los modelos nuevos.
+
+
 ## 2026-09-08 - Montacargas: reloj desde el PLU, ayudantes y novedades
 
 ### El reloj arranca al digitar el PLU
