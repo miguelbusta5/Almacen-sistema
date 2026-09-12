@@ -4,6 +4,7 @@
 
 export const API_INDICADORES = '/api/indicadores'
 export const API_TIEMPOS_MUERTOS = '/api/indicadores/tiempos-muertos'
+export const API_TURNOS = '/api/turnos'
 
 // Mismo orden y mismas etiquetas que src/lib/indicadores.ts (hay un test que
 // lo comprueba). El orden fija el color: nunca se reparte por posicion.
@@ -49,6 +50,14 @@ export interface IndicadorPersona {
   plus: number
   unidadesPorHora: number | null
   promedioPorPlu: number | null
+  /** Lo que dice el cuadro de turnos que debía trabajar. 0 sin cuadro. */
+  jornadaSegundos: number
+  /** De su tiempo real, lo que cayó dentro del turno. */
+  segundosEnTurno: number
+  /** Porcentaje de la jornada con trabajo registrado. Null sin cuadro. */
+  efectividad: number | null
+  /** Su evolución: un punto por día del periodo. */
+  porDia: { dia: string; segundos: number; unidades: number }[]
 }
 
 export interface IndicadoresPeriodo {
@@ -62,6 +71,9 @@ export interface IndicadoresPeriodo {
     registros: number
     unidadesPorHora: number | null
     personas: number
+    jornadaSegundos: number
+    segundosEnTurno: number
+    efectividad: number | null
   }
   personas: IndicadorPersona[]
   porDia: { dia: string; segundos: number; unidades: number }[]
@@ -102,6 +114,38 @@ export interface FilaApilada {
   texto: string
   segmentos: { key: string; valor: number; color: string }[]
   tooltip: FilaTooltip[]
+  /** Referencia detras de la barra (la jornada del turno), si se conoce. */
+  fondo?: number
+}
+
+// ── Cuadro de turnos ────────────────────────────────────────────────
+export const DIA_SEMANA_LABEL = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado']
+
+export interface CuadroTurnosDTO {
+  id: string
+  nombreArchivo: string
+  desde: string
+  hasta: string
+  vigente: boolean
+  subidoPor: string
+  subidoAt: string
+  personas: { id: string; nombre: string; dias: { dia: number; inicioMin: number; finMin: number }[] }[]
+  /** Quien se mide y no tiene turno en ese cuadro. */
+  sinTurno: string[]
+}
+
+/** 930 → "3:30 pm". Como lo escribe operación en el cuadro. */
+export function fmtHoraTurno(minutos: number): string {
+  const h24 = Math.floor(minutos / 60) % 24
+  const m = minutos % 60
+  const ampm = h24 < 12 ? 'am' : 'pm'
+  const h = h24 % 12 === 0 ? 12 : h24 % 12
+  return `${h}${m ? `:${String(m).padStart(2, '0')}` : ''} ${ampm}`
+}
+
+/** El turno de un día, ya legible: "6 am – 3:30 pm". */
+export function fmtTurno(t: { inicioMin: number; finMin: number }): string {
+  return `${fmtHoraTurno(t.inicioMin)} – ${fmtHoraTurno(t.finMin)}`
 }
 
 /** Punto donde anclar el tooltip cuando llega por teclado (sin raton). */
@@ -258,6 +302,8 @@ export interface TiempoMuertoDetalle {
 export interface TiemposMuertosPeriodo {
   minimoSegundos: number
   maximoSegundos: number
+  /** Hay cuadro de turnos: los huecos van acotados a la jornada. */
+  conTurnos: boolean
   resumen: {
     segundos: number
     justificados: number

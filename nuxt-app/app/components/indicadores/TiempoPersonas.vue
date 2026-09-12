@@ -16,13 +16,21 @@ import {
 const props = defineProps<{ personas: IndicadorPersona[] }>()
 
 const tipos = computed(() => TIPOS_TAREA.filter((t) => props.personas.some((p) => p.porTipo[t] > 0)))
-const eje = computed(() => ejeDeTiempo(Math.max(0, ...props.personas.map((p) => p.segundos))))
+// Hay cuadro de turnos: la barra se lee contra la jornada de cada uno.
+const conTurnos = computed(() => props.personas.some((p) => p.jornadaSegundos > 0))
+const eje = computed(() => ejeDeTiempo(
+  Math.max(0, ...props.personas.map((p) => Math.max(p.segundos, p.jornadaSegundos))),
+))
 
 const filas = computed<FilaApilada[]>(() => props.personas.map((p) => {
   const tooltip: FilaTooltip[] = TIPOS_TAREA.filter((t) => p.porTipo[t] > 0).map((t) => ({
     color: TIPO_TAREA_COLOR[t], etiqueta: TIPO_TAREA_LABEL[t], valor: fmtTiempo(p.porTipo[t]),
   }))
   tooltip.push({ etiqueta: 'tiempo real laborado', valor: fmtTiempo(p.segundos) })
+  if (p.jornadaSegundos > 0) {
+    tooltip.push({ etiqueta: 'de turno', valor: fmtTiempo(p.jornadaSegundos) })
+    tooltip.push({ etiqueta: 'efectividad del turno', valor: `${p.efectividad ?? 0} %` })
+  }
   if (p.sumaRelojes > p.segundos) {
     tooltip.push({ etiqueta: 'si se sumaran sus relojes', valor: fmtTiempo(p.sumaRelojes) })
   }
@@ -30,7 +38,10 @@ const filas = computed<FilaApilada[]>(() => props.personas.map((p) => {
     id: p.id,
     etiqueta: p.nombre,
     total: p.segundos,
-    texto: fmtTiempo(p.segundos),
+    fondo: p.jornadaSegundos || undefined,
+    texto: p.jornadaSegundos > 0
+      ? `${fmtTiempo(p.segundos)} · ${p.efectividad ?? 0} %`
+      : fmtTiempo(p.segundos),
     segmentos: TIPOS_TAREA.map((t) => ({ key: t, valor: p.porTipo[t], color: TIPO_TAREA_COLOR[t] })),
     tooltip,
   }
@@ -41,6 +52,13 @@ const columnas = computed<ColumnaTabla[]>(() => [
   { key: 'nombre', label: 'Persona' },
   { key: 'rol', label: 'Rol' },
   { key: 'real', label: 'Tiempo real', num: true },
+  ...(conTurnos.value
+    ? [
+      { key: 'jornada', label: 'Turno', num: true },
+      { key: 'enTurno', label: 'En turno', num: true },
+      { key: 'efect', label: 'Efectividad', num: true },
+    ]
+    : []),
   { key: 'suma', label: 'Suma de relojes', num: true },
   { key: 'dif', label: 'Contado de más', num: true },
   ...tipos.value.map((t) => ({ key: t, label: TIPO_TAREA_LABEL[t], num: true })),
@@ -53,6 +71,9 @@ const tabla = computed(() => props.personas.map((p) => ({
   nombre: p.nombre,
   rol: ROL_MEDIDO_LABEL[p.rol] ?? p.rol,
   real: fmtTiempo(p.segundos),
+  jornada: p.jornadaSegundos ? fmtTiempo(p.jornadaSegundos) : '—',
+  enTurno: p.jornadaSegundos ? fmtTiempo(p.segundosEnTurno) : '—',
+  efect: p.efectividad === null ? '—' : `${p.efectividad} %`,
   suma: fmtTiempo(p.sumaRelojes),
   dif: p.sumaRelojes > p.segundos ? `+${fmtPorcentaje(p.sumaRelojes - p.segundos, p.segundos)}` : '—',
   ...Object.fromEntries(tipos.value.map((t) => [t, p.porTipo[t] > 0 ? fmtTiempo(p.porTipo[t]) : '—'])),
@@ -66,13 +87,16 @@ const tabla = computed(() => props.personas.map((p) => ({
 <template>
   <IndicadoresTarjeta
     titulo="Tiempo por persona"
-    subtitulo="Tiempo real con al menos un PLU en la mano. Varios PLUs a la vez cuentan una sola vez."
+    :subtitulo="conTurnos
+      ? 'Tiempo real con al menos un PLU en la mano, sobre la jornada de su turno. Varios PLUs a la vez cuentan una sola vez.'
+      : 'Tiempo real con al menos un PLU en la mano. Varios PLUs a la vez cuentan una sola vez.'"
   >
     <template #leyenda>
       <ul class="leyenda" aria-label="Tipos de tarea">
         <li v-for="t in tipos" :key="t">
           <span class="sw" :style="{ background: TIPO_TAREA_COLOR[t] }" />{{ TIPO_TAREA_LABEL[t] }}
         </li>
+        <li v-if="conTurnos"><span class="sw sw-jornada" />Jornada del turno</li>
       </ul>
     </template>
 
@@ -88,4 +112,5 @@ const tabla = computed(() => props.personas.map((p) => ({
 .leyenda { display: flex; flex-wrap: wrap; gap: 6px 16px; margin: 0 0 14px; padding: 0; list-style: none; }
 .leyenda li { display: flex; align-items: center; gap: 7px; font-size: 12.5px; color: var(--ink-2); }
 .sw { width: 10px; height: 10px; border-radius: 2px; flex: none; }
+.sw-jornada { background: var(--surface-3); border: 1px solid var(--border-strong); }
 </style>

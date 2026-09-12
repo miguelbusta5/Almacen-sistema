@@ -201,6 +201,52 @@ export interface UnidadesRegistradas {
   unidades: number;
 }
 
+/**
+ * El turno de una persona un día concreto: contra esto se mide la efectividad.
+ *
+ * Sale del cuadro de turnos (src/lib/turnos.ts). Sin cuadro no hay ventana, y
+ * entonces solo se puede decir cuánto trabajó, no qué parte de su jornada fue.
+ */
+export interface VentanaTurno {
+  usuarioId: string;
+  /** Día de Bogotá al que pertenece el turno (el que empieza). */
+  dia: string;
+  inicio: Date;
+  fin: Date;
+}
+
+/** Intervalos ordenados y unidos: los ratos en que hubo trabajo, sin repetir. */
+function bloquesDeTrabajo(intervalos: readonly { inicio: Date; fin: Date }[]): { a: number; b: number }[] {
+  const lista = intervalos
+    .filter((i) => i.fin.getTime() > i.inicio.getTime())
+    .map((i) => ({ a: i.inicio.getTime(), b: i.fin.getTime() }))
+    .sort((x, y) => x.a - y.a);
+  const bloques: { a: number; b: number }[] = [];
+  for (const it of lista) {
+    const ultimo = bloques[bloques.length - 1];
+    if (ultimo && it.a <= ultimo.b) ultimo.b = Math.max(ultimo.b, it.b);
+    else bloques.push({ ...it });
+  }
+  return bloques;
+}
+
+/** Segundos de trabajo que caen DENTRO del turno. */
+export function segundosEnVentanas(
+  intervalos: readonly { inicio: Date; fin: Date }[],
+  ventanas: readonly { inicio: Date; fin: Date }[],
+): number {
+  const bloques = bloquesDeTrabajo(intervalos);
+  let total = 0;
+  for (const v of ventanas) {
+    for (const b of bloques) {
+      const a = Math.max(b.a, v.inicio.getTime());
+      const z = Math.min(b.b, v.fin.getTime());
+      if (z > a) total += (z - a) / 1000;
+    }
+  }
+  return Math.round(total);
+}
+
 export interface IndicadorPersona {
   id: string;
   nombre: string;
@@ -214,6 +260,14 @@ export interface IndicadorPersona {
   plus: number;
   unidadesPorHora: number | null;
   promedioPorPlu: number | null;
+  /** Lo que dice el cuadro de turnos que debía trabajar en el periodo. */
+  jornadaSegundos: number;
+  /** De su tiempo real, lo que cayó dentro del turno. */
+  segundosEnTurno: number;
+  /** Porcentaje de la jornada con trabajo registrado. Null sin turno cargado. */
+  efectividad: number | null;
+  /** Su evolución: un punto por día del periodo, también los que no trabajó. */
+  porDia: { dia: string; segundos: number; unidades: number }[];
 }
 
 export interface IndicadoresPeriodo {
@@ -230,6 +284,9 @@ export interface IndicadoresPeriodo {
     registros: number;
     unidadesPorHora: number | null;
     personas: number;
+    jornadaSegundos: number;
+    segundosEnTurno: number;
+    efectividad: number | null;
   };
   personas: IndicadorPersona[];
   porDia: { dia: string; segundos: number; unidades: number }[];
@@ -274,11 +331,26 @@ export function agregarIndicadores(entrada: {
   personas: readonly PersonaMedida[];
   tiempos: readonly TiempoRegistrado[];
   unidades: readonly UnidadesRegistradas[];
+  /** Turnos del periodo, si hay cuadro cargado. */
+  ventanas?: readonly VentanaTurno[];
   desde: string;
   hasta: string;
 }): IndicadoresPeriodo {
   const { inicio: ini, fin } = limitesRango(entrada.desde, entrada.hasta);
   const medidas = new Map(entrada.personas.map((p) => [p.id, p]));
+
+  // La jornada se recorta al periodo: un turno de noche que empieza el último
+  // día no cuenta entero si el rango termina a medianoche.
+  const ventanasPorPersona = new Map<string, { inicio: Date; fin: Date }[]>();
+  for (const v of entrada.ventanas ?? []) {
+    if (!medidas.has(v.usuarioId)) continue;
+    const a = Math.max(v.inicio.getTime(), ini.getTime());
+    const b = Math.min(v.fin.getTime(), fin.getTime());
+    if (b <= a) continue;
+    const lista = ventanasPorPersona.get(v.usuarioId) ?? [];
+    lista.push({ inicio: new Date(a), fin: new Date(b) });
+    ventanasPorPersona.set(v.usuarioId, lista);
+  }
 
   interface Acc {
     intervalos: Intervalo[];
@@ -313,6 +385,7 @@ export function agregarIndicadores(entrada: {
   }
 
   const unidadesPorDia = new Map<string, number>();
+  const unidadesPersonaDia = new Map<string, Map<string, number>>();
   for (const u of entrada.unidades) {
     if (!medidas.has(u.usuarioId)) continue;
     const t = u.cuando.getTime();
@@ -320,7 +393,12 @@ export function agregarIndicadores(entrada: {
     de(u.usuarioId).unidades += u.unidades;
     const dia = diaBogota(u.cuando);
     unidadesPorDia.set(dia, (unidadesPorDia.get(dia) ?? 0) + u.unidades);
+    const suyas = unidadesPersonaDia.get(u.usuarioId) ?? new Map<string, number>();
+    suyas.set(dia, (suyas.get(dia) ?? 0) + u.unidades);
+    unidadesPersonaDia.set(u.usuarioId, suyas);
   }
+
+  const dias = diasDelRango(entrada.desde, entrada.hasta);
 
   const porTipo = vacio();
   const segundosPorDia = new Map<string, number>();
@@ -341,12 +419,20 @@ export function agregarIndicadores(entrada: {
         porDia.set(parte.dia, lista);
       }
     }
+    const suyosPorDia = new Map<string, number>();
     for (const [dia, ints] of porDia) {
-      segundosPorDia.set(dia, (segundosPorDia.get(dia) ?? 0) + repartirTiempo(ints).total);
+      const seg = repartirTiempo(ints).total;
+      suyosPorDia.set(dia, seg);
+      segundosPorDia.set(dia, (segundosPorDia.get(dia) ?? 0) + seg);
     }
 
     if (reparto.total === 0 && a.unidades === 0) continue;
     const relojes = [...a.relojes.values()];
+    const ventanas = ventanasPorPersona.get(id) ?? [];
+    const jornadaSegundos = Math.round(
+      ventanas.reduce((s, v) => s + (v.fin.getTime() - v.inicio.getTime()) / 1000, 0),
+    );
+    const segundosEnTurno = ventanas.length > 0 ? segundosEnVentanas(a.intervalos, ventanas) : 0;
     personas.push({
       id,
       nombre: persona.nombre,
@@ -358,6 +444,16 @@ export function agregarIndicadores(entrada: {
       plus: relojes.length,
       unidadesPorHora: unidadesPorHora(a.unidades, reparto.total - reparto.porTipo.contenedor),
       promedioPorPlu: promedio(relojes),
+      jornadaSegundos,
+      segundosEnTurno,
+      efectividad: jornadaSegundos > 0 ? Math.round((segundosEnTurno / jornadaSegundos) * 100) : null,
+      // La evolución es de cada persona: la del equipo sumaba horas de gente
+      // distinta y daba más que cualquier turno.
+      porDia: dias.map((dia) => ({
+        dia,
+        segundos: suyosPorDia.get(dia) ?? 0,
+        unidades: unidadesPersonaDia.get(id)?.get(dia) ?? 0,
+      })),
     });
   }
   personas.sort((x, y) => y.segundos - x.segundos || x.nombre.localeCompare(y.nombre));
@@ -374,9 +470,15 @@ export function agregarIndicadores(entrada: {
       registros: registros.size,
       unidadesPorHora: unidadesPorHora(unidadesTotal, sumar((p) => p.segundos - p.porTipo.contenedor)),
       personas: personas.length,
+      jornadaSegundos: sumar((p) => p.jornadaSegundos),
+      segundosEnTurno: sumar((p) => p.segundosEnTurno),
+      // Una razón, no una suma de horas: cuánto del turno del equipo fue trabajo.
+      efectividad: sumar((p) => p.jornadaSegundos) > 0
+        ? Math.round((sumar((p) => p.segundosEnTurno) / sumar((p) => p.jornadaSegundos)) * 100)
+        : null,
     },
     personas,
-    porDia: diasDelRango(entrada.desde, entrada.hasta).map((dia) => ({
+    porDia: dias.map((dia) => ({
       dia,
       segundos: segundosPorDia.get(dia) ?? 0,
       unidades: unidadesPorDia.get(dia) ?? 0,
@@ -513,10 +615,7 @@ export function detectarTiemposMuertos(
   minimoSeg: number = MIN_TIEMPO_MUERTO_SEG,
   maximoSeg: number = MAX_HUECO_EN_TURNO_SEG,
 ): Hueco[] {
-  const lista = intervalos
-    .filter((it) => it.fin.getTime() > it.inicio.getTime())
-    .map((it) => ({ a: it.inicio.getTime(), b: it.fin.getTime() }))
-    .sort((x, y) => x.a - y.a);
+  const lista = bloquesDeTrabajo(intervalos);
   if (lista.length === 0) return [];
 
   const huecos: Hueco[] = [];
@@ -533,6 +632,39 @@ export function detectarTiemposMuertos(
       finBloque = it.b;
     }
   }
+  return huecos;
+}
+
+/**
+ * Los ratos parados DENTRO del turno, cuando hay cuadro cargado.
+ *
+ * Aquí sí cuenta lo de antes del primer PLU y lo de después del último: con el
+ * turno delante se sabe que la persona ya había entrado o todavía no se había
+ * ido. Así el tiempo muerto y el trabajado suman exactamente la jornada.
+ */
+export function huecosEnVentana(
+  intervalos: readonly Intervalo[],
+  ventana: { dia: string; inicio: Date; fin: Date },
+  minimoSeg: number = MIN_TIEMPO_MUERTO_SEG,
+): Hueco[] {
+  const a = ventana.inicio.getTime();
+  const b = ventana.fin.getTime();
+  const bloques = bloquesDeTrabajo(intervalos)
+    .map((x) => ({ a: Math.max(x.a, a), b: Math.min(x.b, b) }))
+    .filter((x) => x.b > x.a);
+
+  const huecos: Hueco[] = [];
+  const apuntar = (desde: number, hasta: number) => {
+    if ((hasta - desde) / 1000 >= minimoSeg) {
+      huecos.push({ dia: ventana.dia, inicio: new Date(desde), fin: new Date(hasta) });
+    }
+  };
+  let cursor = a;
+  for (const bloque of bloques) {
+    apuntar(cursor, bloque.a);
+    cursor = Math.max(cursor, bloque.b);
+  }
+  apuntar(cursor, b);
   return huecos;
 }
 
@@ -585,6 +717,8 @@ export interface TiemposMuertosPeriodo {
   minimoSegundos: number;
   /** Desde aquí, un hueco es cambio de turno y no tiempo muerto. */
   maximoSegundos: number;
+  /** Hay cuadro de turnos: los huecos van acotados a la jornada. */
+  conTurnos: boolean;
   resumen: {
     segundos: number;
     justificados: number;
@@ -644,6 +778,8 @@ export function agregarTiemposMuertos(entrada: {
   personas: readonly PersonaMedida[];
   tiempos: readonly TiempoRegistrado[];
   justificaciones: readonly JustificacionTiempoMuerto[];
+  /** Turnos del periodo, si hay cuadro cargado. */
+  ventanas?: readonly VentanaTurno[];
   desde: string;
   hasta: string;
   minimoSeg?: number;
@@ -663,6 +799,17 @@ export function agregarTiemposMuertos(entrada: {
     lista.push({ inicio: new Date(a), fin: new Date(b), tipo: t.tipo });
     intervalos.set(t.usuarioId, lista);
   }
+  const ventanasPorPersona = new Map<string, VentanaTurno[]>();
+  for (const v of entrada.ventanas ?? []) {
+    if (!medidas.has(v.usuarioId)) continue;
+    const a = Math.max(v.inicio.getTime(), ini.getTime());
+    const b = Math.min(v.fin.getTime(), fin.getTime());
+    if (b <= a) continue;
+    const lista = ventanasPorPersona.get(v.usuarioId) ?? [];
+    lista.push({ ...v, inicio: new Date(a), fin: new Date(b) });
+    ventanasPorPersona.set(v.usuarioId, lista);
+  }
+
   const justPorPersona = new Map<string, JustificacionTiempoMuerto[]>();
   for (const j of entrada.justificaciones) {
     const lista = justPorPersona.get(j.usuarioId) ?? [];
@@ -682,7 +829,13 @@ export function agregarTiemposMuertos(entrada: {
       segundos: 0, justificados: 0, sinJustificacion: 0, pendientes: 0, cantidad: 0,
     };
 
-    for (const h of detectarTiemposMuertos(ints, minimo, maximo)) {
+    // Con turno se mide contra la jornada (entra lo de antes del primer PLU y
+    // lo de después del último); sin turno, solo los huecos entre PLUs.
+    const ventanas = ventanasPorPersona.get(id) ?? [];
+    const huecos = ventanas.length > 0
+      ? ventanas.flatMap((v) => huecosEnVentana(ints, v, minimo))
+      : detectarTiemposMuertos(ints, minimo, maximo);
+    for (const h of huecos) {
       const segundos = Math.round((h.fin.getTime() - h.inicio.getTime()) / 1000);
       const { porJustificacion } = cubrirHueco(h, justs);
       // Segundos enteros por justificación, y la mayor recibe el resto del
@@ -739,6 +892,7 @@ export function agregarTiemposMuertos(entrada: {
   return {
     minimoSegundos: minimo,
     maximoSegundos: maximo,
+    conTurnos: (entrada.ventanas?.length ?? 0) > 0,
     resumen: {
       segundos: sumar((p) => p.segundos),
       justificados: sumar((p) => p.justificados),

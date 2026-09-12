@@ -53,7 +53,7 @@ describe("indicadores — el endpoint", () => {
 
   // La cuenta vive en la funcion pura (con tests); el endpoint solo junta filas.
   it("la cuenta la hace agregarIndicadores", () => {
-    expect(api).toContain("agregarIndicadores({ personas, tiempos, unidades, desde, hasta })");
+    expect(api).toContain("agregarIndicadores({ personas, tiempos, unidades, ventanas, desde, hasta })");
     expect(api).not.toContain("repartirTiempo(");
   });
 
@@ -187,7 +187,7 @@ describe("tiempos muertos — el endpoint de indicadores", () => {
 
   // Lo que sigue en curso no es tiempo laborado, pero tampoco tiempo muerto.
   it("lo abierto solo sirve para no inventar huecos", () => {
-    expect(api).toContain("data: agregarIndicadores({ personas, tiempos, unidades, desde, hasta })");
+    expect(api).toContain("data: agregarIndicadores({ personas, tiempos, unidades, ventanas, desde, hasta })");
     expect(api).toContain("tiempos: [...tiempos, ...enCurso]");
   });
 
@@ -280,5 +280,80 @@ describe("tiempos muertos — la pantalla", () => {
     ]) {
       expect(leer(rel)).not.toContain("v-html");
     }
+  });
+});
+
+describe("cuadro de turnos — la copia de Nitro es la fuente sin punto y coma", () => {
+  it("el cuerpo es identico", () => {
+    const cuerpo = (src: string) => src.split("\n\n").slice(1).join("\n\n").replace(/;\n/g, "\n");
+    expect(cuerpo(leer("nuxt-app/server/utils/turnosCalc.ts")).replace(/from '\.\/excel'/, 'from "./excel"'))
+      .toBe(cuerpo(leer("src/lib/turnos.ts")));
+  });
+});
+
+describe("cuadro de turnos — subirlo y usarlo", () => {
+  const post = leer("nuxt-app/server/api/turnos/index.post.ts");
+  const api = leer("nuxt-app/server/api/indicadores/index.get.ts");
+
+  it("solo supervision lo sube, y se guarda para un rango de fechas", () => {
+    expect(post).toContain("assertGestorMontacargas(actor.role");
+    expect(post).toContain("mapCuadroTurnos(worksheetRows(hoja))");
+    expect(post).toContain("cuadroTurnos.create");
+  });
+
+  // Cargarle el turno a quien no es seria peor que no cargarlo: los nombres que
+  // no casan se devuelven para que operacion los revise.
+  it("avisa de a quien no pudo identificar", () => {
+    expect(post).toContain("emparejarUsuario(fila.nombre, emparejables)");
+    expect(post).toContain("sinIdentificar");
+    expect(post).toContain("noMedidos");
+  });
+
+  // Subir uno corregido no obliga a borrar el anterior.
+  it("cada dia usa el cuadro mas reciente que lo cubra", () => {
+    expect(api).toContain("orderBy: { createdAt: 'desc' }");
+    expect(api).toContain("const cuadro = cuadros.find(");
+    expect(api).toContain("ventanaTurno(dia, { inicioMin: t.inicioMin, finMin: t.finMin })");
+  });
+
+  it("la jornada y la efectividad van con los indicadores y los tiempos muertos", () => {
+    expect(api).toContain("agregarIndicadores({ personas, tiempos, unidades, ventanas, desde, hasta })");
+    expect(api).toContain("justificaciones, ventanas, desde, hasta");
+  });
+
+  it("las tablas estan en los dos schemas, en un script aditivo y con RLS", () => {
+    for (const rel of ["prisma/schema.prisma", "nuxt-app/prisma/schema.prisma"]) {
+      expect(leer(rel)).toContain("model CuadroTurnos {");
+      expect(leer(rel)).toContain("model TurnoOperario {");
+    }
+    const sql = leer("prisma/migrate-cuadro-turnos.sql");
+    expect(sql).toContain("CREATE TABLE IF NOT EXISTS cuadros_turno");
+    expect(sql).toContain("ALTER TABLE turnos_operario ENABLE ROW LEVEL SECURITY");
+  });
+});
+
+describe("indicadores — nada de sumar horas de varias personas", () => {
+  const modulo = leer("nuxt-app/app/components/indicadores/Module.vue");
+
+  // La suma de las horas de todos da mas que cualquier turno y no se puede leer.
+  it("la cifra grande es la efectividad, o el tiempo de una sola persona", () => {
+    expect(modulo).toContain("label: 'Efectividad del turno'");
+    expect(modulo).toContain("label: `Tiempo real de ${p.nombre}`");
+    expect(modulo).not.toContain("fmtTiempo(resumen!.segundos)");
+  });
+
+  it("la evolucion diaria es por persona", () => {
+    expect(modulo).toContain("<IndicadoresEvolucionPersonas");
+    const evo = leer("nuxt-app/app/components/indicadores/EvolucionPersonas.vue");
+    // Mismo tope en todas: si cada una se escala a lo suyo, no se comparan.
+    expect(evo).toContain(":maximo=\"tope\"");
+    expect(evo).toContain("<template #tabla>");
+  });
+
+  // La barra de cada persona se lee contra su jornada.
+  it("el tiempo por persona se compara con su turno", () => {
+    const tp = leer("nuxt-app/app/components/indicadores/TiempoPersonas.vue");
+    expect(tp).toContain("fondo: p.jornadaSegundos || undefined");
+    expect(tp).toContain("efectividad del turno");
   });
 });

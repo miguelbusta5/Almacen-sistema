@@ -161,6 +161,8 @@ model User {
   pendientesPasados     PendienteGourmet[]   @relation("PendientesPasados")
   pendientesBorrados    PendienteGourmet[]   @relation("PendientesBorrados")
   tramosPendiente       TramoPendiente[]     @relation("TramosPendiente")
+  cuadrosTurnoSubidos   CuadroTurnos[]       @relation("CuadrosTurnoSubidos")
+  turnos                TurnoOperario[]      @relation("TurnosOperario")
   recepcionesCreadas      RecepcionContenedor[]  @relation("RecepcionesCreadas")
   recepcionesActualizadas RecepcionContenedor[]  @relation("RecepcionesActualizadas")
   descargasRecepcion      DescargadorRecepcion[] @relation("DescargasRecepcion")
@@ -1625,4 +1627,49 @@ model TramoPendiente {
   @@index([pendienteId, orden], map: "tramos_pendiente_pendiente_orden_idx")
   @@index([usuarioId, fin], map: "tramos_pendiente_usuario_fin_idx")
   @@map("tramos_pendiente")
+}
+
+/// Un cuadro de turnos subido en Excel: vale para un rango de fechas.
+///
+/// Sin turno, los indicadores solo saben cuanto tiempo hubo un PLU en la mano;
+/// con el se puede decir cuanto de la jornada fue eso (la efectividad).
+model CuadroTurnos {
+  id            String   @id @default(cuid())
+  nombreArchivo String   @map("nombre_archivo") @db.VarChar(255)
+  desde         DateTime @db.Date
+  hasta         DateTime @db.Date
+
+  subidoPorId String @map("subido_por_id")
+  subidoPor   User   @relation("CuadrosTurnoSubidos", fields: [subidoPorId], references: [id])
+
+  deletedAt DateTime? @map("deleted_at")
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+
+  turnos TurnoOperario[]
+
+  @@index([desde, hasta], map: "cuadros_turno_desde_hasta_idx")
+  @@map("cuadros_turno")
+}
+
+/// El turno de una persona un dia de la semana. Un descanso no deja fila.
+model TurnoOperario {
+  id        String       @id @default(cuid())
+  cuadroId  String       @map("cuadro_id")
+  cuadro    CuadroTurnos @relation(fields: [cuadroId], references: [id], onDelete: Cascade)
+  usuarioId String       @map("usuario_id")
+  usuario   User         @relation("TurnosOperario", fields: [usuarioId], references: [id])
+
+  /// 0 = domingo … 6 = sabado.
+  diaSemana Int @map("dia_semana")
+  /// Minutos desde la medianoche. Si el fin es menor o igual que el inicio, el
+  /// turno cruza la medianoche (20:30 a 6:00).
+  inicioMin Int @map("inicio_min")
+  finMin    Int @map("fin_min")
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@unique([cuadroId, usuarioId, diaSemana], map: "turnos_operario_cuadro_usuario_dia_key")
+  @@index([usuarioId, diaSemana], map: "turnos_operario_usuario_dia_idx")
+  @@map("turnos_operario")
 }

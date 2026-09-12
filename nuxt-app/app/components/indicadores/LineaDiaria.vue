@@ -18,6 +18,10 @@ const props = defineProps<{
   escalaEje?: number
   sufijoEje?: string
   etiqueta: string
+  /** Tope del eje, para que varias graficas se puedan comparar entre si. */
+  maximo?: number
+  /** Alto en px. Las pequeñas (una por persona) van mas bajas. */
+  alto?: number
 }>()
 
 const caja = ref<HTMLElement | null>(null)
@@ -31,22 +35,25 @@ onMounted(() => {
 })
 onBeforeUnmount(() => obs?.disconnect())
 
-const ALTO = 190
+const ALTO = computed(() => props.alto ?? 190)
 const M = { izq: 46, der: 64, arr: 12, aba: 28 }
 const plotW = computed(() => Math.max(40, ancho.value - M.izq - M.der))
-const plotH = ALTO - M.arr - M.aba
+const plotH = computed(() => ALTO.value - M.arr - M.aba)
 
 const div = computed(() => props.escalaEje ?? 1)
-const ticks = computed(() => ticksLimpios(Math.max(0, ...props.puntos.map((p) => p.valor)) / div.value, 4))
+const ticks = computed(() => ticksLimpios(
+  Math.max(0, props.maximo ?? 0, ...props.puntos.map((p) => p.valor)) / div.value,
+  props.alto && props.alto < 160 ? 2 : 4,
+))
 const tope = computed(() => (ticks.value[ticks.value.length - 1] ?? 1) * div.value)
 
 const x = (i: number) => M.izq + (props.puntos.length <= 1 ? plotW.value / 2 : (i / (props.puntos.length - 1)) * plotW.value)
-const y = (v: number) => M.arr + plotH - (tope.value > 0 ? (v / tope.value) * plotH : 0)
+const y = (v: number) => M.arr + plotH.value - (tope.value > 0 ? (v / tope.value) * plotH.value : 0)
 
 const trazo = computed(() => props.puntos.map((p, i) => `${i ? 'L' : 'M'}${x(i).toFixed(1)},${y(p.valor).toFixed(1)}`).join(' '))
 const area = computed(() => {
   if (props.puntos.length < 2) return ''
-  const base = (M.arr + plotH).toFixed(1)
+  const base = (M.arr + plotH.value).toFixed(1)
   return `${trazo.value} L${x(props.puntos.length - 1).toFixed(1)},${base} L${x(0).toFixed(1)},${base} Z`
 })
 

@@ -57,7 +57,7 @@ const cargando = ref(false)
 
 // Tiempo laborado y tiempos muertos salen de la misma consulta y de los mismos
 // filtros: cambiar de pestaña no recarga nada.
-const pestana = ref<'laborado' | 'muertos'>('laborado')
+const pestana = ref<'laborado' | 'muertos' | 'turnos'>('laborado')
 const porJustificar = computed(() => muertos.value?.resumen.cantidadPendientes ?? 0)
 
 async function cargar() {
@@ -95,10 +95,37 @@ const vacio = computed(() => {
 
 // ── Cifras del periodo ─────────────────────────────────────────────
 const resumen = computed(() => datos.value?.resumen ?? null)
-const contadoDeMas = computed(() => {
+const personaElegida = computed(() =>
+  (datos.value?.personas ?? []).find((p) => p.id === usuarioId.value) ?? null)
+
+// La cifra grande NUNCA es una suma de horas de varias personas: eso da mas que
+// cualquier turno y no se puede leer. Con una persona elegida, su tiempo; con
+// todo el equipo, la efectividad del turno, que es una proporcion.
+const heroe = computed(() => {
   const r = resumen.value
-  if (!r || r.sumaRelojes <= r.segundos) return null
-  return { suma: fmtTiempo(r.sumaRelojes), pct: fmtPorcentaje(r.sumaRelojes - r.segundos, r.segundos) }
+  if (!r) return null
+  const p = personaElegida.value
+  if (p) {
+    return {
+      label: `Tiempo real de ${p.nombre}`,
+      valor: fmtTiempo(p.segundos),
+      nota: p.jornadaSegundos > 0
+        ? `De ${fmtTiempo(p.jornadaSegundos)} de turno, ${fmtTiempo(p.segundosEnTurno)} con mercancía en la mano: ${p.efectividad} % de efectividad.`
+        : 'Sin cuadro de turnos para estas fechas: se puede ver cuánto trabajó, pero no qué parte de su jornada fue.',
+    }
+  }
+  if (r.jornadaSegundos > 0) {
+    return {
+      label: 'Efectividad del turno',
+      valor: `${r.efectividad} %`,
+      nota: `Del turno de las ${r.personas} personas del periodo, esa parte tuvo mercancía en la mano. Cada una por separado, abajo.`,
+    }
+  }
+  return {
+    label: 'Efectividad del turno',
+    valor: 'Sin turnos',
+    nota: 'Carga el cuadro de turnos en la pestaña Turnos para medir qué parte de la jornada fue trabajo registrado.',
+  }
 })
 // Promedio por PLU del equipo: pesado por PLUs, no promedio de promedios.
 const promedioEquipo = computed(() => {
@@ -110,6 +137,15 @@ const promedioEquipo = computed(() => {
 const tiles = computed(() => {
   const r = resumen.value
   if (!r) return []
+  const p = personaElegida.value
+  if (p) {
+    return [
+      { label: 'Unidades ubicadas', valor: fmtNumero(p.unidades), hint: 'de lo que cerró' },
+      { label: 'Unidades por hora', valor: fmtNumero(p.unidadesPorHora), hint: 'sobre su tiempo real' },
+      { label: 'PLUs trabajados', valor: fmtNumero(p.plus), hint: 'en el periodo' },
+      { label: 'Promedio por PLU', valor: fmtTiempo(p.promedioPorPlu), hint: 'reloj de cada PLU' },
+    ]
+  }
   return [
     { label: 'Unidades ubicadas', valor: fmtNumero(r.unidades), hint: 'de quien cerró el PLU' },
     { label: 'Unidades por hora', valor: fmtNumero(r.unidadesPorHora), hint: 'sobre el tiempo real' },
@@ -289,9 +325,19 @@ const formatoHoras = (v: number) => fmtHorasDecimal(v)
           <!-- Lo que falta por justificar: sin esto hay que entrar a mirar. -->
           <span v-if="porJustificar > 0" class="badge-tab">{{ porJustificar }}</span>
         </button>
+        <button
+          class="tab" role="tab" :class="{ on: pestana === 'turnos' }"
+          :aria-selected="pestana === 'turnos'" @click="pestana = 'turnos'"
+        >
+          Turnos
+        </button>
       </nav>
 
-      <ListSkeleton v-if="!datos" />
+      <!-- El cuadro de turnos no depende del periodo ni de los datos: se ve
+           aunque el rango elegido no tenga trabajo. -->
+      <IndicadoresTurnos v-if="pestana === 'turnos'" @actualizar="cargar" />
+
+      <ListSkeleton v-else-if="!datos" />
 
       <EmptyState
         v-else-if="vacio" title="Sin tiempos en el periodo"
@@ -307,13 +353,9 @@ const formatoHoras = (v: number) => fmtHorasDecimal(v)
         <template v-else>
         <div class="cifras">
           <div class="heroe card">
-            <span class="kpi-label">Tiempo real laborado</span>
-            <span class="heroe-valor">{{ fmtTiempo(resumen!.segundos) }}</span>
-            <p v-if="contadoDeMas" class="heroe-nota">
-              Sumando los relojes de cada PLU daría <b>{{ contadoDeMas.suma }}</b>:
-              un {{ contadoDeMas.pct }} contado de más, porque varios PLUs a la vez contaban el mismo minuto.
-            </p>
-            <p v-else class="heroe-nota">Nadie tuvo varios PLUs a la vez: el tiempo real coincide con los relojes.</p>
+            <span class="kpi-label">{{ heroe!.label }}</span>
+            <span class="heroe-valor">{{ heroe!.valor }}</span>
+            <p class="heroe-nota">{{ heroe!.nota }}</p>
           </div>
           <div v-for="t in tiles" :key="t.label" class="kpi card">
             <span class="kpi-label">{{ t.label }}</span>
@@ -327,9 +369,16 @@ const formatoHoras = (v: number) => fmtHorasDecimal(v)
 
         <IndicadoresTiempoPersonas class="bloque" :personas="datos.personas" />
 
+        <!-- Una persona elegida: sus dos series en grande. Todo el equipo: una
+             gráfica pequeña por persona, porque sumar las horas de todos da más
+             que cualquier turno. -->
+        <IndicadoresEvolucionPersonas
+          v-if="!personaElegida" class="bloque" :personas="datos.personas"
+        />
         <IndicadoresTarjeta
-          class="bloque" titulo="Evolución día a día"
-          subtitulo="Tiempo real laborado y unidades ubicadas por día, de todo el equipo filtrado."
+          v-else
+          class="bloque" :titulo="`Evolución día a día de ${personaElegida.nombre}`"
+          subtitulo="Tiempo real laborado y unidades ubicadas por día."
         >
           <div v-if="porDia.length > 1" class="dos">
             <div>

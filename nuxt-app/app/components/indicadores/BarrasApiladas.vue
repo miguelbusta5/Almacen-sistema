@@ -14,7 +14,11 @@ const props = defineProps<{
 }>()
 
 const div = computed(() => props.escalaEje ?? 1)
-const ticks = computed(() => ticksLimpios(Math.max(0, ...props.filas.map((f) => f.total)) / div.value, 4))
+// El eje llega hasta la jornada, si se conoce: la barra tiene que leerse como
+// una parte del turno, no ocupar todo el ancho.
+const ticks = computed(() => ticksLimpios(
+  Math.max(0, ...props.filas.map((f) => Math.max(f.total, f.fondo ?? 0))) / div.value, 4,
+))
 const tope = computed(() => (ticks.value[ticks.value.length - 1] ?? 1) * div.value)
 const pct = (v: number) => (tope.value > 0 ? (v / tope.value) * 100 : 0)
 
@@ -47,6 +51,8 @@ function ocultar() { activa.value = null; tip.value = null }
     >
       <span class="nom" :title="f.etiqueta">{{ f.etiqueta }}</span>
       <div class="pista">
+        <!-- La jornada del turno, detras: la barra se lee como parte de ella. -->
+        <span v-if="f.fondo" class="jornada" :style="{ width: `${pct(f.fondo)}%` }" />
         <div class="barra" :style="{ width: `${pct(f.total)}%` }">
           <span
             v-for="s in f.segmentos.filter((x) => x.valor > 0)" :key="s.key" class="seg"
@@ -88,6 +94,10 @@ function ocultar() { activa.value = null; tip.value = null }
   font-size: 12.5px; font-weight: 600; color: var(--ink);
 }
 .pista { position: relative; height: 100%; margin-right: var(--reserva); }
+.jornada {
+  position: absolute; left: 0; top: 8px; bottom: 8px; border-radius: 0 4px 4px 0;
+  background: var(--surface-3); border-right: 1px solid var(--border-strong);
+}
 .barra { position: absolute; left: 0; top: 8px; bottom: 8px; display: flex; gap: 2px; min-width: 3px; }
 /* 4px redondeado en la punta, recto en la base. */
 .seg { flex-basis: 0; flex-shrink: 1; min-width: 2px; height: 100%; }

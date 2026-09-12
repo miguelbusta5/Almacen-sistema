@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import {
   agregarIndicadores,
+  huecosEnVentana,
+  segundosEnVentanas,
   agregarTiemposMuertos,
   detectarTiemposMuertos,
   diaBogota,
@@ -496,5 +498,99 @@ describe("tiempos muertos — validar la justificación", () => {
 
   it("el fin del día es el de Bogotá", () => {
     expect(finDelDiaBogota(h8("21:00:00")).toISOString()).toBe("2026-09-11T04:59:59.999Z");
+  });
+});
+
+describe("efectividad contra el turno", () => {
+  const personas = [{ id: "seb", nombre: "SEBASTIAN JURADO", rol: "MONTACARGAS" }];
+  // Turno de 6:00 a 15:30 (9 h 30).
+  const turno = { usuarioId: "seb", dia: "2026-09-10", inicio: h8("06:00:00"), fin: h8("15:30:00") };
+  const t = (desde: string, hasta: string) =>
+    ({ usuarioId: "seb", inicio: h8(desde), fin: h8(hasta), tipo: "movimiento" as const, registro: "m" });
+  const periodo = { desde: "2026-09-10", hasta: "2026-09-10" };
+
+  it("la jornada sale del turno y la efectividad es lo trabajado dentro", () => {
+    const r = agregarIndicadores({
+      personas,
+      tiempos: [t("08:00:00", "09:00:00"), t("10:00:00", "11:00:00")],
+      unidades: [],
+      ventanas: [turno],
+      ...periodo,
+    });
+    const p = r.personas[0];
+    expect(p.jornadaSegundos).toBe(9.5 * 3600);
+    expect(p.segundosEnTurno).toBe(2 * 3600);
+    expect(p.efectividad).toBe(21);
+    expect(r.resumen.efectividad).toBe(21);
+  });
+
+  // Trabajar antes de entrar o después de salir cuenta como tiempo laborado,
+  // pero no infla la efectividad del turno.
+  it("lo trabajado fuera del turno no cuenta para la efectividad", () => {
+    const r = agregarIndicadores({
+      personas,
+      tiempos: [t("05:00:00", "06:00:00"), t("08:00:00", "09:00:00")],
+      unidades: [],
+      ventanas: [turno],
+      ...periodo,
+    });
+    expect(r.personas[0].segundos).toBe(2 * 3600);
+    expect(r.personas[0].segundosEnTurno).toBe(3600);
+    expect(r.personas[0].efectividad).toBe(11);
+  });
+
+  it("sin cuadro de turnos no hay efectividad que dar", () => {
+    const r = agregarIndicadores({ personas, tiempos: [t("08:00:00", "09:00:00")], unidades: [], ...periodo });
+    expect(r.personas[0].jornadaSegundos).toBe(0);
+    expect(r.personas[0].efectividad).toBeNull();
+  });
+
+  it("solo cuenta el trozo de turno que cae en el periodo", () => {
+    const noche = { usuarioId: "seb", dia: "2026-09-10", inicio: h8("21:00:00"), fin: h8("06:00:00", "2026-09-11") };
+    const r = agregarIndicadores({ personas, tiempos: [t("22:00:00", "23:00:00")], unidades: [], ventanas: [noche], ...periodo });
+    // Del turno de noche solo entran las 3 h que caen antes de medianoche.
+    expect(r.personas[0].jornadaSegundos).toBe(3 * 3600);
+  });
+
+  it("el trabajo que se pisa no cuenta dos veces dentro del turno", () => {
+    expect(segundosEnVentanas(
+      [{ inicio: h8("08:00:00"), fin: h8("09:00:00") }, { inicio: h8("08:30:00"), fin: h8("09:30:00") }],
+      [{ inicio: h8("06:00:00"), fin: h8("15:30:00") }],
+    )).toBe(1.5 * 3600);
+  });
+});
+
+describe("tiempos muertos con el turno delante", () => {
+  const personas = [{ id: "seb", nombre: "SEBASTIAN JURADO", rol: "MONTACARGAS" }];
+  const turno = { usuarioId: "seb", dia: "2026-09-10", inicio: h8("06:00:00"), fin: h8("15:30:00") };
+  const t = (desde: string, hasta: string) =>
+    ({ usuarioId: "seb", inicio: h8(desde), fin: h8(hasta), tipo: "movimiento" as const, registro: "m" });
+
+  // Sin turno, lo de antes del primer PLU no se podía contar: no se sabía si ya
+  // había entrado.
+  it("cuenta lo de antes del primer PLU y lo de después del último", () => {
+    const huecos = huecosEnVentana([{ inicio: h8("08:00:00"), fin: h8("09:00:00"), tipo: "movimiento" }], turno);
+    expect(huecos.map((x) => (x.fin.getTime() - x.inicio.getTime()) / 60000)).toEqual([120, 390]);
+    expect(huecos[0].dia).toBe("2026-09-10");
+  });
+
+  it("el tiempo muerto y el trabajado suman la jornada", () => {
+    const tiempos = [t("08:00:00", "09:00:00"), t("10:00:00", "11:00:00")];
+    const r = agregarTiemposMuertos({ personas, tiempos, justificaciones: [], ventanas: [turno], desde: "2026-09-10", hasta: "2026-09-10" });
+    const ind = agregarIndicadores({ personas, tiempos, unidades: [], ventanas: [turno], desde: "2026-09-10", hasta: "2026-09-10" });
+    expect(r.conTurnos).toBe(true);
+    expect(r.resumen.segundos + ind.personas[0].segundosEnTurno).toBe(ind.personas[0].jornadaSegundos);
+  });
+
+  it("lo trabajado fuera del turno no genera tiempo muerto dentro", () => {
+    const r = agregarTiemposMuertos({
+      personas,
+      tiempos: [t("05:00:00", "05:30:00"), t("06:00:00", "15:30:00")],
+      justificaciones: [],
+      ventanas: [turno],
+      desde: "2026-09-10",
+      hasta: "2026-09-10",
+    });
+    expect(r.resumen.segundos).toBe(0);
   });
 });

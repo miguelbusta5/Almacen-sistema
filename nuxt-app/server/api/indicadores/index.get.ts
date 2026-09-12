@@ -3,10 +3,12 @@ import { prisma } from '../../utils/prisma'
 import { requireAuth } from '../../utils/auth'
 import { assertGestorMontacargas } from '../../utils/montacargas'
 import {
-  agregarIndicadores, agregarTiemposMuertos, diaBogota, esMotivoTiempoMuerto, finDelDiaBogota,
-  limitesRango,
+  agregarIndicadores, agregarTiemposMuertos, diaBogota, diasDelRango, esMotivoTiempoMuerto,
+  finDelDiaBogota, limitesRango,
   type JustificacionTiempoMuerto, type TiempoRegistrado, type TipoTarea, type UnidadesRegistradas,
+  type VentanaTurno,
 } from '../../utils/indicadoresCalc'
+import { ventanaTurno } from '../../utils/turnosCalc'
 
 // A quien se mide: los que mueven la mercancia.
 const MEDIDOS = ['MONTACARGAS', 'OPERARIO_ALMACENAMIENTO'] as const
@@ -33,6 +35,10 @@ const TIPO_MOVIMIENTO: Record<string, TipoTarea> = {
  *
  * Devuelve tambien los tiempos muertos (agregarTiemposMuertos): los ratos sin
  * nada en la mano, con lo que ya justificaron los supervisores.
+ *
+ * Si hay cuadro de turnos cargado para esas fechas, cada persona lleva ademas
+ * su jornada y su efectividad, y los tiempos muertos van acotados al turno (asi
+ * entra lo de antes del primer PLU y lo de despues del ultimo).
  */
 export default defineEventHandler(async (event) => {
   // Solo gestion: son los numeros con los que se evalua al equipo, no
@@ -71,7 +77,7 @@ export default defineEventHandler(async (event) => {
   // que empezo: uno olvidado desde ayer no puede tapar los huecos de hoy.
   const finAbierto = (inicio: Date) => new Date(Math.min(ahora.getTime(), finDelDiaBogota(inicio).getTime()))
 
-  const [tramos, cerrados, tareas, pendientes, recepciones, justificadas] = await Promise.all([
+  const [tramos, cerrados, tareas, pendientes, recepciones, cuadros, justificadas] = await Promise.all([
     // 1. Control Montacargas: recepcion, movimientos y resurtido. Un tramo por
     // cada persona que tuvo el PLU en la mano.
     prisma.tramoMontacargas.findMany({
@@ -140,7 +146,20 @@ export default defineEventHandler(async (event) => {
         descargadores: { select: { usuarioId: true } },
       },
     }),
-    // 5. Lo que ya justificaron los supervisores sobre los tiempos muertos.
+    // 5. Los cuadros de turno que cubren el periodo, para la jornada.
+    prisma.cuadroTurnos.findMany({
+      where: {
+        deletedAt: null,
+        desde: { lte: new Date(`${hasta}T00:00:00.000Z`) },
+        hasta: { gte: new Date(`${desde}T00:00:00.000Z`) },
+      },
+      orderBy: { createdAt: 'desc' },
+      select: {
+        desde: true, hasta: true,
+        turnos: { select: { usuarioId: true, diaSemana: true, inicioMin: true, finMin: true } },
+      },
+    }),
+    // 6. Lo que ya justificaron los supervisores sobre los tiempos muertos.
     prisma.justificacionTiempoMuerto.findMany({
       where: {
         deletedAt: null,
@@ -206,6 +225,24 @@ export default defineEventHandler(async (event) => {
     }
   }
 
+  // Cada dia usa el cuadro mas reciente que lo cubra: si operacion sube uno
+  // corregido, manda el nuevo sin tener que borrar el anterior.
+  const medidosIds = new Set(personas.map((p) => p.id))
+  const ventanas: VentanaTurno[] = []
+  for (const dia of diasDelRango(desde, hasta)) {
+    const cuadro = cuadros.find(
+      (c) => c.desde.toISOString().slice(0, 10) <= dia && dia <= c.hasta.toISOString().slice(0, 10),
+    )
+    if (!cuadro) continue
+    // getUTCDay sobre el mediodia de Bogota: el dia de la semana que se ve aqui.
+    const diaSemana = new Date(`${dia}T12:00:00-05:00`).getUTCDay()
+    for (const t of cuadro.turnos) {
+      if (t.diaSemana !== diaSemana || !medidosIds.has(t.usuarioId)) continue
+      const v = ventanaTurno(dia, { inicioMin: t.inicioMin, finMin: t.finMin })
+      ventanas.push({ usuarioId: t.usuarioId, dia, inicio: v.inicio, fin: v.fin })
+    }
+  }
+
   const justificaciones: JustificacionTiempoMuerto[] = justificadas.flatMap((j) =>
     esMotivoTiempoMuerto(j.motivo)
       ? [{
@@ -224,9 +261,9 @@ export default defineEventHandler(async (event) => {
     success: true,
     rango: { desde, hasta },
     equipo: equipo.map((u) => ({ id: u.id, nombre: u.name, rol: u.role })),
-    data: agregarIndicadores({ personas, tiempos, unidades, desde, hasta }),
+    data: agregarIndicadores({ personas, tiempos, unidades, ventanas, desde, hasta }),
     muertos: agregarTiemposMuertos({
-      personas, tiempos: [...tiempos, ...enCurso], justificaciones, desde, hasta,
+      personas, tiempos: [...tiempos, ...enCurso], justificaciones, ventanas, desde, hasta,
     }),
   }
 })
