@@ -175,6 +175,13 @@ model User {
   novedadesMontacargasResueltas      NovedadMontacargas[]    @relation("NovedadesMontacargasResueltas")
   tiemposMuertos                     JustificacionTiempoMuerto[] @relation("TiemposMuertos")
   tiemposMuertosJustificados         JustificacionTiempoMuerto[] @relation("TiemposMuertosJustificados")
+  equiposMueblesAsignados            AsignacionEquipoMuebles[]   @relation("EquiposMueblesAsignados")
+  equiposMueblesAsignadosPor         AsignacionEquipoMuebles[]   @relation("EquiposMueblesAsignadosPor")
+  ordenesMueblesOperario             OrdenMuebles[]              @relation("OrdenesMueblesOperario")
+  ordenesMueblesActualizadas         OrdenMuebles[]              @relation("OrdenesMueblesActualizadas")
+  pendientesMueblesAsignados         PendienteMuebles[]          @relation("PendientesMueblesAsignados")
+  pendientesMueblesAsignadosPor      PendienteMuebles[]          @relation("PendientesMueblesAsignadosPor")
+  pendientesMueblesResueltos         PendienteMuebles[]          @relation("PendientesMueblesResueltos")
 
   @@index([email])
   @@map("users")
@@ -197,6 +204,8 @@ enum Role {
   SUPERVISOR_ALMACENAMIENTO // Supervisor almacenamiento — gestiona exportaciones
   MONTACARGAS // Montacarguista — Control Montacargas y Resurtido
   OPERARIO_ALMACENAMIENTO // Ayudante — solo su bandeja de PLUs asignados
+  PICKING_MUEBLES // Operario de picking de muebles — solo su módulo de picking
+  INSPECCION_MUEBLES // Login compartido del área de inspección de muebles
 }
 
 enum EstadoDespacho {
@@ -1671,4 +1680,249 @@ model TurnoOperario {
   @@unique([cuadroId, usuarioId, diaSemana], map: "turnos_operario_cuadro_usuario_dia_key")
   @@index([usuarioId, diaSemana], map: "turnos_operario_usuario_dia_idx")
   @@map("turnos_operario")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Picking e Inspeccion de Muebles
+//
+// Dos modulos, un mismo registro de trabajo: el PLU. El operario lo pickea y el
+// inspector lo revisa, asi que ambos relojes viven en LineaMuebles en vez de en
+// dos tablas que habria que mantener en sync.
+// ─────────────────────────────────────────────────────────────────────────────
+
+enum TipoEquipoMuebles {
+  ORDER_PICKER
+  GENIE
+}
+
+/// Equipo de altura del area de muebles. La capacidad es nullable a proposito:
+/// el modulo tiene que funcionar mostrando los m3 acumulados aunque todavia no
+/// se haya medido el equipo y el porcentaje no se pueda calcular.
+model EquipoMuebles {
+  id          String            @id @default(cuid())
+  codigo      String            @unique @db.VarChar(40)
+  tipo        TipoEquipoMuebles
+  capacidadM3 Decimal?          @map("capacidad_m3") @db.Decimal(10, 3)
+  capacidadKg Decimal?          @map("capacidad_kg") @db.Decimal(10, 2)
+  activo      Boolean           @default(true)
+
+  asignaciones AsignacionEquipoMuebles[]
+  ordenes      OrdenMuebles[]
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([activo])
+  @@map("equipos_muebles")
+}
+
+/// Un equipo por operario por dia, asignado por ADMIN. Sin asignacion del dia el
+/// operario no puede abrir una orden: sin equipo no hay contra que medir la
+/// capacidad, que es la mitad del valor del modulo.
+model AsignacionEquipoMuebles {
+  id        String        @id @default(cuid())
+  equipoId  String        @map("equipo_id")
+  equipo    EquipoMuebles @relation(fields: [equipoId], references: [id])
+  usuarioId String        @map("usuario_id")
+  usuario   User          @relation("EquiposMueblesAsignados", fields: [usuarioId], references: [id])
+  fecha     DateTime      @db.Date
+
+  asignadoPorId String @map("asignado_por_id")
+  asignadoPor   User   @relation("EquiposMueblesAsignadosPor", fields: [asignadoPorId], references: [id])
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@unique([usuarioId, fecha])
+  @@index([fecha])
+  @@map("asignaciones_equipo_muebles")
+}
+
+enum EstadoOrdenMuebles {
+  EN_PICKING // El operario esta agregando PLUs; reloj de la orden corriendo
+  EN_INSPECCION // Paso a inspeccion; reloj de picking cerrado, el de inspeccion abierto
+  INSPECCIONADA // Todos los PLUs listos
+}
+
+/// Orden de NetSuite (TSDM/OVDM) trabajada por el area de muebles.
+///
+/// Lleva dos relojes encadenados: el de picking (crear la orden -> pasarla a
+/// inspeccion) y el de inspeccion (ese mismo instante -> ultimo PLU listo). El
+/// segundo arranca exactamente donde para el primero, en la misma transaccion,
+/// para que no quede un hueco de tiempo sin dueno.
+model OrdenMuebles {
+  id        String             @id @default(cuid())
+  codigo    String             @unique @db.VarChar(40)
+  /// Derivado del prefijo con derivarTipoOrden(); se persiste para no volver a
+  /// parsearlo en cada consulta.
+  tipoOrden String             @map("tipo_orden") @db.VarChar(10)
+  estado    EstadoOrdenMuebles @default(EN_PICKING)
+  fecha     DateTime           @db.Date
+
+  horaInicio         DateTime  @map("hora_inicio")
+  horaPasoInspeccion DateTime? @map("hora_paso_inspeccion")
+  horaFinInspeccion  DateTime? @map("hora_fin_inspeccion")
+
+  operarioId  String         @map("operario_id")
+  operario    User           @relation("OrdenesMueblesOperario", fields: [operarioId], references: [id])
+  /// Equipo que el operario tenia asignado al crear la orden. Se sella aqui: si
+  /// manana le cambian de equipo, la carga que llevo esta orden no debe moverse.
+  equipoId    String?        @map("equipo_id")
+  equipo      EquipoMuebles? @relation(fields: [equipoId], references: [id])
+  /// Inspector del catalogo que se asigno la orden. Null = disponible para tomar.
+  inspectorId String?        @map("inspector_id")
+  inspector   Inspector?     @relation("OrdenesInspeccionadas", fields: [inspectorId], references: [id])
+
+  actualizadoPorId String?   @map("actualizado_por_id")
+  actualizadoPor   User?     @relation("OrdenesMueblesActualizadas", fields: [actualizadoPorId], references: [id])
+  motivoCorreccion String?   @map("motivo_correccion")
+  deletedAt        DateTime? @map("deleted_at")
+
+  lineas     LineaMuebles[]
+  pendientes PendienteMuebles[]
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([estado, fecha])
+  @@index([operarioId, estado, deletedAt])
+  @@index([inspectorId, estado])
+  @@map("ordenes_muebles")
+}
+
+enum EstadoLineaMuebles {
+  EN_PICKING // Reloj de picking corriendo: se escaneo el PLU
+  PICKEADA // Rotulo escaneado; esperando inspeccion
+  EN_INSPECCION // Reloj de inspeccion corriendo
+  EN_EBANISTERIA // Inspeccion pausada; reloj de ebanisteria corriendo
+  LISTO // Inspeccionado y aprobado
+}
+
+/// Un PLU dentro de una orden. Es la unidad de trabajo de los dos modulos.
+///
+/// Peso, volumen y partes se COPIAN del maestro al escanear el PLU y se sellan
+/// aqui: si manana se corrige una medida del maestro, una capacidad ya calculada
+/// no debe cambiar en silencio (mismo criterio que volumen_m3 en
+/// medidas_caja_master).
+model LineaMuebles {
+  id      String       @id @default(cuid())
+  ordenId String       @map("orden_id")
+  orden   OrdenMuebles @relation(fields: [ordenId], references: [id], onDelete: Cascade)
+  plu     String       @db.VarChar(100)
+
+  descripcion       String?  @db.VarChar(255)
+  partes            Int?
+  pesoUnitarioKg    Decimal? @map("peso_unitario_kg") @db.Decimal(10, 3)
+  volumenUnitarioM3 Decimal? @map("volumen_unitario_m3") @db.Decimal(10, 6)
+
+  unidades   Int     @default(0)
+  /// Texto libre: se guarda tal cual lo lee la pistola. Validar el formato aqui
+  /// solo serviria para bloquear al operario frente a la estanteria.
+  ubicacion  String? @db.VarChar(120)
+  /// QR del rotulo, del que sale el numero de caja (p.ej. "M123134").
+  numeroCaja String? @map("numero_caja") @db.VarChar(60)
+
+  /// unidades * unitario, sellado al cerrar la linea. Es la cifra con la que se
+  /// calcula la capacidad ocupada del equipo.
+  volumenTotalM3 Decimal? @map("volumen_total_m3") @db.Decimal(12, 6)
+  pesoTotalKg    Decimal? @map("peso_total_kg") @db.Decimal(12, 3)
+
+  estado     EstadoLineaMuebles @default(EN_PICKING)
+  /// Escaneo del PLU.
+  horaInicio DateTime           @map("hora_inicio")
+  /// Escaneo del QR del rotulo.
+  horaFin    DateTime?          @map("hora_fin")
+
+  // ── Inspeccion ──
+  /// Inspector que trabajo este PLU. Puede ser distinto del de la orden: las PCs
+  /// se comparten y una orden puede terminarla otra persona.
+  inspectorId    String?    @map("inspector_id")
+  inspector      Inspector? @relation("LineasInspeccionadas", fields: [inspectorId], references: [id])
+  inspHoraInicio DateTime?  @map("insp_hora_inicio")
+  inspHoraFin    DateTime?  @map("insp_hora_fin")
+
+  /// Ventana de ebanisteria. Corre en paralelo al reloj de inspeccion del PLU y
+  /// se descuenta de el: el mueble no esta siendo inspeccionado mientras esta
+  /// en el taller.
+  ebanisteriaInicio        DateTime?  @map("ebanisteria_inicio")
+  ebanisteriaFin           DateTime?  @map("ebanisteria_fin")
+  motivoEbanisteria        String?    @map("motivo_ebanisteria")
+  enviadoEbanisteriaPorId  String?    @map("enviado_ebanisteria_por_id")
+  enviadoEbanisteriaPor    Inspector? @relation("EnviosEbanisteria", fields: [enviadoEbanisteriaPorId], references: [id])
+  recibidoEbanisteriaPorId String?    @map("recibido_ebanisteria_por_id")
+  recibidoEbanisteriaPor   Inspector? @relation("RecepcionesEbanisteria", fields: [recibidoEbanisteriaPorId], references: [id])
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@unique([ordenId, plu])
+  @@index([ordenId, estado])
+  @@index([estado])
+  @@index([plu])
+  @@map("lineas_muebles")
+}
+
+/// Catalogo de inspectores. NO son usuarios: el area tiene 2 PCs para ~5
+/// personas, asi que comparten un solo login y la trazabilidad del tiempo la da
+/// esta tabla. Si algun dia hace falta impedir que uno fiche por otro, el paso
+/// siguiente es un PIN aqui, sin tocar el resto del modelo.
+model Inspector {
+  id     String  @id @default(cuid())
+  nombre String  @db.VarChar(120)
+  activo Boolean @default(true)
+
+  ordenes              OrdenMuebles[]     @relation("OrdenesInspeccionadas")
+  lineas               LineaMuebles[]     @relation("LineasInspeccionadas")
+  enviosEbanisteria    LineaMuebles[]     @relation("EnviosEbanisteria")
+  recepcionEbanisteria LineaMuebles[]     @relation("RecepcionesEbanisteria")
+  pendientesCreados    PendienteMuebles[] @relation("PendientesMueblesCreados")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([activo])
+  @@map("inspectores_muebles")
+}
+
+enum EstadoPendienteMuebles {
+  PENDIENTE // Reportado, sin dueno
+  ASIGNADO // Un supervisor se lo dio a un operario
+  RESUELTO
+}
+
+/// PLU faltante que un operario de picking debe ir a recolectar. Nace sin dueno
+/// (lo reporta el inspector) y un supervisor lo asigna: no bloquea la inspeccion
+/// de la orden, que sigue su curso con los demas PLUs.
+model PendienteMuebles {
+  id      String        @id @default(cuid())
+  ordenId String?       @map("orden_id")
+  orden   OrdenMuebles? @relation(fields: [ordenId], references: [id])
+  plu     String        @db.VarChar(100)
+
+  unidades    Int
+  observacion String?
+  estado      EstadoPendienteMuebles @default(PENDIENTE)
+
+  creadoPorInspectorId String?    @map("creado_por_inspector_id")
+  creadoPorInspector   Inspector? @relation("PendientesMueblesCreados", fields: [creadoPorInspectorId], references: [id])
+
+  asignadoAId   String? @map("asignado_a_id")
+  asignadoA     User?   @relation("PendientesMueblesAsignados", fields: [asignadoAId], references: [id])
+  asignadoPorId String? @map("asignado_por_id")
+  asignadoPor   User?   @relation("PendientesMueblesAsignadosPor", fields: [asignadoPorId], references: [id])
+  resueltoPorId String? @map("resuelto_por_id")
+  resueltoPor   User?   @relation("PendientesMueblesResueltos", fields: [resueltoPorId], references: [id])
+
+  /// Cuando se reporto, separado de cuando el operario lo empezo: lo que lleva
+  /// esperando es un numero distinto de lo que costo resolverlo.
+  solicitadoAt DateTime  @default(now()) @map("solicitado_at")
+  horaInicio   DateTime? @map("hora_inicio")
+  horaFin      DateTime? @map("hora_fin")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([estado, solicitadoAt])
+  @@index([asignadoAId, estado])
+  @@map("pendientes_muebles")
 }
