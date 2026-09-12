@@ -23,7 +23,9 @@ export type ModuleKey =
   | "recepcion-contenedores"
   | "montaje-resurtido"
   | "pendientes"
-  | "indicadores";
+  | "indicadores"
+  | "picking-muebles"
+  | "inspeccion-muebles";
 
 export const MODULE_ACCESS: Record<ModuleKey, AppRole[]> = {
   transporte: ["TRANSPORTE", "SUPERVISOR_TRANSPORTE", "GERENTE", "ADMIN", "OPERADOR"],
@@ -90,6 +92,12 @@ export const MODULE_ACCESS: Record<ModuleKey, AppRole[]> = {
   // Tiempo laborado de todo el CEDI: son los numeros con los que se evalua al
   // equipo, asi que solo gestion. El servidor lo exige tambien.
   indicadores: ["SUPERVISOR_ALMACENAMIENTO", "GERENTE", "ADMIN"],
+  // Picking de muebles: el operario solo ve su propia bandeja. Los dos roles
+  // OPERACIONES_* quedan fuera a proposito — coordinan Integracion, no pickean.
+  "picking-muebles": ["PICKING_MUEBLES", "SUPERVISOR_ALMACENAMIENTO", "GERENTE", "ADMIN"],
+  // Login compartido del area: son 2 PCs para ~5 inspectores, asi que la
+  // trazabilidad la da el catalogo de inspectores, no la autenticacion.
+  "inspeccion-muebles": ["INSPECCION_MUEBLES", "SUPERVISOR_ALMACENAMIENTO", "GERENTE", "ADMIN"],
 };
 
 export function canSeeModule(role: string | undefined | null, moduleKey: ModuleKey): boolean {
@@ -119,6 +127,8 @@ export const ROLE_LABEL_EXT: Record<AppRole, string> = {
   SUPERVISOR_ALMACENAMIENTO: "Supervisor de Almacenamiento",
   MONTACARGAS: "Montacarguista",
   OPERARIO_ALMACENAMIENTO: "Operario de Almacenamiento",
+  PICKING_MUEBLES: "Picking Muebles",
+  INSPECCION_MUEBLES: "Inspeccion Muebles",
 };
 
 export const ROLE_DESCRIPTION: Record<AppRole, string> = {
@@ -138,4 +148,6 @@ export const ROLE_DESCRIPTION: Record<AppRole, string> = {
   SUPERVISOR_ALMACENAMIENTO: "Gestiona Exportaciones, etiquetado y Estibas.",
   MONTACARGAS: "Control Montacargas y Resurtido.",
   OPERARIO_ALMACENAMIENTO: "Ayudante: recibe PLUs y los ubica.",
+  PICKING_MUEBLES: "Solo ve su bandeja de picking de muebles.",
+  INSPECCION_MUEBLES: "Login compartido del area de inspeccion de muebles.",
 };

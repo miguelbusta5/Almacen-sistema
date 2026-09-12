@@ -73,6 +73,14 @@ export const MODULE_THEME: Record<ModuleThemeKey, ModuleTheme> = {
     "recepcion-contenedores", "Recepcion de Contenedores", "Recepcion",
     "Planilla de descarga de contenedor con tiempos y novedades",
   ),
+  "picking-muebles": mod(
+    "picking-muebles", "Picking Muebles", "Picking",
+    "Picking de ordenes OVDM/TSDM con tiempos por PLU y capacidad del equipo",
+  ),
+  "inspeccion-muebles": mod(
+    "inspeccion-muebles", "Inspeccion Muebles", "Inspeccion",
+    "Inspeccion por PLU, envios a ebanisteria y tiempos del area",
+  ),
 };
 
 export function getModuleTheme(key: ModuleThemeKey | string | null | undefined): ModuleTheme {

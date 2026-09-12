@@ -23,6 +23,8 @@ const MODULE_HREF: Record<ModuleKey, string> = {
   "centro-control": "/dashboard/centro-control",
   usuarios: "/dashboard/usuarios",
   auditoria: "/dashboard/auditoria",
+  "picking-muebles": "/dashboard/picking-muebles",
+  "inspeccion-muebles": "/dashboard/inspeccion-muebles",
 };
 
 // Mismo orden visual que el Sidebar: el primer módulo visible del rol es el
@@ -40,6 +42,8 @@ const PRIORITY_ORDER: ModuleKey[] = [
   "exportaciones",
   "exportaciones-mexico",
   "exportaciones-eeuu",
+  "picking-muebles",
+  "inspeccion-muebles",
   "solicitudes-transporte",
   "preoperacional",
   "indicadores",

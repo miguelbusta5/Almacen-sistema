@@ -21,6 +21,8 @@ export type ModuleKey =
   | 'montaje-resurtido'
   | 'pendientes'
   | 'indicadores'
+  | 'picking-muebles'
+  | 'inspeccion-muebles'
 
 export const MODULE_ACCESS: Record<ModuleKey, string[]> = {
   transporte: ['TRANSPORTE', 'SUPERVISOR_TRANSPORTE', 'GERENTE', 'ADMIN', 'OPERADOR'],
@@ -64,6 +66,12 @@ export const MODULE_ACCESS: Record<ModuleKey, string[]> = {
   // Tiempo laborado de todo el CEDI: son los numeros con los que se evalua al
   // equipo, asi que solo gestion. El servidor lo exige tambien.
   indicadores: ['SUPERVISOR_ALMACENAMIENTO', 'GERENTE', 'ADMIN'],
+  // Picking de muebles: el operario solo ve su propia bandeja. Los roles
+  // OPERACIONES_* quedan fuera — coordinan Integración, no pickean.
+  'picking-muebles': ['PICKING_MUEBLES', 'SUPERVISOR_ALMACENAMIENTO', 'GERENTE', 'ADMIN'],
+  // Login compartido del área: 2 PCs para ~5 inspectores. La trazabilidad la da
+  // el catálogo de inspectores, no la autenticación.
+  'inspeccion-muebles': ['INSPECCION_MUEBLES', 'SUPERVISOR_ALMACENAMIENTO', 'GERENTE', 'ADMIN'],
 }
 
 export function canSeeModule(role: string | undefined | null, moduleKey: ModuleKey): boolean {
