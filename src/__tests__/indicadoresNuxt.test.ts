@@ -350,6 +350,17 @@ describe("indicadores — nada de sumar horas de varias personas", () => {
     expect(evo).toContain("<template #tabla>");
   });
 
+  // Lo que el usuario pidio ver: efectividad por persona, no del equipo.
+  it("hay un grafico de efectividad por persona", () => {
+    expect(modulo).toContain('titulo="Efectividad del turno por persona"');
+    expect(modulo).toContain(":eje-maximo=\"100\"");
+    // Tiempo de movimiento dentro del turno sobre la jornada: si registran
+    // tiempos bajos, la efectividad sale baja.
+    expect(modulo).toContain("valor: p.efectividad ?? 0");
+    expect(modulo).toContain("etiqueta: 'con mercancía en la mano', valor: fmtTiempo(p.segundosEnTurno)");
+    expect(modulo).toContain("const sinTurno = computed(");
+  });
+
   // La barra de cada persona se lee contra su jornada.
   it("el tiempo por persona se compara con su turno", () => {
     const tp = leer("nuxt-app/app/components/indicadores/TiempoPersonas.vue");

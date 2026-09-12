@@ -17,6 +17,8 @@ const props = defineProps<{
   anchoEtiqueta?: number
   /** Sitio a la derecha para el texto de la punta, en px. */
   reserva?: number
+  /** Tope minimo del eje: un porcentaje se lee contra 100, no contra el mayor. */
+  ejeMaximo?: number
 }>()
 
 const vars = computed(() => ({
@@ -25,7 +27,9 @@ const vars = computed(() => ({
 }))
 
 const div = computed(() => props.escalaEje ?? 1)
-const ticks = computed(() => ticksLimpios(Math.max(0, ...props.items.map((i) => i.valor)) / div.value, 4))
+const ticks = computed(() => ticksLimpios(
+  Math.max(0, props.ejeMaximo ?? 0, ...props.items.map((i) => i.valor)) / div.value, 4,
+))
 const tope = computed(() => (ticks.value[ticks.value.length - 1] ?? 1) * div.value)
 const pct = (v: number) => (tope.value > 0 ? (v / tope.value) * 100 : 0)
 

@@ -168,6 +168,50 @@ const tablaDia = computed(() => porDia.value.map((d) => ({
   dia: fmtDiaCorto(d.dia), tiempo: d.segundos ? fmtTiempo(d.segundos) : '—', und: fmtNumero(d.unidades),
 })))
 
+// ── Efectividad del turno ─────────────────────────────────────────
+// Tiempo de movimiento dentro del turno sobre la jornada, persona por persona.
+// Quien registra el PLU despues de hacer el trabajo sale bajo, y eso es
+// exactamente lo que tiene que verse.
+const conTurnos = computed(() => (resumen.value?.jornadaSegundos ?? 0) > 0)
+const barrasEfectividad = computed<BarraH[]>(() => (datos.value?.personas ?? [])
+  .filter((p) => p.jornadaSegundos > 0)
+  .sort((a, b) => (b.efectividad ?? 0) - (a.efectividad ?? 0))
+  .map((p) => ({
+    id: p.id,
+    etiqueta: p.nombre,
+    valor: p.efectividad ?? 0,
+    texto: `${p.efectividad ?? 0} %`,
+    detalle: [
+      { etiqueta: 'de turno', valor: fmtTiempo(p.jornadaSegundos) },
+      { etiqueta: 'con mercancía en la mano', valor: fmtTiempo(p.segundosEnTurno) },
+      { etiqueta: 'PLUs', valor: fmtNumero(p.plus) },
+    ],
+  })))
+const columnasEfectividad: ColumnaTabla[] = [
+  { key: 'nombre', label: 'Persona' },
+  { key: 'rol', label: 'Rol' },
+  { key: 'jornada', label: 'Jornada del turno', num: true },
+  { key: 'enTurno', label: 'Tiempo de movimiento', num: true },
+  { key: 'efect', label: 'Efectividad', num: true },
+  { key: 'plus', label: 'PLUs', num: true },
+  { key: 'prom', label: 'Prom. por PLU', num: true },
+]
+const tablaEfectividad = computed(() => (datos.value?.personas ?? [])
+  .filter((p) => p.jornadaSegundos > 0)
+  .map((p) => ({
+    nombre: p.nombre,
+    rol: ROL_MEDIDO_LABEL[p.rol] ?? p.rol,
+    jornada: fmtTiempo(p.jornadaSegundos),
+    enTurno: fmtTiempo(p.segundosEnTurno),
+    efect: `${p.efectividad ?? 0} %`,
+    plus: fmtNumero(p.plus),
+    prom: fmtTiempo(p.promedioPorPlu),
+  })))
+// Sin turno no hay con que comparar: se dice, en vez de dejar el hueco.
+const sinTurno = computed(() => (datos.value?.personas ?? [])
+  .filter((p) => p.jornadaSegundos === 0)
+  .map((p) => p.nombre))
+
 // ── Productividad ─────────────────────────────────────────────────
 const segundosPlu = (p: IndicadoresPeriodo['personas'][number]) => p.segundos - p.porTipo.contenedor
 const barrasUndHora = computed<BarraH[]>(() => (datos.value?.personas ?? [])
@@ -368,6 +412,26 @@ const formatoHoras = (v: number) => fmtHorasDecimal(v)
         </p>
 
         <IndicadoresTiempoPersonas class="bloque" :personas="datos.personas" />
+
+        <IndicadoresTarjeta
+          class="bloque" titulo="Efectividad del turno por persona"
+          subtitulo="Tiempo con mercancía en la mano dentro del turno, sobre la jornada que le toca."
+        >
+          <IndicadoresBarrasH
+            v-if="barrasEfectividad.length" :items="barrasEfectividad" medida="del turno"
+            :eje-maximo="100" :formato-eje="(v) => `${Math.round(v)} %`"
+          />
+          <p v-else class="aviso">
+            Sin cuadro de turnos para estas fechas: cárgalo en la pestaña Turnos y aquí sale
+            qué parte de la jornada de cada uno fue trabajo registrado.
+          </p>
+          <p v-if="conTurnos && sinTurno.length" class="pie">
+            Sin turno en el cuadro, no se les puede medir: {{ sinTurno.join(', ') }}.
+          </p>
+          <template #tabla>
+            <IndicadoresTabla :columnas="columnasEfectividad" :filas="tablaEfectividad" principal="nombre" />
+          </template>
+        </IndicadoresTarjeta>
 
         <!-- Una persona elegida: sus dos series en grande. Todo el equipo: una
              gráfica pequeña por persona, porque sumar las horas de todos da más
