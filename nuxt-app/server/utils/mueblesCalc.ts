@@ -1,8 +1,8 @@
 // Logica pura de Picking e Inspeccion de Muebles.
 //
-// Sin Prisma ni h3 a proposito: es lo que testean los tests de vitest, y lo que
-// importan tanto los handlers como mapRow.ts. Mismo criterio que
-// exportacionesCalc.ts y resurtidoCalc.ts.
+// Copia de src/lib/pickingMuebles.ts (fuente de verdad): Nitro no puede importar
+// de src/lib. Mantener en sync; hay un guard en src/__tests__/mueblesNuxt.test.ts
+// que compara los dos archivos.
 
 export const ROL_PICKING = 'PICKING_MUEBLES'
 export const ROL_INSPECCION = 'INSPECCION_MUEBLES'
@@ -50,7 +50,7 @@ export function validarCodigoOrden(value: unknown): string | null {
 }
 
 /**
- * El rotulo se guarda tal cual lo lee la pistola: hoy son codigos tipo "M123134",
+ * El rotulo se guarda tal cual lo lee la pistola: hoy son codigos tipo 'M123134',
  * pero el formato no esta cerrado y bloquear al operario frente a la estanteria
  * por un patron que aun no conocemos cuesta mas de lo que evita.
  */
@@ -120,55 +120,127 @@ function redondear(valor: number, decimales: number): number {
   return Math.round(valor * f) / f
 }
 
-// ── Capacidad del equipo ────────────────────────────────────────────────────
+// ── Volumen de la orden ─────────────────────────────────────────────────────
 
-export interface CapacidadEquipo {
-  ocupadoM3: number
-  pesoKg: number
-  capacidadM3: number | null
-  /** Null cuando el equipo aun no esta medido: se muestran los m3 sin el %. */
-  porcentaje: number | null
+export interface VolumenOrden {
+  m3: number
+  kg: number
   /** Cuantas lineas de las contadas no tenian medida en el maestro. */
   lineasSinMedida: number
-  tono: 'ok' | 'aviso' | 'critico'
 }
 
-export const UMBRAL_AVISO = 80
-export const UMBRAL_CRITICO = 100
-
 /**
- * Carga acumulada en el equipo. Solo cuenta las lineas ya cerradas de la orden
- * abierta: al pasar la orden a inspeccion el operario descarga, asi que la
- * capacidad vuelve a cero sin necesidad de un campo que resetear.
+ * m3 y kg acumulados por la orden. Solo cuenta las lineas ya cerradas: una
+ * linea abierta todavia no tiene unidades, asi que su total no significa nada.
+ *
+ * No hay capacidad contra la que comparar: el area decidio no medir cuanto cabe
+ * en el Order Picker ni en el Genie. Lo que interesa es el volumen que mueve
+ * cada orden, que se sostiene solo como cifra.
  */
-export function capacidadEquipo(
+export function volumenOrden(
   lineas: Array<{ volumenTotalM3?: number | null; pesoTotalKg?: number | null; horaFin?: Date | string | null }>,
-  capacidadM3: number | null | undefined,
-): CapacidadEquipo {
-  const cerradas = lineas.filter((l) => l.horaFin != null)
-  let ocupadoM3 = 0
-  let pesoKg = 0
+): VolumenOrden {
+  let m3 = 0
+  let kg = 0
   let lineasSinMedida = 0
 
-  for (const linea of cerradas) {
+  for (const linea of lineas) {
+    if (linea.horaFin == null) continue
     if (linea.volumenTotalM3 == null) lineasSinMedida += 1
-    else ocupadoM3 += linea.volumenTotalM3
-    if (linea.pesoTotalKg != null) pesoKg += linea.pesoTotalKg
+    else m3 += linea.volumenTotalM3
+    if (linea.pesoTotalKg != null) kg += linea.pesoTotalKg
   }
 
-  ocupadoM3 = redondear(ocupadoM3, 6)
-  pesoKg = redondear(pesoKg, 3)
+  return { m3: redondear(m3, 6), kg: redondear(kg, 3), lineasSinMedida }
+}
 
-  const cap = capacidadM3 != null && capacidadM3 > 0 ? capacidadM3 : null
-  const porcentaje = cap == null ? null : redondear((ocupadoM3 / cap) * 100, 1)
+// ── Tipo de mercancia ───────────────────────────────────────────────────────
 
-  let tono: CapacidadEquipo['tono'] = 'ok'
-  if (porcentaje != null) {
-    if (porcentaje >= UMBRAL_CRITICO) tono = 'critico'
-    else if (porcentaje >= UMBRAL_AVISO) tono = 'aviso'
+export const TIPOS_MERCANCIA_MUEBLE = [
+  'SOFA', 'SILLA', 'MESA', 'LUMINARIA', 'RECLINABLE', 'POLTRONA', 'OTRO',
+] as const
+export type TipoMercanciaMueble = (typeof TIPOS_MERCANCIA_MUEBLE)[number]
+
+export const TIPO_MERCANCIA_LABEL: Record<TipoMercanciaMueble, string> = {
+  SOFA: 'Sofa',
+  SILLA: 'Silla',
+  MESA: 'Mesa',
+  LUMINARIA: 'Luminaria',
+  RECLINABLE: 'Reclinable',
+  POLTRONA: 'Poltrona',
+  OTRO: 'Otro',
+}
+
+/**
+ * Reglas de clasificacion por palabra clave. EL ORDEN IMPORTA y es la mitad de
+ * la logica: un 'SOFA RECLINABLE 3P' es un reclinable, no un sofa, asi que
+ * RECLINABLE tiene que evaluarse antes que SOFA. Lo mismo con POLTRONA/BUTACA
+ * frente a SILLA.
+ *
+ * Se comparan sin tildes y en mayusculas porque el maestro las escribe de las
+ * dos formas.
+ */
+const REGLAS_TIPO: ReadonlyArray<readonly [TipoMercanciaMueble, readonly string[]]> = [
+  ['RECLINABLE', ['RECLINABLE', 'RECLINER']],
+  ['POLTRONA', ['POLTRONA', 'BUTACA', 'BERGERE']],
+  ['SOFA', ['SOFA', 'SOFACAMA', 'SECCIONAL', 'CHAISE', 'DIVAN']],
+  ['LUMINARIA', ['LUMINARIA', 'LAMPARA', 'BOMBILLO', 'APLIQUE', 'PLAFON', 'CANDELABRO', 'FAROL']],
+  // SILLA antes que MESA: 'COMEDOR' nombra la habitacion, no el mueble, asi que
+  // una 'SILLA COMEDOR' caia en MESA. Lo que no trae SILLA ni SOFA y si COMEDOR
+  // (un 'COMEDOR 6 PUESTOS') si es la mesa del juego.
+  ['SILLA', ['SILLA', 'BANCA', 'TABURETE', 'ASIENTO']],
+  ['MESA', ['MESA', 'COMEDOR', 'ESCRITORIO', 'NOCHERO', 'CONSOLA', 'AUXILIAR']],
+]
+
+function sinTildes(texto: string): string {
+  return texto.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toUpperCase()
+}
+
+/**
+ * Deduce el tipo de mueble de la descripcion del maestro, que hoy es el unico
+ * sitio donde ese dato existe. Se equivocara: por eso el tipo se guarda y el
+ * ADMIN puede corregirlo, y una correccion manual ya no se vuelve a pisar.
+ */
+export function clasificarPorDescripcion(descripcion: string | null | undefined): TipoMercanciaMueble {
+  if (!descripcion) return 'OTRO'
+  const texto = sinTildes(descripcion)
+  for (const [tipo, palabras] of REGLAS_TIPO) {
+    if (palabras.some((p) => texto.includes(p))) return tipo
   }
+  return 'OTRO'
+}
 
-  return { ocupadoM3, pesoKg, capacidadM3: cap, porcentaje, lineasSinMedida, tono }
+// ── Quien cierra una orden compartida ───────────────────────────────────────
+
+export interface Participante {
+  usuarioId: string
+  esCreador: boolean
+  /** ISO o Date. Ordena quien entro despues. */
+  seUnioAt: string | Date
+}
+
+/**
+ * La pasa a inspeccion EL ULTIMO QUE SE UNIO: si hubo reasignacion, es el que
+ * termina el trabajo. El creador solo cuando no hay nadie mas.
+ *
+ * Gestion puede siempre, y por una razon concreta: si el que se unio sale de
+ * turno, la orden se quedaria abierta toda la noche con el reloj corriendo. Ese
+ * cierre se audita aparte para que no se confunda con el normal.
+ */
+export function quienCierra(participantes: readonly Participante[]): string | null {
+  if (participantes.length === 0) return null
+  const ordenados = [...participantes].sort(
+    (a, b) => new Date(a.seUnioAt).getTime() - new Date(b.seUnioAt).getTime(),
+  )
+  return ordenados[ordenados.length - 1]!.usuarioId
+}
+
+export function puedeCerrarOrden(
+  participantes: readonly Participante[],
+  usuarioId: string,
+  role: string | null | undefined,
+): boolean {
+  return esGestionMuebles(role) || quienCierra(participantes) === usuarioId
 }
 
 // ── Transiciones ────────────────────────────────────────────────────────────
@@ -190,14 +262,24 @@ export function ordenInspeccionCompleta(lineas: Array<{ estado: EstadoLinea }>):
   return lineas.length > 0 && lineas.every((l) => l.estado === 'LISTO')
 }
 
+/**
+ * Las lineas que se pasan son SOLO las de quien escanea, no las de toda la orden:
+ * una orden puede tener dos operarios y que el compañero tenga un PLU en curso no
+ * puede bloquearte. El duplicado si se comprueba contra la orden entera, porque
+ * el PLU es unico por orden.
+ */
 export function validarAgregarPlu(
-  lineas: Array<{ plu: string; estado: EstadoLinea }>,
+  lineasDeLaOrden: Array<{ plu: string; estado: EstadoLinea; operarioId?: string | null }>,
   plu: string,
+  operarioId?: string | null,
 ): string | null {
-  if (lineas.some((l) => l.estado === 'EN_PICKING')) {
+  const mias = operarioId == null
+    ? lineasDeLaOrden
+    : lineasDeLaOrden.filter((l) => l.operarioId === operarioId)
+  if (mias.some((l) => l.estado === 'EN_PICKING')) {
     return 'Ya tienes un PLU en curso: terminalo antes de escanear el siguiente'
   }
-  if (lineas.some((l) => l.plu === plu)) {
+  if (lineasDeLaOrden.some((l) => l.plu === plu)) {
     return `El PLU ${plu} ya esta en esta orden`
   }
   return null

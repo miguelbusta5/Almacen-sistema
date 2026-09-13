@@ -1,5 +1,91 @@
 # Decisiones de Arquitectura y Producto
 
+## 2026-09-13 - Muebles: fuera la capacidad, orden compartida e indicadores
+
+Tres ajustes al prototipo tras revisarlo con el area. Sigue sin desplegarse.
+
+### Fuera la capacidad de los equipos
+
+El area decidio NO medir cuanto cabe en el Order Picker ni en el Genie. Se quitan
+`capacidad_m3` y `capacidad_kg` de `equipos_muebles`, y con ellas el porcentaje,
+los umbrales y la barra de progreso.
+
+Lo que queda son los m3 y kg que acumula cada orden, que es lo que pidieron y se
+sostiene solo como cifra. `capacidadEquipo()` pasa a `volumenOrden()`.
+
+El equipo NO desaparece: sigue importando con cual se trabajo, porque es la razon
+por la que a veces hay que reasignar un PLU.
+
+### Una orden, dos operarios
+
+Por el tipo de mercancia el Genie a veces no puede bajar un PLU y se le reasigna
+al del Order Picker. La reasignacion es VERBAL —asi trabaja el area— y lo que la
+app registra es quien acabo bajando cada PLU.
+
+Cuando el del Order Picker intenta crear la orden, el choque devuelve un error
+identificable (`data.codigo = 'ORDEN_YA_ABIERTA'`) con quien la tiene y su equipo,
+para que la pantalla pueda preguntarle si trae PLUs reasignados. Un 409 seco lo
+dejaria bloqueado o —peor— le empujaria a inventar otro numero de orden, y el
+trabajo acabaria en dos ordenes que nadie sabria juntar.
+
+- `lineas_muebles.operario_id`: cada PLU sabe quien lo bajo. Cargarle todo a quien
+  abrio la orden seria mentir, mismo criterio que los tramos de montacargas.
+- `participantes_orden_muebles`: tabla y no un segundo campo en la orden, porque
+  `ordenAbierta()` mira ahi — unirse OCUPA tu turno y no puedes tener ademas una
+  propia.
+- El "PLU en curso" se comprueba por PERSONA; el duplicado, contra la orden entera.
+- Cada uno cierra solo sus lineas.
+- La pasa a inspeccion EL ULTIMO QUE SE UNIO, que es quien termina. Gestion puede
+  siempre y se audita distinto: sin esa salida, la orden se quedaria abierta toda
+  la noche con el reloj corriendo si esa persona sale de turno.
+
+### Tipo de mercancia: deducido y corregible
+
+No existia ninguna clasificacion de producto en el sistema (`ProductoMaestro` no
+tiene categoria; `MedidaProducto.zona` vale GOURMET/MUEBLES y ademas nadie la
+leia). Se deduce de la descripcion del maestro con reglas por palabra clave.
+
+**El orden de las reglas ES la logica** y hay un test que lo vigila: un "SOFA
+RECLINABLE 3P" es un reclinable, no un sofa; una "SILLA COMEDOR" es una silla, no
+una mesa —"COMEDOR" nombra la habitacion— pero un "COMEDOR 6 PUESTOS" a secas si
+es la mesa del juego.
+
+`tipos_mueble_plu` va aparte de `productos_maestro` porque el importador hace un
+INSERT ... ON CONFLICT que ya vacio datos de 19k productos una vez. Un PLU marcado
+MANUAL no lo vuelve a tocar la heuristica.
+
+**El tipo NO se sella en la linea**, a diferencia del peso y el volumen: una medida
+sellada protege una cifra ya calculada, pero una etiqueta corregida debe arreglar
+el informe hacia atras. Si se sellara, una mala clasificacion envenenaria el
+historico para siempre. Los indicadores lo resuelven por PLU.
+
+### Modulo Indicadores Muebles
+
+Modulo propio, no una pestaña del de montacargas: aquel esta cerrado a
+MONTACARGAS/OPERARIO_ALMACENAMIENTO y gira sobre `TipoTarea`, un union cerrado de
+cinco valores triplicado y con sus propios guards. Meter picking e inspeccion ahi
+obligaria a tocarlo todo. Se reutilizan los COMPONENTES (Tarjeta, BarrasH, Tabla)
+y los helpers de fecha, no el motor.
+
+Muestra: tiempo por operario y por inspector, promedios por tipo de mercancia y
+por tramo de m3 y de kg, espera de ebanisteria con sus motivos, y la orden
+completa separando picking de inspeccion.
+
+**Desplazamiento entre PLUs**: el hueco entre el fin de un PLU y el inicio del
+siguiente, de la misma persona. Es tiempo que no esta en ningun reloj pero que el
+operario si gasta. Se descartan los huecos de mas de 30 min
+(`MAX_DESPLAZAMIENTO_SEG`) y los que cruzan de dia: eso ya no es caminar hasta la
+estanteria, es almuerzo o fin de turno, y contarlo inflaria el promedio hasta
+volverlo inservible. El porcentaje se calcula contra picking + desplazamiento (el
+tiempo "en la jugada"), no contra picking solo, que daria mas del 100%.
+
+Los tramos (`0,5 / 1,5 / 3` m3 y `20 / 50 / 100` kg) son de arranque y viven en un
+solo sitio para ajustarlos viendo datos reales.
+
+Los inspectores no son `User`, asi que su bloque se agrupa por `Inspector` del
+catalogo — coherente con el login compartido del area.
+
+
 ## 2026-09-12 - Picking e Inspeccion de Muebles (PROTOTIPO, no desplegado)
 
 Dos modulos nuevos para el area de Muebles, que hasta hoy trabajaba sin ninguna

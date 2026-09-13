@@ -4,7 +4,7 @@ import { createError } from 'h3'
 import type { H3Event } from 'h3'
 import { prisma } from './prisma'
 import { requireAuth, type SessionUser } from './auth'
-import { capacidadEquipo, puedeInspeccionar, puedePickear, type CapacidadEquipo } from './mueblesCalc'
+import { puedeInspeccionar, puedePickear, volumenOrden, type VolumenOrden } from './mueblesCalc'
 import { todayBogota } from './exportacionesCalc'
 
 export const LINEA_SELECT = {
@@ -30,13 +30,23 @@ export const LINEA_SELECT = {
   inspector: { select: { id: true, nombre: true } },
   enviadoEbanisteriaPor: { select: { id: true, nombre: true } },
   recibidoEbanisteriaPor: { select: { id: true, nombre: true } },
+  operarioId: true,
+  operario: { select: { id: true, name: true } },
 } as const
 
 export const ORDEN_INCLUDE = {
   operario: { select: { id: true, name: true } },
-  equipo: { select: { id: true, codigo: true, tipo: true, capacidadM3: true, capacidadKg: true } },
+  equipo: { select: { id: true, codigo: true, tipo: true } },
   inspector: { select: { id: true, nombre: true } },
   lineas: { select: LINEA_SELECT, orderBy: { horaInicio: 'asc' } },
+  // Ordenados por cuando entraron: el ultimo es quien cierra la orden.
+  participantes: {
+    include: {
+      usuario: { select: { id: true, name: true } },
+      equipo: { select: { id: true, codigo: true, tipo: true } },
+    },
+    orderBy: { seUnioAt: 'asc' },
+  },
 } as const
 
 export async function requirePicking(event: H3Event): Promise<SessionUser> {
@@ -64,12 +74,30 @@ export async function equipoDelDia(usuarioId: string) {
   return asignacion?.equipo ?? null
 }
 
-/** La orden que el operario tiene abierta. Solo puede haber una. */
-export async function ordenAbierta(operarioId: string) {
+/**
+ * La orden que el operario tiene abierta. Solo puede haber una.
+ *
+ * Busca por PARTICIPANTE y no por creador: unirse a la orden de otro (el caso de
+ * un PLU reasignado) tambien ocupa tu turno, asi que mientras estes dentro no
+ * puedes abrir una propia.
+ */
+export async function ordenAbierta(usuarioId: string) {
   return prisma.ordenMuebles.findFirst({
-    where: { operarioId, estado: 'EN_PICKING', deletedAt: null },
+    where: {
+      estado: 'EN_PICKING',
+      deletedAt: null,
+      participantes: { some: { usuarioId } },
+    },
     include: ORDEN_INCLUDE,
   })
+}
+
+/** true si esa persona trabaja la orden (la creo o se unio). */
+export function esParticipante(
+  orden: { participantes: Array<{ usuarioId: string }> },
+  usuarioId: string,
+): boolean {
+  return orden.participantes.some((p) => p.usuarioId === usuarioId)
 }
 
 export async function ordenPorId(id: string) {
@@ -81,33 +109,27 @@ export async function ordenPorId(id: string) {
   return orden
 }
 
-type OrdenConLineas = { equipo: { capacidadM3: unknown } | null; lineas: Array<{
-  volumenTotalM3: unknown
-  pesoTotalKg: unknown
-  horaFin: Date | null
-}> }
+type OrdenConLineas = {
+  lineas: Array<{
+    volumenTotalM3: unknown
+    pesoTotalKg: unknown
+    horaFin: Date | null
+  }>
+}
 
 /**
- * Carga del equipo para una orden. Se calcula sobre las lineas de LA ORDEN
- * ABIERTA: al pasarla a inspeccion el operario descarga, asi que la capacidad
- * vuelve a cero sola, sin un campo que alguien tenga que acordarse de resetear.
+ * m3 y kg que lleva acumulados la orden.
  *
- * `equipoDelDia` es el respaldo para cuando NO hay orden abierta: sin el, la
- * barra decia "falta medir la capacidad" con el equipo medido y asignado, solo
- * porque la capacidad salia de orden.equipo y no habia orden. Con orden abierta
- * manda la de la orden, que es la que quedo sellada al crearla.
+ * Ya no hay capacidad del equipo contra la que comparar: el area decidio no
+ * medir el Order Picker ni el Genie. Queda la cifra, que es lo que pidieron.
  */
-export function capacidadDeOrden(
-  orden: OrdenConLineas | null,
-  equipoDelDia?: { capacidadM3: unknown } | null,
-): CapacidadEquipo {
+export function volumenDeOrden(orden: OrdenConLineas | null): VolumenOrden {
   const lineas = (orden?.lineas ?? []).map((l) => ({
     volumenTotalM3: l.volumenTotalM3 == null ? null : Number(l.volumenTotalM3),
     pesoTotalKg: l.pesoTotalKg == null ? null : Number(l.pesoTotalKg),
     horaFin: l.horaFin,
   }))
-  const cap = orden?.equipo?.capacidadM3 ?? equipoDelDia?.capacidadM3 ?? null
-  return capacidadEquipo(lineas, cap == null ? null : Number(cap))
+  return volumenOrden(lineas)
 }
 
 /**

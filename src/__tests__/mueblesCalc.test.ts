@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
-  capacidadEquipo,
+  clasificarPorDescripcion,
   derivarTipoOrden,
   duracionInspeccionNetaMinutos,
   duracionMinutos,
@@ -9,8 +9,11 @@ import {
   puedeInspeccionar,
   puedePickear,
   resumenOrden,
+  puedeCerrarOrden,
+  quienCierra,
   totalesLinea,
   validarAgregarPlu,
+  volumenOrden,
   validarCodigoOrden,
   validarPasoAInspeccion,
   type EstadoLinea,
@@ -124,7 +127,7 @@ describe("totales de linea", () => {
   });
 });
 
-describe("capacidad del equipo", () => {
+describe("volumen de la orden", () => {
   const cerrada = (v: number | null, p: number | null = null) => ({
     volumenTotalM3: v,
     pesoTotalKg: p,
@@ -132,43 +135,93 @@ describe("capacidad del equipo", () => {
   });
 
   it("suma solo las lineas cerradas", () => {
-    const cap = capacidadEquipo(
-      [cerrada(0.5), cerrada(0.25), { volumenTotalM3: 9, pesoTotalKg: null, horaFin: null }],
-      3,
-    );
-    expect(cap.ocupadoM3).toBe(0.75);
-    expect(cap.porcentaje).toBe(25);
-    expect(cap.tono).toBe("ok");
+    const vol = volumenOrden([
+      cerrada(0.5),
+      cerrada(0.25),
+      { volumenTotalM3: 9, pesoTotalKg: null, horaFin: null },
+    ]);
+    expect(vol.m3).toBe(0.75);
   });
 
-  it("sin capacidad medida muestra m3 pero no porcentaje", () => {
-    // Es el estado real hasta que se midan el Order Picker y el Genie.
-    const cap = capacidadEquipo([cerrada(1.2)], null);
-    expect(cap.ocupadoM3).toBe(1.2);
-    expect(cap.porcentaje).toBeNull();
-    expect(cap.tono).toBe("ok");
-  });
-
-  it("avisa al 80% y marca critico al pasarse", () => {
-    expect(capacidadEquipo([cerrada(8)], 10).tono).toBe("aviso");
-    expect(capacidadEquipo([cerrada(10)], 10).tono).toBe("critico");
-    const excedido = capacidadEquipo([cerrada(12)], 10);
-    expect(excedido.porcentaje).toBe(120);
-    expect(excedido.tono).toBe("critico");
-  });
-
-  it("cuenta las lineas sin medida para poder avisar que el % va corto", () => {
-    const cap = capacidadEquipo([cerrada(0.5), cerrada(null)], 2);
-    expect(cap.ocupadoM3).toBe(0.5);
-    expect(cap.lineasSinMedida).toBe(1);
-  });
-
-  it("una orden recien pasada a inspeccion deja el equipo en cero", () => {
-    expect(capacidadEquipo([], 5)).toMatchObject({ ocupadoM3: 0, porcentaje: 0, tono: "ok" });
+  it("no inventa un total cuando el PLU no esta medido", () => {
+    const vol = volumenOrden([cerrada(0.5), cerrada(null)]);
+    expect(vol.m3).toBe(0.5);
+    expect(vol.lineasSinMedida).toBe(1);
   });
 
   it("suma el peso aunque falte el volumen", () => {
-    expect(capacidadEquipo([cerrada(null, 30), cerrada(0.4, 12)], 4).pesoKg).toBe(42);
+    expect(volumenOrden([cerrada(null, 30), cerrada(0.4, 12)]).kg).toBe(42);
+  });
+
+  it("una orden recien pasada a inspeccion queda en cero", () => {
+    expect(volumenOrden([])).toEqual({ m3: 0, kg: 0, lineasSinMedida: 0 });
+  });
+});
+
+describe("clasificacion por descripcion", () => {
+  it("reconoce los tipos del area", () => {
+    expect(clasificarPorDescripcion("SOFA MODULAR 3 PUESTOS")).toBe("SOFA");
+    expect(clasificarPorDescripcion("SILLA COMEDOR TAPIZADA")).toBe("SILLA");
+    expect(clasificarPorDescripcion("MESA DE CENTRO ROBLE")).toBe("MESA");
+    expect(clasificarPorDescripcion("LAMPARA DE PIE TRIPODE")).toBe("LUMINARIA");
+    expect(clasificarPorDescripcion("POLTRONA BERGERE LINO")).toBe("POLTRONA");
+  });
+
+  // El orden de las reglas es la mitad de la logica: un sofa reclinable es un
+  // reclinable, y una poltrona no es una silla.
+  it("reclinable gana a sofa", () => {
+    expect(clasificarPorDescripcion("SOFA RECLINABLE 3P CUERO")).toBe("RECLINABLE");
+  });
+
+  // "COMEDOR" nombra la habitacion: la silla del comedor sigue siendo una silla,
+  // pero un "COMEDOR 6 PUESTOS" sin mas es el juego de mesa.
+  it("silla gana a comedor, y comedor a secas es mesa", () => {
+    expect(clasificarPorDescripcion("SILLA COMEDOR TAPIZADA")).toBe("SILLA");
+    expect(clasificarPorDescripcion("COMEDOR 6 PUESTOS NOGAL")).toBe("MESA");
+    expect(clasificarPorDescripcion("MESA COMEDOR EXTENSIBLE")).toBe("MESA");
+  });
+
+  it("poltrona gana a silla", () => {
+    expect(clasificarPorDescripcion("POLTRONA SILLA DE LECTURA")).toBe("POLTRONA");
+  });
+
+  it("ignora tildes y minusculas", () => {
+    expect(clasificarPorDescripcion("lámpara colgante")).toBe("LUMINARIA");
+    expect(clasificarPorDescripcion("Sofá cama")).toBe("SOFA");
+  });
+
+  it("lo que no calza cae en OTRO, no se lo inventa", () => {
+    expect(clasificarPorDescripcion("PORTARRETRATO 10X15")).toBe("OTRO");
+    expect(clasificarPorDescripcion(null)).toBe("OTRO");
+    expect(clasificarPorDescripcion("")).toBe("OTRO");
+  });
+});
+
+describe("quien cierra una orden compartida", () => {
+  const p = (usuarioId: string, esCreador: boolean, seUnioAt: string) => ({ usuarioId, esCreador, seUnioAt });
+
+  it("con un solo operario, cierra el creador", () => {
+    const solo = [p("a", true, "2026-09-12T08:00:00Z")];
+    expect(quienCierra(solo)).toBe("a");
+    expect(puedeCerrarOrden(solo, "a", "PICKING_MUEBLES")).toBe(true);
+  });
+
+  it("con reasignacion, cierra el que se unio (el que termina)", () => {
+    const dos = [p("a", true, "2026-09-12T08:00:00Z"), p("b", false, "2026-09-12T09:30:00Z")];
+    expect(quienCierra(dos)).toBe("b");
+    expect(puedeCerrarOrden(dos, "b", "PICKING_MUEBLES")).toBe(true);
+    expect(puedeCerrarOrden(dos, "a", "PICKING_MUEBLES")).toBe(false);
+  });
+
+  it("gestion puede siempre: si el que se unio sale de turno, la orden no se queda abierta", () => {
+    const dos = [p("a", true, "2026-09-12T08:00:00Z"), p("b", false, "2026-09-12T09:30:00Z")];
+    for (const role of ["ADMIN", "GERENTE", "SUPERVISOR_ALMACENAMIENTO"]) {
+      expect(puedeCerrarOrden(dos, "supervisor", role)).toBe(true);
+    }
+  });
+
+  it("sin participantes no cierra nadie", () => {
+    expect(quienCierra([])).toBeNull();
   });
 });
 
@@ -197,16 +250,31 @@ describe("transiciones de la orden", () => {
 });
 
 describe("agregar PLU", () => {
+  const linea = (estado: EstadoLinea, plu: string, operarioId: string) => ({ plu, estado, operarioId });
+
   it("rechaza el duplicado: un PLU es una sola linea por orden", () => {
-    expect(validarAgregarPlu([linea("PICKEADA", "1001")], "1001")).toMatch(/ya esta en esta orden/);
+    expect(validarAgregarPlu([linea("PICKEADA", "1001", "a")], "1001", "a"))
+      .toMatch(/ya esta en esta orden/);
   });
 
-  it("rechaza escanear otro PLU con uno en curso", () => {
-    expect(validarAgregarPlu([linea("EN_PICKING", "1001")], "1002")).toMatch(/PLU en curso/);
+  it("rechaza el duplicado aunque lo haya pickeado el companero", () => {
+    expect(validarAgregarPlu([linea("PICKEADA", "1001", "b")], "1001", "a"))
+      .toMatch(/ya esta en esta orden/);
   });
 
-  it("acepta un PLU nuevo sin nada en curso", () => {
-    expect(validarAgregarPlu([linea("PICKEADA", "1001")], "1002")).toBeNull();
+  it("rechaza escanear otro PLU con uno propio en curso", () => {
+    expect(validarAgregarPlu([linea("EN_PICKING", "1001", "a")], "1002", "a"))
+      .toMatch(/PLU en curso/);
+  });
+
+  // El caso de la reasignacion: dos operarios en la misma orden. Que el otro
+  // tenga un PLU abierto no puede bloquearte.
+  it("NO bloquea si el PLU en curso es del otro operario", () => {
+    expect(validarAgregarPlu([linea("EN_PICKING", "1001", "b")], "1002", "a")).toBeNull();
+  });
+
+  it("acepta un PLU nuevo sin nada propio en curso", () => {
+    expect(validarAgregarPlu([linea("PICKEADA", "1001", "a")], "1002", "a")).toBeNull();
   });
 });
 

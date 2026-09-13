@@ -23,6 +23,7 @@ export type ModuleKey =
   | 'indicadores'
   | 'picking-muebles'
   | 'inspeccion-muebles'
+  | 'indicadores-muebles'
 
 export const MODULE_ACCESS: Record<ModuleKey, string[]> = {
   transporte: ['TRANSPORTE', 'SUPERVISOR_TRANSPORTE', 'GERENTE', 'ADMIN', 'OPERADOR'],
@@ -72,6 +73,8 @@ export const MODULE_ACCESS: Record<ModuleKey, string[]> = {
   // Login compartido del área: 2 PCs para ~5 inspectores. La trazabilidad la da
   // el catálogo de inspectores, no la autenticación.
   'inspeccion-muebles': ['INSPECCION_MUEBLES', 'SUPERVISOR_ALMACENAMIENTO', 'GERENTE', 'ADMIN'],
+  // Los numeros con los que se evalua al area: solo gestion.
+  'indicadores-muebles': ['SUPERVISOR_ALMACENAMIENTO', 'GERENTE', 'ADMIN'],
 }
 
 export function canSeeModule(role: string | undefined | null, moduleKey: ModuleKey): boolean {

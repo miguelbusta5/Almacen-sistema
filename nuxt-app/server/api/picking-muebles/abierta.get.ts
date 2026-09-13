@@ -1,5 +1,5 @@
 import { defineEventHandler } from 'h3'
-import { capacidadDeOrden, equipoDelDia, ordenAbierta, requirePicking } from '../../utils/muebles'
+import { equipoDelDia, ordenAbierta, requirePicking, volumenDeOrden } from '../../utils/muebles'
 import { mapEquipoMuebles, mapOrdenMuebles } from '../../utils/mapRow'
 
 /**
@@ -15,7 +15,7 @@ export default defineEventHandler(async (event) => {
     data: {
       orden: orden ? mapOrdenMuebles(orden) : null,
       equipo: equipo ? mapEquipoMuebles(equipo) : null,
-      capacidad: capacidadDeOrden(orden, equipo),
+      volumen: volumenDeOrden(orden),
     },
   }
 })

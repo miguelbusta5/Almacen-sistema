@@ -11,6 +11,7 @@ import {
   duracionInspeccionNetaMinutos,
   duracionMinutos as duracionMinutosMuebles,
   resumenOrden,
+  volumenOrden,
 } from './mueblesCalc'
 
 // Mapea la fila de TransporteGuardado al shape del cliente (igual que la app Next).
@@ -597,6 +598,7 @@ export function mapLineaMuebles(l: any) {
     ebanisteriaFin: l.ebanisteriaFin?.toISOString?.() ?? l.ebanisteriaFin ?? null,
     duracionEbanisteriaMin: duracionMinutosMuebles(l.ebanisteriaInicio, l.ebanisteriaFin),
     motivoEbanisteria: l.motivoEbanisteria ?? null,
+    operario: l.operario ? { id: l.operario.id, nombre: l.operario.name } : null,
     inspector: l.inspector ?? null,
     enviadoEbanisteriaPor: l.enviadoEbanisteriaPor ?? null,
     recibidoEbanisteriaPor: l.recibidoEbanisteriaPor ?? null,
@@ -604,16 +606,8 @@ export function mapLineaMuebles(l: any) {
 }
 
 export function mapEquipoMuebles(e: any) {
-  return {
-    id: e.id,
-    codigo: e.codigo,
-    tipo: e.tipo,
-    // Null mientras el equipo no este medido: la UI muestra m3 sin porcentaje en
-    // vez de inventarse un 0%.
-    capacidadM3: e.capacidadM3 == null ? null : Number(e.capacidadM3),
-    capacidadKg: e.capacidadKg == null ? null : Number(e.capacidadKg),
-    activo: e.activo ?? true,
-  }
+  // Sin capacidad: el area decidio no medir el Order Picker ni el Genie.
+  return { id: e.id, codigo: e.codigo, tipo: e.tipo, activo: e.activo ?? true }
 }
 
 export function mapOrdenMuebles(o: any) {
@@ -631,10 +625,18 @@ export function mapOrdenMuebles(o: any) {
     duracionInspeccionMin: duracionMinutosMuebles(o.horaPasoInspeccion, o.horaFinInspeccion),
     operario: o.operario ? { id: o.operario.id, nombre: o.operario.name } : null,
     equipo: o.equipo ? mapEquipoMuebles(o.equipo) : null,
+    // En orden de entrada: el ultimo es quien pasa la orden a inspeccion.
+    participantes: (o.participantes ?? []).map((p: any) => ({
+      id: p.usuarioId,
+      nombre: p.usuario?.name ?? '',
+      equipo: p.equipo?.codigo ?? null,
+      esCreador: p.esCreador,
+    })),
     inspector: o.inspector ?? null,
     motivoCorreccion: o.motivoCorreccion ?? null,
     lineas,
     resumen: resumenOrden(lineas),
+    volumen: volumenOrden(lineas),
   }
 }
 

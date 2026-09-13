@@ -6,16 +6,9 @@ import { ROLES_GESTION_MUEBLES } from '../../../../utils/mueblesCalc'
 import { auditar } from '../../../../utils/muebles'
 import { mapEquipoMuebles } from '../../../../utils/mapRow'
 
-const schema = z.object({
-  capacidadM3: z.number().positive().nullable().optional(),
-  capacidadKg: z.number().positive().nullable().optional(),
-  activo: z.boolean().optional(),
-})
+const schema = z.object({ activo: z.boolean().optional() })
 
-/**
- * PATCH /api/muebles-admin/equipos/:id - sobre todo para cargar la capacidad
- * cuando se mida el equipo. Es un dato de configuracion, no un cambio de codigo.
- */
+/** PATCH /api/muebles-admin/equipos/:id - dar de baja o reactivar un equipo. */
 export default defineEventHandler(async (event) => {
   const actor = await requireRole(event, ROLES_GESTION_MUEBLES)
   const id = getRouterParam(event, 'id')!

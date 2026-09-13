@@ -100,7 +100,7 @@ defineExpose({ enfocar: () => (enCurso.value ? inputUbicacion.value?.focus() : i
           <div><dt>Volumen</dt><dd>{{ fmtM3(lineaEnCurso!.volumenUnitarioM3) }}</dd></div>
         </dl>
         <p v-if="lineaEnCurso!.volumenUnitarioM3 == null" class="ficha-aviso">
-          Este PLU no está medido en el maestro: no sumará a la capacidad del equipo.
+          Este PLU no está medido en el maestro: no sumará al volumen de la orden.
         </p>
       </div>
 

@@ -16,6 +16,8 @@ const leer = (rel: string) => readFileSync(path.join(process.cwd(), rel), "utf8"
 
 const fuente = leer("src/lib/pickingMuebles.ts");
 const calcServidor = leer("nuxt-app/server/utils/mueblesCalc.ts");
+const indFuente = leer("src/lib/mueblesIndicadores.ts");
+const indServidor = leer("nuxt-app/server/utils/mueblesIndicadoresCalc.ts");
 
 describe("muebles — las dos copias de la logica", () => {
   const funciones = [
@@ -29,7 +31,10 @@ describe("muebles — las dos copias de la logica", () => {
     "duracionMinutos",
     "duracionInspeccionNetaMinutos",
     "totalesLinea",
-    "capacidadEquipo",
+    "volumenOrden",
+    "clasificarPorDescripcion",
+    "quienCierra",
+    "puedeCerrarOrden",
     "validarPasoAInspeccion",
     "ordenInspeccionCompleta",
     "validarAgregarPlu",
@@ -42,10 +47,41 @@ describe("muebles — las dos copias de la logica", () => {
     }
   });
 
-  it("los umbrales de capacidad no se desvian entre copias", () => {
+  // El orden de las reglas ES la logica: un sofa reclinable es un reclinable, y
+  // una silla de comedor no es una mesa. Si una copia reordena, clasifica
+  // distinto que la otra y el informe cambia segun quien lo pida.
+  it("las reglas de clasificacion mantienen su orden en las dos copias", () => {
     for (const src of [fuente, calcServidor]) {
-      expect(src).toContain("UMBRAL_AVISO = 80");
-      expect(src).toContain("UMBRAL_CRITICO = 100");
+      const reglas = src.slice(src.indexOf("REGLAS_TIPO"));
+      const orden = ["RECLINABLE", "POLTRONA", "SOFA", "LUMINARIA", "SILLA", "MESA"]
+        .map((t) => reglas.indexOf(`["${t}"`) >= 0 ? reglas.indexOf(`["${t}"`) : reglas.indexOf(`['${t}'`));
+      expect(orden.every((v, i) => i === 0 || v > orden[i - 1]!)).toBe(true);
+    }
+  });
+
+  it("los indicadores tambien estan en las dos copias", () => {
+    for (const fn of ["tramoDe", "desplazamientos", "agregarIndicadoresMuebles", "etiquetaTramo"]) {
+      for (const src of [indFuente, indServidor]) {
+        expect(src).toContain(`export function ${fn}`);
+      }
+    }
+  });
+
+  // Los cortes y el tope de desplazamiento son numeros de negocio: si una copia
+  // se desvia, el mismo dato da dos informes distintos.
+  it("los cortes de los tramos no se desvian entre copias", () => {
+    for (const src of [indFuente, indServidor]) {
+      expect(src).toContain("TRAMOS_VOLUMEN_M3 = [0.5, 1.5, 3]");
+      expect(src).toContain("TRAMOS_PESO_KG = [20, 50, 100]");
+      expect(src).toContain("MAX_DESPLAZAMIENTO_SEG = 30 * 60");
+    }
+  });
+
+  // El motor de montacargas NO se toca: TipoTarea es un union cerrado de cinco
+  // valores, triplicado y con sus propios guards.
+  it("los indicadores de muebles no meten tipos nuevos en TIPOS_TAREA", () => {
+    for (const src of [indFuente, indServidor]) {
+      expect(src).not.toContain("TIPOS_TAREA");
     }
   });
 
@@ -141,6 +177,52 @@ describe("muebles — los relojes", () => {
       expect(src).not.toMatch(/horaInicio:\s*(body|parsed|d)\./);
       expect(src).not.toMatch(/horaFin:\s*(body|parsed|d)\./);
     }
+  });
+});
+
+// Reasignacion: el Genie no puede con un PLU y lo baja el del Order Picker,
+// entrando a LA MISMA orden. Lo que se registra es quien acabo bajando cada PLU.
+describe("picking — orden compartida por reasignacion", () => {
+  const crearOrden = leer("nuxt-app/server/api/picking-muebles/index.post.ts");
+  const unirse = leer("nuxt-app/server/api/picking-muebles/[id]/unirse.post.ts");
+  const agregarPlu = leer("nuxt-app/server/api/picking-muebles/[id]/plu.post.ts");
+  const cerrarLinea = leer("nuxt-app/server/api/picking-muebles/[id]/linea/[lineaId]/cerrar.post.ts");
+  const pasarInspeccion = leer("nuxt-app/server/api/picking-muebles/[id]/inspeccion.post.ts");
+  const helpers = leer("nuxt-app/server/utils/muebles.ts");
+
+  // Sin este marcador la pantalla no puede distinguir "te equivocaste de numero"
+  // de "esta es la orden a la que tienes que unirte".
+  it("chocar con una orden en picking devuelve un error identificable", () => {
+    expect(crearOrden).toContain("ORDEN_YA_ABIERTA");
+    expect(crearOrden).toContain("ordenId");
+  });
+
+  it("unirse no arranca ningun reloj nuevo", () => {
+    // El de la orden ya corre desde que la abrio el primero.
+    expect(unirse).not.toContain("horaInicio: now");
+    expect(unirse).toContain("participanteOrdenMuebles.create");
+  });
+
+  it("unirse ocupa el turno: no se puede tener ademas una orden propia", () => {
+    expect(unirse).toContain("ordenAbierta(actor.id)");
+    expect(helpers).toContain("participantes: { some: { usuarioId } }");
+  });
+
+  it("cada linea guarda quien la pickeo", () => {
+    expect(agregarPlu).toContain("operarioId: actor.id");
+  });
+
+  it("el PLU en curso se mira por persona, no por orden", () => {
+    expect(agregarPlu).toContain("validarAgregarPlu(orden.lineas, plu, actor.id)");
+  });
+
+  it("cada operario cierra solo sus propias lineas", () => {
+    expect(cerrarLinea).toContain("linea.operarioId !== actor.id");
+  });
+
+  it("la pasa a inspeccion el que se unio, y gestion como salida de emergencia", () => {
+    expect(pasarInspeccion).toContain("puedeCerrarOrden(orden.participantes, actor.id, actor.role)");
+    expect(pasarInspeccion).toContain("cerrada por supervision");
   });
 });
 

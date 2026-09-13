@@ -9,10 +9,6 @@ import { mapEquipoMuebles } from '../../../utils/mapRow'
 const schema = z.object({
   codigo: z.string().min(1).max(40),
   tipo: z.enum(['ORDER_PICKER', 'GENIE']),
-  // Nullable: los equipos se dan de alta antes de medirlos. El modulo funciona
-  // mostrando m3 acumulados hasta que haya una capacidad contra la que comparar.
-  capacidadM3: z.number().positive().nullable().optional(),
-  capacidadKg: z.number().positive().nullable().optional(),
 })
 
 /** POST /api/muebles-admin/equipos - alta de equipo. */
@@ -29,12 +25,7 @@ export default defineEventHandler(async (event) => {
   if (existe) throw createError({ statusCode: 409, statusMessage: `Ya existe un equipo ${codigo}` })
 
   const equipo = await prisma.equipoMuebles.create({
-    data: {
-      codigo,
-      tipo: parsed.data.tipo,
-      capacidadM3: parsed.data.capacidadM3 ?? null,
-      capacidadKg: parsed.data.capacidadKg ?? null,
-    },
+    data: { codigo, tipo: parsed.data.tipo },
   })
 
   await auditar(actor.id, 'CREATE', 'picking-muebles', equipo.id, `Equipo ${codigo} (${parsed.data.tipo}) creado`)

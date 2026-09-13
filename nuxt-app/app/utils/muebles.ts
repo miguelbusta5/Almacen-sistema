@@ -7,6 +7,7 @@
 export const API_PICKING = '/api/picking-muebles'
 export const API_INSPECCION = '/api/inspeccion-muebles'
 export const API_ADMIN_MUEBLES = '/api/muebles-admin'
+export const API_INDICADORES_MUEBLES = '/api/indicadores-muebles'
 
 export type EstadoLinea = 'EN_PICKING' | 'PICKEADA' | 'EN_INSPECCION' | 'EN_EBANISTERIA' | 'LISTO'
 export type EstadoOrden = 'EN_PICKING' | 'EN_INSPECCION' | 'INSPECCIONADA'
@@ -18,9 +19,14 @@ export interface Equipo {
   id: string
   codigo: string
   tipo: TipoEquipo
-  capacidadM3: number | null
-  capacidadKg: number | null
   activo: boolean
+}
+
+export interface Participante {
+  id: string
+  nombre: string
+  equipo: string | null
+  esCreador: boolean
 }
 
 export interface Linea {
@@ -46,6 +52,7 @@ export interface Linea {
   ebanisteriaFin: string | null
   duracionEbanisteriaMin: number | null
   motivoEbanisteria: string | null
+  operario: { id: string; nombre: string } | null
   inspector: Inspector | null
   enviadoEbanisteriaPor: Inspector | null
   recibidoEbanisteriaPor: Inspector | null
@@ -74,17 +81,17 @@ export interface Orden {
   operario: { id: string; nombre: string } | null
   equipo: Equipo | null
   inspector: Inspector | null
+  participantes: Participante[]
   lineas: Linea[]
   resumen: ResumenOrden
+  volumen: VolumenOrden
 }
 
-export interface Capacidad {
-  ocupadoM3: number
-  pesoKg: number
-  capacidadM3: number | null
-  porcentaje: number | null
+/** m3 y kg acumulados por la orden. Sin capacidad: el area no mide los equipos. */
+export interface VolumenOrden {
+  m3: number
+  kg: number
   lineasSinMedida: number
-  tono: 'ok' | 'aviso' | 'critico'
 }
 
 export interface Pendiente {
@@ -131,10 +138,14 @@ export const TIPO_EQUIPO_LABEL: Record<TipoEquipo, string> = {
   GENIE: 'Genie',
 }
 
-export const TONO_CAPACIDAD: Record<Capacidad['tono'], string> = {
-  ok: 'var(--u-ok)',
-  aviso: 'var(--u-aviso)',
-  critico: 'var(--u-critico)',
+export const TIPO_MERCANCIA_LABEL: Record<string, string> = {
+  SOFA: 'Sofá',
+  SILLA: 'Silla',
+  MESA: 'Mesa',
+  LUMINARIA: 'Luminaria',
+  RECLINABLE: 'Reclinable',
+  POLTRONA: 'Poltrona',
+  OTRO: 'Otro',
 }
 
 /** m³ con 3 decimales: por debajo de eso, un mueble no se distingue de otro. */

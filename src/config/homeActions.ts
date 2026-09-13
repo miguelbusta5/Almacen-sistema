@@ -161,6 +161,17 @@ export const HOME_ACTIONS: HomeAction[] = [
     priority: 1,
   },
   {
+    id: "indicadores-muebles",
+    title: "Indicadores Muebles",
+    description: "Tiempos del area por persona, tipo de mercancia, volumen y peso",
+    href: "/dashboard/indicadores-muebles",
+    icon: "ChartColumnIncreasing",
+    color: getModuleColor("indicadores-muebles"),
+    moduleKey: "indicadores-muebles",
+    roles: ["SUPERVISOR_ALMACENAMIENTO", "GERENTE", "ADMIN"],
+    priority: 3,
+  },
+  {
     id: "ver-auditoria",
     title: "Ver auditoría",
     description: "Historial completo de acciones del sistema",

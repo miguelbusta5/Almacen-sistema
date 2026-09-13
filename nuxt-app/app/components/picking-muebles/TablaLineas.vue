@@ -6,19 +6,22 @@ import {
   ESTADO_LINEA_LABEL, ESTADO_LINEA_TONE, cronometro, fmtM3, fmtMin, type Linea,
 } from '~/utils/muebles'
 
-defineProps<{ lineas: Linea[]; ahora: number }>()
+// `mostrarOperario` solo cuando la orden la trabajan dos: una columna que
+// siempre dice lo mismo es ruido.
+defineProps<{ lineas: Linea[]; ahora: number; mostrarOperario?: boolean }>()
 </script>
 
 <template>
   <div class="tabla-wrap">
     <table class="tabla">
       <colgroup>
-        <col style="width: 22%"><col style="width: 12%"><col style="width: 16%">
-        <col style="width: 10%"><col style="width: 14%"><col style="width: 13%"><col style="width: 13%">
+        <col style="width: 20%"><col style="width: 11%"><col v-if="mostrarOperario" style="width: 12%">
+        <col style="width: 15%"><col style="width: 9%"><col style="width: 13%">
+        <col style="width: 10%"><col style="width: 10%">
       </colgroup>
       <thead>
         <tr>
-          <th>PLU</th><th>Estado</th><th>Ubicación</th>
+          <th>PLU</th><th>Estado</th><th v-if="mostrarOperario">Operario</th><th>Ubicación</th>
           <th class="num">Unid.</th><th>Rótulo</th><th class="num">Volumen</th><th class="num">Tiempo</th>
         </tr>
       </thead>
@@ -29,6 +32,7 @@ defineProps<{ lineas: Linea[]; ahora: number }>()
             <span v-if="l.descripcion" class="desc">{{ l.descripcion }}</span>
           </td>
           <td><span class="chip">{{ ESTADO_LINEA_LABEL[l.estado] }}</span></td>
+          <td v-if="mostrarOperario" class="quien">{{ l.operario?.nombre || '—' }}</td>
           <td class="mono">{{ l.ubicacion || '—' }}</td>
           <td class="num tnum">{{ l.unidades || '—' }}</td>
           <td class="mono">{{ l.numeroCaja || '—' }}</td>
@@ -47,7 +51,7 @@ defineProps<{ lineas: Linea[]; ahora: number }>()
 
 <style scoped>
 .tabla-wrap { overflow-x: auto; border: 1px solid var(--border); border-radius: var(--r-md); background: var(--surface); }
-.tabla { width: 100%; min-width: 720px; border-collapse: collapse; table-layout: fixed; font-size: 13px; }
+.tabla { width: 100%; min-width: 800px; border-collapse: collapse; table-layout: fixed; font-size: 13px; }
 .tabla th {
   padding: 10px 12px; text-align: left; font-size: 10.5px; font-weight: 700;
   letter-spacing: .08em; text-transform: uppercase; color: var(--muted);
@@ -66,4 +70,5 @@ defineProps<{ lineas: Linea[]; ahora: number }>()
   white-space: nowrap;
 }
 .vivo { font-weight: 700; color: var(--brand); }
+.quien { font-size: 12px; color: var(--ink-2); }
 </style>

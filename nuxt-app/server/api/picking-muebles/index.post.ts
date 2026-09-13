@@ -45,7 +45,28 @@ export default defineEventHandler(async (event) => {
     })
   }
 
-  const yaExiste = await prisma.ordenMuebles.findUnique({ where: { codigo }, select: { id: true } })
+  // Choque con una orden existente. Si sigue en picking NO es un error del
+  // operario: es el caso de la reasignacion — el Genie no pudo con un PLU y el
+  // del Order Picker viene a bajarlo. Se devuelve identificable para que la
+  // pantalla pueda preguntarle si trae PLUs reasignados en vez de dejarlo
+  // bloqueado o, peor, empujarlo a inventar otro numero de orden.
+  const yaExiste = await prisma.ordenMuebles.findFirst({
+    where: { codigo, deletedAt: null },
+    include: { operario: { select: { id: true, name: true } }, equipo: { select: { codigo: true } } },
+  })
+  if (yaExiste?.estado === 'EN_PICKING') {
+    throw createError({
+      statusCode: 409,
+      statusMessage: `La orden ${codigo} ya esta abierta por ${yaExiste.operario.name}`,
+      data: {
+        codigo: 'ORDEN_YA_ABIERTA',
+        ordenId: yaExiste.id,
+        orden: codigo,
+        operario: yaExiste.operario.name,
+        equipo: yaExiste.equipo?.codigo ?? null,
+      },
+    })
+  }
   if (yaExiste) {
     throw createError({ statusCode: 409, statusMessage: `La orden ${codigo} ya fue registrada` })
   }
@@ -61,6 +82,11 @@ export default defineEventHandler(async (event) => {
       // Se sella el equipo del dia: si manana le cambian de equipo, la carga que
       // llevo esta orden no debe moverse.
       equipoId: equipo.id,
+      // El creador tambien es participante: `ordenAbierta` mira esa tabla, asi
+      // que si no estuviera aqui podria abrir una segunda orden.
+      participantes: {
+        create: { usuarioId: actor.id, equipoId: equipo.id, esCreador: true, seUnioAt: now },
+      },
     },
     include: ORDEN_INCLUDE,
   })

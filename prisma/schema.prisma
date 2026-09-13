@@ -182,6 +182,9 @@ model User {
   pendientesMueblesAsignados         PendienteMuebles[]             @relation("PendientesMueblesAsignados")
   pendientesMueblesAsignadosPor      PendienteMuebles[]             @relation("PendientesMueblesAsignadosPor")
   pendientesMueblesResueltos         PendienteMuebles[]             @relation("PendientesMueblesResueltos")
+  lineasMueblesPickeadas             LineaMuebles[]                 @relation("LineasMueblesOperario")
+  participacionesMuebles             ParticipanteOrdenMuebles[]     @relation("ParticipacionesMuebles")
+  tiposMuebleActualizados            TipoMueblePlu[]                @relation("TiposMuebleActualizados")
 
   @@index([email])
   @@map("users")
@@ -1696,19 +1699,21 @@ enum TipoEquipoMuebles {
   GENIE
 }
 
-/// Equipo de altura del area de muebles. La capacidad es nullable a proposito:
-/// el modulo tiene que funcionar mostrando los m3 acumulados aunque todavia no
-/// se haya medido el equipo y el porcentaje no se pueda calcular.
+/// Equipo de altura del area de muebles.
+///
+/// Sin capacidad: el area decidio no medir cuanto cabe en el Order Picker ni en
+/// el Genie. Lo que se mide son los m3 que acumula cada orden, que no necesitan
+/// un maximo contra el que compararse. El equipo sigue aqui porque importa saber
+/// con cual se trabajo — es la razon por la que a veces hay que reasignar un PLU.
 model EquipoMuebles {
-  id          String            @id @default(cuid())
-  codigo      String            @unique @db.VarChar(40)
-  tipo        TipoEquipoMuebles
-  capacidadM3 Decimal?          @map("capacidad_m3") @db.Decimal(10, 3)
-  capacidadKg Decimal?          @map("capacidad_kg") @db.Decimal(10, 2)
-  activo      Boolean           @default(true)
+  id     String            @id @default(cuid())
+  codigo String            @unique @db.VarChar(40)
+  tipo   TipoEquipoMuebles
+  activo Boolean           @default(true)
 
-  asignaciones AsignacionEquipoMuebles[]
-  ordenes      OrdenMuebles[]
+  asignaciones  AsignacionEquipoMuebles[]
+  ordenes       OrdenMuebles[]
+  participantes ParticipanteOrdenMuebles[]
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
@@ -1779,8 +1784,9 @@ model OrdenMuebles {
   motivoCorreccion String?   @map("motivo_correccion")
   deletedAt        DateTime? @map("deleted_at")
 
-  lineas     LineaMuebles[]
-  pendientes PendienteMuebles[]
+  lineas        LineaMuebles[]
+  pendientes    PendienteMuebles[]
+  participantes ParticipanteOrdenMuebles[]
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
@@ -1824,9 +1830,16 @@ model LineaMuebles {
   numeroCaja String? @map("numero_caja") @db.VarChar(60)
 
   /// unidades * unitario, sellado al cerrar la linea. Es la cifra con la que se
-  /// calcula la capacidad ocupada del equipo.
+  /// suman los m3 y los kg de la orden.
   volumenTotalM3 Decimal? @map("volumen_total_m3") @db.Decimal(12, 6)
   pesoTotalKg    Decimal? @map("peso_total_kg") @db.Decimal(12, 3)
+
+  /// Quien pickeo ESTE PLU. La orden puede tener dos operarios (un PLU que el
+  /// Genie no puede bajar se reasigna al del Order Picker), y cargarle todo el
+  /// tiempo a quien abrio la orden seria mentir — mismo criterio que los tramos
+  /// de montacargas.
+  operarioId String @map("operario_id")
+  operario   User   @relation("LineasMueblesOperario", fields: [operarioId], references: [id])
 
   estado     EstadoLineaMuebles @default(EN_PICKING)
   /// Escaneo del PLU.
@@ -1926,4 +1939,80 @@ model PendienteMuebles {
   @@index([estado, solicitadoAt])
   @@index([asignadoAId, estado])
   @@map("pendientes_muebles")
+}
+
+/// Tipos de mueble que reconoce el clasificador. Los nombro el area: son los que
+/// se pickean de forma lo bastante distinta como para que mezclar sus tiempos en
+/// un unico promedio no diga nada util.
+enum TipoMercanciaMueble {
+  SOFA
+  SILLA
+  MESA
+  LUMINARIA
+  RECLINABLE
+  POLTRONA
+  OTRO
+}
+
+enum OrigenTipoMueble {
+  DERIVADO // Lo dedujo la app de la descripcion del maestro
+  MANUAL // Lo corrigio una persona: la heuristica ya no vuelve a tocarlo
+}
+
+/// Tipo de mercancia por PLU.
+///
+/// Tabla aparte de productos_maestro a proposito: el importador del maestro hace
+/// un INSERT ... ON CONFLICT que ya vacio datos de 19k productos una vez, y una
+/// correccion manual no puede perderse en la siguiente recarga. Mismo criterio
+/// que medidas_producto.
+///
+/// El tipo NO se sella en la linea, a diferencia del peso y el volumen: una
+/// medida sellada protege una cifra ya calculada, pero una etiqueta corregida
+/// debe arreglar el informe hacia atras. Si se sellara, una mala clasificacion
+/// envenenaria el historico para siempre.
+model TipoMueblePlu {
+  id     String              @id @default(cuid())
+  plu    String              @unique @db.VarChar(100)
+  tipo   TipoMercanciaMueble
+  origen OrigenTipoMueble    @default(DERIVADO)
+
+  actualizadoPorId String? @map("actualizado_por_id")
+  actualizadoPor   User?   @relation("TiposMuebleActualizados", fields: [actualizadoPorId], references: [id])
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([tipo])
+  @@index([origen])
+  @@map("tipos_mueble_plu")
+}
+
+/// Quien trabaja una orden de picking.
+///
+/// Existe como tabla y no como un segundo campo en la orden porque el que se une
+/// tambien "ocupa" su turno: ordenAbierta() mira aqui, asi que unirse cuenta como
+/// tener orden abierta y esa persona no puede abrir otra propia.
+///
+/// El caso real: por el tipo de mercancia el Genie no puede bajar un PLU y se le
+/// reasigna al del Order Picker, que entra a la MISMA orden en vez de crear una
+/// paralela que despues nadie sabria juntar.
+model ParticipanteOrdenMuebles {
+  id        String       @id @default(cuid())
+  ordenId   String       @map("orden_id")
+  orden     OrdenMuebles @relation(fields: [ordenId], references: [id], onDelete: Cascade)
+  usuarioId String       @map("usuario_id")
+  usuario   User         @relation("ParticipacionesMuebles", fields: [usuarioId], references: [id])
+
+  /// Equipo que llevaba al entrar. Se sella: si manana le cambian de equipo, lo
+  /// que hizo en esta orden no debe moverse.
+  equipoId String?        @map("equipo_id")
+  equipo   EquipoMuebles? @relation(fields: [equipoId], references: [id])
+
+  /// El que abrio la orden. El resto entraron por reasignacion.
+  esCreador Boolean  @default(false) @map("es_creador")
+  seUnioAt  DateTime @default(now()) @map("se_unio_at")
+
+  @@unique([ordenId, usuarioId])
+  @@index([usuarioId])
+  @@map("participantes_orden_muebles")
 }

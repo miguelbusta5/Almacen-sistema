@@ -1,7 +1,7 @@
 import { defineEventHandler, getRouterParam, readBody, createError } from 'h3'
 import { z } from 'zod'
 import { prisma } from '../../../../../utils/prisma'
-import { auditar, capacidadDeOrden, ordenPorId, ORDEN_INCLUDE, requirePicking } from '../../../../../utils/muebles'
+import { auditar, esParticipante, ordenPorId, ORDEN_INCLUDE, requirePicking, volumenDeOrden } from '../../../../../utils/muebles'
 import { normalizarRotulo, totalesLinea } from '../../../../../utils/mueblesCalc'
 import { mapOrdenMuebles } from '../../../../../utils/mapRow'
 
@@ -33,12 +33,17 @@ export default defineEventHandler(async (event) => {
   const d = parsed.data
 
   const orden = await ordenPorId(id)
-  if (orden.operarioId !== actor.id) {
-    throw createError({ statusCode: 403, statusMessage: 'Esa orden es de otro operario' })
+  if (!esParticipante(orden, actor.id)) {
+    throw createError({ statusCode: 403, statusMessage: 'No estas trabajando esa orden' })
   }
 
   const linea = orden.lineas.find((l) => l.id === lineaId)
   if (!linea) throw createError({ statusCode: 404, statusMessage: 'PLU no encontrado en esta orden' })
+  // Cada uno cierra lo suyo: el reloj de ese PLU es de quien lo esta bajando, y
+  // dejar que lo pare otro seria falsear su tiempo.
+  if (linea.operarioId !== actor.id) {
+    throw createError({ statusCode: 403, statusMessage: 'Ese PLU lo esta bajando otro operario' })
+  }
   if (linea.estado !== 'EN_PICKING') {
     throw createError({ statusCode: 409, statusMessage: 'Ese PLU ya esta cerrado' })
   }
@@ -73,6 +78,6 @@ export default defineEventHandler(async (event) => {
 
   return {
     success: true,
-    data: { orden: mapOrdenMuebles(actualizada), capacidad: capacidadDeOrden(actualizada) },
+    data: { orden: mapOrdenMuebles(actualizada), volumen: volumenDeOrden(actualizada) },
   }
 })

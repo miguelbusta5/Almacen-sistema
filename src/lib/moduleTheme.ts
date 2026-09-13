@@ -81,6 +81,10 @@ export const MODULE_THEME: Record<ModuleThemeKey, ModuleTheme> = {
     "inspeccion-muebles", "Inspeccion Muebles", "Inspeccion",
     "Inspeccion por PLU, envios a ebanisteria y tiempos del area",
   ),
+  "indicadores-muebles": mod(
+    "indicadores-muebles", "Indicadores Muebles", "Ind. Muebles",
+    "Tiempos del area de muebles por persona, tipo de mercancia, volumen y peso",
+  ),
 };
 
 export function getModuleTheme(key: ModuleThemeKey | string | null | undefined): ModuleTheme {

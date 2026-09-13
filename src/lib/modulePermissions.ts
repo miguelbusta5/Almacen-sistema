@@ -25,7 +25,8 @@ export type ModuleKey =
   | "pendientes"
   | "indicadores"
   | "picking-muebles"
-  | "inspeccion-muebles";
+  | "inspeccion-muebles"
+  | "indicadores-muebles";
 
 export const MODULE_ACCESS: Record<ModuleKey, AppRole[]> = {
   transporte: ["TRANSPORTE", "SUPERVISOR_TRANSPORTE", "GERENTE", "ADMIN", "OPERADOR"],
@@ -98,6 +99,9 @@ export const MODULE_ACCESS: Record<ModuleKey, AppRole[]> = {
   // Login compartido del area: son 2 PCs para ~5 inspectores, asi que la
   // trazabilidad la da el catalogo de inspectores, no la autenticacion.
   "inspeccion-muebles": ["INSPECCION_MUEBLES", "SUPERVISOR_ALMACENAMIENTO", "GERENTE", "ADMIN"],
+  // Los numeros con los que se evalua al area: solo gestion. El servidor lo
+  // exige tambien, como en el resto de indicadores.
+  "indicadores-muebles": ["SUPERVISOR_ALMACENAMIENTO", "GERENTE", "ADMIN"],
 };
 
 export function canSeeModule(role: string | undefined | null, moduleKey: ModuleKey): boolean {

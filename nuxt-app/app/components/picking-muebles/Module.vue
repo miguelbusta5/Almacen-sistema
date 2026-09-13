@@ -7,18 +7,26 @@
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { Hammer, Plus, ClipboardCheck, Loader2 } from '@lucide/vue'
 import { useToast } from '~/composables/useToast'
+import { ensureSession, useSessionState } from '~/composables/useSession'
+import { esGestionMuebles } from '~/utils/mueblesUi'
 import {
-  API_PICKING, ESTADO_ORDEN_LABEL, cronometro, fmtMin, mensajeError,
-  type Capacidad, type Equipo, type Linea, type Orden, type Pendiente,
+  API_PICKING, ESTADO_ORDEN_LABEL, cronometro, mensajeError,
+  type Equipo, type Linea, type Orden, type Pendiente, type VolumenOrden,
 } from '~/utils/muebles'
 
 const { show } = useToast()
+const { me } = useSessionState()
+const esGestion = computed(() => esGestionMuebles(me.value?.role))
 
 const orden = ref<Orden | null>(null)
 const equipo = ref<Equipo | null>(null)
-const capacidad = ref<Capacidad>({
-  ocupadoM3: 0, pesoKg: 0, capacidadM3: null, porcentaje: null, lineasSinMedida: 0, tono: 'ok',
-})
+// Sin orden abierta no hay volumen que mostrar. Se deriva de la orden y NO se
+// guarda aparte: un ref paralelo se quedaba en cero al unirse a una orden que
+// ya traia lineas cerradas del companero.
+const VACIO: VolumenOrden = { m3: 0, kg: 0, lineasSinMedida: 0 }
+const volumen = computed<VolumenOrden>(() => orden.value?.volumen ?? VACIO)
+// Orden ajena con la que se choco al intentar crear: dispara el modal de unirse.
+const choque = ref<{ ordenId: string; orden: string; operario: string; equipo: string | null } | null>(null)
 const pendientes = ref<Pendiente[]>([])
 const cargando = ref(true)
 const guardando = ref(false)
@@ -29,29 +37,53 @@ const ahora = ref(Date.now())
 let tick: ReturnType<typeof setInterval> | null = null
 onMounted(() => {
   tick = setInterval(() => { ahora.value = Date.now() }, 1000)
+  ensureSession()
   cargar()
 })
 onBeforeUnmount(() => { if (tick) clearInterval(tick) })
 
+// El PLU en curso es SOLO el mio: en una orden compartida el companero puede
+// tener el suyo abierto y eso no me bloquea.
 const lineaEnCurso = computed<Linea | null>(
-  () => orden.value?.lineas.find((l) => l.estado === 'EN_PICKING') ?? null,
+  () => orden.value?.lineas.find((l) => l.estado === 'EN_PICKING' && l.operario?.id === me.value?.id) ?? null,
 )
+const hayAlgunoEnCurso = computed(
+  () => orden.value?.lineas.some((l) => l.estado === 'EN_PICKING') ?? false,
+)
+// La pasa a inspeccion el ULTIMO que se unio, que es quien termina el trabajo.
+// Gestion tambien, para que no se quede abierta si esa persona sale de turno.
+const meTocaCerrar = computed(() => {
+  const ps = orden.value?.participantes ?? []
+  if (ps.length === 0) return false
+  if (esGestion.value) return true
+  return ps[ps.length - 1]!.id === me.value?.id
+})
 const puedePasar = computed(
-  () => orden.value != null && orden.value.lineas.length > 0 && lineaEnCurso.value == null,
+  () => orden.value != null && orden.value.lineas.length > 0 && !hayAlgunoEnCurso.value && meTocaCerrar.value,
 )
+const motivoNoPuede = computed(() => {
+  if (!orden.value || orden.value.lineas.length === 0) return null
+  if (hayAlgunoEnCurso.value) {
+    return lineaEnCurso.value
+      ? 'Termina el PLU en curso para poder pasar la orden a inspección.'
+      : 'Hay un PLU en curso del otro operario.'
+  }
+  if (!meTocaCerrar.value) {
+    const ps = orden.value.participantes
+    return `La pasa a inspección ${ps[ps.length - 1]!.nombre}, que es quien termina.`
+  }
+  return null
+})
 
 async function cargar() {
   cargando.value = true
   try {
     const [abierta, pend] = await Promise.all([
-      $fetch<{ data: { orden: Orden | null; equipo: Equipo | null; capacidad: Capacidad } }>(
-        `${API_PICKING}/abierta`,
-      ),
+      $fetch<{ data: { orden: Orden | null; equipo: Equipo | null } }>(`${API_PICKING}/abierta`),
       $fetch<{ data: Pendiente[] }>(`${API_PICKING}/mis-pendientes`).catch(() => ({ data: [] })),
     ])
     orden.value = abierta.data.orden
     equipo.value = abierta.data.equipo
-    capacidad.value = abierta.data.capacidad
     pendientes.value = pend.data
   } catch (e) {
     show(mensajeError(e, 'No se pudo cargar tu orden'), true)
@@ -71,7 +103,30 @@ async function crearOrden() {
     codigoNuevo.value = ''
     show(`Orden ${res.data.codigo} abierta`)
   } catch (e) {
-    show(mensajeError(e, 'No se pudo abrir la orden'), true)
+    // Choque con una orden viva: no es un error del operario, es una pregunta.
+    const data = (e as { data?: { data?: { codigo?: string } } })?.data?.data
+    if (data?.codigo === 'ORDEN_YA_ABIERTA') {
+      choque.value = data as unknown as typeof choque.value
+    } else {
+      show(mensajeError(e, 'No se pudo abrir la orden'), true)
+    }
+  } finally {
+    guardando.value = false
+  }
+}
+
+async function unirse() {
+  if (!choque.value || guardando.value) return
+  guardando.value = true
+  const destino = choque.value
+  try {
+    const res = await $fetch<{ data: Orden }>(`${API_PICKING}/${destino.ordenId}/unirse`, { method: 'POST' })
+    orden.value = res.data
+    choque.value = null
+    codigoNuevo.value = ''
+    show(`Te uniste a ${destino.orden}`)
+  } catch (e) {
+    show(mensajeError(e, 'No te pudiste unir a la orden'), true)
   } finally {
     guardando.value = false
   }
@@ -97,12 +152,11 @@ async function cerrarLinea(datos: { ubicacion: string; unidades: number; numeroC
   if (!orden.value || !lineaEnCurso.value || guardando.value) return
   guardando.value = true
   try {
-    const res = await $fetch<{ data: { orden: Orden; capacidad: Capacidad } }>(
+    const res = await $fetch<{ data: { orden: Orden } }>(
       `${API_PICKING}/${orden.value.id}/linea/${lineaEnCurso.value.id}/cerrar`,
       { method: 'POST', body: datos },
     )
     orden.value = res.data.orden
-    capacidad.value = res.data.capacidad
     show('PLU finalizado')
   } catch (e) {
     show(mensajeError(e, 'No se pudo cerrar el PLU'), true)
@@ -117,7 +171,7 @@ async function pasarAInspeccion() {
   try {
     const codigo = orden.value.codigo
     await $fetch(`${API_PICKING}/${orden.value.id}/inspeccion`, { method: 'POST' })
-    // Se recarga entero: la orden sale de la pantalla y la capacidad vuelve a 0.
+    // Se recarga entero: la orden sale de la pantalla y con ella el volumen.
     await cargar()
     show(`Orden ${codigo} pasada a inspección`)
   } catch (e) {
@@ -147,11 +201,11 @@ async function resolverPendiente(id: string) {
           CEDI · Muebles
         </span>
         <h1 class="hero-title">Picking Muebles</h1>
-        <p class="hero-desc">Órdenes OVDM/TSDM con tiempo por PLU y capacidad del equipo.</p>
+        <p class="hero-desc">Órdenes OVDM/TSDM con tiempo por PLU y volumen de la orden.</p>
       </div>
     </section>
 
-    <PickingMueblesCapacidadBarra :equipo="equipo" :capacidad="capacidad" />
+    <PickingMueblesVolumenOrden :equipo="equipo" :volumen="volumen" :participantes="orden?.participantes" />
 
     <!-- Pendientes asignados: van arriba porque son trabajo que alguien esta
          esperando, y abajo se perderian bajo la orden en curso. -->
@@ -207,18 +261,21 @@ async function resolverPendiente(id: string) {
           <ClipboardCheck :size="15" /> Pasar a inspección
         </button>
       </section>
-      <p v-if="!puedePasar && orden.lineas.length" class="orden-nota">
-        Termina el PLU en curso para poder pasar la orden a inspección.
-      </p>
+      <p v-if="motivoNoPuede" class="orden-nota">{{ motivoNoPuede }}</p>
 
       <PickingMueblesCapturaPlu
         :linea-en-curso="lineaEnCurso" :guardando="guardando"
         @escanear-plu="escanearPlu" @cerrar-linea="cerrarLinea"
       />
 
-      <PickingMueblesTablaLineas v-if="orden.lineas.length" :lineas="orden.lineas" :ahora="ahora" />
+      <PickingMueblesTablaLineas
+        v-if="orden.lineas.length" :lineas="orden.lineas" :ahora="ahora"
+        :mostrar-operario="orden.participantes.length > 1"
+      />
       <p v-else class="vacio">Escanea el primer PLU de la orden.</p>
     </template>
+
+    <PickingMueblesUnirseModal :choque="choque" :guardando="guardando" @cerrar="choque = null" @unirse="unirse" />
   </div>
 </template>
 

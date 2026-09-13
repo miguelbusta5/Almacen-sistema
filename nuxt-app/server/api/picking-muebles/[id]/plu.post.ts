@@ -1,10 +1,11 @@
 import { defineEventHandler, getRouterParam, readBody, createError } from 'h3'
 import { z } from 'zod'
 import { prisma } from '../../../utils/prisma'
-import { auditar, ordenPorId, requirePicking } from '../../../utils/muebles'
+import { auditar, esParticipante, ordenPorId, requirePicking } from '../../../utils/muebles'
 import { validarAgregarPlu } from '../../../utils/mueblesCalc'
 import { normalizePlu } from '../../../utils/exportacionesCalc'
 import { datosPlu } from '../../../utils/maestroMuebles'
+import { tipoDePlu } from '../../../utils/tiposMuebles'
 import { mapLineaMuebles } from '../../../utils/mapRow'
 
 const schema = z.object({ plu: z.string().min(1).max(100) })
@@ -31,17 +32,24 @@ export default defineEventHandler(async (event) => {
   const plu = normalizePlu(parsed.data.plu)
 
   const orden = await ordenPorId(id)
-  if (orden.operarioId !== actor.id) {
-    throw createError({ statusCode: 403, statusMessage: 'Esa orden es de otro operario' })
+  // Cualquier participante puede escanear: la orden puede tener dos operarios
+  // cuando hubo un PLU reasignado.
+  if (!esParticipante(orden, actor.id)) {
+    throw createError({ statusCode: 403, statusMessage: 'No estas trabajando esa orden' })
   }
   if (orden.estado !== 'EN_PICKING') {
     throw createError({ statusCode: 409, statusMessage: 'La orden ya paso a inspeccion' })
   }
 
-  const err = validarAgregarPlu(orden.lineas, plu)
+  // El "PLU en curso" se mira solo contra los TUYOS: que el companero tenga uno
+  // abierto no puede bloquearte. El duplicado si se comprueba contra la orden.
+  const err = validarAgregarPlu(orden.lineas, plu, actor.id)
   if (err) throw createError({ statusCode: 409, statusMessage: err })
 
   const datos = await datosPlu(plu)
+  // Clasifica el PLU la primera vez que se ve. No se sella en la linea: si el
+  // tipo se corrige despues, el informe debe arreglarse tambien hacia atras.
+  await tipoDePlu(plu, datos.descripcion)
 
   const now = new Date()
   const linea = await prisma.lineaMuebles.create({
@@ -54,6 +62,7 @@ export default defineEventHandler(async (event) => {
       volumenUnitarioM3: datos.volumenUnitarioM3,
       estado: 'EN_PICKING',
       horaInicio: now,
+      operarioId: actor.id,
     },
     select: {
       id: true, plu: true, descripcion: true, partes: true, pesoUnitarioKg: true,
@@ -61,6 +70,8 @@ export default defineEventHandler(async (event) => {
       volumenTotalM3: true, pesoTotalKg: true, estado: true, horaInicio: true, horaFin: true,
       inspHoraInicio: true, inspHoraFin: true, ebanisteriaInicio: true, ebanisteriaFin: true,
       motivoEbanisteria: true,
+      operarioId: true,
+      operario: { select: { id: true, name: true } },
       inspector: { select: { id: true, nombre: true } },
       enviadoEbanisteriaPor: { select: { id: true, nombre: true } },
       recibidoEbanisteriaPor: { select: { id: true, nombre: true } },
