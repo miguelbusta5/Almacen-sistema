@@ -108,8 +108,10 @@ export default defineEventHandler(async (event) => {
         montaje: { deletedAt: null },
       },
       select: {
-        id: true, estado: true, horaInicio: true, horaFin: true, unidadesBajadas: true,
+        id: true, estado: true, horaInicio: true, horaFin: true, unidadesBajadas: true, responsableId: true,
         montaje: { select: { operarioId: true } },
+        // Tiempo por persona: quien la empezo y el ayudante que la cerro.
+        tramos: { select: { usuarioId: true, inicio: true, fin: true } },
       },
     }),
     // 3. Pendientes. Los que se sumaron a una tarea de resurtido no cuentan
@@ -188,14 +190,22 @@ export default defineEventHandler(async (event) => {
   }
   for (const t of tareas) {
     if (!t.horaInicio) continue
-    const uid = t.montaje.operarioId
     const registro = `t:${t.id}`
-    if (t.estado !== 'COMPLETADA' || !t.horaFin) {
-      enCurso.push({ usuarioId: uid, inicio: t.horaInicio, fin: finAbierto(t.horaInicio), tipo: 'resurtido', registro })
-      continue
+    const cerrada = t.estado === 'COMPLETADA' && t.horaFin
+    // Con tramos (desde que se pueden pasar a un ayudante), cada persona su
+    // parte. Las de antes no tienen tramos: todo es del operario del montaje.
+    const tramosTarea = t.tramos.length > 0
+      ? t.tramos
+      : [{ usuarioId: t.montaje.operarioId, inicio: t.horaInicio, fin: t.horaFin }]
+    for (const tr of tramosTarea) {
+      const base = { usuarioId: tr.usuarioId, inicio: tr.inicio, tipo: 'resurtido' as const, registro }
+      if (cerrada && tr.fin) tiempos.push({ ...base, fin: tr.fin })
+      else enCurso.push({ ...base, fin: tr.fin ?? finAbierto(tr.inicio) })
     }
-    tiempos.push({ usuarioId: uid, inicio: t.horaInicio, fin: t.horaFin, tipo: 'resurtido', registro })
-    unidades.push({ usuarioId: uid, cuando: t.horaFin, unidades: t.unidadesBajadas ?? 0 })
+    // Las unidades son de quien la cerro.
+    if (cerrada) {
+      unidades.push({ usuarioId: t.responsableId ?? t.montaje.operarioId, cuando: t.horaFin!, unidades: t.unidadesBajadas ?? 0 })
+    }
   }
   for (const p of pendientes) {
     if (!p.operarioId || !p.horaInicio) continue

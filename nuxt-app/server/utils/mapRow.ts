@@ -505,6 +505,11 @@ export function mapTareaResurtido(t: any) {
     pickingFinal: t.pickingFinal ?? null,
     horaInicio: t.horaInicio ? t.horaInicio.toISOString() : null,
     horaFin: t.horaFin ? t.horaFin.toISOString() : null,
+    // Pasada a un ayudante: quien la tiene ahora y quien se la paso. Null en
+    // responsableId = la tiene el operario del montaje.
+    responsableId: t.responsableId ?? null,
+    responsableNombre: t.responsable?.name ?? null,
+    pasadoPorNombre: t.pasadoPor?.name ?? null,
     // Null mientras no se ha escaneado la posicion: el reloj aun no arranco.
     duracionSegundos: segundosEntre(t.horaInicio, t.horaFin),
   }

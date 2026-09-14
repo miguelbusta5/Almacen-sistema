@@ -3,7 +3,9 @@ import { z } from 'zod'
 import { prisma } from '../../../utils/prisma'
 import { requireAuth } from '../../../utils/auth'
 import { mapMontaje } from '../../../utils/mapRow'
-import { assertEjecutor, avisar, idsAlmacenamiento, MONTAJE_INCLUDE } from '../../../utils/resurtido'
+import {
+  assertEjecutor, avisar, cerrarTramoTarea, idsAlmacenamiento, MONTAJE_INCLUDE, responsableDeTarea,
+} from '../../../utils/resurtido'
 import { validarCierreTarea, validarEscaneoPlu } from '../../../utils/resurtidoCalc'
 // normalizarUbicacion es del modulo de montacargas: una sola forma de escribir
 // una ubicacion en todo el proyecto.
@@ -40,7 +42,8 @@ export default defineEventHandler(async (event) => {
   if (!tarea || tarea.montaje.deletedAt) {
     throw createError({ statusCode: 404, statusMessage: 'Tarea no encontrada' })
   }
-  if (tarea.montaje.operarioId !== actor.id) {
+  // Quien la tiene en la mano la cierra: el operario o el ayudante al que se la paso.
+  if (responsableDeTarea(tarea) !== actor.id) {
     throw createError({ statusCode: 403, statusMessage: 'Esa tarea es de otro operario' })
   }
   if (tarea.estado === 'COMPLETADA') {
@@ -64,6 +67,8 @@ export default defineEventHandler(async (event) => {
 
   const now = new Date()
   const montaje = await prisma.$transaction(async (tx) => {
+    // El tramo de quien la cierra termina aqui.
+    await cerrarTramoTarea(tx, id, now)
     await tx.tareaResurtido.update({
       where: { id },
       data: {

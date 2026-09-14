@@ -430,6 +430,11 @@ export interface TareaResurtidoDTO {
   pickingFinal: string | null
   horaInicio: string | null
   horaFin: string | null
+  /** Pasada a un ayudante: quien la tiene. Null = el operario del montaje. */
+  responsableId: string | null
+  responsableNombre: string | null
+  /** Quien se la paso al responsable actual. */
+  pasadoPorNombre: string | null
   /** Null mientras no se ha escaneado la posicion. */
   duracionSegundos: number | null
 }
