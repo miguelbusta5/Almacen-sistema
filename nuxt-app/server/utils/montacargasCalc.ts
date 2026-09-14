@@ -295,8 +295,8 @@ export function repartirEnCajas(
  * Valida cuantas unidades dice el ayudante que alcanzo a almacenar.
  *
  * El caso real: la ubicacion no da para toda la estiba. Guarda lo que cabe y el
- * resto vuelve al montacarguista. Cero no se acepta: si no cupo NADA no hay nada
- * que cerrar, y para eso esta el boton de pasarle el PLU a otra persona.
+ * resto vuelve al montacarguista. Cero tambien vale: si no cupo NADA, el
+ * ayudante devuelve el total a quien se lo paso, sin ubicacion final.
  */
 export function validarUnidadesAlmacenadas(
   almacenadas: number,
@@ -305,8 +305,8 @@ export function validarUnidadesAlmacenadas(
   if (!Number.isFinite(almacenadas) || !Number.isInteger(almacenadas)) {
     return "Indica cuantas unidades almacenaste"
   }
-  if (almacenadas < 1) {
-    return "Si no almacenaste nada, pasa el PLU en vez de cerrarlo"
+  if (almacenadas < 0) {
+    return "Las unidades almacenadas no pueden ser negativas"
   }
   if (almacenadas > total) {
     return `No puedes almacenar mas de las ${total} unidades declaradas`

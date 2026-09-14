@@ -161,6 +161,9 @@ model User {
   pendientesPasados                  PendienteGourmet[]             @relation("PendientesPasados")
   pendientesBorrados                 PendienteGourmet[]             @relation("PendientesBorrados")
   tramosPendiente                    TramoPendiente[]               @relation("TramosPendiente")
+  tareasResurtidoResponsable         TareaResurtido[]               @relation("TareasResurtidoResponsable")
+  tareasResurtidoPasadas             TareaResurtido[]               @relation("TareasResurtidoPasadas")
+  tramosTareaResurtido               TramoTareaResurtido[]          @relation("TramosTareaResurtido")
   cuadrosTurnoSubidos                CuadroTurnos[]                 @relation("CuadrosTurnoSubidos")
   turnos                             TurnoOperario[]                @relation("TurnosOperario")
   recepcionesCreadas                 RecepcionContenedor[]          @relation("RecepcionesCreadas")
@@ -1502,6 +1505,15 @@ model TareaResurtido {
   horaInicio DateTime? @map("hora_inicio")
   horaFin    DateTime? @map("hora_fin")
 
+  /// Quien la tiene en la mano ahora. Null = el operario del montaje. Cambia al
+  /// pasarla a un ayudante, que es quien la cierra.
+  responsableId String? @map("responsable_id")
+  responsable   User?   @relation("TareasResurtidoResponsable", fields: [responsableId], references: [id])
+  /// Quien se la paso al responsable actual, si fue asi.
+  pasadoPorId   String? @map("pasado_por_id")
+  pasadoPor     User?   @relation("TareasResurtidoPasadas", fields: [pasadoPorId], references: [id])
+  tramos        TramoTareaResurtido[]
+
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
@@ -2015,4 +2027,24 @@ model ParticipanteOrdenMuebles {
   @@unique([ordenId, usuarioId])
   @@index([usuarioId])
   @@map("participantes_orden_muebles")
+}
+
+/// Un tramo por cada persona que tuvo la tarea de resurtido en la mano. Igual
+/// que TramoPendiente: se cierra al pasarla y se abre el del ayudante en el mismo
+/// instante, asi el reloj no se corta y cada uno queda con su parte del tiempo.
+model TramoTareaResurtido {
+  id        String         @id @default(cuid())
+  tareaId   String         @map("tarea_id")
+  tarea     TareaResurtido @relation(fields: [tareaId], references: [id], onDelete: Cascade)
+  usuarioId String         @map("usuario_id")
+  usuario   User           @relation("TramosTareaResurtido", fields: [usuarioId], references: [id])
+  orden     Int
+  inicio    DateTime
+  /// Null mientras la persona todavia la tiene en la mano.
+  fin       DateTime?
+  createdAt DateTime       @default(now()) @map("created_at")
+
+  @@index([tareaId, orden], map: "tramos_tarea_resurtido_tarea_orden_idx")
+  @@index([usuarioId, fin], map: "tramos_tarea_resurtido_usuario_fin_idx")
+  @@map("tramos_tarea_resurtido")
 }

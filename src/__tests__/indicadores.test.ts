@@ -545,11 +545,68 @@ describe("efectividad contra el turno", () => {
     expect(r.personas[0].efectividad).toBeNull();
   });
 
-  it("solo cuenta el trozo de turno que cae en el periodo", () => {
+  // El turno de noche es del día en que empieza y cuenta ENTERO: cortarlo a
+  // medianoche partía el turno en dos y la efectividad solo veía hasta las 12.
+  describe("turno de noche", () => {
     const noche = { usuarioId: "seb", dia: "2026-09-10", inicio: h8("21:00:00"), fin: h8("06:00:00", "2026-09-11") };
-    const r = agregarIndicadores({ personas, tiempos: [t("22:00:00", "23:00:00")], unidades: [], ventanas: [noche], ...periodo });
-    // Del turno de noche solo entran las 3 h que caen antes de medianoche.
-    expect(r.personas[0].jornadaSegundos).toBe(3 * 3600);
+    const tt = (desde: string, hasta: string, dia1 = "2026-09-10", dia2 = dia1) =>
+      ({ usuarioId: "seb", inicio: h8(desde, dia1), fin: h8(hasta, dia2), tipo: "movimiento" as const, registro: "m" });
+
+    it("la jornada es el turno entero, también lo que pasa de la medianoche", () => {
+      const r = agregarIndicadores({
+        personas,
+        tiempos: [tt("22:00:00", "23:00:00"), tt("02:00:00", "04:00:00", "2026-09-11")],
+        unidades: [],
+        ventanas: [noche],
+        ...periodo,
+      });
+      const p = r.personas[0];
+      expect(p.jornadaSegundos).toBe(9 * 3600);
+      // La madrugada del 11 entra en el turno del 10.
+      expect(p.segundosEnTurno).toBe(3 * 3600);
+      expect(p.segundos).toBe(3 * 3600);
+      expect(p.efectividad).toBe(33);
+      expect(p.porDia).toEqual([{ dia: "2026-09-10", segundos: 3 * 3600, unidades: 0 }]);
+    });
+
+    it("un tramo que cruza la medianoche dentro del turno va entero a ese día", () => {
+      const r = agregarIndicadores({
+        personas,
+        tiempos: [tt("23:30:00", "00:30:00", "2026-09-10", "2026-09-11")],
+        unidades: [{ usuarioId: "seb", cuando: h8("00:30:00", "2026-09-11"), unidades: 12 }],
+        ventanas: [noche],
+        desde: "2026-09-10",
+        hasta: "2026-09-11",
+      });
+      const p = r.personas[0];
+      expect(p.porDia).toEqual([
+        { dia: "2026-09-10", segundos: 3600, unidades: 12 },
+        { dia: "2026-09-11", segundos: 0, unidades: 0 },
+      ]);
+    });
+
+    it("la madrugada del primer día es de la noche anterior y no entra", () => {
+      const r = agregarIndicadores({
+        personas,
+        tiempos: [tt("02:00:00", "03:00:00", "2026-09-11"), tt("22:00:00", "23:00:00", "2026-09-11")],
+        unidades: [],
+        ventanas: [noche, { ...noche, dia: "2026-09-11", inicio: h8("21:00:00", "2026-09-11"), fin: h8("06:00:00", "2026-09-12") }],
+        desde: "2026-09-11",
+        hasta: "2026-09-11",
+      });
+      const p = r.personas[0];
+      expect(p.jornadaSegundos).toBe(9 * 3600);
+      expect(p.segundos).toBe(3600);
+      expect(p.segundosEnTurno).toBe(3600);
+    });
+
+    it("el tiempo muerto también cubre la madrugada del turno", () => {
+      const tiempos = [tt("22:00:00", "23:00:00"), tt("02:00:00", "04:00:00", "2026-09-11")];
+      const muertos = agregarTiemposMuertos({ personas, tiempos, justificaciones: [], ventanas: [noche], ...periodo });
+      const ind = agregarIndicadores({ personas, tiempos, unidades: [], ventanas: [noche], ...periodo });
+      expect(muertos.resumen.segundos + ind.personas[0].segundosEnTurno).toBe(9 * 3600);
+      expect(muertos.tramos.every((x) => x.dia === "2026-09-10")).toBe(true);
+    });
   });
 
   it("el trabajo que se pisa no cuenta dos veces dentro del turno", () => {

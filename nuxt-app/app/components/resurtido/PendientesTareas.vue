@@ -7,7 +7,7 @@
 // cada uno queda con su tramo. Al cerrarlo, el servidor avisa
 // a quien lo pidió y a quien lo repartió — es justo el dato que estaban esperando.
 import { ref, computed, nextTick, watch } from 'vue'
-import { ScanLine, ArrowDown, Package, CheckCircle2, TriangleAlert, UserPlus } from '@lucide/vue'
+import { ScanLine, ArrowDown, Package, CheckCircle2, TriangleAlert, UserPlus, Undo2 } from '@lucide/vue'
 import { useToast } from '~/composables/useToast'
 import { sonarVeredicto } from '~/utils/escaneoFeedback'
 import {
@@ -64,6 +64,7 @@ function abrir(p: PendienteDTO, enfocarEscaneo = true) {
   ubicacionFinal.value = ''
   reportando.value = false
   pasando.value = false
+  devolviendo.value = false
   if (!enfocarEscaneo) return
   void nextTick(() => {
     if (p.horaInicio) ubicInput.value?.focus()
@@ -210,6 +211,32 @@ watch([() => props.enfocar, items], ([destino]) => {
   emit('enfocado')
 }, { immediate: true })
 
+// ── No pudo almacenar ninguna ──────────────────────────────────────
+// Quien lo recibió se lo devuelve ENTERO a quien se lo pasó, con el reloj
+// corriendo: su tramo se cierra y empieza el del otro, que lo ubica.
+const puedeDevolver = computed(() =>
+  Boolean(abierto.value?.horaInicio && abierto.value.pasadoPorId && abierto.value.pasadoPorId !== me.value?.id))
+const devolviendo = ref(false)
+
+async function devolverTodo() {
+  const p = abierto.value
+  if (!p || !p.pasadoPorId) return
+  guardando.value = p.id
+  try {
+    await $fetch(`${API_PENDIENTES}/${p.id}/traspasar`, {
+      method: 'POST', body: { operarioId: p.pasadoPorId, devolucion: true },
+    })
+    showToast(`Devolviste las ${p.unidadesSolicitadas} unidades a ${p.pasadoPorNombre ?? 'quien te lo pasó'}`)
+    abierto.value = null
+    devolviendo.value = false
+    await cargar()
+  } catch (e) {
+    showToast(apiErr(e, 'No se pudo devolver'), true)
+  } finally {
+    guardando.value = null
+  }
+}
+
 async function pasar() {
   const p = abierto.value
   if (!p || !ayudanteId.value) return
@@ -347,7 +374,26 @@ cargar()
 
           <!-- No lo puede bajar, o se lo pasa a otro. -->
           <section ref="otrasRef" class="otras">
-            <div v-if="!reportando && !pasando" class="otras-acc">
+            <!-- Se lo pasaron y no cupo ninguna: vuelve entero a quien se lo pasó. -->
+            <div v-if="puedeDevolver && !reportando && !pasando" class="devolver">
+              <button v-if="!devolviendo" class="btn btn-sm dev-ok" type="button" @click="devolviendo = true">
+                <Undo2 :size="13" /> No pude almacenar ninguna: devolver las {{ abierto.unidadesSolicitadas }}
+              </button>
+              <template v-else>
+                <p class="dev-pregunta">
+                  ¿Devolver las {{ abierto.unidadesSolicitadas }} unidades a <b>{{ abierto.pasadoPorNombre }}</b>? Le llega con el reloj corriendo para que las ubique.
+                </p>
+                <div class="dev-acc">
+                  <button class="btn btn-sm" type="button" @click="devolviendo = false">Cancelar</button>
+                  <button class="btn btn-sm dev-ok" type="button" :disabled="guardando === abierto.id" @click="devolverTodo">
+                    <Spinner v-if="guardando === abierto.id" :size="13" /><Undo2 v-else :size="13" />
+                    Devolver
+                  </button>
+                </div>
+              </template>
+            </div>
+
+            <div v-if="!reportando && !pasando && !devolviendo" class="otras-acc">
               <button class="dev-link" @click="reportando = true; pasando = false">
                 <TriangleAlert :size="13" /> Reportar novedad
               </button>
@@ -462,6 +508,9 @@ cargar()
 .dev-nota { display: block; margin-top: 2px; font-size: 11px; font-weight: 500; color: var(--u-critico); }
 .dev-link { display: inline-flex; align-items: center; gap: 6px; margin-top: 12px; background: none; border: none; padding: 0; font-size: 12.5px; font-weight: 600; color: var(--muted); cursor: pointer; }
 .dev-link:hover { color: var(--u-aviso); }
+.devolver { display: flex; flex-direction: column; gap: 8px; margin-top: 12px; }
+.devolver > .btn { align-self: flex-start; }
+.dev-pregunta { margin: 0; font-size: 12.5px; color: var(--ink-2); }
 .dev-motivos { display: flex; flex-direction: column; gap: 6px; margin-bottom: 10px; }
 .dev-btn { padding: 9px 12px; text-align: left; border: 1px solid var(--border-strong); border-radius: var(--r-sm); background: var(--surface); font-size: 12.5px; font-weight: 600; color: var(--muted); cursor: pointer; }
 .dev-btn:hover:not(.on) { color: var(--ink-2); border-color: var(--faint); }

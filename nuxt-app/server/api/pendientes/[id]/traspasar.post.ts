@@ -7,7 +7,9 @@ import {
   abrirTramoPendiente, assertEjecutor, avisar, cerrarTramoPendiente, PENDIENTE_INCLUDE,
 } from '../../../utils/resurtido'
 
-const schema = z.object({ operarioId: z.string().min(1) })
+// `devolucion`: el ayudante no pudo almacenar ninguna y se lo devuelve entero a
+// quien se lo paso. Es el mismo traspaso; solo cambia lo que dice el aviso.
+const schema = z.object({ operarioId: z.string().min(1), devolucion: z.boolean().optional() })
 
 /**
  * POST /api/pendientes/:id/traspasar - el operario se lo pasa a un ayudante.
@@ -81,11 +83,17 @@ export default defineEventHandler(async (event) => {
       data: {
         estado: empezado ? 'EN_CURSO' : 'ASIGNADO',
         operarioId: ayudante.id,
-        pasadoPorId: actor.id,
+        // Devuelto, no "pasado": quien lo recibe no tiene a quien devolverlo.
+        pasadoPorId: parsed.data.devolucion ? null : actor.id,
         horaFin: null,
       },
     })
-    await avisar(tx, [ayudante.id], {
+    await avisar(tx, [ayudante.id], parsed.data.devolucion ? {
+      tipo: 'SOBRANTE_DEVUELTO',
+      titulo: `${actor.name ?? 'Un companero'} te devolvio un pendiente`,
+      descripcion: `${p.unidadesSolicitadas} de ${p.descripcion}: no pudo almacenar ninguna, te toca ubicarlas`,
+      enlace: '/dashboard/resurtido',
+    } : {
       tipo: 'PENDIENTE_ASIGNADO',
       titulo: `${actor.name ?? 'Un companero'} te paso un pendiente`,
       descripcion: empezado
@@ -99,7 +107,10 @@ export default defineEventHandler(async (event) => {
   await prisma.activityLog.create({
     data: {
       userId: actor.id, action: 'UPDATE', module: 'pendientes',
-      recordId: id, details: `Pendiente pasado a ${ayudante.name}`,
+      recordId: id,
+      details: parsed.data.devolucion
+        ? `Pendiente devuelto completo a ${ayudante.name}: no se pudo almacenar`
+        : `Pendiente pasado a ${ayudante.name}`,
     },
   }).catch(() => {})
 

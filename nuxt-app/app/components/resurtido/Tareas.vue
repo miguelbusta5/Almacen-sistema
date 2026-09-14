@@ -7,13 +7,15 @@
 // al abrirla— para medir caminar y bajar la mercancía, y no el rato que la
 // pantalla estuvo abierta.
 import { ref, computed, watch, nextTick } from 'vue'
-import { ScanLine, CheckCircle2, MapPin, ArrowDown, Package, Flame, UserPlus } from '@lucide/vue'
+import { ScanLine, CheckCircle2, MapPin, ArrowDown, Package, Flame, UserPlus, Undo2 } from '@lucide/vue'
 import { useToast } from '~/composables/useToast'
+import { useSessionState } from '~/composables/useSession'
 import { sonarVeredicto } from '~/utils/escaneoFeedback'
 import {
   compararPorPrioridad, cronometroDesde, fmtDuracionTarea,
   type MontajeResurtidoDTO, type PendienteDTO, type TareaResurtidoDTO,
 } from '~/utils/resurtidoTareas'
+import { API_MONTACARGAS, type Ayudante } from '~/utils/montacargas'
 
 const props = defineProps<{ ahora: number }>()
 // Un pendiente prioritario se hace desde su propia pestaña (su flujo es por
@@ -22,8 +24,12 @@ const emit = defineEmits<{ (e: 'irAPendientes', destino: { id: string; pasar: bo
 
 const { show: showToast } = useToast()
 
+const { me } = useSessionState()
+
 const montajes = ref<MontajeResurtidoDTO[]>([])
 const prioritarios = ref<PendienteDTO[]>([])
+// Tareas de otro operario que le pasaron a este: las cierra el.
+const recibidas = ref<TareaResurtidoDTO[]>([])
 const loading = ref(true)
 const guardando = ref<string | null>(null)
 const abierta = ref<TareaResurtidoDTO | null>(null)
@@ -38,16 +44,17 @@ const pluInput = ref<HTMLInputElement | null>(null)
 async function cargar() {
   loading.value = true
   try {
-    const res = await $fetch<{ data: MontajeResurtidoDTO[]; prioritarios: PendienteDTO[] }>(
-      '/api/resurtido-tareas',
-    )
+    const res = await $fetch<{
+      data: MontajeResurtidoDTO[]; prioritarios: PendienteDTO[]; recibidas?: TareaResurtidoDTO[]
+    }>('/api/resurtido-tareas')
     montajes.value = res.data
     prioritarios.value = res.prioritarios ?? []
+    recibidas.value = res.recibidas ?? []
     // Si la tarea abierta ya no existe (otro la completó o se borró el montaje),
     // se cierra sola en vez de dejar una pantalla que no lleva a ninguna parte.
     if (abierta.value) {
-      const viva = todas.value.find((t) => t.id === abierta.value!.id)
-      abierta.value = viva && viva.estado !== 'COMPLETADA' ? viva : null
+      const viva = [...todas.value, ...recibidas.value].find((t) => t.id === abierta.value!.id)
+      abierta.value = viva && viva.estado !== 'COMPLETADA' && esMia(viva) ? viva : null
     }
   } catch (e) {
     showToast(apiErr(e, 'No se pudieron cargar tus tareas'), true)
@@ -58,6 +65,12 @@ async function cargar() {
 defineExpose({ cargar })
 
 const todas = computed(() => montajes.value.flatMap((m) => m.tareas))
+
+// La tiene esta persona: nadie se la ha pasado a otro, o se la pasaron a ella.
+// Las que paso a un ayudante siguen en su lista, pero ya no las puede abrir.
+function esMia(t: TareaResurtidoDTO): boolean {
+  return !t.responsableId || t.responsableId === me.value?.id
+}
 // Lo prioritario primero; lo demas por la ruta, para no romper el recorrido.
 const pendientes = computed(() =>
   todas.value.filter((t) => t.estado !== 'COMPLETADA').sort(compararPorPrioridad))
@@ -67,8 +80,12 @@ const progresoTotal = computed(() => {
   return { total, hechas, pct: total ? Math.round((hechas / total) * 100) : 0 }
 })
 
-function abrir(t: TareaResurtidoDTO) {
+function abrir(t: TareaResurtidoDTO, enfocarEscaneo = true) {
+  if (!esMia(t)) return
   abierta.value = t
+  pasando.value = false
+  devolviendo.value = false
+  ayudanteId.value = ''
   escaneoUbic.value = ''
   escaneoPlu.value = ''
   // Lo del archivo mas lo que se sumo de pendientes: es lo que tiene que bajar.
@@ -76,6 +93,7 @@ function abrir(t: TareaResurtidoDTO) {
   // El picking llega SUGERIDO del archivo, pero se puede cambiar: el hueco real
   // manda sobre el papel.
   pickingFinal.value = t.pickingFinal ?? t.pickingSugerido
+  if (!enfocarEscaneo) return
   void nextTick(() => {
     if (t.horaInicio) pluInput.value?.focus()
     else ubicInput.value?.focus()
@@ -134,6 +152,87 @@ async function completar() {
   }
 }
 
+// ── Pasar a un ayudante ────────────────────────────────────────────
+// Como en todos los procesos: quien la empezó (escaneó la ubicación) se la pasa
+// a un ayudante y el reloj sigue; el ayudante escanea el PLU, baja y la cierra.
+// Cada uno queda con su tramo. La tarea roja con un pendiente sumado también:
+// el pendiente va con ella.
+const pasando = ref(false)
+const ayudantes = ref<Ayudante[]>([])
+const ayudanteId = ref('')
+const cargandoAyudantes = ref(false)
+const otrasRef = ref<HTMLElement | null>(null)
+
+async function abrirPaso() {
+  pasando.value = true
+  if (ayudantes.value.length || cargandoAyudantes.value) return
+  cargandoAyudantes.value = true
+  try {
+    // La misma lista que al pasar un PLU; uno no se la pasa a sí mismo.
+    const res = await $fetch<{ data: Ayudante[] }>(`${API_MONTACARGAS}/ayudantes`)
+    ayudantes.value = res.data.filter((o) => o.id !== me.value?.id)
+  } catch (e) {
+    showToast(apiErr(e, 'No se pudo cargar la lista de ayudantes'), true)
+  } finally {
+    cargandoAyudantes.value = false
+  }
+}
+
+// Desde la lista, sin bajar hasta el final de la tarea ni abrir el teclado.
+function pasarDesdeLista(t: TareaResurtidoDTO) {
+  abrir(t, false)
+  void abrirPaso()
+  void nextTick(() => otrasRef.value?.scrollIntoView({ block: 'nearest', behavior: 'smooth' }))
+}
+
+// ── No pudo almacenar ninguna ──────────────────────────────────────
+// Quien la recibió se la devuelve ENTERA a quien se la pasó, con el reloj
+// corriendo: su tramo se cierra y empieza el del otro, que la ubica.
+const puedeDevolver = computed(() =>
+  Boolean(abierta.value?.horaInicio && abierta.value.pasadoPorId
+    && abierta.value.responsableId === me.value?.id && abierta.value.pasadoPorId !== me.value?.id))
+const devolviendo = ref(false)
+
+async function devolverTodo() {
+  const t = abierta.value
+  if (!t || !t.pasadoPorId) return
+  guardando.value = t.id
+  try {
+    await $fetch(`/api/resurtido-tareas/${t.id}/traspasar`, {
+      method: 'POST', body: { operarioId: t.pasadoPorId, devolucion: true },
+    })
+    showToast(`Devolviste las ${t.unidadesSolicitadas + t.unidadesPendientes} unidades a ${t.pasadoPorNombre ?? 'quien te la pasó'}`)
+    abierta.value = null
+    devolviendo.value = false
+    await cargar()
+  } catch (e) {
+    showToast(apiErr(e, 'No se pudo devolver la tarea'), true)
+  } finally {
+    guardando.value = null
+  }
+}
+
+async function pasar() {
+  const t = abierta.value
+  if (!t || !ayudanteId.value) return
+  guardando.value = t.id
+  try {
+    await $fetch(`/api/resurtido-tareas/${t.id}/traspasar`, {
+      method: 'POST', body: { operarioId: ayudanteId.value },
+    })
+    const nombre = ayudantes.value.find((a) => a.id === ayudanteId.value)?.nombre ?? 'el ayudante'
+    showToast(`Tarea pasada a ${nombre}`)
+    abierta.value = null
+    pasando.value = false
+    ayudanteId.value = ''
+    await cargar()
+  } catch (e) {
+    showToast(apiErr(e, 'No se pudo pasar la tarea'), true)
+  } finally {
+    guardando.value = null
+  }
+}
+
 watch(() => props.ahora, () => { /* el cronómetro se repinta solo */ })
 const crono = computed(() =>
   abierta.value?.horaInicio ? cronometroDesde(abierta.value.horaInicio, props.ahora) : null)
@@ -146,13 +245,13 @@ cargar()
     <ListSkeleton v-if="loading" />
 
     <EmptyState
-      v-else-if="!todas.length && !prioritarios.length" title="Sin resurtido asignado"
+      v-else-if="!todas.length && !prioritarios.length && !recibidas.length" title="Sin resurtido asignado"
       description="Cuando te monten un resurtido, tus tareas aparecerán aquí en orden de posición."
     />
 
     <template v-else>
       <!-- Avance del día -->
-      <div class="resumen card">
+      <div v-if="todas.length" class="resumen card">
         <div class="barra" role="progressbar" :aria-valuenow="progresoTotal.pct">
           <span class="barra-fill" :style="{ width: `${progresoTotal.pct}%` }" />
         </div>
@@ -164,7 +263,7 @@ cargar()
       </div>
 
       <EmptyState
-        v-if="!pendientes.length && !prioritarios.length" title="Resurtido terminado"
+        v-if="!pendientes.length && !prioritarios.length && !recibidas.length" title="Resurtido terminado"
         description="Completaste todas las tareas asignadas."
       />
 
@@ -191,10 +290,32 @@ cargar()
         </li>
       </ol>
 
+      <!-- Se las pasó otro operario: ya están en marcha, esta persona las cierra. -->
+      <ol v-if="recibidas.length" class="lista">
+        <li v-for="t in recibidas" :key="t.id" class="fila">
+          <button class="tarea card activa" :class="{ prio: t.prioridad }" @click="abrir(t)">
+            <span class="t-orden recibida-ic"><UserPlus :size="14" /></span>
+            <span class="t-cuerpo">
+              <span class="t-recibida">{{ t.pasadoPorNombre ?? 'Un compañero' }} te la pasó: tú la cierras</span>
+              <span class="t-desc">{{ t.descripcion }}</span>
+              <span class="t-meta">
+                <b class="mono">{{ t.plu }}</b> · {{ t.unidadesSolicitadas + t.unidadesPendientes }} und
+                <b v-if="t.unidadesPendientes" class="t-mas">(+{{ t.unidadesPendientes }} de pendiente)</b> ·
+                a <span class="mono">{{ t.pickingSugerido }}</span>
+              </span>
+            </span>
+            <span v-if="t.horaInicio" class="t-crono tnum">{{ cronometroDesde(t.horaInicio, ahora) }}</span>
+          </button>
+        </li>
+      </ol>
+
       <!-- Lista de trabajo: lo prioritario primero, lo demás por la ruta -->
       <ol v-if="pendientes.length" class="lista">
-        <li v-for="t in pendientes" :key="t.id">
-          <button class="tarea card" :class="{ activa: t.horaInicio, prio: t.prioridad }" @click="abrir(t)">
+        <li v-for="t in pendientes" :key="t.id" class="fila">
+          <button
+            class="tarea card" :class="{ activa: t.horaInicio && esMia(t), prio: t.prioridad, pasada: !esMia(t) }"
+            :disabled="!esMia(t)" @click="abrir(t)"
+          >
             <span v-if="t.prioridad" class="t-orden prio-ic"><Flame :size="14" /></span>
             <span v-else class="t-orden tnum">{{ t.orden }}</span>
             <span class="t-cuerpo">
@@ -205,10 +326,21 @@ cargar()
                 <b v-if="t.unidadesPendientes" class="t-mas">(+{{ t.unidadesPendientes }} de pendiente)</b> ·
                 a <span class="mono">{{ t.pickingSugerido }}</span>
               </span>
+              <span v-if="!esMia(t)" class="t-pasada">
+                <UserPlus :size="11" /> Pasada a {{ t.responsableNombre ?? 'un ayudante' }}: la cierra él
+              </span>
             </span>
             <span v-if="t.horaInicio" class="t-crono tnum">
               {{ cronometroDesde(t.horaInicio, ahora) }}
             </span>
+          </button>
+          <!-- A la vista, como en pendientes. Solo con el reloj corriendo: se
+               pasa lo que ya se tiene en la mano. -->
+          <button
+            v-if="esMia(t) && t.horaInicio" class="btn btn-sm pasar-lista" type="button"
+            @click="pasarDesdeLista(t)"
+          >
+            <UserPlus :size="14" /> Pasar a un ayudante
           </button>
         </li>
       </ol>
@@ -242,7 +374,13 @@ cargar()
                 Empezar
               </button>
             </form>
-            <p v-else class="p-ok"><CheckCircle2 :size="13" /> Ubicación confirmada, el reloj corre</p>
+            <template v-else>
+              <p class="p-ok"><CheckCircle2 :size="13" /> Ubicación confirmada, el reloj corre</p>
+              <!-- Se la pasaron ya empezada: el reloj no se reinició, le toca cerrarla. -->
+              <p v-if="abierta.pasadoPorNombre && abierta.responsableId === me?.id" class="p-recibido">
+                <UserPlus :size="13" /> {{ abierta.pasadoPorNombre }} te la pasó: tú la cierras
+              </p>
+            </template>
           </section>
 
           <!-- Paso 2: producto y cantidad -->
@@ -286,6 +424,57 @@ cargar()
               </div>
             </form>
             <p v-if="!enCurso" class="p-bloq">Escanea primero la ubicación.</p>
+          </section>
+
+          <!-- Pasársela a un ayudante para que la cierre. -->
+          <section ref="otrasRef" class="otras">
+            <!-- Se la pasaron y no cupo ninguna: vuelve entera a quien se la pasó. -->
+            <div v-if="puedeDevolver && !pasando" class="devolver">
+              <button v-if="!devolviendo" class="btn btn-sm dev-ok" type="button" @click="devolviendo = true">
+                <Undo2 :size="13" /> No pude almacenar ninguna: devolver las {{ abierta.unidadesSolicitadas + abierta.unidadesPendientes }}
+              </button>
+              <template v-else>
+                <p class="dev-pregunta">
+                  ¿Devolver las {{ abierta.unidadesSolicitadas + abierta.unidadesPendientes }} unidades a <b>{{ abierta.pasadoPorNombre }}</b>? Le llega con el reloj corriendo para que las ubique.
+                </p>
+                <div class="dev-acc">
+                  <button class="btn btn-sm" type="button" @click="devolviendo = false">Cancelar</button>
+                  <button class="btn btn-sm dev-ok" type="button" :disabled="guardando === abierta.id" @click="devolverTodo">
+                    <Spinner v-if="guardando === abierta.id" :size="13" /><Undo2 v-else :size="13" />
+                    Devolver
+                  </button>
+                </div>
+              </template>
+            </div>
+            <template v-if="!pasando && !devolviendo">
+              <button v-if="enCurso" class="dev-link" type="button" @click="abrirPaso">
+                <UserPlus :size="13" /> Pasar a un ayudante
+              </button>
+              <p v-else class="p-bloq">
+                <UserPlus :size="12" /> Para pasarla a un ayudante, escanea primero la ubicación.
+              </p>
+            </template>
+            <template v-else>
+              <h3 class="p-title"><UserPlus :size="14" /> Pasar a un ayudante</h3>
+              <select v-model="ayudanteId" class="field" :disabled="guardando === abierta.id || cargandoAyudantes">
+                <option value="">{{ cargandoAyudantes ? 'Cargando…' : 'Elige a quién' }}</option>
+                <option v-for="a in ayudantes" :key="a.id" :value="a.id">
+                  {{ a.nombre }}{{ a.pendientes ? ` · ${a.pendientes} en curso` : '' }}
+                </option>
+              </select>
+              <p v-if="!cargandoAyudantes && !ayudantes.length" class="hint">No hay nadie más activo a quien pasársela.</p>
+              <p class="hint">El reloj sigue: tu tiempo se cierra y empieza el suyo. Él escanea el PLU, baja y la cierra.</p>
+              <div class="dev-acc">
+                <button class="btn btn-sm" type="button" @click="pasando = false">Cancelar</button>
+                <button
+                  class="btn btn-sm btn-primary" type="button"
+                  :disabled="!ayudanteId || guardando === abierta.id" @click="pasar"
+                >
+                  <Spinner v-if="guardando === abierta.id" :size="13" /><UserPlus v-else :size="13" />
+                  Pasar
+                </button>
+              </div>
+            </template>
           </section>
         </div>
       </section>
@@ -336,6 +525,24 @@ cargar()
 .t-etiq { font-size: 10.5px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--u-critico); }
 .t-ir { flex-shrink: 0; font-size: 12px; font-weight: 700; color: var(--u-critico); }
 .t-mas { color: var(--u-critico); font-weight: 700; }
+
+/* Pasada a un ayudante: sigue en la ruta, pero ya no es trabajo de esta persona. */
+.tarea.pasada { opacity: .6; cursor: default; }
+.tarea.pasada:hover { transform: none; border-color: var(--border); box-shadow: none; }
+.t-pasada, .t-recibida { display: inline-flex; align-items: center; gap: 5px; font-size: 11.5px; font-weight: 600; color: var(--info); }
+.t-recibida { font-size: 10.5px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; }
+.recibida-ic { background: color-mix(in srgb, var(--info) 16%, transparent) !important; color: var(--info) !important; }
+.p-recibido { display: flex; align-items: center; gap: 6px; margin: 6px 0 0; font-size: 12.5px; font-weight: 600; color: var(--info); }
+
+.otras { padding-top: 4px; border-top: 1px dashed var(--border-strong); display: flex; flex-direction: column; gap: 8px; }
+.dev-link { display: inline-flex; align-items: center; gap: 6px; margin-top: 12px; background: none; border: none; padding: 0; font-size: 12.5px; font-weight: 600; color: var(--muted); cursor: pointer; align-self: flex-start; }
+.dev-link:hover { color: var(--brand); }
+.otras .p-bloq { display: flex; align-items: center; gap: 6px; }
+.dev-acc { display: flex; gap: 9px; justify-content: flex-end; }
+.devolver { display: flex; flex-direction: column; gap: 8px; margin-top: 12px; }
+.devolver > .btn { align-self: flex-start; }
+.dev-pregunta { margin: 0; font-size: 12.5px; color: var(--ink-2); }
+.dev-ok { border-color: var(--u-aviso); color: var(--u-aviso); }
 
 .overlay { position: fixed; inset: 0; z-index: 60; display: grid; place-items: center; padding: 16px; background: rgba(10,15,28,.55); backdrop-filter: blur(3px); }
 .modal { width: min(620px, 100%); max-height: 90vh; display: flex; flex-direction: column; padding: 0; overflow: hidden; }

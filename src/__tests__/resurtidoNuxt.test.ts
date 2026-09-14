@@ -48,7 +48,7 @@ describe("resurtido por tareas — donde arranca el reloj", () => {
   // mercancia, no el rato que la tarea estuvo abierta en la pantalla.
   it("la tarea de resurtido arranca escaneando la ubicacion", () => {
     expect(iniciarTarea).toContain("validarEscaneoPosicion");
-    expect(iniciarTarea).toContain("horaInicio: new Date()");
+    expect(iniciarTarea).toContain("horaInicio: now");
   });
 
   // En un pendiente arranca con el PLU y la ubicacion inicial, igual que un
@@ -62,7 +62,7 @@ describe("resurtido por tareas — donde arranca el reloj", () => {
 
   // Volver a escanear no puede borrar el tiempo que ya llevaba.
   it("volver a escanear no reinicia el reloj", () => {
-    expect(iniciarTarea).toContain("tarea.horaInicio ? {} : { horaInicio: new Date() }");
+    expect(iniciarTarea).toContain("tarea.horaInicio ? {} : { horaInicio: now }");
     // Si ya corre, solo se confirma el estado: no se toca horaInicio.
     expect(iniciarPend).toContain("if (p.horaInicio) {");
     expect(iniciarPend).toContain("where: { id }, data: { estado: 'EN_CURSO' }, include: PENDIENTE_INCLUDE,");
@@ -259,7 +259,7 @@ describe("pendientes — pasar a un ayudante", () => {
   const traspasar = leer("nuxt-app/server/api/pendientes/[id]/traspasar.post.ts");
 
   it("existe y avisa al ayudante", () => {
-    expect(traspasar).toContain("pasadoPorId: actor.id");
+    expect(traspasar).toContain("pasadoPorId: parsed.data.devolucion ? null : actor.id");
     expect(traspasar).toContain("operarioId: ayudante.id");
   });
 
@@ -475,5 +475,107 @@ describe("pendientes — a quien asignar", () => {
     const ui = leer("nuxt-app/app/components/pendientes/Module.vue");
     expect(ui).toContain("`${API_PENDIENTES}/operarios`");
     expect(ui).not.toContain("API_MONTAJE}/operarios");
+  });
+});
+
+// Toda tarea de resurtido se puede pasar a un ayudante, como en todos los
+// procesos: la opcion no existia y el operario no tenia a quien pasarsela.
+describe("resurtido — pasar una tarea a un ayudante", () => {
+  const tras = leer("nuxt-app/server/api/resurtido-tareas/[id]/traspasar.post.ts");
+  const iniciar = leer("nuxt-app/server/api/resurtido-tareas/[id]/iniciar.post.ts");
+  const completar = leer("nuxt-app/server/api/resurtido-tareas/[id]/completar.post.ts");
+  const lista = leer("nuxt-app/server/api/resurtido-tareas/index.get.ts");
+  const ui = leer("nuxt-app/app/components/resurtido/Tareas.vue");
+
+  it("solo quien la tiene, y con el reloj corriendo", () => {
+    expect(tras).toContain("if (responsableDeTarea(tarea) !== actor.id)");
+    expect(tras).toContain("if (!tarea.horaInicio)");
+    expect(tras).toContain("role: { in: [...ROLES_RECEPTORES] }");
+  });
+
+  it("el reloj no se reinicia: cada uno queda con su tramo", () => {
+    expect(tras).toContain("await cerrarTramoTarea(tx, id, now)");
+    expect(tras).toContain("await abrirTramoTarea(tx, id, ayudante.id, now)");
+    expect(tras).toContain("responsableId: ayudante.id === tarea.montaje.operarioId ? null : ayudante.id");
+    expect(tras).not.toContain("horaInicio: null");
+    expect(tras).toContain("TAREA_RESURTIDO_PASADA");
+    expect(tras).toContain("activityLog.create");
+  });
+
+  it("empezarla abre el tramo y cerrarla lo cierra, siempre por el responsable", () => {
+    expect(iniciar).toContain("responsableDeTarea(tarea) !== actor.id");
+    expect(iniciar).toContain("abrirTramoTarea(tx, id, actor.id, now)");
+    expect(completar).toContain("responsableDeTarea(tarea) !== actor.id");
+    expect(completar).toContain("await cerrarTramoTarea(tx, id, now)");
+    // La tarea roja lleva su pendiente: se da por ubicado al cerrarla.
+    expect(completar).toContain("tareaResurtidoId: id");
+  });
+
+  it("el ayudante la ve en su lista y la pantalla tiene la opcion", () => {
+    expect(lista).toContain("recibidas: recibidas.map(mapTareaResurtido)");
+    expect(ui).toContain("`/api/resurtido-tareas/${t.id}/traspasar`");
+    expect(ui).toContain('v-if="esMia(t) && t.horaInicio" class="btn btn-sm pasar-lista"');
+    expect(ui).toContain("te la pasó: tú la cierras");
+  });
+
+  it("indicadores reparte el tiempo de la tarea por persona", () => {
+    const ind = leer("nuxt-app/server/api/indicadores/index.get.ts");
+    expect(ind).toContain("const tramosTarea = t.tramos.length > 0");
+    expect(ind).toContain("usuarioId: t.responsableId ?? t.montaje.operarioId");
+  });
+
+  it("la tabla de tramos esta en los dos schemas, en un script aditivo y con RLS", () => {
+    for (const rel of ["prisma/schema.prisma", "nuxt-app/prisma/schema.prisma"]) {
+      expect(leer(rel)).toContain("model TramoTareaResurtido {");
+      expect(leer(rel)).toContain('responsableId String? @map("responsable_id")');
+    }
+    const sql = leer("prisma/migrate-tramos-tarea-resurtido.sql");
+    expect(sql).toContain("CREATE TABLE IF NOT EXISTS tramos_tarea_resurtido");
+    expect(sql).toContain("ALTER TABLE tramos_tarea_resurtido ENABLE ROW LEVEL SECURITY");
+  });
+});
+
+// Una respuesta vieja de otra pestaña no puede pintar encima de la actual.
+describe("control montacargas — no mezclar pestañas", () => {
+  const modulo = leer("nuxt-app/app/components/montacargas/Module.vue");
+  it("solo pinta la ultima carga y vacia al cambiar de pestaña", () => {
+    expect(modulo).toContain("if (seq !== seqLista) return");
+    expect(modulo).toContain("if (seq !== seqAbiertos) return");
+    expect(modulo).toContain("if (seq !== seqConteos) return");
+    expect(modulo).toContain("abiertos.value = []");
+  });
+});
+
+// Si al ayudante no le cabe NINGUNA unidad, en todos los modulos devuelve el
+// total a quien se lo paso, con el reloj corriendo.
+describe("devolver el total cuando no cupo nada", () => {
+  it("montacargas: 0 unidades devuelve el registro entero sin ubicacion", () => {
+    const ub = leer("nuxt-app/server/api/montacargas/[id]/ubicacion.post.ts");
+    expect(ub).toContain("const devuelveTodo = parsed.data.unidadesAlmacenadas === 0");
+    expect(ub).toContain("await abrirTramo(tx, id, devolverA, now, orden + 1)");
+    expect(ub).toContain("devueltoCompleto: true");
+    const reg = leer("nuxt-app/app/components/montacargas/RegistroAbierto.vue");
+    expect(reg).toContain("No cupo ninguna: devolver todo");
+    expect(reg).toContain('v-if="!devuelveTodo" class="f f-ubic"');
+  });
+
+  it("pendientes y tareas de resurtido: se devuelve a quien lo paso", () => {
+    for (const rel of [
+      "nuxt-app/app/components/resurtido/PendientesTareas.vue",
+      "nuxt-app/app/components/resurtido/Tareas.vue",
+    ]) {
+      const ui = leer(rel);
+      expect(ui).toContain("devolucion: true");
+      expect(ui).toContain("No pude almacenar ninguna");
+    }
+    for (const rel of [
+      "nuxt-app/server/api/pendientes/[id]/traspasar.post.ts",
+      "nuxt-app/server/api/resurtido-tareas/[id]/traspasar.post.ts",
+    ]) {
+      const srv = leer(rel);
+      expect(srv).toContain("devolucion: z.boolean().optional()");
+      expect(srv).toContain("pasadoPorId: parsed.data.devolucion ? null : actor.id");
+    }
+    expect(leer("nuxt-app/server/utils/mapRow.ts")).toContain("pasadoPorId: p.pasadoPorId ?? null");
   });
 });

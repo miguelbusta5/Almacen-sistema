@@ -10,10 +10,16 @@ import { esEjecutor, esSolicitante, ROLES_ALMACENAMIENTO } from './resurtidoCalc
 
 type Tx = Prisma.TransactionClient | PrismaClient
 
+/** Quien la tiene ahora y quien se la paso: la pantalla lo dice. */
+export const TAREA_INCLUDE = {
+  responsable: { select: { name: true } },
+  pasadoPor: { select: { name: true } },
+} as const
+
 export const MONTAJE_INCLUDE = {
   operario: { select: { name: true } },
   creadoPor: { select: { name: true } },
-  tareas: { orderBy: { orden: 'asc' } },
+  tareas: { orderBy: { orden: 'asc' }, include: TAREA_INCLUDE },
 } as const
 
 export const PENDIENTE_INCLUDE = {
@@ -130,6 +136,27 @@ export async function cerrarTramoPendiente(tx: Tx, pendienteId: string, fin: Dat
 export async function abrirTramoPendiente(tx: Tx, pendienteId: string, usuarioId: string, inicio: Date): Promise<void> {
   const orden = (await tx.tramoPendiente.count({ where: { pendienteId } })) + 1
   await tx.tramoPendiente.create({ data: { pendienteId, usuarioId, orden, inicio } })
+}
+
+// ── Tramos de una tarea de resurtido ───────────────────────────────
+// Mismo mecanismo: pasarla a un ayudante cierra el tramo de quien la tenia y
+// abre el del ayudante en el mismo instante.
+
+/** Quien tiene la tarea en la mano: el ayudante al que se la pasaron o, si nadie
+ *  la ha pasado, el operario del montaje. */
+export function responsableDeTarea(t: { responsableId: string | null; montaje: { operarioId: string } }): string {
+  return t.responsableId ?? t.montaje.operarioId
+}
+
+/** Cierra el tramo abierto de la tarea, si lo hay. */
+export async function cerrarTramoTarea(tx: Tx, tareaId: string, fin: Date): Promise<void> {
+  await tx.tramoTareaResurtido.updateMany({ where: { tareaId, fin: null }, data: { fin } })
+}
+
+/** Abre el tramo de una persona, a continuacion de los que ya tenga la tarea. */
+export async function abrirTramoTarea(tx: Tx, tareaId: string, usuarioId: string, inicio: Date): Promise<void> {
+  const orden = (await tx.tramoTareaResurtido.count({ where: { tareaId } })) + 1
+  await tx.tramoTareaResurtido.create({ data: { tareaId, usuarioId, orden, inicio } })
 }
 
 /** Quienes deben enterarse de lo que pasa con los pendientes y los montajes. */

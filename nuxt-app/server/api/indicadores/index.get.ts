@@ -54,6 +54,11 @@ export default defineEventHandler(async (event) => {
   const rol = (MEDIDOS as readonly string[]).includes(String(sp.rol ?? '')) ? String(sp.rol) : null
   const usuarioId = sp.usuarioId ? String(sp.usuarioId) : null
   const { inicio: ini, fin } = limitesRango(desde, hasta)
+  // Los turnos de noche pasan de la medianoche: el del ultimo dia se trae con
+  // su madrugada, y se mira el turno de la noche ANTERIOR al primer dia para
+  // dejarle la suya (la cuenta la hace agregarIndicadores, por turnos).
+  const finConsulta = new Date(fin.getTime() + 24 * 60 * 60 * 1000)
+  const diaAnterior = diaBogota(new Date(new Date(`${desde}T12:00:00-05:00`).getTime() - 24 * 60 * 60 * 1000))
 
   // La lista completa sirve al selector de persona aunque se filtre por una. Sin
   // filtrar por activos: quien ya no esta sigue teniendo su historia.
@@ -74,8 +79,16 @@ export default defineEventHandler(async (event) => {
   const enCurso: TiempoRegistrado[] = []
   const ahora = new Date()
   // Un reloj abierto cuenta hasta ahora, y como mucho hasta el final del dia en
-  // que empezo: uno olvidado desde ayer no puede tapar los huecos de hoy.
-  const finAbierto = (inicio: Date) => new Date(Math.min(ahora.getTime(), finDelDiaBogota(inicio).getTime()))
+  // que empezo (o de su turno, si es de noche y pasa la medianoche): uno
+  // olvidado desde ayer no puede tapar los huecos de hoy.
+  const ventanas: VentanaTurno[] = []
+  const finAbierto = (inicio: Date, usuario: string) => {
+    const turno = ventanas.find(
+      (v) => v.usuarioId === usuario && v.inicio.getTime() <= inicio.getTime() && inicio.getTime() < v.fin.getTime(),
+    )
+    const tope = Math.max(finDelDiaBogota(inicio).getTime(), turno?.fin.getTime() ?? 0)
+    return new Date(Math.min(ahora.getTime(), tope))
+  }
 
   const [tramos, cerrados, tareas, pendientes, recepciones, cuadros, justificadas] = await Promise.all([
     // 1. Control Montacargas: recepcion, movimientos y resurtido. Un tramo por
@@ -83,7 +96,7 @@ export default defineEventHandler(async (event) => {
     prisma.tramoMontacargas.findMany({
       where: {
         OR: [{ fin: { gt: ini } }, { fin: null }],
-        inicio: { lt: fin },
+        inicio: { lt: finConsulta },
         movimiento: { deletedAt: null },
       },
       select: {
@@ -93,14 +106,14 @@ export default defineEventHandler(async (event) => {
     }),
     // Las unidades son de quien UBICO la mercancia: el responsable al cerrar.
     prisma.movimientoMontacargas.findMany({
-      where: { deletedAt: null, estado: 'CERRADO', horaFinalizacion: { gte: ini, lte: fin } },
+      where: { deletedAt: null, estado: 'CERRADO', horaFinalizacion: { gte: ini, lte: finConsulta } },
       select: { responsableId: true, cantidadTotal: true, horaFinalizacion: true },
     }),
     // 2. Tareas de resurtido por archivo. Sin las de montajes borrados: hay mas
     // de mil de pruebas que ensuciarian todo.
     prisma.tareaResurtido.findMany({
       where: {
-        horaInicio: { not: null, lt: fin },
+        horaInicio: { not: null, lt: finConsulta },
         OR: [
           { estado: 'COMPLETADA', horaFin: { not: null, gt: ini } },
           { estado: 'EN_CURSO', horaFin: null },
@@ -108,8 +121,10 @@ export default defineEventHandler(async (event) => {
         montaje: { deletedAt: null },
       },
       select: {
-        id: true, estado: true, horaInicio: true, horaFin: true, unidadesBajadas: true,
+        id: true, estado: true, horaInicio: true, horaFin: true, unidadesBajadas: true, responsableId: true,
         montaje: { select: { operarioId: true } },
+        // Tiempo por persona: quien la empezo y el ayudante que la cerro.
+        tramos: { select: { usuarioId: true, inicio: true, fin: true } },
       },
     }),
     // 3. Pendientes. Los que se sumaron a una tarea de resurtido no cuentan
@@ -118,7 +133,7 @@ export default defineEventHandler(async (event) => {
       where: {
         deletedAt: null,
         tareaResurtidoId: null,
-        horaInicio: { not: null, lt: fin },
+        horaInicio: { not: null, lt: finConsulta },
         OR: [
           { estado: 'COMPLETADO', horaFin: { not: null, gt: ini } },
           { estado: 'EN_CURSO', horaFin: null },
@@ -135,7 +150,7 @@ export default defineEventHandler(async (event) => {
     prisma.recepcionContenedor.findMany({
       where: {
         deletedAt: null,
-        horaInicio: { lt: fin },
+        horaInicio: { lt: finConsulta },
         OR: [
           { estado: 'CERRADO', horaFinalizacion: { not: null, gt: ini } },
           { estado: 'EN_CURSO', horaFinalizacion: null },
@@ -151,7 +166,7 @@ export default defineEventHandler(async (event) => {
       where: {
         deletedAt: null,
         desde: { lte: new Date(`${hasta}T00:00:00.000Z`) },
-        hasta: { gte: new Date(`${desde}T00:00:00.000Z`) },
+        hasta: { gte: new Date(`${diaAnterior}T00:00:00.000Z`) },
       },
       orderBy: { createdAt: 'desc' },
       select: {
@@ -164,7 +179,7 @@ export default defineEventHandler(async (event) => {
       where: {
         deletedAt: null,
         usuarioId: { in: personas.map((p) => p.id) },
-        inicio: { lt: fin },
+        inicio: { lt: finConsulta },
         fin: { gt: ini },
       },
       select: {
@@ -174,12 +189,30 @@ export default defineEventHandler(async (event) => {
     }),
   ])
 
+  // Cada dia usa el cuadro mas reciente que lo cubra: si operacion sube uno
+  // corregido, manda el nuevo sin tener que borrar el anterior.
+  const medidosIds = new Set(personas.map((p) => p.id))
+  // Tambien el dia anterior: su turno de noche se lleva la madrugada del primero.
+  for (const dia of diasDelRango(diaAnterior, hasta)) {
+    const cuadro = cuadros.find(
+      (c) => c.desde.toISOString().slice(0, 10) <= dia && dia <= c.hasta.toISOString().slice(0, 10),
+    )
+    if (!cuadro) continue
+    // getUTCDay sobre el mediodia de Bogota: el dia de la semana que se ve aqui.
+    const diaSemana = new Date(`${dia}T12:00:00-05:00`).getUTCDay()
+    for (const t of cuadro.turnos) {
+      if (t.diaSemana !== diaSemana || !medidosIds.has(t.usuarioId)) continue
+      const v = ventanaTurno(dia, { inicioMin: t.inicioMin, finMin: t.finMin })
+      ventanas.push({ usuarioId: t.usuarioId, dia, inicio: v.inicio, fin: v.fin })
+    }
+  }
+
   for (const t of tramos) {
     const tipo = TIPO_MOVIMIENTO[t.movimiento.tipo]
     if (!tipo) continue
     const registro = `m:${t.movimientoId}`
     if (t.fin) tiempos.push({ usuarioId: t.usuarioId, inicio: t.inicio, fin: t.fin, tipo, registro })
-    else enCurso.push({ usuarioId: t.usuarioId, inicio: t.inicio, fin: finAbierto(t.inicio), tipo, registro })
+    else enCurso.push({ usuarioId: t.usuarioId, inicio: t.inicio, fin: finAbierto(t.inicio, t.usuarioId), tipo, registro })
   }
   for (const m of cerrados) {
     if (m.horaFinalizacion) {
@@ -188,14 +221,22 @@ export default defineEventHandler(async (event) => {
   }
   for (const t of tareas) {
     if (!t.horaInicio) continue
-    const uid = t.montaje.operarioId
     const registro = `t:${t.id}`
-    if (t.estado !== 'COMPLETADA' || !t.horaFin) {
-      enCurso.push({ usuarioId: uid, inicio: t.horaInicio, fin: finAbierto(t.horaInicio), tipo: 'resurtido', registro })
-      continue
+    const cerrada = t.estado === 'COMPLETADA' && t.horaFin
+    // Con tramos (desde que se pueden pasar a un ayudante), cada persona su
+    // parte. Las de antes no tienen tramos: todo es del operario del montaje.
+    const tramosTarea = t.tramos.length > 0
+      ? t.tramos
+      : [{ usuarioId: t.montaje.operarioId, inicio: t.horaInicio, fin: t.horaFin }]
+    for (const tr of tramosTarea) {
+      const base = { usuarioId: tr.usuarioId, inicio: tr.inicio, tipo: 'resurtido' as const, registro }
+      if (cerrada && tr.fin) tiempos.push({ ...base, fin: tr.fin })
+      else enCurso.push({ ...base, fin: tr.fin ?? finAbierto(tr.inicio, tr.usuarioId) })
     }
-    tiempos.push({ usuarioId: uid, inicio: t.horaInicio, fin: t.horaFin, tipo: 'resurtido', registro })
-    unidades.push({ usuarioId: uid, cuando: t.horaFin, unidades: t.unidadesBajadas ?? 0 })
+    // Las unidades son de quien la cerro.
+    if (cerrada) {
+      unidades.push({ usuarioId: t.responsableId ?? t.montaje.operarioId, cuando: t.horaFin!, unidades: t.unidadesBajadas ?? 0 })
+    }
   }
   for (const p of pendientes) {
     if (!p.operarioId || !p.horaInicio) continue
@@ -209,7 +250,7 @@ export default defineEventHandler(async (event) => {
     for (const t of tramos) {
       const base = { usuarioId: t.usuarioId, inicio: t.inicio, tipo: 'pendiente' as const, registro }
       if (cerrado && t.fin) tiempos.push({ ...base, fin: t.fin })
-      else enCurso.push({ ...base, fin: t.fin ?? finAbierto(t.inicio) })
+      else enCurso.push({ ...base, fin: t.fin ?? finAbierto(t.inicio, t.usuarioId) })
     }
     // Las unidades son de quien lo ubico.
     if (cerrado) unidades.push({ usuarioId: p.operarioId, cuando: p.horaFin!, unidades: p.unidadesBajadas ?? 0 })
@@ -221,25 +262,7 @@ export default defineEventHandler(async (event) => {
     for (const uid of new Set([r.creadoPorId, ...r.descargadores.map((d) => d.usuarioId)])) {
       const base = { usuarioId: uid, inicio: r.horaInicio, tipo: 'contenedor' as const, registro: null }
       if (finCierre) tiempos.push({ ...base, fin: finCierre })
-      else enCurso.push({ ...base, fin: finAbierto(r.horaInicio) })
-    }
-  }
-
-  // Cada dia usa el cuadro mas reciente que lo cubra: si operacion sube uno
-  // corregido, manda el nuevo sin tener que borrar el anterior.
-  const medidosIds = new Set(personas.map((p) => p.id))
-  const ventanas: VentanaTurno[] = []
-  for (const dia of diasDelRango(desde, hasta)) {
-    const cuadro = cuadros.find(
-      (c) => c.desde.toISOString().slice(0, 10) <= dia && dia <= c.hasta.toISOString().slice(0, 10),
-    )
-    if (!cuadro) continue
-    // getUTCDay sobre el mediodia de Bogota: el dia de la semana que se ve aqui.
-    const diaSemana = new Date(`${dia}T12:00:00-05:00`).getUTCDay()
-    for (const t of cuadro.turnos) {
-      if (t.diaSemana !== diaSemana || !medidosIds.has(t.usuarioId)) continue
-      const v = ventanaTurno(dia, { inicioMin: t.inicioMin, finMin: t.finMin })
-      ventanas.push({ usuarioId: t.usuarioId, dia, inicio: v.inicio, fin: v.fin })
+      else enCurso.push({ ...base, fin: finAbierto(r.horaInicio, uid) })
     }
   }
 

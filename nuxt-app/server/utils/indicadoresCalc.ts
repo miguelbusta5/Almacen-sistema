@@ -240,6 +240,77 @@ export function segundosEnVentanas(
   return Math.round(total)
 }
 
+// ── El periodo se cuenta por turnos ──────────────────────────────────
+/**
+ * El periodo de UNA persona, contado por turnos y no por calendario.
+ *
+ * Un turno pertenece al día en que EMPIEZA y cuenta entero: el de noche del 13,
+ * de 20:30 a 06:00, incluye la madrugada del 14. Cortarlo a medianoche partía el
+ * turno en dos y la efectividad solo veía hasta las 12. Por lo mismo, la
+ * madrugada del primer día es del turno de la noche anterior y no entra.
+ * Sin turnos cargados, el periodo es el de calendario.
+ */
+export function periodoDePersona(
+  ventanas: readonly VentanaTurno[],
+  desde: string,
+  hasta: string,
+): { inicio: Date; fin: Date; turnos: VentanaTurno[] } {
+  const { inicio, fin } = limitesRango(desde, hasta)
+  let a = inicio.getTime()
+  let b = fin.getTime()
+  const turnos: VentanaTurno[] = []
+  for (const v of ventanas) {
+    if (v.dia < desde) {
+      // El turno de la noche anterior se lleva su madrugada.
+      if (v.fin.getTime() > a) a = v.fin.getTime()
+    } else if (v.dia <= hasta) {
+      turnos.push(v)
+      b = Math.max(b, v.fin.getTime())
+    }
+  }
+  return { inicio: new Date(Math.min(a, b)), fin: new Date(b), turnos }
+}
+
+/** El día al que se apunta un instante: el de su turno si cae dentro de uno. */
+function diaDeTrabajo(t: number, turnos: readonly VentanaTurno[], desde: string, hasta: string): string {
+  const turno = turnos.find((v) => v.inicio.getTime() <= t && t < v.fin.getTime())
+  const dia = turno ? turno.dia : diaBogota(new Date(t))
+  return dia < desde ? desde : dia > hasta ? hasta : dia
+}
+
+/**
+ * Parte un intervalo en los días a los que pertenece: lo que cae dentro de un
+ * turno va entero al día del turno (aunque pase la medianoche); lo de fuera, al
+ * día de calendario.
+ */
+export function partirPorTurno(
+  i: Intervalo,
+  turnos: readonly VentanaTurno[],
+  desde: string,
+  hasta: string,
+): { dia: string; intervalo: Intervalo }[] {
+  const ini = i.inicio.getTime()
+  const fin = i.fin.getTime()
+  const cortes = new Set<number>([ini, fin])
+  for (const v of turnos) {
+    for (const x of [v.inicio.getTime(), v.fin.getTime()]) if (x > ini && x < fin) cortes.add(x)
+  }
+  const puntos = [...cortes].sort((x, y) => x - y)
+  const partes: { dia: string; intervalo: Intervalo }[] = []
+  for (let k = 0; k < puntos.length - 1; k++) {
+    const trozo: Intervalo = { inicio: new Date(puntos[k]!), fin: new Date(puntos[k + 1]!), tipo: i.tipo }
+    const medio = (puntos[k]! + puntos[k + 1]!) / 2
+    if (turnos.some((v) => v.inicio.getTime() <= medio && medio < v.fin.getTime())) {
+      partes.push({ dia: diaDeTrabajo(medio, turnos, desde, hasta), intervalo: trozo })
+    } else {
+      for (const p of partirPorDia(trozo)) {
+        partes.push({ dia: diaDeTrabajo(p.intervalo.inicio.getTime(), [], desde, hasta), intervalo: p.intervalo })
+      }
+    }
+  }
+  return partes
+}
+
 export interface IndicadorPersona {
   id: string
   nombre: string
@@ -307,6 +378,22 @@ export function diasDelRango(desde: string, hasta: string): string[] {
   return dias
 }
 
+/** El periodo de cada persona medida, con sus turnos. */
+function periodosPorPersona(
+  personas: readonly PersonaMedida[],
+  ventanas: readonly VentanaTurno[],
+  desde: string,
+  hasta: string,
+): Map<string, { inicio: Date; fin: Date; turnos: VentanaTurno[] }> {
+  const suyas = new Map<string, VentanaTurno[]>()
+  for (const v of ventanas) {
+    const lista = suyas.get(v.usuarioId) ?? []
+    lista.push(v)
+    suyas.set(v.usuarioId, lista)
+  }
+  return new Map(personas.map((p) => [p.id, periodoDePersona(suyas.get(p.id) ?? [], desde, hasta)]))
+}
+
 function duracion(i: { inicio: Date; fin: Date }): number {
   return (i.fin.getTime() - i.inicio.getTime()) / 1000
 }
@@ -329,21 +416,8 @@ export function agregarIndicadores(entrada: {
   desde: string
   hasta: string
 }): IndicadoresPeriodo {
-  const { inicio: ini, fin } = limitesRango(entrada.desde, entrada.hasta)
   const medidas = new Map(entrada.personas.map((p) => [p.id, p]))
-
-  // La jornada se recorta al periodo: un turno de noche que empieza el último
-  // día no cuenta entero si el rango termina a medianoche.
-  const ventanasPorPersona = new Map<string, { inicio: Date; fin: Date }[]>()
-  for (const v of entrada.ventanas ?? []) {
-    if (!medidas.has(v.usuarioId)) continue
-    const a = Math.max(v.inicio.getTime(), ini.getTime())
-    const b = Math.min(v.fin.getTime(), fin.getTime())
-    if (b <= a) continue
-    const lista = ventanasPorPersona.get(v.usuarioId) ?? []
-    lista.push({ inicio: new Date(a), fin: new Date(b) })
-    ventanasPorPersona.set(v.usuarioId, lista)
-  }
+  const periodos = periodosPorPersona(entrada.personas, entrada.ventanas ?? [], entrada.desde, entrada.hasta)
 
   interface Acc {
     intervalos: Intervalo[]
@@ -363,9 +437,10 @@ export function agregarIndicadores(entrada: {
   }
 
   for (const t of entrada.tiempos) {
-    if (!medidas.has(t.usuarioId)) continue
-    const a = Math.max(t.inicio.getTime(), ini.getTime())
-    const b = Math.min(t.fin.getTime(), fin.getTime())
+    const periodo = periodos.get(t.usuarioId)
+    if (!periodo) continue
+    const a = Math.max(t.inicio.getTime(), periodo.inicio.getTime())
+    const b = Math.min(t.fin.getTime(), periodo.fin.getTime())
     if (b <= a) continue
     const recortado: Intervalo = { inicio: new Date(a), fin: new Date(b), tipo: t.tipo }
     const p = de(t.usuarioId)
@@ -380,11 +455,13 @@ export function agregarIndicadores(entrada: {
   const unidadesPorDia = new Map<string, number>()
   const unidadesPersonaDia = new Map<string, Map<string, number>>()
   for (const u of entrada.unidades) {
-    if (!medidas.has(u.usuarioId)) continue
+    const periodo = periodos.get(u.usuarioId)
+    if (!periodo) continue
     const t = u.cuando.getTime()
-    if (t < ini.getTime() || t > fin.getTime()) continue
+    if (t < periodo.inicio.getTime() || t > periodo.fin.getTime()) continue
     de(u.usuarioId).unidades += u.unidades
-    const dia = diaBogota(u.cuando)
+    // Las de la madrugada de un turno de noche son del día en que empezó.
+    const dia = diaDeTrabajo(t, periodo.turnos, entrada.desde, entrada.hasta)
     unidadesPorDia.set(dia, (unidadesPorDia.get(dia) ?? 0) + u.unidades)
     const suyas = unidadesPersonaDia.get(u.usuarioId) ?? new Map<string, number>()
     suyas.set(dia, (suyas.get(dia) ?? 0) + u.unidades)
@@ -402,11 +479,12 @@ export function agregarIndicadores(entrada: {
     const reparto = repartirTiempo(a.intervalos)
     for (const t of TIPOS_TAREA) porTipo[t] += reparto.porTipo[t]
 
-    // Cada persona se calcula día a día: un tramo que cruza la medianoche no se
-    // cuenta entero en el día en que empezó.
+    // Cada persona se calcula día a día, y el día es el de su turno: la
+    // madrugada de un turno de noche va con la noche en que empezó.
+    const turnos = periodos.get(id)!.turnos
     const porDia = new Map<string, Intervalo[]>()
     for (const it of a.intervalos) {
-      for (const parte of partirPorDia(it)) {
+      for (const parte of partirPorTurno(it, turnos, entrada.desde, entrada.hasta)) {
         const lista = porDia.get(parte.dia) ?? []
         lista.push(parte.intervalo)
         porDia.set(parte.dia, lista)
@@ -421,11 +499,11 @@ export function agregarIndicadores(entrada: {
 
     if (reparto.total === 0 && a.unidades === 0) continue
     const relojes = [...a.relojes.values()]
-    const ventanas = ventanasPorPersona.get(id) ?? []
+    // El turno entero, también la parte que pasa de la medianoche.
     const jornadaSegundos = Math.round(
-      ventanas.reduce((s, v) => s + (v.fin.getTime() - v.inicio.getTime()) / 1000, 0),
+      turnos.reduce((s, v) => s + (v.fin.getTime() - v.inicio.getTime()) / 1000, 0),
     )
-    const segundosEnTurno = ventanas.length > 0 ? segundosEnVentanas(a.intervalos, ventanas) : 0
+    const segundosEnTurno = turnos.length > 0 ? segundosEnVentanas(a.intervalos, turnos) : 0
     personas.push({
       id,
       nombre: persona.nombre,
@@ -779,28 +857,21 @@ export function agregarTiemposMuertos(entrada: {
 }): TiemposMuertosPeriodo {
   const minimo = entrada.minimoSeg ?? MIN_TIEMPO_MUERTO_SEG
   const maximo = MAX_HUECO_EN_TURNO_SEG
-  const { inicio: ini, fin } = limitesRango(entrada.desde, entrada.hasta)
   const medidas = new Map(entrada.personas.map((p) => [p.id, p]))
+  // Por turnos, igual que el tiempo laborado: el turno de noche entero, con su
+  // madrugada, en el día en que empezó.
+  const periodos = periodosPorPersona(entrada.personas, entrada.ventanas ?? [], entrada.desde, entrada.hasta)
 
   const intervalos = new Map<string, Intervalo[]>()
   for (const t of entrada.tiempos) {
-    if (!medidas.has(t.usuarioId)) continue
-    const a = Math.max(t.inicio.getTime(), ini.getTime())
-    const b = Math.min(t.fin.getTime(), fin.getTime())
+    const periodo = periodos.get(t.usuarioId)
+    if (!periodo) continue
+    const a = Math.max(t.inicio.getTime(), periodo.inicio.getTime())
+    const b = Math.min(t.fin.getTime(), periodo.fin.getTime())
     if (b <= a) continue
     const lista = intervalos.get(t.usuarioId) ?? []
     lista.push({ inicio: new Date(a), fin: new Date(b), tipo: t.tipo })
     intervalos.set(t.usuarioId, lista)
-  }
-  const ventanasPorPersona = new Map<string, VentanaTurno[]>()
-  for (const v of entrada.ventanas ?? []) {
-    if (!medidas.has(v.usuarioId)) continue
-    const a = Math.max(v.inicio.getTime(), ini.getTime())
-    const b = Math.min(v.fin.getTime(), fin.getTime())
-    if (b <= a) continue
-    const lista = ventanasPorPersona.get(v.usuarioId) ?? []
-    lista.push({ ...v, inicio: new Date(a), fin: new Date(b) })
-    ventanasPorPersona.set(v.usuarioId, lista)
   }
 
   const justPorPersona = new Map<string, JustificacionTiempoMuerto[]>()
@@ -824,7 +895,7 @@ export function agregarTiemposMuertos(entrada: {
 
     // Con turno se mide contra la jornada (entra lo de antes del primer PLU y
     // lo de después del último); sin turno, solo los huecos entre PLUs.
-    const ventanas = ventanasPorPersona.get(id) ?? []
+    const ventanas = periodos.get(id)!.turnos
     const huecos = ventanas.length > 0
       ? ventanas.flatMap((v) => huecosEnVentana(ints, v, minimo))
       : detectarTiemposMuertos(ints, minimo, maximo)

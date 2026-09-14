@@ -98,7 +98,16 @@ const fFecha = ref('')
 const fEstado = ref('')
 const fUsuario = ref('')
 
+// Cada carga lleva un numero y solo pinta la ULTIMA. Sin esto se mezclaban las
+// pestañas: al entrar se pide Recepcion (con la funcion fria) y, si el operario
+// cambiaba enseguida a Movimientos, la respuesta de Recepcion llegaba despues y
+// dejaba sus registros bajo la pestaña Movimientos.
+let seqLista = 0
+let seqAbiertos = 0
+let seqConteos = 0
+
 async function loadLista() {
+  const seq = ++seqLista
   try {
     const query: Record<string, string | number> = { tipo: tipo.value, page: page.value, pageSize: PAGE_SIZE }
     if (fQ.value) query.q = fQ.value
@@ -106,6 +115,7 @@ async function loadLista() {
     if (fEstado.value) query.estado = fEstado.value
     if (fUsuario.value) query.usuarioId = fUsuario.value
     const res = await $fetch<{ data: Movimiento[]; total: number }>(API_MONTACARGAS, { query })
+    if (seq !== seqLista) return
     items.value = res.data
     total.value = res.total
   } catch (e) {
@@ -128,10 +138,12 @@ const mios = computed(() => abiertos.value.filter((m) => m.responsableId === use
 // mano para no confundirse entre varios.
 const recibidos = computed(() => mios.value.filter((m) => recibioTraspaso(m, userId.value)))
 async function loadAbiertos() {
+  const seq = ++seqAbiertos
   try {
     const res = await $fetch<{ data: Movimiento[] }>(`${API_MONTACARGAS}/abiertos`, {
       query: { tipo: tipo.value },
     })
+    if (seq !== seqAbiertos) return
     abiertos.value = res.data
   } catch { /* no bloquea la vista */ }
 }
@@ -145,10 +157,12 @@ const conteos = ref<MovimientoConteos>({
   registrosHoy: 0, cajasHoy: 0, unidadesHoy: 0, sueltasHoy: 0, enCurso: 0, conNovedad: 0, promedioSeg: null,
 })
 async function loadConteos() {
+  const seq = ++seqConteos
   try {
     const res = await $fetch<{ data: MovimientoConteos }>(`${API_MONTACARGAS}/conteos`, {
       query: { tipo: tipo.value },
     })
+    if (seq !== seqConteos) return
     conteos.value = res.data
   } catch { /* deja los conteos previos si falla */ }
 }
@@ -184,6 +198,11 @@ onMounted(async () => {
 // Cambiar de pestaña es cambiar de flujo entero: se reinician filtros y página
 // para no arrastrar un filtro que no aplica al otro tipo.
 watch(flujoActivo, () => {
+  // Lo de la pestaña anterior se quita ya: mientras llega lo nuevo quedaba a la
+  // vista bajo el nombre de la otra.
+  items.value = []
+  total.value = 0
+  abiertos.value = []
   page.value = 1
   fQ.value = ''; fFecha.value = ''; fEstado.value = ''; fUsuario.value = ''
   void cargarTodo()
@@ -269,10 +288,18 @@ async function ubicar(
     $fetch<{
       data: Movimiento
       sobrante: { id: string; unidades: number; responsableNombre: string | null } | null
+      devueltoCompleto?: boolean
     }>(
       `${API_MONTACARGAS}/${m.id}/ubicacion`, { method: 'POST', body: payload },
     ), 'No se pudo cerrar el registro')
   if (!res) return
+
+  // No cupo ninguna: no se cerro nada, el PLU entero volvio de manos.
+  if (res.devueltoCompleto) {
+    showToast(`Devolviste las ${res.sobrante?.unidades ?? ''} unidades a ${res.sobrante?.responsableNombre ?? 'quien te lo pasó'}`)
+    await Promise.all([loadAbiertos(), loadLista(), loadConteos(), loadPendientes()])
+    return
+  }
 
   // Si no cupo todo, el resto vuelve a quien le paso el PLU: se avisa aparte
   // del overlay de exito, que solo habla del registro que se cerro.

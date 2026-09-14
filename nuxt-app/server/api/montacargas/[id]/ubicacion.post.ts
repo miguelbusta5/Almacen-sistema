@@ -15,7 +15,8 @@ import {
 } from '../../../utils/montacargasCalc'
 
 const schema = z.object({
-  ubicacionFinal: z.string().min(1).max(120),
+  // No hace falta cuando no cupo nada: el total vuelve sin ubicacion.
+  ubicacionFinal: z.string().max(120).optional(),
   // Cuantas unidades cupieron de verdad. Opcional: si no viene, se asume que se
   // almaceno todo, que es el caso normal.
   unidadesAlmacenadas: z.number().int().optional(),
@@ -33,6 +34,10 @@ const schema = z.object({
 // y con el reloj corriendo de nuevo: el sobrante sigue siendo trabajo pendiente
 // hasta que alguien le de una ubicacion. Si paso por varias manos, vuelve al
 // ultimo que se lo entrego, no a quien lo abrio (ver quienPasoElPlu).
+//
+// Si no cupo NADA (0 unidades), no se cierra nada: el registro entero vuelve a
+// quien elija el ayudante, con el reloj corriendo. Se cierra el tramo del
+// ayudante y se abre el de quien lo recibe, igual que un traspaso.
 export default defineEventHandler(async (event) => {
   const actor = await requireAuth(event)
   assertUsuarioMontacargas(actor.role)
@@ -43,9 +48,12 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 400, statusMessage: parsed.error.issues[0]!.message })
   }
 
-  const ubicacionFinal = normalizarUbicacion(parsed.data.ubicacionFinal)
-  const validation = validarUbicacion(ubicacionFinal)
-  if (validation) throw createError({ statusCode: 400, statusMessage: validation })
+  const ubicacionFinal = normalizarUbicacion(parsed.data.ubicacionFinal ?? '')
+  const devuelveTodo = parsed.data.unidadesAlmacenadas === 0
+  if (!devuelveTodo) {
+    const validation = validarUbicacion(ubicacionFinal)
+    if (validation) throw createError({ statusCode: 400, statusMessage: validation })
+  }
 
   const record = await prisma.movimientoMontacargas.findUnique({
     where: { id },
@@ -86,6 +94,10 @@ export default defineEventHandler(async (event) => {
   let devolverA = paso?.usuarioId ?? record.creadoPorId
   let devolverANombre: string | null = paso?.usuario.name ?? null
 
+  if (devuelveTodo && devolverA === record.responsableId && !parsed.data.devolverAId) {
+    throw createError({ statusCode: 400, statusMessage: 'Elige a quien le devuelves las unidades' })
+  }
+
   if (sobrante > 0 && parsed.data.devolverAId) {
     // Quien lo cierra no se lo devuelve a si mismo: si le cupiera, lo habria
     // almacenado.
@@ -105,6 +117,40 @@ export default defineEventHandler(async (event) => {
   }
 
   const now = new Date()
+
+  // No cupo nada: el registro entero vuelve de manos, sin cerrarse.
+  if (devuelveTodo) {
+    const devuelto = await prisma.$transaction(async (tx) => {
+      const orden = await cerrarTramoAbierto(tx, id, now)
+      await abrirTramo(tx, id, devolverA, now, orden + 1)
+      await tx.movimientoMontacargas.update({
+        where: { id },
+        data: { responsableId: devolverA, actualizadoPorId: actor.id },
+      })
+      await avisar(tx, [devolverA], {
+        tipo: 'SOBRANTE_DEVUELTO',
+        titulo: 'Te devolvieron un PLU completo',
+        descripcion: `${record.cantidadTotal} de ${record.descripcion}: no cupo ninguna, te toca ubicarlas`,
+        enlace: record.tipo === 'RESURTIDO' ? '/dashboard/resurtido' : '/dashboard/control-montacargas',
+      })
+      return tx.movimientoMontacargas.findUniqueOrThrow({ where: { id }, include: MOVIMIENTO_INCLUDE })
+    })
+
+    await prisma.activityLog.create({
+      data: {
+        userId: actor.id, action: 'UPDATE', module: 'control-montacargas', recordId: id,
+        details: `No cupo ninguna: ${record.cantidadTotal} unidades devueltas a ${devolverANombre ?? 'quien lo paso'}`,
+      },
+    }).catch(() => {})
+
+    return {
+      success: true,
+      data: mapMovimientoMontacargas(devuelto),
+      sobrante: { id, unidades: record.cantidadTotal, responsableNombre: devolverANombre },
+      devueltoCompleto: true,
+    }
+  }
+
   const { updated, sobranteId } = await prisma.$transaction(async (tx) => {
     await cerrarTramoAbierto(tx, id, now)
 
