@@ -15,7 +15,9 @@ export type UserRole =
   | "ETIQUETADO"
   | "SUPERVISOR_ALMACENAMIENTO"
   | "MONTACARGAS"
-  | "OPERARIO_ALMACENAMIENTO";
+  | "OPERARIO_ALMACENAMIENTO"
+  | "PICKING_MUEBLES"
+  | "INSPECCION_MUEBLES";
 
 export interface AppUser {
   id: string;

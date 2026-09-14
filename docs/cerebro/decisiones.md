@@ -1,5 +1,258 @@
 # Decisiones de Arquitectura y Producto
 
+## 2026-09-14 - Muebles: preparacion del lanzamiento a produccion
+
+### La pantalla de administracion era un bloqueador, no un extra
+
+El prototipo tenia los 12 endpoints de `muebles-admin/*` y ninguna pantalla que
+los usara. Sin ella un ADMIN no puede dar de alta equipos ni inspectores, y sobre
+todo no puede hacer la **asignacion diaria de equipo** — sin la cual ningun
+operario puede abrir una orden. El area entera se habria quedado parada el dia 1.
+
+Modulo propio `admin-muebles` (solo gestion) con cinco pestañas. La asignacion va
+primera a proposito: es lo primero de la manana y lo unico que bloquea a todos si
+falta. Lleva un aviso en ambar de cuantos operarios estan sin equipo, y permite
+elegir fecha para dejarla puesta la tarde anterior.
+
+La asignacion la hace supervision, no el operario (decision del area). El riesgo
+asumido es que si nadie asigna por la manana nadie trabaja; lo mitiga que puedan
+hacerlo tres roles, no una persona. Si estorba, pasar a autoservicio es pequeño.
+
+### La migracion se genera, no se escribe a mano
+
+`prisma/migrate-muebles.sql`, aditivo e idempotente, como los otros 17. Se aplica
+a mano y no con `db push` por lo ya documentado: `db push` compara el schema
+entero y puede arrastrar drift en una base con 19k productos y datos vivos.
+
+**Lo que se aprendio escribiendolo:** la primera version, escrita a pulso, dejaba
+**60 diferencias** contra lo que Prisma espera — claves foraneas sin `ON DELETE`
+/`ON UPDATE` explicitos (el default de SQL es NO ACTION, Prisma quiere
+RESTRICT/SET NULL + CASCADE), un `DEFAULT CURRENT_TIMESTAMP` de mas en cada
+`updated_at` (Prisma lo gestiona en el cliente, la columna no lleva default) y
+nombres de indice propios en vez de los suyos. Todo eso habria quedado como drift
+permanente: cada `db push` futuro habria querido "arreglarlo".
+
+La version buena sale de `prisma migrate diff` entre el schema de master y el
+nuevo, con las guardas `IF NOT EXISTS` y los bloques `DO ... EXCEPTION WHEN
+duplicate_object` anadidos encima. **Si se vuelve a tocar este archivo, hay que
+repetir la verificacion**: aplicar sobre una replica del estado de produccion y
+comprobar que `prisma migrate diff --from-config-datasource --to-schema` sale
+vacio. Se verifico asi, y tambien que aplicarlo dos veces no cambia nada.
+
+Los dos `ALTER TYPE "Role" ADD VALUE` van fuera de cualquier bloque `DO`:
+PostgreSQL no permite ejecutarlos dentro de una transaccion. Es lo unico de toda
+la migracion que toca algo que ya existe.
+
+Hay un guard (`src/__tests__/migrateMuebles.test.ts`) que vigila que el archivo
+siga siendo aditivo e idempotente: este SQL corre contra la base viva sin pasar
+por el CI ni por Prisma, y un DROP colado ahi no lo atrapa nadie.
+
+### Vuelta atras del lanzamiento
+
+Borrar `NUXT_PILOT_MUEBLES_URL` de Vercel y redesplegar: las rutas vuelven a dar
+404 y el modulo desaparece. **Las tablas se quedan** — vacias y sin que nadie mas
+las consulte. Borrarlas seria el unico paso peligroso de todo el lanzamiento.
+
+
+## 2026-09-13 - Muebles: fuera la capacidad, orden compartida e indicadores
+
+Tres ajustes al prototipo tras revisarlo con el area. Sigue sin desplegarse.
+
+### Fuera la capacidad de los equipos
+
+El area decidio NO medir cuanto cabe en el Order Picker ni en el Genie. Se quitan
+`capacidad_m3` y `capacidad_kg` de `equipos_muebles`, y con ellas el porcentaje,
+los umbrales y la barra de progreso.
+
+Lo que queda son los m3 y kg que acumula cada orden, que es lo que pidieron y se
+sostiene solo como cifra. `capacidadEquipo()` pasa a `volumenOrden()`.
+
+El equipo NO desaparece: sigue importando con cual se trabajo, porque es la razon
+por la que a veces hay que reasignar un PLU.
+
+### Una orden, dos operarios
+
+Por el tipo de mercancia el Genie a veces no puede bajar un PLU y se le reasigna
+al del Order Picker. La reasignacion es VERBAL —asi trabaja el area— y lo que la
+app registra es quien acabo bajando cada PLU.
+
+Cuando el del Order Picker intenta crear la orden, el choque devuelve un error
+identificable (`data.codigo = 'ORDEN_YA_ABIERTA'`) con quien la tiene y su equipo,
+para que la pantalla pueda preguntarle si trae PLUs reasignados. Un 409 seco lo
+dejaria bloqueado o —peor— le empujaria a inventar otro numero de orden, y el
+trabajo acabaria en dos ordenes que nadie sabria juntar.
+
+- `lineas_muebles.operario_id`: cada PLU sabe quien lo bajo. Cargarle todo a quien
+  abrio la orden seria mentir, mismo criterio que los tramos de montacargas.
+- `participantes_orden_muebles`: tabla y no un segundo campo en la orden, porque
+  `ordenAbierta()` mira ahi — unirse OCUPA tu turno y no puedes tener ademas una
+  propia.
+- El "PLU en curso" se comprueba por PERSONA; el duplicado, contra la orden entera.
+- Cada uno cierra solo sus lineas.
+- La pasa a inspeccion EL ULTIMO QUE SE UNIO, que es quien termina. Gestion puede
+  siempre y se audita distinto: sin esa salida, la orden se quedaria abierta toda
+  la noche con el reloj corriendo si esa persona sale de turno.
+
+### Tipo de mercancia: deducido y corregible
+
+No existia ninguna clasificacion de producto en el sistema (`ProductoMaestro` no
+tiene categoria; `MedidaProducto.zona` vale GOURMET/MUEBLES y ademas nadie la
+leia). Se deduce de la descripcion del maestro con reglas por palabra clave.
+
+**El orden de las reglas ES la logica** y hay un test que lo vigila: un "SOFA
+RECLINABLE 3P" es un reclinable, no un sofa; una "SILLA COMEDOR" es una silla, no
+una mesa —"COMEDOR" nombra la habitacion— pero un "COMEDOR 6 PUESTOS" a secas si
+es la mesa del juego.
+
+`tipos_mueble_plu` va aparte de `productos_maestro` porque el importador hace un
+INSERT ... ON CONFLICT que ya vacio datos de 19k productos una vez. Un PLU marcado
+MANUAL no lo vuelve a tocar la heuristica.
+
+**El tipo NO se sella en la linea**, a diferencia del peso y el volumen: una medida
+sellada protege una cifra ya calculada, pero una etiqueta corregida debe arreglar
+el informe hacia atras. Si se sellara, una mala clasificacion envenenaria el
+historico para siempre. Los indicadores lo resuelven por PLU.
+
+### Modulo Indicadores Muebles
+
+Modulo propio, no una pestaña del de montacargas: aquel esta cerrado a
+MONTACARGAS/OPERARIO_ALMACENAMIENTO y gira sobre `TipoTarea`, un union cerrado de
+cinco valores triplicado y con sus propios guards. Meter picking e inspeccion ahi
+obligaria a tocarlo todo. Se reutilizan los COMPONENTES (Tarjeta, BarrasH, Tabla)
+y los helpers de fecha, no el motor.
+
+Muestra: tiempo por operario y por inspector, promedios por tipo de mercancia y
+por tramo de m3 y de kg, espera de ebanisteria con sus motivos, y la orden
+completa separando picking de inspeccion.
+
+**Desplazamiento entre PLUs**: el hueco entre el fin de un PLU y el inicio del
+siguiente, de la misma persona. Es tiempo que no esta en ningun reloj pero que el
+operario si gasta. Se descartan los huecos de mas de 30 min
+(`MAX_DESPLAZAMIENTO_SEG`) y los que cruzan de dia: eso ya no es caminar hasta la
+estanteria, es almuerzo o fin de turno, y contarlo inflaria el promedio hasta
+volverlo inservible. El porcentaje se calcula contra picking + desplazamiento (el
+tiempo "en la jugada"), no contra picking solo, que daria mas del 100%.
+
+Los tramos (`0,5 / 1,5 / 3` m3 y `20 / 50 / 100` kg) son de arranque y viven en un
+solo sitio para ajustarlos viendo datos reales.
+
+Los inspectores no son `User`, asi que su bloque se agrupa por `Inspector` del
+catalogo — coherente con el login compartido del area.
+
+
+## 2026-09-12 - Picking e Inspeccion de Muebles (PROTOTIPO, no desplegado)
+
+Dos modulos nuevos para el area de Muebles, que hasta hoy trabajaba sin ninguna
+medicion: nadie sabia cuanto tarda un PLU, cuanta carga lleva el equipo de
+altura, ni cuanto tiempo pasa un mueble en ebanisteria.
+
+**Estado: prototipo.** No sale a produccion hasta validarlo en el area. Dos
+candados, no uno: ningun usuario real tiene los roles nuevos, y las rutas viven
+en Nuxt detras de `NUXT_PILOT_MUEBLES_URL`, que NO esta configurada en Vercel
+Production (sin ella, /dashboard/picking-muebles da 404 alli).
+
+### Cinco relojes, no uno
+
+| Reloj | Arranca | Para |
+|---|---|---|
+| Orden - picking | crear la orden | pasar a inspeccion |
+| PLU - picking | escanear el PLU | escanear el QR del rotulo |
+| Orden - inspeccion | pasar a inspeccion | ultimo PLU listo |
+| PLU - inspeccion | el inspector selecciona el PLU | marcar completado |
+| PLU - ebanisteria | enviar al taller | marcar entregado |
+
+Los dos de la orden se encadenan en la MISMA transaccion: si fueran dos llamadas
+quedaria un hueco de tiempo sin dueno entre que el operario suelta la orden y el
+area la recibe.
+
+La ventana de ebanisteria se DESCUENTA del tiempo de inspeccion del PLU
+(`duracionInspeccionNetaMinutos`): mientras el mueble esta en el taller nadie lo
+esta inspeccionando, y cargarle ese rato al inspector falsea su productividad.
+Mismo criterio que la ventana de novedad en montacargas, que tampoco se cronometra.
+
+Ninguna duracion se persiste: se calculan en `mapRow`, igual que en
+Exportaciones. Las horas las sella siempre el servidor.
+
+### El maestro ya existia sin que nadie lo leyera
+
+`medidas_caja_master` (una fila por PARTE, con el volumen ya sellado al importar)
+y `medidas_producto` estaban en el schema desde la medicion de productos, pero
+ningun modulo las consultaba. `maestroMuebles.ts` las agrega por PLU: partes =
+numero de filas de medida, volumen y peso = suma de las partes.
+
+`partes` sale de contar las filas reales y no del campo declarado en
+`medidas_producto`: el propio schema advierte que no siempre coinciden, y lo que
+el operario tiene delante son las cajas que existen.
+
+Peso, volumen y partes se COPIAN a la linea al escanear el PLU y se sellan alli.
+Corregir el maestro despues no debe mover en silencio una capacidad ya calculada
+— mismo criterio por el que `volumen_m3` se sella al importar.
+
+Un PLU sin medir deja los totales en NULL, nunca en cero: un cero diria que el
+mueble no ocupa nada. La UI cuenta esas lineas y avisa de que el porcentaje va
+corto.
+
+### La capacidad no tiene campo que resetear
+
+Se calcula sobre las lineas cerradas de la ORDEN ABIERTA. Al pasar la orden a
+inspeccion el operario descarga el equipo, y como ya no hay orden abierta, la
+capacidad vuelve a cero sola. Un contador persistido habria que acordarse de
+ponerlo a cero, y el dia que alguien olvide hacerlo el dato queda mintiendo.
+
+Se muestra % y m3. Con el equipo sin medir (el Order Picker y el Genie estan
+pendientes de medicion) se muestran los m3 SIN porcentaje: un dato falso es peor
+que uno ausente cuando el operario decide si le cabe algo mas. La capacidad es
+configuracion (`equipos_muebles.capacidad_m3`), no codigo.
+
+### Inspeccion: un login, cinco personas
+
+El area tiene 2 PCs para ~5 inspectores, asi que un usuario por persona no es
+viable. Se resuelve con un **catalogo de inspectores** (tabla `Inspector`, sin
+contrasena) y un desplegable: la trazabilidad del tiempo la da el catalogo, no la
+autenticacion.
+
+Consecuencia asumida: cualquiera con ese login puede registrar tiempo a nombre de
+otro. Si algun dia importa, el paso siguiente es un PIN por inspector, sin tocar
+el modelo de datos.
+
+**Salir de una orden NO existe como endpoint.** Salir es solo navegar: todo el
+estado vive en la DB, asi que un inspector puede dejarle la PC a otro y volver a
+encontrar su orden en el punto exacto en que la dejo. Si hubiera un endpoint de
+"salir" que tocara relojes, un inspector dejaria a otro sin su tiempo. Hay un
+test que verifica que ese archivo no exista.
+
+El inspector activo se recuerda en `sessionStorage` de esa PC como comodidad para
+no reelegir el nombre en cada accion, no como sesion. Los botones no se
+deshabilitan sin nombre elegido: pulsarlos abre el selector y luego ejecutan la
+accion, que en una PC compartida ahorra un paso que no aporta nada.
+
+### Reglas del flujo
+
+- Una sola orden abierta por operario; sin equipo asignado hoy no se abre ninguna.
+- Un PLU = una linea por orden (el duplicado se rechaza).
+- No se escanea otro PLU con uno en curso, ni se pasa a inspeccion con uno a medias.
+- El codigo de orden EXIGE prefijo TSDM/OVDM. A diferencia de Gourmet, que acepta
+  cualquier texto y cae a OVDM, aqui el codigo es la llave unica del modulo: una
+  orden mal escrita crea una orden fantasma que nadie encuentra en NetSuite.
+- El rotulo se guarda tal cual (hoy son codigos tipo "M123134"): el formato no
+  esta cerrado y bloquear al operario por un patron que no conocemos cuesta mas
+  de lo que evita. La ubicacion, igual: texto libre de la pistola.
+- Un faltante NO bloquea la orden. Nace sin dueno y lo asigna un supervisor:
+  quien esta libre lo sabe el, no el inspector.
+- Escaneo con pistola en modo teclado, sin camara. Los cuatro campos avanzan el
+  foco solos.
+
+### Donde vive
+
+Logica pura en `src/lib/pickingMuebles.ts` (fuente de verdad, testeada) con copia
+en `nuxt-app/server/utils/mueblesCalc.ts` y guard de sincronia en
+`src/__tests__/mueblesNuxt.test.ts`, igual que montacargas y resurtido.
+
+Ojo: el schema esta DUPLICADO (`prisma/schema.prisma` y
+`nuxt-app/prisma/schema.prisma`). Hay que tocar los dos o el cliente de Nitro se
+genera sin los modelos nuevos.
+
+
 ## 2026-09-08 - Montacargas: reloj desde el PLU, ayudantes y novedades
 
 ### El reloj arranca al digitar el PLU

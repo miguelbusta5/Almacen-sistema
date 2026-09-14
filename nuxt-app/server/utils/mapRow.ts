@@ -7,6 +7,12 @@ import {
 } from './montacargasCalc'
 import { segundosRecepcion } from './recepcionCalc'
 import { progresoMontaje, segundosEntre } from './resurtidoCalc'
+import {
+  duracionInspeccionNetaMinutos,
+  duracionMinutos as duracionMinutosMuebles,
+  resumenOrden,
+  volumenOrden,
+} from './mueblesCalc'
 
 // Mapea la fila de TransporteGuardado al shape del cliente (igual que la app Next).
 export function mapGuardado(r: any) {
@@ -567,5 +573,96 @@ export function mapPendiente(p: any) {
     // trabajo: mide al sistema, no al operario.
     esperaSegundos: segundosEntre(p.solicitadoAt, p.completadoAt, new Date()) ?? 0,
     duracionSegundos: segundosEntre(p.horaInicio, p.horaFin),
+  }
+}
+
+// ── Picking e Inspeccion de Muebles ─────────────────────────────────────────
+// Las duraciones NO estan en la DB: se calculan aqui, igual que en
+// Exportaciones. Persistirlas obligaria a recalcular cada fila al corregir una
+// hora, y la correccion de horas es un caso real del area.
+
+export function mapLineaMuebles(l: any) {
+  return {
+    id: l.id,
+    plu: l.plu,
+    descripcion: l.descripcion ?? null,
+    partes: l.partes ?? null,
+    pesoUnitarioKg: l.pesoUnitarioKg == null ? null : Number(l.pesoUnitarioKg),
+    volumenUnitarioM3: l.volumenUnitarioM3 == null ? null : Number(l.volumenUnitarioM3),
+    unidades: l.unidades ?? 0,
+    ubicacion: l.ubicacion ?? null,
+    numeroCaja: l.numeroCaja ?? null,
+    volumenTotalM3: l.volumenTotalM3 == null ? null : Number(l.volumenTotalM3),
+    pesoTotalKg: l.pesoTotalKg == null ? null : Number(l.pesoTotalKg),
+    estado: l.estado,
+    horaInicio: l.horaInicio?.toISOString?.() ?? l.horaInicio ?? null,
+    horaFin: l.horaFin?.toISOString?.() ?? l.horaFin ?? null,
+    duracionPickingMin: duracionMinutosMuebles(l.horaInicio, l.horaFin),
+    inspHoraInicio: l.inspHoraInicio?.toISOString?.() ?? l.inspHoraInicio ?? null,
+    inspHoraFin: l.inspHoraFin?.toISOString?.() ?? l.inspHoraFin ?? null,
+    duracionInspeccionMin: duracionInspeccionNetaMinutos(l),
+    ebanisteriaInicio: l.ebanisteriaInicio?.toISOString?.() ?? l.ebanisteriaInicio ?? null,
+    ebanisteriaFin: l.ebanisteriaFin?.toISOString?.() ?? l.ebanisteriaFin ?? null,
+    duracionEbanisteriaMin: duracionMinutosMuebles(l.ebanisteriaInicio, l.ebanisteriaFin),
+    motivoEbanisteria: l.motivoEbanisteria ?? null,
+    operario: l.operario ? { id: l.operario.id, nombre: l.operario.name } : null,
+    inspector: l.inspector ?? null,
+    enviadoEbanisteriaPor: l.enviadoEbanisteriaPor ?? null,
+    recibidoEbanisteriaPor: l.recibidoEbanisteriaPor ?? null,
+  }
+}
+
+export function mapEquipoMuebles(e: any) {
+  // Sin capacidad: el area decidio no medir el Order Picker ni el Genie.
+  return { id: e.id, codigo: e.codigo, tipo: e.tipo, activo: e.activo ?? true }
+}
+
+export function mapOrdenMuebles(o: any) {
+  const lineas = (o.lineas ?? []).map(mapLineaMuebles)
+  return {
+    id: o.id,
+    codigo: o.codigo,
+    tipoOrden: o.tipoOrden,
+    estado: o.estado,
+    fecha: o.fecha?.toISOString?.().slice(0, 10) ?? o.fecha ?? null,
+    horaInicio: o.horaInicio?.toISOString?.() ?? o.horaInicio ?? null,
+    horaPasoInspeccion: o.horaPasoInspeccion?.toISOString?.() ?? o.horaPasoInspeccion ?? null,
+    horaFinInspeccion: o.horaFinInspeccion?.toISOString?.() ?? o.horaFinInspeccion ?? null,
+    duracionPickingMin: duracionMinutosMuebles(o.horaInicio, o.horaPasoInspeccion),
+    duracionInspeccionMin: duracionMinutosMuebles(o.horaPasoInspeccion, o.horaFinInspeccion),
+    operario: o.operario ? { id: o.operario.id, nombre: o.operario.name } : null,
+    equipo: o.equipo ? mapEquipoMuebles(o.equipo) : null,
+    // En orden de entrada: el ultimo es quien pasa la orden a inspeccion.
+    participantes: (o.participantes ?? []).map((p: any) => ({
+      id: p.usuarioId,
+      nombre: p.usuario?.name ?? '',
+      equipo: p.equipo?.codigo ?? null,
+      esCreador: p.esCreador,
+    })),
+    inspector: o.inspector ?? null,
+    motivoCorreccion: o.motivoCorreccion ?? null,
+    lineas,
+    resumen: resumenOrden(lineas),
+    volumen: volumenOrden(lineas),
+  }
+}
+
+export function mapPendienteMuebles(p: any) {
+  return {
+    id: p.id,
+    plu: p.plu,
+    unidades: p.unidades,
+    observacion: p.observacion ?? null,
+    estado: p.estado,
+    orden: p.orden ? { id: p.orden.id, codigo: p.orden.codigo } : null,
+    creadoPorInspector: p.creadoPorInspector ?? null,
+    asignadoA: p.asignadoA ? { id: p.asignadoA.id, nombre: p.asignadoA.name } : null,
+    resueltoPor: p.resueltoPor ? { id: p.resueltoPor.id, nombre: p.resueltoPor.name } : null,
+    solicitadoAt: p.solicitadoAt?.toISOString?.() ?? p.solicitadoAt ?? null,
+    horaInicio: p.horaInicio?.toISOString?.() ?? p.horaInicio ?? null,
+    horaFin: p.horaFin?.toISOString?.() ?? p.horaFin ?? null,
+    duracionMin: duracionMinutosMuebles(p.horaInicio, p.horaFin),
+    // Lo que lleva esperando es un numero distinto de lo que costo resolverlo.
+    esperaMin: duracionMinutosMuebles(p.solicitadoAt, p.horaInicio ?? new Date()),
   }
 }
