@@ -1,5 +1,59 @@
 # Decisiones de Arquitectura y Producto
 
+## 2026-09-14 - Muebles: preparacion del lanzamiento a produccion
+
+### La pantalla de administracion era un bloqueador, no un extra
+
+El prototipo tenia los 12 endpoints de `muebles-admin/*` y ninguna pantalla que
+los usara. Sin ella un ADMIN no puede dar de alta equipos ni inspectores, y sobre
+todo no puede hacer la **asignacion diaria de equipo** — sin la cual ningun
+operario puede abrir una orden. El area entera se habria quedado parada el dia 1.
+
+Modulo propio `admin-muebles` (solo gestion) con cinco pestañas. La asignacion va
+primera a proposito: es lo primero de la manana y lo unico que bloquea a todos si
+falta. Lleva un aviso en ambar de cuantos operarios estan sin equipo, y permite
+elegir fecha para dejarla puesta la tarde anterior.
+
+La asignacion la hace supervision, no el operario (decision del area). El riesgo
+asumido es que si nadie asigna por la manana nadie trabaja; lo mitiga que puedan
+hacerlo tres roles, no una persona. Si estorba, pasar a autoservicio es pequeño.
+
+### La migracion se genera, no se escribe a mano
+
+`prisma/migrate-muebles.sql`, aditivo e idempotente, como los otros 17. Se aplica
+a mano y no con `db push` por lo ya documentado: `db push` compara el schema
+entero y puede arrastrar drift en una base con 19k productos y datos vivos.
+
+**Lo que se aprendio escribiendolo:** la primera version, escrita a pulso, dejaba
+**60 diferencias** contra lo que Prisma espera — claves foraneas sin `ON DELETE`
+/`ON UPDATE` explicitos (el default de SQL es NO ACTION, Prisma quiere
+RESTRICT/SET NULL + CASCADE), un `DEFAULT CURRENT_TIMESTAMP` de mas en cada
+`updated_at` (Prisma lo gestiona en el cliente, la columna no lleva default) y
+nombres de indice propios en vez de los suyos. Todo eso habria quedado como drift
+permanente: cada `db push` futuro habria querido "arreglarlo".
+
+La version buena sale de `prisma migrate diff` entre el schema de master y el
+nuevo, con las guardas `IF NOT EXISTS` y los bloques `DO ... EXCEPTION WHEN
+duplicate_object` anadidos encima. **Si se vuelve a tocar este archivo, hay que
+repetir la verificacion**: aplicar sobre una replica del estado de produccion y
+comprobar que `prisma migrate diff --from-config-datasource --to-schema` sale
+vacio. Se verifico asi, y tambien que aplicarlo dos veces no cambia nada.
+
+Los dos `ALTER TYPE "Role" ADD VALUE` van fuera de cualquier bloque `DO`:
+PostgreSQL no permite ejecutarlos dentro de una transaccion. Es lo unico de toda
+la migracion que toca algo que ya existe.
+
+Hay un guard (`src/__tests__/migrateMuebles.test.ts`) que vigila que el archivo
+siga siendo aditivo e idempotente: este SQL corre contra la base viva sin pasar
+por el CI ni por Prisma, y un DROP colado ahi no lo atrapa nadie.
+
+### Vuelta atras del lanzamiento
+
+Borrar `NUXT_PILOT_MUEBLES_URL` de Vercel y redesplegar: las rutas vuelven a dar
+404 y el modulo desaparece. **Las tablas se quedan** — vacias y sin que nadie mas
+las consulte. Borrarlas seria el unico paso peligroso de todo el lanzamiento.
+
+
 ## 2026-09-13 - Muebles: fuera la capacidad, orden compartida e indicadores
 
 Tres ajustes al prototipo tras revisarlo con el area. Sigue sin desplegarse.

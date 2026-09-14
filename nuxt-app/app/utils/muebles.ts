@@ -15,6 +15,22 @@ export type TipoEquipo = 'ORDER_PICKER' | 'GENIE'
 
 export interface Inspector { id: string; nombre: string; activo?: boolean }
 
+export type OrigenTipoMueble = 'DERIVADO' | 'MANUAL'
+
+export interface TipoPlu {
+  plu: string
+  tipo: string
+  origen: OrigenTipoMueble
+  descripcion: string | null
+}
+
+/** Una fila de la pantalla de asignacion del dia. */
+export interface OperarioDelDia {
+  id: string
+  nombre: string
+  equipo: Equipo | null
+}
+
 export interface Equipo {
   id: string
   codigo: string

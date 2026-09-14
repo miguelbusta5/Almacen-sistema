@@ -26,7 +26,8 @@ export type ModuleKey =
   | "indicadores"
   | "picking-muebles"
   | "inspeccion-muebles"
-  | "indicadores-muebles";
+  | "indicadores-muebles"
+  | "admin-muebles";
 
 export const MODULE_ACCESS: Record<ModuleKey, AppRole[]> = {
   transporte: ["TRANSPORTE", "SUPERVISOR_TRANSPORTE", "GERENTE", "ADMIN", "OPERADOR"],
@@ -102,6 +103,9 @@ export const MODULE_ACCESS: Record<ModuleKey, AppRole[]> = {
   // Los numeros con los que se evalua al area: solo gestion. El servidor lo
   // exige tambien, como en el resto de indicadores.
   "indicadores-muebles": ["SUPERVISOR_ALMACENAMIENTO", "GERENTE", "ADMIN"],
+  // Equipos, inspectores, asignacion del dia y tipos de PLU. Solo gestion: el
+  // operario no configura el area en la que trabaja.
+  "admin-muebles": ["SUPERVISOR_ALMACENAMIENTO", "GERENTE", "ADMIN"],
 };
 
 export function canSeeModule(role: string | undefined | null, moduleKey: ModuleKey): boolean {

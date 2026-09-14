@@ -6,6 +6,41 @@
 
 ## Tareas pendientes
 
+### Muebles — lanzamiento a producción (2026-09-14)
+
+Picking, Inspección, Indicadores y Admin Muebles. Todo el código está listo y
+verificado; lo que queda es el runbook, y **el orden importa**.
+
+- [x] **Código**: 4 módulos, migración aditiva verificada (`prisma migrate diff` sale
+  vacío contra una réplica del estado de producción, y sigue vacío tras aplicarla dos
+  veces), 1610 tests, `tsc` y `nuxt build` verdes, flujo completo probado end-to-end
+  contra base real.
+- [ ] **1. Aplicar el SQL a Railway** — `psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f
+  prisma/migrate-muebles.sql`. Contra la conexión directa, no la pooled. Las tablas
+  quedan creadas y vacías; nada las usa todavía, así que este paso es inocuo por sí solo.
+- [ ] **2. Mergear el PR** → CI despliega los dos proyectos Vercel. El módulo sigue
+  invisible (404) porque falta la variable.
+- [ ] **3. Crear los usuarios** con los roles `PICKING_MUEBLES` e `INSPECCION_MUEBLES`
+  (Usuarios, o `scripts/import-usuarios.mjs` por CSV).
+- [ ] **4. `NUXT_PILOT_MUEBLES_URL` = `https://nuxt-app-chi-ivory.vercel.app`** en Vercel
+  Production del proyecto **principal**, y redeploy. **Con `https://`**: sin protocolo el
+  build falla por rewrite inválido (ver [[bugs]], pasó con `NUXT_PILOT_USUARIOS_URL`).
+- [ ] **5. Cargar el maestro de medidas** ANTES de que el área empiece a trabajar: el
+  volumen se sella al cerrar cada PLU, así que las órdenes hechas antes de la carga se
+  quedan sin volumen para siempre.
+- [ ] **6. Dar de alta** equipos e inspectores en Admin Muebles, y hacer la primera
+  asignación del día.
+- [ ] **7. QA en producción con sesión real**: que un usuario cualquiera NO vea los
+  módulos; que `/dashboard/admin-muebles` cargue (si sale en blanco es el rewrite de
+  assets, BUG-004); orden real de punta a punta con un PLU real que traiga peso y volumen
+  del maestro; salir y volver a una orden en inspección y comprobar que el reloj sigue.
+- [ ] **Primera semana**: revisar la cola de tipos derivados (cuántos PLUs cayeron en
+  "Otro") y si los tramos de m³/kg y el tope de 30 min del desplazamiento separan bien los
+  datos reales. Los tres son constantes en un solo sitio.
+
+Vuelta atrás: borrar `NUXT_PILOT_MUEBLES_URL` y redesplegar. **No borrar las tablas.**
+
+
 ### Login — migrar a Nuxt/Vue (2026-07-31)
 
 - [x] **Código migrado**: `nuxt-app/app/pages/login.vue` (sin layout de dashboard) +

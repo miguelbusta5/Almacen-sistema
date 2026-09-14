@@ -172,6 +172,17 @@ export const HOME_ACTIONS: HomeAction[] = [
     priority: 3,
   },
   {
+    id: "admin-muebles",
+    title: "Admin Muebles",
+    description: "Equipos, asignacion del dia, inspectores y tipos de PLU",
+    href: "/dashboard/admin-muebles",
+    icon: "SlidersHorizontal",
+    color: getModuleColor("admin-muebles"),
+    moduleKey: "admin-muebles",
+    roles: ["SUPERVISOR_ALMACENAMIENTO", "GERENTE", "ADMIN"],
+    priority: 2,
+  },
+  {
     id: "ver-auditoria",
     title: "Ver auditoría",
     description: "Historial completo de acciones del sistema",

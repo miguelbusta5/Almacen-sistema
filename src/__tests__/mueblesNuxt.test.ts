@@ -226,6 +226,39 @@ describe("picking — orden compartida por reasignacion", () => {
   });
 });
 
+// La pantalla de administracion es lo que hace operable el modulo: sin ella un
+// ADMIN no puede dar de alta equipos ni hacer la asignacion del dia, y sin
+// asignacion del dia ningun operario puede abrir una orden.
+describe("admin — la pantalla que desbloquea el area", () => {
+  const raiz = "nuxt-app/app/components/admin-muebles";
+  const modulo = leer(`${raiz}/Module.vue`);
+  const asignacion = leer(`${raiz}/Asignacion.vue`);
+
+  it("existe una pantalla por cada grupo de endpoints admin", () => {
+    for (const vista of ["Asignacion", "Equipos", "Inspectores", "Tipos", "Pendientes"]) {
+      expect(() => leer(`${raiz}/${vista}.vue`)).not.toThrow();
+    }
+  });
+
+  // Va primera porque es lo primero de la manana y lo unico que bloquea al area
+  // entera si falta.
+  it("la asignacion del dia es la primera pestaña", () => {
+    const orden = modulo.indexOf("'asignacion' as const");
+    const siguiente = modulo.indexOf("'equipos' as const");
+    expect(orden).toBeGreaterThan(-1);
+    expect(orden).toBeLessThan(siguiente);
+  });
+
+  it("avisa de cuantos operarios se quedarian sin poder trabajar", () => {
+    expect(asignacion).toContain("sinEquipo");
+    expect(asignacion).toMatch(/no .*abrir órdenes|abrir órdenes/);
+  });
+
+  it("deja poner la asignacion de otro dia (la tarde anterior)", () => {
+    expect(asignacion).toContain("fecha: fecha.value");
+  });
+});
+
 // El login de inspeccion es compartido (2 PCs, ~5 inspectores). Que un inspector
 // salga de una orden no puede tumbar el trabajo de nadie.
 describe("inspeccion — login compartido", () => {
