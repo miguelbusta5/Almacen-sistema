@@ -433,7 +433,8 @@ export interface TareaResurtidoDTO {
   /** Pasada a un ayudante: quien la tiene. Null = el operario del montaje. */
   responsableId: string | null
   responsableNombre: string | null
-  /** Quien se la paso al responsable actual. */
+  /** Quien se la paso al responsable actual: a quien se le devuelve si no cabe nada. */
+  pasadoPorId: string | null
   pasadoPorNombre: string | null
   /** Null mientras no se ha escaneado la posicion. */
   duracionSegundos: number | null
@@ -481,6 +482,8 @@ export interface PendienteDTO {
   novedadAt: string | null
   /** Si va dentro de una tarea de resurtido, esa tarea. */
   tareaResurtidoId: string | null
+  /** Quien se lo paso: a quien se le devuelve si no cabe nada. */
+  pasadoPorId: string | null
   pasadoPorNombre: string | null
   /** Lo que lleva esperando desde que se pidio, este o no en curso. */
   esperaSegundos: number

@@ -288,10 +288,18 @@ async function ubicar(
     $fetch<{
       data: Movimiento
       sobrante: { id: string; unidades: number; responsableNombre: string | null } | null
+      devueltoCompleto?: boolean
     }>(
       `${API_MONTACARGAS}/${m.id}/ubicacion`, { method: 'POST', body: payload },
     ), 'No se pudo cerrar el registro')
   if (!res) return
+
+  // No cupo ninguna: no se cerro nada, el PLU entero volvio de manos.
+  if (res.devueltoCompleto) {
+    showToast(`Devolviste las ${res.sobrante?.unidades ?? ''} unidades a ${res.sobrante?.responsableNombre ?? 'quien te lo pasó'}`)
+    await Promise.all([loadAbiertos(), loadLista(), loadConteos(), loadPendientes()])
+    return
+  }
 
   // Si no cupo todo, el resto vuelve a quien le paso el PLU: se avisa aparte
   // del overlay de exito, que solo habla del registro que se cerro.

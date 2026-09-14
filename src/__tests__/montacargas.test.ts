@@ -369,11 +369,10 @@ describe("montacargas — sobrantes cuando no cabe todo", () => {
     expect(validarUnidadesAlmacenadas(73, 72)).toMatch(/mas de las 72/);
   });
 
-  // Cero no se acepta: si no cupo NADA no hay nada que cerrar, y para eso esta
-  // el boton de pasarle el PLU a otra persona.
-  it("no deja cerrar un registro sin haber almacenado nada", () => {
-    expect(validarUnidadesAlmacenadas(0, 72)).toMatch(/pasa el PLU/);
-    expect(validarUnidadesAlmacenadas(-3, 72)).toMatch(/pasa el PLU/);
+  // Cero vale: si no cupo NADA, el ayudante devuelve el total a quien se lo paso.
+  it("deja devolver el total cuando no cupo nada", () => {
+    expect(validarUnidadesAlmacenadas(0, 72)).toBeNull();
+    expect(validarUnidadesAlmacenadas(-3, 72)).toMatch(/negativas/);
     expect(validarUnidadesAlmacenadas(1.5, 72)).toMatch(/cuantas unidades/);
   });
 });

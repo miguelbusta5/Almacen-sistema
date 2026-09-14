@@ -104,6 +104,13 @@ watch(() => m.value.id, () => { almacenadas.value = String(m.value.cantidadTotal
 watch(() => m.value.cantidadTotal, (v) => { almacenadas.value = String(v || '') })
 
 const almacenadasNum = computed(() => Number(almacenadas.value || 0))
+// No cupo ninguna: se devuelve el total, sin ubicacion final.
+const devuelveTodo = computed(() =>
+  props.recibido && almacenadas.value !== '' && almacenadasNum.value === 0)
+function noCupoNada() {
+  almacenadas.value = '0'
+  void cargarReceptores()
+}
 const errorAlmacenadas = computed(() =>
   props.recibido ? validarUnidadesAlmacenadas(almacenadasNum.value, m.value.cantidadTotal) : null,
 )
@@ -132,7 +139,7 @@ watch(sobrante, (v) => { if (v > 0) void cargarReceptores() })
 const faltaDestino = computed(() => sobrante.value > 0 && !devolverAId.value)
 
 const puedeUbicar = computed(() =>
-  !props.guardando && Boolean(normalizada.value) && listo.value && !enNovedad.value
+  !props.guardando && (devuelveTodo.value || Boolean(normalizada.value)) && listo.value && !enNovedad.value
   && !errorAlmacenadas.value && !faltaDestino.value,
 )
 
@@ -141,7 +148,7 @@ watch(() => props.destacado, (v) => { if (v) void nextTick(() => ubicInput.value
 function ubicar() {
   if (!puedeUbicar.value) return
   emit('ubicar', {
-    ubicacionFinal: normalizada.value,
+    ubicacionFinal: devuelveTodo.value ? '' : normalizada.value,
     unidadesAlmacenadas: props.recibido ? almacenadasNum.value : m.value.cantidadTotal,
     ...(sobrante.value > 0 && { devolverAId: devolverAId.value }),
   })
@@ -254,15 +261,22 @@ function ubicar() {
       <label v-if="recibido" class="f f-cant">
         <span class="lbl">Unidades que almacenaste</span>
         <input
-          v-model="almacenadas" class="field tnum" type="number" min="1"
+          v-model="almacenadas" class="field tnum" type="number" min="0"
           :max="m.cantidadTotal" inputmode="numeric" :disabled="guardando"
         >
         <span v-if="errorAlmacenadas" class="hint warn-txt">
           <TriangleAlert :size="11" /> {{ errorAlmacenadas }}
         </span>
+        <span v-else-if="devuelveTodo" class="hint sob-txt">
+          <TriangleAlert :size="11" /> No cupo ninguna: devuelves las {{ m.cantidadTotal }}
+        </span>
         <span v-else-if="sobrante > 0" class="hint sob-txt">
           <TriangleAlert :size="11" /> Quedan {{ sobrante }} sin almacenar
         </span>
+        <!-- Atajo para el caso que antes no tenia salida: no cupo ninguna. -->
+        <button v-if="!devuelveTodo" type="button" class="nada-link" :disabled="guardando" @click="noCupoNada">
+          No cupo ninguna: devolver todo
+        </button>
       </label>
       <!-- A quien vuelve el sobrante: se pregunta siempre, con quien le paso el
            PLU ya propuesto, para que no haya dudas de quien lo ubica. -->
@@ -274,9 +288,13 @@ function ubicar() {
             {{ a.nombre }}{{ a.id === pasoId ? ' · te lo pasó' : '' }}
           </option>
         </select>
-        <span class="hint">Le llega como un registro nuevo, con su reloj, para que las ubique.</span>
+        <span class="hint">
+          {{ devuelveTodo
+            ? 'Le vuelve este mismo registro, con el reloj corriendo, para que lo ubique.'
+            : 'Le llega como un registro nuevo, con su reloj, para que las ubique.' }}
+        </span>
       </label>
-      <label class="f f-ubic">
+      <label v-if="!devuelveTodo" class="f f-ubic">
         <span class="lbl">Ubicación final</span>
         <input
           ref="ubicInput" v-model="ubicacion" class="field" placeholder="05-B-25-03-01"
@@ -291,7 +309,7 @@ function ubicar() {
       </label>
       <button class="btn btn-primary submit" :disabled="!puedeUbicar">
         <Spinner v-if="guardando" :size="14" /><CheckCircle2 v-else :size="14" />
-        Cerrar
+        {{ devuelveTodo ? `Devolver las ${m.cantidadTotal}` : 'Cerrar' }}
       </button>
     </form>
 
@@ -365,6 +383,7 @@ function ubicar() {
 .f-ubic { flex: 1 1 auto; }
 /* Angosto a proposito: es un numero de tres cifras, no un campo de texto. */
 .f-cant { flex: 0 0 150px; }
+.nada-link { align-self: flex-start; margin-top: 2px; padding: 0; background: none; border: none; font-size: 11.5px; font-weight: 600; color: var(--u-aviso); cursor: pointer; text-decoration: underline; }
 /* La pregunta del sobrante: ancha, porque lleva nombres y es lo que no se puede pasar por alto. */
 .f-dev { flex: 0 0 280px; }
 .f-dev .field { border-color: var(--u-aviso); }

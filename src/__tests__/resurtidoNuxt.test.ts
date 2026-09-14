@@ -259,7 +259,7 @@ describe("pendientes — pasar a un ayudante", () => {
   const traspasar = leer("nuxt-app/server/api/pendientes/[id]/traspasar.post.ts");
 
   it("existe y avisa al ayudante", () => {
-    expect(traspasar).toContain("pasadoPorId: actor.id");
+    expect(traspasar).toContain("pasadoPorId: parsed.data.devolucion ? null : actor.id");
     expect(traspasar).toContain("operarioId: ayudante.id");
   });
 
@@ -496,7 +496,7 @@ describe("resurtido — pasar una tarea a un ayudante", () => {
   it("el reloj no se reinicia: cada uno queda con su tramo", () => {
     expect(tras).toContain("await cerrarTramoTarea(tx, id, now)");
     expect(tras).toContain("await abrirTramoTarea(tx, id, ayudante.id, now)");
-    expect(tras).toContain("data: { responsableId: ayudante.id, pasadoPorId: actor.id }");
+    expect(tras).toContain("responsableId: ayudante.id === tarea.montaje.operarioId ? null : ayudante.id");
     expect(tras).not.toContain("horaInicio: null");
     expect(tras).toContain("TAREA_RESURTIDO_PASADA");
     expect(tras).toContain("activityLog.create");
@@ -543,5 +543,39 @@ describe("control montacargas — no mezclar pestañas", () => {
     expect(modulo).toContain("if (seq !== seqAbiertos) return");
     expect(modulo).toContain("if (seq !== seqConteos) return");
     expect(modulo).toContain("abiertos.value = []");
+  });
+});
+
+// Si al ayudante no le cabe NINGUNA unidad, en todos los modulos devuelve el
+// total a quien se lo paso, con el reloj corriendo.
+describe("devolver el total cuando no cupo nada", () => {
+  it("montacargas: 0 unidades devuelve el registro entero sin ubicacion", () => {
+    const ub = leer("nuxt-app/server/api/montacargas/[id]/ubicacion.post.ts");
+    expect(ub).toContain("const devuelveTodo = parsed.data.unidadesAlmacenadas === 0");
+    expect(ub).toContain("await abrirTramo(tx, id, devolverA, now, orden + 1)");
+    expect(ub).toContain("devueltoCompleto: true");
+    const reg = leer("nuxt-app/app/components/montacargas/RegistroAbierto.vue");
+    expect(reg).toContain("No cupo ninguna: devolver todo");
+    expect(reg).toContain('v-if="!devuelveTodo" class="f f-ubic"');
+  });
+
+  it("pendientes y tareas de resurtido: se devuelve a quien lo paso", () => {
+    for (const rel of [
+      "nuxt-app/app/components/resurtido/PendientesTareas.vue",
+      "nuxt-app/app/components/resurtido/Tareas.vue",
+    ]) {
+      const ui = leer(rel);
+      expect(ui).toContain("devolucion: true");
+      expect(ui).toContain("No pude almacenar ninguna");
+    }
+    for (const rel of [
+      "nuxt-app/server/api/pendientes/[id]/traspasar.post.ts",
+      "nuxt-app/server/api/resurtido-tareas/[id]/traspasar.post.ts",
+    ]) {
+      const srv = leer(rel);
+      expect(srv).toContain("devolucion: z.boolean().optional()");
+      expect(srv).toContain("pasadoPorId: parsed.data.devolucion ? null : actor.id");
+    }
+    expect(leer("nuxt-app/server/utils/mapRow.ts")).toContain("pasadoPorId: p.pasadoPorId ?? null");
   });
 });

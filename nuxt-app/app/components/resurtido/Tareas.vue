@@ -7,7 +7,7 @@
 // al abrirla— para medir caminar y bajar la mercancía, y no el rato que la
 // pantalla estuvo abierta.
 import { ref, computed, watch, nextTick } from 'vue'
-import { ScanLine, CheckCircle2, MapPin, ArrowDown, Package, Flame, UserPlus } from '@lucide/vue'
+import { ScanLine, CheckCircle2, MapPin, ArrowDown, Package, Flame, UserPlus, Undo2 } from '@lucide/vue'
 import { useToast } from '~/composables/useToast'
 import { useSessionState } from '~/composables/useSession'
 import { sonarVeredicto } from '~/utils/escaneoFeedback'
@@ -84,6 +84,7 @@ function abrir(t: TareaResurtidoDTO, enfocarEscaneo = true) {
   if (!esMia(t)) return
   abierta.value = t
   pasando.value = false
+  devolviendo.value = false
   ayudanteId.value = ''
   escaneoUbic.value = ''
   escaneoPlu.value = ''
@@ -182,6 +183,33 @@ function pasarDesdeLista(t: TareaResurtidoDTO) {
   abrir(t, false)
   void abrirPaso()
   void nextTick(() => otrasRef.value?.scrollIntoView({ block: 'nearest', behavior: 'smooth' }))
+}
+
+// ── No pudo almacenar ninguna ──────────────────────────────────────
+// Quien la recibió se la devuelve ENTERA a quien se la pasó, con el reloj
+// corriendo: su tramo se cierra y empieza el del otro, que la ubica.
+const puedeDevolver = computed(() =>
+  Boolean(abierta.value?.horaInicio && abierta.value.pasadoPorId
+    && abierta.value.responsableId === me.value?.id && abierta.value.pasadoPorId !== me.value?.id))
+const devolviendo = ref(false)
+
+async function devolverTodo() {
+  const t = abierta.value
+  if (!t || !t.pasadoPorId) return
+  guardando.value = t.id
+  try {
+    await $fetch(`/api/resurtido-tareas/${t.id}/traspasar`, {
+      method: 'POST', body: { operarioId: t.pasadoPorId, devolucion: true },
+    })
+    showToast(`Devolviste las ${t.unidadesSolicitadas + t.unidadesPendientes} unidades a ${t.pasadoPorNombre ?? 'quien te la pasó'}`)
+    abierta.value = null
+    devolviendo.value = false
+    await cargar()
+  } catch (e) {
+    showToast(apiErr(e, 'No se pudo devolver la tarea'), true)
+  } finally {
+    guardando.value = null
+  }
 }
 
 async function pasar() {
@@ -400,7 +428,25 @@ cargar()
 
           <!-- Pasársela a un ayudante para que la cierre. -->
           <section ref="otrasRef" class="otras">
-            <template v-if="!pasando">
+            <!-- Se la pasaron y no cupo ninguna: vuelve entera a quien se la pasó. -->
+            <div v-if="puedeDevolver && !pasando" class="devolver">
+              <button v-if="!devolviendo" class="btn btn-sm dev-ok" type="button" @click="devolviendo = true">
+                <Undo2 :size="13" /> No pude almacenar ninguna: devolver las {{ abierta.unidadesSolicitadas + abierta.unidadesPendientes }}
+              </button>
+              <template v-else>
+                <p class="dev-pregunta">
+                  ¿Devolver las {{ abierta.unidadesSolicitadas + abierta.unidadesPendientes }} unidades a <b>{{ abierta.pasadoPorNombre }}</b>? Le llega con el reloj corriendo para que las ubique.
+                </p>
+                <div class="dev-acc">
+                  <button class="btn btn-sm" type="button" @click="devolviendo = false">Cancelar</button>
+                  <button class="btn btn-sm dev-ok" type="button" :disabled="guardando === abierta.id" @click="devolverTodo">
+                    <Spinner v-if="guardando === abierta.id" :size="13" /><Undo2 v-else :size="13" />
+                    Devolver
+                  </button>
+                </div>
+              </template>
+            </div>
+            <template v-if="!pasando && !devolviendo">
               <button v-if="enCurso" class="dev-link" type="button" @click="abrirPaso">
                 <UserPlus :size="13" /> Pasar a un ayudante
               </button>
@@ -493,6 +539,10 @@ cargar()
 .dev-link:hover { color: var(--brand); }
 .otras .p-bloq { display: flex; align-items: center; gap: 6px; }
 .dev-acc { display: flex; gap: 9px; justify-content: flex-end; }
+.devolver { display: flex; flex-direction: column; gap: 8px; margin-top: 12px; }
+.devolver > .btn { align-self: flex-start; }
+.dev-pregunta { margin: 0; font-size: 12.5px; color: var(--ink-2); }
+.dev-ok { border-color: var(--u-aviso); color: var(--u-aviso); }
 
 .overlay { position: fixed; inset: 0; z-index: 60; display: grid; place-items: center; padding: 16px; background: rgba(10,15,28,.55); backdrop-filter: blur(3px); }
 .modal { width: min(620px, 100%); max-height: 90vh; display: flex; flex-direction: column; padding: 0; overflow: hidden; }

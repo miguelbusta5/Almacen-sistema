@@ -509,6 +509,7 @@ export function mapTareaResurtido(t: any) {
     // responsableId = la tiene el operario del montaje.
     responsableId: t.responsableId ?? null,
     responsableNombre: t.responsable?.name ?? null,
+    pasadoPorId: t.pasadoPorId ?? null,
     pasadoPorNombre: t.pasadoPor?.name ?? null,
     // Null mientras no se ha escaneado la posicion: el reloj aun no arranco.
     duracionSegundos: segundosEntre(t.horaInicio, t.horaFin),
@@ -560,6 +561,7 @@ export function mapPendiente(p: any) {
     novedadPorNombre: p.novedadPor?.name ?? null,
     novedadAt: p.novedadAt ? p.novedadAt.toISOString() : null,
     tareaResurtidoId: p.tareaResurtidoId ?? null,
+    pasadoPorId: p.pasadoPorId ?? null,
     pasadoPorNombre: p.pasadoPor?.name ?? null,
     // Lo que lleva ESPERANDO desde que se pidio. Es otra cosa que el tiempo de
     // trabajo: mide al sistema, no al operario.

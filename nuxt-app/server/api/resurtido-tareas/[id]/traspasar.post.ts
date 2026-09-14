@@ -8,7 +8,9 @@ import {
 } from '../../../utils/resurtido'
 import { ROLES_RECEPTORES } from '../../../utils/montacargasCalc'
 
-const schema = z.object({ operarioId: z.string().min(1) })
+// `devolucion`: el ayudante no pudo almacenar ninguna y se la devuelve entera a
+// quien se la paso. Es el mismo traspaso; solo cambia lo que dice el aviso.
+const schema = z.object({ operarioId: z.string().min(1), devolucion: z.boolean().optional() })
 
 /**
  * POST /api/resurtido-tareas/:id/traspasar - pasa la tarea a un ayudante.
@@ -75,10 +77,20 @@ export default defineEventHandler(async (event) => {
     await abrirTramoTarea(tx, id, ayudante.id, now)
     const t = await tx.tareaResurtido.update({
       where: { id },
-      data: { responsableId: ayudante.id, pasadoPorId: actor.id },
+      data: {
+        // De vuelta al operario del montaje vuelve a ser suya sin mas (null).
+        responsableId: ayudante.id === tarea.montaje.operarioId ? null : ayudante.id,
+        // Devuelta, no "pasada": quien la recibe no tiene a quien devolverla.
+        pasadoPorId: parsed.data.devolucion ? null : actor.id,
+      },
       include: TAREA_INCLUDE,
     })
-    await avisar(tx, [ayudante.id], {
+    await avisar(tx, [ayudante.id], parsed.data.devolucion ? {
+      tipo: 'SOBRANTE_DEVUELTO',
+      titulo: `${actor.name ?? 'Un companero'} te devolvio una tarea de resurtido`,
+      descripcion: `${unidades} de ${tarea.descripcion}: no pudo almacenar ninguna, te toca ubicarlas`,
+      enlace: '/dashboard/resurtido',
+    } : {
       tipo: 'TAREA_RESURTIDO_PASADA',
       titulo: `${actor.name ?? 'Un companero'} te paso una tarea de resurtido`,
       descripcion: `${unidades} de ${tarea.descripcion}: ya esta en marcha, tu la cierras`,
@@ -90,7 +102,10 @@ export default defineEventHandler(async (event) => {
   await prisma.activityLog.create({
     data: {
       userId: actor.id, action: 'UPDATE', module: 'resurtido',
-      recordId: id, details: `Tarea de resurtido PLU ${tarea.plu} pasada a ${ayudante.name}`,
+      recordId: id,
+      details: parsed.data.devolucion
+        ? `Tarea de resurtido PLU ${tarea.plu} devuelta completa a ${ayudante.name}: no se pudo almacenar`
+        : `Tarea de resurtido PLU ${tarea.plu} pasada a ${ayudante.name}`,
     },
   }).catch(() => {})
 
