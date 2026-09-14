@@ -192,8 +192,18 @@ describe("tiempos muertos — el endpoint de indicadores", () => {
   });
 
   // Un reloj olvidado desde ayer taparia todos los huecos de hoy.
-  it("un reloj abierto cuenta como mucho hasta el final de su dia", () => {
-    expect(api).toContain("Math.min(ahora.getTime(), finDelDiaBogota(inicio).getTime())");
+  // ...salvo que sea de un turno de noche: entonces llega hasta el fin del turno.
+  it("un reloj abierto cuenta como mucho hasta el final de su dia o de su turno", () => {
+    expect(api).toContain("Math.max(finDelDiaBogota(inicio).getTime(), turno?.fin.getTime() ?? 0)");
+    expect(api).toContain("new Date(Math.min(ahora.getTime(), tope))");
+  });
+
+  // El turno de noche se mide entero: se trae la madrugada siguiente y el turno
+  // de la noche anterior, que se lleva la madrugada del primer dia.
+  it("el turno de noche no se corta a medianoche", () => {
+    expect(api).toContain("const finConsulta = new Date(fin.getTime() + 24 * 60 * 60 * 1000)");
+    expect(api).toContain("for (const dia of diasDelRango(diaAnterior, hasta))");
+    expect(api).toContain("inicio: { lt: finConsulta }");
   });
 
   it("solo lee justificaciones vigentes", () => {
