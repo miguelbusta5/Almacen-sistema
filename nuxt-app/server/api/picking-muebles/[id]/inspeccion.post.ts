@@ -1,6 +1,6 @@
 import { defineEventHandler, getRouterParam, createError } from 'h3'
 import { prisma } from '../../../utils/prisma'
-import { auditar, esParticipante, ordenPorId, ORDEN_INCLUDE, requirePicking } from '../../../utils/muebles'
+import { auditar, esParticipante, ordenPorId, ORDEN_INCLUDE, requirePickingActivo } from '../../../utils/muebles'
 import { esGestionMuebles, puedeCerrarOrden, validarPasoAInspeccion } from '../../../utils/mueblesCalc'
 import { mapOrdenMuebles } from '../../../utils/mapRow'
 
@@ -15,7 +15,7 @@ import { mapOrdenMuebles } from '../../../utils/mapRow'
  * sobre las lineas de la orden abierta, vuelve a cero sola.
  */
 export default defineEventHandler(async (event) => {
-  const actor = await requirePicking(event)
+  const actor = await requirePickingActivo(event)
   const id = getRouterParam(event, 'id')!
 
   const orden = await ordenPorId(id)

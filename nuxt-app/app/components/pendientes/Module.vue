@@ -60,10 +60,15 @@ interface ConsultaPlu {
     reciente: { operarioNombre: string | null; completadaAt: string; unidadesBajadas: number | null; picking: string }[]
   }
   pendienteExistente: { id: string; estado: string; unidadesSolicitadas: number; operarioNombre: string | null; enResurtido: boolean } | null
+  /** Si quien mira puede montarlo pese al resurtido (Felipe Ossa, Eduardo, admin). */
+  puedeForzar: boolean
 }
 const consulta = ref<ConsultaPlu | null>(null)
 const hayResurtido = computed(() => !!consulta.value && (consulta.value.resurtido.enCurso.length > 0 || consulta.value.resurtido.reciente.length > 0))
 const confirmando = ref(false)
+// Con resurtido en curso o reciente, operaciones gourmet no monta el pendiente:
+// si el sistema dice resurtido y en el picking no esta, lo monta Felipe Ossa.
+const bloqueado = computed(() => hayResurtido.value && consulta.value?.puedeForzar === false)
 const horaCorta = (iso: string) => new Intl.DateTimeFormat('es-CO', { timeZone: 'America/Bogota', timeStyle: 'short' }).format(new Date(iso))
 
 const buscar = useDebounceFn(async () => {
@@ -87,7 +92,7 @@ const buscar = useDebounceFn(async () => {
 }, 350)
 
 const puedeCrear = computed(() =>
-  !creando.value && descripcion.value.length > 0 && Number(unidades.value) >= 1)
+  !creando.value && !bloqueado.value && descripcion.value.length > 0 && Number(unidades.value) >= 1)
 
 async function crear(confirmado = false) {
   if (!puedeCrear.value) return
@@ -385,6 +390,13 @@ const cerrados = computed(() => items.value.filter((p) => p.estado === 'COMPLETA
               a <span class="mono">{{ t.picking }}</span> a las {{ horaCorta(t.completadaAt) }}
             </span>
           </p>
+          <p v-if="bloqueado" class="consulta-bloqueo">
+            <TriangleAlert :size="14" />
+            <span>
+              <b>No puedes montar este pendiente</b>: el PLU ya fue resurtido. Si en el picking no está,
+              pídele a <b>Felipe Ossa</b> que lo monte.
+            </span>
+          </p>
           <p v-if="consulta.pendienteExistente" class="consulta-suma">
             <Layers :size="14" />
             <span>
@@ -398,11 +410,11 @@ const cerrados = computed(() => items.value.filter((p) => p.estado === 'COMPLETA
 
       <ConfirmModal
         v-if="confirmando"
-        title="¿Solicitar de todas formas?"
+        title="¿Montarlo de todas formas?"
         :message="consulta?.resurtido.enCurso.length
           ? 'Este PLU tiene un resurtido en curso. Puede que la mercancía ya vaya en camino al picking.'
           : 'Este PLU se resurtió en las últimas 2 horas. Puede que ya haya mercancía en el picking.'"
-        confirm-label="Solicitar igual" :confirming="creando"
+        confirm-label="Montarlo igual" :confirming="creando"
         @close="confirmando = false" @confirm="crear(true)"
       />
 
@@ -637,6 +649,9 @@ const cerrados = computed(() => items.value.filter((p) => p.estado === 'COMPLETA
 .consulta-aviso, .consulta-suma { display: flex; align-items: flex-start; gap: 8px; margin: 0; padding: 9px 12px; border-radius: var(--r-sm); font-size: 12.5px; color: var(--ink-2); }
 .consulta-aviso { background: var(--u-aviso-tint); border: 1px solid color-mix(in srgb, var(--u-aviso) 40%, transparent); }
 .consulta-aviso > svg { color: var(--u-aviso); flex-shrink: 0; margin-top: 1px; }
+.consulta-bloqueo { display: flex; align-items: flex-start; gap: 8px; margin: 0; padding: 9px 12px; border-radius: var(--r-sm); font-size: 12.5px; color: var(--ink-2); background: color-mix(in srgb, var(--error) 8%, transparent); border: 1px solid color-mix(in srgb, var(--error) 35%, transparent); }
+.consulta-bloqueo > svg { color: var(--error); flex-shrink: 0; margin-top: 1px; }
+.consulta-bloqueo b { color: var(--ink); }
 .consulta-suma { background: color-mix(in srgb, var(--info) 8%, transparent); border: 1px solid color-mix(in srgb, var(--info) 30%, transparent); }
 .consulta-suma > svg { color: var(--info); flex-shrink: 0; margin-top: 1px; }
 .consulta b { color: var(--ink); }

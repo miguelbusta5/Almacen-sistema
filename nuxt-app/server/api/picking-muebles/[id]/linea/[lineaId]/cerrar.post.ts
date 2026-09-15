@@ -1,7 +1,7 @@
 import { defineEventHandler, getRouterParam, readBody, createError } from 'h3'
 import { z } from 'zod'
 import { prisma } from '../../../../../utils/prisma'
-import { auditar, esParticipante, ordenPorId, ORDEN_INCLUDE, requirePicking, volumenDeOrden } from '../../../../../utils/muebles'
+import { auditar, esParticipante, ordenPorId, ORDEN_INCLUDE, requirePickingActivo, volumenDeOrden } from '../../../../../utils/muebles'
 import { normalizarRotulo, totalesLinea } from '../../../../../utils/mueblesCalc'
 import { mapOrdenMuebles } from '../../../../../utils/mapRow'
 
@@ -22,7 +22,7 @@ const schema = z.object({
  * los totales con los que se calcula la capacidad del equipo.
  */
 export default defineEventHandler(async (event) => {
-  const actor = await requirePicking(event)
+  const actor = await requirePickingActivo(event)
   const id = getRouterParam(event, 'id')!
   const lineaId = getRouterParam(event, 'lineaId')!
 

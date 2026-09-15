@@ -655,6 +655,7 @@ describe("pendientes — altura y picking sugeridos por el teorico", () => {
 describe("pendientes — sumar solicitudes y avisar resurtido", () => {
   const post = leer("nuxt-app/server/api/pendientes/index.post.ts");
   const util = leer("nuxt-app/server/utils/pendientesSolicitud.ts");
+  const consulta = leer("nuxt-app/server/api/pendientes/consulta.get.ts");
   const ui = leer("nuxt-app/app/components/pendientes/Module.vue");
 
   it("se suma a uno solicitado o asignado sin empezar, cualquiera lo haya pedido", () => {
@@ -673,11 +674,19 @@ describe("pendientes — sumar solicitudes y avisar resurtido", () => {
     expect(post).toContain("sumado: true");
   });
 
-  it("resurtido abierto o de las ultimas 2 horas exige confirmar, en pantalla y en servidor", () => {
+  // Viviana no monta un pendiente de un PLU ya resurtido: si el sistema dice
+  // resurtido y en el picking no esta, lo monta Felipe Ossa (o el admin), que
+  // ademas tiene que confirmarlo.
+  it("con resurtido abierto o reciente solo montan Felipe Ossa y el admin, y confirmando", () => {
     expect(util).toContain("MINUTOS_RESURTIDO_RECIENTE = 120");
+    expect(post).toContain("actor.role === 'ADMIN' || (await puedeMontarResurtido(actor.id))");
+    expect(post).toContain("pidele a Felipe Ossa que lo monte");
     expect(post).toContain("!d.confirmarResurtido");
+    expect(post).toContain("(montado pese al resurtido)");
+    expect(consulta).toContain("puedeForzar: actor.role === 'ADMIN' || montador");
     expect(ui).toContain("`${API_PENDIENTES}/consulta`");
-    expect(ui).toContain("¿Solicitar de todas formas?");
+    expect(ui).toContain("¿Montarlo de todas formas?");
+    expect(ui).toContain("consulta.value?.puedeForzar === false");
     expect(ui).toContain("confirmarResurtido: confirmado || undefined");
   });
 });

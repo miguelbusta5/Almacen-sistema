@@ -282,3 +282,45 @@ describe("inspeccion — login compartido", () => {
     expect(() => leer(`${dir}/[id]/salir.post.ts`)).toThrow();
   });
 });
+
+// El boton de almuerzo (pausas operativas) tambien en Picking de Muebles: la
+// orden y el PLU en la mano se detienen, y ese rato no cuenta como picking.
+describe("picking muebles — almuerzo", () => {
+  const pausas = leer("nuxt-app/server/utils/pausasOperativas.ts");
+  const util = leer("nuxt-app/server/utils/muebles.ts");
+  const layout = leer("nuxt-app/app/layouts/default.vue");
+  const modulo = leer("nuxt-app/app/components/picking-muebles/Module.vue");
+
+  it("la pausa detiene la orden abierta y los PLU del operario", () => {
+    expect(pausas).toContain("puedePickear");
+    expect(pausas).toContain("prisma.ordenMuebles.findMany");
+    expect(pausas).toContain("prisma.lineaMuebles.findMany");
+    expect(pausas).toContain("ordenesMuebles: ids(ordenesMuebles), lineasMuebles: ids(lineasMuebles)");
+  });
+
+  it("mientras esta en pausa no se puede escanear ni cerrar un PLU", () => {
+    expect(util).toContain("requirePickingActivo");
+    expect(util).toContain("assertSinPausa(actor.id)");
+    for (const rel of [
+      "nuxt-app/server/api/picking-muebles/index.post.ts",
+      "nuxt-app/server/api/picking-muebles/[id]/plu.post.ts",
+      "nuxt-app/server/api/picking-muebles/[id]/linea/[lineaId]/cerrar.post.ts",
+      "nuxt-app/server/api/picking-muebles/[id]/inspeccion.post.ts",
+    ]) {
+      expect(leer(rel)).toContain("requirePickingActivo(event)");
+    }
+  });
+
+  it("el boton sale en la pantalla y al volver se repinta la orden", () => {
+    expect(layout).toContain("'picking-muebles'].some");
+    expect(modulo).toContain("watch(pausaRevision, () => { void cargar() })");
+  });
+
+  it("los indicadores descuentan lo pausado del reloj de picking", () => {
+    for (const src of [indFuente, indServidor]) {
+      expect(src).toContain("minutosPickingLinea");
+      expect(src).toContain("pausaSegundos");
+    }
+    expect(leer("nuxt-app/server/api/indicadores-muebles/index.get.ts")).toContain("pausaSegundos: true");
+  });
+});

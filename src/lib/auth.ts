@@ -108,7 +108,9 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     },
   },
   pages: { signIn: "/login" },
-  session: { strategy: "jwt", maxAge: 8 * 60 * 60 },
+  // 12 h cubre el turno mas largo (incluido el de noche) con margen: con 8 h la
+  // sesion vencia a media jornada y la pantalla solo decia "No autorizado".
+  session: { strategy: "jwt", maxAge: 12 * 60 * 60 },
   secret: process.env.NEXTAUTH_SECRET,
   trustHost: true,
 });

@@ -1814,6 +1814,12 @@ model OrdenMuebles {
   inspectorId String?        @map("inspector_id")
   inspector   Inspector?     @relation("OrdenesInspeccionadas", fields: [inspectorId], references: [id])
 
+  /// Pausa de alimentacion / cambio de baterias que tiene detenida la orden.
+  /// pausaSegundos se descuenta del reloj de picking.
+  pausaId       String?   @map("pausa_id")
+  pausaInicio   DateTime? @map("pausa_inicio")
+  pausaSegundos Float     @default(0) @map("pausa_segundos")
+
   actualizadoPorId String?   @map("actualizado_por_id")
   actualizadoPor   User?     @relation("OrdenesMueblesActualizadas", fields: [actualizadoPorId], references: [id])
   motivoCorreccion String?   @map("motivo_correccion")
@@ -1881,6 +1887,11 @@ model LineaMuebles {
   horaInicio DateTime           @map("hora_inicio")
   /// Escaneo del QR del rotulo.
   horaFin    DateTime?          @map("hora_fin")
+
+  /// Pausa operativa que tiene detenido este PLU (ver OrdenMuebles.pausaId).
+  pausaId       String?   @map("pausa_id")
+  pausaInicio   DateTime? @map("pausa_inicio")
+  pausaSegundos Float     @default(0) @map("pausa_segundos")
 
   // ── Inspeccion ──
   /// Inspector que trabajo este PLU. Puede ser distinto del de la orden: las PCs
@@ -2085,6 +2096,8 @@ model PausaOperativa {
   tareas String[]
   pendientes String[]
   recepciones String[]
+  ordenesMuebles String[] @map("ordenes_muebles")
+  lineasMuebles String[] @map("lineas_muebles")
 
   @@index([usuarioId, inicio])
   @@map("pausas_operativas")

@@ -63,6 +63,8 @@ export interface LineaMedida {
   ebanisteriaFin: Date | null
   motivoEbanisteria: string | null
   estado: string
+  /** Almuerzo o cambio de baterias: no es tiempo de picking. */
+  pausaSegundos?: number
 }
 
 /**
@@ -105,6 +107,8 @@ export interface OrdenMedida {
   horaInicio: Date
   horaPasoInspeccion: Date | null
   horaFinInspeccion: Date | null
+  /** Almuerzo o cambio de baterias del operario durante el picking. */
+  pausaSegundos?: number
 }
 
 export interface FilaOperario {
@@ -173,9 +177,14 @@ export interface IndicadoresMuebles {
   ordenes: FilaOrden[]
 }
 
-function minutos(inicio: Date | null, fin: Date | null): number | null {
+function minutos(inicio: Date | null, fin: Date | null, pausaSegundos = 0): number | null {
   if (!inicio || !fin) return null
-  return Math.max(0, Math.round((fin.getTime() - inicio.getTime()) / 60000))
+  return Math.max(0, Math.round((fin.getTime() - inicio.getTime()) / 60000 - pausaSegundos / 60))
+}
+
+/** Reloj de picking de un PLU, sin el tiempo que estuvo en pausa. */
+function minutosPickingLinea(l: LineaMedida): number | null {
+  return minutos(l.horaInicio, l.horaFin, l.pausaSegundos ?? 0)
 }
 
 function redondear(v: number, d: number): number {
@@ -204,7 +213,7 @@ function agruparEn(
 
   return claves.map((k) => {
     const grupo = mapa.get(k)!
-    const picking = grupo.map((l) => minutos(l.horaInicio, l.horaFin)).filter((v): v is number => v != null)
+    const picking = grupo.map(minutosPickingLinea).filter((v): v is number => v != null)
     const insp = grupo
       .map((l) => duracionInspeccionNetaMinutos(l))
       .filter((v): v is number => v != null)
@@ -240,7 +249,7 @@ export function agregarIndicadoresMuebles(entrada: {
   const filasOperario: FilaOperario[] = operarios.map((p) => {
     const suyas = lineas.filter((l) => l.operarioId === p.id)
     const duraciones = suyas
-      .map((l) => minutos(l.horaInicio, l.horaFin))
+      .map(minutosPickingLinea)
       .filter((v): v is number => v != null)
     const huecos = desplazamientos(suyas)
     return {
@@ -321,14 +330,14 @@ export function agregarIndicadoresMuebles(entrada: {
 
   // ── Ordenes completas ──
   const filasOrden: FilaOrden[] = ordenes.map((o) => {
-    const pickingMin = minutos(o.horaInicio, o.horaPasoInspeccion)
+    const pickingMin = minutos(o.horaInicio, o.horaPasoInspeccion, o.pausaSegundos ?? 0)
     const inspeccionMin = minutos(o.horaPasoInspeccion, o.horaFinInspeccion)
     return {
       id: o.id,
       codigo: o.codigo,
       pickingMin,
       inspeccionMin,
-      totalMin: minutos(o.horaInicio, o.horaFinInspeccion),
+      totalMin: minutos(o.horaInicio, o.horaFinInspeccion, o.pausaSegundos ?? 0),
     }
   })
 

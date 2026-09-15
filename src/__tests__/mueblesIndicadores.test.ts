@@ -108,6 +108,19 @@ describe("agregarIndicadoresMuebles", () => {
     tipoPorPlu: tipos,
   };
 
+  // El almuerzo del operario no es tiempo de picking: si contara, un PLU de 10
+  // minutos con una hora de pausa diria 70.
+  it("descuenta la pausa del reloj del PLU y del de la orden", () => {
+    const r = agregarIndicadoresMuebles({
+      ...base,
+      ordenes: [{ ...base.ordenes[0]!, pausaSegundos: 1800 }],
+      lineas: [linea({ plu: "1001", operarioId: "a", horaFin: H("08:40"), pausaSegundos: 1800 })],
+    });
+    expect(r.operarios[0]!.minutosPicking).toBe(10);
+    expect(r.ordenes[0]!.pickingMin).toBe(30);
+    expect(r.ordenes[0]!.totalMin).toBe(70);
+  });
+
   it("reparte el tiempo entre los dos operarios de una orden compartida", () => {
     const r = agregarIndicadoresMuebles({
       ...base,

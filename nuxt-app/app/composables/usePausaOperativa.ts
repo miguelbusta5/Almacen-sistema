@@ -6,6 +6,8 @@ export interface PausaOperativaDTO {
   tareas: string[]
   pendientes: string[]
   recepciones: string[]
+  ordenesMuebles: string[]
+  lineasMuebles: string[]
 }
 
 export function usePausaOperativa() {

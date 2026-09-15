@@ -6,6 +6,7 @@ import { prisma } from './prisma'
 import { requireAuth, type SessionUser } from './auth'
 import { puedeInspeccionar, puedePickear, volumenOrden, type VolumenOrden } from './mueblesCalc'
 import { todayBogota } from './exportacionesCalc'
+import { assertSinPausa } from './operacionAlmacen'
 
 export const LINEA_SELECT = {
   id: true,
@@ -54,6 +55,18 @@ export async function requirePicking(event: H3Event): Promise<SessionUser> {
   if (!puedePickear(actor.role)) {
     throw createError({ statusCode: 403, statusMessage: 'No tienes permisos de picking de muebles' })
   }
+  return actor
+}
+
+/**
+ * Igual que requirePicking, pero rechaza mientras la persona esta en pausa.
+ *
+ * Solo para lo que escribe: durante el almuerzo la orden esta detenida, asi que
+ * escanear un PLU volveria a meter tiempo en un reloj parado.
+ */
+export async function requirePickingActivo(event: H3Event): Promise<SessionUser> {
+  const actor = await requirePicking(event)
+  await assertSinPausa(actor.id)
   return actor
 }
 

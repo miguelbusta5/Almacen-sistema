@@ -1,7 +1,7 @@
 import { defineEventHandler, getRouterParam, createError } from 'h3'
 import { prisma } from '../../../utils/prisma'
 import {
-  auditar, equipoDelDia, esParticipante, ordenAbierta, ordenPorId, ORDEN_INCLUDE, requirePicking,
+  auditar, equipoDelDia, esParticipante, ordenAbierta, ordenPorId, ORDEN_INCLUDE, requirePickingActivo,
 } from '../../../utils/muebles'
 import { mapOrdenMuebles } from '../../../utils/mapRow'
 
@@ -19,7 +19,7 @@ import { mapOrdenMuebles } from '../../../utils/mapRow'
  * No arranca ningun reloj: el de la orden ya corre desde que la abrio el primero.
  */
 export default defineEventHandler(async (event) => {
-  const actor = await requirePicking(event)
+  const actor = await requirePickingActivo(event)
   const id = getRouterParam(event, 'id')!
 
   const orden = await ordenPorId(id)

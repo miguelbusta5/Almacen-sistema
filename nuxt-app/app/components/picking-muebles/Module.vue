@@ -4,10 +4,11 @@
 // El estado lo manda siempre el servidor: cada accion devuelve la orden completa
 // y la pantalla se repinta con eso. No se mantiene una copia local que pueda
 // desincronizarse, que es justo lo que arruina un modulo con relojes.
-import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { Hammer, Plus, ClipboardCheck, Loader2 } from '@lucide/vue'
 import { useToast } from '~/composables/useToast'
 import { ensureSession, useSessionState } from '~/composables/useSession'
+import { usePausaOperativa } from '~/composables/usePausaOperativa'
 import { esGestionMuebles } from '~/utils/mueblesUi'
 import {
   API_PICKING, ESTADO_ORDEN_LABEL, cronometro, mensajeError,
@@ -15,6 +16,8 @@ import {
 } from '~/utils/muebles'
 
 const { show } = useToast()
+// Al almorzar (o volver) el servidor detiene/reanuda la orden: hay que repintar.
+const { revision: pausaRevision } = usePausaOperativa()
 const { me } = useSessionState()
 const esGestion = computed(() => esGestionMuebles(me.value?.role))
 
@@ -74,6 +77,8 @@ const motivoNoPuede = computed(() => {
   }
   return null
 })
+
+watch(pausaRevision, () => { void cargar() })
 
 async function cargar() {
   cargando.value = true

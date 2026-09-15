@@ -6,7 +6,7 @@ import { prisma } from '../../utils/prisma'
 import { requireAuth } from '../../utils/auth'
 import { mapPendiente } from '../../utils/mapRow'
 import {
-  avisar, descripcionMaestro, idsAlmacenamiento, PENDIENTE_INCLUDE,
+  avisar, descripcionMaestro, idsAlmacenamiento, puedeMontarResurtido, PENDIENTE_INCLUDE,
 } from '../../utils/resurtido'
 import { esSolicitante, validarSolicitudPendiente } from '../../utils/resurtidoCalc'
 import { normalizePlu, todayBogota } from '../../utils/exportacionesCalc'
@@ -57,15 +57,31 @@ export default defineOperacionAlmacenHandler(async (event) => {
 
   const now = new Date()
 
-  // Resurtido abierto o de las ultimas 2 horas: hay que confirmar.
+  // Resurtido abierto o de las ultimas 2 horas: operaciones gourmet NO puede
+  // montar el pendiente. Si el sistema dice resurtido y en el picking no esta,
+  // lo monta quien arma el resurtido (Felipe Ossa, Eduardo) o el administrador,
+  // que son los que pueden ir a mirar; a ellos se les pide confirmar.
   const resurtido = await resurtidoDelPlu(prisma, plu, now)
-  if ((resurtido.enCurso.length || resurtido.reciente.length) && !d.confirmarResurtido) {
-    throw createError({
-      statusCode: 409,
-      statusMessage: resurtido.enCurso.length
-        ? 'Este PLU tiene un resurtido en curso: confirma si igual lo solicitas'
-        : 'Este PLU se resurtio en las ultimas 2 horas: confirma si igual lo solicitas',
-    })
+  const yaResurtido = resurtido.enCurso.length > 0 || resurtido.reciente.length > 0
+  const forzado = yaResurtido
+  if (yaResurtido) {
+    const puedeForzar = actor.role === 'ADMIN' || (await puedeMontarResurtido(actor.id))
+    if (!puedeForzar) {
+      throw createError({
+        statusCode: 409,
+        statusMessage: resurtido.enCurso.length
+          ? 'Este PLU tiene un resurtido en curso: si en el picking no esta, pidele a Felipe Ossa que lo monte'
+          : 'Este PLU se resurtio en las ultimas 2 horas: si en el picking no esta, pidele a Felipe Ossa que lo monte',
+      })
+    }
+    if (!d.confirmarResurtido) {
+      throw createError({
+        statusCode: 409,
+        statusMessage: resurtido.enCurso.length
+          ? 'Este PLU tiene un resurtido en curso: confirma si igual lo montas'
+          : 'Este PLU se resurtio en las ultimas 2 horas: confirma si igual lo montas',
+      })
+    }
   }
 
   // ¿Se suma a uno que nadie ha empezado?
@@ -111,7 +127,7 @@ export default defineOperacionAlmacenHandler(async (event) => {
     await prisma.activityLog.create({
       data: {
         userId: actor.id, action: 'UPDATE', module: 'pendientes',
-        recordId: sumado.id, details: `Solicitud sumada al pendiente PLU ${plu}: +${d.unidadesSolicitadas}, total ${sumado.unidadesSolicitadas}`,
+        recordId: sumado.id, details: `Solicitud sumada al pendiente PLU ${plu}: +${d.unidadesSolicitadas}, total ${sumado.unidadesSolicitadas}${forzado ? ' (montado pese al resurtido)' : ''}`,
       },
     }).catch(() => {})
     return { success: true, data: mapPendiente(sumado), sumado: true }
@@ -145,7 +161,7 @@ export default defineOperacionAlmacenHandler(async (event) => {
   await prisma.activityLog.create({
     data: {
       userId: actor.id, action: 'CREATE', module: 'pendientes',
-      recordId: creado.id, details: `Pendiente PLU ${plu} x${d.unidadesSolicitadas}`,
+      recordId: creado.id, details: `Pendiente PLU ${plu} x${d.unidadesSolicitadas}${forzado ? ' (montado pese al resurtido)' : ''}`,
     },
   }).catch(() => {})
 

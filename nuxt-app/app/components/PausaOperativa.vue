@@ -11,7 +11,7 @@ const { show } = useToast()
 const ahora = ref(Date.now())
 const error = ref(false)
 const etiqueta = computed(() => pausa.value?.motivo === 'ALIMENTACION' ? 'Alimentación' : 'Cambio de baterías')
-const total = computed(() => pausa.value ? pausa.value.movimientos.length + pausa.value.tareas.length + pausa.value.pendientes.length + pausa.value.recepciones.length : 0)
+const total = computed(() => pausa.value ? pausa.value.movimientos.length + pausa.value.tareas.length + pausa.value.pendientes.length + pausa.value.recepciones.length + pausa.value.ordenesMuebles.length + pausa.value.lineasMuebles.length : 0)
 const tiempo = computed(() => {
   const seg = pausa.value ? Math.max(0, Math.floor((ahora.value - new Date(pausa.value.inicio).getTime()) / 1000)) : 0
   return `${Math.floor(seg / 60)}:${String(seg % 60).padStart(2, '0')}`

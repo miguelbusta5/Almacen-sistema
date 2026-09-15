@@ -1,7 +1,7 @@
 import { defineEventHandler, getRouterParam, readBody, createError } from 'h3'
 import { z } from 'zod'
 import { prisma } from '../../../utils/prisma'
-import { auditar, esParticipante, ordenPorId, requirePicking } from '../../../utils/muebles'
+import { auditar, esParticipante, ordenPorId, requirePickingActivo } from '../../../utils/muebles'
 import { validarAgregarPlu } from '../../../utils/mueblesCalc'
 import { normalizePlu } from '../../../utils/exportacionesCalc'
 import { datosPlu } from '../../../utils/maestroMuebles'
@@ -22,7 +22,7 @@ const schema = z.object({ plu: z.string().min(1).max(100) })
  * manana se corrige una medida, una capacidad ya calculada no debe moverse.
  */
 export default defineEventHandler(async (event) => {
-  const actor = await requirePicking(event)
+  const actor = await requirePickingActivo(event)
   const id = getRouterParam(event, 'id')!
 
   const parsed = schema.safeParse(await readBody(event).catch(() => null))

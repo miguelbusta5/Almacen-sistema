@@ -1,6 +1,6 @@
 import { defineEventHandler, getRouterParam, createError } from 'h3'
 import { prisma } from '../../../../utils/prisma'
-import { auditar, requirePicking } from '../../../../utils/muebles'
+import { auditar, requirePickingActivo } from '../../../../utils/muebles'
 import { mapPendienteMuebles } from '../../../../utils/mapRow'
 
 const INCLUDE = {
@@ -18,7 +18,7 @@ const INCLUDE = {
  * se sigue midiendo igual, que es el numero que le importa a operacion.
  */
 export default defineEventHandler(async (event) => {
-  const actor = await requirePicking(event)
+  const actor = await requirePickingActivo(event)
   const id = getRouterParam(event, 'id')!
 
   const pendiente = await prisma.pendienteMuebles.findUnique({ where: { id } })

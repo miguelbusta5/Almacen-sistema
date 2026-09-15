@@ -25,6 +25,9 @@ function escenario() {
     tareaResurtido: [{ id: 't1', responsableId: null, montaje: { operarioId: 'u1', deletedAt: null }, estado: 'EN_CURSO', pausaId: null, pausaSegundos: 0 }],
     pendienteGourmet: [{ id: 'p1', operarioId: 'u1', estado: 'EN_CURSO', deletedAt: null, pausaId: null, pausaSegundos: 0 }],
     recepcionContenedor: [{ id: 'r1', creadoPorId: 'u1', estado: 'EN_CURSO', deletedAt: null, pausaId: null, pausaSegundos: 0 }],
+    // Picking de Muebles: la orden abierta y el PLU que lleva en la mano.
+    ordenMuebles: [{ id: 'o1', estado: 'EN_PICKING', deletedAt: null, pausaId: null, pausaSegundos: 0 }],
+    lineaMuebles: [{ id: 'l1', operarioId: 'u1', estado: 'EN_PICKING', pausaId: null, pausaSegundos: 0 }],
   }
   const prisma: any = {
     pausaOperativa: {
@@ -54,6 +57,7 @@ function escenario() {
     './montacargas': { abrirTramo: abrir, cerrarTramoAbierto: cerrar },
     './resurtido': { abrirTramoTarea: abrir, abrirTramoPendiente: abrir, cerrarTramoTarea: cerrar, cerrarTramoPendiente: cerrar },
     './montacargasCalc': { puedeUsarMontacargas: (role: string) => ['MONTACARGAS', 'OPERARIO_ALMACENAMIENTO', 'ADMIN'].includes(role) },
+    './mueblesCalc': { puedePickear: (role: string) => ['PICKING_MUEBLES', 'ADMIN'].includes(role) },
   })
   return { service, prisma, rows, abrir, cerrar, activa: () => activa }
 }
@@ -68,12 +72,16 @@ describe('pausas operativas persistentes', () => {
     expect(pausa.tareas).toEqual(['t1'])
     expect(pausa.pendientes).toEqual(['p1'])
     expect(pausa.recepciones).toEqual(['r1'])
+    expect(pausa.ordenesMuebles).toEqual(['o1'])
+    expect(pausa.lineasMuebles).toEqual(['l1'])
     expect(e.cerrar).toHaveBeenCalledTimes(3)
     for (const rows of Object.values(e.rows)) expect(rows[0].pausaId).toBe('pausa1')
     vi.setSystemTime(fin)
     await e.service.finalizarPausa('u1', pausa.id)
-    for (const rows of Object.values(e.rows)) {
-      expect(rows[0]).toMatchObject({ pausaId: null, pausaSegundos: 1800, estado: 'EN_CURSO' })
+    for (const [key, rows] of Object.entries(e.rows)) {
+      // Muebles no cambia de estado al pausar: sigue EN_PICKING.
+      const estado = key.endsWith('Muebles') ? 'EN_PICKING' : 'EN_CURSO'
+      expect(rows[0]).toMatchObject({ pausaId: null, pausaSegundos: 1800, estado })
     }
     expect(e.abrir).toHaveBeenCalledTimes(3)
     expect(e.abrir).toHaveBeenCalledWith(e.prisma, 'm1', 'u1', fin, 4)
@@ -107,11 +115,16 @@ describe('pausas operativas persistentes', () => {
     expect(e.prisma.movimientoMontacargas.findMany).toHaveBeenCalledWith(expect.objectContaining({ where: { responsableId: 'u1', estado: 'EN_CURSO', deletedAt: null, horaInicio: { gte: expect.any(Date) } } }))
     expect(e.prisma.pendienteGourmet.findMany).toHaveBeenCalledWith(expect.objectContaining({ where: { operarioId: 'u1', estado: 'EN_CURSO', deletedAt: null, tareaResurtidoId: null, horaInicio: { gte: expect.any(Date) } } }))
     expect(e.prisma.recepcionContenedor.findMany).toHaveBeenCalledWith(expect.objectContaining({ where: { creadoPorId: 'u1', estado: 'EN_CURSO', deletedAt: null, horaInicio: { gte: expect.any(Date) } } }))
+    // La orden es de quien participa en ella, no solo de quien la creo.
+    expect(e.prisma.ordenMuebles.findMany).toHaveBeenCalledWith(expect.objectContaining({ where: { estado: 'EN_PICKING', deletedAt: null, horaInicio: { gte: expect.any(Date) }, participantes: { some: { usuarioId: 'u1' } } } }))
+    expect(e.prisma.lineaMuebles.findMany).toHaveBeenCalledWith(expect.objectContaining({ where: { operarioId: 'u1', estado: 'EN_PICKING', horaInicio: { gte: expect.any(Date) }, orden: { deletedAt: null } } }))
   })
   it('rechaza roles sin acceso a los módulos', () => {
     const e = escenario()
     expect(() => e.service.assertPuedePausar('TIENDA')).toThrow()
     expect(() => e.service.assertPuedePausar('MONTACARGAS')).not.toThrow()
+    // El almuerzo tambien esta en Picking de Muebles.
+    expect(() => e.service.assertPuedePausar('PICKING_MUEBLES')).not.toThrow()
   })
 })
 

@@ -13,7 +13,7 @@ import { puedeUsarMontacargas } from '~/utils/montacargas'
 
 const route = useRoute()
 const { pausa: pausaOperativa, cargada: pausaCargada } = usePausaOperativa()
-const muestraPausa = computed(() => ['control-montacargas', 'resurtido', 'recepcion-contenedores', 'montaje-resurtido'].some(key => route.path.endsWith('/' + key) && canSeeModule(me.value?.role, key as ModuleKey)))
+const muestraPausa = computed(() => ['control-montacargas', 'resurtido', 'recepcion-contenedores', 'montaje-resurtido', 'picking-muebles'].some(key => route.path.endsWith('/' + key) && canSeeModule(me.value?.role, key as ModuleKey)))
 const { me, sessionLoaded, sessionInvalid } = useSessionState()
 const toast = useToastState()
 

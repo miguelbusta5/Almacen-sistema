@@ -1,7 +1,7 @@
 import { defineEventHandler, readBody, createError } from 'h3'
 import { z } from 'zod'
 import { prisma } from '../../utils/prisma'
-import { auditar, equipoDelDia, ordenAbierta, ORDEN_INCLUDE, requirePicking } from '../../utils/muebles'
+import { auditar, equipoDelDia, ordenAbierta, ORDEN_INCLUDE, requirePickingActivo } from '../../utils/muebles'
 import { derivarTipoOrden, normalizarCodigoOrden, validarCodigoOrden } from '../../utils/mueblesCalc'
 import { todayBogota } from '../../utils/exportacionesCalc'
 import { mapOrdenMuebles } from '../../utils/mapRow'
@@ -16,7 +16,7 @@ const schema = z.object({ codigo: z.string().min(1).max(40) })
  * completa antes de pasar a la siguiente.
  */
 export default defineEventHandler(async (event) => {
-  const actor = await requirePicking(event)
+  const actor = await requirePickingActivo(event)
 
   const parsed = schema.safeParse(await readBody(event).catch(() => null))
   if (!parsed.success) {
