@@ -8,6 +8,7 @@ import {
 } from '../../utils/resurtidoCalc'
 import { readWorkbook, worksheetRows } from '../../utils/excel'
 import { todayBogota } from '../../utils/exportacionesCalc'
+import { bloquearPicking, plusOcupados } from '../../utils/picking'
 
 const MAX_SIZE = 5 * 1024 * 1024
 const MAX_FILAS = 2000
@@ -50,7 +51,7 @@ export default defineEventHandler(async (event) => {
   const filas = worksheetRows(sheet)
   if (filas.length < 2) throw createError({ statusCode: 400, statusMessage: 'El archivo esta vacio' })
 
-  const cols = columnasResurtido(filas[0])
+  const cols = columnasResurtido(filas[0]!)
   const falta = faltanColumnas(cols)
   if (falta) throw createError({ statusCode: 400, statusMessage: falta })
 
@@ -91,6 +92,9 @@ export default defineEventHandler(async (event) => {
   const now = new Date()
 
   const creado = await prisma.$transaction(async (tx) => {
+    await bloquearPicking(tx)
+    const ocupados = await plusOcupados(tx, plus, { conPendientes: false })
+    if (ocupados.size) throw createError({ statusCode: 409, statusMessage: `PLU con resurtido pendiente: ${[...ocupados].slice(0, 10).join(', ')}` })
     const m = await tx.montajeResurtido.create({
       data: {
         nombreArchivo: archivo.filename!,

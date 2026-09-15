@@ -5,6 +5,7 @@ import { getVisibleModules, type ModuleKey } from "@/lib/modulePermissions";
 // El módulo "Inicio" se retiró (se reconstruirá desde cero más adelante) — esta
 // ruta ahora solo decide a qué módulo real mandar al usuario según su rol.
 const MODULE_HREF: Record<ModuleKey, string> = {
+  'capacidad-picking': '/dashboard/capacidad-picking',
   tienda: "/dashboard/tienda",
   transporte: "/dashboard/transporte",
   integracion: "/dashboard/integracion",

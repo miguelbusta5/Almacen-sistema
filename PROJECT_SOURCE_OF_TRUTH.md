@@ -1,5 +1,7 @@
 # PROJECT SOURCE OF TRUTH — Control Logístico CEDI (Grupo Ambiente)
 
+> **2026-09-15 — Capacidad picking:** implementación local de informes con pausas, capacidades acumuladas y resurtido por teórico, junto con búsqueda y grupos plegables del menú. Detalle y activación: `docs/cerebro/capacidad-picking.md`. Requiere aplicar el esquema y habilitar permisos individuales antes del despliegue; aún pendiente de conexión a la base.
+
 > **Este es el documento maestro del proyecto.** Tiene **prioridad sobre cualquier otra
 > documentación**: `HANDOFF.md`, `README.md`, instrucciones antiguas, decisiones previas o
 > archivos del "cerebro" que lo contradigan quedan subordinados a este archivo.

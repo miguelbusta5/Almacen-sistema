@@ -3,6 +3,7 @@
 // en sync con la fuente de verdad en el app Next.js.
 
 export type ModuleKey =
+  | 'capacidad-picking'
   | 'transporte'
   | 'tienda'
   | 'solicitudes-transporte'
@@ -26,6 +27,7 @@ export type ModuleKey =
   | 'admin-muebles'
 
 export const MODULE_ACCESS: Record<ModuleKey, string[]> = {
+  'capacidad-picking': ['ADMIN', 'GERENTE', 'SUPERVISOR_ALMACENAMIENTO', 'OPERARIO_ALMACENAMIENTO', 'MONTACARGAS', 'INVENTARIO', 'SUPERVISOR_INVENTARIO', 'OPERADOR'],
   transporte: ['TRANSPORTE', 'SUPERVISOR_TRANSPORTE', 'GERENTE', 'ADMIN', 'OPERADOR'],
   tienda: ['TIENDA', 'SUPERVISOR_TIENDA', 'SUPERVISOR_TRANSPORTE', 'GERENTE', 'ADMIN'],
   // Sin los roles OPERACIONES_*: son patinadores de área y solo operan Integración

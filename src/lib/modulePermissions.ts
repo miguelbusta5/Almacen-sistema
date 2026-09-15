@@ -6,6 +6,7 @@ import type { UserRole } from "@/types";
 export type AppRole = UserRole;
 
 export type ModuleKey =
+  | "capacidad-picking"
   | "transporte"
   | "tienda"
   | "solicitudes-transporte"
@@ -29,6 +30,7 @@ export type ModuleKey =
   | "admin-muebles";
 
 export const MODULE_ACCESS: Record<ModuleKey, AppRole[]> = {
+  "capacidad-picking": ["ADMIN", "GERENTE", "SUPERVISOR_ALMACENAMIENTO", "OPERARIO_ALMACENAMIENTO", "MONTACARGAS", "INVENTARIO", "SUPERVISOR_INVENTARIO", "OPERADOR"],
   transporte: ["TRANSPORTE", "SUPERVISOR_TRANSPORTE", "GERENTE", "ADMIN", "OPERADOR"],
   tienda: ["TIENDA", "SUPERVISOR_TIENDA", "SUPERVISOR_TRANSPORTE", "GERENTE", "ADMIN"],
   // Los dos roles OPERACIONES_* quedan fuera a proposito: son patinadores de area

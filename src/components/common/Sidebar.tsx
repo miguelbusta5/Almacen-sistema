@@ -46,6 +46,7 @@ interface NavItem {
 }
 
 const ALL_ITEMS: NavItem[] = [
+  { href: "/dashboard/capacidad-picking", label: "Capacidad picking", icon: <PackageSearch size={16} />, moduleKey: "capacidad-picking" },
   { href: "/dashboard", label: "Inicio", icon: <Home size={16} strokeWidth={2.1} />, moduleKey: null },
   { href: "/dashboard/tienda", label: "Facturas Contado", icon: <Store size={16} strokeWidth={2.1} />, moduleKey: "tienda" },
   { href: "/dashboard/integracion", label: "Integracion Pedidos", icon: <GitMerge size={16} strokeWidth={2.1} />, moduleKey: "integracion" },
@@ -80,6 +81,7 @@ const GROUPS = [
     "/dashboard/resurtido",
     "/dashboard/recepcion-contenedores",
     "/dashboard/montaje-resurtido",
+    "/dashboard/capacidad-picking",
     "/dashboard/pendientes",
     "/dashboard/picking-muebles",
     "/dashboard/inspeccion-muebles",
@@ -100,15 +102,19 @@ export default function Sidebar({ role }: SidebarProps) {
   const path = usePathname();
   const isMobile = useIsMobile();
   const [open, setOpen] = useState(false);
+  const [query, setQuery] = useState("");
+  const [collapsed, setCollapsed] = useState<Record<number, boolean>>({});
+  const [pickingAccess, setPickingAccess] = useState(false);
+  useEffect(() => { fetch('/dashboard/api/me').then(r => r.ok ? r.json() : null).then(r => setPickingAccess(r?.user?.can?.capacidadPicking === true)).catch(() => {}); }, []);
 
   useEffect(() => { setOpen(false); }, [path]);
 
   const visibleItems = ALL_ITEMS.filter((item) =>
-    item.moduleKey === null ? true : canSeeModule(role, item.moduleKey)
+    (item.moduleKey === null || canSeeModule(role, item.moduleKey)) && (item.moduleKey !== 'capacidad-picking' || pickingAccess) && item.label.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().includes(query.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase())
   );
 
   const isActive = (href: string) =>
-    href === "/dashboard" ? path === href : path.startsWith(href);
+    path === href || path.startsWith(href + '/');
 
   const Item = ({ item, onNav }: { item: NavItem; onNav?: () => void }) => {
     const active = isActive(item.href);
@@ -117,7 +123,8 @@ export default function Sidebar({ role }: SidebarProps) {
         href={item.href}
         onClick={onNav}
         className={`g-nav-item${active ? " active" : ""}`}
-        style={getModuleCssVars(item.moduleKey ?? "home") as React.CSSProperties}
+        aria-current={active ? 'page' : undefined}
+        style={{ ...getModuleCssVars(item.moduleKey ?? "home"), textDecoration: 'none' } as React.CSSProperties}
       >
         <span className="g-nav-icon">{item.icon}</span>
         <span style={{ flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
@@ -129,7 +136,8 @@ export default function Sidebar({ role }: SidebarProps) {
 
   const NavContent = ({ onNav }: { onNav?: () => void }) => (
     <>
-      <nav className="g-sidebar-nav">
+      <input aria-label="Buscar módulo" type="search" placeholder="Buscar módulo…" value={query} onChange={e => setQuery(e.target.value)} style={{ margin: '10px 12px', padding: 10, width: 'calc(100% - 24px)', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--ink)' }} />
+      <nav className="g-sidebar-nav" style={{ overflowX: 'hidden', scrollbarWidth: 'thin' }}>
         {GROUPS.map((group, gi) => {
           const groupItems = group
             .map((href) => visibleItems.find((i) => i.href === href))
@@ -137,7 +145,8 @@ export default function Sidebar({ role }: SidebarProps) {
           if (groupItems.length === 0) return null;
           return (
             <div key={gi} className="g-nav-group">
-              {groupItems.map((item) => <Item key={item.href} item={item} onNav={onNav} />)}
+              <button aria-expanded={!!query || !collapsed[gi]} onClick={() => setCollapsed(c => ({ ...c, [gi]: !c[gi] }))} style={{ display: 'flex', justifyContent: 'space-between', width: '100%', padding: '10px 12px', background: 'none', border: 0, color: 'var(--muted)', cursor: 'pointer', textAlign: 'left' }}>{['Inicio', 'Operación CEDI', 'Indicadores', 'Gestión'][gi] ?? 'Módulos'} <span>{collapsed[gi] && !query ? '+' : '−'}</span></button>
+              {(query || !collapsed[gi]) && groupItems.map((item) => <Item key={item.href} item={item} onNav={onNav} />)}
             </div>
           );
         })}
@@ -200,7 +209,7 @@ export default function Sidebar({ role }: SidebarProps) {
               <X size={18} />
             </button>
           </div>
-          <NavContent onNav={() => setOpen(false)} />
+          {NavContent({ onNav: () => setOpen(false) })}
         </aside>
       </>
     );
@@ -209,7 +218,7 @@ export default function Sidebar({ role }: SidebarProps) {
   return (
     <aside className="g-sidebar">
       <Brand />
-      <NavContent />
+      {NavContent({})}
     </aside>
   );
 }

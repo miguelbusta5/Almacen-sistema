@@ -10,6 +10,7 @@ export interface MeInfo {
     /** Permiso por persona para cerrar novedades de montacargas. */
     resolverNovedades?: boolean
     montarResurtido?: boolean
+    capacidadPicking?: boolean
   }
 }
 

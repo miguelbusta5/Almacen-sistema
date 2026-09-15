@@ -56,6 +56,7 @@ const NAV_GROUPS: NavGroup[] = [
     items: [
       { icon: Container, label: 'Recepción Contenedores', href: '/dashboard/recepcion-contenedores', key: 'recepcion-contenedores', moduleKey: 'recepcion-contenedores' },
       { icon: ClipboardList, label: 'Montaje Resurtido', href: '/dashboard/montaje-resurtido', key: 'montaje-resurtido', moduleKey: 'montaje-resurtido' },
+      { icon: PackageSearch, label: 'Capacidad picking', href: '/dashboard/capacidad-picking', key: 'capacidad-picking', moduleKey: 'capacidad-picking' },
       { icon: PackageSearch, label: 'Pendientes', href: '/dashboard/pendientes', key: 'pendientes', moduleKey: 'pendientes' },
       { icon: Forklift, label: 'Control Montacargas', href: '/dashboard/control-montacargas', key: 'control-montacargas', moduleKey: 'control-montacargas' },
       { icon: PackageOpen, label: 'Resurtido', href: '/dashboard/resurtido', key: 'resurtido', moduleKey: 'resurtido' },
@@ -93,10 +94,13 @@ const NAV_GROUPS: NavGroup[] = [
     ],
   },
 ]
+const navSearch = ref('')
+const collapsed = ref<Record<string, boolean>>({})
+const normalizeNav = (s: string) => s.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase()
 const visibleGroups = computed(() => NAV_GROUPS
   .map((g) => ({
     titulo: g.titulo,
-    items: g.items.filter((item) => item.moduleKey === null || canSeeModule(me.value?.role, item.moduleKey)),
+    items: g.items.filter((item) => (item.moduleKey === null || canSeeModule(me.value?.role, item.moduleKey)) && (item.moduleKey !== 'capacidad-picking' || me.value?.can.capacidadPicking) && normalizeNav(item.label).includes(normalizeNav(navSearch.value))),
   }))
   .filter((g) => g.items.length > 0))
 // Igualdad exacta, NO startsWith: con `startsWith`, la clave 'exportaciones'
@@ -272,15 +276,18 @@ async function cerrarSesion() {
         <span class="brand-name">Grupo Ambiente</span>
         <button class="nav-close" aria-label="Cerrar menú" @click="navOpen = false"><X :size="18" /></button>
       </div>
-      <nav class="nav">
+      <label class="nav-search"><Search :size="16" /><input v-model="navSearch" type="search" placeholder="Buscar módulo" aria-label="Buscar módulo en el menú" /></label>
+      <nav class="nav" aria-label="Módulos">
         <!-- Sin esto la barra parpadea con solo "Inicio" hasta que /api/me responde. -->
         <div v-if="!sessionLoaded" class="nav-group">
           <span v-for="i in 5" :key="i" class="nav-skel" />
         </div>
         <div v-for="(group, gi) in visibleGroups" v-else :key="gi" class="nav-group">
-          <span v-if="group.titulo" class="nav-titulo">{{ group.titulo }}</span>
+          <button v-if="group.titulo" class="nav-titulo nav-toggle" :aria-expanded="!!navSearch || !collapsed[group.titulo]" @click="collapsed[group.titulo] = !collapsed[group.titulo]">{{ group.titulo }} <span aria-hidden="true">{{ collapsed[group.titulo] && !navSearch ? '+' : '−' }}</span></button>
           <a
             v-for="n in group.items" :key="n.label" :href="n.href"
+            v-show="navSearch || !collapsed[group.titulo ?? '']"
+            :aria-current="isActive(n.key) ? 'page' : undefined"
             class="nav-item" :class="{ active: isActive(n.key) }"
           >
             <component :is="n.icon" :size="17" />
@@ -288,6 +295,7 @@ async function cerrarSesion() {
           </a>
         </div>
       </nav>
+      <p v-if="sessionLoaded && !visibleGroups.length" class="nav-empty">No hay módulos que coincidan.</p>
 
       <!-- Firma de autoria, al pie y discreta. -->
       <div class="firma">
@@ -434,6 +442,16 @@ async function cerrarSesion() {
 .app { display: grid; grid-template-columns: var(--sidebar-w) 1fr; min-height: 100vh; }
 
 /* Sidebar */
+.nav-search{display:flex;align-items:center;gap:8px;padding:10px 12px;margin:0 0 18px;border:1px solid #293344;border-radius:10px;color:#94a3b8;flex-shrink:0}
+.nav-search input{min-width:0;width:100%;background:transparent;border:0;color:#e2e8f0;font:inherit;font-size:12px;outline:none}
+.nav-search:focus-within{border-color:#00b88c;box-shadow:0 0 0 2px #00b88c33}
+.nav-empty{font-size:12px;padding:12px;color:#94a3b8}
+.sidebar .nav{overflow-x:hidden;min-height:0;scrollbar-width:thin;scrollbar-color:#465267 transparent;padding-right:3px}
+.sidebar .nav-toggle{border:0;background:none;display:flex;align-items:center;justify-content:space-between;cursor:pointer;text-align:left;width:100%;color:#94a3b8;min-height:32px}
+.sidebar .nav-item{text-decoration:none;min-width:0;line-height:1.4}
+.sidebar .nav-item span{white-space:normal;overflow-wrap:anywhere}
+.sidebar .nav-item svg{flex-shrink:0}
+.sidebar .nav-item:focus-visible,.sidebar .nav-toggle:focus-visible{outline:2px solid #00b88c;outline-offset:-2px}
 .sidebar { background: linear-gradient(180deg, #0E1626 0%, #0A0F1C 100%); color: #C7CDD6; display: flex; flex-direction: column; padding: 16px 12px; position: sticky; top: 0; height: 100vh; border-right: 1px solid rgba(255,255,255,.05); }
 .brand { display: flex; align-items: center; gap: 10px; padding: 6px 8px 18px; }
 .nav-close { display: none; margin-left: auto; background: none; border: none; color: #97A1AF; cursor: pointer; padding: 4px; }

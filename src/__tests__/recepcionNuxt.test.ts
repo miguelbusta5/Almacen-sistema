@@ -131,7 +131,8 @@ describe("menu lateral — bloques con nombre", () => {
     expect(layout).toContain("interface NavGroup { titulo: string | null; items: NavItem[] }");
     expect(layout).toContain("Centro de distribución");
     expect(layout).toContain("Pedidos y exportación");
-    expect(layout).toContain('v-if="group.titulo" class="nav-titulo"');
+    expect(layout).toContain('v-if="group.titulo" class="nav-titulo nav-toggle"');
+    expect(layout).toContain(':aria-expanded=');
   });
 
   // Un grupo cuyos items no pueda ver el rol no debe pintar ni su titulo.

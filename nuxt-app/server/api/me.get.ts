@@ -2,6 +2,7 @@ import { defineEventHandler } from 'h3'
 import { getSessionUser } from '../utils/auth'
 import { can } from '../utils/permissions'
 import { prisma } from '../utils/prisma'
+import { accesoPicking } from '../utils/picking'
 
 // Devuelve la sesión actual (o authenticated:false). La UI usa el rol para
 // ocultar acciones; el servidor siempre revalida con requireCan.
@@ -30,6 +31,7 @@ export default defineEventHandler(async (event) => {
         // Montar un resurtido y asignar pendientes: permiso por persona, igual
         // que el de cerrar novedades.
         montarResurtido: extra?.puedeMontarResurtido ?? false,
+        capacidadPicking: await accesoPicking(user.id).catch(() => false),
       },
     },
   }

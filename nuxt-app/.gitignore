@@ -1,5 +1,7 @@
 # Nuxt dev/build outputs
 .output
+.output-picking-qa
+.nuxt-picking-qa
 .data
 .nuxt
 .nitro

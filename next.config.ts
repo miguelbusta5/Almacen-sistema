@@ -107,7 +107,7 @@ const nextConfig: NextConfig = {
     if (NUXT_PILOT_MONTACARGAS_URL) {
       for (const modulo of [
         "control-montacargas", "resurtido", "recepcion-contenedores",
-        "montaje-resurtido", "pendientes", "indicadores",
+        "montaje-resurtido", "pendientes", "indicadores", "capacidad-picking",
       ]) {
         beforeFiles.push(
           { source: `/dashboard/${modulo}`, destination: `${NUXT_PILOT_MONTACARGAS_URL}/dashboard/${modulo}` },

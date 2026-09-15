@@ -2086,3 +2086,60 @@ model PausaOperativa {
   @@index([usuarioId, inicio])
   @@map("pausas_operativas")
 }
+
+model PickingAcceso {
+  userId String @id
+  activo Boolean @default(true)
+  @@map("picking_accesos")
+}
+
+model PickingInforme {
+  id String @id @default(cuid())
+  autorId String
+  autorNombre String
+  estado String @default("ABIERTO")
+  inicio DateTime @default(now())
+  fin DateTime?
+  pausaInicio DateTime?
+  pausaMotivo String?
+  pausaSegundos Float @default(0)
+  pausas Json @default("[]")
+  revision Int @default(0)
+  lineas PickingLinea[]
+  @@index([autorId, estado])
+  @@map("picking_informes")
+}
+
+model PickingLinea {
+  id String @id @default(cuid())
+  informeId String
+  informe PickingInforme @relation(fields: [informeId], references: [id])
+  plu String
+  ubicacion String
+  cajas Int
+  tipo String
+  @@unique([informeId, plu])
+  @@unique([informeId, ubicacion])
+  @@map("picking_lineas")
+}
+
+model PickingCapacidad {
+  plu String @id
+  ubicacion String @unique
+  cajas Int
+  tipo String
+  informeId String
+  actualizadoAt DateTime @updatedAt
+  @@map("picking_capacidades")
+}
+
+model PickingTeorico {
+  id String @id @default(cuid())
+  nombre String
+  autorId String
+  creadoAt DateTime @default(now())
+  filas Json
+  validaciones Json @default("{}")
+  montajeId String? @unique
+  @@map("picking_teoricos")
+}
