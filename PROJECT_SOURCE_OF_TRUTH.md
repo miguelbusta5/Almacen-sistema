@@ -1013,3 +1013,47 @@ Activa en producción desde 2026-09-14 (script aditivo `prisma/migrate-pausas-op
 El registro de uso (veces y tiempo por persona) está en Indicadores › Pausas, visible solo
 para ADMIN y quien tiene el permiso de montar resurtido. Alcance, concurrencia y
 limitaciones: `docs/cerebro/pausas-operativas.md`.
+
+
+## 22. Muebles y tareas generales (2026-09-15, en producción)
+
+### Sesión y pausas
+- La sesión dura **12 h** (antes 8): con 8 vencía a media jornada y la pantalla solo
+  decía «No autorizado» (le pasó a Bryan con un informe de Capacidad picking a medias).
+  Si vence, un plugin de Nuxt marca la sesión inválida y el layout lleva al login
+  conservando la ruta; lo que la pantalla tenga en `localStorage` no se toca.
+- **Picking de Muebles** entra en las pausas operativas: el botón detiene la orden
+  abierta y los PLU que el operario lleva en la mano, bloquea las escrituras
+  (`requirePickingActivo`) y ese rato se descuenta del reloj de picking en Indicadores.
+  Script: `prisma/migrate-pausas-muebles.sql`.
+
+### Inspección de Muebles
+- **PLU averiado**: se marca con su motivo y el inspector le pide la reposición en el
+  acto a un operario de picking. El PLU vuelve a la cola, la orden **no cierra** hasta
+  reinspeccionar el repuesto y la espera se descuenta del reloj, igual que la ventana
+  de ebanistería. Al resolver el pendiente se cierra esa ventana.
+- **Almuerzo dentro de la orden**: pausa de la ORDEN (los inspectores son un catálogo
+  detrás de un login compartido, no usuarios), alcanza a los PLU en inspección y se
+  descuenta de los dos relojes.
+- **Agregar PLU**: para la mercancía que llega de tienda. Entra ya pickeado (sin tiempo
+  de picking) y reabre la orden si estaba cerrada.
+- **Factura de contado**: orden `tipoOrden = CONTADO` con su cliente, creada ya en
+  inspección, sin pasar por picking.
+- **Varios inspectores por orden** (TSDM): cualquiera entra a la orden y queda
+  registrado en `inspectores_orden_muebles`; no hay reparto previo — el tiempo de cada
+  uno sigue saliendo del inspector de cada PLU.
+- Script: `prisma/migrate-inspeccion-muebles-2.sql`.
+
+### Pendientes: PLU ya resurtido
+Operaciones gourmet **no** monta un pendiente de un PLU con resurtido en curso o de las
+últimas 2 h. Si el sistema dice resurtido y en el picking no está, lo montan Felipe Ossa,
+Eduardo o el administrador, confirmando, y queda en la bitácora como «montado pese al
+resurtido».
+
+### Tareas generales (módulo nuevo)
+Lo que manda supervisión y no cabe en ningún módulo. Texto libre + uno o varios
+operarios; el reloj de cada persona arranca al asignar y para cuando supervisión la da
+por terminada (a uno o a todos). El operario ve solo lo suyo, gerencia ve todo sin
+tocar, y el tiempo suma en Indicadores como el tipo «Tareas generales».
+Lógica pura en `src/lib/tareasGenerales.ts` (copia de Nitro en
+`server/utils/tareasGeneralesCalc.ts`). Script: `prisma/migrate-tareas-generales.sql`.
