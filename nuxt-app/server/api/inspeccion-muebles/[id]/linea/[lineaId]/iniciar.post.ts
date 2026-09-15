@@ -28,6 +28,10 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 409, statusMessage: 'Esa orden no esta en inspeccion' })
   }
 
+  // Durante el almuerzo la orden esta detenida: reanudar es un gesto explicito.
+  if (orden.inspPausaInicio) {
+    throw createError({ statusCode: 409, statusMessage: 'La orden esta en almuerzo: termina el almuerzo para seguir' })
+  }
   const linea = orden.lineas.find((l) => l.id === lineaId)
   if (!linea) throw createError({ statusCode: 404, statusMessage: 'PLU no encontrado en esta orden' })
   if (linea.estado === 'LISTO') {
@@ -38,6 +42,9 @@ export default defineEventHandler(async (event) => {
   }
   if (linea.estado === 'EN_INSPECCION') {
     throw createError({ statusCode: 409, statusMessage: 'Ese PLU ya esta en inspeccion' })
+  }
+  if (linea.reposicionInicio && !linea.reposicionFin) {
+    throw createError({ statusCode: 409, statusMessage: 'Ese PLU esta averiado: espera el repuesto de picking' })
   }
 
   const inspector = await prisma.inspector.findFirst({
@@ -50,7 +57,18 @@ export default defineEventHandler(async (event) => {
   const actualizada = await prisma.$transaction(async (tx) => {
     await tx.lineaMuebles.update({
       where: { id: lineaId },
-      data: { estado: 'EN_INSPECCION', inspHoraInicio: now, inspectorId: inspector.id },
+      data: {
+        estado: 'EN_INSPECCION',
+        // Un PLU averiado ya se habia empezado: conservar su primer arranque es
+        // lo que hace que la espera del repuesto se pueda descontar.
+        inspHoraInicio: linea.inspHoraInicio ?? now,
+        inspectorId: inspector.id,
+      },
+    })
+    await tx.inspectorOrdenMuebles.upsert({
+      where: { ordenId_inspectorId: { ordenId: orden.id, inspectorId: inspector.id } },
+      create: { ordenId: orden.id, inspectorId: inspector.id },
+      update: {},
     })
     return tx.ordenMuebles.findUniqueOrThrow({ where: { id: orden.id }, include: ORDEN_INCLUDE })
   })

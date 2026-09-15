@@ -10,7 +10,7 @@
 // para no reelegir el nombre en cada acción, no una sesión. La verdad de quién
 // hizo qué está en la DB, en el inspector que se guardó con cada tiempo.
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
-import { ClipboardCheck, RefreshCw, Loader2 } from '@lucide/vue'
+import { ClipboardCheck, RefreshCw, Loader2, Receipt } from '@lucide/vue'
 import { useToast } from '~/composables/useToast'
 import {
   API_INSPECCION, mensajeError, type Inspector, type Linea, type Orden,
@@ -20,6 +20,8 @@ const { show } = useToast()
 
 const ordenes = ref<Orden[]>([])
 const inspectores = ref<Inspector[]>([])
+// Para pedir la reposicion de un PLU averiado hay que elegir a quien la trae.
+const operarios = ref<Array<{ id: string; nombre: string }>>([])
 const abierta = ref<Orden | null>(null)
 const cargando = ref(true)
 const guardando = ref(false)
@@ -31,6 +33,9 @@ const CLAVE = 'inspector-muebles'
 const pidiendoInspector = ref(false)
 const lineaEbanisteria = ref<Linea | null>(null)
 const pidiendoFaltante = ref(false)
+const lineaAveriada = ref<Linea | null>(null)
+const agregandoPlu = ref(false)
+const creandoContado = ref(false)
 // Qué hacer una vez el inspector elige su nombre (tomar la orden, o la acción
 // que intentó sin haberse identificado todavía).
 const trasElegir = ref<((id: string) => void) | null>(null)
@@ -52,12 +57,14 @@ const nombreActivo = computed(
 async function cargar() {
   cargando.value = true
   try {
-    const [lista, cat] = await Promise.all([
+    const [lista, cat, ops] = await Promise.all([
       $fetch<{ data: Orden[] }>(API_INSPECCION),
       $fetch<{ data: Inspector[] }>(`${API_INSPECCION}/inspectores`),
+      $fetch<{ data: Array<{ id: string; nombre: string }> }>(`${API_INSPECCION}/operarios`),
     ])
     ordenes.value = lista.data
     inspectores.value = cat.data
+    operarios.value = ops.data
     // Si hay una orden abierta, se refresca con la versión del servidor.
     if (abierta.value) {
       const actualizada = lista.data.find((o) => o.id === abierta.value!.id)
@@ -155,6 +162,63 @@ async function confirmarFaltante(datos: { plu: string; unidades: number; observa
   })
 }
 
+/** Marcar el PLU como averiado y pedir el repuesto a un operario de picking. */
+function confirmarAveria(datos: { motivo: string; operarioId: string; unidades: number }) {
+  const l = lineaAveriada.value
+  if (!l) return
+  lineaAveriada.value = null
+  conInspector((id) => accion(
+    `${API_INSPECCION}/${abierta.value!.id}/linea/${l.id}/averia`,
+    { inspectorId: id, ...datos }, `PLU ${l.plu} marcado averiado; reposición pedida`,
+  ))
+}
+
+/** Un PLU que llegó de tienda y no pasó por picking. */
+function confirmarAgregarPlu(datos: { plu: string; unidades: number }) {
+  agregandoPlu.value = false
+  conInspector((id) => accion(
+    `${API_INSPECCION}/${abierta.value!.id}/linea`,
+    { inspectorId: id, ...datos }, `PLU ${datos.plu} agregado a la orden`,
+  ))
+}
+
+/** Detiene o reanuda la orden entera: el almuerzo no es tiempo de inspección. */
+function almuerzo(accionPausa: 'iniciar' | 'terminar') {
+  conInspector((id) => accion(
+    `${API_INSPECCION}/${abierta.value!.id}/almuerzo`,
+    { inspectorId: id, accion: accionPausa },
+    accionPausa === 'iniciar' ? 'Orden en almuerzo' : 'Almuerzo terminado',
+  ))
+}
+
+/** Entrar a una orden que ya trabaja otro: una TSDM la revisan varios. */
+function unirse() {
+  conInspector((id) => accion(
+    `${API_INSPECCION}/${abierta.value!.id}/unirse`, { inspectorId: id }, 'Estás en la orden',
+  ))
+}
+
+/** Factura de contado: la orden nace ya en inspección, sin pasar por picking. */
+function confirmarContado(datos: { factura: string; cliente: string }) {
+  creandoContado.value = false
+  conInspector(async (id) => {
+    if (guardando.value) return
+    guardando.value = true
+    try {
+      const res = await $fetch<{ data: Orden }>(`${API_INSPECCION}/contado`, {
+        method: 'POST',
+        body: { inspectorId: id, factura: datos.factura, cliente: datos.cliente || null },
+      })
+      abierta.value = res.data
+      show(`Factura ${datos.factura} lista para inspeccionar`)
+    } catch (e) {
+      show(mensajeError(e, 'No se pudo crear la factura'), true)
+    } finally {
+      guardando.value = false
+    }
+  })
+}
+
 /** Toda acción devuelve la orden completa: la pantalla se repinta con eso. */
 async function accion(url: string, body: Record<string, unknown>, exito: string) {
   if (guardando.value) return
@@ -189,6 +253,9 @@ async function accion(url: string, body: Record<string, unknown>, exito: string)
       </div>
 
       <div class="hero-yo">
+        <button class="btn btn-sm" @click="creandoContado = true">
+          <Receipt :size="14" /> Factura de contado
+        </button>
         <button class="btn btn-sm" @click="pidiendoInspector = true">
           {{ nombreActivo ? `Eres: ${nombreActivo}` : 'Elegir mi nombre' }}
         </button>
@@ -205,7 +272,8 @@ async function accion(url: string, body: Record<string, unknown>, exito: string)
       :orden="abierta" :ahora="ahora" :guardando="guardando"
       @salir="salir" @asignar="pedirAsignacion" @iniciar="iniciar" @completar="completar"
       @ebanisteria="lineaEbanisteria = $event" @recibir-ebanisteria="recibirEbanisteria"
-      @faltante="pidiendoFaltante = true"
+      @faltante="pidiendoFaltante = true" @averia="lineaAveriada = $event"
+      @agregar-plu="agregandoPlu = true" @almuerzo="almuerzo" @unirse="unirse"
     />
 
     <template v-else>
@@ -222,6 +290,16 @@ async function accion(url: string, body: Record<string, unknown>, exito: string)
     />
     <InspeccionMueblesFaltanteModal
       :abierto="pidiendoFaltante" @cerrar="pidiendoFaltante = false" @confirmar="confirmarFaltante"
+    />
+    <InspeccionMueblesAveriaModal
+      :linea="lineaAveriada" :operarios="operarios"
+      @cerrar="lineaAveriada = null" @confirmar="confirmarAveria"
+    />
+    <InspeccionMueblesAgregarPluModal
+      :abierto="agregandoPlu" @cerrar="agregandoPlu = false" @confirmar="confirmarAgregarPlu"
+    />
+    <InspeccionMueblesContadoModal
+      :abierto="creandoContado" @cerrar="creandoContado = false" @confirmar="confirmarContado"
     />
   </div>
 </template>

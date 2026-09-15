@@ -597,6 +597,13 @@ export function mapLineaMuebles(l: any) {
     ebanisteriaFin: l.ebanisteriaFin?.toISOString?.() ?? l.ebanisteriaFin ?? null,
     duracionEbanisteriaMin: duracionMinutosMuebles(l.ebanisteriaInicio, l.ebanisteriaFin),
     motivoEbanisteria: l.motivoEbanisteria ?? null,
+    // Averia: esperando reposicion mientras reposicionInicio no tenga fin.
+    averiado: l.averiado ?? false,
+    motivoAveria: l.motivoAveria ?? null,
+    esperandoReposicion: Boolean(l.reposicionInicio && !l.reposicionFin),
+    reposicionInicio: l.reposicionInicio?.toISOString?.() ?? l.reposicionInicio ?? null,
+    reposicionFin: l.reposicionFin?.toISOString?.() ?? l.reposicionFin ?? null,
+    almuerzoInicio: l.inspPausaInicio?.toISOString?.() ?? l.inspPausaInicio ?? null,
     operario: l.operario ? { id: l.operario.id, nombre: l.operario.name } : null,
     inspector: l.inspector ?? null,
     enviadoEbanisteriaPor: l.enviadoEbanisteriaPor ?? null,
@@ -632,6 +639,15 @@ export function mapOrdenMuebles(o: any) {
       esCreador: p.esCreador,
     })),
     inspector: o.inspector ?? null,
+    // Todos los que han entrado a la orden (TSDM con varios inspectores).
+    inspectores: (o.inspectores ?? []).map((i: any) => ({
+      id: i.inspector?.id ?? i.inspectorId,
+      nombre: i.inspector?.nombre ?? '',
+      seUnioAt: i.seUnioAt?.toISOString?.() ?? i.seUnioAt ?? null,
+    })),
+    cliente: o.cliente ?? null,
+    almuerzoInicio: o.inspPausaInicio?.toISOString?.() ?? o.inspPausaInicio ?? null,
+    almuerzoSegundos: o.inspPausaSegundos ?? 0,
     motivoCorreccion: o.motivoCorreccion ?? null,
     lineas,
     resumen: resumenOrden(lineas),
@@ -646,6 +662,8 @@ export function mapPendienteMuebles(p: any) {
     unidades: p.unidades,
     observacion: p.observacion ?? null,
     estado: p.estado,
+    // FALTANTE (no estaba) o AVERIA (llego dañado: hay que traer otro).
+    motivo: p.motivo ?? 'FALTANTE',
     orden: p.orden ? { id: p.orden.id, codigo: p.orden.codigo } : null,
     creadoPorInspector: p.creadoPorInspector ?? null,
     asignadoA: p.asignadoA ? { id: p.asignadoA.id, nombre: p.asignadoA.name } : null,

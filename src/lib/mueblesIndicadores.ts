@@ -65,6 +65,11 @@ export interface LineaMedida {
   estado: string;
   /** Almuerzo o cambio de baterias: no es tiempo de picking. */
   pausaSegundos?: number;
+  /** Espera del repuesto de un PLU averiado: no es tiempo de inspeccion. */
+  reposicionInicio?: Date | null;
+  reposicionFin?: Date | null;
+  /** Almuerzo del inspector dentro de la orden. */
+  inspPausaSegundos?: number;
 }
 
 /**
@@ -109,6 +114,8 @@ export interface OrdenMedida {
   horaFinInspeccion: Date | null;
   /** Almuerzo o cambio de baterias del operario durante el picking. */
   pausaSegundos?: number;
+  /** Almuerzo del inspector dentro de la orden. */
+  inspPausaSegundos?: number;
 }
 
 export interface FilaOperario {
@@ -331,13 +338,13 @@ export function agregarIndicadoresMuebles(entrada: {
   // ── Ordenes completas ──
   const filasOrden: FilaOrden[] = ordenes.map((o) => {
     const pickingMin = minutos(o.horaInicio, o.horaPasoInspeccion, o.pausaSegundos ?? 0);
-    const inspeccionMin = minutos(o.horaPasoInspeccion, o.horaFinInspeccion);
+    const inspeccionMin = minutos(o.horaPasoInspeccion, o.horaFinInspeccion, o.inspPausaSegundos ?? 0);
     return {
       id: o.id,
       codigo: o.codigo,
       pickingMin,
       inspeccionMin,
-      totalMin: minutos(o.horaInicio, o.horaFinInspeccion, o.pausaSegundos ?? 0),
+      totalMin: minutos(o.horaInicio, o.horaFinInspeccion, (o.pausaSegundos ?? 0) + (o.inspPausaSegundos ?? 0)),
     };
   });
 

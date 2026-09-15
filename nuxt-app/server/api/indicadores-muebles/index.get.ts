@@ -51,12 +51,13 @@ export default defineEventHandler(async (event) => {
         volumenTotalM3: true, pesoTotalKg: true,
         inspectorId: true, inspHoraInicio: true, inspHoraFin: true,
         ebanisteriaInicio: true, ebanisteriaFin: true, motivoEbanisteria: true,
-        estado: true, pausaSegundos: true,
+        estado: true, pausaSegundos: true, inspPausaSegundos: true,
+        reposicionInicio: true, reposicionFin: true,
       },
     }),
     prisma.ordenMuebles.findMany({
       where: { horaInicio: { gte: inicio, lte: fin }, deletedAt: null },
-      select: { id: true, codigo: true, horaInicio: true, horaPasoInspeccion: true, horaFinInspeccion: true, pausaSegundos: true },
+      select: { id: true, codigo: true, horaInicio: true, horaPasoInspeccion: true, horaFinInspeccion: true, pausaSegundos: true, inspPausaSegundos: true },
       orderBy: { horaInicio: 'desc' },
     }),
     prisma.user.findMany({

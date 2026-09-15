@@ -151,6 +151,17 @@ CREATE TABLE IF NOT EXISTS "inspectores_muebles" (
 );
 
 -- CreateTable
+-- Inspectores que entraron a una orden: una TSDM la revisan varios a la vez.
+CREATE TABLE IF NOT EXISTS "inspectores_orden_muebles" (
+    "id" TEXT NOT NULL,
+    "orden_id" TEXT NOT NULL,
+    "inspector_id" TEXT NOT NULL,
+    "se_unio_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT "inspectores_orden_muebles_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
 CREATE TABLE IF NOT EXISTS "pendientes_muebles" (
     "id" TEXT NOT NULL,
     "orden_id" TEXT,
@@ -234,6 +245,12 @@ CREATE UNIQUE INDEX IF NOT EXISTS "lineas_muebles_orden_id_plu_key" ON "lineas_m
 
 -- CreateIndex
 CREATE INDEX IF NOT EXISTS "inspectores_muebles_activo_idx" ON "inspectores_muebles"("activo");
+
+-- CreateIndex
+CREATE UNIQUE INDEX IF NOT EXISTS "inspectores_orden_muebles_orden_id_inspector_id_key" ON "inspectores_orden_muebles"("orden_id", "inspector_id");
+
+-- CreateIndex
+CREATE INDEX IF NOT EXISTS "inspectores_orden_muebles_inspector_id_idx" ON "inspectores_orden_muebles"("inspector_id");
 
 -- CreateIndex
 CREATE INDEX IF NOT EXISTS "pendientes_muebles_estado_solicitado_at_idx" ON "pendientes_muebles"("estado", "solicitado_at");

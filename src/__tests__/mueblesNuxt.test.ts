@@ -150,7 +150,9 @@ describe("muebles — los relojes", () => {
   });
 
   it("el reloj de inspeccion del PLU arranca al seleccionarlo", () => {
-    expect(iniciarInsp).toContain("inspHoraInicio: now");
+    // Un PLU averiado ya se habia empezado: conservar su primer arranque es lo
+    // que permite descontar despues la espera del repuesto.
+    expect(iniciarInsp).toContain("inspHoraInicio: linea.inspHoraInicio ?? now");
   });
 
   it("completar un PLU cierra su reloj y puede cerrar el de la orden", () => {
@@ -322,5 +324,69 @@ describe("picking muebles — almuerzo", () => {
       expect(src).toContain("pausaSegundos");
     }
     expect(leer("nuxt-app/server/api/indicadores-muebles/index.get.ts")).toContain("pausaSegundos: true");
+  });
+});
+
+
+// Lo que pidio el area de muebles: averias con reposicion, almuerzo dentro de la
+// orden, PLU que llegan de tienda, facturas de contado y TSDM entre varios.
+describe("inspeccion — averias, almuerzo, contado y varios inspectores", () => {
+  const averia = leer("nuxt-app/server/api/inspeccion-muebles/[id]/linea/[lineaId]/averia.post.ts");
+  const almuerzo = leer("nuxt-app/server/api/inspeccion-muebles/[id]/almuerzo.post.ts");
+  const agregar = leer("nuxt-app/server/api/inspeccion-muebles/[id]/linea/index.post.ts");
+  const contado = leer("nuxt-app/server/api/inspeccion-muebles/contado.post.ts");
+  const unirse = leer("nuxt-app/server/api/inspeccion-muebles/[id]/unirse.post.ts");
+  const resolver = leer("nuxt-app/server/api/picking-muebles/pendiente/[id]/resolver.post.ts");
+  const iniciar = leer("nuxt-app/server/api/inspeccion-muebles/[id]/linea/[lineaId]/iniciar.post.ts");
+  const detalle = leer("nuxt-app/app/components/inspeccion-muebles/OrdenDetalle.vue");
+
+  it("el averiado vuelve a la cola y se le pide el repuesto a un operario de picking", () => {
+    expect(averia).toContain("estado: 'PICKEADA'");
+    expect(averia).toContain("averiado: true");
+    expect(averia).toContain("reposicionInicio: now");
+    expect(averia).toContain("motivo: 'AVERIA'");
+    expect(averia).toContain("estado: 'ASIGNADO'");
+    expect(averia).toContain("puedePickear(operario.role)");
+  });
+
+  it("no se puede reinspeccionar hasta que llegue el repuesto", () => {
+    expect(iniciar).toContain("linea.reposicionInicio && !linea.reposicionFin");
+    expect(resolver).toContain("reposicionFin: now");
+  });
+
+  it("la espera del repuesto y el almuerzo no cuentan como inspeccion", () => {
+    for (const src of [fuente, calcServidor]) {
+      expect(src).toContain("enReposicion");
+      expect(src).toContain("inspPausaSegundos");
+      expect(src).toContain("bruta - enTaller - enReposicion - almuerzo");
+    }
+  });
+
+  it("el almuerzo detiene la orden y sus PLU en inspeccion", () => {
+    expect(almuerzo).toContain("inspPausaInicio: now");
+    expect(almuerzo).toContain("estado: 'EN_INSPECCION' }");
+    expect(almuerzo).toContain("inspPausaSegundos: { increment: segundos }");
+    expect(iniciar).toContain("orden.inspPausaInicio");
+    expect(detalle).toContain("enAlmuerzo");
+  });
+
+  it("un PLU de tienda entra ya pickeado y reabre la orden si estaba cerrada", () => {
+    expect(agregar).toContain("estado: 'PICKEADA'");
+    expect(agregar).toContain("horaFin: now");
+    expect(agregar).toContain("horaFinInspeccion: null");
+  });
+
+  it("la factura de contado nace en inspeccion, con su cliente", () => {
+    expect(contado).toContain("tipoOrden: 'CONTADO'");
+    expect(contado).toContain("estado: 'EN_INSPECCION'");
+    expect(contado).toContain("codigoContado(d.factura)");
+    expect(contado).toContain("cliente");
+    for (const src of [fuente, calcServidor]) expect(src).toContain("validarFacturaContado");
+  });
+
+  it("varios inspectores entran a la misma orden y queda quien esta dentro", () => {
+    expect(unirse).toContain("inspectorOrdenMuebles.upsert");
+    expect(iniciar).toContain("inspectorOrdenMuebles.upsert");
+    expect(detalle).toContain("orden.inspectores");
   });
 });

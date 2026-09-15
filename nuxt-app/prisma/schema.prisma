@@ -1820,6 +1820,19 @@ model OrdenMuebles {
   pausaInicio   DateTime? @map("pausa_inicio")
   pausaSegundos Float     @default(0) @map("pausa_segundos")
 
+  /// Almuerzo del inspector DENTRO de la orden. No usa PausaOperativa: los
+  /// inspectores son un catalogo, no usuarios (login compartido entre ~5).
+  inspPausaInicio      DateTime?  @map("insp_pausa_inicio")
+  inspPausaSegundos    Float      @default(0) @map("insp_pausa_segundos")
+  inspPausaInspectorId String?    @map("insp_pausa_inspector_id")
+
+  /// Cliente de una factura de contado (tipoOrden = CONTADO). Null en las de NetSuite.
+  cliente String? @db.VarChar(160)
+
+  /// Inspectores que entraron a la orden. Una TSDM la trabajan varios a la vez;
+  /// el tiempo de cada uno sale del inspector de cada PLU.
+  inspectores InspectorOrdenMuebles[]
+
   actualizadoPorId String?   @map("actualizado_por_id")
   actualizadoPor   User?     @relation("OrdenesMueblesActualizadas", fields: [actualizadoPorId], references: [id])
   motivoCorreccion String?   @map("motivo_correccion")
@@ -1893,6 +1906,18 @@ model LineaMuebles {
   pausaInicio   DateTime? @map("pausa_inicio")
   pausaSegundos Float     @default(0) @map("pausa_segundos")
 
+  /// Almuerzo del inspector: se descuenta del reloj de inspeccion del PLU.
+  inspPausaInicio   DateTime? @map("insp_pausa_inicio")
+  inspPausaSegundos Float     @default(0) @map("insp_pausa_segundos")
+
+  /// Averia: el mueble llego dañado y hay que reponerlo. La ventana de espera
+  /// corre en paralelo al reloj de inspeccion y se descuenta de el, igual que
+  /// la de ebanisteria; la orden no cierra hasta reinspeccionar el repuesto.
+  averiado         Boolean   @default(false)
+  motivoAveria     String?   @map("motivo_averia")
+  reposicionInicio DateTime? @map("reposicion_inicio")
+  reposicionFin    DateTime? @map("reposicion_fin")
+
   // ── Inspeccion ──
   /// Inspector que trabajo este PLU. Puede ser distinto del de la orden: las PCs
   /// se comparten y una orden puede terminarla otra persona.
@@ -1936,12 +1961,29 @@ model Inspector {
   enviosEbanisteria    LineaMuebles[]     @relation("EnviosEbanisteria")
   recepcionEbanisteria LineaMuebles[]     @relation("RecepcionesEbanisteria")
   pendientesCreados    PendienteMuebles[] @relation("PendientesMueblesCreados")
+  ordenesEnCurso       InspectorOrdenMuebles[]
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
   @@index([activo])
   @@map("inspectores_muebles")
+}
+
+/// Inspector que entro a una orden. Las TSDM las trabajan varios a la vez y la
+/// orden dejo de tener un unico dueno; esto es solo quien esta dentro — el
+/// tiempo de cada uno sigue saliendo del inspector de cada PLU.
+model InspectorOrdenMuebles {
+  id          String       @id @default(cuid())
+  ordenId     String       @map("orden_id")
+  orden       OrdenMuebles @relation(fields: [ordenId], references: [id], onDelete: Cascade)
+  inspectorId String       @map("inspector_id")
+  inspector   Inspector    @relation(fields: [inspectorId], references: [id])
+  seUnioAt    DateTime     @default(now()) @map("se_unio_at")
+
+  @@unique([ordenId, inspectorId])
+  @@index([inspectorId])
+  @@map("inspectores_orden_muebles")
 }
 
 enum EstadoPendienteMuebles {
@@ -1962,6 +2004,10 @@ model PendienteMuebles {
   unidades    Int
   observacion String?
   estado      EstadoPendienteMuebles @default(PENDIENTE)
+  /// FALTANTE (no estaba) o AVERIA (llego dañado y hay que reponerlo).
+  motivo      String                 @default("FALTANTE") @db.VarChar(20)
+  /// PLU averiado que se repone. Null en los faltantes sueltos.
+  lineaId     String?                @map("linea_id")
 
   creadoPorInspectorId String?    @map("creado_por_inspector_id")
   creadoPorInspector   Inspector? @relation("PendientesMueblesCreados", fields: [creadoPorInspectorId], references: [id])

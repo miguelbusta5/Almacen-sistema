@@ -68,6 +68,14 @@ export interface Linea {
   ebanisteriaFin: string | null
   duracionEbanisteriaMin: number | null
   motivoEbanisteria: string | null
+  /** Averia: el mueble llego dañado y picking trae otro. */
+  averiado: boolean
+  motivoAveria: string | null
+  esperandoReposicion: boolean
+  reposicionInicio: string | null
+  reposicionFin: string | null
+  /** Almuerzo del inspector corriendo sobre este PLU. */
+  almuerzoInicio: string | null
   operario: { id: string; nombre: string } | null
   inspector: Inspector | null
   enviadoEbanisteriaPor: Inspector | null
@@ -86,7 +94,7 @@ export interface ResumenOrden {
 export interface Orden {
   id: string
   codigo: string
-  tipoOrden: 'OVDM' | 'TSDM'
+  tipoOrden: 'OVDM' | 'TSDM' | 'CONTADO'
   estado: EstadoOrden
   fecha: string
   horaInicio: string
@@ -97,6 +105,13 @@ export interface Orden {
   operario: { id: string; nombre: string } | null
   equipo: Equipo | null
   inspector: Inspector | null
+  /** Todos los inspectores que han entrado (una TSDM la revisan varios). */
+  inspectores: Array<{ id: string; nombre: string; seUnioAt: string | null }>
+  /** Cliente de una factura de contado. */
+  cliente: string | null
+  /** Almuerzo de la orden: si tiene hora, esta detenida. */
+  almuerzoInicio: string | null
+  almuerzoSegundos: number
   participantes: Participante[]
   lineas: Linea[]
   resumen: ResumenOrden
@@ -116,6 +131,8 @@ export interface Pendiente {
   unidades: number
   observacion: string | null
   estado: 'PENDIENTE' | 'ASIGNADO' | 'RESUELTO'
+  /** FALTANTE (no estaba) o AVERIA (llego dañado: hay que traer otro). */
+  motivo: 'FALTANTE' | 'AVERIA'
   orden: { id: string; codigo: string } | null
   creadoPorInspector: Inspector | null
   asignadoA: { id: string; nombre: string } | null

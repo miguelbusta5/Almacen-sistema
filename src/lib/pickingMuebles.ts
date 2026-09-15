@@ -34,8 +34,22 @@ export function normalizarCodigoOrden(value: unknown): string {
   return String(value ?? "").trim().toUpperCase().replace(/\s+/g, "");
 }
 
-export function derivarTipoOrden(orden: string): "OVDM" | "TSDM" {
-  return normalizarCodigoOrden(orden).startsWith("TSDM") ? "TSDM" : "OVDM";
+export function derivarTipoOrden(orden: string): "OVDM" | "TSDM" | "CONTADO" {
+  const codigo = normalizarCodigoOrden(orden);
+  if (codigo.startsWith("CONTADO")) return "CONTADO";
+  return codigo.startsWith("TSDM") ? "TSDM" : "OVDM";
+}
+
+/** Codigo de una orden de contado: la factura con la que llega la mercancia. */
+export function codigoContado(factura: unknown): string {
+  return `CONTADO-${normalizarCodigoOrden(factura)}`;
+}
+
+export function validarFacturaContado(value: unknown): string | null {
+  const f = normalizarCodigoOrden(value);
+  if (!f) return "Escribe el numero de la factura";
+  if (f.length > 30) return "El numero de factura es demasiado largo";
+  return null;
 }
 
 /**
@@ -87,11 +101,18 @@ export function duracionInspeccionNetaMinutos(linea: {
   inspHoraFin?: Date | string | null;
   ebanisteriaInicio?: Date | string | null;
   ebanisteriaFin?: Date | string | null;
+  reposicionInicio?: Date | string | null;
+  reposicionFin?: Date | string | null;
+  inspPausaSegundos?: number | null;
 }): number | null {
   const bruta = duracionMinutos(linea.inspHoraInicio, linea.inspHoraFin);
   if (bruta == null) return null;
   const enTaller = duracionMinutos(linea.ebanisteriaInicio, linea.ebanisteriaFin) ?? 0;
-  return Math.max(0, bruta - enTaller);
+  // Esperar el repuesto de un PLU averiado tampoco es inspeccionar, igual que
+  // estar en el taller. Y el almuerzo del inspector menos.
+  const enReposicion = duracionMinutos(linea.reposicionInicio, linea.reposicionFin) ?? 0;
+  const almuerzo = (linea.inspPausaSegundos ?? 0) / 60;
+  return Math.max(0, bruta - enTaller - enReposicion - almuerzo);
 }
 
 // ── Totales de linea ────────────────────────────────────────────────────────

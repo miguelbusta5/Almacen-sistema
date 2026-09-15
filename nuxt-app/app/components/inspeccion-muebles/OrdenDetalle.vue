@@ -6,7 +6,7 @@
 // hacer lo suyo, y quien estaba aqui encuentra la orden exactamente como la dejo.
 // Esa es la garantia central del modulo, con 2 PCs para ~5 personas.
 import { computed } from 'vue'
-import { ArrowLeft, Play, Check, Hammer, PackageX, Undo2 } from '@lucide/vue'
+import { ArrowLeft, Play, Check, Hammer, PackageX, Undo2, Utensils, TriangleAlert, Plus, UserPlus } from '@lucide/vue'
 import {
   ESTADO_LINEA_LABEL, ESTADO_LINEA_TONE, cronometro, fmtMin,
   type Linea, type Orden,
@@ -28,7 +28,14 @@ const emit = defineEmits<{
   (e: 'ebanisteria', linea: Linea): void
   (e: 'recibir-ebanisteria', linea: Linea): void
   (e: 'faltante'): void
+  (e: 'averia', linea: Linea): void
+  (e: 'agregar-plu'): void
+  (e: 'almuerzo', accion: 'iniciar' | 'terminar'): void
+  (e: 'unirse'): void
 }>()
+
+// La orden en almuerzo esta detenida: no corre ningun reloj suyo.
+const enAlmuerzo = computed(() => props.orden.almuerzoInicio != null)
 
 // Los botones NO se deshabilitan cuando esta PC aun no sabe quien la usa:
 // pulsarlos abre el selector de nombre y luego ejecuta la accion. En una PC
@@ -53,7 +60,12 @@ function reloj(l: Linea): string {
         <ArrowLeft :size="15" /> Salir de la orden
       </button>
       <div class="head-acciones">
+        <button class="btn btn-sm" :disabled="enAlmuerzo" @click="emit('agregar-plu')"><Plus :size="14" /> Agregar PLU</button>
         <button class="btn btn-sm" @click="emit('faltante')"><PackageX :size="14" /> Reportar faltante</button>
+        <button class="btn btn-sm" @click="emit('unirse')"><UserPlus :size="14" /> Entrar a la orden</button>
+        <button class="btn btn-sm" :class="{ 'btn-primary': enAlmuerzo }" @click="emit('almuerzo', enAlmuerzo ? 'terminar' : 'iniciar')">
+          <Utensils :size="14" /> {{ enAlmuerzo ? 'Terminar almuerzo' : 'Almuerzo' }}
+        </button>
         <button class="btn btn-sm" @click="emit('asignar')">
           {{ orden.inspector ? `Inspector: ${orden.inspector.nombre}` : 'Tomar la orden' }}
         </button>
@@ -74,8 +86,16 @@ function reloj(l: Linea): string {
           {{ orden.resumen.inspeccionadas }} de {{ orden.resumen.total }} PLU listos ·
           en inspección hace <strong class="vivo">{{ cronometro(orden.horaPasoInspeccion, ahora) }}</strong>
         </p>
+        <p v-if="orden.cliente" class="orden-meta">Cliente: {{ orden.cliente }}</p>
+        <p v-if="orden.inspectores.length" class="orden-meta">
+          En la orden: <span v-for="(i, n) in orden.inspectores" :key="i.id">{{ n ? ', ' : '' }}{{ i.nombre }}</span>
+        </p>
       </div>
     </section>
+
+    <p v-if="enAlmuerzo" class="aviso">
+      Orden en almuerzo. Los tiempos están detenidos hasta que lo termines.
+    </p>
 
     <p v-if="avisarSinDueno" class="aviso">
       Nadie ha tomado esta orden todavía. Al empezar se te pedirá tu nombre.
@@ -91,6 +111,11 @@ function reloj(l: Linea): string {
           <span v-if="l.descripcion" class="l-desc">{{ l.descripcion }}</span>
           <p class="l-meta">
             {{ l.unidades }} unid. · caja {{ l.numeroCaja || '—' }} · {{ l.ubicacion || '—' }}
+          </p>
+          <p v-if="l.averiado" class="l-averia">
+            <TriangleAlert :size="13" />
+            {{ l.esperandoReposicion ? 'Averiado: esperando repuesto de picking' : 'Averiado: repuesto recibido, vuelve a inspeccionarlo' }}
+            <span v-if="l.motivoAveria"> · {{ l.motivoAveria }}</span>
           </p>
           <p v-if="l.motivoEbanisteria" class="l-motivo">
             Ebanistería: {{ l.motivoEbanisteria }}
@@ -108,18 +133,25 @@ function reloj(l: Linea): string {
 
         <div class="l-acciones">
           <button
-            v-if="l.estado === 'PICKEADA'" class="btn btn-sm btn-primary"
-            :disabled="guardando" @click="emit('iniciar', l)"
+            v-if="l.estado === 'PICKEADA' && !l.esperandoReposicion" class="btn btn-sm btn-primary"
+            :disabled="guardando || enAlmuerzo" @click="emit('iniciar', l)"
           >
             <Play :size="14" /> Iniciar
           </button>
 
+          <span v-else-if="l.esperandoReposicion" class="l-espera">
+            <TriangleAlert :size="14" /> Esperando repuesto
+          </span>
+
           <template v-else-if="l.estado === 'EN_INSPECCION'">
-            <button class="btn btn-sm btn-primary" :disabled="guardando" @click="emit('completar', l)">
+            <button class="btn btn-sm btn-primary" :disabled="guardando || enAlmuerzo" @click="emit('completar', l)">
               <Check :size="14" /> Completar
             </button>
             <button class="btn btn-sm" :disabled="guardando" @click="emit('ebanisteria', l)">
               <Hammer :size="14" /> A ebanistería
+            </button>
+            <button class="btn btn-sm" :disabled="guardando" @click="emit('averia', l)">
+              <TriangleAlert :size="14" /> Averiado
             </button>
           </template>
 
@@ -160,6 +192,8 @@ function reloj(l: Linea): string {
 .l-desc { margin-left: 8px; font-size: 12.5px; color: var(--ink-2); }
 .l-meta { margin: 3px 0 0; font-size: 11.5px; color: var(--muted); }
 .l-motivo { margin: 4px 0 0; font-size: 11.5px; font-weight: 600; color: var(--u-aviso); }
+.l-averia { display: flex; align-items: center; gap: 5px; margin: 4px 0 0; font-size: 11.5px; font-weight: 700; color: var(--error); }
+.l-espera { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; font-weight: 700; color: var(--error); }
 
 .l-estado { display: flex; flex-direction: column; align-items: flex-start; gap: 3px; min-width: 120px; }
 .l-chip { padding: 3px 9px; border-radius: var(--r-pill); font-size: 11px; font-weight: 700; color: var(--c); background: color-mix(in srgb, var(--c) 13%, transparent); }

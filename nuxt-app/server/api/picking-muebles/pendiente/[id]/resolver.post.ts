@@ -31,15 +31,25 @@ export default defineEventHandler(async (event) => {
   }
 
   const now = new Date()
-  const actualizado = await prisma.pendienteMuebles.update({
-    where: { id },
-    data: {
-      estado: 'RESUELTO',
-      resueltoPorId: actor.id,
-      horaInicio: pendiente.horaInicio ?? now,
-      horaFin: now,
-    },
-    include: INCLUDE,
+  const actualizado = await prisma.$transaction(async (tx) => {
+    // Reposicion de un PLU averiado: el repuesto ya esta, asi que se cierra la
+    // ventana de espera y el inspector puede volver a revisarlo.
+    if (pendiente.lineaId) {
+      await tx.lineaMuebles.updateMany({
+        where: { id: pendiente.lineaId, reposicionFin: null },
+        data: { reposicionFin: now },
+      })
+    }
+    return tx.pendienteMuebles.update({
+      where: { id },
+      data: {
+        estado: 'RESUELTO',
+        resueltoPorId: actor.id,
+        horaInicio: pendiente.horaInicio ?? now,
+        horaFin: now,
+      },
+      include: INCLUDE,
+    })
   })
 
   await auditar(actor.id, 'UPDATE', 'picking-muebles', id, `Pendiente PLU ${pendiente.plu} resuelto`)

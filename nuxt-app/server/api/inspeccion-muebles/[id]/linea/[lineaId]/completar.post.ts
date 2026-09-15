@@ -17,6 +17,10 @@ export default defineEventHandler(async (event) => {
   const lineaId = getRouterParam(event, 'lineaId')!
 
   const orden = await ordenPorId(id)
+  // Durante el almuerzo la orden esta detenida: reanudar es un gesto explicito.
+  if (orden.inspPausaInicio) {
+    throw createError({ statusCode: 409, statusMessage: 'La orden esta en almuerzo: termina el almuerzo para seguir' })
+  }
   const linea = orden.lineas.find((l) => l.id === lineaId)
   if (!linea) throw createError({ statusCode: 404, statusMessage: 'PLU no encontrado en esta orden' })
   if (linea.estado === 'LISTO') {
