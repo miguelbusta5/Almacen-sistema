@@ -414,6 +414,10 @@ export const API_MONTAJE = '/api/montaje-resurtido'
 export const API_PENDIENTES = '/api/pendientes'
 
 export interface TareaResurtidoDTO {
+  pausaId?: string | null
+  pausaInicio?: string | null
+  pausaSegundos?: number
+
   id: string
   orden: number
   estado: EstadoTareaResurtido
@@ -455,6 +459,10 @@ export interface MontajeResurtidoDTO {
 }
 
 export interface PendienteDTO {
+  pausaId?: string | null
+  pausaInicio?: string | null
+  pausaSegundos?: number
+
   id: string
   estado: EstadoPendienteGourmet
   plu: string
@@ -524,4 +532,10 @@ export function cronometroDesde(inicio: string | null, ahora: number): string | 
   const mm = String(m).padStart(2, '0')
   const ss = String(s).padStart(2, '0')
   return h > 0 ? `${h}:${mm}:${ss}` : `${m}:${ss}`
+}
+
+/** Reloj efectivo del registro: excluye pausas cerradas y congela la actual. */
+export function cronometroTarea(t: { horaInicio: string | null; pausaInicio?: string | null; pausaSegundos?: number }, ahora: number): string | null {
+  const hasta = t.pausaInicio ? new Date(t.pausaInicio).getTime() : ahora
+  return cronometroDesde(t.horaInicio, hasta - (t.pausaSegundos ?? 0) * 1000)
 }

@@ -1,3 +1,4 @@
+import { defineOperacionAlmacenHandler } from '../../../utils/operacionAlmacen'
 import { defineEventHandler, getRouterParam, readBody, createError } from 'h3'
 import { z } from 'zod'
 import { prisma } from '../../../utils/prisma'
@@ -24,7 +25,7 @@ const schema = z.object({ operarioId: z.string().min(1) })
  *   pinta en rojo. Se dara por ubicado cuando esa tarea se complete.
  * - Si no, queda como tarea propia y su pantalla la pone la primera de la lista.
  */
-export default defineEventHandler(async (event) => {
+export default defineOperacionAlmacenHandler(async (event) => {
   const actor = await requireAuth(event)
   assertVePendientes(actor.role)
 

@@ -1,4 +1,7 @@
 <script setup lang="ts">
+import { usePausaOperativa } from '~/composables/usePausaOperativa'
+const { revision: pausaRevision, pausa: pausaActual } = usePausaOperativa()
+watch(pausaRevision, () => { void cargar() })
 // Los pendientes que le tocan al operario.
 //
 // Se ejecutan como un movimiento de depósito: el reloj arranca al ESCANEAR EL
@@ -11,7 +14,7 @@ import { ScanLine, ArrowDown, Package, CheckCircle2, TriangleAlert, UserPlus, Un
 import { useToast } from '~/composables/useToast'
 import { sonarVeredicto } from '~/utils/escaneoFeedback'
 import {
-  API_PENDIENTES, cronometroDesde, devuelveASolicitante, fmtDuracionTarea,
+  API_PENDIENTES, cronometroTarea, devuelveASolicitante, fmtDuracionTarea,
   NOVEDAD_PENDIENTE_LABEL, NOVEDADES_PENDIENTE, type NovedadPendiente, type PendienteDTO,
 } from '~/utils/resurtidoTareas'
 import { API_MONTACARGAS, type Ayudante } from '~/utils/montacargas'
@@ -74,7 +77,7 @@ function abrir(p: PendienteDTO, enfocarEscaneo = true) {
 
 const enCurso = computed(() => Boolean(abierto.value?.horaInicio))
 const crono = computed(() =>
-  abierto.value?.horaInicio ? cronometroDesde(abierto.value.horaInicio, props.ahora) : null)
+  abierto.value?.horaInicio ? cronometroTarea(abierto.value, props.ahora) : null)
 
 const puedeIniciar = computed(() => escaneoPlu.value.trim().length > 0 && ubicacionInicial.value.trim().length > 0)
 
@@ -114,7 +117,7 @@ async function completar() {
   if (!p || !puedeCompletar.value) return
   guardando.value = p.id
   try {
-    await $fetch(`${API_PENDIENTES}/${p.id}/completar`, {
+    await $fetch<{ success: boolean }>(`${API_PENDIENTES}/${p.id}/completar`, {
       method: 'POST',
       body: {
         unidadesBajadas: Number(unidades.value),
@@ -145,7 +148,7 @@ async function reportar() {
   if (!p) return
   guardando.value = p.id
   try {
-    await $fetch(`${API_PENDIENTES}/${p.id}/novedad`, {
+    await $fetch<{ success: boolean }>(`${API_PENDIENTES}/${p.id}/novedad`, {
       method: 'POST', body: { tipo: novedad.value },
     })
     showToast(devuelveASolicitante(novedad.value)
@@ -223,7 +226,7 @@ async function devolverTodo() {
   if (!p || !p.pasadoPorId) return
   guardando.value = p.id
   try {
-    await $fetch(`${API_PENDIENTES}/${p.id}/traspasar`, {
+    await $fetch<{ success: boolean }>(`${API_PENDIENTES}/${p.id}/traspasar`, {
       method: 'POST', body: { operarioId: p.pasadoPorId, devolucion: true },
     })
     showToast(`Devolviste las ${p.unidadesSolicitadas} unidades a ${p.pasadoPorNombre ?? 'quien te lo pasó'}`)
@@ -242,7 +245,7 @@ async function pasar() {
   if (!p || !ayudanteId.value) return
   guardando.value = p.id
   try {
-    await $fetch(`${API_PENDIENTES}/${p.id}/traspasar`, {
+    await $fetch<{ success: boolean }>(`${API_PENDIENTES}/${p.id}/traspasar`, {
       method: 'POST', body: { operarioId: ayudanteId.value },
     })
     const nombre = ayudantes.value.find((a) => a.id === ayudanteId.value)?.nombre ?? 'el ayudante'
@@ -282,7 +285,7 @@ cargar()
             </span>
           </span>
           <span class="t-der">
-            <span v-if="p.horaInicio" class="t-crono tnum">{{ cronometroDesde(p.horaInicio, ahora) }}</span>
+            <span v-if="p.horaInicio" class="t-crono tnum">{{ p.pausaId ? 'En pausa · ' : '' }}{{ cronometroTarea(p, ahora) }}</span>
             <span v-else class="t-espera tnum">esperando {{ fmtDuracionTarea(p.esperaSegundos) }}</span>
           </span>
         </button>
@@ -293,7 +296,7 @@ cargar()
       </li>
     </ol>
 
-    <div v-if="abierto" class="overlay" @click.self="abierto = null">
+    <div v-if="abierto" v-show="!pausaActual" class="overlay" @click.self="abierto = null">
       <section class="card modal">
         <header class="m-head">
           <div>
@@ -305,6 +308,7 @@ cargar()
         </header>
 
         <div class="m-body">
+          <PausaOperativa secundaria />
           <!-- Paso 1: el PLU arranca el reloj, igual que en movimientos -->
           <section class="paso" :class="{ hecho: enCurso }">
             <h3 class="p-title"><Package :size="14" /> 1 · Escanea el producto y la ubicación inicial</h3>

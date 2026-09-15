@@ -1,3 +1,4 @@
+import { defineOperacionAlmacenHandler } from '../../../utils/operacionAlmacen'
 import { defineEventHandler, getRouterParam, readBody, createError } from 'h3'
 import { z } from 'zod'
 import { prisma } from '../../../utils/prisma'
@@ -18,7 +19,7 @@ const schema = z.object({
  * Los datos del cierre solo se conocen cuando el contenedor ya esta abajo, por
  * eso no se piden al abrir: son el resultado de la descarga, no su plan.
  */
-export default defineEventHandler(async (event) => {
+export default defineOperacionAlmacenHandler(async (event) => {
   const actor = await requireAuth(event)
   assertUsuarioRecepcion(actor.role)
 

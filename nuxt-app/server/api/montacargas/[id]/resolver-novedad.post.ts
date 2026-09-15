@@ -1,3 +1,4 @@
+import { defineOperacionAlmacenHandler } from '../../../utils/operacionAlmacen'
 import { defineEventHandler, getRouterParam, readBody, createError } from 'h3'
 import { z } from 'zod'
 import { prisma } from '../../../utils/prisma'
@@ -27,7 +28,7 @@ const schema = z.object({
 // Cerrar una novedad es dar por buena una diferencia de inventario, asi que no
 // lo hace cualquiera: solo las personas con el permiso explicito
 // (users.puede_resolver_novedades), que un ADMIN concede desde Usuarios.
-export default defineEventHandler(async (event) => {
+export default defineOperacionAlmacenHandler(async (event) => {
   const actor = await requireAuth(event)
   assertUsuarioMontacargas(actor.role)
   await assertPuedeResolverNovedades(actor.id)

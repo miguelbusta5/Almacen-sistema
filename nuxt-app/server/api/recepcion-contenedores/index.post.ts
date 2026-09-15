@@ -1,3 +1,4 @@
+import { defineOperacionAlmacenHandler } from '../../utils/operacionAlmacen'
 import { defineEventHandler, readBody, createError } from 'h3'
 import { z } from 'zod'
 import { prisma } from '../../utils/prisma'
@@ -25,7 +26,7 @@ const schema = z.object({
  * contenedor, no en dos. Si ya tiene una, se devuelve 409 con esa planilla para
  * que la UI lo lleve alli en vez de arrancar un segundo reloj.
  */
-export default defineEventHandler(async (event) => {
+export default defineOperacionAlmacenHandler(async (event) => {
   const actor = await requireAuth(event)
   assertUsuarioRecepcion(actor.role)
 

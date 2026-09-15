@@ -1,4 +1,7 @@
 <script setup lang="ts">
+import { usePausaOperativa } from '~/composables/usePausaOperativa'
+const { revision: pausaRevision } = usePausaOperativa()
+watch(pausaRevision, () => { void Promise.all([loadLista(), loadAbierta(), loadConteos()]) })
 // Recepción de Contenedores: la planilla de descarga del CEDI.
 //
 // Ciclo: se registra el pedido y ARRANCA EL RELOJ → el operario baja el
@@ -214,7 +217,7 @@ async function quitarNovedad(novedadId: string) {
 async function borrar(item: Recepcion) {
   if (!confirm(`¿Borrar la recepción del contenedor ${item.numeroPedido}?`)) return
   const ok = await accion(item.id, () =>
-    $fetch(`${API_RECEPCION}/${item.id}`, { method: 'DELETE' }), 'No se pudo borrar')
+    $fetch<{ success: boolean }>(`${API_RECEPCION}/${item.id}`, { method: 'DELETE' }), 'No se pudo borrar')
   if (ok) {
     showToast('Recepción borrada')
     await Promise.all([loadLista(), loadAbierta(), loadConteos()])

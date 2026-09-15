@@ -1,3 +1,4 @@
+import { defineOperacionAlmacenHandler } from '../../../../utils/operacionAlmacen'
 import { defineEventHandler, getRouterParam, createError } from 'h3'
 import { prisma } from '../../../../utils/prisma'
 import { requireAuth } from '../../../../utils/auth'
@@ -7,7 +8,7 @@ import { assertUsuarioRecepcion, esDuenoOGestor, RECEPCION_INCLUDE } from '../..
 // DELETE /api/recepcion-contenedores/:id/novedad/:novedadId - quita una linea
 // mal digitada. Borrado real y no logico: es una linea de captura, no un
 // historico; lo que interesa auditar es el reporte final.
-export default defineEventHandler(async (event) => {
+export default defineOperacionAlmacenHandler(async (event) => {
   const actor = await requireAuth(event)
   assertUsuarioRecepcion(actor.role)
 

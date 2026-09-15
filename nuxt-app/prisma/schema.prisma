@@ -1118,6 +1118,11 @@ enum TipoNovedadMontacargas {
 // mano deja su propio tramo (ver TramoMontacargas), asi que el tiempo total no
 // se le carga a quien lo empezo.
 model MovimientoMontacargas {
+  // Pausa personal: conserva el estado operativo y las horas originales.
+  pausaId String? @map("pausa_id")
+  pausaInicio DateTime? @map("pausa_inicio")
+  pausaSegundos Float @default(0) @map("pausa_segundos")
+
   id     String                     @id @default(cuid())
   tipo   TipoMovimientoMontacargas
   estado EstadoMovimientoMontacargas @default(EN_CURSO)
@@ -1323,6 +1328,11 @@ enum TipoNovedadRecepcion {
 /// tomo bajar el contenedor. Los reportes de novedad llegan DESPUES de cerrar y
 /// no cuentan tiempo, igual que la verificacion en Control Montacargas.
 model RecepcionContenedor {
+  // Pausa personal: conserva el estado operativo y las horas originales.
+  pausaId String? @map("pausa_id")
+  pausaInicio DateTime? @map("pausa_inicio")
+  pausaSegundos Float @default(0) @map("pausa_segundos")
+
   id     String          @id @default(cuid())
   estado EstadoRecepcion @default(EN_CURSO)
 
@@ -1470,6 +1480,11 @@ model MontajeResurtido {
 /// para que el tiempo mida caminar hasta el sitio y bajar la mercancia, no el
 /// rato que la tarea estuvo abierta en la pantalla.
 model TareaResurtido {
+  // Pausa personal: conserva el estado operativo y las horas originales.
+  pausaId String? @map("pausa_id")
+  pausaInicio DateTime? @map("pausa_inicio")
+  pausaSegundos Float @default(0) @map("pausa_segundos")
+
   id        String               @id @default(cuid())
   montajeId String               @map("montaje_id")
   montaje   MontajeResurtido     @relation(fields: [montajeId], references: [id], onDelete: Cascade)
@@ -1528,6 +1543,11 @@ model TareaResurtido {
 /// solo mientras el operario lo esta bajando. El tiempo transcurrido desde la
 /// solicitud es otra cosa —lo que lleva esperando— y se calcula sobre solicitadoAt.
 model PendienteGourmet {
+  // Pausa personal: conserva el estado operativo y las horas originales.
+  pausaId String? @map("pausa_id")
+  pausaInicio DateTime? @map("pausa_inicio")
+  pausaSegundos Float @default(0) @map("pausa_segundos")
+
   id     String                 @id @default(cuid())
   estado EstadoPendienteGourmet @default(SOLICITADO)
 
@@ -2046,4 +2066,22 @@ model TramoTareaResurtido {
   @@index([tareaId, orden], map: "tramos_tarea_resurtido_tarea_orden_idx")
   @@index([usuarioId, fin], map: "tramos_tarea_resurtido_usuario_fin_idx")
   @@map("tramos_tarea_resurtido")
+}
+
+/// Historial personal. activaUsuarioId es único solo mientras la pausa está
+/// abierta (PostgreSQL permite varios null); evita pausas simultáneas.
+model PausaOperativa {
+  id String @id @default(cuid())
+  usuarioId String @map("usuario_id")
+  activaUsuarioId String? @unique @map("activa_usuario_id")
+  motivo String @db.VarChar(30)
+  inicio DateTime @default(now())
+  fin DateTime?
+  movimientos String[]
+  tareas String[]
+  pendientes String[]
+  recepciones String[]
+
+  @@index([usuarioId, inicio])
+  @@map("pausas_operativas")
 }

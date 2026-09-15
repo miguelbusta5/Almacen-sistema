@@ -1,3 +1,4 @@
+import { defineOperacionAlmacenHandler } from '../../../utils/operacionAlmacen'
 import { defineEventHandler, getRouterParam, readBody, createError } from 'h3'
 import { z } from 'zod'
 import { prisma } from '../../../utils/prisma'
@@ -16,7 +17,7 @@ const schema = z.object({ ayudanteId: z.string().min(1) })
 // Cierra el tramo de quien lo tenia y abre el del ayudante: el tiempo del
 // primero para ahi y el del segundo empieza en ese instante. Asi la
 // productividad no se le carga entera a quien lo empezo.
-export default defineEventHandler(async (event) => {
+export default defineOperacionAlmacenHandler(async (event) => {
   const actor = await requireAuth(event)
   assertUsuarioMontacargas(actor.role)
 

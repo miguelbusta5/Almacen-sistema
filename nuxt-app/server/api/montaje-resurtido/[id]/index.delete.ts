@@ -1,10 +1,11 @@
+import { defineOperacionAlmacenHandler } from '../../../utils/operacionAlmacen'
 import { defineEventHandler, getRouterParam, createError } from 'h3'
 import { prisma } from '../../../utils/prisma'
 import { requireAuth } from '../../../utils/auth'
 import { assertPuedeMontar, assertVeMontaje } from '../../../utils/resurtido'
 
 // DELETE /api/montaje-resurtido/:id - borrado logico del montaje entero.
-export default defineEventHandler(async (event) => {
+export default defineOperacionAlmacenHandler(async (event) => {
   const actor = await requireAuth(event)
   assertVeMontaje(actor.role)
   await assertPuedeMontar(actor.id)

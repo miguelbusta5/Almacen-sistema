@@ -1,4 +1,7 @@
 <script setup lang="ts">
+import { usePausaOperativa } from '~/composables/usePausaOperativa'
+const { revision: pausaRevision } = usePausaOperativa()
+watch(pausaRevision, () => { void Promise.all([loadLista(), loadAbiertos(), loadConteos()]) })
 // Orquestador de Control Montacargas y Resurtido. Sustituye la "PLANILLA
 // MONTACARGAS" de Google Sheets.
 //
@@ -246,7 +249,7 @@ const saving = ref(false)
 async function abrir(payload: { codigo: string; ubicacionInicial?: string }) {
   saving.value = true
   try {
-    await $fetch(API_MONTACARGAS, { method: 'POST', body: { ...payload, tipo: tipo.value } })
+    await $fetch<{ success: boolean }>(API_MONTACARGAS, { method: 'POST', body: { ...payload, tipo: tipo.value } })
     capturaRef.value?.reset()
     await Promise.all([loadAbiertos(), loadLista(), loadConteos(), loadPendientes()])
   } catch (e) {
@@ -275,7 +278,7 @@ async function accion<T>(id: string, fn: () => Promise<T>, fallback: string): Pr
 
 async function guardarCantidades(m: Movimiento, payload: Record<string, unknown>) {
   const ok = await accion(m.id, () =>
-    $fetch(`${API_MONTACARGAS}/${m.id}/cantidades`, { method: 'PATCH', body: payload }),
+    $fetch<{ success: boolean }>(`${API_MONTACARGAS}/${m.id}/cantidades`, { method: 'PATCH', body: payload }),
     'No se pudieron guardar las cantidades')
   if (ok) await loadAbiertos()
 }
@@ -324,7 +327,7 @@ async function ubicar(
 
 async function descartar(m: Movimiento) {
   const ok = await accion(m.id, () =>
-    $fetch(`${API_MONTACARGAS}/${m.id}/descartar`, { method: 'POST', body: {} }),
+    $fetch<{ success: boolean }>(`${API_MONTACARGAS}/${m.id}/descartar`, { method: 'POST', body: {} }),
     'No se pudo descartar')
   if (ok) {
     showToast('Registro descartado')
@@ -390,7 +393,7 @@ async function confirmarBorrado() {
   if (!borrando.value) return
   deleting.value = true
   try {
-    await $fetch(`${API_MONTACARGAS}/${borrando.value.id}`, {
+    await $fetch<{ success: boolean }>(`${API_MONTACARGAS}/${borrando.value.id}`, {
       method: 'DELETE',
       query: { motivo: 'Borrado desde interfaz' },
     })

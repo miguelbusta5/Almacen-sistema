@@ -1,3 +1,4 @@
+import { defineOperacionAlmacenHandler } from '../../../utils/operacionAlmacen'
 import { defineEventHandler, getRouterParam, readBody, createError } from 'h3'
 import { z } from 'zod'
 import { prisma } from '../../../utils/prisma'
@@ -24,7 +25,7 @@ const schema = z.object({
  * cuenta tiempo. La descripcion sale del maestro y se COPIA aqui: si el maestro
  * cambia manana, el reporte tiene que seguir diciendo lo que se vio hoy.
  */
-export default defineEventHandler(async (event) => {
+export default defineOperacionAlmacenHandler(async (event) => {
   const actor = await requireAuth(event)
   assertUsuarioRecepcion(actor.role)
 

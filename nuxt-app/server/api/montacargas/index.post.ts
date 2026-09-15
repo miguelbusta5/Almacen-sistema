@@ -1,3 +1,4 @@
+import { defineOperacionAlmacenHandler } from '../../utils/operacionAlmacen'
 import { defineEventHandler, readBody, setResponseStatus, createError } from 'h3'
 import { z } from 'zod'
 import { prisma } from '../../utils/prisma'
@@ -23,7 +24,7 @@ const createSchema = z.object({
 // El reloj arranca al digitar el PLU, no al completar el formulario: las
 // cantidades llegan despues por PATCH. horaInicio la sella el servidor, que es
 // lo que hace confiable la medicion (la planilla de Excel usaba un NOW() volatil).
-export default defineEventHandler(async (event) => {
+export default defineOperacionAlmacenHandler(async (event) => {
   const actor = await requireAuth(event)
   assertUsuarioMontacargas(actor.role)
   if (!puedeCrearMovimiento(actor.role)) {

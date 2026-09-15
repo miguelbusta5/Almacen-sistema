@@ -1,3 +1,4 @@
+import { defineOperacionAlmacenHandler } from '../../../utils/operacionAlmacen'
 import { defineEventHandler, getRouterParam, readBody, createError } from 'h3'
 import { prisma } from '../../../utils/prisma'
 import { requireAuth } from '../../../utils/auth'
@@ -17,7 +18,7 @@ import { puedeBorrarPendiente, validarMotivoBorrado } from '../../../utils/resur
  * unidades a esa tarea, y si era el ultimo pendiente que la hacia prioritaria,
  * deja de serlo: sin esto el operario bajaria unidades que ya nadie espera.
  */
-export default defineEventHandler(async (event) => {
+export default defineOperacionAlmacenHandler(async (event) => {
   const actor = await requireAuth(event)
   assertVePendientes(actor.role)
 

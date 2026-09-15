@@ -32,7 +32,7 @@ function puedeEditar(item: Movimiento) {
 
 function badge(item: Movimiento) {
   return {
-    label: ESTADO_MOVIMIENTO_LABEL[item.estado],
+    label: item.pausaId ? 'En pausa' : ESTADO_MOVIMIENTO_LABEL[item.estado],
     tone: ESTADO_MOVIMIENTO_TONE[item.estado],
   }
 }

@@ -1,3 +1,4 @@
+import { defineOperacionAlmacenHandler } from '../../../utils/operacionAlmacen'
 import { defineEventHandler, getRouterParam, readBody, createError } from 'h3'
 import { z } from 'zod'
 import { prisma } from '../../../utils/prisma'
@@ -38,7 +39,7 @@ const schema = z.object({
 // Si no cupo NADA (0 unidades), no se cierra nada: el registro entero vuelve a
 // quien elija el ayudante, con el reloj corriendo. Se cierra el tramo del
 // ayudante y se abre el de quien lo recibe, igual que un traspaso.
-export default defineEventHandler(async (event) => {
+export default defineOperacionAlmacenHandler(async (event) => {
   const actor = await requireAuth(event)
   assertUsuarioMontacargas(actor.role)
 

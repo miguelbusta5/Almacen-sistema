@@ -12,6 +12,8 @@ import { canSeeModule, type ModuleKey } from '~/utils/modulePermissions'
 import { puedeUsarMontacargas } from '~/utils/montacargas'
 
 const route = useRoute()
+const { pausa: pausaOperativa, cargada: pausaCargada } = usePausaOperativa()
+const muestraPausa = computed(() => ['control-montacargas', 'resurtido', 'recepcion-contenedores', 'montaje-resurtido'].some(key => route.path.endsWith('/' + key) && canSeeModule(me.value?.role, key as ModuleKey)))
 const { me, sessionLoaded, sessionInvalid } = useSessionState()
 const toast = useToastState()
 
@@ -417,7 +419,10 @@ async function cerrarSesion() {
           <span class="alerta-cta">Ver</span>
         </button>
 
-        <slot />
+        <PausaOperativa v-if="muestraPausa" />
+        <div :inert="muestraPausa && (!!pausaOperativa || !pausaCargada)">
+          <slot />
+        </div>
       </main>
     </div>
 

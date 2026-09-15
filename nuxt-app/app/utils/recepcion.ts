@@ -223,6 +223,10 @@ export interface NovedadRecepcionDTO {
 }
 
 export interface Recepcion {
+  pausaId?: string | null
+  pausaInicio?: string | null
+  pausaSegundos?: number
+
   id: string
   estado: EstadoRecepcion
   numeroPedido: string
@@ -278,7 +282,7 @@ export function fmtTiempoRecepcion(segundos: number | null): string {
 /** Cronometro de una recepcion abierta. Devuelve "h:mm:ss" o "m:ss". */
 export function cronometroRecepcion(r: Recepcion, ahora: number): string | null {
   if (r.horaFinalizacion) return null
-  const seg = Math.max(0, Math.floor((ahora - new Date(r.horaInicio).getTime()) / 1000))
+  const seg = Math.max(0, Math.floor(((r.pausaInicio ? new Date(r.pausaInicio).getTime() : ahora) - new Date(r.horaInicio).getTime()) / 1000 - (r.pausaSegundos ?? 0)))
   const h = Math.floor(seg / 3600)
   const m = Math.floor((seg % 3600) / 60)
   const s = seg % 60

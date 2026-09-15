@@ -401,6 +401,9 @@ export function mapMovimientoMontacargas(r: any) {
   }))
 
   return {
+    pausaId: r.pausaId ?? null,
+    pausaInicio: r.pausaInicio?.toISOString() ?? null,
+    pausaSegundos: r.pausaSegundos ?? 0,
     id: r.id,
     tipo: r.tipo,
     estado: r.estado,
@@ -453,6 +456,9 @@ export function mapMovimientoMontacargas(r: any) {
  */
 export function mapRecepcion(r: any) {
   return {
+    pausaId: r.pausaId ?? null,
+    pausaInicio: r.pausaInicio?.toISOString() ?? null,
+    pausaSegundos: r.pausaSegundos ?? 0,
     id: r.id,
     estado: r.estado,
     numeroPedido: r.numeroPedido,
@@ -469,7 +475,7 @@ export function mapRecepcion(r: any) {
     fecha: formatDateOnly(r.fecha),
     horaInicio: r.horaInicio.toISOString(),
     horaFinalizacion: r.horaFinalizacion ? r.horaFinalizacion.toISOString() : null,
-    duracionSegundos: segundosRecepcion(r.horaInicio, r.horaFinalizacion),
+    duracionSegundos: r.horaFinalizacion ? Math.max(0, (segundosRecepcion(r.horaInicio, r.horaFinalizacion) ?? 0) - (r.pausaSegundos ?? 0)) : null,
     motivoCorreccion: r.motivoCorreccion ?? null,
     creadoPorId: r.creadoPorId,
     creadoPorNombre: r.creadoPor?.name ?? null,
@@ -495,6 +501,9 @@ export function mapRecepcion(r: any) {
 // ── Montaje de resurtido, tareas y pendientes ────────────────────────
 export function mapTareaResurtido(t: any) {
   return {
+    pausaId: t.pausaId ?? null,
+    pausaInicio: t.pausaInicio?.toISOString() ?? null,
+    pausaSegundos: t.pausaSegundos ?? 0,
     id: t.id,
     orden: t.orden,
     estado: t.estado,
@@ -518,7 +527,7 @@ export function mapTareaResurtido(t: any) {
     pasadoPorId: t.pasadoPorId ?? null,
     pasadoPorNombre: t.pasadoPor?.name ?? null,
     // Null mientras no se ha escaneado la posicion: el reloj aun no arranco.
-    duracionSegundos: segundosEntre(t.horaInicio, t.horaFin),
+    duracionSegundos: t.horaInicio && t.horaFin ? Math.max(0, (segundosEntre(t.horaInicio, t.horaFin) ?? 0) - (t.pausaSegundos ?? 0)) : null,
   }
 }
 
@@ -541,6 +550,9 @@ export function mapMontaje(m: any) {
 
 export function mapPendiente(p: any) {
   return {
+    pausaId: p.pausaId ?? null,
+    pausaInicio: p.pausaInicio?.toISOString() ?? null,
+    pausaSegundos: p.pausaSegundos ?? 0,
     id: p.id,
     estado: p.estado,
     plu: p.plu,
@@ -572,7 +584,7 @@ export function mapPendiente(p: any) {
     // Lo que lleva ESPERANDO desde que se pidio. Es otra cosa que el tiempo de
     // trabajo: mide al sistema, no al operario.
     esperaSegundos: segundosEntre(p.solicitadoAt, p.completadoAt, new Date()) ?? 0,
-    duracionSegundos: segundosEntre(p.horaInicio, p.horaFin),
+    duracionSegundos: p.horaInicio && p.horaFin ? Math.max(0, (segundosEntre(p.horaInicio, p.horaFin) ?? 0) - (p.pausaSegundos ?? 0)) : null,
   }
 }
 

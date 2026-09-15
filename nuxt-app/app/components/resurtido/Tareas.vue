@@ -1,4 +1,7 @@
 <script setup lang="ts">
+import { usePausaOperativa } from '~/composables/usePausaOperativa'
+const { revision: pausaRevision, pausa: pausaActual } = usePausaOperativa()
+watch(pausaRevision, () => { void cargar() })
 // Lo que el operario TIENE QUE HACER, no lo que ya hizo: su pantalla es una
 // lista de trabajo, no un histórico.
 //
@@ -12,7 +15,7 @@ import { useToast } from '~/composables/useToast'
 import { useSessionState } from '~/composables/useSession'
 import { sonarVeredicto } from '~/utils/escaneoFeedback'
 import {
-  compararPorPrioridad, cronometroDesde, fmtDuracionTarea,
+  compararPorPrioridad, cronometroTarea, fmtDuracionTarea,
   type MontajeResurtidoDTO, type PendienteDTO, type TareaResurtidoDTO,
 } from '~/utils/resurtidoTareas'
 import { API_MONTACARGAS, type Ayudante } from '~/utils/montacargas'
@@ -132,7 +135,7 @@ async function completar() {
   if (!t || !puedeCompletar.value) return
   guardando.value = t.id
   try {
-    await $fetch(`/api/resurtido-tareas/${t.id}/completar`, {
+    await $fetch<{ success: boolean }>(`/api/resurtido-tareas/${t.id}/completar`, {
       method: 'POST',
       body: {
         plu: escaneoPlu.value.trim(),
@@ -198,7 +201,7 @@ async function devolverTodo() {
   if (!t || !t.pasadoPorId) return
   guardando.value = t.id
   try {
-    await $fetch(`/api/resurtido-tareas/${t.id}/traspasar`, {
+    await $fetch<{ success: boolean }>(`/api/resurtido-tareas/${t.id}/traspasar`, {
       method: 'POST', body: { operarioId: t.pasadoPorId, devolucion: true },
     })
     showToast(`Devolviste las ${t.unidadesSolicitadas + t.unidadesPendientes} unidades a ${t.pasadoPorNombre ?? 'quien te la pasó'}`)
@@ -217,7 +220,7 @@ async function pasar() {
   if (!t || !ayudanteId.value) return
   guardando.value = t.id
   try {
-    await $fetch(`/api/resurtido-tareas/${t.id}/traspasar`, {
+    await $fetch<{ success: boolean }>(`/api/resurtido-tareas/${t.id}/traspasar`, {
       method: 'POST', body: { operarioId: ayudanteId.value },
     })
     const nombre = ayudantes.value.find((a) => a.id === ayudanteId.value)?.nombre ?? 'el ayudante'
@@ -235,7 +238,7 @@ async function pasar() {
 
 watch(() => props.ahora, () => { /* el cronómetro se repinta solo */ })
 const crono = computed(() =>
-  abierta.value?.horaInicio ? cronometroDesde(abierta.value.horaInicio, props.ahora) : null)
+  abierta.value?.horaInicio ? cronometroTarea(abierta.value, props.ahora) : null)
 
 cargar()
 </script>
@@ -304,7 +307,7 @@ cargar()
                 a <span class="mono">{{ t.pickingSugerido }}</span>
               </span>
             </span>
-            <span v-if="t.horaInicio" class="t-crono tnum">{{ cronometroDesde(t.horaInicio, ahora) }}</span>
+            <span v-if="t.horaInicio" class="t-crono tnum">{{ t.pausaId ? 'En pausa · ' : '' }}{{ cronometroTarea(t, ahora) }}</span>
           </button>
         </li>
       </ol>
@@ -331,7 +334,7 @@ cargar()
               </span>
             </span>
             <span v-if="t.horaInicio" class="t-crono tnum">
-              {{ cronometroDesde(t.horaInicio, ahora) }}
+              {{ t.pausaId ? 'En pausa · ' : '' }}{{ cronometroTarea(t, ahora) }}
             </span>
           </button>
           <!-- A la vista, como en pendientes. Solo con el reloj corriendo: se
@@ -347,7 +350,7 @@ cargar()
     </template>
 
     <!-- Ejecución de una tarea -->
-    <div v-if="abierta" class="overlay" @click.self="abierta = null">
+    <div v-if="abierta" v-show="!pausaActual" class="overlay" @click.self="abierta = null">
       <section class="card modal">
         <header class="m-head">
           <div>
@@ -359,6 +362,7 @@ cargar()
         </header>
 
         <div class="m-body">
+          <PausaOperativa secundaria />
           <!-- Paso 1: escanear la ubicación arranca el reloj -->
           <section class="paso" :class="{ hecho: enCurso }">
             <h3 class="p-title"><MapPin :size="14" /> 1 · Ve a la ubicación y escanéala</h3>
