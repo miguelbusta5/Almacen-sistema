@@ -649,3 +649,35 @@ describe("pendientes — altura y picking sugeridos por el teorico", () => {
     expect(leer("nuxt-app/app/components/indicadores/Module.vue")).toContain("<IndicadoresUbicaciones");
   });
 });
+
+// Dos solicitudes del mismo PLU que nadie ha empezado no crean dos pendientes:
+// la segunda se suma. Y antes de pedir se avisa del resurtido abierto o reciente.
+describe("pendientes — sumar solicitudes y avisar resurtido", () => {
+  const post = leer("nuxt-app/server/api/pendientes/index.post.ts");
+  const util = leer("nuxt-app/server/utils/pendientesSolicitud.ts");
+  const ui = leer("nuxt-app/app/components/pendientes/Module.vue");
+
+  it("se suma a uno solicitado o asignado sin empezar, cualquiera lo haya pedido", () => {
+    expect(util).toContain("estado: { in: ['SOLICITADO', 'ASIGNADO'] }");
+    expect(util).toContain("horaInicio: null");
+    expect(util).not.toContain("solicitadoPorId");
+    // Dentro de un resurtido, solo si esa tarea tampoco se ha empezado.
+    expect(util).toContain("p.tareaResurtido.estado === 'PENDIENTE' && !p.tareaResurtido.horaInicio");
+  });
+
+  it("al sumar: unidades a la tarea, sugerencia recalculada, observaciones juntas y avisos", () => {
+    expect(post).toContain("unidadesPendientes: existente.tareaResurtido.unidadesPendientes + d.unidadesSolicitadas");
+    expect(post).toContain("calcularSugerenciaPendiente(tx, { id: existente.id, plu, unidadesSolicitadas: total }, now)");
+    expect(post).toContain("unirObservaciones(existente.observacion, d.observacion)");
+    expect(post).toContain("PENDIENTE_AUMENTADO");
+    expect(post).toContain("sumado: true");
+  });
+
+  it("resurtido abierto o de las ultimas 2 horas exige confirmar, en pantalla y en servidor", () => {
+    expect(util).toContain("MINUTOS_RESURTIDO_RECIENTE = 120");
+    expect(post).toContain("!d.confirmarResurtido");
+    expect(ui).toContain("`${API_PENDIENTES}/consulta`");
+    expect(ui).toContain("¿Solicitar de todas formas?");
+    expect(ui).toContain("confirmarResurtido: confirmado || undefined");
+  });
+});

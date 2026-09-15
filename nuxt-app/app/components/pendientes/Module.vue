@@ -8,7 +8,7 @@
 // repartir no es bajar mercancía.
 import { ref, computed, onMounted, onBeforeUnmount, nextTick } from 'vue'
 import {
-  RefreshCw, Plus, PackageSearch, UserPlus, CheckCircle2, Pencil, Undo2, X, Trash2,
+  RefreshCw, Plus, PackageSearch, UserPlus, CheckCircle2, Pencil, Undo2, X, Trash2, TriangleAlert, Layers,
 } from '@lucide/vue'
 import { useDebounceFn } from '@vueuse/core'
 import { ensureSession, useSessionState } from '~/composables/useSession'
@@ -51,10 +51,29 @@ const descripcion = ref('')
 const buscando = ref(false)
 const pluInput = ref<HTMLInputElement | null>(null)
 
+// Lo que hay que saber antes de pedir: resurtido abierto o de las ultimas 2
+// horas (pide confirmar) y si ya hay un pendiente del PLU al que se sumara.
+interface ConsultaPlu {
+  plu: string
+  resurtido: {
+    enCurso: { operarioNombre: string | null; unidades: number; iniciada: boolean; picking: string }[]
+    reciente: { operarioNombre: string | null; completadaAt: string; unidadesBajadas: number | null; picking: string }[]
+  }
+  pendienteExistente: { id: string; estado: string; unidadesSolicitadas: number; operarioNombre: string | null; enResurtido: boolean } | null
+}
+const consulta = ref<ConsultaPlu | null>(null)
+const hayResurtido = computed(() => !!consulta.value && (consulta.value.resurtido.enCurso.length > 0 || consulta.value.resurtido.reciente.length > 0))
+const confirmando = ref(false)
+const horaCorta = (iso: string) => new Intl.DateTimeFormat('es-CO', { timeZone: 'America/Bogota', timeStyle: 'short' }).format(new Date(iso))
+
 const buscar = useDebounceFn(async () => {
   const codigo = plu.value.trim()
+  consulta.value = null
   if (!codigo) { descripcion.value = ''; return }
   buscando.value = true
+  $fetch<{ data: ConsultaPlu }>(`${API_PENDIENTES}/consulta`, { query: { plu: codigo } })
+    .then((r) => { if (plu.value.trim() === codigo) consulta.value = r.data })
+    .catch(() => { /* sin consulta se puede pedir igual; el servidor vuelve a mirar */ })
   try {
     const res = await $fetch<{ data: { descripcion: string | null } | null }>(
       '/api/productos-maestro/buscar', { query: { codigo } },
@@ -70,19 +89,26 @@ const buscar = useDebounceFn(async () => {
 const puedeCrear = computed(() =>
   !creando.value && descripcion.value.length > 0 && Number(unidades.value) >= 1)
 
-async function crear() {
+async function crear(confirmado = false) {
   if (!puedeCrear.value) return
+  // Resurtido abierto o reciente: primero se confirma.
+  if (hayResurtido.value && !confirmado) { confirmando.value = true; return }
+  confirmando.value = false
   creando.value = true
   try {
-    await $fetch(API_PENDIENTES, {
+    const res = await $fetch<{ data: PendienteDTO; sumado: boolean }>(API_PENDIENTES, {
       method: 'POST',
       body: {
         plu: plu.value.trim(),
         unidadesSolicitadas: Number(unidades.value),
         observacion: observacion.value.trim() || null,
+        confirmarResurtido: confirmado || undefined,
       },
     })
-    showToast('Pendiente solicitado')
+    showToast(res.sumado
+      ? `Se sumó al pendiente que ya existía: ahora son ${res.data.unidadesSolicitadas} unidades`
+      : 'Pendiente solicitado')
+    consulta.value = null
     plu.value = ''
     unidades.value = ''
     observacion.value = ''
@@ -337,12 +363,48 @@ const cerrados = computed(() => items.value.filter((p) => p.estado === 'COMPLETA
           <input v-model="observacion" class="field" maxlength="500" :disabled="creando">
         </label>
         <div class="f f-btn">
-          <button class="btn btn-primary submit" :disabled="!puedeCrear" @click="crear">
+          <button class="btn btn-primary submit" :disabled="!puedeCrear" @click="crear()">
             <Spinner v-if="creando" :size="15" /><Plus v-else :size="15" />
             Solicitar
           </button>
         </div>
+
+        <!-- Antes de pedir: resurtido abierto o reciente y pendiente al que se suma. -->
+        <div v-if="consulta && (hayResurtido || consulta.pendienteExistente)" class="consulta">
+          <p v-for="(t, i) in consulta.resurtido.enCurso" :key="`c${i}`" class="consulta-aviso">
+            <TriangleAlert :size="14" />
+            <span>
+              <b>Resurtido en curso</b>: {{ t.unidades }} und con {{ t.operarioNombre ?? 'un operario' }}
+              hacia <span class="mono">{{ t.picking }}</span> · {{ t.iniciada ? 'ya lo está bajando' : 'aún sin empezar' }}
+            </span>
+          </p>
+          <p v-for="(t, i) in consulta.resurtido.reciente" :key="`r${i}`" class="consulta-aviso">
+            <TriangleAlert :size="14" />
+            <span>
+              <b>Resurtido reciente</b>: {{ t.operarioNombre ?? 'Un operario' }} bajó {{ t.unidadesBajadas ?? '—' }} und
+              a <span class="mono">{{ t.picking }}</span> a las {{ horaCorta(t.completadaAt) }}
+            </span>
+          </p>
+          <p v-if="consulta.pendienteExistente" class="consulta-suma">
+            <Layers :size="14" />
+            <span>
+              Ya hay un pendiente de este PLU con <b>{{ consulta.pendienteExistente.unidadesSolicitadas }} und</b>
+              {{ consulta.pendienteExistente.operarioNombre ? `asignado a ${consulta.pendienteExistente.operarioNombre}` : 'sin asignar' }}:
+              tu solicitud se sumará a ese<template v-if="Number(unidades) >= 1"> (quedaría en {{ consulta.pendienteExistente.unidadesSolicitadas + Number(unidades) }} und)</template>.
+            </span>
+          </p>
+        </div>
       </section>
+
+      <ConfirmModal
+        v-if="confirmando"
+        title="¿Solicitar de todas formas?"
+        :message="consulta?.resurtido.enCurso.length
+          ? 'Este PLU tiene un resurtido en curso. Puede que la mercancía ya vaya en camino al picking.'
+          : 'Este PLU se resurtió en las últimas 2 horas. Puede que ya haya mercancía en el picking.'"
+        confirm-label="Solicitar igual" :confirming="creando"
+        @close="confirmando = false" @confirm="crear(true)"
+      />
 
       <ListSkeleton v-if="loading" />
 
@@ -571,4 +633,11 @@ const cerrados = computed(() => items.value.filter((p) => p.estado === 'COMPLETA
   .submit { width: 100%; height: 44px; }
   .hero-title { font-size: 24px; }
 }
+.consulta { grid-column: 1 / -1; display: flex; flex-direction: column; gap: 6px; }
+.consulta-aviso, .consulta-suma { display: flex; align-items: flex-start; gap: 8px; margin: 0; padding: 9px 12px; border-radius: var(--r-sm); font-size: 12.5px; color: var(--ink-2); }
+.consulta-aviso { background: var(--u-aviso-tint); border: 1px solid color-mix(in srgb, var(--u-aviso) 40%, transparent); }
+.consulta-aviso > svg { color: var(--u-aviso); flex-shrink: 0; margin-top: 1px; }
+.consulta-suma { background: color-mix(in srgb, var(--info) 8%, transparent); border: 1px solid color-mix(in srgb, var(--info) 30%, transparent); }
+.consulta-suma > svg { color: var(--info); flex-shrink: 0; margin-top: 1px; }
+.consulta b { color: var(--ink); }
 </style>
