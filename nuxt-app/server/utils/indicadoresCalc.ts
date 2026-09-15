@@ -433,6 +433,18 @@ export function diasDelRango(desde: string, hasta: string): string[] {
   return dias
 }
 
+/**
+ * Un tramo de reloj mas largo que esto no es trabajo real: es un registro que
+ * se quedo abierto (el caso del PLU 4745 de FABIAN MANRIQUE, abierto desde el
+ * 10-09 y cerrado por una pausa el 15-09, que le sumaba 9 h 39 min en un dia).
+ * 16 h cubre de sobra el turno mas largo, incluido el de noche.
+ */
+export const MAX_TRAMO_SEG = 16 * 60 * 60
+
+export function tramoImposible(t: { inicio: Date; fin: Date }): boolean {
+  return (t.fin.getTime() - t.inicio.getTime()) / 1000 > MAX_TRAMO_SEG
+}
+
 /** El periodo de cada persona medida, con sus turnos. */
 function periodosPorPersona(
   personas: readonly PersonaMedida[],
@@ -492,6 +504,8 @@ export function agregarIndicadores(entrada: {
   }
 
   for (const t of entrada.tiempos) {
+    // Un reloj olvidado abierto por dias no es trabajo (ver MAX_TRAMO_SEG).
+    if (tramoImposible(t)) continue
     const periodo = periodos.get(t.usuarioId)
     if (!periodo) continue
     const a = Math.max(t.inicio.getTime(), periodo.inicio.getTime())
@@ -919,6 +933,8 @@ export function agregarTiemposMuertos(entrada: {
 
   const intervalos = new Map<string, Intervalo[]>()
   for (const t of entrada.tiempos) {
+    // Un reloj olvidado abierto por dias no es trabajo (ver MAX_TRAMO_SEG).
+    if (tramoImposible(t)) continue
     const periodo = periodos.get(t.usuarioId)
     if (!periodo) continue
     const a = Math.max(t.inicio.getTime(), periodo.inicio.getTime())

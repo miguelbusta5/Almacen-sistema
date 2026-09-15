@@ -104,9 +104,9 @@ describe('pausas operativas persistentes', () => {
   it('selecciona solo trabajo activo propio y excluye novedades y pendientes integrados', async () => {
     const e = escenario()
     await e.service.iniciarPausa('u1', 'ALIMENTACION')
-    expect(e.prisma.movimientoMontacargas.findMany).toHaveBeenCalledWith(expect.objectContaining({ where: { responsableId: 'u1', estado: 'EN_CURSO', deletedAt: null } }))
-    expect(e.prisma.pendienteGourmet.findMany).toHaveBeenCalledWith(expect.objectContaining({ where: { operarioId: 'u1', estado: 'EN_CURSO', deletedAt: null, tareaResurtidoId: null } }))
-    expect(e.prisma.recepcionContenedor.findMany).toHaveBeenCalledWith(expect.objectContaining({ where: { creadoPorId: 'u1', estado: 'EN_CURSO', deletedAt: null } }))
+    expect(e.prisma.movimientoMontacargas.findMany).toHaveBeenCalledWith(expect.objectContaining({ where: { responsableId: 'u1', estado: 'EN_CURSO', deletedAt: null, horaInicio: { gte: expect.any(Date) } } }))
+    expect(e.prisma.pendienteGourmet.findMany).toHaveBeenCalledWith(expect.objectContaining({ where: { operarioId: 'u1', estado: 'EN_CURSO', deletedAt: null, tareaResurtidoId: null, horaInicio: { gte: expect.any(Date) } } }))
+    expect(e.prisma.recepcionContenedor.findMany).toHaveBeenCalledWith(expect.objectContaining({ where: { creadoPorId: 'u1', estado: 'EN_CURSO', deletedAt: null, horaInicio: { gte: expect.any(Date) } } }))
   })
   it('rechaza roles sin acceso a los módulos', () => {
     const e = escenario()

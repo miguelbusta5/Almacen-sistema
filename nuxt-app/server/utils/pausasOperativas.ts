@@ -4,6 +4,9 @@ import { abrirTramo, cerrarTramoAbierto } from './montacargas'
 import { abrirTramoTarea, abrirTramoPendiente, cerrarTramoTarea, cerrarTramoPendiente } from './resurtido'
 import { puedeUsarMontacargas } from './montacargasCalc'
 
+/** Horas maximas de un registro abierto para que una pausa lo detenga. */
+export const HORAS_MAX_REGISTRO_ABIERTO = 16
+
 export function assertPuedePausar(role: string) {
   if (!puedeUsarMontacargas(role)) throw createError({ statusCode: 403, statusMessage: 'Sin acceso a pausas operativas' })
 }
@@ -12,13 +15,17 @@ export async function iniciarPausa(usuarioId: string, motivo: 'ALIMENTACION' | '
   const activa = await prisma.pausaOperativa.findUnique({ where: { activaUsuarioId: usuarioId } })
   if (activa) throw createError({ statusCode: 409, statusMessage: 'Ya tienes una pausa activa; finalízala antes de iniciar otra' })
 
-  const [movimientos, tareas, pendientes, recepciones] = await Promise.all([
-    prisma.movimientoMontacargas.findMany({ where: { responsableId: usuarioId, estado: 'EN_CURSO', deletedAt: null }, select: { id: true } }),
-    prisma.tareaResurtido.findMany({ where: { estado: 'EN_CURSO', montaje: { deletedAt: null }, OR: [{ responsableId: usuarioId }, { responsableId: null, montaje: { operarioId: usuarioId } }] }, select: { id: true } }),
-    prisma.pendienteGourmet.findMany({ where: { operarioId: usuarioId, estado: 'EN_CURSO', deletedAt: null, tareaResurtidoId: null }, select: { id: true } }),
-    prisma.recepcionContenedor.findMany({ where: { creadoPorId: usuarioId, estado: 'EN_CURSO', deletedAt: null }, select: { id: true } }),
-  ])
+  // Solo trabajo de este turno. Un registro abierto hace mas de 16 h es uno
+  // olvidado: pausarlo cerraba un tramo de dias que Indicadores contaba como
+  // trabajo (PLU 4745 de FABIAN MANRIQUE, abierto desde el 10-09).
   const inicio = new Date()
+  const reciente = { gte: new Date(inicio.getTime() - HORAS_MAX_REGISTRO_ABIERTO * 3600 * 1000) }
+  const [movimientos, tareas, pendientes, recepciones] = await Promise.all([
+    prisma.movimientoMontacargas.findMany({ where: { responsableId: usuarioId, estado: 'EN_CURSO', deletedAt: null, horaInicio: reciente }, select: { id: true } }),
+    prisma.tareaResurtido.findMany({ where: { estado: 'EN_CURSO', horaInicio: reciente, montaje: { deletedAt: null }, OR: [{ responsableId: usuarioId }, { responsableId: null, montaje: { operarioId: usuarioId } }] }, select: { id: true } }),
+    prisma.pendienteGourmet.findMany({ where: { operarioId: usuarioId, estado: 'EN_CURSO', deletedAt: null, tareaResurtidoId: null, horaInicio: reciente }, select: { id: true } }),
+    prisma.recepcionContenedor.findMany({ where: { creadoPorId: usuarioId, estado: 'EN_CURSO', deletedAt: null, horaInicio: reciente }, select: { id: true } }),
+  ])
   const ids = (rows: { id: string }[]) => rows.map(r => r.id)
   const pausa = await prisma.pausaOperativa.create({ data: {
     usuarioId, activaUsuarioId: usuarioId, motivo, inicio,

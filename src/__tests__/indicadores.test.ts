@@ -737,3 +737,31 @@ describe("pausas de alimentación y cambio de baterías", () => {
     expect(r.detalle).toHaveLength(4);
   });
 });
+
+// Un registro que se quedo abierto dias y lo cerro una pausa sumaba horas que
+// nadie trabajo (PLU 4745 de FABIAN MANRIQUE: 9 h 39 min "trabajadas" un dia).
+describe("tramos imposibles", () => {
+  const personas = [{ id: "fab", nombre: "FABIAN MANRIQUE", rol: "OPERARIO_ALMACENAMIENTO" }];
+  const tramo = (inicio: Date, fin: Date) =>
+    ({ usuarioId: "fab", inicio, fin, tipo: "resurtido" as const, registro: "m:viejo" });
+
+  it("un tramo de mas de 16 horas no cuenta como trabajo ni tapa tiempos muertos", () => {
+    const tiempos = [
+      tramo(h("13:43:00", "2026-09-10"), h("08:25:00", "2026-09-15")),
+      { usuarioId: "fab", inicio: h("09:00:00", "2026-09-15"), fin: h("09:30:00", "2026-09-15"), tipo: "movimiento" as const, registro: "m:real" },
+    ];
+    const r = agregarIndicadores({ personas, tiempos, unidades: [], desde: "2026-09-15", hasta: "2026-09-15" });
+    expect(r.personas[0].segundos).toBe(30 * 60);
+    expect(r.personas[0].porTipo.resurtido).toBe(0);
+    const m = agregarTiemposMuertos({ personas, tiempos, justificaciones: [], desde: "2026-09-15", hasta: "2026-09-15" });
+    expect(m.resumen.segundos).toBe(0);
+  });
+
+  it("un turno largo real, de 12 horas, si cuenta", () => {
+    const r = agregarIndicadores({
+      personas, tiempos: [tramo(h("18:00:00", "2026-09-14"), h("06:00:00", "2026-09-15"))], unidades: [],
+      desde: "2026-09-14", hasta: "2026-09-15",
+    });
+    expect(r.personas[0].segundos).toBe(12 * 3600);
+  });
+});
