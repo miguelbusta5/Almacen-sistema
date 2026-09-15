@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { readFileSync } from 'node:fs'
-import { calcularPicking, leerTeoricoPicking, type PickingFila, type PickingBase } from '@/lib/pickingCalc'
+import { calcularPicking, leerTeoricoPicking, unidadesCapacidad, type PickingFila, type PickingBase } from '@/lib/pickingCalc'
 const base: PickingBase = { plu: '10', ubicacion: 'P1', cajas: 10, tipo: 'DOBLE', unidadesPorCaja: 12, descripcion: 'Producto' }
 const retiro = (n: number, ubicacion = 'P1'): PickingFila => ({ plu: '10', ubicacion, disponible: n, concepto: 'RETIRO' })
 const altura = (n: number, ubicacion = 'A1'): PickingFila => ({ plu: '10', ubicacion, disponible: n, concepto: 'ALMACENAMIENTO' })
@@ -46,12 +46,25 @@ describe('Capacidad picking', () => {
   it('reporta ausencia de conversión', () => expect(calc([retiro(0)],{...base,unidadesPorCaja:0}).aviso).toContain('maestro'))
 })
 
+describe('Capacidad picking — unidades del informe', () => {
+  it('multiplica cajas por la unidad de empaque del maestro', () => {
+    expect(unidadesCapacidad(10, 6)).toBe(60)
+    expect(unidadesCapacidad(0, 6)).toBe(0)
+  })
+  it('sin unidad de empaque valida no inventa un total', () => {
+    for (const u of [null, undefined, 0, -3, 2.5]) expect(unidadesCapacidad(10, u as number | null)).toBeNull()
+  })
+})
+
 // Nitro no puede importar de src/lib: su copia debe ser identica a esta fuente.
 const normalizar = (s: string) => s.split(String.fromCharCode(13)).join('')
 describe('Capacidad picking — copia de Nitro', () => {
   it('es identica a src/lib/pickingCalc.ts', () => {
     const salto = String.fromCharCode(10)
-    const fuente = normalizar(readFileSync('src/lib/pickingCalc.ts', 'utf8')).split(salto).filter(l => !l.startsWith('//')).join(salto).trim()
+    // Solo se quita la cabecera de la fuente (las primeras lineas de comentario).
+    const lineas = normalizar(readFileSync('src/lib/pickingCalc.ts', 'utf8')).split(salto)
+    const cuerpo = lineas.findIndex(l => !l.startsWith('//'))
+    const fuente = lineas.slice(cuerpo).join(salto).trim()
     const copia = normalizar(readFileSync('nuxt-app/server/utils/pickingCalc.ts', 'utf8')).trim()
     expect(copia).toBe(fuente)
   })

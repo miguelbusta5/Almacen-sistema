@@ -1,7 +1,7 @@
 import { createError } from 'h3'
 import type { Prisma } from '@prisma/client'
 import { prisma } from './prisma'
-import { calcularPicking, type PickingFila, type PickingValidacion } from './pickingCalc'
+import { calcularPicking, unidadesCapacidad, type PickingFila, type PickingValidacion } from './pickingCalc'
 import { assertPuedeMontar, assertVeMontaje } from './resurtido'
 import type { SessionUser } from './auth'
 
@@ -11,6 +11,28 @@ export async function accesoPicking(id: string) {
     prisma.user.findUnique({ where: { id }, select: { active: true } }),
   ])
   return !!permiso?.activo && !!usuario?.active
+}
+// Descripcion y unidad de empaque SIEMPRE del maestro vigente: no se guardan en
+// el informe. Asi las tablas dicen lo mismo que usara el calculo del resurtido,
+// y corregir el maestro se ve en todas partes sin tocar informes.
+type DbMaestro = Pick<Prisma.TransactionClient, 'productoMaestro'>
+export interface DatoMaestro { descripcion: string | null; unidadesPorCaja: number | null }
+export async function datosMaestro(db: DbMaestro, plus: readonly string[]): Promise<Map<string, DatoMaestro>> {
+  const unicos = [...new Set(plus)]
+  if (!unicos.length) return new Map()
+  const productos = await db.productoMaestro.findMany({ where: { plu: { in: unicos } }, select: { plu: true, descripcion: true, unidadesPorCaja: true } })
+  return new Map(productos.map(p => [p.plu, { descripcion: p.descripcion ?? null, unidadesPorCaja: p.unidadesPorCaja && p.unidadesPorCaja > 0 ? p.unidadesPorCaja : null }]))
+}
+export async function lineasConMaestro<T extends { plu: string; cajas: number }>(db: DbMaestro, lineas: readonly T[]) {
+  const maestro = await datosMaestro(db, lineas.map(l => l.plu))
+  return lineas.map(l => {
+    const m = maestro.get(l.plu)
+    const unidadesPorCaja = m?.unidadesPorCaja ?? null
+    return { ...l, descripcion: m?.descripcion ?? null, unidadesPorCaja, unidades: unidadesCapacidad(l.cajas, unidadesPorCaja) }
+  })
+}
+export async function informeConMaestro<T extends { lineas: { plu: string; cajas: number }[] }>(db: DbMaestro, informe: T) {
+  return { ...informe, lineas: await lineasConMaestro(db, informe.lineas) }
 }
 export async function exigirPicking(actor: SessionUser) {
   if (!await accesoPicking(actor.id)) throw createError({ statusCode: 403, statusMessage: 'Sin permiso individual para Capacidad picking' })

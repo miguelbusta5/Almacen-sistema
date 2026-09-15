@@ -61,3 +61,12 @@ export function calcularPicking(bases: PickingBase[], filas: PickingFila[], bloq
     return r;
   });
 }
+
+// Unidades que caben en un picking: cajas master x unidades por caja del
+// maestro. Null si el maestro no tiene una unidad de empaque valida, para que
+// la pantalla diga que falta en vez de mostrar un cero que parece real.
+export function unidadesCapacidad(cajas: number, unidadesPorCaja: number | null | undefined): number | null {
+  if (!Number.isSafeInteger(cajas) || cajas < 0) return null;
+  if (unidadesPorCaja == null || !Number.isSafeInteger(unidadesPorCaja) || unidadesPorCaja <= 0) return null;
+  return cajas * unidadesPorCaja;
+}

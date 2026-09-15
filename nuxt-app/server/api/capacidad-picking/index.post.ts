@@ -1,6 +1,6 @@
 import { defineEventHandler, readBody, createError } from 'h3'
 import { requireAuth } from '../../utils/auth'
-import { bloquearPicking, exigirPicking } from '../../utils/picking'
+import { bloquearPicking, exigirPicking, informeConMaestro } from '../../utils/picking'
 import { prisma } from '../../utils/prisma'
 import { textoPicking } from '../../utils/pickingCalc'
 export default defineEventHandler(async event => {
@@ -11,7 +11,7 @@ export default defineEventHandler(async event => {
     await bloquearPicking(tx)
     if (b.accion === 'crear') {
       const abierto = await tx.pickingInforme.findFirst({ where: { autorId: actor.id, estado: 'ABIERTO' }, include: { lineas: true } })
-      return abierto ?? tx.pickingInforme.create({ data: { autorId: actor.id, autorNombre: actor.name }, include: { lineas: true } })
+      return informeConMaestro(tx, abierto ?? await tx.pickingInforme.create({ data: { autorId: actor.id, autorNombre: actor.name }, include: { lineas: true } }))
     }
     const r = await tx.pickingInforme.findUnique({ where: { id: String(b.id) }, include: { lineas: true } })
     if (!r) throw createError({ statusCode: 404, statusMessage: 'Informe no encontrado' })
@@ -44,6 +44,6 @@ export default defineEventHandler(async event => {
       } else throw createError({ statusCode: 400, statusMessage: 'Acción inválida' })
     }
     await tx.activityLog.create({ data: { userId: actor.id, action: 'UPDATE', module: 'capacidad-picking', recordId: r.id, details: `${b.accion}${b.plu ? ': ' + textoPicking(b.plu) : ''}` } })
-    return tx.pickingInforme.update({ where: { id: r.id }, data: { revision: { increment: 1 } }, include: { lineas: true } })
+    return informeConMaestro(tx, await tx.pickingInforme.update({ where: { id: r.id }, data: { revision: { increment: 1 } }, include: { lineas: true } }))
   }, { timeout: 30000 })
 })

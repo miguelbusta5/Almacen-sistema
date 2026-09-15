@@ -24,7 +24,7 @@ function reportScenario() {
     activityLog: { create: vi.fn() },
   }
   const permission = vi.fn(async () => {})
-  const handler = load('api/capacidad-picking/index.post.ts', { h3, '../../utils/auth': { requireAuth: async () => ({id:'u1',name:'Brayan'}) }, '../../utils/picking': { exigirPicking: permission, bloquearPicking: vi.fn() }, '../../utils/prisma': { prisma: { $transaction: async (fn: any) => fn(tx) } }, '../../utils/pickingCalc': { textoPicking: (s: unknown) => String(s ?? '').trim().toUpperCase() } })
+  const handler = load('api/capacidad-picking/index.post.ts', { h3, '../../utils/auth': { requireAuth: async () => ({id:'u1',name:'Brayan'}) }, '../../utils/picking': { exigirPicking: permission, bloquearPicking: vi.fn(), informeConMaestro: async (_db: unknown, r: any) => ({ ...r, lineas: r.lineas.map((l: any) => ({ ...l, descripcion: 'Producto', unidadesPorCaja: 12, unidades: l.cajas * 12 })) }) }, '../../utils/prisma': { prisma: { $transaction: async (fn: any) => fn(tx) } }, '../../utils/pickingCalc': { textoPicking: (s: unknown) => String(s ?? '').trim().toUpperCase() } })
   return { handler, tx, report, permission }
 }
 afterEach(() => vi.useRealTimers())
@@ -32,6 +32,10 @@ describe('informes de picking: persistencia y permisos', () => {
   it('crear recupera el informe abierto sin reiniciar su reloj', async () => {
     const e = reportScenario(); const r = await e.handler({accion:'crear'})
     expect(r.inicio).toEqual(new Date('2026-09-14T08:00:00Z')); expect(e.tx.pickingInforme.create).not.toHaveBeenCalled()
+  })
+  it('la respuesta trae descripcion y unidades del maestro', async () => {
+    const e = reportScenario(); const r = await e.handler({accion:'crear'})
+    expect(r.lineas[0]).toMatchObject({ descripcion: 'Producto', unidadesPorCaja: 12, unidades: 120 })
   })
   it('rechaza escrituras sin permiso individual', async () => {
     const e = reportScenario(); e.permission.mockRejectedValueOnce({statusCode:403})
