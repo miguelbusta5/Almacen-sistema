@@ -73,7 +73,7 @@ const conFoto = computed(
           <td class="op">{{ item.creadoPorNombre ?? '—' }}</td>
           <td class="muted tnum">{{ fmtHoraRecepcion(item.horaInicio) }}</td>
           <td>
-            <Badge :label="ESTADO_RECEPCION_LABEL[item.estado]" :tone="tono(item)" />
+            <Badge :label="item.pausaId ? 'En pausa' : ESTADO_RECEPCION_LABEL[item.estado]" :tone="tono(item)" />
             <span v-if="item.horaFinalizacion" class="fin tnum">
               {{ fmtHoraRecepcion(item.horaFinalizacion) }}
             </span>
@@ -106,7 +106,7 @@ const conFoto = computed(
       <article v-for="item in items" :key="item.id" class="rowcard">
         <div class="rc-top">
           <b class="mono strong">{{ item.numeroPedido }}</b>
-          <Badge :label="ESTADO_RECEPCION_LABEL[item.estado]" :tone="tono(item)" />
+          <Badge :label="item.pausaId ? 'En pausa' : ESTADO_RECEPCION_LABEL[item.estado]" :tone="tono(item)" />
           <span class="rc-dur tnum">{{ fmtTiempoRecepcion(item.duracionSegundos) }}</span>
         </div>
         <p class="rc-prov">{{ item.proveedor }} · {{ TIPO_PRODUCTO_LABEL[item.tipoProducto] }}</p>

@@ -2,27 +2,51 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useSession } from "next-auth/react";
-import { ShieldAlert, ChevronLeft, ChevronRight, RefreshCw, Download, X } from "lucide-react";
+import { ShieldAlert, ChevronLeft, ChevronRight, RefreshCw, Download } from "lucide-react";
 import { useIsMobile } from "@/lib/useIsMobile";
 import { SkeletonTable, ModuleHero } from "@/components/ui";
 import { getModuleCssVars } from "@/lib/moduleTheme";
-import { AuditoriaTable, type LogItem, type LogUser } from "./_components";
 
 type Role = "ADMIN" | "GERENTE" | "OPERADOR";
+
+interface LogUser { id: string; name: string; email: string; }
+interface LogItem {
+  id: string;
+  action: string;
+  module: string;
+  recordId: string;
+  details: string | null;
+  createdAt: string;
+  user: LogUser | null;
+}
+
+const ACTION_META: Record<string, { label: string; color: string }> = {
+  CREATE: { label: "Creó", color: "var(--brand)" },
+  UPDATE: { label: "Editó", color: "#34D9F0" },
+  DELETE: { label: "Eliminó", color: "var(--error)" },
+};
+const MODULE_META: Record<string, { label: string; color: string }> = {
+  muebles: { label: "Muebles", color: "#34D9F0" },
+  transporte: { label: "Transporte", color: "#f97316" },
+  users: { label: "Usuarios", color: "#5B9DFF" },
+};
 
 const inp: React.CSSProperties = {
   border: "1px solid var(--border)", borderRadius: 8, padding: "0.45rem 0.7rem",
   fontSize: 12, fontFamily: "var(--mono)", outline: "none", background: "var(--surface)", color: "var(--text)",
 };
 
+function fmtDateTime(iso: string) {
+  const d = new Date(iso);
+  return d.toLocaleString("es-CO", {
+    day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit",
+  });
+}
+
 export default function AuditoriaPage() {
   const isMobile = useIsMobile();
   const { data: session } = useSession();
   const role = (session?.user as { role?: Role } | undefined)?.role;
-  const [debugTable, setDebugTable] = useState(false);
-
-  // Modo debug de tabla: /dashboard/auditoria?debugTable=1 (diagnóstico de mapeo de columnas).
-  useEffect(() => { setDebugTable(new URLSearchParams(window.location.search).get("debugTable") === "1"); }, []);
 
   const [logs, setLogs] = useState<LogItem[]>([]);
   const [users, setUsers] = useState<LogUser[]>([]);
@@ -147,18 +171,7 @@ export default function AuditoriaPage() {
 
       {/* Filtros */}
       <div className="g-panel" style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center", padding: "0.75rem 1rem", marginBottom: "1rem" }}>
-        <div style={{ position: "relative", flex: 1, minWidth: isMobile ? 120 : 180, width: isMobile ? "100%" : undefined }}>
-          <input value={fq} onChange={e => setFq(e.target.value)} placeholder="Buscar en detalle o registro…" style={{ ...inp, width: "100%", paddingRight: 32 }} />
-          {fq && (
-            <button
-              aria-label="Borrar búsqueda"
-              onClick={() => setFq("")}
-              style={{ position: "absolute", right: 4, top: "50%", transform: "translateY(-50%)", width: 28, height: 28, display: "grid", placeItems: "center", border: "none", background: "transparent", color: "var(--muted)", cursor: "pointer", borderRadius: 6 }}
-            >
-              <X size={14} />
-            </button>
-          )}
-        </div>
+        <input value={fq} onChange={e => setFq(e.target.value)} placeholder="Buscar en detalle o registro…" style={{ ...inp, flex: 1, minWidth: isMobile ? 120 : 180, width: isMobile ? "100%" : undefined }} />
         <select value={fModule} onChange={e => setFModule(e.target.value)} style={inp}>
           <option value="">Todos los módulos</option>
           <option value="muebles">Muebles</option>
@@ -191,14 +204,52 @@ export default function AuditoriaPage() {
           <p>No hay eventos que coincidan con los filtros aplicados.</p>
         </div>
       ) : (
-        <AuditoriaTable
-          logs={sortedLogs}
-          sortCol={logSortCol}
-          sortDir={logSortDir}
-          onToggleSort={toggleLogSort}
-          loading={false}
-          debug={debugTable}
-        />
+        <div className="g-table-wrap">
+          <div style={{ overflowX: "auto" }}>
+            <table className="g-table" style={{ fontSize: 12 }}>
+              <thead>
+                <tr style={{ borderBottom: "1px solid var(--border)", background: "var(--surface2)" }}>
+                  <th onClick={() => toggleLogSort("createdAt")} style={{ padding: "0.6rem 0.85rem", textAlign: "left", fontSize: 10, fontWeight: 700, letterSpacing: ".06em", textTransform: "uppercase", color: logSortCol === "createdAt" ? "#5B9DFF" : "var(--muted)", whiteSpace: "nowrap", cursor: "pointer", userSelect: "none" }}>
+                    Fecha y hora{logSortCol === "createdAt" ? (logSortDir === "asc" ? " ↑" : " ↓") : " ↕"}
+                  </th>
+                  <th onClick={() => toggleLogSort("userName")} style={{ padding: "0.6rem 0.85rem", textAlign: "left", fontSize: 10, fontWeight: 700, letterSpacing: ".06em", textTransform: "uppercase", color: logSortCol === "userName" ? "#5B9DFF" : "var(--muted)", whiteSpace: "nowrap", cursor: "pointer", userSelect: "none" }}>
+                    Usuario{logSortCol === "userName" ? (logSortDir === "asc" ? " ↑" : " ↓") : " ↕"}
+                  </th>
+                  {["Acción", "Módulo", "Registro", "Detalle"].map(h => (
+                    <th key={h} style={{ padding: "0.6rem 0.85rem", textAlign: "left", fontSize: 10, fontWeight: 700, letterSpacing: ".06em", textTransform: "uppercase", color: "var(--muted)", whiteSpace: "nowrap" }}>{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {sortedLogs.map(l => {
+                  const am = ACTION_META[l.action] || { label: l.action, color: "#64748b" };
+                  const mm = MODULE_META[l.module] || { label: l.module, color: "#64748b" };
+                  return (
+                    <tr key={l.id} style={{ borderBottom: "1px solid var(--border)" }} className="hover-row">
+                      <td style={{ padding: "0.6rem 0.85rem", fontFamily: "var(--mono)", whiteSpace: "nowrap", color: "var(--muted2)" }}>{fmtDateTime(l.createdAt)}</td>
+                      <td style={{ padding: "0.6rem 0.85rem" }}>
+                        {l.user ? (
+                          <>
+                            <div style={{ fontWeight: 600 }}>{l.user.name}</div>
+                            <div style={{ fontSize: 10, color: "var(--muted)", fontFamily: "var(--mono)" }}>{l.user.email}</div>
+                          </>
+                        ) : <span style={{ color: "var(--muted)" }}>—</span>}
+                      </td>
+                      <td style={{ padding: "0.6rem 0.85rem" }}>
+                        <span className="ds-badge" style={{ background: am.color + "18", color: am.color, border: `1px solid ${am.color}28` }}>{am.label}</span>
+                      </td>
+                      <td style={{ padding: "0.6rem 0.85rem" }}>
+                        <span className="ds-badge" style={{ background: mm.color + "18", color: mm.color, border: `1px solid ${mm.color}28` }}>{mm.label}</span>
+                      </td>
+                      <td style={{ padding: "0.6rem 0.85rem", fontFamily: "var(--mono)", color: "var(--muted2)" }}>{l.recordId}</td>
+                      <td style={{ padding: "0.6rem 0.85rem", color: "var(--muted2)", maxWidth: 280, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={l.details || ""}>{l.details || "—"}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </div>
       )}
 
       {/* Paginación */}

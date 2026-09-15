@@ -46,49 +46,17 @@ function mod(
 
 export const MODULE_THEME: Record<ModuleThemeKey, ModuleTheme> = {
   home: mod("home", PRODUCT.displayName, PRODUCT.shortName, PRODUCT.tagline),
+  inventario: mod("inventario", "Novedades Inventario", "Inventario", "PLUs, posiciones y novedades del CEDI"),
   transporte: mod("transporte", "Guardados Transporte", "Transporte", "Custodia, guardados y pendientes operativos"),
   preoperacional: mod("preoperacional", "Preoperacional", "Preop", "Inspeccion diaria de vehiculos"),
   tienda: mod("tienda", "Facturas Contado", "Facturas", "Facturas contado desde tienda hacia el flujo CEDI"),
   "solicitudes-transporte": mod("solicitudes-transporte", "Solicitudes Transporte", "Solicitudes", "Solicitudes internas que gestiona el lider de transporte"),
-  exportaciones: mod("exportaciones", "Exportaciones Ecuador", "Export EC", "Etiquetado operativo de cajas de exportacion a Ecuador"),
-  "exportaciones-mexico": mod("exportaciones-mexico", "Exportaciones México", "Export MX", "Etiquetado operativo de cajas de exportacion a México"),
-  "exportaciones-eeuu": mod("exportaciones-eeuu", "Exportaciones EE.UU", "Export US", "Etiquetado operativo de cajas de exportacion a EE.UU"),
+  exportaciones: mod("exportaciones", "Exportaciones", "Export", "Etiquetado operativo de cajas de exportacion"),
+  "mis-tareas": mod("mis-tareas", "Mis Tareas", "Tareas", "Pendientes del dia por usuario"),
   usuarios: mod("usuarios", "Usuarios", "Usuarios", "Cuentas, roles y operacion base"),
   auditoria: mod("auditoria", "Auditoria", "Auditoria", "Historial de acciones del sistema"),
   "centro-control": mod("centro-control", "Centro de Control", "Control", "Inteligencia operacional y KPIs"),
   integracion: mod("integracion", "Integracion Pedidos", "Integracion", "Picking OVDM/TSDM entre areas"),
-  "cargue-gourmet": mod("cargue-gourmet", "Cargue Gourmet", "Cargue Gourmet", "Ubicacion y cargue verificado de pedidos Gourmet"),
-  "control-montacargas": mod("control-montacargas", "Control Montacargas", "Montacargas", "Recepcion de contenedor y movimientos de deposito"),
-  resurtido: mod("resurtido", "Resurtido", "Resurtido", "Reposicion de mercancia desde deposito"),
-  "montaje-resurtido": mod(
-    "montaje-resurtido", "Montaje Resurtido", "Montaje",
-    "Subida del archivo de resurtido y reparto por operario",
-  ),
-  pendientes: mod("pendientes", "Pendientes", "Pendientes", "Solicitudes de mercancia a picking"),
-  indicadores: mod(
-    "indicadores", "Indicadores", "Indicadores",
-    "Tiempo laborado de montacarguistas y operarios del CEDI",
-  ),
-  "recepcion-contenedores": mod(
-    "recepcion-contenedores", "Recepcion de Contenedores", "Recepcion",
-    "Planilla de descarga de contenedor con tiempos y novedades",
-  ),
-  "picking-muebles": mod(
-    "picking-muebles", "Picking Muebles", "Picking",
-    "Picking de ordenes OVDM/TSDM con tiempos por PLU y capacidad del equipo",
-  ),
-  "inspeccion-muebles": mod(
-    "inspeccion-muebles", "Inspeccion Muebles", "Inspeccion",
-    "Inspeccion por PLU, envios a ebanisteria y tiempos del area",
-  ),
-  "indicadores-muebles": mod(
-    "indicadores-muebles", "Indicadores Muebles", "Ind. Muebles",
-    "Tiempos del area de muebles por persona, tipo de mercancia, volumen y peso",
-  ),
-  "admin-muebles": mod(
-    "admin-muebles", "Admin Muebles", "Admin Muebles",
-    "Equipos, asignacion del dia, inspectores y tipos de PLU",
-  ),
 };
 
 export function getModuleTheme(key: ModuleThemeKey | string | null | undefined): ModuleTheme {

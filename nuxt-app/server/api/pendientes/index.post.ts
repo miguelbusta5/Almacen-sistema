@@ -1,3 +1,4 @@
+import { defineOperacionAlmacenHandler } from '../../utils/operacionAlmacen'
 import { defineEventHandler, readBody, createError } from 'h3'
 import { z } from 'zod'
 import { prisma } from '../../utils/prisma'
@@ -22,7 +23,7 @@ const schema = z.object({
  * es otra cosa y se mide desde solicitadoAt. El reloj de la tarea arranca cuando
  * el operario escanea el PLU.
  */
-export default defineEventHandler(async (event) => {
+export default defineOperacionAlmacenHandler(async (event) => {
   const actor = await requireAuth(event)
   if (!esSolicitante(actor.role)) {
     throw createError({ statusCode: 403, statusMessage: 'Solo operaciones gourmet solicita pendientes' })

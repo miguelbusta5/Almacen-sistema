@@ -1,3 +1,4 @@
+import { defineOperacionAlmacenHandler } from '../../../utils/operacionAlmacen'
 import { defineEventHandler, getRouterParam, readBody, createError } from 'h3'
 import { z } from 'zod'
 import { prisma } from '../../../utils/prisma'
@@ -21,7 +22,7 @@ const schema = z.object({
  * Abre el tramo de quien lo empieza. Si despues se lo pasa a un ayudante, el
  * reloj sigue: se cierra su tramo y se abre el del ayudante (traspasar).
  */
-export default defineEventHandler(async (event) => {
+export default defineOperacionAlmacenHandler(async (event) => {
   const actor = await requireAuth(event)
   assertEjecutor(actor.role)
 

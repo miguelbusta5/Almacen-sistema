@@ -17,7 +17,7 @@ export default defineEventHandler(async (event) => {
     where: { ...scope, deletedAt: null, fecha: hoy },
     select: {
       estado: true, cajas: true, unidades: true, estibasUsadas: true,
-      horaInicio: true, horaFinalizacion: true,
+      horaInicio: true, horaFinalizacion: true, pausaSegundos: true,
       _count: { select: { novedades: true } },
     },
   })
@@ -39,7 +39,7 @@ export default defineEventHandler(async (event) => {
     if (r._count.novedades > 0) conNovedad += 1
     if (r.estado === 'CERRADO') {
       cerradas += 1
-      duracionTotal += segundosRecepcion(r.horaInicio, r.horaFinalizacion) ?? 0
+      duracionTotal += Math.max(0, (segundosRecepcion(r.horaInicio, r.horaFinalizacion) ?? 0) - r.pausaSegundos)
     }
   }
 

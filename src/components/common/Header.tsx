@@ -1,18 +1,14 @@
 "use client";
 
+import Link from "next/link";
 import { signOut } from "next-auth/react";
-import { Bell, ChevronDown, Clock3, KeyRound, LogOut, Search, ShieldCheck, Wifi } from "lucide-react";
+import { Bell, ChevronDown, Clock3, LogOut, Search, ShieldCheck, Wifi } from "lucide-react";
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
 import Logo from "./Logo";
-import { ThemeToggle } from "./ThemeToggle";
-import { useApi } from "@/hooks/useApi";
 import { useIsMobile } from "@/lib/useIsMobile";
 import { useCommandPalette } from "@/contexts/CommandPaletteContext";
 import { getVisibleModules, ROLE_LABEL_EXT, type AppRole } from "@/lib/modulePermissions";
 import { PRODUCT } from "@/config/product";
-import { useToast } from "@/contexts/ToastContext";
-import { ActivityCenterPanel, performMarkAllRead, type NotificacionItem } from "./ActivityCenterPanel";
 
 interface HeaderProps {
   user?: { name?: string | null; email?: string | null; role?: string | null };
@@ -35,7 +31,7 @@ function UserInitials({ name }: { name: string }) {
       justifyContent: "center",
       fontSize: 11,
       fontWeight: 800,
-      color: "var(--text-on-accent)",
+      color: "#04130D",
       flexShrink: 0,
       boxShadow: "0 6px 16px rgba(20,219,160,0.24)",
     }}>
@@ -45,13 +41,10 @@ function UserInitials({ name }: { name: string }) {
 }
 
 export default function Header({ user }: HeaderProps) {
-  const router = useRouter();
   const isMobile = useIsMobile();
   const [menuOpen, setMenuOpen] = useState(false);
   const { open: openPalette } = useCommandPalette();
-  const [activityOpen, setActivityOpen] = useState(false);
-  const [markingAllRead, setMarkingAllRead] = useState(false);
-  const toast = useToast();
+  const [notifCount, setNotifCount] = useState(0);
 
   const userName = user?.name ?? "Usuario";
   const role = user?.role ?? undefined;
@@ -61,35 +54,20 @@ export default function Header({ user }: HeaderProps) {
     ? visibleModules.map((m) => m.replace("-", " ")).join(" / ") || "Operacion"
     : `${visibleModules.length} modulos visibles`;
 
-  // Mismo polling de siempre (60s) — ahora también guarda la lista, no solo el conteo,
-  // para alimentar el Centro de Actividad (Fase C1) sin duplicar el fetch.
-  const { data: notifJson, isLoading: notifLoading, mutate: mutateNotif } = useApi<{
-    data: NotificacionItem[]; totalNoLeidas: number;
-  }>("/api/notificaciones?unread=true", { refreshInterval: 60_000 });
-  const notifications = notifJson?.data ?? [];
-  const notifCount = notifJson?.totalNoLeidas ?? 0;
-
-  // Cierre con Escape (mismo criterio de accesibilidad que el resto del DS, p. ej. SlidePanel).
   useEffect(() => {
-    if (!activityOpen) return;
-    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") setActivityOpen(false); };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [activityOpen]);
-
-  // Fase C2 — marca TODAS las no leídas (endpoint existente, sin marcado individual).
-  async function markAllRead() {
-    if (markingAllRead) return;
-    setMarkingAllRead(true);
-    const ok = await performMarkAllRead();
-    if (ok) {
-      void mutateNotif({ data: [], totalNoLeidas: 0 }, { revalidate: false });
-      toast.success("Notificaciones marcadas como leídas");
-    } else {
-      toast.error("No se pudieron marcar las notificaciones como leídas");
+    async function fetchNotif() {
+      try {
+        const res = await fetch("/api/notificaciones?unread=true");
+        const json = await res.json();
+        if (json.success) setNotifCount(json.totalNoLeidas ?? 0);
+      } catch {
+        // No bloquear el shell por notificaciones.
+      }
     }
-    setMarkingAllRead(false);
-  }
+    fetchNotif();
+    const id = setInterval(fetchNotif, 60_000);
+    return () => clearInterval(id);
+  }, []);
 
   return (
     <header
@@ -160,41 +138,16 @@ export default function Header({ user }: HeaderProps) {
           </button>
         )}
 
-        <ThemeToggle />
-
-        <div style={{ position: "relative" }}>
-          <button
-            onClick={() => setActivityOpen((v) => !v)}
-            className="op-action"
-            style={{ position: "relative", width: 36, height: 36, display: "grid", placeItems: "center", cursor: "pointer", color: "var(--muted)" }}
-            aria-label="Centro de actividad"
-            aria-expanded={activityOpen}
-            title="Centro de actividad"
-          >
+        <Link href="/dashboard/mis-tareas" style={{ position: "relative", textDecoration: "none", display: "flex", alignItems: "center" }}>
+          <button className="op-action" style={{ width: 36, height: 36, display: "grid", placeItems: "center", cursor: "pointer", color: "var(--muted)" }} title="Mis tareas">
             <Bell size={15} />
-            {notifCount > 0 && (
-              <span style={{ position: "absolute", top: -4, right: -4, background: "var(--brand)", color: "var(--text-on-accent)", fontSize: 9, fontWeight: 800, width: 16, height: 16, borderRadius: 999, display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "var(--mono)", boxShadow: "0 0 0 3px var(--brand-tint)" }}>
-                {notifCount > 9 ? "9+" : notifCount}
-              </span>
-            )}
           </button>
-
-          {activityOpen && (
-            <>
-              <div onClick={() => setActivityOpen(false)} style={{ position: "fixed", inset: 0, zIndex: 200 }} />
-              <ActivityCenterPanel
-                open={activityOpen}
-                notifications={notifications}
-                totalNoLeidas={notifCount}
-                loading={notifLoading}
-                isMobile={isMobile}
-                onNavigate={() => setActivityOpen(false)}
-                onMarkAllRead={markAllRead}
-                markingAllRead={markingAllRead}
-              />
-            </>
+          {notifCount > 0 && (
+            <span style={{ position: "absolute", top: -4, right: -4, background: "var(--brand)", color: "#04130D", fontSize: 9, fontWeight: 800, width: 16, height: 16, borderRadius: 999, display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "var(--mono)", boxShadow: "0 0 0 3px var(--brand-tint)" }}>
+              {notifCount > 9 ? "9+" : notifCount}
+            </span>
           )}
-        </div>
+        </Link>
 
         <div style={{ position: "relative" }}>
           <button
@@ -241,27 +194,6 @@ export default function Header({ user }: HeaderProps) {
                     <Clock3 size={11} />{user?.email}
                   </div>
                 </div>
-                <button
-                  onClick={() => { setMenuOpen(false); router.push("/cambiar-password"); }}
-                  style={{
-                    width: "100%",
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 8,
-                    padding: "8px 10px",
-                    background: "none",
-                    border: "none",
-                    borderRadius: 8,
-                    fontSize: 13,
-                    color: "var(--muted2)",
-                    cursor: "pointer",
-                    textAlign: "left",
-                  }}
-                  onMouseEnter={(e) => (e.currentTarget.style.background = "var(--surface3)")}
-                  onMouseLeave={(e) => (e.currentTarget.style.background = "none")}
-                >
-                  <KeyRound size={14} />Cambiar contraseña
-                </button>
                 <button
                   onClick={() => signOut({ callbackUrl: "/login" })}
                   style={{

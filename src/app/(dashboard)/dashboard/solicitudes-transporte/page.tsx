@@ -1,22 +1,16 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useSession } from "next-auth/react";
 import {
   AlertTriangle, Clock, FileText, Minus,
   Plus, RefreshCw, Search, Send, X,
 } from "lucide-react";
 import { ModuleHero } from "@/components/ui";
-import { useConfirm } from "@/components/ui/useDialogs";
-import { useListDetailScroll } from "@/hooks/useListDetailScroll";
 import { AutoRefreshIndicator } from "@/components/ui/AutoRefreshIndicator";
 import { getModuleColor, getModuleCssVars } from "@/lib/moduleTheme";
 import { puedeEliminarSolicitudTransporte, puedeGestionarSolicitudTransporte } from "@/lib/solicitudesTransporte";
-import { canSeeModule } from "@/lib/modulePermissions";
 import { useAutoRefresh } from "@/hooks/useAutoRefresh";
-import { useApi } from "@/hooks/useApi";
-import { apiGet, apiSend, apiPost, apiPatch, apiDelete, buildQuery } from "@/lib/apiClient";
-import { getErrorMessage } from "@/lib/errors";
 import {
   SolicitudesTable, SolicitudDetailPanel, Field, inputStyle, ESTADO_COLOR, SEMAFORO_COLOR,
   type Solicitud, type Estado, type PluLinea,
@@ -83,12 +77,10 @@ function SelectField({ value, onChange, options, required = true }: { value: str
 async function buscarProductoMaestro(plu: string): Promise<string | null> {
   const clean = plu.trim();
   if (!clean) return null;
-  try {
-    const json = await apiGet<{ data?: { descripcion?: string | null } }>(`/api/productos-maestro/${encodeURIComponent(clean)}`);
-    return json?.data?.descripcion ?? null;
-  } catch {
-    return null;
-  }
+  const res = await fetch(`/api/productos-maestro/${encodeURIComponent(clean)}`);
+  if (!res.ok) return null;
+  const json = await res.json();
+  return json?.data?.descripcion ?? null;
 }
 
 function SolicitudForm({ catalogos, initial, onClose, onSaved }: {
@@ -145,14 +137,18 @@ function SolicitudForm({ catalogos, initial, onClose, onSaved }: {
         unidades: Number(p.unidades),
       })),
     };
-    try {
-      await apiSend(initial ? `/api/solicitudes-transporte/${initial.id}` : "/api/solicitudes-transporte", initial ? "PATCH" : "POST", payload);
-      setSaving(false);
-      onSaved();
-    } catch (err) {
-      setSaving(false);
-      setError(getErrorMessage(err, "No se pudo guardar"));
+    const res = await fetch(initial ? `/api/solicitudes-transporte/${initial.id}` : "/api/solicitudes-transporte", {
+      method: initial ? "PATCH" : "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+    const json = await res.json();
+    setSaving(false);
+    if (!res.ok) {
+      setError(json.error ?? "No se pudo guardar");
+      return;
     }
+    onSaved();
   }
 
   return (
@@ -272,16 +268,14 @@ export default function SolicitudesTransportePage() {
   const user = session?.user as { role?: string; id?: string } | undefined;
   const role = user?.role;
   const userId = user?.id;
-  const puedeVer = canSeeModule(role, "solicitudes-transporte");
   const isGestor = puedeGestionarSolicitudTransporte(role);
   const canDelete = puedeEliminarSolicitudTransporte(role);
-  const { confirm, confirmModal } = useConfirm();
+  const [rows, setRows] = useState<Solicitud[]>([]);
   const [catalogos, setCatalogos] = useState<Catalogos | null>(null);
+  const [loading, setLoading] = useState(true);
   const [query, setQuery] = useState("");
-  const [appliedQuery, setAppliedQuery] = useState("");
   const [estado, setEstado] = useState("");
   const [selected, setSelected] = useState<Solicitud | null>(null);
-  useListDetailScroll(selected !== null);
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState<Solicitud | null>(null);
   const [error, setError] = useState("");
@@ -292,16 +286,6 @@ export default function SolicitudesTransportePage() {
   // Modo debug de tabla: /dashboard/solicitudes-transporte?debugTable=1 (diagnóstico de mapeo de columnas).
   useEffect(() => { setDebugTable(new URLSearchParams(window.location.search).get("debugTable") === "1"); }, []);
 
-  // ── Lectura SWR (estado reactivo en la key; query se aplica con Enter) ──────
-  // key null cuando el rol no ve el módulo → SWR no dispara la petición (que
-  // ahora responde 403) y la página no queda con un error de carga en pantalla.
-  const listKey = puedeVer
-    ? `/api/solicitudes-transporte${buildQuery({ q: appliedQuery, estado })}`
-    : null;
-  const { data: rowsData, isLoading: loading, error: rowsError, mutate: mutateRows } = useApi<{ data: Solicitud[] }>(listKey);
-  const rows = useMemo(() => rowsData?.data ?? [], [rowsData]);
-  const load = useCallback(() => { void mutateRows(); }, [mutateRows]);
-
   const kpis = useMemo(() => ({
     pendientes: rows.filter((r) => ["PENDIENTE", "REENVIADA"].includes(r.estado)).length,
     programadas: rows.filter((r) => r.estado === "PROGRAMADA").length,
@@ -310,19 +294,34 @@ export default function SolicitudesTransportePage() {
   }), [rows]);
   const rechazadas = rows.filter((r) => r.estado === "RECHAZADA");
 
-  useEffect(() => {
-    if (rowsError) setError(getErrorMessage(rowsError, "No se pudieron cargar las solicitudes"));
-  }, [rowsError]);
+  async function load() {
+    setLoading(true);
+    const params = new URLSearchParams();
+    if (query.trim()) params.set("q", query.trim());
+    if (estado) params.set("estado", estado);
+    const res = await fetch(`/api/solicitudes-transporte?${params.toString()}`);
+    const json = await res.json();
+    setLoading(false);
+    if (!res.ok) {
+      setError(json.error ?? "No se pudieron cargar las solicitudes");
+      return;
+    }
+    setRows(json.data ?? []);
+  }
 
   useEffect(() => {
-    if (!puedeVer) return;
-    apiGet<{ data: Catalogos | null }>("/api/solicitudes-transporte/catalogos")
+    fetch("/api/solicitudes-transporte/catalogos")
+      .then((r) => r.json())
       .then((j) => setCatalogos(j.data ?? null))
       .catch(() => {});
-  }, [puedeVer]);
+  }, []);
+
+  useEffect(() => {
+    load();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [estado]);
 
   const autoRefresh = useAutoRefresh({
-    enabled: puedeVer,
     pause: Boolean(showForm || editing || selected || rejectText.trim()),
     onRefresh: () => load(),
   });
@@ -350,54 +349,62 @@ export default function SolicitudesTransportePage() {
       setError("Selecciona una transportadora");
       return;
     }
-    try {
-      const json = await apiPatch<{ data: Solicitud }>(`/api/solicitudes-transporte/${selected.id}`, gestion);
-      setSelected(json.data);
-      await load();
-    } catch (e) { setError(getErrorMessage(e, "No se pudo actualizar gestion")); }
+    const res = await fetch(`/api/solicitudes-transporte/${selected.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(gestion),
+    });
+    const json = await res.json();
+    if (!res.ok) {
+      setError(json.error ?? "No se pudo actualizar gestion");
+      return;
+    }
+    setSelected(json.data);
+    await load();
   }
 
   async function rechazar() {
     if (!selected) return;
-    try {
-      const json = await apiPost<{ data: Solicitud }>(`/api/solicitudes-transporte/${selected.id}/rechazar`, { motivoRechazo: rejectText });
-      setSelected(json.data);
-      setRejectText("");
-      await load();
-    } catch (e) { setError(getErrorMessage(e, "No se pudo rechazar")); }
+    const res = await fetch(`/api/solicitudes-transporte/${selected.id}/rechazar`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ motivoRechazo: rejectText }),
+    });
+    const json = await res.json();
+    if (!res.ok) {
+      setError(json.error ?? "No se pudo rechazar");
+      return;
+    }
+    setSelected(json.data);
+    setRejectText("");
+    await load();
   }
 
   async function reenviar(solicitud: Solicitud) {
-    try {
-      const json = await apiPost<{ data: Solicitud }>(`/api/solicitudes-transporte/${solicitud.id}/reenviar`);
-      setSelected(json.data);
-      await load();
-    } catch (e) { setError(getErrorMessage(e, "No se pudo reenviar")); }
+    const res = await fetch(`/api/solicitudes-transporte/${solicitud.id}/reenviar`, { method: "POST" });
+    const json = await res.json();
+    if (!res.ok) {
+      setError(json.error ?? "No se pudo reenviar");
+      return;
+    }
+    setSelected(json.data);
+    await load();
   }
 
   async function borrarSolicitud(solicitud: Solicitud) {
-    const ok = await confirm({
-      title: "Archivar solicitud",
-      message: "Esta solicitud se ocultará del módulo y conservará su historial. ¿Continuar?",
-      confirmLabel: "Archivar",
-      tone: "danger",
+    if (!window.confirm("Esta solicitud se ocultara del modulo y conservara historial. ¿Continuar?")) return;
+    const res = await fetch(`/api/solicitudes-transporte/${solicitud.id}`, {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ deleteReason: "Eliminada desde interfaz" }),
     });
-    if (!ok) return;
-    try {
-      await apiDelete(`/api/solicitudes-transporte/${solicitud.id}`, { deleteReason: "Eliminada desde interfaz" });
-      setSelected(null);
-      await load();
-    } catch (e) { setError(getErrorMessage(e, "No se pudo borrar")); }
-  }
-
-  // Espejo del gate de servidor (puedeCrear/puedeVerSolicitudTransporte); los
-  // roles OPERACIONES_* ya no tienen este módulo. Ver AGENTS.md: doble validación.
-  if (!puedeVer) {
-    return (
-      <div style={{ padding: "48px 24px", textAlign: "center" }}>
-        <p style={{ color: "var(--muted)" }}>No tienes acceso a este módulo.</p>
-      </div>
-    );
+    const json = await res.json();
+    if (!res.ok) {
+      setError(json.error ?? "No se pudo borrar");
+      return;
+    }
+    setSelected(null);
+    await load();
   }
 
   return (
@@ -420,99 +427,85 @@ export default function SolicitudesTransportePage() {
           </>
         }
       />
-      {selected ? (
-        <SolicitudDetailPanel
-          selected={selected}
-          isGestor={isGestor}
-          canEdit={canEditSelected(selected)}
-          canDelete={canDelete}
-          gestion={gestion}
-          setGestion={setGestion}
-          rejectText={rejectText}
-          setRejectText={setRejectText}
-          transportadoras={catalogos?.transportadoras ?? []}
-          moduleColor={COLOR}
-          onClose={() => setSelected(null)}
-          onEdit={() => { setEditing(selected); setShowForm(true); }}
-          onDelete={() => borrarSolicitud(selected)}
-          onReenviar={() => reenviar(selected)}
-          onSaveGestion={saveGestion}
-          onRechazar={rechazar}
-        />
-      ) : (
-        <>
-          <div style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "flex-start", flexWrap: "wrap" }}>
-            <div>
-              <div style={{ display: "flex", alignItems: "center", gap: 10, color: COLOR, marginBottom: 8 }}>
-                <FileText size={22} />
-                <span style={{ fontSize: 12, textTransform: "uppercase", letterSpacing: ".08em", fontWeight: 800 }}>Control transporte</span>
-              </div>
-              <h1 style={{ margin: 0, color: "var(--text)", fontSize: 28 }}>Bandeja operativa</h1>
-              <p style={{ margin: "5px 0 0", color: "var(--muted)", fontSize: 14 }}>Servicio interno para entregas, recolecciones, traslados e inversa.</p>
-            </div>
+      <div style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "flex-start", flexWrap: "wrap" }}>
+        <div>
+          <div style={{ display: "flex", alignItems: "center", gap: 10, color: COLOR, marginBottom: 8 }}>
+            <FileText size={22} />
+            <span style={{ fontSize: 12, textTransform: "uppercase", letterSpacing: ".08em", fontWeight: 800 }}>Control transporte</span>
           </div>
+          <h1 style={{ margin: 0, color: "var(--text)", fontSize: 28 }}>Bandeja operativa</h1>
+          <p style={{ margin: "5px 0 0", color: "var(--muted)", fontSize: 14 }}>Servicio interno para entregas, recolecciones, traslados e inversa.</p>
+        </div>
+      </div>
 
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(160px,1fr))", gap: 10 }}>
-            {[
-              ["Pendientes", kpis.pendientes, <Clock key="i" size={16} />, ESTADO_COLOR.PENDIENTE],
-              ["Programadas", kpis.programadas, <Send key="i" size={16} />, ESTADO_COLOR.PROGRAMADA],
-              ["Rechazadas", kpis.rechazadas, <AlertTriangle key="i" size={16} />, ESTADO_COLOR.RECHAZADA],
-              ["Alertas", kpis.alerta, <AlertTriangle key="i" size={16} />, SEMAFORO_COLOR.ALERTA],
-            ].map(([label, value, icon, color]) => (
-              <div key={String(label)} className="ds-stat" style={{ "--stat-color": color as string } as React.CSSProperties}>
-                <div style={{ display: "flex", justifyContent: "space-between", color: color as string }}>{icon}</div>
-                <div style={{ fontSize: 24, fontWeight: 800, color: "var(--text)", marginTop: 8 }}>{value as number}</div>
-                <div style={{ fontSize: 12, color: "var(--muted)" }}>{label as string}</div>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(160px,1fr))", gap: 10 }}>
+        {[
+          ["Pendientes", kpis.pendientes, <Clock key="i" size={16} />, ESTADO_COLOR.PENDIENTE],
+          ["Programadas", kpis.programadas, <Send key="i" size={16} />, ESTADO_COLOR.PROGRAMADA],
+          ["Rechazadas", kpis.rechazadas, <AlertTriangle key="i" size={16} />, ESTADO_COLOR.RECHAZADA],
+          ["Alertas", kpis.alerta, <AlertTriangle key="i" size={16} />, SEMAFORO_COLOR.ALERTA],
+        ].map(([label, value, icon, color]) => (
+          <div key={String(label)} className="ds-stat" style={{ "--stat-color": color as string } as React.CSSProperties}>
+            <div style={{ display: "flex", justifyContent: "space-between", color: color as string }}>{icon}</div>
+            <div style={{ fontSize: 24, fontWeight: 800, color: "var(--text)", marginTop: 8 }}>{value as number}</div>
+            <div style={{ fontSize: 12, color: "var(--muted)" }}>{label as string}</div>
+          </div>
+        ))}
+      </div>
+
+      {rechazadas.length > 0 && !isGestor && (
+        <div style={{ border: "1px solid rgba(220,38,38,.25)", background: "var(--error-tint)", borderRadius: 12, padding: 14 }}>
+          <strong style={{ color: "var(--error)", fontSize: 13 }}>Solicitudes rechazadas por corregir</strong>
+          <div style={{ display: "grid", gap: 8, marginTop: 10 }}>
+            {rechazadas.map((r) => (
+              <div key={r.id} style={{ display: "flex", justifyContent: "space-between", gap: 10, alignItems: "center", background: "var(--surface)", borderRadius: 8, padding: 10 }}>
+                <div style={{ fontSize: 13, color: "var(--text)" }}>{r.numeroPedido ?? r.ciudadEntrega} - {r.motivoRechazo}</div>
+                <button onClick={() => { setEditing(r); setShowForm(true); }} style={{ border: "none", background: COLOR, color: "white", borderRadius: 8, height: 32, padding: "0 10px", cursor: "pointer" }}>Corregir</button>
               </div>
             ))}
           </div>
-
-          {rechazadas.length > 0 && !isGestor && (
-            <div style={{ border: "1px solid color-mix(in srgb, var(--error) 25%, transparent)", background: "var(--error-tint)", borderRadius: 12, padding: 14 }}>
-              <strong style={{ color: "var(--error)", fontSize: 13 }}>Solicitudes rechazadas por corregir</strong>
-              <div style={{ display: "grid", gap: 8, marginTop: 10 }}>
-                {rechazadas.map((r) => (
-                  <div key={r.id} style={{ display: "flex", justifyContent: "space-between", gap: 10, alignItems: "center", background: "var(--surface)", borderRadius: 8, padding: 10 }}>
-                    <div style={{ fontSize: 13, color: "var(--text)" }}>{r.numeroPedido ?? r.ciudadEntrega} - {r.motivoRechazo}</div>
-                    <button onClick={() => { setEditing(r); setShowForm(true); }} style={{ border: "none", background: COLOR, color: "white", borderRadius: 8, height: 32, padding: "0 10px", cursor: "pointer" }}>Corregir</button>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-            <div style={{ position: "relative", flex: "1 1 260px" }}>
-              <Search size={15} style={{ position: "absolute", left: 10, top: 10, color: "var(--muted)" }} />
-              <input value={query} onChange={(e) => setQuery(e.target.value)} onKeyDown={(e) => e.key === "Enter" && setAppliedQuery(query.trim())} placeholder="Buscar por solicitante, pedido, ciudad, guia..." style={{ ...inputStyle, paddingLeft: 32, paddingRight: 32 }} />
-              {/* Limpia también la búsqueda ya APLICADA con Enter, no solo el texto. */}
-              {query && (
-                <button
-                  aria-label="Borrar búsqueda"
-                  onClick={() => { setQuery(""); setAppliedQuery(""); }}
-                  style={{ position: "absolute", right: 4, top: "50%", transform: "translateY(-50%)", width: 28, height: 28, display: "grid", placeItems: "center", border: "none", background: "transparent", color: "var(--muted)", cursor: "pointer", borderRadius: 6 }}
-                >
-                  <X size={14} />
-                </button>
-              )}
-            </div>
-            <select value={estado} onChange={(e) => setEstado(e.target.value)} style={{ ...inputStyle, width: 190 }}>
-              <option value="">Todos los estados</option>
-              {["PENDIENTE", "REENVIADA", "PROGRAMADA", "EFECTUADA", "RECHAZADA", "CANCELADA"].map((e) => <option key={e}>{e}</option>)}
-            </select>
-            <button onClick={load} style={{ height: 36, border: "1px solid var(--border)", background: "var(--surface)", color: "var(--text)", borderRadius: 8, padding: "0 12px", display: "flex", alignItems: "center", gap: 6, cursor: "pointer" }}><RefreshCw size={14} /> Actualizar</button>
-          </div>
-
-          {error && <div style={{ color: "var(--error)", background: "var(--error-tint)", borderRadius: 8, padding: 10, fontSize: 13 }}>{error}</div>}
-
-          <SolicitudesTable
-            loading={loading}
-            rows={rows}
-            onOpen={(r) => setSelected(r)}
-            debug={debugTable}
-          />
-        </>
+        </div>
       )}
+
+      <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+        <div style={{ position: "relative", flex: "1 1 260px" }}>
+          <Search size={15} style={{ position: "absolute", left: 10, top: 10, color: "var(--muted)" }} />
+          <input value={query} onChange={(e) => setQuery(e.target.value)} onKeyDown={(e) => e.key === "Enter" && load()} placeholder="Buscar por solicitante, pedido, ciudad, guia..." style={{ ...inputStyle, paddingLeft: 32 }} />
+        </div>
+        <select value={estado} onChange={(e) => setEstado(e.target.value)} style={{ ...inputStyle, width: 190 }}>
+          <option value="">Todos los estados</option>
+          {["PENDIENTE", "REENVIADA", "PROGRAMADA", "EFECTUADA", "RECHAZADA", "CANCELADA"].map((e) => <option key={e}>{e}</option>)}
+        </select>
+        <button onClick={load} style={{ height: 36, border: "1px solid var(--border)", background: "var(--surface)", color: "var(--text)", borderRadius: 8, padding: "0 12px", display: "flex", alignItems: "center", gap: 6, cursor: "pointer" }}><RefreshCw size={14} /> Actualizar</button>
+      </div>
+
+      {error && <div style={{ color: "var(--error)", background: "var(--error-tint)", borderRadius: 8, padding: 10, fontSize: 13 }}>{error}</div>}
+
+      <SolicitudesTable
+        loading={loading}
+        rows={rows}
+        onOpen={(r) => setSelected(r)}
+        debug={debugTable}
+      />
+
+      <SolicitudDetailPanel
+        selected={selected}
+        isGestor={isGestor}
+        canEdit={selected ? canEditSelected(selected) : false}
+        canDelete={canDelete}
+        gestion={gestion}
+        setGestion={setGestion}
+        rejectText={rejectText}
+        setRejectText={setRejectText}
+        transportadoras={catalogos?.transportadoras ?? []}
+        moduleColor={COLOR}
+        onClose={() => setSelected(null)}
+        onEdit={() => { if (selected) { setEditing(selected); setShowForm(true); } }}
+        onDelete={() => { if (selected) borrarSolicitud(selected); }}
+        onReenviar={() => { if (selected) reenviar(selected); }}
+        onSaveGestion={saveGestion}
+        onRechazar={rechazar}
+      />
 
       {showForm && (
         <SolicitudForm
@@ -522,8 +515,6 @@ export default function SolicitudesTransportePage() {
           onSaved={async () => { setShowForm(false); setEditing(null); await load(); }}
         />
       )}
-
-      {confirmModal}
     </div>
   );
 }

@@ -9,16 +9,12 @@ function createPrismaClient() {
   // DATABASE_URL: conexión directa (puerto 24334). Se usa si no hay POOL_URL.
   const connectionString = process.env.DATABASE_POOL_URL ?? process.env.DATABASE_URL;
 
-  // SSL activo contra cualquier host remoto (Railway, Supabase, etc.); solo
-  // se desactiva para una base local de desarrollo. Supabase EXIGE SSL, así
-  // que la regla vieja (SSL solo si la cadena contenía "railway") fallaba
-  // al migrar a otro proveedor.
-  const isLocal = !!connectionString && (connectionString.includes("localhost") || connectionString.includes("127.0.0.1"));
+  const isRailway = connectionString?.includes("railway") || connectionString?.includes("rlwy.net");
   const isPgBouncer = !!process.env.DATABASE_POOL_URL;
 
   const pool = new Pool({
     connectionString,
-    ssl: isLocal ? false : { rejectUnauthorized: false },
+    ssl: isRailway ? { rejectUnauthorized: false } : false,
 
     // En Vercel serverless cada instancia puede abrir conexiones simultáneas.
     // Con max=3 podemos correr ~8 instancias paralelas antes de tocar el límite

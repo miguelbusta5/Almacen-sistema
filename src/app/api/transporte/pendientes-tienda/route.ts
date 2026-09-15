@@ -2,15 +2,6 @@ import { NextRequest, NextResponse } from "next/server";
 import { requireAuth } from "@/lib/authz";
 import { prisma } from "@/lib/prisma";
 import { z } from "zod";
-import { getErrorMessage } from "@/lib/errors";
-import type { Prisma } from "@prisma/client";
-
-type PendienteRow = Prisma.GuardadoPendienteTiendaGetPayload<{
-  include: {
-    asignadoA: { select: { id: true; name: true } };
-    despacho: true;
-  };
-}>;
 
 const convertSchema = z.object({
   pendienteId: z.string().cuid(),
@@ -22,7 +13,7 @@ function canViewAll(role: string) {
   return ["SUPERVISOR_TRANSPORTE", "GERENTE", "ADMIN"].includes(role);
 }
 
-function mapPendiente(p: PendienteRow) {
+function mapPendiente(p: any) {
   const d = p.despacho;
   return {
     id: p.id,
@@ -152,11 +143,10 @@ export async function POST(req: NextRequest) {
         pendiente: mapPendiente(result.pendiente),
       },
     }, { status: 201 });
-  } catch (e) {
-    const msg = getErrorMessage(e);
-    if (msg === "PENDIENTE_NOT_FOUND") return NextResponse.json({ error: "Pendiente no encontrado" }, { status: 404 });
-    if (msg === "PENDIENTE_CLOSED") return NextResponse.json({ error: "Este pendiente ya fue convertido" }, { status: 409 });
-    if (msg === "PENDIENTE_FORBIDDEN") return NextResponse.json({ error: "Este pendiente no está asignado a tu usuario" }, { status: 403 });
+  } catch (e: any) {
+    if (e.message === "PENDIENTE_NOT_FOUND") return NextResponse.json({ error: "Pendiente no encontrado" }, { status: 404 });
+    if (e.message === "PENDIENTE_CLOSED") return NextResponse.json({ error: "Este pendiente ya fue convertido" }, { status: 409 });
+    if (e.message === "PENDIENTE_FORBIDDEN") return NextResponse.json({ error: "Este pendiente no está asignado a tu usuario" }, { status: 403 });
     throw e;
   }
 }

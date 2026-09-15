@@ -70,10 +70,10 @@ function renderPanel(overrides: Partial<Solicitud> = {}, extra: Partial<{ isGest
   );
 }
 
-describe("SolicitudDetailPanel — render (vista a ancho completo / ModuleDetailView)", () => {
-  it("renderiza la vista de detalle cuando hay solicitud seleccionada", () => {
+describe("SolicitudDetailPanel — render (Fase 2: SlidePanel)", () => {
+  it("renderiza el panel cuando hay solicitud seleccionada", () => {
     const html = renderPanel();
-    expect(html).toContain('data-testid="solicitud-detalle-view"');
+    expect(html).toContain("slide-panel");
   });
 
   it("muestra el número de pedido/solicitud en el título", () => {
@@ -137,7 +137,7 @@ describe("SolicitudDetailPanel — render (vista a ancho completo / ModuleDetail
     expect(html).toContain("Programacion y servicio");
   });
 
-  it("renderiza el botón de volver al listado (header)", () => {
+  it("renderiza el botón de cerrar del SlidePanel (header)", () => {
     const onClose = vi.fn();
     const html = renderToStaticMarkup(
       <SolicitudDetailPanel
@@ -159,9 +159,8 @@ describe("SolicitudDetailPanel — render (vista a ancho completo / ModuleDetail
         onRechazar={() => {}}
       />,
     );
-    // ModuleDetailView renderiza el botón "Volver al listado" en el header,
-    // cableado (vía onBack) a la prop onClose recibida del padre.
-    expect(html).toContain('data-testid="volver-listado-btn"');
+    // SlidePanel renderiza un único <button> de cierre (icono X) en el header,
+    // cableado a la prop onClose recibida del padre.
     expect((html.match(/<button/g) ?? []).length).toBeGreaterThanOrEqual(1);
   });
 

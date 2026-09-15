@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { z } from "zod";
-import { getErrorCode } from "@/lib/errors";
 
 const vehiculoSchema = z.object({
   placa: z.string().min(3, "Placa requerida").max(20),
@@ -13,7 +12,7 @@ const vehiculoSchema = z.object({
 
 async function requireAdmin() {
   const session = await auth();
-  return session && session.user?.role === "ADMIN";
+  return session && (session.user as any)?.role === "ADMIN";
 }
 
 export async function GET() {
@@ -59,8 +58,8 @@ export async function POST(req: NextRequest) {
       select: { id: true, placa: true, tipo: true, capacidadKg: true, estado: true },
     });
     return NextResponse.json({ success: true, data: vehiculo }, { status: 201 });
-  } catch (error) {
-    if (getErrorCode(error) === "P2002") {
+  } catch (error: any) {
+    if (error?.code === "P2002") {
       return NextResponse.json({ error: "Ya existe un vehiculo con esa placa" }, { status: 400 });
     }
     throw error;

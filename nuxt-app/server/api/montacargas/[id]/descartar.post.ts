@@ -1,3 +1,4 @@
+import { defineOperacionAlmacenHandler } from '../../../utils/operacionAlmacen'
 import { defineEventHandler, getRouterParam, readBody, createError } from 'h3'
 import { z } from 'zod'
 import { prisma } from '../../../utils/prisma'
@@ -11,7 +12,7 @@ const schema = z.object({ motivo: z.string().max(200).optional() })
 // Como el reloj arranca al digitar el PLU, un dedazo deja un registro corriendo.
 // Sin esta salida cada error quedaria abierto para siempre inflando el promedio.
 // Es borrado logico: queda en auditoria, fuera de reportes y KPIs.
-export default defineEventHandler(async (event) => {
+export default defineOperacionAlmacenHandler(async (event) => {
   const actor = await requireAuth(event)
   assertUsuarioMontacargas(actor.role)
 

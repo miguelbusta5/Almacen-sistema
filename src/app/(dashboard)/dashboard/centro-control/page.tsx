@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useSession } from "next-auth/react";
 import {
@@ -10,7 +10,6 @@ import {
 import { SectionHeader } from "@/components/ui";
 import { AutoRefreshIndicator } from "@/components/ui/AutoRefreshIndicator";
 import { useAutoRefresh } from "@/hooks/useAutoRefresh";
-import { useApi } from "@/hooks/useApi";
 import { useIsMobile } from "@/lib/useIsMobile";
 import { calcAlmacenaje } from "@/lib/almacenaje";
 import { scoreGuardado, urgencia } from "@/lib/transporte";
@@ -39,12 +38,6 @@ interface SinContactoData {
   items: Array<{ clientId: string; documento: string; fecha: string }>;
 }
 
-// Subconjunto consumido de la respuesta de /api/novedades/stats.
-interface CentroControlStats {
-  tasaClasificacion?: number;
-  resumen?: { sinAsignar?: number };
-}
-
 // ── Componente: fila de alerta ────────────────────────────
 function AlertaRow({ level, count, title, context, href }: {
   level: "critical" | "warning" | "info";
@@ -55,7 +48,7 @@ function AlertaRow({ level, count, title, context, href }: {
 }) {
   const COLOR = level === "critical" ? "var(--error)" : level === "warning" ? "var(--warning)" : "var(--brand)";
   const BG    = level === "critical" ? "var(--error-tint)" : level === "warning" ? "var(--warning-tint)" : "var(--brand-tint)";
-  const BORDER = `color-mix(in srgb, ${COLOR} 22%, transparent)`;
+  const BORDER = level === "critical" ? "rgba(220, 38, 38, 0.22)" : level === "warning" ? "rgba(217, 119, 6, 0.22)" : "rgba(37, 99, 235, 0.22)";
 
   return (
     <Link href={href} style={{ textDecoration: "none" }}>
@@ -182,21 +175,41 @@ export default function CentroControlPage() {
   const { data: session } = useSession();
   const userName = (session?.user as { name?: string } | undefined)?.name ?? "";
 
-  const { data: novJson, isLoading: loadingNov, mutate: mutateNov } = useApi<{ data: Novedad[] }>("/api/novedades?pageSize=500");
-  const novedades = novJson?.data ?? [];
-  const { data: guaJson, isLoading: loadingGua, mutate: mutateGua } = useApi<{ data: Guardado[] }>("/api/transporte?pageSize=500");
-  const guardados = guaJson?.data ?? [];
-  const { data: statsJson, isLoading: loadingStats, mutate: mutateStats } = useApi<CentroControlStats>("/api/novedades/stats?dias=30");
-  const kpis = { stats: statsJson ?? null };
-  const { data: despJson, isLoading: loadingDesp, mutate: mutateDesp } = useApi<{ data: DespachoTienda[] }>("/api/tienda?pageSize=500");
-  const despachos = despJson?.data ?? [];
-  const { data: scJson, isLoading: loadingSc, mutate: mutateSc } = useApi<SinContactoData>("/api/transporte/sin-contacto");
-  const sinContacto = scJson ?? { count: 0, items: [] };
+  const [novedades,   setNovedades]   = useState<Novedad[]>([]);
+  const [guardados,   setGuardados]   = useState<Guardado[]>([]);
+  const [despachos,   setDespachos]   = useState<DespachoTienda[]>([]);
+  const [kpis,        setKpis]        = useState<{ stats: any } | null>(null);
+  const [sinContacto, setSinContacto] = useState<SinContactoData>({ count: 0, items: [] });
+  const [loading,     setLoading]     = useState(true);
 
-  const loading = loadingNov || loadingGua || loadingStats || loadingDesp || loadingSc;
+  async function load(silent = false) {
+    if (!silent) setLoading(true);
+    try {
+      const [nR, gR, sR, dR, scR] = await Promise.all([
+        fetch("/api/novedades?pageSize=500"),
+        fetch("/api/transporte?pageSize=500"),
+        fetch("/api/novedades/stats?dias=30"),
+        fetch("/api/tienda?pageSize=500"),
+        fetch("/api/transporte/sin-contacto"),
+      ]);
+      const [nJ, gJ, sJ, dJ, scJ] = await Promise.all([
+        nR.json(), gR.json(), sR.json(), dR.json(), scR.json(),
+      ]);
+      if (nJ.success)  setNovedades(nJ.data ?? []);
+      if (gJ.success)  setGuardados(gJ.data ?? []);
+      if (dJ.success)  setDespachos(dJ.data ?? []);
+      if (scJ.success) setSinContacto({ count: scJ.count ?? 0, items: scJ.items ?? [] });
+      setKpis({
+        stats:       sJ.success ? sJ : null,
+      });
+    } catch { /* noop */ }
+    finally { if (!silent) setLoading(false); }
+  }
+
+  useEffect(() => { void load(); }, []);
 
   const autoRefresh = useAutoRefresh({
-    onRefresh: () => { void mutateNov(); void mutateGua(); void mutateStats(); void mutateDesp(); void mutateSc(); },
+    onRefresh: () => load(true),
   });
 
   // ── Rankings (para INFO y KPI blocks) ────────────────────
@@ -218,7 +231,7 @@ export default function CentroControlPage() {
   const rankingInventario = useMemo(() => {
     const byResp: Record<string, { total: number; resueltas: number; abiertas: number }> = {};
     for (const n of novedades) {
-      const r = n.asignadoA;
+      const r = (n as any).asignadoA as string | null;
       if (!r) continue;
       if (!byResp[r]) byResp[r] = { total: 0, resueltas: 0, abiertas: 0 };
       byResp[r].total++;
@@ -242,7 +255,7 @@ export default function CentroControlPage() {
   const grdKpis = useMemo(() => {
     const activos  = guardados.filter((g) => g.estado === "PENDIENTE DESPACHO");
     const costoTotal  = activos.reduce((s, g) => s + calcAlmacenaje(g.fecha, null).costo, 0);
-    const proyeccion  = activos.reduce((s, g) => { const a = calcAlmacenaje(g.fecha, null); return s + (a.fase === "cobro" ? a.costoProximo ?? a.costo : 0); }, 0);
+    const proyeccion  = activos.reduce((s, g) => { const a = calcAlmacenaje(g.fecha, null); return s + (a.fase === "cobro" ? (a as any).costoProximo ?? a.costo : 0); }, 0);
     const criticos = activos.filter((g) => scoreGuardado(g) >= 70).length;
     const vencidos = activos.filter((g) => urgencia(g)?.tipo === "vencida").length;
     return { activos: activos.length, costoTotal, proyeccion, criticos, vencidos };
@@ -281,7 +294,7 @@ export default function CentroControlPage() {
         count:   n7d.length,
         title:   "Novedades abiertas sin resolver por más de 7 días",
         context: n7d.length > 0 ? n7d.slice(0, 3).map((n) => n.plu).join(" · ") + (n7d.length > 3 ? ` · +${n7d.length - 3} más` : "") : undefined,
-        href:    "/dashboard",
+        href:    "/dashboard/inventario",
       },
       {
         id:      "t48h",
@@ -293,7 +306,7 @@ export default function CentroControlPage() {
     ].filter((a) => a.count > 0);
 
     // ── WARNING ───────────────────────────────────────────
-    const novSinAsig = novedades.filter((n) => n.estado !== "SOLUCIONADO" && !n.asignadoA);
+    const novSinAsig = novedades.filter((n) => n.estado !== "SOLUCIONADO" && !(n as any).asignadoA);
 
     const warning: AlertaItem[] = [
       {
@@ -301,7 +314,7 @@ export default function CentroControlPage() {
         count:   novSinAsig.length,
         title:   "Novedades sin responsable asignado",
         context: novSinAsig.length > 0 ? `${novSinAsig.length} novedade${novSinAsig.length !== 1 ? "s" : ""} sin seguimiento` : undefined,
-        href:    "/dashboard",
+        href:    "/dashboard/inventario",
       },
       {
         id:      "gsc",
@@ -329,7 +342,7 @@ export default function CentroControlPage() {
         id:      "topResp",
         title:   `Top responsable: ${topResp.nombre}`,
         context: `${topResp.resueltas}/${topResp.total} novedades resueltas · ${topResp.tasa}% de tasa`,
-        href:    "/dashboard",
+        href:    "/dashboard/inventario",
       },
     ].filter(Boolean) as InfoItem[];
 
@@ -418,7 +431,7 @@ export default function CentroControlPage() {
             {alertas.totalWarning > 0 && (
               <span style={{
                 fontSize: 11, fontWeight: 700, padding: "3px 9px", borderRadius: 20,
-                background: "var(--warning-tint)", color: "var(--warning)", border: "1px solid color-mix(in srgb, var(--warning) 14%, transparent)",
+                background: "var(--warning-tint)", color: "var(--warning)", border: "1px solid rgba(71,85,105,.14)",
               }}>
                 {alertas.totalWarning} advertencia{alertas.totalWarning !== 1 ? "s" : ""}
               </span>
@@ -426,7 +439,7 @@ export default function CentroControlPage() {
             {!hasExcepctions && (
               <span style={{
                 fontSize: 11, fontWeight: 700, padding: "3px 9px", borderRadius: 20,
-                background: "var(--brand-tint)", color: "var(--brand)", border: "1px solid color-mix(in srgb, var(--brand) 15%, transparent)",
+                background: "var(--brand-tint)", color: "var(--brand)", border: "1px solid rgba(29,78,216,.15)",
               }}>
                 Sin excepciones
               </span>
@@ -438,7 +451,7 @@ export default function CentroControlPage() {
         {!hasExcepctions && alertas.info.length === 0 && (
           <div style={{
             display: "flex", alignItems: "center", gap: 10, padding: "14px 16px",
-            background: "var(--brand-tint)", borderRadius: 10, border: "1px solid color-mix(in srgb, var(--brand) 15%, transparent)",
+            background: "var(--brand-tint)", borderRadius: 10, border: "1px solid rgba(29,78,216,.15)",
           }}>
             <CheckCircle2 size={16} color="var(--brand)" />
             <span style={{ fontSize: 13, color: "var(--muted)" }}>
@@ -462,7 +475,7 @@ export default function CentroControlPage() {
             <div>
               <div style={{
                 fontSize: 10, fontWeight: 700, letterSpacing: ".08em",
-                textTransform: "uppercase", color: "var(--info)", marginBottom: 8,
+                textTransform: "uppercase", color: "#34D9F0", marginBottom: 8,
               }}>
                 INFORMACIÓN
               </div>
@@ -472,15 +485,15 @@ export default function CentroControlPage() {
                     <div
                       style={{
                         padding: "10px 12px", borderRadius: 10,
-                        background: "color-mix(in srgb, var(--info) 5%, transparent)", border: "1px solid var(--info-tint)",
+                        background: "#34D9F00d", border: "1px solid #34D9F025",
                         cursor: "pointer", transition: "opacity .12s",
                       }}
                       onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.opacity = ".8"; }}
                       onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.opacity = "1"; }}
                     >
                       <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 4 }}>
-                        <TrendingUp size={12} color="var(--info)" />
-                        <span style={{ fontSize: 12, fontWeight: 700, color: "var(--info)" }}>{item.title}</span>
+                        <TrendingUp size={12} color="#34D9F0" />
+                        <span style={{ fontSize: 12, fontWeight: 700, color: "#34D9F0" }}>{item.title}</span>
                       </div>
                       {item.context && (
                         <div style={{
@@ -511,8 +524,8 @@ export default function CentroControlPage() {
           </div>
           {kpis?.stats && (
             <div style={{ marginTop: 10, fontSize: 12, color: "var(--muted)", display: "flex", gap: 12 }}>
-              <span>Clasificadas: <strong style={{ color: "var(--text)" }}>{kpis.stats.tasaClasificacion ?? 0}%</strong></span>
-              <span>Sin asignar: <strong style={{ color: ((kpis.stats.resumen?.sinAsignar ?? 0) > 0) ? "var(--warning)" : "var(--success)" }}>{kpis.stats.resumen?.sinAsignar ?? 0}</strong></span>
+              <span>Clasificadas: <strong style={{ color: "var(--text)" }}>{kpis.stats.tasaClasificacion}%</strong></span>
+              <span>Sin asignar: <strong style={{ color: (kpis.stats.resumen?.sinAsignar > 0) ? "var(--warning)" : "var(--success)" }}>{kpis.stats.resumen?.sinAsignar ?? 0}</strong></span>
             </div>
           )}
         </KpiBlock>

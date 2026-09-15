@@ -1,3 +1,4 @@
+import { intervalosSinPausas } from '../../utils/pausasCalc'
 import { defineEventHandler, getQuery } from 'h3'
 import { prisma } from '../../utils/prisma'
 import { requireAuth } from '../../utils/auth'
@@ -157,7 +158,7 @@ export default defineEventHandler(async (event) => {
         ],
       },
       select: {
-        estado: true, creadoPorId: true, horaInicio: true, horaFinalizacion: true,
+        id: true, estado: true, creadoPorId: true, horaInicio: true, horaFinalizacion: true,
         descargadores: { select: { usuarioId: true } },
       },
     }),
@@ -257,12 +258,19 @@ export default defineEventHandler(async (event) => {
   }
   // Un contenedor no es un PLU: su tiempo cuenta, pero no entra en el promedio
   // por PLU ni en und/hora (registro null).
+  const pausasRecepcion = await prisma.pausaOperativa.findMany({
+    where: { recepciones: { hasSome: recepciones.map(r => r.id) }, inicio: { lt: finConsulta }, OR: [{ fin: null }, { fin: { gt: ini } }] },
+    select: { inicio: true, fin: true, recepciones: true },
+  })
   for (const r of recepciones) {
     const finCierre = r.estado === 'CERRADO' ? r.horaFinalizacion : null
     for (const uid of new Set([r.creadoPorId, ...r.descargadores.map((d) => d.usuarioId)])) {
       const base = { usuarioId: uid, inicio: r.horaInicio, tipo: 'contenedor' as const, registro: null }
-      if (finCierre) tiempos.push({ ...base, fin: finCierre })
-      else enCurso.push({ ...base, fin: finAbierto(r.horaInicio, uid) })
+      const pausas = pausasRecepcion.filter(p => p.recepciones.includes(r.id))
+      for (const tramo of intervalosSinPausas(r.horaInicio, finCierre ?? finAbierto(r.horaInicio, uid), pausas)) {
+        if (finCierre) tiempos.push({ ...base, ...tramo })
+        else enCurso.push({ ...base, ...tramo })
+      }
     }
   }
 

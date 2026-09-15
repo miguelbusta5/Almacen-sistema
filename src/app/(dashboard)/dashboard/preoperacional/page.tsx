@@ -6,23 +6,13 @@ import {
   AlertTriangle, Camera, CheckCircle2, ChevronLeft, ChevronRight,
   Download, RefreshCw, Save, ShieldCheck, Trash2, Truck, XCircle,
 } from "lucide-react";
-import { Badge, EmptyState, ModuleDetailView, ModuleHero, SkeletonTable, Stat } from "@/components/ui";
+import { Badge, EmptyState, ModuleHero, SkeletonTable, Stat, Toast } from "@/components/ui";
 import { AutoRefreshIndicator } from "@/components/ui/AutoRefreshIndicator";
-import { DetailSection, DetailGrid } from "@/components/ui/SlidePanel";
+import { SlidePanel, DetailSection, DetailGrid } from "@/components/ui/SlidePanel";
 import { useIsMobile } from "@/lib/useIsMobile";
-import { useListDetailScroll } from "@/hooks/useListDetailScroll";
 import type { ResultadoInspeccion } from "@/lib/preoperacional";
 import { getModuleColor, getModuleCssVars } from "@/lib/moduleTheme";
 import { useAutoRefresh } from "@/hooks/useAutoRefresh";
-import { useApi } from "@/hooks/useApi";
-import { apiPost, apiUpload, apiDelete } from "@/lib/apiClient";
-import { useToast } from "@/contexts/ToastContext";
-import { HistorialPreoperacionalTable } from "./_components";
-
-// Mensaje de error seguro desde un `catch (e: unknown)` conservando el fallback.
-function errMsg(e: unknown, fallback: string): string {
-  return (e instanceof Error ? e.message : "") || fallback;
-}
 
 // ─── tipos ──────────────────────────────────────────────────────────────────
 
@@ -148,42 +138,44 @@ function ConductorView() {
   const role = (session?.user as { role?: string } | undefined)?.role;
   const isMobile = useIsMobile();
 
+  const [data, setData] = useState<ConductorData | null>(null);
   const [items, setItems] = useState<FormItem[]>([]);
   const [kilometraje, setKilometraje] = useState("");
   const [observaciones, setObservaciones] = useState("");
+  const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const toastCtx = useToast();
+  const [toast, setToast] = useState<{ msg: string; err?: boolean } | null>(null);
 
   const showToast = (msg: string, err = false) => {
-    err ? toastCtx.error(msg) : toastCtx.success(msg);
+    setToast({ msg, err });
+    setTimeout(() => setToast(null), 2600);
   };
 
-  // La respuesta de este endpoint no sigue el patrón {success,data}: trae los
-  // campos directamente (checklist, transportista, vehiculo, ...).
-  const { data, isLoading: loading, error: loadError, mutate: mutateData } = useApi<ConductorData>("/api/preoperacional");
+  async function load() {
+    setLoading(true);
+    try {
+      const res = await fetch("/api/preoperacional");
+      const json = await res.json();
+      if (!json.success) throw new Error(json.error || "Error");
+      setData(json);
+      setItems((json.checklist ?? []).map((i: ChecklistItem) => ({
+        ...i,
+        resultado: "CONFORME" as ResultadoInspeccion,
+        observacion: "",
+        fotoUrl: null,
+      })));
+    } catch (e: any) {
+      showToast(e.message || "No se pudo cargar preoperacional", true);
+    } finally {
+      setLoading(false);
+    }
+  }
 
-  // Reinicializa el formulario cuando llega un nuevo checklist. Solo ocurre en
-  // el fetch inicial y tras un mutate() explícito (submit / refresh manual);
-  // el auto-refresh se pausa mientras el formulario tiene cambios sin guardar,
-  // así que esto nunca pisa una edición en curso.
-  useEffect(() => {
-    if (!data) return;
-    setItems((data.checklist ?? []).map((i) => ({
-      ...i,
-      resultado: "CONFORME" as ResultadoInspeccion,
-      observacion: "",
-      fotoUrl: null,
-    })));
-  }, [data]);
-
-  useEffect(() => {
-    if (loadError) showToast(errMsg(loadError, "No se pudo cargar preoperacional"), true);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [loadError]);
+  useEffect(() => { load(); }, []);
 
   const autoRefresh = useAutoRefresh({
     pause: Boolean(saving || kilometraje || observaciones || items.some((item) => item.resultado !== "CONFORME" || item.observacion || item.fotoUrl)),
-    onRefresh: () => { void mutateData(); },
+    onRefresh: () => load(),
   });
 
   const resumen = useMemo(() => {
@@ -206,11 +198,13 @@ function ConductorView() {
     try {
       const fd = new FormData();
       fd.append("foto", file);
-      const json = await apiUpload<{ url: string }>("/api/uploads/foto", fd);
+      const res = await fetch("/api/uploads/foto", { method: "POST", body: fd });
+      const json = await res.json();
+      if (!json.success) throw new Error(json.error || "No se pudo subir la foto");
       updateItem(index, { fotoUrl: json.url });
       showToast("Foto cargada");
-    } catch (e) {
-      showToast(errMsg(e, "Error cargando foto"), true);
+    } catch (e: any) {
+      showToast(e.message || "Error cargando foto", true);
     } finally {
       updateItem(index, { uploading: false });
     }
@@ -223,22 +217,28 @@ function ConductorView() {
 
     setSaving(true);
     try {
-      await apiPost("/api/preoperacional", {
-        kilometraje: kilometraje ? Number(kilometraje) : null,
-        observaciones: observaciones.trim() || null,
-        items: items.map((i) => ({
-          item: i.item,
-          resultado: i.resultado,
-          observacion: i.observacion.trim() || null,
-          fotoUrl: i.fotoUrl,
-        })),
+      const res = await fetch("/api/preoperacional", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          kilometraje: kilometraje ? Number(kilometraje) : null,
+          observaciones: observaciones.trim() || null,
+          items: items.map((i) => ({
+            item: i.item,
+            resultado: i.resultado,
+            observacion: i.observacion.trim() || null,
+            fotoUrl: i.fotoUrl,
+          })),
+        }),
       });
+      const json = await res.json();
+      if (!json.success) throw new Error(json.error || "No se pudo guardar");
       showToast("Preoperacional registrado");
       setKilometraje("");
       setObservaciones("");
-      await mutateData();
-    } catch (e) {
-      showToast(errMsg(e, "Error guardando"), true);
+      await load();
+    } catch (e: any) {
+      showToast(e.message || "Error guardando", true);
     } finally {
       setSaving(false);
     }
@@ -313,7 +313,7 @@ function ConductorView() {
 
             if (isMobile) {
               return (
-                <div key={item.item} style={{ display: "flex", flexDirection: "column", gap: 8, padding: "12px", border: "1px solid var(--border)", borderRadius: 8, background: bad ? "color-mix(in srgb, var(--error) 4%, transparent)" : "var(--surface)" }}>
+                <div key={item.item} style={{ display: "flex", flexDirection: "column", gap: 8, padding: "12px", border: "1px solid var(--border)", borderRadius: 8, background: bad ? "rgba(239,68,68,0.04)" : "var(--surface)" }}>
                   <div style={{ fontSize: 13, fontWeight: 700, color: "var(--text)" }}>{item.item}</div>
                   <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
                     <span style={{ fontSize: 11, color: "var(--muted)", textTransform: "capitalize" }}>{item.categoria}</span>
@@ -332,7 +332,7 @@ function ConductorView() {
             }
 
             return (
-              <div key={item.item} style={{ display: "grid", gridTemplateColumns: "1fr 150px 220px 120px", gap: 10, alignItems: "center", padding: "10px 12px", border: "1px solid var(--border)", borderRadius: 8, background: bad ? "color-mix(in srgb, var(--error) 4%, transparent)" : "var(--surface)" }}>
+              <div key={item.item} style={{ display: "grid", gridTemplateColumns: "1fr 150px 220px 120px", gap: 10, alignItems: "center", padding: "10px 12px", border: "1px solid var(--border)", borderRadius: 8, background: bad ? "rgba(239,68,68,0.04)" : "var(--surface)" }}>
                 <div style={{ minWidth: 0 }}>
                   <div style={{ fontSize: 13, fontWeight: 700, color: "var(--text)" }}>{item.item}</div>
                   <div style={{ display: "flex", gap: 8, alignItems: "center", marginTop: 3 }}>
@@ -384,6 +384,9 @@ function ConductorView() {
           </div>
         )}
       </div>
+
+      {/* Toast */}
+      {toast && <Toast message={toast.msg} error={toast.err} />}
     </div>
   );
 }
@@ -393,16 +396,18 @@ function ConductorView() {
 // ════════════════════════════════════════════════════════════════════════════
 
 function SupervisorView({ role }: { role: string }) {
+  const [rows, setRows]           = useState<HistorialRow[]>([]);
+  const [conductores, setConductores] = useState<{ id: string; nombre: string }[]>([]);
+  const [total, setTotal]         = useState(0);
+  const [pages, setPages]         = useState(1);
   const [page, setPage]           = useState(1);
+  const [loading, setLoading]     = useState(true);
   const [exporting, setExporting] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [selected,      setSelected]      = useState<HistorialRow | null>(null);
-  useListDetailScroll(selected !== null);
-  const toastCtx = useToast();
-  const [debugTable, setDebugTable] = useState(false);
-
-  // Modo debug de tabla: /dashboard/preoperacional?debugTable=1 (diagnóstico de mapeo de columnas).
-  useEffect(() => { setDebugTable(new URLSearchParams(window.location.search).get("debugTable") === "1"); }, []);
+  const [detail,        setDetail]        = useState<InspeccionDetalle | null>(null);
+  const [loadingDetail, setLoadingDetail] = useState(false);
+  const [toast, setToast]         = useState<{ msg: string; err?: boolean } | null>(null);
 
   const [fDesde, setFDesde]           = useState("");
   const [fHasta, setFHasta]           = useState("");
@@ -410,10 +415,10 @@ function SupervisorView({ role }: { role: string }) {
   const [fEstado, setFEstado]         = useState("");
 
   const showToast = (msg: string, err = false) => {
-    err ? toastCtx.error(msg) : toastCtx.success(msg);
+    setToast({ msg, err });
+    setTimeout(() => setToast(null), 3000);
   };
 
-  // Querystring de filtros (sin page/pageSize) — reusado por la key de la lista y por exportar().
   const buildParams = useCallback((extra?: Record<string, string>) => {
     const p = new URLSearchParams();
     if (fDesde)     p.set("fechaDesde",  fDesde);
@@ -424,26 +429,30 @@ function SupervisorView({ role }: { role: string }) {
     return p.toString();
   }, [fDesde, fHasta, fConductor, fEstado]);
 
-  // Cambiar cualquier filtro vuelve a la página 1 (la key de SWR reacciona sola).
-  useEffect(() => { setPage(1); }, [fDesde, fHasta, fConductor, fEstado]);
+  const load = useCallback(async (p = 1) => {
+    setLoading(true);
+    try {
+      const qs = buildParams({ page: String(p), pageSize: "50" });
+      const res = await fetch(`/api/preoperacional/historial?${qs}`);
+      const json = await res.json();
+      if (!json.success) throw new Error(json.error || "Error al cargar");
+      setRows(json.data);
+      setTotal(json.total);
+      setPages(json.pages);
+      setPage(p);
+      if (json.conductores?.length) setConductores(json.conductores);
+    } catch (e: any) {
+      showToast(e.message || "Error", true);
+    } finally {
+      setLoading(false);
+    }
+  }, [buildParams]);
 
-  const listKey = `/api/preoperacional/historial?${buildParams({ page: String(page), pageSize: "50" })}`;
-  const { data: listData, isLoading: loading, error: listError, mutate: mutateList } = useApi<{
-    data: HistorialRow[]; total: number; pages: number; conductores?: { id: string; nombre: string }[];
-  }>(listKey);
-  const rows = listData?.data ?? [];
-  const total = listData?.total ?? 0;
-  const pages = listData?.pages ?? 1;
-  const conductores = listData?.conductores ?? [];
-
-  useEffect(() => {
-    if (listError) showToast(errMsg(listError, "Error"), true);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [listError]);
+  useEffect(() => { load(1); }, [load]);
 
   const autoRefresh = useAutoRefresh({
     pause: Boolean(selected || deletingId || exporting),
-    onRefresh: () => { void mutateList(); },
+    onRefresh: () => load(page),
   });
 
   async function exportar() {
@@ -459,26 +468,34 @@ function SupervisorView({ role }: { role: string }) {
       a.download = `preoperacionales-${new Date().toISOString().slice(0, 10)}.xlsx`;
       a.click();
       URL.revokeObjectURL(url);
-    } catch (e) {
-      showToast(errMsg(e, "Error al exportar"), true);
+    } catch (e: any) {
+      showToast(e.message || "Error al exportar", true);
     } finally {
       setExporting(false);
     }
   }
 
-  // El detalle se carga vía useApi con key condicionada a `selected` (ver abajo).
-  const detailKey = selected ? `/api/preoperacional/${selected.id}` : null;
-  const { data: detailData, isLoading: loadingDetail } = useApi<{ data: InspeccionDetalle }>(detailKey);
-  const detail = detailData?.data ?? null;
+  async function openDetail(row: HistorialRow) {
+    setSelected(row);
+    setDetail(null);
+    setLoadingDetail(true);
+    try {
+      const res = await fetch(`/api/preoperacional/${row.id}`);
+      const json = await res.json();
+      if (json.success) setDetail(json.data);
+    } catch { /* panel abierto, ítems no cargaron */ }
+    finally { setLoadingDetail(false); }
+  }
 
   async function deleteRow(id: string) {
     try {
-      await apiDelete(`/api/preoperacional/${id}`);
+      const res = await fetch(`/api/preoperacional/${id}`, { method: "DELETE" });
+      if (!res.ok) throw new Error("Error al eliminar");
       showToast("Inspección eliminada");
       setDeletingId(null);
-      void mutateList();
-    } catch (e) {
-      showToast(errMsg(e, "Error al eliminar"), true);
+      load(page);
+    } catch (e: any) {
+      showToast(e.message || "Error al eliminar", true);
       setDeletingId(null);
     }
   }
@@ -508,22 +525,125 @@ function SupervisorView({ role }: { role: string }) {
           <button onClick={exportar} disabled={exporting} className="ds-btn ds-btn-primary" style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, opacity: exporting ? 0.7 : 1 }}>
             <Download size={14} />{exporting ? "Exportando..." : "Exportar Excel"}
           </button>
-          <button onClick={() => mutateList()} className="ds-btn ds-btn-ghost" style={{ fontSize: 12 }}>
+          <button onClick={() => load(page)} className="ds-btn ds-btn-ghost" style={{ fontSize: 12 }}>
             <RefreshCw size={14} />Actualizar
           </button>
         </>
         )}
       />
 
-      {/* Vista de detalle a ancho completo (reemplaza al listado) o listado */}
-      {selected ? (
-        <ModuleDetailView
-          testId="inspeccion-detalle-view"
-          onBack={() => { setSelected(null); setDeletingId(null); }}
-          title={`${selected.conductor?.nombre ?? "Inspector"} — ${selected.fecha}`}
-          badge={<Badge label={ESTADO_LABEL[selected.estado]} variant={estadoBadge(selected.estado)} dot={false} color={ESTADO_COLOR[selected.estado]} />}
-          moduleColor={ESTADO_COLOR[selected.estado]}
-        >
+      {/* Filtros */}
+      <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: "1rem", alignItems: "center" }}>
+        <input type="date" value={fDesde} onChange={(e) => setFDesde(e.target.value)} style={inp} title="Desde" />
+        <input type="date" value={fHasta} onChange={(e) => setFHasta(e.target.value)} style={inp} title="Hasta" />
+        <select value={fConductor} onChange={(e) => setFConductor(e.target.value)} style={inp}>
+          <option value="">Todos los conductores</option>
+          {conductores.map((c) => <option key={c.id} value={c.id}>{c.nombre}</option>)}
+        </select>
+        <select value={fEstado} onChange={(e) => setFEstado(e.target.value)} style={inp}>
+          <option value="">Todos los estados</option>
+          <option value="APROBADA">Aprobada</option>
+          <option value="APROBADA_CON_OBSERVACIONES">Con observaciones</option>
+          <option value="BLOQUEADA">Bloqueada</option>
+        </select>
+        {hayFiltros && (
+          <button onClick={limpiar} style={{ background: "none", border: "none", color: "var(--muted2)", cursor: "pointer", fontSize: 12, padding: "0.4rem 0.6rem" }}>
+            Limpiar
+          </button>
+        )}
+      </div>
+
+      {/* Tabla */}
+      {loading ? (
+        <SkeletonTable rows={8} cols={6} />
+      ) : (
+        <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 14, overflow: "hidden" }}>
+          <div style={{ overflowX: "auto" }}>
+            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
+              <thead>
+                <tr style={{ borderBottom: "1px solid var(--border)", background: "var(--surface2)" }}>
+                  {["Fecha", "Conductor", "Vehículo", "Km", "Estado", "Ítems"].map((h) => (
+                    <th key={h} style={{ padding: "0.7rem 0.9rem", textAlign: "left", fontSize: 10, fontWeight: 700, letterSpacing: ".06em", textTransform: "uppercase", color: "var(--muted)", whiteSpace: "nowrap" }}>{h}</th>
+                  ))}
+                  {role === "ADMIN" && <th style={{ padding: "0.7rem 0.9rem", textAlign: "left", fontSize: 10, fontWeight: 700, letterSpacing: ".06em", textTransform: "uppercase", color: "var(--muted)" }}></th>}
+                </tr>
+              </thead>
+              <tbody>
+                {rows.length === 0 && (
+                  <tr><td colSpan={role === "ADMIN" ? 7 : 6} style={{ padding: "2rem", textAlign: "center", color: "var(--muted)", fontSize: 13 }}>Sin inspecciones para los filtros seleccionados</td></tr>
+                )}
+                {rows.map((r) => (
+                  <tr key={r.id} onClick={() => openDetail(r)} style={{ borderBottom: "1px solid var(--border)", cursor: "pointer" }}>
+                    <td style={{ padding: "0.7rem 0.9rem", fontFamily: "var(--mono)", fontSize: 12 }}>{r.fecha}</td>
+                    <td style={{ padding: "0.7rem 0.9rem", fontWeight: 600 }}>{r.conductor?.nombre ?? "—"}</td>
+                    <td style={{ padding: "0.7rem 0.9rem", fontFamily: "var(--mono)", fontSize: 12 }}>
+                      {r.vehiculo?.placa ?? "—"}
+                      <span style={{ color: "var(--muted)", marginLeft: 4 }}>{r.vehiculo?.tipo}</span>
+                    </td>
+                    <td style={{ padding: "0.7rem 0.9rem", fontSize: 12, color: "var(--muted2)" }}>{r.kilometraje != null ? r.kilometraje.toLocaleString() : "—"}</td>
+                    <td style={{ padding: "0.7rem 0.9rem" }}>
+                      <Badge label={ESTADO_LABEL[r.estado]} variant={estadoBadge(r.estado)} dot={false} />
+                    </td>
+                    <td style={{ padding: "0.7rem 0.9rem", fontSize: 12 }}>
+                      <span style={{ color: "var(--muted2)" }}>{r.itemsCount} ítems</span>
+                      {r.noConformes > 0 && (
+                        <span style={{ marginLeft: 6, color: r.criticos > 0 ? "var(--error)" : "var(--warning)", fontWeight: 700 }}>
+                          · {r.noConformes} ✗{r.criticos > 0 ? ` (${r.criticos} crít.)` : ""}
+                        </span>
+                      )}
+                    </td>
+                    {role === "ADMIN" && (
+                      <td style={{ padding: "0.7rem 0.9rem" }}>
+                        {deletingId === r.id ? (
+                          <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+                            <button onClick={(e) => { e.stopPropagation(); deleteRow(r.id); }}
+                              style={{ fontSize: 11, padding: "3px 8px", background: "var(--error)", color: "#fff", border: "none", borderRadius: 6, cursor: "pointer" }}>
+                              Sí, eliminar
+                            </button>
+                            <button onClick={(e) => { e.stopPropagation(); setDeletingId(null); }}
+                              style={{ fontSize: 11, padding: "3px 8px", background: "none", border: "1px solid var(--border)", borderRadius: 6, cursor: "pointer", color: "var(--muted)" }}>
+                              Cancelar
+                            </button>
+                          </div>
+                        ) : (
+                          <button onClick={(e) => { e.stopPropagation(); setDeletingId(r.id); }}
+                            style={{ background: "none", border: "none", cursor: "pointer", color: "var(--muted2)", padding: 4, display: "flex", alignItems: "center" }}
+                            title="Eliminar inspección">
+                            <Trash2 size={14} />
+                          </button>
+                        )}
+                      </td>
+                    )}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          {/* Paginación */}
+          {pages > 1 && (
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 12, padding: "0.75rem 1rem", borderTop: "1px solid var(--border)", fontSize: 13 }}>
+              <button onClick={() => load(page - 1)} disabled={page <= 1} className="ds-btn ds-btn-ghost ds-btn-sm" style={{ opacity: page <= 1 ? 0.4 : 1 }}>
+                <ChevronLeft size={14} />Anterior
+              </button>
+              <span style={{ color: "var(--muted)" }}>Página {page} de {pages}</span>
+              <button onClick={() => load(page + 1)} disabled={page >= pages} className="ds-btn ds-btn-ghost ds-btn-sm" style={{ opacity: page >= pages ? 0.4 : 1 }}>
+                Siguiente<ChevronRight size={14} />
+              </button>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Slide panel detalle */}
+      <SlidePanel
+        open={!!selected}
+        onClose={() => { setSelected(null); setDetail(null); setDeletingId(null); }}
+        title={selected ? `${selected.conductor?.nombre ?? "Inspector"} — ${selected.fecha}` : ""}
+        badge={selected ? <Badge label={ESTADO_LABEL[selected.estado]} variant={estadoBadge(selected.estado)} dot={false} color={ESTADO_COLOR[selected.estado]} /> : undefined}
+        moduleColor={selected ? ESTADO_COLOR[selected.estado] : PREOP_COLOR}
+      >
+        {selected && (
           <>
             <DetailSection title="Información general">
               <DetailGrid items={[
@@ -554,7 +674,7 @@ function SupervisorView({ role }: { role: string }) {
                       <div key={itm.id} style={{
                         display: "flex", alignItems: "flex-start", gap: 10, padding: "8px 10px",
                         border: "1px solid var(--border)", borderRadius: 8,
-                        background: itm.resultado === "NO_CONFORME" ? "color-mix(in srgb, var(--error) 4%, transparent)" : "var(--surface2)",
+                        background: itm.resultado === "NO_CONFORME" ? "rgba(239,68,68,0.04)" : "var(--surface2)",
                       }}>
                         <div style={{ flex: 1, minWidth: 0 }}>
                           <div style={{ fontSize: 13, fontWeight: 600, color: "var(--text)", display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
@@ -593,7 +713,7 @@ function SupervisorView({ role }: { role: string }) {
                   {deletingId === selected.id ? (
                     <div style={{ display: "flex", gap: 8 }}>
                       <button onClick={() => deleteRow(selected.id)}
-                        className="ds-btn" style={{ fontSize: 12, background: "var(--error)", color: "var(--text-on-error)", border: "none" }}>
+                        className="ds-btn" style={{ fontSize: 12, background: "var(--error)", color: "#fff", border: "none" }}>
                         Confirmar eliminación
                       </button>
                       <button onClick={() => setDeletingId(null)} className="ds-btn ds-btn-ghost" style={{ fontSize: 12 }}>
@@ -610,63 +730,11 @@ function SupervisorView({ role }: { role: string }) {
               </DetailSection>
             )}
           </>
-        </ModuleDetailView>
-      ) : (
-        <>
-          {/* Filtros */}
-          <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: "1rem", alignItems: "center" }}>
-            <input type="date" value={fDesde} onChange={(e) => setFDesde(e.target.value)} style={inp} title="Desde" />
-            <input type="date" value={fHasta} onChange={(e) => setFHasta(e.target.value)} style={inp} title="Hasta" />
-            <select value={fConductor} onChange={(e) => setFConductor(e.target.value)} style={inp}>
-              <option value="">Todos los conductores</option>
-              {conductores.map((c) => <option key={c.id} value={c.id}>{c.nombre}</option>)}
-            </select>
-            <select value={fEstado} onChange={(e) => setFEstado(e.target.value)} style={inp}>
-              <option value="">Todos los estados</option>
-              <option value="APROBADA">Aprobada</option>
-              <option value="APROBADA_CON_OBSERVACIONES">Con observaciones</option>
-              <option value="BLOQUEADA">Bloqueada</option>
-            </select>
-            {hayFiltros && (
-              <button onClick={limpiar} style={{ background: "none", border: "none", color: "var(--muted2)", cursor: "pointer", fontSize: 12, padding: "0.4rem 0.6rem" }}>
-                Limpiar
-              </button>
-            )}
-          </div>
+        )}
+      </SlidePanel>
 
-          {/* Tabla */}
-          {loading ? (
-            <SkeletonTable rows={8} cols={6} />
-          ) : (
-            <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 14, overflow: "hidden" }}>
-              <HistorialPreoperacionalTable
-                rows={rows}
-                role={role}
-                loading={false}
-                deletingId={deletingId}
-                onRowClick={(r) => setSelected(r)}
-                onDeleteStart={(id) => setDeletingId(id)}
-                onDeleteConfirm={(id) => deleteRow(id)}
-                onDeleteCancel={() => setDeletingId(null)}
-                debug={debugTable}
-              />
-
-              {/* Paginación */}
-              {pages > 1 && (
-                <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 12, padding: "0.75rem 1rem", borderTop: "1px solid var(--border)", fontSize: 13 }}>
-                  <button onClick={() => setPage(page - 1)} disabled={page <= 1} className="ds-btn ds-btn-ghost ds-btn-sm" style={{ opacity: page <= 1 ? 0.4 : 1 }}>
-                    <ChevronLeft size={14} />Anterior
-                  </button>
-                  <span style={{ color: "var(--muted)" }}>Página {page} de {pages}</span>
-                  <button onClick={() => setPage(page + 1)} disabled={page >= pages} className="ds-btn ds-btn-ghost ds-btn-sm" style={{ opacity: page >= pages ? 0.4 : 1 }}>
-                    Siguiente<ChevronRight size={14} />
-                  </button>
-                </div>
-              )}
-            </div>
-          )}
-        </>
-      )}
+      {/* Toast */}
+      {toast && <Toast message={toast.msg} error={toast.err} />}
     </div>
   );
 }

@@ -13,11 +13,7 @@ export type UserRole =
   | "OPERACIONES_MUEBLES"
   | "OPERACIONES_GOURMET"
   | "ETIQUETADO"
-  | "SUPERVISOR_ALMACENAMIENTO"
-  | "MONTACARGAS"
-  | "OPERARIO_ALMACENAMIENTO"
-  | "PICKING_MUEBLES"
-  | "INSPECCION_MUEBLES";
+  | "SUPERVISOR_ALMACENAMIENTO";
 
 export interface AppUser {
   id: string;
@@ -39,9 +35,6 @@ export interface Guardado {
   estado: TransporteEstado;
   fechaDespacho?: string;
   nota?: string;
-  ciudad?: string | null;
-  codigoTienda?: string | null;
-  nombreTienda?: string | null;
 }
 
 export interface AlmacenajeInfo {
@@ -93,20 +86,9 @@ export interface MueblesStats {
 }
 
 // ─── API Responses ──────────────────────────────────────────
-// Envoltura estándar de los endpoints `/api/*`. `code` es el código de negocio
-// opcional en errores (p. ej. "CONFLICT"). Ver `src/lib/apiClient.ts`.
 export interface ApiResponse<T> {
   success: boolean;
   data?: T;
   error?: string;
-  code?: string;
   message?: string;
-}
-
-// Envoltura de listados paginados.
-export interface ApiListResponse<T> extends ApiResponse<T[]> {
-  total: number;
-  page: number;
-  pageSize?: number;
-  pages?: number;
 }

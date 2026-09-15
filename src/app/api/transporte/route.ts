@@ -2,9 +2,12 @@ import { NextRequest, NextResponse } from "next/server";
 import { requireAuth, requireCan } from "@/lib/authz";
 import { prisma } from "@/lib/prisma";
 import { z } from "zod";
-import type { Prisma, TransporteGuardado } from "@prisma/client";
 
-function mapRow(r: TransporteGuardado) {
+function mapRow(r: {
+  id: number; client_id: string; fecha: Date; documento: string;
+  ubicacion: string; estado: string; tipo?: string;
+  fecha_despacho: Date | null; nota: string | null;
+}) {
   return {
     id: r.id, clientId: r.client_id,
     fecha: r.fecha.toISOString().slice(0, 10),
@@ -12,10 +15,7 @@ function mapRow(r: TransporteGuardado) {
     estado: r.estado, tipo: (r.tipo ?? "COMUN"),
     fechaDespacho: r.fecha_despacho ? r.fecha_despacho.toISOString().slice(0, 10) : null,
     nota: r.nota,
-    ciudad: r.ciudad ?? null,
-    codigoTienda: r.codigoTienda ?? null,
-    nombreTienda: r.nombreTienda ?? null,
-    netsuiteId: r.netsuiteId ?? null,
+    netsuiteId: (r as any).netsuiteId ?? null,
   };
 }
 
@@ -27,9 +27,6 @@ const createSchema = z.object({
   tipo: z.enum(["COMUN", "ECOMMERCE"]).default("COMUN"),
   fechaDespacho: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable().optional(),
   nota: z.string().nullable().optional(),
-  ciudad: z.string().max(100).nullable().optional(),
-  codigoTienda: z.string().max(50).nullable().optional(),
-  nombreTienda: z.string().max(255).nullable().optional(),
 });
 
 // GET /api/transporte?page=1&pageSize=200&q=&estado=&tipo=
@@ -44,7 +41,7 @@ export async function GET(req: NextRequest) {
   const estado = sp.get("estado") ?? "";
   const tipo = sp.get("tipo") ?? "";
 
-  const where: Prisma.TransporteGuardadoWhereInput = {};
+  const where: any = {};
   if (estado) where.estado = estado;
   if (tipo) where.tipo = tipo;
   if (q) where.OR = [
@@ -76,9 +73,6 @@ export async function POST(req: NextRequest) {
       estado: d.estado, tipo: d.tipo,
       fecha_despacho: esDesp && d.fechaDespacho ? new Date(d.fechaDespacho + "T00:00:00") : null,
       nota: d.nota || null,
-      ciudad: d.ciudad || null,
-      codigoTienda: d.codigoTienda || null,
-      nombreTienda: d.nombreTienda || null,
     },
   });
   await prisma.activityLog.create({

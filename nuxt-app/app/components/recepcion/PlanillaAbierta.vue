@@ -48,7 +48,7 @@ function cerrar() {
 </script>
 
 <template>
-  <section class="card abierta">
+  <section class="card abierta" :inert="!!r.pausaId">
     <header class="cab">
       <span class="pulse" />
       <div class="cab-txt">
@@ -56,6 +56,7 @@ function cerrar() {
         <span class="prov">{{ r.proveedor }}</span>
       </div>
       <div class="cab-der">
+        <span v-if="r.pausaId" class="tipo">En pausa</span>
         <span class="tipo">{{ TIPO_PRODUCTO_LABEL[r.tipoProducto] }}</span>
         <span class="crono tnum"><Timer :size="15" />{{ crono ?? '—' }}</span>
       </div>

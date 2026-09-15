@@ -1,3 +1,4 @@
+import { defineOperacionAlmacenHandler } from '../../../utils/operacionAlmacen'
 import { defineEventHandler, getRouterParam, readBody, createError } from 'h3'
 import { z } from 'zod'
 import { prisma } from '../../../utils/prisma'
@@ -22,7 +23,7 @@ const schema = z.object({ operarioId: z.string().min(1), devolucion: z.boolean()
  * Si todavia no lo habia empezado, es solo cambiarlo de manos: el reloj
  * arrancara cuando el ayudante lo escanee.
  */
-export default defineEventHandler(async (event) => {
+export default defineOperacionAlmacenHandler(async (event) => {
   const actor = await requireAuth(event)
   assertEjecutor(actor.role)
 

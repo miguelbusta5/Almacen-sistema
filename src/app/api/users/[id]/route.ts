@@ -4,7 +4,6 @@ import { prisma } from "@/lib/prisma";
 import bcrypt from "bcryptjs";
 import { z } from "zod";
 import { USER_ROLE_VALUES } from "@/lib/roles";
-import type { Prisma } from "@prisma/client";
 
 const updateSchema = z.object({
   name: z.string().min(2).optional(),
@@ -19,7 +18,7 @@ export async function PUT(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const session = await auth();
-  if (!session || session.user?.role !== "ADMIN") {
+  if (!session || (session.user as any)?.role !== "ADMIN") {
     return NextResponse.json({ error: "No autorizado" }, { status: 403 });
   }
 
@@ -37,16 +36,11 @@ export async function PUT(
     return NextResponse.json({ error: "No puedes desactivar ni cambiar tu propio rol de administrador" }, { status: 400 });
   }
 
-  const data: Prisma.UserUpdateInput = {};
+  const data: any = {};
   if (d.name !== undefined) data.name = d.name;
   if (d.role !== undefined) data.role = d.role;
   if (d.active !== undefined) data.active = d.active;
-  if (d.password) {
-    data.password = await bcrypt.hash(d.password, 12);
-    // Un reseteo de contraseña por ADMIN también es temporal — se obliga el
-    // cambio en el próximo login.
-    data.mustChangePassword = true;
-  }
+  if (d.password) data.password = await bcrypt.hash(d.password, 12);
 
   const user = await prisma.user.update({
     where: { id },

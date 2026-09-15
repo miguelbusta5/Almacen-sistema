@@ -1,3 +1,4 @@
+import { defineOperacionAlmacenHandler } from '../../../utils/operacionAlmacen'
 import { defineEventHandler, getRouterParam, readBody, createError } from 'h3'
 import { z } from 'zod'
 import { prisma } from '../../../utils/prisma'
@@ -23,7 +24,7 @@ const schema = z.object({
 //
 // La guarda mira el REGISTRO y no el rol: desde que un montacarguista tambien
 // puede recibir un traspaso, el rol ya no dice en que modo esta.
-export default defineEventHandler(async (event) => {
+export default defineOperacionAlmacenHandler(async (event) => {
   const actor = await requireAuth(event)
   assertUsuarioMontacargas(actor.role)
 

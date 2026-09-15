@@ -29,51 +29,41 @@ function moduleSignal(key: ModuleKey, count: number | undefined, status: Control
   };
 }
 
-// Cache corto en memoria por usuario — el dashboard se auto-refresca cada
-// 60s (useAutoRefresh) y puede haber varias pestañas abiertas del mismo
-// usuario; sin esto cada una dispara las mismas ~13 queries por separado.
-// No reemplaza datos borrados ni cambia el resultado, solo evita repetir
-// el cálculo dentro de la ventana de TTL en la misma instancia serverless.
-const RESUMEN_CACHE_TTL_MS = 15_000;
-const resumenCache = new Map<string, { data: ControlLogisticoResumen; expiresAt: number }>();
-
 export async function buildControlLogisticoResumen(actor: SessionUser): Promise<ControlLogisticoResumen> {
-  const cacheKey = `${actor.id}:${actor.role}`;
-  const cached = resumenCache.get(cacheKey);
-  if (cached && cached.expiresAt > Date.now()) return cached.data;
-
-  const data = await computeControlLogisticoResumen(actor);
-  resumenCache.set(cacheKey, { data, expiresAt: Date.now() + RESUMEN_CACHE_TTL_MS });
-  return data;
-}
-
-async function computeControlLogisticoResumen(actor: SessionUser): Promise<ControlLogisticoResumen> {
   const role = actor.role;
   const visibleModules = getVisibleModules(role);
   const see = (key: ModuleKey) => canSeeModule(role, key);
 
-  const ESTADOS_TIENDA = ["CREADO_TIENDA", "RECHAZADO", "CON_NOVEDAD", "ENTREGADO_CEDI", "ENVIADO_CLIENTE"] as const;
-
   const [
+    novedadesPendientes,
+    novedadesCriticas,
     guardadosPendientes,
-    tiendaPorEstado,
+    tiendaCreados,
+    tiendaRechazados,
+    tiendaNovedad,
+    tiendaCedi,
+    tiendaEnviados,
     pendientesGuardado,
     solicitudesPendientes,
     solicitudesAlertas,
     exportacionesEnCurso,
     integracionesPendientes,
+    notifNoLeidas,
     preopBloqueadas,
-    exportacionesMexicoEnCurso,
-    exportacionesEeuuEnCurso,
   ] = await Promise.all([
+    see("inventario") ? prisma.novedad.count({ where: { estado: "PENDIENTE" } }) : 0,
+    see("inventario") ? prisma.novedad.count({
+      where: {
+        estado: "PENDIENTE",
+        fecha: { lt: new Date(Date.now() - 30 * 86_400_000) },
+      },
+    }) : 0,
     see("transporte") ? prisma.transporteGuardado.count({ where: { estado: "PENDIENTE DESPACHO" } }) : 0,
-    // Antes eran 5 counts separados (uno por estado) — un solo groupBy
-    // hace el mismo trabajo en una sola consulta a la base de datos.
-    see("tienda") ? prisma.despachoTienda.groupBy({
-      by: ["estado"],
-      where: { estado: { in: [...ESTADOS_TIENDA] } },
-      _count: { estado: true },
-    }) : [],
+    see("tienda") ? prisma.despachoTienda.count({ where: { estado: "CREADO_TIENDA" } }) : 0,
+    see("tienda") ? prisma.despachoTienda.count({ where: { estado: "RECHAZADO" } }) : 0,
+    see("tienda") ? prisma.despachoTienda.count({ where: { estado: "CON_NOVEDAD" } }) : 0,
+    see("tienda") ? prisma.despachoTienda.count({ where: { estado: "ENTREGADO_CEDI" } }) : 0,
+    see("tienda") ? prisma.despachoTienda.count({ where: { estado: "ENVIADO_CLIENTE" } }) : 0,
     see("transporte") ? prisma.guardadoPendienteTienda.count({
       where: {
         estado: "PENDIENTE",
@@ -100,32 +90,11 @@ async function computeControlLogisticoResumen(actor: SessionUser): Promise<Contr
       },
     }) : 0,
     see("integracion") ? prisma.integracionPedido.count({ where: { estado: { not: "COMPLETADA" } } }) : 0,
+    see("mis-tareas") ? prisma.notificacion.count({ where: { userId: actor.id, leida: false } }) : 0,
     see("preoperacional") && role !== "TRANSPORTISTA"
       ? prisma.inspeccionPreoperacional.count({ where: { estado: "BLOQUEADA", vigente: true } })
       : 0,
-    see("exportaciones-mexico") ? prisma.etiquetadoExportacionMexico.count({
-      where: {
-        deletedAt: null,
-        horaFinalizacion: null,
-        ...(role === "ETIQUETADO" ? { creadoPorId: actor.id } : {}),
-      },
-    }) : 0,
-    see("exportaciones-eeuu") ? prisma.etiquetadoExportacionEeuu.count({
-      where: {
-        deletedAt: null,
-        horaFinalizacion: null,
-        ...(role === "ETIQUETADO" ? { creadoPorId: actor.id } : {}),
-      },
-    }) : 0,
   ]);
-
-  const tiendaCount = (estado: (typeof ESTADOS_TIENDA)[number]) =>
-    tiendaPorEstado.find((g) => g.estado === estado)?._count.estado ?? 0;
-  const tiendaCreados = tiendaCount("CREADO_TIENDA");
-  const tiendaRechazados = tiendaCount("RECHAZADO");
-  const tiendaNovedad = tiendaCount("CON_NOVEDAD");
-  const tiendaCedi = tiendaCount("ENTREGADO_CEDI");
-  const tiendaEnviados = tiendaCount("ENVIADO_CLIENTE");
 
   const priorities: ControlPriority[] = [];
 
@@ -147,6 +116,16 @@ async function computeControlLogisticoResumen(actor: SessionUser): Promise<Contr
       title: `${tiendaNovedad} despacho${tiendaNovedad === 1 ? "" : "s"} con novedad`,
       context: "Requiere seguimiento de transporte",
       href: "/dashboard/tienda",
+    });
+  }
+  if (see("inventario") && novedadesCriticas > 0) {
+    priorities.push({
+      id: "inventario-criticas",
+      moduleKey: "inventario",
+      level: "critical",
+      title: `${novedadesCriticas} novedad${novedadesCriticas === 1 ? "" : "es"} critica${novedadesCriticas === 1 ? "" : "s"}`,
+      context: "Mas de 30 dias sin resolver",
+      href: "/dashboard/inventario",
     });
   }
   if (see("transporte") && pendientesGuardado > 0) {
@@ -191,6 +170,13 @@ async function computeControlLogisticoResumen(actor: SessionUser): Promise<Contr
   }
 
   const flow: ControlFlowStage[] = [
+    ...(see("inventario") ? [{
+      key: "inventario",
+      label: "Inventario",
+      value: novedadesPendientes,
+      status: statusFrom(novedadesCriticas, 1, 3),
+      href: "/dashboard/inventario",
+    } satisfies ControlFlowStage] : []),
     ...(see("tienda") ? [{
       key: "tienda",
       label: "Tienda",
@@ -222,22 +208,22 @@ async function computeControlLogisticoResumen(actor: SessionUser): Promise<Contr
   ];
 
   const modules: ControlModuleSignal[] = [
+    ...(see("inventario") ? [moduleSignal("inventario", novedadesPendientes, statusFrom(novedadesCriticas, 1, 3), "/dashboard/inventario")] : []),
     ...(see("tienda") ? [moduleSignal("tienda", tiendaCreados + tiendaRechazados + tiendaNovedad, statusFrom(tiendaRechazados + tiendaNovedad, 1, 5), "/dashboard/tienda")] : []),
     ...(see("transporte") ? [moduleSignal("transporte", guardadosPendientes + pendientesGuardado, statusFrom(guardadosPendientes + pendientesGuardado, 1, 10), "/dashboard/transporte")] : []),
     ...(see("solicitudes-transporte") ? [moduleSignal("solicitudes-transporte", solicitudesPendientes, statusFrom(solicitudesAlertas, 1, 5), "/dashboard/solicitudes-transporte")] : []),
     ...(see("exportaciones") ? [moduleSignal("exportaciones", exportacionesEnCurso, statusFrom(exportacionesEnCurso, 1, 20), "/dashboard/exportaciones")] : []),
-    ...(see("exportaciones-mexico") ? [moduleSignal("exportaciones-mexico", exportacionesMexicoEnCurso, statusFrom(exportacionesMexicoEnCurso, 1, 20), "/dashboard/exportaciones-mexico")] : []),
-    ...(see("exportaciones-eeuu") ? [moduleSignal("exportaciones-eeuu", exportacionesEeuuEnCurso, statusFrom(exportacionesEeuuEnCurso, 1, 20), "/dashboard/exportaciones-eeuu")] : []),
     ...(see("preoperacional") ? [moduleSignal("preoperacional", preopBloqueadas, statusFrom(preopBloqueadas, 1, 2), "/dashboard/preoperacional")] : []),
     ...(see("integracion") ? [moduleSignal("integracion", integracionesPendientes, statusFrom(integracionesPendientes, 1, 8), "/dashboard/integracion")] : []),
     ...(see("usuarios") ? [moduleSignal("usuarios", undefined, "neutral", "/dashboard/usuarios")] : []),
     ...(see("auditoria") ? [moduleSignal("auditoria", undefined, "neutral", "/dashboard/auditoria")] : []),
     ...(see("centro-control") ? [moduleSignal("centro-control", undefined, "neutral", "/dashboard/centro-control")] : []),
+    ...(see("mis-tareas") ? [moduleSignal("mis-tareas", notifNoLeidas, statusFrom(notifNoLeidas, 1, 10), "/dashboard/mis-tareas")] : []),
   ];
 
   const critical = priorities.filter((p) => p.level === "critical").length;
   const warning = priorities.filter((p) => p.level === "warning").length;
-  const pending = guardadosPendientes + tiendaCreados + tiendaNovedad + tiendaRechazados + pendientesGuardado + solicitudesPendientes + exportacionesEnCurso + exportacionesMexicoEnCurso + exportacionesEeuuEnCurso + integracionesPendientes + preopBloqueadas;
+  const pending = novedadesPendientes + guardadosPendientes + tiendaCreados + tiendaNovedad + tiendaRechazados + pendientesGuardado + solicitudesPendientes + exportacionesEnCurso + integracionesPendientes + notifNoLeidas + preopBloqueadas;
 
   return {
     success: true,

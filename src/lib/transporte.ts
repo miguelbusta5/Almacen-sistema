@@ -16,7 +16,6 @@ export interface Guardado {
   tipo: TipoGuardado;
   fechaDespacho: string | null; // YYYY-MM-DD
   nota: string | null;
-  ciudad: string | null;
   netsuiteId: string | null;
 }
 
@@ -52,7 +51,7 @@ export type Urgencia =
   | null;
 
 // Alerta cuando faltan ≤5 días para la entrega (o ya venció).
-export function urgencia(g: { estado: string; nota: string | null }): Urgencia {
+export function urgencia(g: Guardado): Urgencia {
   if (g.estado === "DESPACHADO") return null;
   const entrega = parseEntrega(g.nota);
   if (!entrega) return null;
@@ -68,41 +67,6 @@ export function tieneAlerta(g: Guardado): boolean {
   return u !== null && (u.tipo === "vencida" || u.tipo === "proxima");
 }
 
-// ── Semáforo de color de la fecha de entrega comprometida (columna Guardados) ──
-// Escala por días restantes hasta la entrega: <0 vencida; 0–10 amarillo;
-// 11–15 azul; 16+ verde. Los DESPACHADO con fecha quedan neutros (ya no hay
-// urgencia de entrega). "sin-fecha" aplica siempre que la nota no traiga fecha.
-export type EntregaColorNivel = "neutro" | "sin-fecha" | "vencida" | "amarillo" | "azul" | "verde";
-
-// Versión genérica: recibe la fecha de entrega (ISO YYYY-MM-DD) directamente y
-// un flag `neutro` (el llamador decide qué estado ya no urge). Reutilizable por
-// módulos cuya entrega es un campo propio (p. ej. Facturas Contado).
-export function nivelEntregaColorFecha(fechaEntrega: string | null, neutro: boolean): EntregaColorNivel {
-  if (!fechaEntrega) return "sin-fecha";
-  if (neutro) return "neutro";
-  const diasRestantes = Math.floor(
-    (new Date(fechaEntrega).getTime() - new Date(todayISO()).getTime()) / 86_400_000,
-  );
-  if (diasRestantes < 0) return "vencida";
-  if (diasRestantes <= 10) return "amarillo";
-  if (diasRestantes <= 15) return "azul";
-  return "verde";
-}
-
-// Guardados: la fecha de entrega se extrae de la nota; neutro = DESPACHADO.
-export function nivelEntregaColor(g: { estado: string; nota: string | null }): EntregaColorNivel {
-  return nivelEntregaColorFecha(parseEntrega(g.nota), g.estado === "DESPACHADO");
-}
-
-export const ENTREGA_COLOR: Record<EntregaColorNivel, string | undefined> = {
-  neutro:      undefined,        // texto normal
-  "sin-fecha": "var(--error)",
-  vencida:     "var(--error)",
-  amarillo:    "var(--warning)",
-  azul:        "var(--info)",
-  verde:       "var(--success)",
-};
-
 // ── Scoring de urgencia (0-100) ──────────────────────────
 // Determina prioridad: qué guardado atender primero.
 import { calcAlmacenaje } from "@/lib/almacenaje";
@@ -116,7 +80,7 @@ export function scoreGuardado(g: Guardado): number {
   // Tiempo en bodega (0-35 pts)
   score += Math.min(35, dias * 0.45);
   // Costo acumulado (0-35 pts)
-  score += Math.min(35, (alm.costo / 300_000) * 10);
+  score += Math.min(35, (alm.costo / 150_000) * 10);
   // Urgencia de entrega comprometida (0-30 pts)
   if (u?.tipo === "vencida")  score += 30;
   else if (u?.tipo === "proxima" && (u.dias ?? 10) <= 2) score += 22;

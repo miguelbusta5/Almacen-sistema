@@ -3,10 +3,15 @@ import { requireAuth, requireCan } from "@/lib/authz";
 import { prisma } from "@/lib/prisma";
 import { z } from "zod";
 import { deriveNovedadFromMaestro, normalizePlu, productoToClient } from "@/lib/productosMaestro";
-import { getErrorCode } from "@/lib/errors";
-import type { Novedad, Prisma } from "@prisma/client";
 
-function mapRow(r: Novedad) {
+function mapRow(r: {
+  id: number; plu: string; posicion: string; fecha: Date; estado: string;
+  descripcion: string | null; cantidad: number | null; fabricante: string | null;
+  costoUnitario: number | null; costoIncidencia: number | null;
+  tipoNovedad?: string | null; causaRaiz?: string | null; turno?: string | null;
+  zonaBodega?: string | null; asignadoA?: string | null; resueltoAt?: Date | null;
+  netsuiteAjust?: boolean; imagenUrl?: string | null;
+}) {
   return {
     id: r.id, plu: r.plu, posicion: r.posicion,
     fecha: r.fecha.toISOString().slice(0, 10), estado: r.estado,
@@ -21,9 +26,9 @@ function mapRow(r: Novedad) {
     asignadoA: r.asignadoA ?? null,
     resueltoAt: r.resueltoAt ? r.resueltoAt.toISOString() : null,
     netsuiteAjust: r.netsuiteAjust ?? false,
-    netsuiteId: r.netsuiteId ?? null,
+    netsuiteId: (r as any).netsuiteId ?? null,
     imagenUrl: r.imagenUrl ?? null,
-    fechaCompromiso: r.fechaCompromiso instanceof Date ? r.fechaCompromiso.toISOString().slice(0, 10) : (r.fechaCompromiso ?? null),
+    fechaCompromiso: (r as any).fechaCompromiso instanceof Date ? (r as any).fechaCompromiso.toISOString().slice(0, 10) : ((r as any).fechaCompromiso ?? null),
   };
 }
 
@@ -50,7 +55,7 @@ export async function GET(req: NextRequest) {
   const estado = sp.get("estado") ?? "";
   const fabricante = sp.get("fabricante") ?? "";
 
-  const where: Prisma.NovedadWhereInput = {};
+  const where: any = {};
   if (estado) where.estado = estado;
   if (fabricante) where.fabricante = fabricante;
   if (q) where.OR = [
@@ -117,8 +122,8 @@ export async function POST(req: NextRequest) {
     }).catch(() => {});
 
     return NextResponse.json({ success: true, data: mapRow(row) }, { status: 201 });
-  } catch (e) {
-    if (getErrorCode(e) === "P2002") {
+  } catch (e: any) {
+    if (e?.code === "P2002") {
       return NextResponse.json({ error: "Ya existe una novedad con ese PLU, posición y fecha" }, { status: 400 });
     }
     return NextResponse.json({ error: "Error al crear" }, { status: 500 });

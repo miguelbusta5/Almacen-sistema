@@ -3,26 +3,70 @@
 import { useEffect, useMemo, useState, useCallback } from "react";
 import { createPortal } from "react-dom";
 import { useSession } from "next-auth/react";
-import { Plus, Search, X, Minus, Trash2 } from "lucide-react";
-import { Badge, ModuleDetailView, ModuleHero } from "@/components/ui";
-import { DetailSection, DetailGrid } from "@/components/ui/SlidePanel";
+import { GitMerge, Plus, Search, X, Minus, CheckCircle2, Trash2 } from "lucide-react";
+import { Badge, EmptyState, ModuleHero, SkeletonTable } from "@/components/ui";
+import { SlidePanel, DetailSection, DetailGrid } from "@/components/ui/SlidePanel";
 import { AutoRefreshIndicator } from "@/components/ui/AutoRefreshIndicator";
 import { useAutoRefresh } from "@/hooks/useAutoRefresh";
-import { useApi } from "@/hooks/useApi";
-import { apiPut, apiDelete, buildQuery } from "@/lib/apiClient";
-import { getErrorMessage } from "@/lib/errors";
 import { useIsMobile } from "@/lib/useIsMobile";
-import { useListDetailScroll } from "@/hooks/useListDetailScroll";
 import { getModuleColor, getModuleCssVars } from "@/lib/moduleTheme";
-import {
-  IntegracionTable, ESTADO_LABEL, estadoVariant, fmtDate,
-  type Integracion, type EstadoIntegracion, type PlinItem,
-} from "./_components";
 
 const COLOR = getModuleColor("integracion");
 const TIPO_DOC_OPTIONS = ["OVDM", "TSDM"] as const;
 const AREA_OPTIONS = ["MUEBLES", "GOURMET"] as const;
 
+type EstadoIntegracion = "PENDIENTE_AREA2" | "LISTA_TRANSPORTE" | "COMPLETADA";
+
+interface PlinItem {
+  id: string;
+  area: string;
+  plu: string;
+  descripcion: string | null;
+  unidades: number;
+}
+
+interface Integracion {
+  id: string;
+  numeroDocumento: string;
+  tipoDocumento: string;
+  fecha: string;
+  estado: EstadoIntegracion;
+  areaIniciadora: string;
+  numeroCajasArea1: number | null;
+  numeroCajasArea2: number | null;
+  creadoPorNombre: string | null;
+  completadoPorNombre: string | null;
+  creadoAt: string;
+  completadoAt: string | null;
+  entregadoATransporteAt: string | null;
+  marcadoCompletadoAt: string | null;
+  observaciones: string | null;
+  createdAt: string;
+  plines: PlinItem[];
+}
+
+const ESTADO_LABEL: Record<EstadoIntegracion, string> = {
+  PENDIENTE_AREA2:   "Pendiente Área 2",
+  LISTA_TRANSPORTE:  "Lista para Transporte",
+  COMPLETADA:        "Completada",
+};
+
+const ESTADO_COLOR: Record<EstadoIntegracion, string> = {
+  PENDIENTE_AREA2:   "var(--warning)",
+  LISTA_TRANSPORTE:  "var(--brand)",
+  COMPLETADA:        "var(--success)",
+};
+
+function estadoVariant(e: EstadoIntegracion): "warning" | "info" | "success" {
+  if (e === "PENDIENTE_AREA2") return "warning";
+  if (e === "LISTA_TRANSPORTE") return "info";
+  return "success";
+}
+
+function fmtDate(iso: string | null | undefined) {
+  if (!iso) return "—";
+  return new Date(iso).toLocaleDateString("es-CO", { day: "2-digit", month: "2-digit", year: "numeric" });
+}
 function fmtDateTime(iso: string | null | undefined) {
   if (!iso) return "—";
   return new Date(iso).toLocaleString("es-CO", { day: "2-digit", month: "2-digit", year: "2-digit", hour: "2-digit", minute: "2-digit" });
@@ -260,10 +304,10 @@ function ModalCompletarArea2({ integracion, role, onClose, onCompleted }: {
         plines: validPlines.map((p) => ({ plu: p.plu.trim(), descripcion: p.descripcion.trim() || undefined, unidades: p.unidades })),
         observaciones: obs.trim() || undefined,
       };
-      await apiPut(`/api/integracion/${integracion.id}`, body);
+      const res = await fetch(`/api/integracion/${integracion.id}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+      const json = await res.json();
+      if (!res.ok) { setError(json.error ?? "Error al completar"); return; }
       onCompleted();
-    } catch (e) {
-      setError(getErrorMessage(e, "Error al completar"));
     } finally {
       setSaving(false);
     }
@@ -351,12 +395,15 @@ function ModalMarcarRecibido({ integracion, onClose, onDone }: {
     e.preventDefault();
     setSaving(true);
     try {
-      await apiPut(`/api/integracion/${integracion.id}`, { accion: "MARCAR_COMPLETADA", observaciones: obs.trim() || undefined });
+      const res = await fetch(`/api/integracion/${integracion.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ accion: "MARCAR_COMPLETADA", observaciones: obs.trim() || undefined }),
+      });
+      const json = await res.json();
+      if (!res.ok) { setError(json.error ?? "Error"); setSaving(false); return; }
       onDone();
-    } catch (e) {
-      setError(getErrorMessage(e, "Error"));
-      setSaving(false);
-    }
+    } catch { setSaving(false); }
   }
 
   return (
@@ -382,130 +429,6 @@ function ModalMarcarRecibido({ integracion, onClose, onDone }: {
   );
 }
 
-// ── Modal: Editar integración (solo ADMIN/GERENTE) ─────────
-function ModalEditarIntegracion({ integracion, onClose, onSaved }: {
-  integracion: Integracion; onClose: () => void; onSaved: () => void;
-}) {
-  const isMobile = useIsMobile();
-  const areaContraria = integracion.areaIniciadora === "MUEBLES" ? "GOURMET" : "MUEBLES";
-
-  const [tipoDoc, setTipoDoc] = useState<"OVDM" | "TSDM">(integracion.tipoDocumento as "OVDM" | "TSDM");
-  const [numDoc, setNumDoc] = useState(integracion.numeroDocumento);
-  const [fecha, setFecha] = useState(integracion.fecha);
-  const [numCajas1, setNumCajas1] = useState(integracion.numeroCajasArea1 != null ? String(integracion.numeroCajasArea1) : "");
-  const [numCajas2, setNumCajas2] = useState(integracion.numeroCajasArea2 != null ? String(integracion.numeroCajasArea2) : "");
-  const [obs, setObs] = useState(integracion.observaciones ?? "");
-  const toPluRows = (area: string): PluRow[] => {
-    const rows = integracion.plines.filter((p) => p.area === area).map((p) => ({ plu: p.plu, descripcion: p.descripcion ?? "", unidades: p.unidades }));
-    return rows.length > 0 ? rows : [emptyPlu()];
-  };
-  const [plinesIniciadora, setPlinesIniciadora] = useState<PluRow[]>(toPluRows(integracion.areaIniciadora));
-  const [plinesContraria, setPlinesContraria] = useState<PluRow[]>(toPluRows(areaContraria));
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState("");
-
-  async function submit(e: React.FormEvent) {
-    e.preventDefault();
-    setError("");
-    const validIniciadora = plinesIniciadora.filter((p) => p.plu.trim());
-    const validContraria = plinesContraria.filter((p) => p.plu.trim());
-    if (validIniciadora.length === 0 && validContraria.length === 0) { setError("Agrega al menos un PLU"); return; }
-
-    setSaving(true);
-    try {
-      const body = {
-        accion: "EDITAR",
-        numeroDocumento: numDoc.trim(),
-        tipoDocumento: tipoDoc,
-        fecha,
-        numeroCajasArea1: numCajas1 ? parseInt(numCajas1) : undefined,
-        numeroCajasArea2: numCajas2 ? parseInt(numCajas2) : undefined,
-        observaciones: obs.trim() || undefined,
-        plines: [
-          ...validIniciadora.map((p) => ({ area: integracion.areaIniciadora, plu: p.plu.trim(), descripcion: p.descripcion.trim() || undefined, unidades: p.unidades })),
-          ...validContraria.map((p) => ({ area: areaContraria, plu: p.plu.trim(), descripcion: p.descripcion.trim() || undefined, unidades: p.unidades })),
-        ],
-      };
-      await apiPut(`/api/integracion/${integracion.id}`, body);
-      onSaved();
-    } catch (e) {
-      setError(getErrorMessage(e, "Error al guardar"));
-    } finally {
-      setSaving(false);
-    }
-  }
-
-  function pluBlock(label: string, rows: PluRow[], setRows: (r: PluRow[]) => void) {
-    return (
-      <div>
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
-          <label style={{ fontSize: 12, fontWeight: 500, color: "var(--muted2)" }}>{label}</label>
-          <button type="button" onClick={() => setRows([...rows, emptyPlu()])} style={{ fontSize: 12, color: COLOR, background: "none", border: "none", cursor: "pointer", padding: "2px 6px" }}>+ Añadir fila</button>
-        </div>
-        <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-          {rows.map((row, i) => (
-            <PluRowInput key={i} row={row} isMobile={isMobile}
-              onChange={(r) => setRows(rows.map((x, j) => j === i ? r : x))}
-              onRemove={() => rows.length > 1 && setRows(rows.filter((_, j) => j !== i))}
-            />
-          ))}
-        </div>
-      </div>
-    );
-  }
-
-  return (
-    <ModalBase title={`Editar — ${integracion.tipoDocumento} ${integracion.numeroDocumento}`} sub="Edición completa (ADMIN/GERENTE)" onClose={onClose} maxWidth={620}>
-      <form onSubmit={submit} style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-        <div style={{ display: "grid", gridTemplateColumns: "120px 1fr", gap: 10 }}>
-          <div>
-            <label style={{ fontSize: 12, fontWeight: 500, color: "var(--muted2)", display: "block", marginBottom: 5 }}>Tipo doc.</label>
-            <select value={tipoDoc} onChange={(e) => setTipoDoc(e.target.value as "OVDM" | "TSDM")} style={{ ...inp }} {...focusProps}>
-              {TIPO_DOC_OPTIONS.map((t) => <option key={t}>{t}</option>)}
-            </select>
-          </div>
-          <div>
-            <label style={{ fontSize: 12, fontWeight: 500, color: "var(--muted2)", display: "block", marginBottom: 5 }}>N° documento</label>
-            <input required value={numDoc} onChange={(e) => setNumDoc(e.target.value)} style={{ ...inp }} {...focusProps} />
-          </div>
-        </div>
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10 }}>
-          <div>
-            <label style={{ fontSize: 12, fontWeight: 500, color: "var(--muted2)", display: "block", marginBottom: 5 }}>Fecha</label>
-            <input type="date" required value={fecha} onChange={(e) => setFecha(e.target.value)} style={{ ...inp }} {...focusProps} />
-          </div>
-          <div>
-            <label style={{ fontSize: 12, fontWeight: 500, color: "var(--muted2)", display: "block", marginBottom: 5 }}>Cajas Área {integracion.areaIniciadora}</label>
-            <input type="number" min={1} value={numCajas1} onChange={(e) => setNumCajas1(e.target.value)} placeholder="Opcional" style={{ ...inp }} {...focusProps} />
-          </div>
-          <div>
-            <label style={{ fontSize: 12, fontWeight: 500, color: "var(--muted2)", display: "block", marginBottom: 5 }}>Cajas Área {areaContraria}</label>
-            <input type="number" min={1} value={numCajas2} onChange={(e) => setNumCajas2(e.target.value)} placeholder="Opcional" style={{ ...inp }} {...focusProps} />
-          </div>
-        </div>
-
-        {pluBlock(`PLUs — Área ${integracion.areaIniciadora} (iniciadora)`, plinesIniciadora, setPlinesIniciadora)}
-        {pluBlock(`PLUs — Área ${areaContraria}`, plinesContraria, setPlinesContraria)}
-
-        <div>
-          <label style={{ fontSize: 12, fontWeight: 500, color: "var(--muted2)", display: "block", marginBottom: 5 }}>Observaciones</label>
-          <textarea value={obs} onChange={(e) => setObs(e.target.value)} rows={2} placeholder="Opcional"
-            style={{ ...inp, height: "auto", padding: "8px 12px", resize: "vertical" }} {...focusProps} />
-        </div>
-
-        {error && <p style={{ fontSize: 13, color: "var(--error)", margin: 0 }}>{error}</p>}
-
-        <div style={{ display: "flex", gap: 10, justifyContent: "flex-end", paddingTop: 4 }}>
-          <button type="button" onClick={onClose} className="ds-btn ds-btn-ghost" style={{ fontSize: 14 }}>Cancelar</button>
-          <button type="submit" disabled={saving} className="ds-btn ds-btn-primary" style={{ fontSize: 14, background: saving ? "var(--muted)" : COLOR, border: "none" }}>
-            {saving ? "Guardando…" : "Guardar cambios"}
-          </button>
-        </div>
-      </form>
-    </ModalBase>
-  );
-}
-
 // ════════════════════════════════════════════════════════════
 // PAGE
 // ════════════════════════════════════════════════════════════
@@ -518,29 +441,23 @@ export default function IntegracionPage() {
   const { data: session } = useSession();
   const role = (session?.user as { role?: string } | undefined)?.role ?? "";
 
+  const [integraciones, setIntegraciones] = useState<Integracion[]>([]);
+  const [total, setTotal] = useState(0);
+  const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [filterEstado, setFilterEstado] = useState("");
   const [filterArea, setFilterArea] = useState("");
   const [filterTipo, setFilterTipo] = useState("");
 
   const [selected, setSelected] = useState<Integracion | null>(null);
-  useListDetailScroll(selected !== null);
   const [showNueva, setShowNueva] = useState(false);
   const [completarItem, setCompletarItem] = useState<Integracion | null>(null);
   const [recibidoItem, setRecibidoItem] = useState<Integracion | null>(null);
-  const [editandoItem, setEditandoItem] = useState<Integracion | null>(null);
   const [deletingIntId, setDeletingIntId] = useState<string | null>(null);
-  const [debugTable, setDebugTable] = useState(false);
-
-  // Modo debug de tabla: /dashboard/integracion?debugTable=1 (diagnóstico de mapeo de columnas).
-  useEffect(() => { setDebugTable(new URLSearchParams(window.location.search).get("debugTable") === "1"); }, []);
 
   const canCreate = CREATOR_ROLES.includes(role);
   const canTransport = TRANSPORT_ROLES.includes(role);
   const isAdmin = role === "ADMIN";
-  // Edición completa: solo ADMIN/GERENTE, y solo mientras no esté COMPLETADA.
-  const puedeEditar = role === "ADMIN" || role === "GERENTE";
-  const puedeEditarItem = useCallback((item: Integracion) => puedeEditar && item.estado !== "COMPLETADA", [puedeEditar]);
 
   const areaFromRole = role === "OPERACIONES_MUEBLES" ? "MUEBLES" : role === "OPERACIONES_GOURMET" ? "GOURMET" : null;
 
@@ -551,19 +468,29 @@ export default function IntegracionPage() {
     return areaFromRole !== item.areaIniciadora;
   }, [role, areaFromRole]);
 
-  const puedeVer = Boolean(role && ALLOWED.includes(role));
-  const listKey = puedeVer
-    ? `/api/integracion${buildQuery({ estado: filterEstado, area: filterArea, tipoDocumento: filterTipo })}`
-    : null;
-  const { data: listJson, isLoading: loading, mutate: mutateList } = useApi<{ data: Integracion[]; total: number }>(listKey);
-  const integraciones = listJson?.data ?? [];
-  const total = listJson?.total ?? 0;
-  const load = useCallback(() => { void mutateList(); }, [mutateList]);
+  const load = useCallback(async () => {
+    setLoading(true);
+    try {
+      const params = new URLSearchParams();
+      if (filterEstado) params.set("estado", filterEstado);
+      if (filterArea) params.set("area", filterArea);
+      if (filterTipo) params.set("tipoDocumento", filterTipo);
+      const res = await fetch(`/api/integracion?${params}`);
+      if (!res.ok) return;
+      const json = await res.json();
+      setIntegraciones(json.data ?? []);
+      setTotal(json.total ?? 0);
+    } finally {
+      setLoading(false);
+    }
+  }, [filterEstado, filterArea, filterTipo]);
+
+  useEffect(() => { if (role && ALLOWED.includes(role)) load(); }, [load, role]);
 
   const autoRefresh = useAutoRefresh({
-    enabled: puedeVer,
-    pause: Boolean(selected || showNueva || completarItem || recibidoItem || editandoItem || deletingIntId),
-    onRefresh: () => { void mutateList(); },
+    enabled: Boolean(role && ALLOWED.includes(role)),
+    pause: Boolean(selected || showNueva || completarItem || recibidoItem || deletingIntId),
+    onRefresh: () => load(),
   });
 
   const filtered = useMemo(() => {
@@ -576,11 +503,12 @@ export default function IntegracionPage() {
     );
   }, [integraciones, search]);
 
-  function refresh() { load(); setSelected(null); setCompletarItem(null); setRecibidoItem(null); setEditandoItem(null); }
+  function refresh() { load(); setSelected(null); setCompletarItem(null); setRecibidoItem(null); }
 
   async function deleteIntegracion(id: string) {
     try {
-      await apiDelete(`/api/integracion/${id}`);
+      const res = await fetch(`/api/integracion/${id}`, { method: "DELETE" });
+      if (!res.ok) throw new Error("Error al eliminar");
       setSelected(null);
       setDeletingIntId(null);
       refresh();
@@ -620,35 +548,139 @@ export default function IntegracionPage() {
         )}
       />
 
-      {selected ? (
-        <ModuleDetailView
-          testId="integracion-detalle-view"
-          onBack={() => setSelected(null)}
-          title={`${selected.tipoDocumento} ${selected.numeroDocumento}`}
-          badge={<Badge variant={estadoVariant(selected.estado)} label={ESTADO_LABEL[selected.estado]} />}
-          moduleColor={COLOR}
-          actions={
-            <>
-              {puedeEditarItem(selected) && (
-                <button onClick={() => setEditandoItem(selected)}
-                  className="ds-btn ds-btn-ghost" style={{ fontSize: 13, border: `1px solid ${COLOR}40`, color: COLOR }}>
-                  Editar
-                </button>
-              )}
-              {canCompleteArea2(selected) ? (
-                <button onClick={() => { setCompletarItem(selected); setSelected(null); }}
-                  className="ds-btn ds-btn-primary" style={{ fontSize: 13, background: COLOR, border: "none" }}>
-                  Completar Área 2
-                </button>
-              ) : canTransport && selected.estado === "LISTA_TRANSPORTE" ? (
-                <button onClick={() => { setRecibidoItem(selected); setSelected(null); }}
-                  className="ds-btn ds-btn-primary" style={{ fontSize: 13, background: "var(--success)", border: "none" }}>
-                  Confirmar recepción
-                </button>
-              ) : undefined}
-            </>
-          }
-        >
+      {/* Filtros */}
+      <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+        <div style={{ position: "relative", flex: "1 1 160px", minWidth: 140 }}>
+          <Search size={14} style={{ position: "absolute", left: 10, top: "50%", transform: "translateY(-50%)", color: "var(--muted)", pointerEvents: "none" }} />
+          <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Buscar documento…"
+            style={{ ...inp, paddingLeft: 32 }} {...focusProps} />
+        </div>
+        <select value={filterEstado} onChange={(e) => setFilterEstado(e.target.value)} style={{ ...inp, flex: "0 0 auto", width: "auto" }} {...focusProps}>
+          <option value="">Todos los estados</option>
+          <option value="PENDIENTE_AREA2">Pendiente Área 2</option>
+          <option value="LISTA_TRANSPORTE">Lista para Transporte</option>
+          <option value="COMPLETADA">Completada</option>
+        </select>
+        <select value={filterArea} onChange={(e) => setFilterArea(e.target.value)} style={{ ...inp, flex: "0 0 auto", width: "auto" }} {...focusProps}>
+          <option value="">Todas las áreas</option>
+          <option value="MUEBLES">Muebles</option>
+          <option value="GOURMET">Gourmet</option>
+        </select>
+        <select value={filterTipo} onChange={(e) => setFilterTipo(e.target.value)} style={{ ...inp, flex: "0 0 auto", width: "auto" }} {...focusProps}>
+          <option value="">OVDM + TSDM</option>
+          <option value="OVDM">OVDM</option>
+          <option value="TSDM">TSDM</option>
+        </select>
+      </div>
+
+      {/* Tabla */}
+      <div style={{ background: "var(--surface)", borderRadius: 14, border: "1px solid var(--border)", overflow: "hidden" }}>
+        {loading ? (
+          <SkeletonTable rows={6} cols={6} />
+        ) : filtered.length === 0 ? (
+          <EmptyState
+            icon={<GitMerge size={28} />}
+            title="Sin integraciones"
+            description={search ? "No hay resultados para tu búsqueda" : "Crea la primera integración de pedido"}
+            action={search ? { label: "Limpiar búsqueda", onClick: () => setSearch("") } : undefined}
+          />
+        ) : (
+          <div style={{ overflowX: "auto" }}>
+            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
+              <thead>
+                <tr style={{ background: "var(--surface2)" }}>
+                  {["Documento", "Tipo", "Fecha", "Área inicio", "Estado", "Cajas", ""].map((h) => (
+                    <th key={h} style={{ padding: "10px 14px", textAlign: "left", fontSize: 11, fontWeight: 600, color: "var(--muted)", letterSpacing: "0.04em", textTransform: "uppercase", whiteSpace: "nowrap" }}>{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {filtered.map((item) => (
+                  <tr key={item.id}
+                    onClick={() => setSelected(item)}
+                    className="dsrow"
+                    style={{ borderTop: "1px solid var(--border)", cursor: "pointer" }}>
+                    <td style={{ padding: "11px 14px", fontWeight: 600, color: "var(--text)", fontFamily: "var(--mono)", fontSize: 12 }}>{item.numeroDocumento}</td>
+                    <td style={{ padding: "11px 14px" }}>
+                      <span style={{ background: `${COLOR}14`, color: COLOR, borderRadius: 5, padding: "2px 8px", fontSize: 11, fontWeight: 600 }}>{item.tipoDocumento}</span>
+                    </td>
+                    <td style={{ padding: "11px 14px", color: "var(--muted)", whiteSpace: "nowrap" }}>{fmtDate(item.fecha)}</td>
+                    <td style={{ padding: "11px 14px" }}>
+                      <span style={{ fontSize: 12, fontWeight: 500, color: "var(--brand)" }}>{item.areaIniciadora}</span>
+                    </td>
+                    <td style={{ padding: "11px 14px" }}>
+                      <Badge variant={estadoVariant(item.estado)} label={ESTADO_LABEL[item.estado]} />
+                    </td>
+                    <td style={{ padding: "11px 14px", color: "var(--muted)", fontSize: 12 }}>
+                      {item.numeroCajasArea1 ?? "—"} + {item.numeroCajasArea2 ?? "—"}
+                    </td>
+                    <td style={{ padding: "11px 14px" }}>
+                      <div style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap" }}>
+                        {canCompleteArea2(item) && (
+                          <button onClick={(e) => { e.stopPropagation(); setCompletarItem(item); }}
+                            className="ds-btn ds-btn-ghost" style={{ fontSize: 12, padding: "4px 10px", color: COLOR, border: `1px solid ${COLOR}40` }}>
+                            Completar
+                          </button>
+                        )}
+                        {canTransport && item.estado === "LISTA_TRANSPORTE" && (
+                          <button onClick={(e) => { e.stopPropagation(); setRecibidoItem(item); }}
+                            className="ds-btn ds-btn-ghost" style={{ fontSize: 12, padding: "4px 10px", color: "var(--success)", border: "1px solid color-mix(in srgb, var(--success) 35%, transparent)" }}>
+                            <CheckCircle2 size={12} style={{ marginRight: 4 }} />Recibido
+                          </button>
+                        )}
+                        {isAdmin && (
+                          deletingIntId === item.id ? (
+                            <>
+                              <button onClick={(e) => { e.stopPropagation(); deleteIntegracion(item.id); }}
+                                className="ds-btn ds-btn-ghost" style={{ fontSize: 12, padding: "4px 10px", color: "var(--error)", border: "1px solid var(--error)" }}>
+                                Sí, eliminar
+                              </button>
+                              <button onClick={(e) => { e.stopPropagation(); setDeletingIntId(null); }}
+                                className="ds-btn ds-btn-ghost" style={{ fontSize: 12, padding: "4px 10px" }}>
+                                Cancelar
+                              </button>
+                            </>
+                          ) : (
+                            <button onClick={(e) => { e.stopPropagation(); setDeletingIntId(item.id); }}
+                              className="ds-btn ds-btn-ghost" style={{ fontSize: 12, padding: "4px 8px", color: "var(--muted2)" }}
+                              title="Eliminar integración">
+                              <Trash2 size={13} />
+                            </button>
+                          )
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+
+      {/* Slide panel detalle */}
+      <SlidePanel
+        open={!!selected}
+        onClose={() => setSelected(null)}
+        title={selected ? `${selected.tipoDocumento} ${selected.numeroDocumento}` : ""}
+        badge={selected ? <Badge variant={estadoVariant(selected.estado)} label={ESTADO_LABEL[selected.estado]} /> : undefined}
+        moduleColor={COLOR}
+        primaryAction={
+          selected && canCompleteArea2(selected) ? (
+            <button onClick={() => { setCompletarItem(selected); setSelected(null); }}
+              className="ds-btn ds-btn-primary" style={{ fontSize: 13, background: COLOR, border: "none" }}>
+              Completar Área 2
+            </button>
+          ) : selected && canTransport && selected.estado === "LISTA_TRANSPORTE" ? (
+            <button onClick={() => { setRecibidoItem(selected); setSelected(null); }}
+              className="ds-btn ds-btn-primary" style={{ fontSize: 13, background: "var(--success)", border: "none" }}>
+              Confirmar recepción
+            </button>
+          ) : undefined
+        }
+      >
+        {selected && (
+          <>
             <DetailSection title="Información general">
               <DetailGrid items={[
                 { label: "Fecha", value: fmtDate(selected.fecha) },
@@ -708,7 +740,7 @@ export default function IntegracionPage() {
                   {deletingIntId === selected.id ? (
                     <div style={{ display: "flex", gap: 8 }}>
                       <button onClick={() => deleteIntegracion(selected.id)}
-                        className="ds-btn" style={{ fontSize: 12, background: "var(--error)", color: "var(--text-on-error)", border: "none" }}>
+                        className="ds-btn" style={{ fontSize: 12, background: "var(--error)", color: "#fff", border: "none" }}>
                         Confirmar eliminación
                       </button>
                       <button onClick={() => setDeletingIntId(null)} className="ds-btn ds-btn-ghost" style={{ fontSize: 12 }}>
@@ -724,68 +756,9 @@ export default function IntegracionPage() {
                 </div>
               </DetailSection>
             )}
-        </ModuleDetailView>
-      ) : (
-        <>
-          {/* Filtros */}
-          <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-            <div style={{ position: "relative", flex: "1 1 160px", minWidth: 140 }}>
-              <Search size={14} style={{ position: "absolute", left: 10, top: "50%", transform: "translateY(-50%)", color: "var(--muted)", pointerEvents: "none" }} />
-              <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Buscar documento…"
-                style={{ ...inp, paddingLeft: 32, paddingRight: 32 }} {...focusProps} />
-              {search && (
-                <button
-                  aria-label="Borrar búsqueda"
-                  onClick={() => setSearch("")}
-                  style={{ position: "absolute", right: 4, top: "50%", transform: "translateY(-50%)", width: 28, height: 28, display: "grid", placeItems: "center", border: "none", background: "transparent", color: "var(--muted)", cursor: "pointer", borderRadius: 6 }}
-                >
-                  <X size={14} />
-                </button>
-              )}
-            </div>
-            <select value={filterEstado} onChange={(e) => setFilterEstado(e.target.value)} style={{ ...inp, flex: "0 0 auto", width: "auto" }} {...focusProps}>
-              <option value="">Todos los estados</option>
-              <option value="PENDIENTE_AREA2">Pendiente Área 2</option>
-              <option value="LISTA_TRANSPORTE">Lista para Transporte</option>
-              <option value="COMPLETADA">Completada</option>
-            </select>
-            <select value={filterArea} onChange={(e) => setFilterArea(e.target.value)} style={{ ...inp, flex: "0 0 auto", width: "auto" }} {...focusProps}>
-              <option value="">Todas las áreas</option>
-              <option value="MUEBLES">Muebles</option>
-              <option value="GOURMET">Gourmet</option>
-            </select>
-            <select value={filterTipo} onChange={(e) => setFilterTipo(e.target.value)} style={{ ...inp, flex: "0 0 auto", width: "auto" }} {...focusProps}>
-              <option value="">OVDM + TSDM</option>
-              <option value="OVDM">OVDM</option>
-              <option value="TSDM">TSDM</option>
-            </select>
-          </div>
-
-          {/* Tabla */}
-          <div style={{ background: "var(--surface)", borderRadius: 14, border: "1px solid var(--border)", overflow: "hidden" }}>
-            <IntegracionTable
-              items={filtered}
-              loading={loading}
-              color={COLOR}
-              canCompleteArea2={canCompleteArea2}
-              canTransport={canTransport}
-              canEdit={puedeEditarItem}
-              isAdmin={isAdmin}
-              deletingIntId={deletingIntId}
-              onRowClick={(item) => setSelected(item)}
-              onCompletar={(item) => setCompletarItem(item)}
-              onRecibido={(item) => setRecibidoItem(item)}
-              onEditar={(item) => setEditandoItem(item)}
-              onDeleteStart={(id) => setDeletingIntId(id)}
-              onDeleteConfirm={(id) => deleteIntegracion(id)}
-              onDeleteCancel={() => setDeletingIntId(null)}
-              hasSearch={Boolean(search)}
-              onClearSearch={() => setSearch("")}
-              debug={debugTable}
-            />
-          </div>
-        </>
-      )}
+          </>
+        )}
+      </SlidePanel>
 
       {/* Modales */}
       {showNueva && (
@@ -809,13 +782,6 @@ export default function IntegracionPage() {
           integracion={recibidoItem}
           onClose={() => setRecibidoItem(null)}
           onDone={() => { setRecibidoItem(null); refresh(); }}
-        />
-      )}
-      {editandoItem && (
-        <ModalEditarIntegracion
-          integracion={editandoItem}
-          onClose={() => setEditandoItem(null)}
-          onSaved={() => { setEditandoItem(null); refresh(); }}
         />
       )}
     </div>

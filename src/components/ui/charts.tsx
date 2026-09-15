@@ -1,6 +1,5 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -14,7 +13,7 @@ import {
   Legend,
   Filler,
 } from "chart.js";
-import type { ChartOptions, TooltipItem } from "chart.js";
+import type { ChartOptions } from "chart.js";
 import { Bar, Line, Doughnut } from "react-chartjs-2";
 
 ChartJS.register(
@@ -26,62 +25,44 @@ ChartJS.register(
 // ── Paleta CEDI ──────────────────────────────────────────────────────────────
 // Ordenada de más antiguo → más reciente (índice 0 = año más viejo)
 export const CEDI_YEAR_COLORS = ["#5C636A", "#34D9F0", "#14DBA0", "#5BF5C7"];
+const GRID = "rgba(255,255,255,0.07)";
+const TIP_BG = "#161A1F";
 const FONT = "'Inter',-apple-system,system-ui,sans-serif";
 
 function cFont(size = 11) {
   return { family: FONT, size } as const;
 }
 
-// Resuelve un token CSS a string en runtime (Chart.js requiere strings de color).
-// En SSR / primer paint usa el fallback (valor oscuro), idéntico al tema por
-// defecto; en cliente lee el token vigente (oscuro o claro).
-function cssVar(name: string, fallback: string): string {
-  if (typeof window === "undefined") return fallback;
-  const v = getComputedStyle(document.documentElement).getPropertyValue(name).trim();
-  return v || fallback;
-}
+const BASE_TOOLTIP = {
+  backgroundColor: TIP_BG,
+  titleColor: "#ECEFF1",
+  bodyColor: "#C2C8CE",
+  borderColor: "rgba(255,255,255,0.10)",
+  borderWidth: 1,
+  cornerRadius: 8,
+  padding: 10,
+  titleFont: cFont(12),
+  bodyFont: cFont(11),
+} as const;
 
-// Fuerza re-render de los charts cuando cambia `data-theme` en <html>, para
-// re-resolver los colores tomados de tokens CSS.
-function useThemeTick(): void {
-  const [, setTick] = useState(0);
-  useEffect(() => {
-    const obs = new MutationObserver(() => setTick((t) => t + 1));
-    obs.observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
-    return () => obs.disconnect();
-  }, []);
-}
+const BASE_LEGEND = {
+  position: "top" as const,
+  align: "end" as const,
+  labels: { color: "#8B9398", font: cFont(11), boxWidth: 10, boxHeight: 8, padding: 16 },
+};
 
-function baseTooltip() {
-  return {
-    backgroundColor: cssVar("--chart-tooltip-bg", "#161A1F"),
-    titleColor: cssVar("--chart-tooltip-title", "#ECEFF1"),
-    bodyColor: cssVar("--chart-tooltip-body", "#C2C8CE"),
-    borderColor: cssVar("--chart-tooltip-border", "rgba(255,255,255,0.10)"),
-    borderWidth: 1,
-    cornerRadius: 8,
-    padding: 10,
-    titleFont: cFont(12),
-    bodyFont: cFont(11),
-  } as const;
-}
-
-function baseLegend() {
-  return {
-    position: "top" as const,
-    align: "end" as const,
-    labels: { color: cssVar("--chart-axis", "#8B9398"), font: cFont(11), boxWidth: 10, boxHeight: 8, padding: 16 },
-  };
-}
-
-function baseScalesXY() {
-  const grid = cssVar("--chart-grid", "rgba(255,255,255,0.07)");
-  const axis = cssVar("--chart-axis", "#8B9398");
-  return {
-    x: { grid: { color: grid, lineWidth: 1 }, ticks: { color: axis, font: cFont(11) }, border: { display: false } },
-    y: { grid: { color: grid, lineWidth: 1 }, ticks: { color: axis, font: cFont(11), maxTicksLimit: 6 }, border: { display: false } },
-  };
-}
+const BASE_SCALES_XY = {
+  x: {
+    grid: { color: GRID, lineWidth: 1 },
+    ticks: { color: "#8B9398", font: cFont(11) },
+    border: { display: false },
+  },
+  y: {
+    grid: { color: GRID, lineWidth: 1 },
+    ticks: { color: "#8B9398", font: cFont(11), maxTicksLimit: 6 },
+    border: { display: false },
+  },
+};
 
 // ── ChartCard ────────────────────────────────────────────────────────────────
 
@@ -126,7 +107,6 @@ export function BarGroupedChart({
   labels: string[];
   datasets: BarDataset[];
 }) {
-  useThemeTick();
   const isEmpty = !datasets.length || datasets.every((d) => d.data.every((v) => v === 0));
   if (isEmpty)
     return (
@@ -152,13 +132,14 @@ export function BarGroupedChart({
     responsive: true,
     maintainAspectRatio: false,
     animation: { duration: 600 },
-    scales: baseScalesXY(),
+    scales: BASE_SCALES_XY,
     plugins: {
-      legend: baseLegend(),
+      legend: BASE_LEGEND,
       tooltip: {
-        ...baseTooltip(),
+        ...BASE_TOOLTIP,
         callbacks: {
-          label: (ctx: TooltipItem<"bar">) =>
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          label: (ctx: any) =>
             ` ${ctx.dataset.label}: ${Number(ctx.parsed.y ?? 0).toLocaleString("es-CO")}`,
         },
       },
@@ -177,7 +158,6 @@ export function LineTrendChart({
   labels: string[];
   datasets: BarDataset[];
 }) {
-  useThemeTick();
   const isEmpty = !datasets.length || datasets.every((d) => d.data.every((v) => v === 0));
   if (isEmpty)
     return (
@@ -208,13 +188,14 @@ export function LineTrendChart({
     responsive: true,
     maintainAspectRatio: false,
     animation: { duration: 600 },
-    scales: baseScalesXY() as ChartOptions<"line">["scales"],
+    scales: BASE_SCALES_XY as ChartOptions<"line">["scales"],
     plugins: {
-      legend: baseLegend(),
+      legend: BASE_LEGEND,
       tooltip: {
-        ...baseTooltip(),
+        ...BASE_TOOLTIP,
         callbacks: {
-          label: (ctx: TooltipItem<"line">) =>
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          label: (ctx: any) =>
             ` ${ctx.dataset.label}: ${Number(ctx.parsed.y ?? 0).toLocaleString("es-CO")}`,
         },
       },
@@ -241,7 +222,6 @@ export function DonutChart({
   centerLabel?: string;
   centerValue?: string | number;
 }) {
-  useThemeTick();
   const hasData = segments.some((s) => s.value > 0);
 
   const chartData = {
@@ -266,12 +246,13 @@ export function DonutChart({
     plugins: {
       legend: {
         position: "bottom",
-        labels: { color: cssVar("--chart-axis", "#8B9398"), font: cFont(11), boxWidth: 10, boxHeight: 8, padding: 12 },
+        labels: { color: "#8B9398", font: cFont(11), boxWidth: 10, boxHeight: 8, padding: 12 },
       },
       tooltip: {
-        ...baseTooltip(),
+        ...BASE_TOOLTIP,
         callbacks: {
-          label: (ctx: TooltipItem<"doughnut">) => {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          label: (ctx: any) => {
             const v = Number(ctx.parsed ?? 0);
             const total = (ctx.dataset.data as number[]).reduce((a: number, b: number) => a + b, 0);
             const pct = total > 0 ? ((v / total) * 100).toFixed(1) : "0";
@@ -332,7 +313,6 @@ export function HBarChart({
   label?: string;
   color?: string;
 }) {
-  useThemeTick();
   if (!items.length)
     return (
       <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "100%", color: "var(--muted2)", fontSize: 13 }}>
@@ -361,22 +341,23 @@ export function HBarChart({
     animation: { duration: 600 },
     scales: {
       x: {
-        grid: { color: cssVar("--chart-grid", "rgba(255,255,255,0.07)") },
-        ticks: { color: cssVar("--chart-axis", "#8B9398"), font: cFont(10), maxTicksLimit: 5 },
+        grid: { color: GRID },
+        ticks: { color: "#8B9398", font: cFont(10), maxTicksLimit: 5 },
         border: { display: false },
       },
       y: {
         grid: { display: false },
-        ticks: { color: cssVar("--chart-axis", "#8B9398"), font: cFont(11) },
+        ticks: { color: "#8B9398", font: cFont(11) },
         border: { display: false },
       },
     },
     plugins: {
       legend: { display: false },
       tooltip: {
-        ...baseTooltip(),
+        ...BASE_TOOLTIP,
         callbacks: {
-          label: (ctx: TooltipItem<"bar">) =>
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          label: (ctx: any) =>
             ` ${Number(ctx.parsed.x ?? 0).toLocaleString("es-CO")}`,
         },
       },

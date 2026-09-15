@@ -1,9 +1,8 @@
 "use client";
 import React from "react";
-import { CheckCircle2, AlertTriangle, Info, X } from "lucide-react";
+import { CheckCircle2 } from "lucide-react";
 import { getModuleIconBg } from "@/lib/moduleTheme";
 export { ModuleHero } from "./ModuleHero";
-export { ModuleDetailView } from "./ModuleDetailView";
 
 // ═══════════════════════════════════════════════════════════
 // BADGE — estado inteligente con dot semántico
@@ -219,39 +218,21 @@ export function TimelineItem({ title, meta, time, dot = "default", module, modul
 }
 
 // ═══════════════════════════════════════════════════════════
-// TOAST — aviso flotante (éxito/error/info/warning) abajo-derecha
-// `error` es la prop legacy (booleana); `variant` es la API nueva y
-// gana sobre `error` si ambas se pasan. `stacked` desactiva el
-// `position: fixed` propio para que un contenedor externo (p. ej. el
-// stack del ToastProvider) controle la posición de varios a la vez.
-// Ambas props son aditivas: el uso histórico `<Toast message error/>`
-// sigue renderizando exactamente igual que antes.
+// TOAST — aviso flotante (éxito/error) abajo-derecha
 // ═══════════════════════════════════════════════════════════
-export type ToastVariant = "success" | "error" | "info" | "warning";
-
-export interface ToastProps {
-  message: string;
-  error?: boolean;
-  variant?: ToastVariant;
-  onClose?: () => void;
-  stacked?: boolean;
-}
-
-export function Toast({ message, error = false, variant, onClose, stacked = false }: ToastProps) {
-  const resolved: ToastVariant = variant ?? (error ? "error" : "success");
-  const isError = resolved === "error";
-
+export function Toast({ message, error = false }: { message: string; error?: boolean }) {
   return (
     <div
       className="animate-fade-up"
       role="status"
       aria-live="polite"
       style={{
-        position: stacked ? "relative" : "fixed",
-        ...(stacked ? {} : { bottom: 24, right: 24 }),
+        position: "fixed",
+        bottom: 24,
+        right: 24,
         zIndex: 10000,
         maxWidth: "min(calc(100vw - 32px), 440px)",
-        background: isError ? "var(--error)" : "var(--surface)",
+        background: error ? "var(--error)" : "var(--surface)",
         color: "#fff",
         padding: "10px 16px",
         borderRadius: 10,
@@ -261,24 +242,10 @@ export function Toast({ message, error = false, variant, onClose, stacked = fals
         display: "flex",
         alignItems: "center",
         gap: 8,
-        borderLeft:
-          resolved === "info" ? "3px solid var(--info)" :
-          resolved === "warning" ? "3px solid var(--warning)" : undefined,
       }}
     >
-      {resolved === "success" && <CheckCircle2 size={14} style={{ flexShrink: 0 }} />}
-      {resolved === "info" && <Info size={14} style={{ flexShrink: 0, color: "var(--info)" }} />}
-      {resolved === "warning" && <AlertTriangle size={14} style={{ flexShrink: 0, color: "var(--warning)" }} />}
-      <span style={{ flex: 1 }}>{message}</span>
-      {onClose && (
-        <button
-          onClick={onClose}
-          aria-label="Cerrar notificación"
-          style={{ background: "none", border: "none", color: "inherit", opacity: 0.7, cursor: "pointer", padding: 2, display: "flex", flexShrink: 0 }}
-        >
-          <X size={13} />
-        </button>
-      )}
+      {!error && <CheckCircle2 size={14} style={{ flexShrink: 0 }} />}
+      {message}
     </div>
   );
 }

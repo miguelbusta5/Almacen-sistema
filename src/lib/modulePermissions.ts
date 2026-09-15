@@ -6,38 +6,23 @@ import type { UserRole } from "@/types";
 export type AppRole = UserRole;
 
 export type ModuleKey =
+  | "inventario"
   | "transporte"
   | "preoperacional"
   | "tienda"
   | "solicitudes-transporte"
   | "exportaciones"
-  | "exportaciones-mexico"
-  | "exportaciones-eeuu"
+  | "mis-tareas"
   | "usuarios"
   | "auditoria"
   | "centro-control"
-  | "integracion"
-  | "cargue-gourmet"
-  | "control-montacargas"
-  | "resurtido"
-  | "recepcion-contenedores"
-  | "montaje-resurtido"
-  | "pendientes"
-  | "indicadores"
-  | "picking-muebles"
-  | "inspeccion-muebles"
-  | "indicadores-muebles"
-  | "admin-muebles";
+  | "integracion";
 
 export const MODULE_ACCESS: Record<ModuleKey, AppRole[]> = {
+  inventario: ["INVENTARIO", "SUPERVISOR_INVENTARIO", "GERENTE", "ADMIN", "OPERADOR"],
   transporte: ["TRANSPORTE", "SUPERVISOR_TRANSPORTE", "GERENTE", "ADMIN", "OPERADOR"],
   preoperacional: ["TRANSPORTISTA", "ADMIN", "GERENTE", "SUPERVISOR_TRANSPORTE"],
-  tienda: ["TIENDA", "SUPERVISOR_TIENDA", "SUPERVISOR_TRANSPORTE", "GERENTE", "ADMIN"],
-  // Los dos roles OPERACIONES_* quedan fuera a proposito: son patinadores de area
-  // y solo operan Integracion de Pedidos (+ Cargue Gourmet en el caso gourmet),
-  // tal como dice ROLE_DESCRIPTION mas abajo. Esta lista tambien gobierna el
-  // acceso de servidor via puedeCrear/puedeVerSolicitudTransporte.
-  "solicitudes-transporte": [
+  "mis-tareas": [
     "ADMIN",
     "GERENTE",
     "OPERADOR",
@@ -48,13 +33,23 @@ export const MODULE_ACCESS: Record<ModuleKey, AppRole[]> = {
     "TIENDA",
     "SUPERVISOR_TIENDA",
   ],
+  tienda: ["TIENDA", "SUPERVISOR_TIENDA", "SUPERVISOR_TRANSPORTE", "GERENTE", "ADMIN"],
+  "solicitudes-transporte": [
+    "ADMIN",
+    "GERENTE",
+    "OPERADOR",
+    "INVENTARIO",
+    "TRANSPORTE",
+    "SUPERVISOR_INVENTARIO",
+    "SUPERVISOR_TRANSPORTE",
+    "TIENDA",
+    "SUPERVISOR_TIENDA",
+    "OPERACIONES_MUEBLES",
+    "OPERACIONES_GOURMET",
+  ],
   exportaciones: ["ETIQUETADO", "SUPERVISOR_ALMACENAMIENTO", "GERENTE", "ADMIN"],
-  "exportaciones-mexico": ["ETIQUETADO", "SUPERVISOR_ALMACENAMIENTO", "GERENTE", "ADMIN"],
-  "exportaciones-eeuu": ["ETIQUETADO", "SUPERVISOR_ALMACENAMIENTO", "GERENTE", "ADMIN"],
   usuarios: ["ADMIN"],
-  // Solo ADMIN: /api/activity exige requireRole(["ADMIN"]), asi que un GERENTE
-  // veia el modulo en el menu y recibia 403 al entrar.
-  auditoria: ["ADMIN"],
+  auditoria: ["ADMIN", "GERENTE"],
   "centro-control": [
     "GERENTE",
     "ADMIN",
@@ -71,41 +66,6 @@ export const MODULE_ACCESS: Record<ModuleKey, AppRole[]> = {
     "SUPERVISOR_TRANSPORTE",
     "TRANSPORTE",
   ],
-  "cargue-gourmet": [
-    "ADMIN",
-    "GERENTE",
-    "OPERACIONES_GOURMET",
-    "TRANSPORTE",
-    "SUPERVISOR_TRANSPORTE",
-  ],
-  // Montacarguistas y quien responde por el almacenamiento. Los supervisores de
-  // inventario y de transporte quedan fuera: el trabajo de montacargas no es su area.
-  "control-montacargas": ["MONTACARGAS", "OPERARIO_ALMACENAMIENTO", "SUPERVISOR_ALMACENAMIENTO", "GERENTE", "ADMIN"],
-  resurtido: ["MONTACARGAS", "OPERARIO_ALMACENAMIENTO", "SUPERVISOR_ALMACENAMIENTO", "GERENTE", "ADMIN"],
-  // Sin MONTACARGAS a proposito: descargan el contenedor y salen en la lista
-  // de personas descargando, pero la planilla la lleva siempre el operario.
-  "recepcion-contenedores": ["OPERARIO_ALMACENAMIENTO", "SUPERVISOR_ALMACENAMIENTO", "GERENTE", "ADMIN"],
-  // Ver el modulo es una cosa; montar un resurtido o asignar un pendiente es
-  // otra, y esa va por permiso POR PERSONA (users.puede_montar_resurtido).
-  "montaje-resurtido": ["SUPERVISOR_ALMACENAMIENTO", "GERENTE", "ADMIN"],
-  // Gourmet pide; almacenamiento asigna. Los operarios ven SUS tareas dentro
-  // de Resurtido, no aqui.
-  pendientes: ["OPERACIONES_GOURMET", "SUPERVISOR_ALMACENAMIENTO", "GERENTE", "ADMIN"],
-  // Tiempo laborado de todo el CEDI: son los numeros con los que se evalua al
-  // equipo, asi que solo gestion. El servidor lo exige tambien.
-  indicadores: ["SUPERVISOR_ALMACENAMIENTO", "GERENTE", "ADMIN"],
-  // Picking de muebles: el operario solo ve su propia bandeja. Los dos roles
-  // OPERACIONES_* quedan fuera a proposito — coordinan Integracion, no pickean.
-  "picking-muebles": ["PICKING_MUEBLES", "SUPERVISOR_ALMACENAMIENTO", "GERENTE", "ADMIN"],
-  // Login compartido del area: son 2 PCs para ~5 inspectores, asi que la
-  // trazabilidad la da el catalogo de inspectores, no la autenticacion.
-  "inspeccion-muebles": ["INSPECCION_MUEBLES", "SUPERVISOR_ALMACENAMIENTO", "GERENTE", "ADMIN"],
-  // Los numeros con los que se evalua al area: solo gestion. El servidor lo
-  // exige tambien, como en el resto de indicadores.
-  "indicadores-muebles": ["SUPERVISOR_ALMACENAMIENTO", "GERENTE", "ADMIN"],
-  // Equipos, inspectores, asignacion del dia y tipos de PLU. Solo gestion: el
-  // operario no configura el area en la que trabaja.
-  "admin-muebles": ["SUPERVISOR_ALMACENAMIENTO", "GERENTE", "ADMIN"],
 };
 
 export function canSeeModule(role: string | undefined | null, moduleKey: ModuleKey): boolean {
@@ -133,10 +93,6 @@ export const ROLE_LABEL_EXT: Record<AppRole, string> = {
   OPERACIONES_GOURMET: "Operaciones Gourmet",
   ETIQUETADO: "Etiquetado",
   SUPERVISOR_ALMACENAMIENTO: "Supervisor de Almacenamiento",
-  MONTACARGAS: "Montacarguista",
-  OPERARIO_ALMACENAMIENTO: "Operario de Almacenamiento",
-  PICKING_MUEBLES: "Picking Muebles",
-  INSPECCION_MUEBLES: "Inspeccion Muebles",
 };
 
 export const ROLE_DESCRIPTION: Record<AppRole, string> = {
@@ -153,9 +109,5 @@ export const ROLE_DESCRIPTION: Record<AppRole, string> = {
   OPERACIONES_MUEBLES: "Solo ve y gestiona el modulo Integracion de Pedidos.",
   OPERACIONES_GOURMET: "Solo ve y gestiona el modulo Integracion de Pedidos.",
   ETIQUETADO: "Solo ve y captura etiquetas de Exportaciones.",
-  SUPERVISOR_ALMACENAMIENTO: "Gestiona Exportaciones, etiquetado y Estibas.",
-  MONTACARGAS: "Control Montacargas y Resurtido.",
-  OPERARIO_ALMACENAMIENTO: "Ayudante: recibe PLUs y los ubica.",
-  PICKING_MUEBLES: "Solo ve su bandeja de picking de muebles.",
-  INSPECCION_MUEBLES: "Login compartido del area de inspeccion de muebles.",
+  SUPERVISOR_ALMACENAMIENTO: "Gestiona Exportaciones y seguimiento de etiquetado.",
 };

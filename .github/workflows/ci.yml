@@ -32,7 +32,7 @@ jobs:
         run: npm test
 
   deploy:
-    name: Deploy a producción (Next.js)
+    name: Deploy a producción
     runs-on: ubuntu-latest
     needs: check
     if: github.event_name == 'push' && github.ref == 'refs/heads/master'
@@ -53,104 +53,6 @@ jobs:
           printf '{"projectId":"%s","orgId":"%s"}' \
             '${{ secrets.VERCEL_PROJECT_ID }}' \
             '${{ secrets.VERCEL_ORG_ID }}' > .vercel/project.json
-
-      # ¿Esta Vercel Blob bien conectado al proyecto? Sin el, la subida de fotos
-      # falla. Se comprueba SOLO que las variables existan: su valor NO se
-      # imprime nunca (no son secretos de GitHub, asi que no saldrian enmascarados).
-      - name: Comprobar almacenamiento de fotos (Vercel Blob)
-        run: |
-          F=.vercel/.env.production.local
-          if [ ! -f "$F" ]; then
-            vercel pull --yes --environment=production --token=${{ secrets.VERCEL_TOKEN }} >/dev/null 2>&1 || true
-          fi
-          # Basta con una de las dos: BLOB_STORE_ID (OIDC, lo que recomienda
-          # Vercel) o BLOB_READ_WRITE_TOKEN (clave estatica).
-          if [ -f "$F" ] && grep -qE '^(BLOB_STORE_ID|BLOB_READ_WRITE_TOKEN)=.{5,}' "$F"; then
-            echo "VERCEL BLOB: CONFIGURADO en Next.js (raiz)"
-          elif [ -f "$F" ] && grep -qE '^[A-Z_]+_(STORE_ID|READ_WRITE_TOKEN)=' "$F"; then
-            # El Blob esta conectado, pero con un prefijo distinto de BLOB: las
-            # variables salen con otro nombre y la libreria no las encuentra.
-            echo "VERCEL BLOB: CONECTADO CON PREFIJO INCORRECTO en Next.js (raiz) (reconecta con el prefijo BLOB)"
-          else
-            echo "VERCEL BLOB: FALTA en Next.js (raiz)"
-          fi
-
-      - name: Deploy a producción
-        run: vercel deploy --prod --yes --token=${{ secrets.VERCEL_TOKEN }}
-
-  # nuxt-app/ es un proyecto Vercel APARTE del de la raíz, y ESTE JOB ES LA ÚNICA
-  # COSA QUE LO DESPLIEGA. No lo borres.
-  #
-  # Se despliega desde la RAÍZ del repo, no desde nuxt-app/. El proyecto tiene su
-  # Root Directory en `nuxt-app`, así que Vercel entra él solo a esa carpeta. Si el
-  # CLI subiera únicamente nuxt-app/ como origen, Vercel buscaría nuxt-app/nuxt-app
-  # y el deploy se queda colgado sin arrancar (pasó con ba02424: 24 min en el paso
-  # de deploy, hubo que cancelarlo a mano). Origen = repo completo, igual que el
-  # hook de Git.
-  #
-  # `--prod` fuerza el alias de producción, y `needs: check` lo gatea con tsc+tests.
-  # No hace falta paso de Prisma: nuxt-app/package.json ya corre `prisma generate`
-  # en postinstall, y el build ocurre dentro de Vercel.
-  deploy-nuxt:
-    name: Deploy a producción (nuxt-app)
-    runs-on: ubuntu-latest
-    needs: check
-    if: github.event_name == 'push' && github.ref == 'refs/heads/master'
-
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 20
-
-      - name: Instalar Vercel CLI
-        run: npm install -g vercel@latest
-
-      # En la raíz, no en nuxt-app/: es el origen que se sube. Lleva el projectId de
-      # nuxt-app, así que apunta a ese proyecto aunque el contexto sea el repo entero.
-      - name: Crear .vercel/project.json
-        run: |
-          mkdir -p .vercel
-          printf '{"projectId":"%s","orgId":"%s"}' \
-            '${{ secrets.VERCEL_NUXT_PROJECT_ID }}' \
-            '${{ secrets.VERCEL_ORG_ID }}' > .vercel/project.json
-
-      # Temporal: el deploy falla diciendo que <workspace>/nuxt-app no existe, pero
-      # nuxt-app SÍ está en el repo (200 archivos versionados). Esto imprime lo que
-      # el runner ve de verdad y el rootDirectory que Vercel tiene guardado, para
-      # dejar de deducirlo. `vercel pull` escribe settings en .vercel/project.json;
-      # se imprime SOLO ese archivo — los .env que descarga no se tocan.
-      - name: Diagnóstico de rutas y settings
-        run: |
-          echo "PWD=$(pwd)"
-          echo "GITHUB_WORKSPACE=$GITHUB_WORKSPACE"
-          echo "--- ¿existe nuxt-app? ---"
-          if [ -d nuxt-app ]; then echo "SI: $(ls nuxt-app | tr '\n' ' ')"; else echo "NO EXISTE"; fi
-          echo "--- rootDirectory guardado en Vercel ---"
-          vercel pull --yes --environment=production --token=${{ secrets.VERCEL_TOKEN }} >/dev/null 2>&1 || echo "(vercel pull fallo)"
-          node -e "const s=require('./.vercel/project.json').settings||{}; console.log('rootDirectory:', JSON.stringify(s.rootDirectory)); console.log('framework:', JSON.stringify(s.framework))" || cat .vercel/project.json
-
-      # ¿Esta Vercel Blob bien conectado al proyecto? Sin el, la subida de fotos
-      # falla. Se comprueba SOLO que las variables existan: su valor NO se
-      # imprime nunca (no son secretos de GitHub, asi que no saldrian enmascarados).
-      - name: Comprobar almacenamiento de fotos (Vercel Blob)
-        run: |
-          F=.vercel/.env.production.local
-          if [ ! -f "$F" ]; then
-            vercel pull --yes --environment=production --token=${{ secrets.VERCEL_TOKEN }} >/dev/null 2>&1 || true
-          fi
-          # Basta con una de las dos: BLOB_STORE_ID (OIDC, lo que recomienda
-          # Vercel) o BLOB_READ_WRITE_TOKEN (clave estatica).
-          if [ -f "$F" ] && grep -qE '^(BLOB_STORE_ID|BLOB_READ_WRITE_TOKEN)=.{5,}' "$F"; then
-            echo "VERCEL BLOB: CONFIGURADO en nuxt-app"
-          elif [ -f "$F" ] && grep -qE '^[A-Z_]+_(STORE_ID|READ_WRITE_TOKEN)=' "$F"; then
-            # El Blob esta conectado, pero con un prefijo distinto de BLOB: las
-            # variables salen con otro nombre y la libreria no las encuentra.
-            echo "VERCEL BLOB: CONECTADO CON PREFIJO INCORRECTO en nuxt-app (reconecta con el prefijo BLOB)"
-          else
-            echo "VERCEL BLOB: FALTA en nuxt-app"
-          fi
 
       - name: Deploy a producción
         run: vercel deploy --prod --yes --token=${{ secrets.VERCEL_TOKEN }}

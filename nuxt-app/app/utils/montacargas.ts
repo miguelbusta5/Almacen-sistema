@@ -113,6 +113,10 @@ export interface NovedadMovimiento {
 }
 
 export interface Movimiento {
+  pausaId?: string | null
+  pausaInicio?: string | null
+  pausaSegundos?: number
+
   id: string
   tipo: TipoMovimiento
   estado: EstadoMovimiento
@@ -362,7 +366,13 @@ export function fmtFechaCorta(fecha: string | null): string {
 /** Cronómetro del tramo abierto. Devuelve "m:ss" o null si nadie lo tiene. */
 export function cronometroTramo(m: Movimiento, ahora: number): string | null {
   const abierto = m.tramos.find((t) => !t.fin)
-  if (!abierto) return null
-  const seg = Math.max(0, Math.floor((ahora - new Date(abierto.inicio).getTime()) / 1000))
+  if (!abierto && !m.pausaId) return null
+  // Los tramos separados por pausas pertenecen a la misma etapa de trabajo.
+  let ms = 0
+  for (const t of [...m.tramos].sort((a, b) => b.orden - a.orden)) {
+    if (t.usuarioId !== m.responsableId) break
+    ms += Math.max(0, (t.fin ? new Date(t.fin).getTime() : ahora) - new Date(t.inicio).getTime())
+  }
+  const seg = Math.floor(ms / 1000)
   return `${Math.floor(seg / 60)}:${String(seg % 60).padStart(2, '0')}`
 }

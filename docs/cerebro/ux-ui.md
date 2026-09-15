@@ -7,9 +7,8 @@
 ## Direccion vigente 2026-06-19: Dark Elegant (Obsidiana + Esmeralda)
 
 - La interfaz adopta una identidad **Dark Elegant**: base casi negra neutra (obsidiana) con un **unico acento esmeralda** (vivo, con punto neon) reservado a accion, foco y estado activo.
-- **Oscuro por defecto + modo claro opt-in (2026-06-26).** `:root` define el tema **oscuro**; `html[data-theme="light"]` overridea los tokens para el **claro**. El usuario alterna con el `ThemeToggle` (Header); la preferencia se guarda **por dispositivo** (`localStorage`, con script anti-parpadeo en `layout.tsx`). `<html data-theme="dark">` es el default SSR. La marca esmeralda se conserva en ambos temas. Ver [[decisiones]] (2026-06-26).
+- **Solo modo oscuro.** Se elimino el tema claro, el toggle (`ThemeToggle`) y el script de init de tema. `:root` es el tema oscuro; `<html data-theme="dark">` se fija como salvaguarda de selectores legacy.
 - **Acento unico de marca:** los modulos ya **no** se diferencian por color. Se distinguen por icono, kicker y tipografia. `moduleTheme.ts` resuelve todos los modulos a esmeralda.
-- **Excepcion acotada — Exportaciones por pais (2026-07-24).** En el port a Nuxt, los tres modulos de Exportacion (Ecuador / Mexico / EE.UU.) son pantallas identicas del mismo flujo y el error caro es capturar en el pais equivocado. Cada pais define `--pais` en el nodo raiz del modulo (`--brand` / `--bill` / `--info`, tokens ya existentes) y ese acento se usa **solo** en cromo identitario: barra e icono del hero, banner de "registro en curso", barra izquierda de las KPI, chip de pais y barra de seleccion. Los botones de accion siguen usando `.btn-primary` (verde de marca) para no romper la jerarquia. No es color por modulo: es una senal para distinguir **variantes dentro de un modulo**. Vive en `nuxt-app/app/utils/exportaciones.ts` (`PaisConfig.accent`).
 - **Los estados SI conservan color** y son diferenciados/vivos: creado (esmeralda), recogido (cian), CEDI (verde), enviado (azul), rechazado (rojo), alerta (ambar). Viven en los tokens `--state-*` y en las variantes de `Badge`/`DataTable` (rail por fila), no en el tema de modulo.
 - **Sin imagenes en los encabezados.** Se elimino `heroImage` y el slot de asset; `ModuleHero` es puramente tipografico (kicker + titulo + descripcion + acciones + metricas, con rail/hairline esmeralda). Los assets de `public/ui/module-heroes/` ya no se referencian.
 - **Tipografia:** `Inter` (UI) + `Sora` (display/titulos/logo) + mono (`JetBrains Mono`), cargadas por `<link>` en `layout.tsx`. Tokens `--sans`, `--display`/`--logo`, `--mono`.
@@ -47,22 +46,6 @@ success #2EE6A6 · warning #FFC53D · error #FF6B6B · info(cian) #34D9F0
 .slide-panel  .detail-section  .status-tab  .colored-kpi  .g-nav-item  .g-modal*
 ```
 
-Componentes React del DS: `ModuleHero`, `DataTable`, `Stat`, `Badge`, `Modal`/`ConfirmModal`,
-`ModuleDetailView` (detalle), y los helpers de detalle `DetailSection`/`DetailGrid`/`MiniHistory`/
-`IntelBanner` (en `src/components/ui/SlidePanel.tsx`).
-
-## Patrón de detalle (2026-06-26)
-
-- El detalle de un registro es una **vista a ancho completo que reemplaza al listado** dentro del
-  módulo, vía el componente compartido **`ModuleDetailView`** (`src/components/ui/ModuleDetailView.tsx`):
-  botón "Volver al listado" + header con título/badge/**barra de acciones** + cuerpo `g-panel`. Es
-  scroll de página (sin `position:fixed`), igual en desktop y mobile.
-- Aplica a los 7 módulos con detalle (cargue-gourmet, preoperacional, integración, solicitudes-transporte,
-  transporte, tienda, muebles). Las acciones operativas van en el **header**; las secciones de datos usan
-  `DetailSection`/`DetailGrid`/`MiniHistory`.
-- El **overlay `SlidePanel`** (drawer lateral / bottom-sheet) quedó **retirado de las páginas** y sin uso;
-  solo se conservan sus helpers. No reintroducir el overlay para detalle. Ver [[decisiones]] (2026-06-26).
-
 ## Datos en vivo
 
 - Hook base: `src/hooks/useAutoRefresh.ts`. Indicador: `src/components/ui/AutoRefreshIndicator.tsx`.
@@ -75,21 +58,18 @@ Componentes React del DS: `ModuleHero`, `DataTable`, `Stat`, `Badge`, `Modal`/`C
 - No convertir el dashboard en landing page.
 - No sacrificar velocidad de captura por decoracion.
 - Mantener permisos con doble validacion: server + UI.
-- Oscuro por defecto; el modo claro es opt-in (toggle). **Todo color debe salir de tokens** (`var(--…)`), nunca literales inline, para que ambos temas funcionen. No reintroducir color por modulo ni imagenes en encabezados.
-- Evitar nuevos estilos inline para color; preferir tokens, `Badge`, `Stat`, `DataTable`, `ModuleDetailView` (detalle) y los helpers `DetailSection`/`DetailGrid`. El overlay `SlidePanel` queda deprecado/sin uso para detalle (ver "Patrón de detalle").
+- No reintroducir modo claro, color por modulo ni imagenes en encabezados.
+- Evitar nuevos estilos inline para color; preferir tokens, `Badge`, `Stat`, `DataTable` y `SlidePanel`.
 
 ## QA visual
 
 Revisar en **oscuro** (unico tema), desktop (1440px), tablet (768px) y movil (390px):
 
-- Dashboard / Login / Facturas Contado / Solicitudes Transporte / Exportaciones / Cargue Gourmet
+- Dashboard / Login / Facturas Contado / Solicitudes Transporte / Exportaciones
 - Indicadores / Preoperacional / Integracion / Conteo / Contar / Centro de Control / Mis Tareas / Usuarios / Auditoria
-- **Patrón de detalle (2026-06-26):** en los 7 módulos con `ModuleDetailView` verificar abrir detalle → vista a ancho completo, "Volver al listado", acciones en el header y responsive en los 3 breakpoints.
 
 ## Historial visual resumido
 
 - 2026-06-11: identidad modular inicial y Control Logistico CEDI.
 - 2026-06-16 / 17 / 18: iteraciones Operativo Premium → Claro Ejecutivo → CEDI Clean → Colorido Enterprise → Colorido Neon Enterprise con assets (claro+oscuro, color por modulo, heroes con render 3D).
 - 2026-06-19: **reescritura total del frontend a Dark Elegant (Obsidiana + Esmeralda)**: solo modo oscuro, acento unico esmeralda, estados con color propio, encabezados sin imagenes, fuentes Inter+Sora. Se elimina el tema claro, `ThemeToggle`, el color por modulo y `heroImage`.
-- 2026-06-26: **migración del detalle a `ModuleDetailView`** (vista a ancho completo que reemplaza al listado) en los 7 módulos; se retira el overlay `SlidePanel` (helpers conservados). Ver [[decisiones]].
-- 2026-06-26: **modo claro opt-in** (directiva de empresa). Tokenización de literales + paleta `html[data-theme="light"]` + toggle por dispositivo; oscuro sigue como default. Ver [[decisiones]].

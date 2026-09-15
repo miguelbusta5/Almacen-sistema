@@ -85,12 +85,6 @@
   --state-sent:     #5B9DFF;
   --state-rejected: #FF6B6B;
   --state-alert:    #FFC53D;
-  /* Estados del flujo Facturas Contado (namespace propio: la semántica de
-     color difiere de --state-* compartido con Solicitudes Transporte) */
-  --state-tienda-created: #FF6B6B;
-  --state-tienda-picked:  #F97316;
-  --state-tienda-cedi:    #FFC53D;
-  --state-tienda-sent:    #2EE6A6;
   /* Tonos para ModuleHero / métricas */
   --state-success: #2EE6A6;
   --state-warning: #FFC53D;
@@ -114,30 +108,6 @@
   --ring-error: 0 0 0 3px rgba(255, 107, 107, 0.26);
   --glow:       0 0 22px color-mix(in srgb, var(--accent) 38%, transparent);
 
-  /* Superficies/efectos tematizables — overridados en [data-theme="light"].
-     Los --text-on-* (texto sobre botón de color) son iguales en ambos temas
-     (el fondo del botón sigue siendo el color vivo). */
-  --body-grad:       linear-gradient(180deg, #0B0E11 0%, #08090B 100%);
-  --sidebar-grad:    linear-gradient(180deg, #0C0F12 0%, #08090B 100%);
-  --sidebar-shadow:  18px 0 48px rgba(0, 0, 0, 0.30);
-  --header-shadow:   0 10px 28px rgba(0, 0, 0, 0.34);
-  --hover-surface:   rgba(255, 255, 255, 0.04);
-  --shimmer:         rgba(255, 255, 255, 0.06);
-  --selection-text:  #fff;
-  --text-on-accent:  #04130D;
-  --text-on-error:   #1A0606;
-  --text-on-warning: #1A1303;
-  --text-on-success: #04130D;
-  --text-on-info:    #03151A;
-
-  /* Charts (Chart.js lee strings → se resuelven en runtime desde estos tokens) */
-  --chart-grid:          rgba(255, 255, 255, 0.07);
-  --chart-tooltip-bg:    #161A1F;
-  --chart-tooltip-title: #ECEFF1;
-  --chart-tooltip-body:  #C2C8CE;
-  --chart-tooltip-border: rgba(255, 255, 255, 0.10);
-  --chart-axis:          #8B9398;
-
   /* Tipografía */
   --sans:    "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
   --display: "Sora", "Inter", system-ui, sans-serif;
@@ -153,113 +123,6 @@
   --page-max:  1280px;
 }
 
-/* ── 1.b TEMA CLARO (opt-in: html[data-theme="light"]) ───────────────────────
-   Override de tokens semánticos. La marca esmeralda se conserva (ligeramente
-   profundizada para contraste sobre blanco). Solo aplica bajo data-theme=light;
-   el oscuro (:root) queda intacto. Aún no expuesto (toggle gateado, Fase C/D). */
-html[data-theme="light"] {
-  color-scheme: light;
-
-  /* Superficies */
-  --canvas:           #F4F6F8;
-  --bg:               #F4F6F8;
-  --surface:          #FFFFFF;
-  --surface2:         #F4F6F8;
-  --surface3:         #E9EDF1;
-  --surface-elevated: #FFFFFF;
-  --surface-command:  rgba(255, 255, 255, 0.86);
-  --surface-rail:     #EEF1F4;
-  --overlay:          rgba(15, 20, 25, 0.45);
-
-  /* Bordes */
-  --border:        rgba(0, 0, 0, 0.10);
-  --border-strong: rgba(0, 0, 0, 0.18);
-
-  /* Texto */
-  --text:   #15181C;
-  --muted2: #3C4248;
-  --muted:  #6A7178;
-  --faint:  #9AA1A8;
-
-  /* Acento esmeralda — profundizado para legibilidad sobre blanco */
-  --accent:        #0E9C76;
-  --accent-bright: #14DBA0;
-  --accent-deep:   #0A7A5C;
-  --accent-tint:   rgba(14, 156, 118, 0.12);
-  --accent-ring:   rgba(14, 156, 118, 0.30);
-  --accent-grad:   linear-gradient(135deg, #0A7A5C 0%, #0E9C76 58%, #14DBA0 100%);
-
-  /* Semánticos — profundizados para texto sobre claro */
-  --success: #0FA968;  --success-tint: rgba(15, 169, 104, 0.12);
-  --warning: #B5790A;  --warning-tint: rgba(181, 121, 10, 0.12);
-  --error:   #D64545;  --error-tint:   rgba(214, 69, 69, 0.12);
-  --info:    #0E93BC;  --info-tint:    rgba(14, 147, 188, 0.12);
-
-  /* Estados operativos */
-  --state-created:  #0E9C76;
-  --state-picked:   #0E93BC;
-  --state-cedi:     #0FA968;
-  --state-sent:     #2E6FE0;
-  --state-rejected: #D64545;
-  --state-alert:    #B5790A;
-  --state-tienda-created: #D64545;
-  --state-tienda-picked:  #C2570B;
-  --state-tienda-cedi:    #B5790A;
-  --state-tienda-sent:    #0FA968;
-  --state-success: #0FA968;
-  --state-warning: #B5790A;
-  --state-danger:  #D64545;
-  --state-info:    #0E93BC;
-
-  /* Compat legacy */
-  --blue: #2E6FE0;  --blue-light: rgba(46, 111, 224, 0.12);
-  --green: #0FA968; --red: #D64545; --amber: #B5790A;
-  --orange: #B5790A; --orange-light: rgba(181, 121, 10, 0.12);
-
-  /* Sombras — suaves y frías */
-  --shadow-xs: 0 1px 2px rgba(16, 24, 40, 0.06);
-  --shadow-sm: 0 2px 8px rgba(16, 24, 40, 0.08), 0 1px 2px rgba(16, 24, 40, 0.06);
-  --shadow:    0 12px 28px rgba(16, 24, 40, 0.10), 0 1px 2px rgba(16, 24, 40, 0.06);
-  --shadow-md: 0 18px 40px rgba(16, 24, 40, 0.12), 0 2px 8px rgba(16, 24, 40, 0.08);
-  --shadow-lg: 0 26px 60px rgba(16, 24, 40, 0.14), 0 4px 14px rgba(16, 24, 40, 0.10);
-  --shadow-xl: 0 36px 80px rgba(16, 24, 40, 0.16), 0 8px 24px rgba(16, 24, 40, 0.12);
-  --ring-error: 0 0 0 3px rgba(214, 69, 69, 0.22);
-
-  /* Superficies/efectos tematizables */
-  --body-grad:       linear-gradient(180deg, #F7F9FB 0%, #EEF1F4 100%);
-  --sidebar-grad:    linear-gradient(180deg, #FFFFFF 0%, #F4F6F8 100%);
-  --sidebar-shadow:  18px 0 48px rgba(16, 24, 40, 0.06);
-  --header-shadow:   0 10px 28px rgba(16, 24, 40, 0.08);
-  --hover-surface:   rgba(0, 0, 0, 0.04);
-  --shimmer:         rgba(0, 0, 0, 0.05);
-  --selection-text:  #0B1A14;
-
-  /* Charts */
-  --chart-grid:           rgba(0, 0, 0, 0.08);
-  --chart-tooltip-bg:     #FFFFFF;
-  --chart-tooltip-title:  #15181C;
-  --chart-tooltip-body:   #3C4248;
-  --chart-tooltip-border: rgba(0, 0, 0, 0.12);
-  --chart-axis:           #6A7178;
-}
-
-/* El login es una pantalla de marca pre-auth: siempre oscuro, independiente del
-   tema. Se re-declaran los tokens oscuros scopeados a `.login-page` (los valores
-   puestos en el elemento ganan sobre los heredados de html[data-theme=light]),
-   así sus gradientes oscuros hardcodeados conviven con texto/superficies claros. */
-.login-page {
-  color-scheme: dark;
-  --bg: #0A0C0E; --surface: #121519; --surface2: #171B20; --surface3: #1E232A;
-  --surface-elevated: #161A1F;
-  --border: rgba(255, 255, 255, 0.08); --border-strong: rgba(255, 255, 255, 0.16);
-  --text: #ECEFF1; --muted2: #C2C8CE; --muted: #8B9398; --faint: #5C636A;
-  --accent: #14DBA0; --accent-bright: #5BF5C7; --accent-deep: #0E9C76;
-  --accent-tint: rgba(20, 219, 160, 0.13);
-  --error: #FF6B6B; --error-tint: rgba(255, 107, 107, 0.15);
-  --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.40);
-  --text-on-accent: #04130D;
-}
-
 /* ── 2. RESET Y BASE ────────────────────────────────────────────────────── */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 html { scroll-behavior: smooth; overflow-x: clip; }
@@ -273,7 +136,7 @@ body {
   color: var(--text);
   background:
     radial-gradient(1200px 620px at 14% -12%, color-mix(in srgb, var(--accent) 9%, transparent), transparent 60%),
-    var(--body-grad);
+    linear-gradient(180deg, #0B0E11 0%, #08090B 100%);
   background-attachment: fixed;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
@@ -289,7 +152,7 @@ body {
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: var(--border-strong); border-radius: 4px; }
 ::-webkit-scrollbar-thumb:hover { background: color-mix(in srgb, var(--accent) 40%, var(--border-strong)); }
-::selection { background: color-mix(in srgb, var(--accent) 32%, transparent); color: var(--selection-text); }
+::selection { background: color-mix(in srgb, var(--accent) 32%, transparent); color: #fff; }
 
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
@@ -329,7 +192,7 @@ body {
 }
 .skeleton::after {
   content: ""; position: absolute; inset: 0; transform: translateX(-100%);
-  background: linear-gradient(90deg, transparent 0%, var(--shimmer) 50%, transparent 100%);
+  background: linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.06) 50%, transparent 100%);
   animation: shimmer 1.4s ease-in-out infinite;
 }
 
@@ -369,9 +232,9 @@ body {
   position: sticky; top: 0; height: 100vh;
   display: flex; flex-direction: column;
   color: var(--muted2);
-  background: var(--sidebar-grad);
+  background: linear-gradient(180deg, #0C0F12 0%, #08090B 100%);
   border-right: 1px solid var(--border);
-  box-shadow: var(--sidebar-shadow);
+  box-shadow: 18px 0 48px rgba(0, 0, 0, 0.30);
 }
 .g-sidebar-brand { padding: 20px 16px 16px; border-bottom: 1px solid var(--border); }
 .g-sidebar-nav { flex: 1; padding: 12px 0; overflow-y: auto; }
@@ -391,7 +254,7 @@ body {
 }
 .g-nav-item:hover {
   color: var(--text);
-  background: var(--hover-surface);
+  background: rgba(255, 255, 255, 0.04);
   transform: translateX(2px);
 }
 .g-nav-item.active {
@@ -404,7 +267,7 @@ body {
   display: grid; place-items: center; flex-shrink: 0;
   width: 28px; height: 28px; border-radius: 9px;
   color: var(--muted);
-  background: var(--hover-surface);
+  background: rgba(255, 255, 255, 0.04);
   transition: color 0.13s ease, background 0.13s ease;
 }
 .g-nav-item:hover .g-nav-icon { color: var(--text); }
@@ -419,7 +282,7 @@ body {
   border-bottom: 1px solid var(--border);
   backdrop-filter: blur(16px) saturate(140%);
   -webkit-backdrop-filter: blur(16px) saturate(140%);
-  box-shadow: var(--header-shadow);
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.34);
 }
 
 /* ── 8. MODULE HERO (sin imagen — puramente tipográfico) ────────────────── */
@@ -681,7 +544,7 @@ body {
 .g-btn:disabled, .ds-btn:disabled { opacity: 0.45; cursor: not-allowed; pointer-events: none; }
 
 .g-btn-primary, .ds-btn-primary {
-  color: var(--text-on-accent); background: var(--accent);
+  color: #04130D; background: var(--accent);
   box-shadow: 0 6px 18px color-mix(in srgb, var(--accent) 30%, transparent);
 }
 .g-btn-primary:hover:not(:disabled), .ds-btn-primary:hover:not(:disabled) { background: var(--accent-bright); box-shadow: var(--glow); transform: translateY(-1px); }
@@ -693,18 +556,13 @@ body {
 .g-btn-ghost:hover:not(:disabled), .ds-btn-ghost:hover:not(:disabled) { background: var(--surface2); color: var(--text); }
 
 .g-btn-danger, .ds-btn-danger { background: var(--error-tint); color: var(--error); border-color: color-mix(in srgb, var(--error) 26%, transparent); }
-.g-btn-danger:hover:not(:disabled), .ds-btn-danger:hover:not(:disabled) { background: var(--error); color: var(--text-on-error); border-color: var(--error); }
-
-/* Peligro discreto: chrome de secundario con texto de error, para acciones
-   destructivas de menor jerarquía que ds-btn-danger (ej. Novedad/Rechazar). */
-.ds-btn-danger-ghost { background: var(--surface2); color: var(--error); border-color: var(--border-strong); box-shadow: var(--shadow-xs); }
-.ds-btn-danger-ghost:hover:not(:disabled) { background: var(--error-tint); border-color: color-mix(in srgb, var(--error) 30%, var(--border-strong)); }
+.g-btn-danger:hover:not(:disabled), .ds-btn-danger:hover:not(:disabled) { background: var(--error); color: #1A0606; border-color: var(--error); }
 
 .g-btn-success, .ds-btn-success { background: var(--success-tint); color: var(--success); border-color: color-mix(in srgb, var(--success) 26%, transparent); }
-.g-btn-success:hover:not(:disabled), .ds-btn-success:hover:not(:disabled) { background: var(--success); color: var(--text-on-success); }
+.g-btn-success:hover:not(:disabled), .ds-btn-success:hover:not(:disabled) { background: var(--success); color: #04130D; }
 
 .g-btn-warning, .ds-btn-warning { background: var(--warning-tint); color: var(--warning); border-color: color-mix(in srgb, var(--warning) 26%, transparent); }
-.g-btn-warning:hover:not(:disabled), .ds-btn-warning:hover:not(:disabled) { background: var(--warning); color: var(--text-on-warning); }
+.g-btn-warning:hover:not(:disabled), .ds-btn-warning:hover:not(:disabled) { background: var(--warning); color: #1A1303; }
 
 .g-btn-sm, .ds-btn-sm { height: 28px; padding: 0 10px; font-size: 12px; border-radius: var(--r-sm); }
 .g-btn-lg, .ds-btn-lg { height: 44px; padding: 0 22px; font-size: 14px; font-weight: 600; border-radius: var(--r-md); }
@@ -830,8 +688,13 @@ select option { background: var(--surface); color: var(--text); }
 .g-modal-body { padding: 20px; overflow-y: auto; }
 .g-modal-footer { display: flex; align-items: center; justify-content: flex-end; gap: 8px; padding: 14px 20px; border-top: 1px solid var(--border); background: var(--surface2); }
 
-/* ── 23. DETAIL SECTION (helper de detalle, usado por ModuleDetailView) ──── */
-.detail-section {
+/* ── 23. SLIDE PANEL / DETAIL SECTION (drawer) ──────────────────────────── */
+.slide-panel {
+  background: linear-gradient(180deg, var(--surface-elevated) 0%, var(--surface) 30%);
+  border-left: 1px solid var(--border-strong);
+  color: var(--text);
+}
+.detail-section, .slide-panel .detail-section {
   border: 1px solid var(--border);
   border-left: 3px solid var(--section-color, var(--accent));
   border-radius: var(--r-md); padding: 14px;

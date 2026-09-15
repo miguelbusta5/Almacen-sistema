@@ -17,9 +17,7 @@ function getCellValue(cell: ExcelJS.Cell): unknown {
 
 export async function readWorkbook(buffer: Buffer | ArrayBuffer): Promise<ExcelJS.Workbook> {
   const workbook = new ExcelJS.Workbook();
-  // exceljs declara su propio `Buffer` (extends ArrayBuffer), distinto al de
-  // Node; acepta Buffer y ArrayBuffer en runtime. Casteamos al tipo del param.
-  await workbook.xlsx.load(buffer as unknown as Parameters<typeof workbook.xlsx.load>[0]);
+  await workbook.xlsx.load(buffer as any);
   return workbook;
 }
 

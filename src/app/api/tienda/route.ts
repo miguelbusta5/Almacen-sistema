@@ -4,15 +4,6 @@ import { prisma } from "@/lib/prisma";
 import { z } from "zod";
 import { todayISO } from "@/lib/tienda";
 import { derivePlinFromMaestro, normalizePlu, productoToClient } from "@/lib/productosMaestro";
-import type { Prisma } from "@prisma/client";
-
-type DespachoTiendaRow = Prisma.DespachoTiendaGetPayload<{
-  include: {
-    creadoPor: { select: { id: true; name: true } };
-    plines: true;
-    guardadoPendiente: { include: { asignadoA: { select: { name: true } } } };
-  };
-}>;
 
 const plinSchema = z.object({
   plu:        z.string().min(1).max(100),
@@ -31,11 +22,10 @@ const createSchema = z.object({
   fechaEntregaComprometida:  z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable().optional(),
   numeroCajas:               z.number().int().min(1).nullable().optional(),
   notaEntrega:               z.string().nullable().optional(),
-  ciudad:                    z.string().max(100).nullable().optional(),
   plines:                    z.array(plinSchema).optional(),
 });
 
-function mapRow(r: DespachoTiendaRow): object {
+function mapRow(r: any): object {
   return {
     id:               r.id,
     centroCostos:     r.centroCostos,
@@ -100,8 +90,8 @@ export async function GET(req: NextRequest) {
   const cc       = sp.get("centroCostos") ?? "";
   const q        = sp.get("q")?.trim() ?? "";
 
-  const where: Prisma.DespachoTiendaWhereInput = {};
-  if (estado) where.estado = estado as Prisma.DespachoTiendaWhereInput["estado"];
+  const where: any = {};
+  if (estado) where.estado = estado;
   if (cc) where.centroCostos = { contains: cc, mode: "insensitive" };
   if (q) where.OR = [
     { numeroDocumento: { contains: q, mode: "insensitive" } },
@@ -147,7 +137,6 @@ export async function POST(req: NextRequest) {
         fechaEntregaComprometida:d.fechaEntregaComprometida ? new Date(d.fechaEntregaComprometida + "T00:00:00") : null,
         numeroCajas:             d.numeroCajas ?? null,
         notaEntrega:             d.notaEntrega ?? null,
-        ciudad:                  d.ciudad ?? null,
         creadoPorId:             actor.id,
       },
       include: { creadoPor: { select: { id: true, name: true } }, plines: true, guardadoPendiente: { include: { asignadoA: { select: { name: true } } } } },
@@ -190,25 +179,5 @@ export async function POST(req: NextRequest) {
     data: { userId: actor.id, action: "CREATE", module: "tienda", recordId: row!.id, details: `${d.numeroDocumento} · ${d.clienteNombre} · ${d.centroCostos}` },
   }).catch(() => {});
 
-  // Notifica a los responsables de recogida (mismo patrón que revertir-estado:
-  // Set de destinatarios, excluye al actor, createMany tolerante a fallos).
-  const responsables = await prisma.user.findMany({
-    where: { active: true, role: { in: ["SUPERVISOR_TRANSPORTE", "GERENTE", "ADMIN"] } },
-    select: { id: true },
-  }).catch(() => []);
-  const destinatariosIds = new Set(responsables.map((u) => u.id));
-  destinatariosIds.delete(actor.id);
-  if (destinatariosIds.size > 0) {
-    await prisma.notificacion.createMany({
-      data: Array.from(destinatariosIds).map((userId) => ({
-        userId,
-        titulo: "Nueva factura contado pendiente de recogida",
-        descripcion: `Doc. ${d.numeroDocumento} · ${d.clienteNombre} · ${d.centroCostos}`,
-        tipo: "TIENDA",
-        enlace: "/dashboard/tienda",
-      })),
-    }).catch(() => {});
-  }
-
-  return NextResponse.json({ success: true, data: mapRow(row!) }, { status: 201 });
+  return NextResponse.json({ success: true, data: mapRow(row) }, { status: 201 });
 }

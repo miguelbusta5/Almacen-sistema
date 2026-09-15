@@ -156,9 +156,9 @@ function ubicar() {
 </script>
 
 <template>
-  <section class="reg card" :class="{ destacado, novedad: enNovedad }">
+  <section class="reg card" :class="{ destacado, novedad: enNovedad }" :inert="!!m.pausaId">
     <header class="cab">
-      <span class="pulse" :class="{ parado: enNovedad }" />
+      <span class="pulse" :class="{ parado: enNovedad || !!m.pausaId }" />
       <div class="cab-txt">
         <b class="mono">{{ m.plu }}</b>
         <span class="desc">{{ m.descripcion }}</span>
@@ -168,6 +168,7 @@ function ubicar() {
       </div>
       <div class="cab-der">
         <span v-if="enNovedad" class="chip-nov"><TriangleAlert :size="12" /> Reloj detenido</span>
+        <span v-else-if="m.pausaId" class="chip-nov">En pausa · {{ crono }}</span>
         <span v-else class="crono tnum">{{ crono ?? '—' }}</span>
       </div>
     </header>

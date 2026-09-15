@@ -29,12 +29,10 @@ export const ESTADOS_ACTIVOS: EstadoDespacho[] = [
   "ENTREGADO_CEDI",
 ];
 
-// Flujo lineal para el pipeline visual (excluye CON_NOVEDAD).
-// Simplificado a 3 pasos: Pendiente recogida → En CEDI → Enviado al cliente.
-// RECOGIDO_TIENDA es un estado LEGADO (ya no se produce; se muestra como "En
-// CEDI" y ocupa ese mismo paso). Ver docs/cerebro/decisiones.md.
+// Flujo lineal para el pipeline visual (excluye CON_NOVEDAD)
 export const FLUJO_ESTADOS: EstadoDespacho[] = [
   "CREADO_TIENDA",
+  "RECOGIDO_TIENDA",
   "ENTREGADO_CEDI",
   "ENVIADO_CLIENTE",
 ];
@@ -108,23 +106,20 @@ export interface DespachoTienda {
 
 // ── Labels y colores ──────────────────────────────────────
 export const ESTADO_DESPACHO_LABEL: Record<EstadoDespacho, string> = {
-  CREADO_TIENDA:      "Pendiente recogida",
+  CREADO_TIENDA:      "Creado en tienda",
   RECHAZADO:          "Rechazado",
-  RECOGIDO_TIENDA:    "En CEDI",  // legado (se fusiona con ENTREGADO_CEDI)
-  ENTREGADO_CEDI:     "En CEDI",
+  RECOGIDO_TIENDA:    "Recogido en tienda",
+  ENTREGADO_CEDI:     "Entregado en CEDI",
   ENVIADO_CLIENTE:    "Enviado al cliente",
   CON_NOVEDAD:        "Con novedad",
 };
 
-// Colores propios del módulo vía tokens `--state-tienda-*` (namespace propio,
-// no el `--state-*` compartido con Solicitudes Transporte, para no afectar el
-// color de otros módulos). Ambos temas los definen en globals.css.
 export const ESTADO_DESPACHO_COLOR: Record<EstadoDespacho, string> = {
-  CREADO_TIENDA:      "var(--state-tienda-created)", // rojo — pendiente recogida
+  CREADO_TIENDA:      "var(--state-created)",
   RECHAZADO:          "var(--state-rejected)",
-  RECOGIDO_TIENDA:    "var(--state-tienda-cedi)",    // legado — se muestra como En CEDI
-  ENTREGADO_CEDI:     "var(--state-tienda-cedi)",    // En CEDI
-  ENVIADO_CLIENTE:    "var(--state-tienda-sent)",    // verde — enviado al cliente
+  RECOGIDO_TIENDA:    "var(--state-picked)",
+  ENTREGADO_CEDI:     "var(--state-cedi)",
+  ENVIADO_CLIENTE:    "var(--state-sent)",
   CON_NOVEDAD:        "var(--state-alert)",
 };
 
@@ -136,10 +131,10 @@ export function estadoDespachoVariant(
   e: EstadoDespacho
 ): "warning" | "info" | "success" | "error" | "default" {
   switch (e) {
-    case "CREADO_TIENDA":      return "error";
+    case "CREADO_TIENDA":      return "warning";
     case "RECHAZADO":          return "error";
-    case "RECOGIDO_TIENDA":    return "warning";
-    case "ENTREGADO_CEDI":     return "warning";
+    case "RECOGIDO_TIENDA":    return "info";
+    case "ENTREGADO_CEDI":     return "info";
     case "ENVIADO_CLIENTE":    return "success";
     case "CON_NOVEDAD":        return "error";
   }

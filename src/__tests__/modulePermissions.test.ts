@@ -6,6 +6,7 @@ describe("canSeeModule — Sprint 8", () => {
   // ── TRANSPORTISTA: solo Preoperacional ───────────────
   describe("TRANSPORTISTA", () => {
     it("ve preoperacional", () => expect(canSeeModule("TRANSPORTISTA", "preoperacional")).toBe(true));
+    it("NO ve inventario",  () => expect(canSeeModule("TRANSPORTISTA", "inventario")).toBe(false));
     it("NO ve transporte",  () => expect(canSeeModule("TRANSPORTISTA", "transporte")).toBe(false));
     it("NO ve tienda",      () => expect(canSeeModule("TRANSPORTISTA", "tienda")).toBe(false));
     it("NO ve usuarios",    () => expect(canSeeModule("TRANSPORTISTA", "usuarios")).toBe(false));
@@ -18,10 +19,11 @@ describe("canSeeModule — Sprint 8", () => {
   });
 
   describe("ETIQUETADO", () => {
-    it("solo ve exportaciones (Ecuador/México/EE.UU)", () => {
-      expect(getVisibleModules("ETIQUETADO")).toEqual(["exportaciones", "exportaciones-mexico", "exportaciones-eeuu"]);
+    it("solo ve exportaciones", () => {
+      expect(getVisibleModules("ETIQUETADO")).toEqual(["exportaciones"]);
     });
     it("NO ve otros modulos operativos", () => {
+      expect(canSeeModule("ETIQUETADO", "inventario")).toBe(false);
       expect(canSeeModule("ETIQUETADO", "transporte")).toBe(false);
       expect(canSeeModule("ETIQUETADO", "solicitudes-transporte")).toBe(false);
       expect(canSeeModule("ETIQUETADO", "preoperacional")).toBe(false);
@@ -30,12 +32,11 @@ describe("canSeeModule — Sprint 8", () => {
 
   // ── ADMIN: ve todo incluido preoperacional (vista supervisor) ──
   describe("ADMIN", () => {
+    it("ve inventario",      () => expect(canSeeModule("ADMIN", "inventario")).toBe(true));
     it("ve transporte",      () => expect(canSeeModule("ADMIN", "transporte")).toBe(true));
     it("ve tienda",          () => expect(canSeeModule("ADMIN", "tienda")).toBe(true));
     it("ve usuarios",        () => expect(canSeeModule("ADMIN", "usuarios")).toBe(true));
     it("ve auditoria",       () => expect(canSeeModule("ADMIN", "auditoria")).toBe(true));
-    // Solo ADMIN: /api/activity exige ese rol y el menu debe decir lo mismo.
-    it("GERENTE NO ve auditoria", () => expect(canSeeModule("GERENTE", "auditoria")).toBe(false));
     it("ve centro-control",  () => expect(canSeeModule("ADMIN", "centro-control")).toBe(true));
     it("ve solicitudes-transporte", () => expect(canSeeModule("ADMIN", "solicitudes-transporte")).toBe(true));
     it("ve exportaciones", () => expect(canSeeModule("ADMIN", "exportaciones")).toBe(true));
@@ -50,6 +51,7 @@ describe("canSeeModule — Sprint 8", () => {
   describe("TIENDA", () => {
     it("ve tienda",         () => expect(canSeeModule("TIENDA", "tienda")).toBe(true));
     it("ve solicitudes-transporte", () => expect(canSeeModule("TIENDA", "solicitudes-transporte")).toBe(true));
+    it("NO ve inventario",  () => expect(canSeeModule("TIENDA", "inventario")).toBe(false));
     it("NO ve transporte",  () => expect(canSeeModule("TIENDA", "transporte")).toBe(false));
     it("NO ve usuarios",    () => expect(canSeeModule("TIENDA", "usuarios")).toBe(false));
     it("NO ve preoperacional", () => expect(canSeeModule("TIENDA", "preoperacional")).toBe(false));
@@ -73,6 +75,7 @@ describe("canSeeModule — Sprint 8", () => {
   // ── Módulo integración ────────────────────────────────
   describe("integracion — OPERACIONES_MUEBLES", () => {
     it("ve integracion",      () => expect(canSeeModule("OPERACIONES_MUEBLES", "integracion")).toBe(true));
+    it("NO ve inventario",    () => expect(canSeeModule("OPERACIONES_MUEBLES", "inventario")).toBe(false));
     it("NO ve transporte",    () => expect(canSeeModule("OPERACIONES_MUEBLES", "transporte")).toBe(false));
     it("NO ve tienda",        () => expect(canSeeModule("OPERACIONES_MUEBLES", "tienda")).toBe(false));
     it("NO ve usuarios",      () => expect(canSeeModule("OPERACIONES_MUEBLES", "usuarios")).toBe(false));
@@ -83,6 +86,7 @@ describe("canSeeModule — Sprint 8", () => {
 
   describe("integracion — OPERACIONES_GOURMET", () => {
     it("ve integracion",      () => expect(canSeeModule("OPERACIONES_GOURMET", "integracion")).toBe(true));
+    it("NO ve inventario",    () => expect(canSeeModule("OPERACIONES_GOURMET", "inventario")).toBe(false));
     it("NO ve transporte",    () => expect(canSeeModule("OPERACIONES_GOURMET", "transporte")).toBe(false));
     it("NO ve tienda",        () => expect(canSeeModule("OPERACIONES_GOURMET", "tienda")).toBe(false));
     it("NO ve usuarios",      () => expect(canSeeModule("OPERACIONES_GOURMET", "usuarios")).toBe(false));
@@ -97,30 +101,12 @@ describe("canSeeModule — Sprint 8", () => {
     "%s NO ve integracion", (role) => expect(canSeeModule(role, "integracion")).toBe(false)
   );
 
-  it.each(["ADMIN", "GERENTE", "OPERADOR", "INVENTARIO", "TRANSPORTE", "SUPERVISOR_INVENTARIO", "SUPERVISOR_TRANSPORTE", "TIENDA", "SUPERVISOR_TIENDA"] as const)(
+  it.each(["ADMIN", "GERENTE", "OPERADOR", "INVENTARIO", "TRANSPORTE", "SUPERVISOR_INVENTARIO", "SUPERVISOR_TRANSPORTE", "TIENDA", "SUPERVISOR_TIENDA", "OPERACIONES_MUEBLES", "OPERACIONES_GOURMET"] as const)(
     "%s ve solicitudes-transporte", (role) => expect(canSeeModule(role, "solicitudes-transporte")).toBe(true)
   );
 
-  // Los patinadores de área solo operan Integración (+ Cargue Gourmet el gourmet).
-  it.each(["OPERACIONES_MUEBLES", "OPERACIONES_GOURMET", "TRANSPORTISTA", "ETIQUETADO", "SUPERVISOR_ALMACENAMIENTO"] as const)(
-    "%s NO ve solicitudes-transporte", (role) => expect(canSeeModule(role, "solicitudes-transporte")).toBe(false)
-  );
-
-  // ── Módulo cargue-gourmet ─────────────────────────────
-  describe("cargue-gourmet", () => {
-    it.each(["ADMIN", "GERENTE", "OPERACIONES_GOURMET", "TRANSPORTE", "SUPERVISOR_TRANSPORTE"] as const)(
-      "%s ve cargue-gourmet", (role) => expect(canSeeModule(role, "cargue-gourmet")).toBe(true)
-    );
-    it.each([
-      "OPERADOR", "INVENTARIO", "SUPERVISOR_INVENTARIO", "TIENDA", "SUPERVISOR_TIENDA",
-      "TRANSPORTISTA", "OPERACIONES_MUEBLES", "ETIQUETADO", "SUPERVISOR_ALMACENAMIENTO",
-    ] as const)(
-      "%s NO ve cargue-gourmet", (role) => expect(canSeeModule(role, "cargue-gourmet")).toBe(false)
-    );
-  });
-
   // ── Guardias de edge cases ────────────────────────────
-  it("role undefined → false", () => expect(canSeeModule(undefined, "transporte")).toBe(false));
-  it("role null → false",      () => expect(canSeeModule(null, "transporte")).toBe(false));
-  it("role desconocido → false", () => expect(canSeeModule("SUPERADMIN", "transporte")).toBe(false));
+  it("role undefined → false", () => expect(canSeeModule(undefined, "inventario")).toBe(false));
+  it("role null → false",      () => expect(canSeeModule(null, "inventario")).toBe(false));
+  it("role desconocido → false", () => expect(canSeeModule("SUPERADMIN", "inventario")).toBe(false));
 });

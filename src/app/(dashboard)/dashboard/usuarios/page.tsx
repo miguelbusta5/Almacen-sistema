@@ -1,18 +1,13 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useSession } from "next-auth/react";
-import { Users, Plus, Shield, ShieldCheck, ShieldAlert, Truck, Car, Upload, Search, GitMerge, Package, X } from "lucide-react";
+import { Users, Plus, Pencil, Shield, ShieldCheck, ShieldAlert, Truck, Car, Upload, Search, GitMerge, Package } from "lucide-react";
 import { SkeletonTable, EmptyState, ModuleHero } from "@/components/ui";
 import { Modal } from "@/components/ui/Modal";
 import { AutoRefreshIndicator } from "@/components/ui/AutoRefreshIndicator";
 import { getModuleColor, getModuleCssVars } from "@/lib/moduleTheme";
 import { useAutoRefresh } from "@/hooks/useAutoRefresh";
-import { useApi } from "@/hooks/useApi";
-import { apiGet, apiPost, apiPut, apiPatch, apiUpload } from "@/lib/apiClient";
-import { getErrorMessage } from "@/lib/errors";
-import { useToast } from "@/contexts/ToastContext";
-import { UsuariosTable, TransportistasOperativosTable } from "./_components";
 
 type Role = "ADMIN" | "GERENTE" | "OPERADOR" | "TRANSPORTISTA" | "INVENTARIO" | "TRANSPORTE" | "SUPERVISOR_INVENTARIO" | "SUPERVISOR_TRANSPORTE" | "TIENDA" | "SUPERVISOR_TIENDA" | "OPERACIONES_MUEBLES" | "OPERACIONES_GOURMET" | "ETIQUETADO" | "SUPERVISOR_ALMACENAMIENTO";
 
@@ -69,33 +64,23 @@ const ROLE_META: Record<Role, { label: string; color: string; icon: React.ReactN
 
 export default function UsuariosPage() {
   const { data: session } = useSession();
-  const role = (session?.user as { role?: Role } | undefined)?.role;
+  const role = (session?.user as any)?.role as Role | undefined;
 
-  const isAdmin = role === "ADMIN";
+  const [users, setUsers] = useState<User[]>([]);
+  const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState<User | null>(null);
-  const toastCtx = useToast();
-
-  // ── Lecturas SWR (solo ADMIN; key null desactiva la petición) ──────────────
-  const { data: usersData, isLoading: loading, mutate: mutateUsers } = useApi<{ data: User[] }>(isAdmin ? "/api/users" : null);
-  const users = useMemo(() => usersData?.data ?? [], [usersData]);
-  const { data: vehData, isLoading: loadingVeh, mutate: mutateVeh } = useApi<{ data: VehiculoOperativo[] }>(isAdmin ? "/api/users/vehiculos" : null);
-  const vehiculos = useMemo(() => vehData?.data ?? [], [vehData]);
-  const { data: transData, isLoading: loadingTrans, mutate: mutateTrans } = useApi<{ data: TransportistaOperativo[] }>(isAdmin ? "/api/users/transportistas-operativos" : null);
-  const transportistasOperativos = useMemo(() => transData?.data ?? [], [transData]);
-  const loadingCatalogos = loadingVeh || loadingTrans;
-  const load = useCallback(() => { void mutateUsers(); }, [mutateUsers]);
-  const loadCatalogos = useCallback(() => { void mutateVeh(); void mutateTrans(); }, [mutateVeh, mutateTrans]);
+  const [vehiculos, setVehiculos] = useState<VehiculoOperativo[]>([]);
+  const [transportistasOperativos, setTransportistasOperativos] = useState<TransportistaOperativo[]>([]);
+  const [loadingCatalogos, setLoadingCatalogos] = useState(true);
+  const [toast, setToast] = useState<{ msg: string; err?: boolean } | null>(null);
   const [searchQ, setSearchQ] = useState("");
   const [sortCol, setSortCol] = useState<"name" | "role" | "active">("name");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
-  const [debugTable, setDebugTable] = useState(false);
-
-  // Modo debug de tabla: /dashboard/usuarios?debugTable=1 (diagnóstico de mapeo de columnas).
-  useEffect(() => { setDebugTable(new URLSearchParams(window.location.search).get("debugTable") === "1"); }, []);
 
   function showToast(msg: string, err = false) {
-    err ? toastCtx.error(msg) : toastCtx.success(msg);
+    setToast({ msg, err });
+    setTimeout(() => setToast(null), 3000);
   }
 
   function toggleSort(col: "name" | "role" | "active") {
@@ -103,10 +88,53 @@ export default function UsuariosPage() {
     else { setSortCol(col); setSortDir("asc"); }
   }
 
+  async function load() {
+    setLoading(true);
+    try {
+      const res = await fetch("/api/users");
+      const json = await res.json();
+      if (json.success) setUsers(json.data);
+    } catch { showToast("Error al cargar", true); }
+    finally { setLoading(false); }
+  }
+
+  async function loadCatalogos() {
+    setLoadingCatalogos(true);
+    try {
+      const [vehiculosRes, transportistasRes] = await Promise.all([
+        fetch("/api/users/vehiculos"),
+        fetch("/api/users/transportistas-operativos"),
+      ]);
+      const [vehiculosJson, transportistasJson] = await Promise.all([
+        vehiculosRes.json(),
+        transportistasRes.json(),
+      ]);
+      if (vehiculosJson.success) setVehiculos(vehiculosJson.data);
+      if (transportistasJson.success) setTransportistasOperativos(transportistasJson.data);
+    } catch {
+      showToast("Error al cargar conductores y vehículos", true);
+    } finally {
+      setLoadingCatalogos(false);
+    }
+  }
+
+  useEffect(() => {
+    if (role === "ADMIN") {
+      load();
+      loadCatalogos();
+    } else {
+      setLoading(false);
+      setLoadingCatalogos(false);
+    }
+  }, [role]);
+
   const autoRefresh = useAutoRefresh({
-    enabled: isAdmin,
+    enabled: role === "ADMIN",
     pause: Boolean(showForm || editing),
-    onRefresh: () => { load(); loadCatalogos(); },
+    onRefresh: async () => {
+      await load();
+      await loadCatalogos();
+    },
   });
 
   const filteredUsers = useMemo(() => {
@@ -174,17 +202,8 @@ export default function UsuariosPage() {
                 value={searchQ}
                 onChange={(e) => setSearchQ(e.target.value)}
                 placeholder="Buscar por nombre, email o rol…"
-                style={{ ...inp, paddingLeft: 32, paddingRight: 32, height: 36, fontSize: 13, fontFamily: "var(--sans)" }}
+                style={{ ...inp, paddingLeft: 32, height: 36, fontSize: 13, fontFamily: "var(--sans)" }}
               />
-              {searchQ && (
-                <button
-                  aria-label="Borrar búsqueda"
-                  onClick={() => setSearchQ("")}
-                  style={{ position: "absolute", right: 4, top: "50%", transform: "translateY(-50%)", width: 28, height: 28, display: "grid", placeItems: "center", border: "none", background: "transparent", color: "var(--muted)", cursor: "pointer", borderRadius: 6 }}
-                >
-                  <X size={14} />
-                </button>
-              )}
             </div>
             <span style={{ fontSize: 12, color: "var(--muted)", whiteSpace: "nowrap" }}>
               {filteredUsers.length} de {users.length}
@@ -201,15 +220,49 @@ export default function UsuariosPage() {
             />
           ) : (
             <div className="g-table-wrap">
-              <UsuariosTable
-                users={filteredUsers}
-                roleMeta={ROLE_META}
-                sortCol={sortCol}
-                sortDir={sortDir}
-                onToggleSort={toggleSort}
-                onEdit={(u) => setEditing(u)}
-                debug={debugTable}
-              />
+              <div style={{ overflowX: "auto" }}>
+                <table className="g-table" style={{ fontSize: 13 }}>
+                  <thead>
+                    <tr style={{ borderBottom: "1px solid var(--border)", background: "var(--surface2)" }}>
+                      <th onClick={() => toggleSort("name")} style={{ padding: "0.7rem 0.9rem", textAlign: "left", fontSize: 10, fontWeight: 700, letterSpacing: ".06em", textTransform: "uppercase", color: sortCol === "name" ? "#14DBA0" : "var(--muted)", cursor: "pointer", userSelect: "none" }}>
+                        Nombre{sortCol === "name" ? (sortDir === "asc" ? " ↑" : " ↓") : " ↕"}
+                      </th>
+                      <th style={{ padding: "0.7rem 0.9rem", textAlign: "left", fontSize: 10, fontWeight: 700, letterSpacing: ".06em", textTransform: "uppercase", color: "var(--muted)" }}>Email</th>
+                      <th onClick={() => toggleSort("role")} style={{ padding: "0.7rem 0.9rem", textAlign: "left", fontSize: 10, fontWeight: 700, letterSpacing: ".06em", textTransform: "uppercase", color: sortCol === "role" ? "#14DBA0" : "var(--muted)", cursor: "pointer", userSelect: "none" }}>
+                        Rol{sortCol === "role" ? (sortDir === "asc" ? " ↑" : " ↓") : " ↕"}
+                      </th>
+                      <th onClick={() => toggleSort("active")} style={{ padding: "0.7rem 0.9rem", textAlign: "left", fontSize: 10, fontWeight: 700, letterSpacing: ".06em", textTransform: "uppercase", color: sortCol === "active" ? "#14DBA0" : "var(--muted)", cursor: "pointer", userSelect: "none" }}>
+                        Estado{sortCol === "active" ? (sortDir === "asc" ? " ↑" : " ↓") : " ↕"}
+                      </th>
+                      <th style={{ padding: "0.7rem 0.9rem" }} />
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filteredUsers.map(u => {
+                      const m = ROLE_META[u.role];
+                      return (
+                        <tr key={u.id} style={{ borderBottom: "1px solid var(--border)" }}>
+                          <td style={{ padding: "0.7rem 0.9rem", fontWeight: 600 }}>{u.name}</td>
+                          <td style={{ padding: "0.7rem 0.9rem", fontFamily: "var(--mono)", fontSize: 12, color: "var(--muted2)" }}>{u.email}</td>
+                          <td style={{ padding: "0.7rem 0.9rem" }}>
+                            <span className="ds-badge" style={{ background: m.color + "18", color: m.color, border: `1px solid ${m.color}28`, gap: 5 }}>
+                              {m.icon}{m.label}
+                            </span>
+                          </td>
+                          <td style={{ padding: "0.7rem 0.9rem" }}>
+                            <span style={{ fontSize: 11, fontWeight: 700, padding: "2px 8px", borderRadius: 20, background: u.active ? "var(--brand-tint)" : "var(--surface3)", color: u.active ? "var(--brand)" : "var(--muted)" }}>
+                              {u.active ? "Activo" : "Inactivo"}
+                            </span>
+                          </td>
+                          <td style={{ padding: "0.7rem 0.9rem", textAlign: "right" }}>
+                            <button onClick={() => setEditing(u)} title="Editar" style={{ background: "var(--surface2)", border: "1px solid var(--border)", borderRadius: 7, padding: "5px 7px", cursor: "pointer", color: "var(--muted2)" }}><Pencil size={14} /></button>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
             </div>
           )}
         </>
@@ -221,11 +274,16 @@ export default function UsuariosPage() {
         loading={loadingCatalogos}
         onReload={loadCatalogos}
         onToast={showToast}
-        debugTable={debugTable}
       />
 
       {showForm && <FormNuevo onClose={() => setShowForm(false)} onSaved={() => { setShowForm(false); load(); loadCatalogos(); showToast("Usuario creado ✓"); }} onError={m => showToast(m, true)} />}
-      {editing && <ModalEditar u={editing} selfId={(session?.user as { id?: string } | undefined)?.id} onClose={() => setEditing(null)} onSaved={() => { setEditing(null); load(); showToast("Usuario actualizado ✓"); }} onError={m => showToast(m, true)} />}
+      {editing && <ModalEditar u={editing} selfId={(session?.user as any)?.id} onClose={() => setEditing(null)} onSaved={() => { setEditing(null); load(); showToast("Usuario actualizado ✓"); }} onError={m => showToast(m, true)} />}
+
+      {toast && (
+        <div style={{ position: "fixed", bottom: 24, right: 24, zIndex: 10001, background: toast.err ? "var(--error)" : "var(--text)", color: "#fff", padding: "0.8rem 1.2rem", borderRadius: 10, fontSize: 13, fontWeight: 600, boxShadow: "var(--shadow-xl)" }}>
+          {toast.msg}
+        </div>
+      )}
     </div>
   );
 }
@@ -237,14 +295,12 @@ function CatalogosPreoperacional({
   loading,
   onReload,
   onToast,
-  debugTable = false,
 }: {
   vehiculos: VehiculoOperativo[];
   transportistas: TransportistaOperativo[];
   loading: boolean;
   onReload: () => void;
   onToast: (m: string, err?: boolean) => void;
-  debugTable?: boolean;
 }) {
   const [placa, setPlaca] = useState("");
   const [tipo, setTipo] = useState("CAMION");
@@ -265,14 +321,23 @@ function CatalogosPreoperacional({
     }
     setSavingVehiculo(true);
     try {
-      await apiPost("/api/users/vehiculos", { placa, tipo, capacidadKg: capacidadKg ? Number(capacidadKg) : null, estado: "ACTIVO" });
+      const res = await fetch("/api/users/vehiculos", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ placa, tipo, capacidadKg: capacidadKg ? Number(capacidadKg) : null, estado: "ACTIVO" }),
+      });
+      const json = await res.json();
+      if (!json.success) {
+        onToast(json.error || "Error al crear vehículo", true);
+        return;
+      }
       setPlaca("");
       setTipo("CAMION");
       setCapacidadKg("");
       onReload();
       onToast("Vehículo creado");
-    } catch (e) {
-      onToast(getErrorMessage(e, "Error al crear vehículo"), true);
+    } catch {
+      onToast("Error de conexión", true);
     } finally {
       setSavingVehiculo(false);
     }
@@ -285,14 +350,23 @@ function CatalogosPreoperacional({
     }
     setSavingTransportista(true);
     try {
-      await apiPost("/api/users/transportistas-operativos", { nombre, telefono: telefono || null, vehiculoId: vehiculoId || null });
+      const res = await fetch("/api/users/transportistas-operativos", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ nombre, telefono: telefono || null, vehiculoId: vehiculoId || null }),
+      });
+      const json = await res.json();
+      if (!json.success) {
+        onToast(json.error || "Error al crear transportista", true);
+        return;
+      }
       setNombre("");
       setTelefono("");
       setVehiculoId("");
       onReload();
       onToast("Transportista operativo creado");
-    } catch (e) {
-      onToast(getErrorMessage(e, "Error al crear transportista"), true);
+    } catch {
+      onToast("Error de conexión", true);
     } finally {
       setSavingTransportista(false);
     }
@@ -301,11 +375,20 @@ function CatalogosPreoperacional({
   async function asignarVehiculo(transportistaId: string, nextVehiculoId: string) {
     setUpdatingId(transportistaId);
     try {
-      await apiPatch("/api/users/transportistas-operativos", { id: transportistaId, vehiculoId: nextVehiculoId || null });
+      const res = await fetch("/api/users/transportistas-operativos", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: transportistaId, vehiculoId: nextVehiculoId || null }),
+      });
+      const json = await res.json();
+      if (!json.success) {
+        onToast(json.error || "Error al asignar vehículo", true);
+        return;
+      }
       onReload();
       onToast("Vehículo asignado");
-    } catch (e) {
-      onToast(getErrorMessage(e, "Error al asignar vehículo"), true);
+    } catch {
+      onToast("Error de conexión", true);
     } finally {
       setUpdatingId(null);
     }
@@ -318,12 +401,17 @@ function CatalogosPreoperacional({
     try {
       const form = new FormData();
       form.append("file", file);
-      const json = await apiUpload<{ data: { importados: number; actualizados: number; ignorados: number } }>("/api/productos-maestro/importar", form);
+      const res = await fetch("/api/productos-maestro/importar", { method: "POST", body: form });
+      const json = await res.json();
+      if (!json.success) {
+        onToast(json.error || "Error al importar maestro", true);
+        return;
+      }
       const data = json.data;
       setResultadoMaestro(`${data.importados} importados, ${data.actualizados} actualizados, ${data.ignorados} ignorados`);
       onToast("Maestro PLU importado");
-    } catch (e) {
-      onToast(getErrorMessage(e, "Error al importar maestro"), true);
+    } catch {
+      onToast("Error de conexión", true);
     } finally {
       setImportandoMaestro(false);
     }
@@ -333,14 +421,14 @@ function CatalogosPreoperacional({
     <section style={{ marginTop: "1.5rem", display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: 16 }}>
       <div style={{ gridColumn: "1/-1", background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 14, padding: "1rem", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          <Upload size={18} color="var(--brand)" />
+          <Upload size={18} color="#14DBA0" />
           <div>
             <h2 style={{ fontSize: 15, fontWeight: 800, color: "var(--text)" }}>Maestro PLU</h2>
             <p style={{ fontSize: 12, color: "var(--muted)", marginTop: 2 }}>Importa MAESTRO.xlsx para autollenar descripción, fabricante, marca y precio.</p>
             {resultadoMaestro && <p style={{ fontSize: 12, color: "var(--brand)", marginTop: 4, fontWeight: 800 }}>{resultadoMaestro}</p>}
           </div>
         </div>
-        <label style={{ ...btnPri, flex: "0 0 auto", background: "var(--brand)", minWidth: 160, textAlign: "center", opacity: importandoMaestro ? 0.7 : 1 }}>
+        <label style={{ ...btnPri, flex: "0 0 auto", background: "#14DBA0", minWidth: 160, textAlign: "center", opacity: importandoMaestro ? 0.7 : 1 }}>
           {importandoMaestro ? "Importando..." : "Importar Excel"}
           <input type="file" accept=".xlsx" disabled={importandoMaestro} onChange={(e) => importarMaestro(e.target.files?.[0] ?? null)} style={{ display: "none" }} />
         </label>
@@ -395,15 +483,38 @@ function CatalogosPreoperacional({
           </button>
         </div>
 
-        <div style={{ marginTop: "1rem" }}>
-          <TransportistasOperativosTable
-            transportistas={transportistas}
-            vehiculos={vehiculos}
-            loading={loading}
-            updatingId={updatingId}
-            onAsignarVehiculo={asignarVehiculo}
-            debug={debugTable}
-          />
+        <div style={{ marginTop: "1rem", overflowX: "auto" }}>
+          <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
+            <thead>
+              <tr style={{ borderBottom: "1px solid var(--border)", color: "var(--muted)" }}>
+                <th style={{ textAlign: "left", padding: "0.5rem" }}>Nombre</th>
+                <th style={{ textAlign: "left", padding: "0.5rem" }}>Usuario</th>
+                <th style={{ textAlign: "left", padding: "0.5rem" }}>Vehículo</th>
+                <th style={{ textAlign: "left", padding: "0.5rem" }}>Estado</th>
+              </tr>
+            </thead>
+            <tbody>
+              {transportistas.map(t => (
+                <tr key={t.id} style={{ borderBottom: "1px solid var(--border)" }}>
+                  <td style={{ padding: "0.5rem", fontWeight: 800 }}>{t.nombre}</td>
+                  <td style={{ padding: "0.5rem", color: "var(--muted2)" }}>{t.user ? t.user.email : "Sin usuario"}</td>
+                  <td style={{ padding: "0.5rem", minWidth: 150 }}>
+                    <select
+                      value={t.vehiculo?.id || ""}
+                      onChange={e => asignarVehiculo(t.id, e.target.value)}
+                      disabled={updatingId === t.id}
+                      style={{ ...inp, padding: "0.4rem 0.55rem", fontSize: 12 }}
+                    >
+                      <option value="">Sin vehículo</option>
+                      {vehiculos.map(v => <option key={v.id} value={v.id}>{v.placa} - {v.tipo}</option>)}
+                    </select>
+                  </td>
+                  <td style={{ padding: "0.5rem", color: t.activo ? "var(--brand)" : "var(--muted)", fontWeight: 800 }}>{t.activo ? "Activo" : "Inactivo"}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          {!loading && transportistas.length === 0 && <div style={{ color: "var(--muted)", fontSize: 12, paddingTop: 10 }}>No hay transportistas operativos. Crea uno y asígnale vehículo antes de vincular usuario.</div>}
         </div>
       </div>
     </section>
@@ -430,9 +541,10 @@ function FormNuevo({ onClose, onSaved, onError }: { onClose: () => void; onSaved
 
     let cancelled = false;
     setLoadingTransportistas(true);
-    apiGet<{ data: TransportistaDisponible[] }>("/api/users/transportistas-disponibles")
+    fetch("/api/users/transportistas-disponibles")
+      .then((res) => res.json())
       .then((json) => {
-        if (!cancelled) setTransportistas(json.data ?? []);
+        if (!cancelled) setTransportistas(json.success ? json.data : []);
       })
       .catch(() => {
         if (!cancelled) {
@@ -463,18 +575,25 @@ function FormNuevo({ onClose, onSaved, onError }: { onClose: () => void; onSaved
     }
     setSaving(true);
     try {
-      await apiPost("/api/users", {
-        name: name.trim(),
-        email: email.trim(),
-        password,
-        role,
-        transportistaId: role === "TRANSPORTISTA" ? transportistaId : undefined,
+      const res = await fetch("/api/users", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: name.trim(),
+          email: email.trim(),
+          password,
+          role,
+          transportistaId: role === "TRANSPORTISTA" ? transportistaId : undefined,
+        }),
       });
-      onSaved();
-    } catch (e) {
-      const msg = getErrorMessage(e, "Error al crear");
-      setFormError(msg);
-      onError(msg);
+      const json = await res.json();
+      if (json.success) onSaved(); else {
+        const msg = json.error || "Error al crear";
+        setFormError(msg);
+        onError(msg);
+      }
+    } catch {
+      setFormError("Error de conexión");
+      onError("Error de conexión");
     }
     finally { setSaving(false); }
   }
@@ -543,7 +662,7 @@ function FormNuevo({ onClose, onSaved, onError }: { onClose: () => void; onSaved
           </Field>
         )}
         {formError && (
-          <div style={{ border: "1px solid color-mix(in srgb, var(--error) 20%, transparent)", background: "var(--error-tint)", color: "var(--error)", borderRadius: 8, padding: "0.6rem 0.75rem", fontSize: 12, fontWeight: 700 }}>
+          <div style={{ border: "1px solid rgba(180,35,24,.20)", background: "var(--error-tint)", color: "var(--error)", borderRadius: 8, padding: "0.6rem 0.75rem", fontSize: 12, fontWeight: 700 }}>
             {formError}
           </div>
         )}
@@ -563,12 +682,13 @@ function ModalEditar({ u, selfId, onClose, onSaved, onError }: { u: User; selfId
 
   async function save() {
     setSaving(true);
-    const body: Record<string, unknown> = { name: name.trim(), role, active };
+    const body: any = { name: name.trim(), role, active };
     if (password) body.password = password;
     try {
-      await apiPut(`/api/users/${u.id}`, body);
-      onSaved();
-    } catch (e) { onError(getErrorMessage(e, "Error al actualizar")); }
+      const res = await fetch(`/api/users/${u.id}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+      const json = await res.json();
+      if (json.success) onSaved(); else onError(json.error || "Error al actualizar");
+    } catch { onError("Error de conexión"); }
     finally { setSaving(false); }
   }
 
@@ -634,4 +754,4 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
 }
 
 const inp: React.CSSProperties = { border: "1px solid var(--border-strong)", borderRadius: "var(--r)", padding: "0 12px", height: 36, fontSize: 13, fontFamily: "var(--sans)", outline: "none", background: "var(--surface)", color: "var(--text)", width: "100%", boxSizing: "border-box" };
-const btnPri: React.CSSProperties = { flex: 1, padding: "0.65rem", background: "var(--brand)", color: "var(--text-on-accent)", border: "none", borderRadius: 9, fontSize: 13, fontWeight: 700, cursor: "pointer" };
+const btnPri: React.CSSProperties = { flex: 1, padding: "0.65rem", background: "var(--brand)", color: "#fff", border: "none", borderRadius: 9, fontSize: 13, fontWeight: 700, cursor: "pointer" };

@@ -3,7 +3,6 @@
 import { useEffect } from "react";
 import { SessionProvider } from "next-auth/react";
 import { CommandPaletteProvider, useCommandPalette } from "@/contexts/CommandPaletteContext";
-import { ToastProvider } from "@/contexts/ToastContext";
 import CommandPalette from "@/components/ui/CommandPalette";
 
 // Listener de Ctrl+K / Cmd+K — vive dentro del provider para acceder al contexto
@@ -27,13 +26,11 @@ function KeyboardShortcut() {
 export function Providers({ children }: { children: React.ReactNode }) {
   return (
     <SessionProvider>
-      <ToastProvider>
-        <CommandPaletteProvider>
-          <KeyboardShortcut />
-          <CommandPalette />
-          {children}
-        </CommandPaletteProvider>
-      </ToastProvider>
+      <CommandPaletteProvider>
+        <KeyboardShortcut />
+        <CommandPalette />
+        {children}
+      </CommandPaletteProvider>
     </SessionProvider>
   );
 }

@@ -1,3 +1,4 @@
+import { defineOperacionAlmacenHandler } from '../../../utils/operacionAlmacen'
 import { defineEventHandler, getRouterParam, readBody, createError } from 'h3'
 import { z } from 'zod'
 import { prisma } from '../../../utils/prisma'
@@ -28,7 +29,7 @@ const patchSchema = z.object({
 // PATCH /api/montacargas/:id - correccion. El dueno arregla sus datos; solo
 // supervision toca las horas, y siempre con motivo (es la metrica de
 // productividad: sin traza, editarla la vuelve inutil).
-export default defineEventHandler(async (event) => {
+export default defineOperacionAlmacenHandler(async (event) => {
   const actor = await requireAuth(event)
   assertUsuarioMontacargas(actor.role)
 

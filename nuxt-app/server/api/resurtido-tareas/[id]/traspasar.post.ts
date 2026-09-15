@@ -1,3 +1,4 @@
+import { defineOperacionAlmacenHandler } from '../../../utils/operacionAlmacen'
 import { defineEventHandler, getRouterParam, readBody, createError } from 'h3'
 import { z } from 'zod'
 import { prisma } from '../../../utils/prisma'
@@ -21,7 +22,7 @@ const schema = z.object({ operarioId: z.string().min(1), devolucion: z.boolean()
  * cierra. Vale igual para la tarea roja que lleva un pendiente sumado: el
  * pendiente va con ella y se da por ubicado cuando el ayudante la cierre.
  */
-export default defineEventHandler(async (event) => {
+export default defineOperacionAlmacenHandler(async (event) => {
   const actor = await requireAuth(event)
   assertEjecutor(actor.role)
 

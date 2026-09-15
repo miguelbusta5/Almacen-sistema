@@ -1,3 +1,4 @@
+import { defineOperacionAlmacenHandler } from '../../../utils/operacionAlmacen'
 import { defineEventHandler, getRouterParam, readBody, createError } from 'h3'
 import { z } from 'zod'
 import { prisma } from '../../../utils/prisma'
@@ -18,7 +19,7 @@ const schema = z.object({ ubicacion: z.string().min(1).max(120) })
  * Arrancarlo abre el tramo de quien la empieza: si despues la pasa a un
  * ayudante, cada uno queda con su parte del tiempo.
  */
-export default defineEventHandler(async (event) => {
+export default defineOperacionAlmacenHandler(async (event) => {
   const actor = await requireAuth(event)
   assertEjecutor(actor.role)
 

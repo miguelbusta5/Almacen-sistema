@@ -1,3 +1,4 @@
+import { defineOperacionAlmacenHandler } from '../../../utils/operacionAlmacen'
 import { defineEventHandler, getRouterParam, readBody, createError } from 'h3'
 import { z } from 'zod'
 import { prisma } from '../../../utils/prisma'
@@ -24,7 +25,7 @@ const schema = z.object({
  * Si ya tenia operario se le avisa: puede estar caminando hacia el sitio con la
  * cifra vieja en la cabeza.
  */
-export default defineEventHandler(async (event) => {
+export default defineOperacionAlmacenHandler(async (event) => {
   const actor = await requireAuth(event)
 
   const id = getRouterParam(event, 'id')!

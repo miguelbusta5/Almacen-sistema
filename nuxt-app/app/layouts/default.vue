@@ -4,7 +4,7 @@ import {
   ShieldCheck, Store, GitMerge, ScanLine, Forklift, PackageOpen, Tags, Globe, FileText, Truck,
   BarChart3, Users, ScrollText, Search, Bell, CheckCircle2, TriangleAlert, Container,
   Menu, X, LogOut, KeyRound, CornerDownLeft, Inbox, ClipboardList, PackageSearch, BellRing,
-  ChartColumnIncreasing, Hammer, ClipboardCheck, SlidersHorizontal,
+  ChartColumnIncreasing,
 } from '@lucide/vue'
 import { ensureSession, useSessionState } from '~/composables/useSession'
 import { useToastState } from '~/composables/useToast'
@@ -12,6 +12,8 @@ import { canSeeModule, type ModuleKey } from '~/utils/modulePermissions'
 import { puedeUsarMontacargas } from '~/utils/montacargas'
 
 const route = useRoute()
+const { pausa: pausaOperativa, cargada: pausaCargada } = usePausaOperativa()
+const muestraPausa = computed(() => ['control-montacargas', 'resurtido', 'recepcion-contenedores', 'montaje-resurtido'].some(key => route.path.endsWith('/' + key) && canSeeModule(me.value?.role, key as ModuleKey)))
 const { me, sessionLoaded, sessionInvalid } = useSessionState()
 const toast = useToastState()
 
@@ -64,8 +66,6 @@ const NAV_GROUPS: NavGroup[] = [
       { icon: Forklift, label: 'Control Montacargas', href: '/dashboard/control-montacargas', key: 'control-montacargas', moduleKey: 'control-montacargas' },
       { icon: PackageOpen, label: 'Resurtido', href: '/dashboard/resurtido', key: 'resurtido', moduleKey: 'resurtido' },
       { icon: ScanLine, label: 'Cargue Gourmet', href: '/dashboard/cargue-gourmet', key: 'cargue-gourmet', moduleKey: 'cargue-gourmet' },
-      { icon: Hammer, label: 'Picking Muebles', href: '/dashboard/picking-muebles', key: 'picking-muebles', moduleKey: 'picking-muebles' },
-      { icon: ClipboardCheck, label: 'Inspección Muebles', href: '/dashboard/inspeccion-muebles', key: 'inspeccion-muebles', moduleKey: 'inspeccion-muebles' },
     ],
   },
   {
@@ -89,9 +89,7 @@ const NAV_GROUPS: NavGroup[] = [
     titulo: 'Gestión',
     items: [
       { icon: ChartColumnIncreasing, label: 'Indicadores', href: '/dashboard/indicadores', key: 'indicadores', moduleKey: 'indicadores' },
-      { icon: ChartColumnIncreasing, label: 'Indicadores Muebles', href: '/dashboard/indicadores-muebles', key: 'indicadores-muebles', moduleKey: 'indicadores-muebles' },
       { icon: BarChart3, label: 'Centro de Control', href: '/dashboard/centro-control', key: null, moduleKey: 'centro-control' },
-      { icon: SlidersHorizontal, label: 'Admin Muebles', href: '/dashboard/admin-muebles', key: 'admin-muebles', moduleKey: 'admin-muebles' },
       { icon: Users, label: 'Usuarios', href: '/dashboard/usuarios', key: 'usuarios', moduleKey: 'usuarios' },
       { icon: ScrollText, label: 'Auditoría', href: '/dashboard/auditoria', key: 'auditoria', moduleKey: 'auditoria' },
     ],
@@ -417,7 +415,10 @@ async function cerrarSesion() {
           <span class="alerta-cta">Ver</span>
         </button>
 
-        <slot />
+        <PausaOperativa v-if="muestraPausa" />
+        <div :inert="muestraPausa && (!!pausaOperativa || !pausaCargada)">
+          <slot />
+        </div>
       </main>
     </div>
 

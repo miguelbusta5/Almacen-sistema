@@ -14,19 +14,6 @@ import {
   validarPlinesSolicitudTransporte,
 } from "@/lib/solicitudesTransporte";
 import { requireAuth } from "@/lib/authz";
-import type { Prisma } from "@prisma/client";
-
-// Payload con relaciones (forma del findMany/create). Algunos call-sites
-// (reenviar/rechazar) no incluyen `plines` → relaciones opcionales.
-type SolicitudConRelaciones = Prisma.SolicitudTransporteGetPayload<{
-  include: {
-    creadoPor: { select: { name: true } };
-    gestionadoPor: { select: { name: true } };
-    plines: true;
-  };
-}>;
-type SolicitudRow = Omit<SolicitudConRelaciones, "creadoPor" | "gestionadoPor" | "plines"> &
-  Partial<Pick<SolicitudConRelaciones, "creadoPor" | "gestionadoPor" | "plines">>;
 
 const estadoSchema = z.enum(["PENDIENTE", "RECHAZADA", "REENVIADA", "PROGRAMADA", "EFECTUADA", "CANCELADA"]);
 const prioridadSchema = z.enum(["ALTO", "MEDIO", "BAJO"]);
@@ -91,7 +78,7 @@ export const solicitudCreateSchema = z.object({
   }
 });
 
-export function mapSolicitudTransporte(row: SolicitudRow) {
+export function mapSolicitudTransporte(row: any) {
   return {
     id: row.id,
     fechaSolicitud: row.fechaSolicitud ? row.fechaSolicitud.toISOString().slice(0, 10) : null,
@@ -181,8 +168,7 @@ async function notifyGestores(recordId: string, actorId: string, titulo: string,
 export async function GET(req: NextRequest) {
   const actor = await requireAuth();
   if (actor instanceof NextResponse) return actor;
-  // Mismo gate que el resto del modulo: la matriz de modulePermissions manda.
-  if (!puedeCrearSolicitudTransporte(actor.role)) return NextResponse.json({ error: "Sin acceso" }, { status: 403 });
+  if (actor.role === "TRANSPORTISTA") return NextResponse.json({ error: "Sin acceso" }, { status: 403 });
 
   const url = new URL(req.url);
   const page = Math.max(1, Number(url.searchParams.get("page") ?? 1));
@@ -193,12 +179,12 @@ export async function GET(req: NextRequest) {
   const semaforo = semaforoSchema.safeParse(url.searchParams.get("semaforo")).success ? url.searchParams.get("semaforo") : null;
   const area = url.searchParams.get("area")?.trim();
 
-  const where: Prisma.SolicitudTransporteWhereInput = {
+  const where: any = {
     deletedAt: null,
     ...(puedeGestionarSolicitudTransporte(actor.role) ? {} : { creadoPorId: actor.id }),
-    ...(estado ? { estado: estado as Prisma.SolicitudTransporteWhereInput["estado"] } : {}),
-    ...(prioridad ? { prioridad: prioridad as Prisma.SolicitudTransporteWhereInput["prioridad"] } : {}),
-    ...(semaforo ? { semaforo: semaforo as Prisma.SolicitudTransporteWhereInput["semaforo"] } : {}),
+    ...(estado ? { estado } : {}),
+    ...(prioridad ? { prioridad } : {}),
+    ...(semaforo ? { semaforo } : {}),
     ...(area ? { areaSolicitante: area } : {}),
     ...(q ? {
       OR: [

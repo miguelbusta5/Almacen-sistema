@@ -1,3 +1,4 @@
+import { assertSinPausa } from './operacionAlmacen'
 // SERVER-ONLY. Capa Prisma de Control Montacargas y Resurtido: scope por rol,
 // filtros del listado, resolución del producto y manejo de tramos de tiempo.
 // La lógica pura (validaciones, cálculo, estados) vive en montacargasCalc.ts.
@@ -189,6 +190,7 @@ export async function abrirTramo(
   inicio: Date,
   orden: number,
 ): Promise<void> {
+  await assertSinPausa(usuarioId)
   await tx.tramoMontacargas.create({
     data: { movimientoId, usuarioId, inicio, orden },
   })

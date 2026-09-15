@@ -1,3 +1,4 @@
+import { defineOperacionAlmacenHandler } from '../../../utils/operacionAlmacen'
 import { defineEventHandler, getRouterParam, readBody, createError } from 'h3'
 import { z } from 'zod'
 import { prisma } from '../../../utils/prisma'
@@ -25,7 +26,7 @@ const schema = z.object({
 // DETIENE EL RELOJ: cierra el tramo abierto y deja el registro en NOVEDAD. La
 // verificacion no se cronometra a proposito - es un proceso de revision, no de
 // operacion, y cronometrarlo castigaria al operario por un problema ajeno.
-export default defineEventHandler(async (event) => {
+export default defineOperacionAlmacenHandler(async (event) => {
   const actor = await requireAuth(event)
   assertUsuarioMontacargas(actor.role)
 

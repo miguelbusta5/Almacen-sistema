@@ -1,3 +1,4 @@
+import { defineOperacionAlmacenHandler } from '../../../utils/operacionAlmacen'
 import { defineEventHandler, getRouterParam, getQuery, readBody, createError } from 'h3'
 import { prisma } from '../../../utils/prisma'
 import { requireAuth } from '../../../utils/auth'
@@ -5,7 +6,7 @@ import { mapMovimientoMontacargas } from '../../../utils/mapRow'
 import { assertGestorMontacargas, MOVIMIENTO_INCLUDE } from '../../../utils/montacargas'
 
 // DELETE /api/montacargas/:id - borrado logico, solo gestores.
-export default defineEventHandler(async (event) => {
+export default defineOperacionAlmacenHandler(async (event) => {
   const actor = await requireAuth(event)
   assertGestorMontacargas(actor.role, 'Solo supervision puede eliminar registros')
 

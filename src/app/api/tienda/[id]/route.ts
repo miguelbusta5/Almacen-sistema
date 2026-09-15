@@ -4,16 +4,6 @@ import { prisma } from "@/lib/prisma";
 import { z } from "zod";
 import { esTransicionValida, rolPuedeTransicionar } from "@/lib/tiendaFlow";
 import type { EstadoDespacho } from "@/lib/tiendaFlow";
-import { getErrorCode } from "@/lib/errors";
-import type { Prisma } from "@prisma/client";
-
-export type DespachoTiendaRow = Prisma.DespachoTiendaGetPayload<{
-  include: {
-    creadoPor: { select: { id: true; name: true } };
-    plines: true;
-    guardadoPendiente: { include: { asignadoA: { select: { name: true } } } };
-  };
-}>;
 
 const updateSchema = z.object({
   // Estado — flujo simplificado tienda -> CEDI -> cliente
@@ -52,16 +42,16 @@ const updateSchema = z.object({
   telefonoEntrega:   z.string().max(30).nullable().optional(),
 });
 
-export const ESTADO_LABEL: Record<string, string> = {
+const ESTADO_LABEL: Record<string, string> = {
   CREADO_TIENDA:      "Creado en tienda",
   RECHAZADO:          "Rechazado",
-  RECOGIDO_TIENDA:    "En CEDI",  // legado (fusionado con ENTREGADO_CEDI)
-  ENTREGADO_CEDI:     "En CEDI",
+  RECOGIDO_TIENDA:    "Recogido en tienda",
+  ENTREGADO_CEDI:     "Entregado en CEDI",
   ENVIADO_CLIENTE:    "Enviado al cliente",
   CON_NOVEDAD:        "Con novedad",
 };
 
-export function mapRow(r: DespachoTiendaRow): object {
+function mapRow(r: any): object {
   return {
     id:               r.id,
     centroCostos:     r.centroCostos,
@@ -300,47 +290,9 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
       }).catch(() => {});
     }
 
-    // Novedad registrada → avisa al creador y a supervisión de tienda
-    // (mismo patrón de destinatarios que revertir-estado; excluye al actor).
-    if (estadoCambia && d.estado === "CON_NOVEDAD") {
-      const destinatariosIds = new Set<string>();
-      if (current.creadoPorId) destinatariosIds.add(current.creadoPorId);
-      const supervisores = await prisma.user.findMany({
-        where: { active: true, role: { in: ["SUPERVISOR_TIENDA"] } },
-        select: { id: true },
-      }).catch(() => []);
-      supervisores.forEach((u) => destinatariosIds.add(u.id));
-      destinatariosIds.delete(actor.id);
-      if (destinatariosIds.size > 0) {
-        await prisma.notificacion.createMany({
-          data: Array.from(destinatariosIds).map((userId) => ({
-            userId,
-            titulo: "Novedad registrada en factura",
-            descripcion: `Doc. ${current.numeroDocumento}: ${(d.novedad ?? "").substring(0, 200)}`,
-            tipo: "TIENDA",
-            enlace: "/dashboard/tienda",
-          })),
-        }).catch(() => {});
-      }
-    }
-
-    // Enviado al cliente → cierre de ciclo para quien creó la factura.
-    if (estadoCambia && d.estado === "ENVIADO_CLIENTE" && current.creadoPorId && current.creadoPorId !== actor.id) {
-      await prisma.notificacion.create({
-        data: {
-          userId: current.creadoPorId,
-          titulo: "Factura enviada al cliente",
-          descripcion: `Doc. ${current.numeroDocumento} completó el flujo CEDI`,
-          tipo: "TIENDA",
-          enlace: "/dashboard/tienda",
-          leida: false,
-        },
-      }).catch(() => {});
-    }
-
     return NextResponse.json({ success: true, data: mapRow(updatedRow) });
-  } catch (e) {
-    if (getErrorCode(e) === "P2025") {
+  } catch (e: any) {
+    if (e.code === "P2025") {
       return NextResponse.json({ error: "Conflicto: el despacho fue modificado por otro usuario", code: "CONFLICT" }, { status: 409 });
     }
     throw e;

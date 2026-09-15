@@ -1,3 +1,4 @@
+import { defineOperacionAlmacenHandler } from '../../../utils/operacionAlmacen'
 import { defineEventHandler, getRouterParam, readBody, createError } from 'h3'
 import { z } from 'zod'
 import { prisma } from '../../../utils/prisma'
@@ -24,7 +25,7 @@ const schema = z.object({
  * espacio que quede en el picking. El picking final llega sugerido por el
  * archivo pero se puede cambiar, porque el hueco real manda sobre el papel.
  */
-export default defineEventHandler(async (event) => {
+export default defineOperacionAlmacenHandler(async (event) => {
   const actor = await requireAuth(event)
   assertEjecutor(actor.role)
 
@@ -94,6 +95,7 @@ export default defineEventHandler(async (event) => {
           unidadesBajadas: pen.unidadesSolicitadas,
           ubicacionFinal: ubicacion,
           horaInicio: tarea.horaInicio,
+          pausaSegundos: tarea.pausaSegundos,
           horaFin: now,
           completadoAt: now,
         },

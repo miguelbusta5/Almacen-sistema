@@ -1,3 +1,4 @@
+import { assertSinPausa } from './operacionAlmacen'
 // Capa Prisma del montaje de resurtido, las tareas y los pendientes.
 //
 // Lo puro vive en resurtidoCalc.ts (auto-importado por Nitro); aqui solo va lo
@@ -134,6 +135,7 @@ export async function cerrarTramoPendiente(tx: Tx, pendienteId: string, fin: Dat
 
 /** Abre el tramo de una persona, a continuacion de los que ya tenga el pendiente. */
 export async function abrirTramoPendiente(tx: Tx, pendienteId: string, usuarioId: string, inicio: Date): Promise<void> {
+  await assertSinPausa(usuarioId)
   const orden = (await tx.tramoPendiente.count({ where: { pendienteId } })) + 1
   await tx.tramoPendiente.create({ data: { pendienteId, usuarioId, orden, inicio } })
 }
@@ -155,6 +157,7 @@ export async function cerrarTramoTarea(tx: Tx, tareaId: string, fin: Date): Prom
 
 /** Abre el tramo de una persona, a continuacion de los que ya tenga la tarea. */
 export async function abrirTramoTarea(tx: Tx, tareaId: string, usuarioId: string, inicio: Date): Promise<void> {
+  await assertSinPausa(usuarioId)
   const orden = (await tx.tramoTareaResurtido.count({ where: { tareaId } })) + 1
   await tx.tramoTareaResurtido.create({ data: { tareaId, usuarioId, orden, inicio } })
 }

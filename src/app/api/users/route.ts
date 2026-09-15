@@ -4,7 +4,6 @@ import { prisma } from "@/lib/prisma";
 import bcrypt from "bcryptjs";
 import { z } from "zod";
 import { USER_ROLE_VALUES } from "@/lib/roles";
-import type { Role } from "@prisma/client";
 
 const createUserSchema = z.object({
   email: z.string().email("Email invalido"),
@@ -17,7 +16,7 @@ const createUserSchema = z.object({
 export async function GET(req: NextRequest) {
   const session = await auth();
   if (!session) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
-  const userRole = session.user?.role ?? "";
+  const userRole = (session.user as any)?.role as string;
 
   // Filtro por rol — accesible para supervisores de transporte y gerencia (usados en dropdowns)
   const roleFilter = req.nextUrl.searchParams.get("role");
@@ -27,7 +26,7 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: "No autorizado" }, { status: 403 });
     }
     const users = await prisma.user.findMany({
-      where: { role: roleFilter as Role, active: true },
+      where: { role: roleFilter as any, active: true },
       select: { id: true, name: true, email: true, role: true },
       orderBy: { name: "asc" },
     });
@@ -39,7 +38,7 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: "No autorizado" }, { status: 403 });
   }
   const users = await prisma.user.findMany({
-    select: { id: true, email: true, name: true, role: true, active: true, mustChangePassword: true, createdAt: true },
+    select: { id: true, email: true, name: true, role: true, active: true, createdAt: true },
     orderBy: { createdAt: "desc" },
   });
   return NextResponse.json({ success: true, data: users });
@@ -47,7 +46,7 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   const session = await auth();
-  if (!session || session.user?.role !== "ADMIN") {
+  if (!session || (session.user as any)?.role !== "ADMIN") {
     return NextResponse.json({ error: "No autorizado" }, { status: 403 });
   }
   const body = await req.json();
@@ -82,9 +81,7 @@ export async function POST(req: NextRequest) {
   const hashed = await bcrypt.hash(parsed.data.password, 12);
   const user = await prisma.$transaction(async (tx) => {
     const created = await tx.user.create({
-      // Toda cuenta nueva empieza con contraseña temporal — se obliga el
-      // cambio en el primer login (ver src/app/(dashboard)/dashboard/layout.tsx).
-      data: { ...userData, email, password: hashed, mustChangePassword: true },
+      data: { ...userData, email, password: hashed },
       select: { id: true, email: true, name: true, role: true, active: true },
     });
 

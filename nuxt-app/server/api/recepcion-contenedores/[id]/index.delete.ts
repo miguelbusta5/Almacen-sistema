@@ -1,10 +1,11 @@
+import { defineOperacionAlmacenHandler } from '../../../utils/operacionAlmacen'
 import { defineEventHandler, getRouterParam, createError } from 'h3'
 import { prisma } from '../../../utils/prisma'
 import { requireAuth } from '../../../utils/auth'
 import { assertGestorRecepcion, assertUsuarioRecepcion } from '../../../utils/recepcion'
 
 // DELETE /api/recepcion-contenedores/:id - borrado logico, solo supervision.
-export default defineEventHandler(async (event) => {
+export default defineOperacionAlmacenHandler(async (event) => {
   const actor = await requireAuth(event)
   assertUsuarioRecepcion(actor.role)
   assertGestorRecepcion(actor.role, 'Solo supervision puede borrar una recepcion')

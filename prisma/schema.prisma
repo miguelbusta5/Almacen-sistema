@@ -49,47 +49,34 @@ model Novedad {
 }
 
 model ProductoMaestro {
-  id              String   @id @default(cuid())
-  plu             String   @unique @db.VarChar(100)
-  descripcion     String?
-  fabricante      String?  @db.VarChar(255)
-  precio          Decimal? @db.Decimal(12, 2)
-  marca           String?  @db.VarChar(255)
-  // Código de barras: es lo que lee la pistola del montacarguista, que no ve el PLU.
-  ean             String?  @db.VarChar(20)
-  // "Und Emp" del maestro. Nulo en ~71% del catálogo, por eso el modulo deja
-  // escribirlo a mano en vez de bloquear la captura.
-  unidadesPorCaja Int?     @map("unidades_por_caja")
-  createdAt       DateTime @default(now()) @map("created_at")
-  updatedAt       DateTime @updatedAt @map("updated_at")
+  id          String   @id @default(cuid())
+  plu         String   @unique @db.VarChar(100)
+  descripcion String?
+  fabricante  String?  @db.VarChar(255)
+  precio      Decimal? @db.Decimal(12, 2)
+  marca       String?  @db.VarChar(255)
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
 
   @@index([plu])
-  @@index([ean])
   @@map("productos_maestro")
 }
 
 model TransporteGuardado {
-  id                 Int       @id @default(autoincrement())
-  client_id          String    @unique @db.VarChar(100)
-  fecha              DateTime  @db.Date
-  documento          String    @db.VarChar(255)
-  ubicacion          String
-  estado             String    @default("PENDIENTE DESPACHO") @db.VarChar(60)
-  tipo               String    @default("COMUN") @db.VarChar(20) // COMUN | ECOMMERCE
-  fecha_despacho     DateTime? @db.Date
-  nota               String?
-  ciudad             String?   @db.VarChar(100) // Ciudad de destino (opcional)
-  codigoTienda       String?   @map("codigo_tienda") @db.VarChar(50) // Código del catálogo Gourmet (MaestroTiendaGourmet)
-  nombreTienda       String?   @map("nombre_tienda") @db.VarChar(255)
-  clienteNombre      String?   @map("cliente_nombre") @db.VarChar(255)
-  clienteDocumento   String?   @map("cliente_documento") @db.VarChar(50)
-  netsuiteId         String?   @map("netsuite_id") // ID interno de NetSuite (futuro)
-  posicionesOcupadas Int?      @map("posiciones_ocupadas")
-  created_at         DateTime? @default(now()) @db.Timestamp(6)
-  updated_at         DateTime? @default(now()) @db.Timestamp(6)
+  id             Int       @id @default(autoincrement())
+  client_id      String    @unique @db.VarChar(100)
+  fecha          DateTime  @db.Date
+  documento      String    @db.VarChar(255)
+  ubicacion      String
+  estado         String    @default("PENDIENTE DESPACHO") @db.VarChar(60)
+  tipo           String    @default("COMUN") @db.VarChar(20) // COMUN | ECOMMERCE
+  fecha_despacho DateTime? @db.Date
+  nota           String?
+  netsuiteId     String?   @map("netsuite_id") // ID interno de NetSuite (futuro)
+  created_at     DateTime? @default(now()) @db.Timestamp(6)
+  updated_at     DateTime? @default(now()) @db.Timestamp(6)
 
   @@index([client_id], map: "idx_transporte_client_id")
-  @@index([estado, fecha], map: "idx_transporte_estado_fecha")
   @@map("transporte_guardados")
 }
 
@@ -105,89 +92,31 @@ model TransporteDeleted {
 // ═══════════════════════════════════════════
 
 model User {
-  id                     String    @id @default(cuid())
-  email                  String    @unique
-  name                   String
-  password               String
-  role                   Role      @default(OPERADOR)
-  active                 Boolean   @default(true)
-  mustChangePassword     Boolean   @default(false) @map("must_change_password")
-  // Bloqueo por fuerza bruta. Se persiste en vez de guardarse en memoria porque
-  // en serverless cada instancia tendria su propio contador y el limite seria
-  // trivial de esquivar repartiendo los intentos.
-  intentosFallidos       Int       @default(0) @map("intentos_fallidos")
-  bloqueadoHasta         DateTime? @map("bloqueado_hasta")
-  // Quien puede cerrar una novedad de montacargas. Es un permiso POR PERSONA y
-  // no por rol a proposito: lo tienen dos personas concretas, y atarlo al rol
-  // se lo daria en silencio a cualquier supervisor que se cree despues.
-  puedeResolverNovedades Boolean   @default(false) @map("puede_resolver_novedades")
+  id        String   @id @default(cuid())
+  email     String   @unique
+  name      String
+  password  String
+  role      Role     @default(OPERADOR)
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
 
-  /// Quien puede montar un resurtido y asignar pendientes. Permiso POR PERSONA y
-  /// no por rol, igual que el de cerrar novedades: hoy lo tienen Felipe Ossa y
-  /// Eduardo Zurita, y un supervisor que se cree manana no debe heredarlo solo
-  /// por serlo.
-  puedeMontarResurtido Boolean  @default(false) @map("puede_montar_resurtido")
-  createdAt            DateTime @default(now()) @map("created_at")
-  updatedAt            DateTime @updatedAt @map("updated_at")
-
-  activityLogs                       ActivityLog[]
-  transportista                      Transportista?
-  novedadesAsign                     Novedad[]                      @relation("NovedadesAsignadas")
-  contactosGuard                     ContactoGuardado[]
-  despachosTienda                    DespachoTienda[]               @relation("DespachosCreadosPor")
-  historialDespachos                 HistorialDespacho[]            @relation("HistorialDespachoUsuario")
-  inspecciones                       InspeccionPreoperacional[]     @relation("InspeccionesRealizadas")
-  notificaciones                     Notificacion[]
-  guardadosPendientes                GuardadoPendienteTienda[]      @relation("GuardadosPendientesAsignados")
-  integracionesCreadoras             IntegracionPedido[]            @relation("integracionesCreadoras")
-  integracionesCompletadas           IntegracionPedido[]            @relation("integracionesCompletadas")
-  solicitudesTransporte              SolicitudTransporte[]          @relation("SolicitudesTransporteCreadas")
-  solicitudesGestionadas             SolicitudTransporte[]          @relation("SolicitudesTransporteGestionadas")
-  historialSolicitudesTransporte     HistorialSolicitudTransporte[] @relation("HistorialSolicitudTransporteUsuario")
-  exportacionesEtiquetado            EtiquetadoExportacion[]        @relation("ExportacionesEtiquetadoCreadas")
-  exportacionesActualizadas          EtiquetadoExportacion[]        @relation("ExportacionesEtiquetadoActualizadas")
-  exportacionesMexicoCreadas         EtiquetadoExportacionMexico[]  @relation("ExportacionesMexicoEtiquetadoCreadas")
-  exportacionesMexicoActualizadas    EtiquetadoExportacionMexico[]  @relation("ExportacionesMexicoEtiquetadoActualizadas")
-  exportacionesEeuuCreadas           EtiquetadoExportacionEeuu[]    @relation("ExportacionesEeuuEtiquetadoCreadas")
-  exportacionesEeuuActualizadas      EtiquetadoExportacionEeuu[]    @relation("ExportacionesEeuuEtiquetadoActualizadas")
-  gourmetPedidosCreados              GourmetPedido[]                @relation("GourmetPedidosCreados")
-  resurtidosAsignados                MontajeResurtido[]             @relation("ResurtidosAsignados")
-  resurtidosMontados                 MontajeResurtido[]             @relation("ResurtidosMontados")
-  pendientesSolicitados              PendienteGourmet[]             @relation("PendientesSolicitados")
-  pendientesAsignados                PendienteGourmet[]             @relation("PendientesAsignados")
-  pendientesRecibidos                PendienteGourmet[]             @relation("PendientesRecibidos")
-  pendientesDevueltos                PendienteGourmet[]             @relation("PendientesDevueltos")
-  pendientesConNovedad               PendienteGourmet[]             @relation("PendientesConNovedad")
-  pendientesPasados                  PendienteGourmet[]             @relation("PendientesPasados")
-  pendientesBorrados                 PendienteGourmet[]             @relation("PendientesBorrados")
-  tramosPendiente                    TramoPendiente[]               @relation("TramosPendiente")
-  tareasResurtidoResponsable         TareaResurtido[]               @relation("TareasResurtidoResponsable")
-  tareasResurtidoPasadas             TareaResurtido[]               @relation("TareasResurtidoPasadas")
-  tramosTareaResurtido               TramoTareaResurtido[]          @relation("TramosTareaResurtido")
-  cuadrosTurnoSubidos                CuadroTurnos[]                 @relation("CuadrosTurnoSubidos")
-  turnos                             TurnoOperario[]                @relation("TurnosOperario")
-  recepcionesCreadas                 RecepcionContenedor[]          @relation("RecepcionesCreadas")
-  recepcionesActualizadas            RecepcionContenedor[]          @relation("RecepcionesActualizadas")
-  descargasRecepcion                 DescargadorRecepcion[]         @relation("DescargasRecepcion")
-  novedadesRecepcion                 NovedadRecepcion[]             @relation("NovedadesRecepcionCreadas")
-  movimientosMontacargasCreados      MovimientoMontacargas[]        @relation("MovimientosMontacargasCreados")
-  movimientosMontacargasResponsable  MovimientoMontacargas[]        @relation("MovimientosMontacargasResponsable")
-  movimientosMontacargasActualizados MovimientoMontacargas[]        @relation("MovimientosMontacargasActualizados")
-  tramosMontacargas                  TramoMontacargas[]             @relation("TramosMontacargas")
-  novedadesMontacargasAbiertas       NovedadMontacargas[]           @relation("NovedadesMontacargasAbiertas")
-  novedadesMontacargasResueltas      NovedadMontacargas[]           @relation("NovedadesMontacargasResueltas")
-  tiemposMuertos                     JustificacionTiempoMuerto[]    @relation("TiemposMuertos")
-  tiemposMuertosJustificados         JustificacionTiempoMuerto[]    @relation("TiemposMuertosJustificados")
-  equiposMueblesAsignados            AsignacionEquipoMuebles[]      @relation("EquiposMueblesAsignados")
-  equiposMueblesAsignadosPor         AsignacionEquipoMuebles[]      @relation("EquiposMueblesAsignadosPor")
-  ordenesMueblesOperario             OrdenMuebles[]                 @relation("OrdenesMueblesOperario")
-  ordenesMueblesActualizadas         OrdenMuebles[]                 @relation("OrdenesMueblesActualizadas")
-  pendientesMueblesAsignados         PendienteMuebles[]             @relation("PendientesMueblesAsignados")
-  pendientesMueblesAsignadosPor      PendienteMuebles[]             @relation("PendientesMueblesAsignadosPor")
-  pendientesMueblesResueltos         PendienteMuebles[]             @relation("PendientesMueblesResueltos")
-  lineasMueblesPickeadas             LineaMuebles[]                 @relation("LineasMueblesOperario")
-  participacionesMuebles             ParticipanteOrdenMuebles[]     @relation("ParticipacionesMuebles")
-  tiposMuebleActualizados            TipoMueblePlu[]                @relation("TiposMuebleActualizados")
+  activityLogs        ActivityLog[]
+  transportista       Transportista?
+  novedadesAsign      Novedad[]                  @relation("NovedadesAsignadas")
+  contactosGuard      ContactoGuardado[]
+  despachosTienda     DespachoTienda[]           @relation("DespachosCreadosPor")
+  historialDespachos  HistorialDespacho[]        @relation("HistorialDespachoUsuario")
+  inspecciones        InspeccionPreoperacional[] @relation("InspeccionesRealizadas")
+  notificaciones      Notificacion[]
+  guardadosPendientes GuardadoPendienteTienda[]  @relation("GuardadosPendientesAsignados")
+  integracionesCreadoras   IntegracionPedido[]   @relation("integracionesCreadoras")
+  integracionesCompletadas IntegracionPedido[]   @relation("integracionesCompletadas")
+  solicitudesTransporte    SolicitudTransporte[] @relation("SolicitudesTransporteCreadas")
+  solicitudesGestionadas   SolicitudTransporte[] @relation("SolicitudesTransporteGestionadas")
+  historialSolicitudesTransporte HistorialSolicitudTransporte[] @relation("HistorialSolicitudTransporteUsuario")
+  exportacionesEtiquetado  EtiquetadoExportacion[] @relation("ExportacionesEtiquetadoCreadas")
+  exportacionesActualizadas EtiquetadoExportacion[] @relation("ExportacionesEtiquetadoActualizadas")
 
   @@index([email])
   @@map("users")
@@ -208,10 +137,6 @@ enum Role {
   OPERACIONES_GOURMET // Operario Operaciones Gourmet — solo módulo integración
   ETIQUETADO // Operario etiquetado exportaciones — solo módulo exportaciones
   SUPERVISOR_ALMACENAMIENTO // Supervisor almacenamiento — gestiona exportaciones
-  MONTACARGAS // Montacarguista — Control Montacargas y Resurtido
-  OPERARIO_ALMACENAMIENTO // Ayudante — solo su bandeja de PLUs asignados
-  PICKING_MUEBLES // Operario de picking de muebles — solo su módulo de picking
-  INSPECCION_MUEBLES // Login compartido del área de inspección de muebles
 }
 
 enum EstadoDespacho {
@@ -320,15 +245,6 @@ model DespachoTienda {
   fechaEntregaComprometida DateTime? @map("fecha_entrega_comprometida") @db.Date
   numeroCajas              Int?      @map("numero_cajas")
   netsuiteId               String?   @map("netsuite_id")
-
-  // Origen de la factura — código/nombre resueltos del mismo catálogo de
-  // tiendas usado por Cargue Gourmet (MaestroTiendaGourmet), denormalizados
-  // para que el histórico no cambie si el catálogo se edita después.
-  // Nullable a nivel de BD por las filas históricas ya existentes; se exige
-  // obligatorio a nivel de aplicación al crear una factura nueva.
-  tiendaOrigenCodigo String? @map("tienda_origen_codigo") @db.VarChar(50)
-  tiendaOrigenNombre String? @map("tienda_origen_nombre") @db.VarChar(255)
-  ciudadOrigen       String? @map("ciudad_origen") @db.VarChar(80)
 
   // Dirección de entrega
   direccionEntrega String? @map("direccion_entrega")
@@ -620,32 +536,32 @@ model ItemInspeccion {
 // ═══════════════════════════════════════════
 
 model IntegracionPedido {
-  id              String            @id @default(cuid())
-  numeroDocumento String            @db.VarChar(100)
-  tipoDocumento   String            @db.VarChar(10) // "OVDM" | "TSDM"
-  fecha           DateTime          @db.Date
-  estado          EstadoIntegracion @default(PENDIENTE_AREA2)
+  id               String            @id @default(cuid())
+  numeroDocumento  String            @db.VarChar(100)
+  tipoDocumento    String            @db.VarChar(10)   // "OVDM" | "TSDM"
+  fecha            DateTime          @db.Date
+  estado           EstadoIntegracion @default(PENDIENTE_AREA2)
 
-  areaIniciadora   String   @db.VarChar(20) // "MUEBLES" | "GOURMET"
+  areaIniciadora   String            @db.VarChar(20)   // "MUEBLES" | "GOURMET"
   numeroCajasArea1 Int?
   creadoPorId      String
-  creadoPor        User     @relation("integracionesCreadoras", fields: [creadoPorId], references: [id])
-  creadoAt         DateTime @default(now())
+  creadoPor        User              @relation("integracionesCreadoras", fields: [creadoPorId], references: [id])
+  creadoAt         DateTime          @default(now())
 
-  numeroCajasArea2 Int?
-  completadoPorId  String?
-  completadoPor    User?     @relation("integracionesCompletadas", fields: [completadoPorId], references: [id])
-  completadoAt     DateTime?
+  numeroCajasArea2  Int?
+  completadoPorId   String?
+  completadoPor     User?             @relation("integracionesCompletadas", fields: [completadoPorId], references: [id])
+  completadoAt      DateTime?
 
-  entregadoATransporteAt DateTime?
-  marcadoCompletadoPorId String?
-  marcadoCompletadoAt    DateTime?
+  entregadoATransporteAt  DateTime?
+  marcadoCompletadoPorId  String?
+  marcadoCompletadoAt     DateTime?
 
-  observaciones String?
-  createdAt     DateTime @default(now()) @map("created_at")
-  updatedAt     DateTime @updatedAt @map("updated_at")
+  observaciones    String?
+  createdAt        DateTime          @default(now()) @map("created_at")
+  updatedAt        DateTime          @updatedAt @map("updated_at")
 
-  plines PlinIntegracion[]
+  plines           PlinIntegracion[]
 
   @@index([numeroDocumento])
   @@index([estado, createdAt])
@@ -653,14 +569,14 @@ model IntegracionPedido {
 }
 
 model PlinIntegracion {
-  id            String            @id @default(cuid())
-  integracionId String            @map("integracion_id")
-  integracion   IntegracionPedido @relation(fields: [integracionId], references: [id], onDelete: Cascade)
-  area          String            @db.VarChar(20) // "MUEBLES" | "GOURMET"
-  plu           String            @db.VarChar(100)
-  descripcion   String?           @db.VarChar(255)
-  unidades      Int
-  createdAt     DateTime          @default(now()) @map("created_at")
+  id             String            @id @default(cuid())
+  integracionId  String            @map("integracion_id")
+  integracion    IntegracionPedido @relation(fields: [integracionId], references: [id], onDelete: Cascade)
+  area           String            @db.VarChar(20)   // "MUEBLES" | "GOURMET"
+  plu            String            @db.VarChar(100)
+  descripcion    String?           @db.VarChar(255)
+  unidades       Int
+  createdAt      DateTime          @default(now()) @map("created_at")
 
   @@index([integracionId])
   @@map("plines_integracion")
@@ -671,7 +587,7 @@ model PlinIntegracion {
 // ═══════════════════════════════════════════════════════════════════
 
 model SolicitudTransporte {
-  id String @id @default(cuid())
+  id        String @id @default(cuid())
 
   fechaSolicitud      DateTime @map("fecha_solicitud") @db.Date
   areaSolicitante     String   @map("area_solicitante") @db.VarChar(80)
@@ -699,44 +615,44 @@ model SolicitudTransporte {
   direccionEntrega String  @map("direccion_entrega")
   zonaEntrega      String? @map("zona_entrega") @db.VarChar(20)
 
-  fechaPromesaEntrega    DateTime? @map("fecha_promesa_entrega") @db.Date
-  ventanaEntrega         String?   @map("ventana_entrega") @db.VarChar(40)
-  restriccionHoraria     Boolean?  @map("restriccion_horaria")
-  descripcionRestriccion String?   @map("descripcion_restriccion")
+  fechaPromesaEntrega   DateTime? @map("fecha_promesa_entrega") @db.Date
+  ventanaEntrega        String?   @map("ventana_entrega") @db.VarChar(40)
+  restriccionHoraria    Boolean?  @map("restriccion_horaria")
+  descripcionRestriccion String?  @map("descripcion_restriccion")
 
   tipoServicio             String? @map("tipo_servicio") @db.VarChar(80)
   tipoServicioOtro         String? @map("tipo_servicio_otro") @db.VarChar(120)
   observacionesSolicitante String? @map("observaciones_solicitante")
 
-  estado                EstadoSolicitudTransporte @default(PENDIENTE)
-  stellaEstado          StellaEstado              @default(PENDIENTE) @map("stella_estado")
-  documentoNetSuite     String?                   @map("documento_netsuite") @db.VarChar(120)
-  transportadora        String?                   @db.VarChar(120)
-  numeroGuia            String?                   @map("numero_guia") @db.VarChar(120)
-  fechaProgramacion     DateTime?                 @map("fecha_programacion") @db.Date
-  observacionTransporte String?                   @map("observacion_transporte")
+  estado             EstadoSolicitudTransporte @default(PENDIENTE)
+  stellaEstado       StellaEstado              @default(PENDIENTE) @map("stella_estado")
+  documentoNetSuite  String? @map("documento_netsuite") @db.VarChar(120)
+  transportadora     String? @db.VarChar(120)
+  numeroGuia         String? @map("numero_guia") @db.VarChar(120)
+  fechaProgramacion  DateTime? @map("fecha_programacion") @db.Date
+  observacionTransporte String? @map("observacion_transporte")
 
   prioridad    PrioridadSolicitudTransporte? @map("prioridad")
   semaforo     SemaforoSolicitudTransporte   @default(SIN_FECHA)
-  mesSolicitud String?                       @map("mes_solicitud") @db.VarChar(20)
+  mesSolicitud String? @map("mes_solicitud") @db.VarChar(20)
 
   motivoRechazo String?   @map("motivo_rechazo")
   rechazadoAt   DateTime? @map("rechazado_at")
   reenviadoAt   DateTime? @map("reenviado_at")
 
-  creadoPorId     String  @map("creado_por_id")
-  creadoPor       User    @relation("SolicitudesTransporteCreadas", fields: [creadoPorId], references: [id])
+  creadoPorId String @map("creado_por_id")
+  creadoPor   User   @relation("SolicitudesTransporteCreadas", fields: [creadoPorId], references: [id])
   gestionadoPorId String? @map("gestionado_por_id")
   gestionadoPor   User?   @relation("SolicitudesTransporteGestionadas", fields: [gestionadoPorId], references: [id])
 
-  deletedAt    DateTime? @map("deleted_at")
-  deletedById  String?   @map("deleted_by_id")
-  deleteReason String?   @map("delete_reason")
+  deletedAt     DateTime? @map("deleted_at")
+  deletedById   String?   @map("deleted_by_id")
+  deleteReason  String?   @map("delete_reason")
 
   plines    PluSolicitudTransporte[]
   historial HistorialSolicitudTransporte[]
-  createdAt DateTime                       @default(now()) @map("created_at")
-  updatedAt DateTime                       @updatedAt @map("updated_at")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
 
   @@index([estado, createdAt])
   @@index([deletedAt])
@@ -748,15 +664,15 @@ model SolicitudTransporte {
 }
 
 model HistorialSolicitudTransporte {
-  id             String                     @id @default(cuid())
-  solicitudId    String                     @map("solicitud_id")
-  solicitud      SolicitudTransporte        @relation(fields: [solicitudId], references: [id], onDelete: Cascade)
+  id             String @id @default(cuid())
+  solicitudId    String @map("solicitud_id")
+  solicitud      SolicitudTransporte @relation(fields: [solicitudId], references: [id], onDelete: Cascade)
   estadoAnterior EstadoSolicitudTransporte? @map("estado_anterior")
   estadoNuevo    EstadoSolicitudTransporte  @map("estado_nuevo")
   observacion    String?
-  usuarioId      String                     @map("usuario_id")
-  usuario        User                       @relation("HistorialSolicitudTransporteUsuario", fields: [usuarioId], references: [id])
-  createdAt      DateTime                   @default(now()) @map("created_at")
+  usuarioId      String @map("usuario_id")
+  usuario        User   @relation("HistorialSolicitudTransporteUsuario", fields: [usuarioId], references: [id])
+  createdAt      DateTime @default(now()) @map("created_at")
 
   @@index([solicitudId, createdAt])
   @@index([usuarioId])
@@ -764,13 +680,13 @@ model HistorialSolicitudTransporte {
 }
 
 model PluSolicitudTransporte {
-  id          String              @id @default(cuid())
-  solicitudId String              @map("solicitud_id")
-  solicitud   SolicitudTransporte @relation(fields: [solicitudId], references: [id], onDelete: Cascade)
-  plu         String              @db.VarChar(100)
-  descripcion String              @db.VarChar(255)
+  id          String               @id @default(cuid())
+  solicitudId String               @map("solicitud_id")
+  solicitud   SolicitudTransporte  @relation(fields: [solicitudId], references: [id], onDelete: Cascade)
+  plu         String               @db.VarChar(100)
+  descripcion String               @db.VarChar(255)
   unidades    Int
-  createdAt   DateTime            @default(now()) @map("created_at")
+  createdAt   DateTime             @default(now()) @map("created_at")
 
   @@index([solicitudId])
   @@index([plu])
@@ -778,23 +694,23 @@ model PluSolicitudTransporte {
 }
 
 model EtiquetadoExportacion {
-  id               String    @id @default(cuid())
-  numeroCaja       String    @map("numero_caja") @db.VarChar(100)
-  plu              String    @db.VarChar(100)
-  descripcion      String    @db.VarChar(255)
-  unidadEmpaque    Int       @map("unidad_empaque")
-  fecha            DateTime  @db.Date
-  horaInicio       DateTime  @map("hora_inicio")
-  horaFinalizacion DateTime? @map("hora_finalizacion")
-  motivoCorreccion String?   @map("motivo_correccion")
-  hayReguero       Boolean   @default(false) @map("hay_reguero")
-  cantidadReguero  Int?      @map("cantidad_reguero")
-  deletedAt        DateTime? @map("deleted_at")
+  id                String    @id @default(cuid())
+  numeroCaja        String    @map("numero_caja") @db.VarChar(100)
+  plu               String    @db.VarChar(100)
+  descripcion       String    @db.VarChar(255)
+  unidadEmpaque     Int       @map("unidad_empaque")
+  fecha             DateTime  @db.Date
+  horaInicio        DateTime  @map("hora_inicio")
+  horaFinalizacion  DateTime? @map("hora_finalizacion")
+  motivoCorreccion  String?   @map("motivo_correccion")
+  hayReguero        Boolean   @default(false) @map("hay_reguero")
+  cantidadReguero   Int?                      @map("cantidad_reguero")
+  deletedAt         DateTime? @map("deleted_at")
 
-  creadoPorId      String  @map("creado_por_id")
-  creadoPor        User    @relation("ExportacionesEtiquetadoCreadas", fields: [creadoPorId], references: [id])
-  actualizadoPorId String? @map("actualizado_por_id")
-  actualizadoPor   User?   @relation("ExportacionesEtiquetadoActualizadas", fields: [actualizadoPorId], references: [id])
+  creadoPorId       String   @map("creado_por_id")
+  creadoPor         User     @relation("ExportacionesEtiquetadoCreadas", fields: [creadoPorId], references: [id])
+  actualizadoPorId  String?  @map("actualizado_por_id")
+  actualizadoPor    User?    @relation("ExportacionesEtiquetadoActualizadas", fields: [actualizadoPorId], references: [id])
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
@@ -805,1246 +721,4 @@ model EtiquetadoExportacion {
   @@index([numeroCaja])
   @@index([horaFinalizacion])
   @@map("etiquetado_exportaciones")
-}
-
-model EtiquetadoExportacionMexico {
-  id               String    @id @default(cuid())
-  numeroCaja       String    @map("numero_caja") @db.VarChar(100)
-  plu              String    @db.VarChar(100)
-  descripcion      String    @db.VarChar(255)
-  unidadEmpaque    Int       @map("unidad_empaque")
-  fecha            DateTime  @db.Date
-  horaInicio       DateTime  @map("hora_inicio")
-  horaFinalizacion DateTime? @map("hora_finalizacion")
-  motivoCorreccion String?   @map("motivo_correccion")
-  hayReguero       Boolean   @default(false) @map("hay_reguero")
-  cantidadReguero  Int?      @map("cantidad_reguero")
-  deletedAt        DateTime? @map("deleted_at")
-
-  creadoPorId      String  @map("creado_por_id")
-  creadoPor        User    @relation("ExportacionesMexicoEtiquetadoCreadas", fields: [creadoPorId], references: [id])
-  actualizadoPorId String? @map("actualizado_por_id")
-  actualizadoPor   User?   @relation("ExportacionesMexicoEtiquetadoActualizadas", fields: [actualizadoPorId], references: [id])
-
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
-
-  @@index([creadoPorId, deletedAt])
-  @@index([fecha])
-  @@index([plu])
-  @@index([numeroCaja])
-  @@index([horaFinalizacion])
-  @@map("etiquetado_exportaciones_mexico")
-}
-
-model EtiquetadoExportacionEeuu {
-  id               String    @id @default(cuid())
-  numeroCaja       String    @map("numero_caja") @db.VarChar(100)
-  plu              String    @db.VarChar(100)
-  descripcion      String    @db.VarChar(255)
-  unidadEmpaque    Int       @map("unidad_empaque")
-  fecha            DateTime  @db.Date
-  horaInicio       DateTime  @map("hora_inicio")
-  horaFinalizacion DateTime? @map("hora_finalizacion")
-  motivoCorreccion String?   @map("motivo_correccion")
-  hayReguero       Boolean   @default(false) @map("hay_reguero")
-  cantidadReguero  Int?      @map("cantidad_reguero")
-  deletedAt        DateTime? @map("deleted_at")
-
-  creadoPorId      String  @map("creado_por_id")
-  creadoPor        User    @relation("ExportacionesEeuuEtiquetadoCreadas", fields: [creadoPorId], references: [id])
-  actualizadoPorId String? @map("actualizado_por_id")
-  actualizadoPor   User?   @relation("ExportacionesEeuuEtiquetadoActualizadas", fields: [actualizadoPorId], references: [id])
-
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
-
-  @@index([creadoPorId, deletedAt])
-  @@index([fecha])
-  @@index([plu])
-  @@index([numeroCaja])
-  @@index([horaFinalizacion])
-  @@map("etiquetado_exportaciones_eeuu")
-}
-
-// ═══════════════════════════════════════════════════════════════════
-// MÓDULO CARGUE GOURMET (diseño G1, aún no expuesto en UI/endpoints)
-// ═══════════════════════════════════════════════════════════════════
-
-enum EstadoPedidoGourmet {
-  BORRADOR
-  UBICACION_ASIGNADA
-  ENVIADO_A_TRANSPORTE
-  EN_CARGUE
-  CARGUE_COMPLETO
-  CARGUE_COMPLETO_MANUAL
-  CON_NOVEDAD
-  CANCELADO
-}
-
-// Tipo de carga del pedido — GOURMET (por defecto) exige códigos de caja
-// únicos sin repetir; MUEBLES permite repetir un número de caja cuando el
-// mueble viene en más de una parte física (ver "tiene parte 2" en el
-// escaneo), contando cada parte como una caja adicional.
-enum TipoPedidoGourmet {
-  GOURMET
-  MUEBLES
-}
-
-enum TipoCierreCargue {
-  NORMAL
-  MANUAL
-}
-
-enum ResultadoEscaneoGourmet {
-  VALIDO
-  DUPLICADO
-  CAJA_AJENA
-  FORMATO_INVALIDO
-  EXCEDE_CANTIDAD
-}
-
-enum TipoNovedadGourmet {
-  CAJA_FALTANTE
-  CAJA_DUPLICADA
-  CAJA_AJENA
-  CIERRE_MANUAL
-  DIFERENCIA_CANTIDAD
-  OTRA
-}
-
-enum EstadoNovedadGourmet {
-  ABIERTA
-  RESUELTA
-}
-
-model MaestroTiendaGourmet {
-  id        String   @id @default(cuid())
-  codigo    String   @unique @db.VarChar(50)
-  tienda    String   @db.VarChar(255)
-  ciudad    String   @db.VarChar(80)
-  activo    Boolean  @default(true)
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
-
-  @@map("maestro_tiendas_gourmet")
-}
-
-model GourmetPedido {
-  id               String              @id @default(cuid())
-  orden            String              @db.VarChar(100)
-  tipoOrden        String              @map("tipo_orden") @db.VarChar(10) // "OVDM" | "TSDM"
-  codigoTienda     String              @map("codigo_tienda") @db.VarChar(50)
-  nombreTienda     String              @map("nombre_tienda") @db.VarChar(255)
-  ciudadDestino    String              @map("ciudad_destino") @db.VarChar(80)
-  cajasEsperadas   Int                 @map("cajas_esperadas")
-  estibasEsperadas Int                 @map("estibas_esperadas")
-  estado           EstadoPedidoGourmet @default(BORRADOR)
-  tipoPedido       TipoPedidoGourmet   @default(GOURMET) @map("tipo_pedido")
-
-  creadoPorId String   @map("creado_por_id")
-  creadoPor   User     @relation("GourmetPedidosCreados", fields: [creadoPorId], references: [id])
-  createdAt   DateTime @default(now()) @map("created_at")
-  updatedAt   DateTime @updatedAt @map("updated_at")
-
-  // Transición: ubicación asignada
-  ubicacionAsignadaAt    DateTime? @map("ubicacion_asignada_at")
-  ubicacionAsignadaPorId String?   @map("ubicacion_asignada_por_id")
-
-  // Transición: enviado a Transporte
-  enviadoTransporteAt    DateTime? @map("enviado_transporte_at")
-  enviadoTransportePorId String?   @map("enviado_transporte_por_id")
-
-  // Transición: cargue iniciado
-  cargueIniciadoAt    DateTime? @map("cargue_iniciado_at")
-  cargueIniciadoPorId String?   @map("cargue_iniciado_por_id")
-
-  // Transición: cargue completado (normal o manual)
-  cargueCompletadoAt    DateTime? @map("cargue_completado_at")
-  cargueCompletadoPorId String?   @map("cargue_completado_por_id")
-
-  // Cierre manual de contingencia
-  esCierreManual          Boolean @default(false) @map("es_cierre_manual")
-  cantidadContadaManual   Int?    @map("cantidad_contada_manual")
-  motivoCierreManual      String? @map("motivo_cierre_manual")
-  observacionCierreManual String? @map("observacion_cierre_manual")
-
-  estibas   GourmetPedidoEstiba[]
-  cajas     GourmetPedidoCaja[]
-  cargues   GourmetCargue[]
-  novedades GourmetCargueNovedad[]
-
-  @@index([orden])
-  @@index([tipoOrden])
-  @@index([codigoTienda])
-  @@index([ciudadDestino])
-  @@index([estado, createdAt])
-  @@index([createdAt])
-  @@index([enviadoTransporteAt])
-  @@index([cargueIniciadoAt])
-  @@map("gourmet_pedidos")
-}
-
-model GourmetPedidoEstiba {
-  id          String              @id @default(cuid())
-  pedidoId    String              @map("pedido_id")
-  pedido      GourmetPedido       @relation(fields: [pedidoId], references: [id], onDelete: Cascade)
-  secuencia   Int
-  // ubicacion es nullable para permitir crear estibas durante el escaneo
-  // inicial (creación del pedido, G1), antes de asignarles ubicación física.
-  // Al "Asignar ubicación" se rellena. Pedidos legacy tienen ubicacion siempre.
-  ubicacion   String?             @db.VarChar(120)
-  observacion String?
-  createdAt   DateTime            @default(now()) @map("created_at")
-  cajas       GourmetPedidoCaja[]
-
-  @@unique([pedidoId, secuencia])
-  @@index([pedidoId])
-  @@map("gourmet_pedido_estibas")
-}
-
-model GourmetPedidoCaja {
-  id                 String               @id @default(cuid())
-  pedidoId           String               @map("pedido_id")
-  pedido             GourmetPedido        @relation(fields: [pedidoId], references: [id], onDelete: Cascade)
-  // Estiba a la que pertenece esta caja. Nullable para retro-compat: cajas
-  // creadas antes de G1 (vía "Asignar ubicación" sin estiba explícita) no
-  // tienen estibaId. Las creadas desde G2+ siempre lo tendrán.
-  estibaId           String?              @map("estiba_id")
-  estiba             GourmetPedidoEstiba? @relation(fields: [estibaId], references: [id], onDelete: SetNull)
-  codigoCaja         String?              @map("codigo_caja") @db.VarChar(150)
-  numeroSecuencia    Int?                 @map("numero_secuencia")
-  generadaPorEscaneo Boolean              @default(false) @map("generada_por_escaneo")
-  estado             String?              @db.VarChar(20)
-  createdAt          DateTime             @default(now()) @map("created_at")
-  updatedAt          DateTime             @updatedAt @map("updated_at")
-
-  @@index([pedidoId])
-  @@index([estibaId])
-  @@index([codigoCaja])
-  @@index([pedidoId, numeroSecuencia])
-  @@map("gourmet_pedido_cajas")
-}
-
-model GourmetCargue {
-  id       String        @id @default(cuid())
-  pedidoId String        @map("pedido_id")
-  pedido   GourmetPedido @relation(fields: [pedidoId], references: [id], onDelete: Cascade)
-
-  iniciadoPorId   String    @map("iniciado_por_id")
-  iniciadoAt      DateTime  @default(now()) @map("iniciado_at")
-  finalizadoPorId String?   @map("finalizado_por_id")
-  finalizadoAt    DateTime? @map("finalizado_at")
-
-  tipoCierre            TipoCierreCargue? @map("tipo_cierre")
-  cantidadEsperada      Int               @map("cantidad_esperada")
-  cantidadEscaneada     Int               @default(0) @map("cantidad_escaneada")
-  cantidadContadaManual Int?              @map("cantidad_contada_manual")
-  motivoCierreManual    String?           @map("motivo_cierre_manual")
-  observacion           String?
-
-  estado EstadoPedidoGourmet @default(EN_CARGUE)
-
-  escaneos  GourmetCargueEscaneo[]
-  novedades GourmetCargueNovedad[]
-
-  @@index([pedidoId, iniciadoAt])
-  @@index([estado])
-  @@map("gourmet_cargues")
-}
-
-model GourmetCargueEscaneo {
-  id              String                  @id @default(cuid())
-  cargueId        String                  @map("cargue_id")
-  cargue          GourmetCargue           @relation(fields: [cargueId], references: [id], onDelete: Cascade)
-  pedidoId        String                  @map("pedido_id")
-  codigoEscaneado String                  @map("codigo_escaneado") @db.VarChar(150)
-  resultado       ResultadoEscaneoGourmet
-  escaneadoPorId  String                  @map("escaneado_por_id")
-  observacion     String?
-  createdAt       DateTime                @default(now()) @map("created_at")
-
-  @@index([cargueId])
-  @@index([cargueId, codigoEscaneado])
-  @@index([cargueId, resultado], map: "idx_gourmet_escaneo_cargue_resultado")
-  @@index([codigoEscaneado])
-  @@index([pedidoId])
-  @@map("gourmet_cargue_escaneos")
-}
-
-model GourmetCargueNovedad {
-  id              String               @id @default(cuid())
-  cargueId        String               @map("cargue_id")
-  cargue          GourmetCargue        @relation(fields: [cargueId], references: [id], onDelete: Cascade)
-  pedidoId        String               @map("pedido_id")
-  pedido          GourmetPedido        @relation(fields: [pedidoId], references: [id], onDelete: Cascade)
-  tipo            TipoNovedadGourmet
-  descripcion     String
-  estado          EstadoNovedadGourmet @default(ABIERTA)
-  registradaPorId String               @map("registrada_por_id")
-  resueltaPorId   String?              @map("resuelta_por_id")
-  resueltaAt      DateTime?            @map("resuelta_at")
-  createdAt       DateTime             @default(now()) @map("created_at")
-
-  @@index([cargueId])
-  @@index([pedidoId])
-  @@index([estado])
-  @@map("gourmet_cargue_novedades")
-}
-
-enum TipoMovimientoMontacargas {
-  RECEPCION // Mercancia de contenedor: llega sin ubicacion previa
-  MOVIMIENTO // Movimiento entre depositos: sale de una ubicacion y va a otra
-  RESURTIDO // Resurtido: mismo flujo que un movimiento, modulo aparte
-}
-
-enum EstadoMovimientoMontacargas {
-  EN_CURSO // El reloj corre para el responsable actual
-  NOVEDAD // Reloj detenido: las unidades o la ubicacion no cuadran y se verifica
-  CERRADO // Ubicacion final asignada
-}
-
-enum TipoNovedadMontacargas {
-  UNIDADES // Recepcion: las unidades de la estiba no coinciden
-  UBICACION_INICIAL // Movimiento/resurtido: la ubicacion de origen no coincide
-}
-
-// Registro de trabajo de un montacarguista. Sustituye la "PLANILLA MONTACARGAS"
-// (Google Sheets), donde el tiempo lo ponia un NOW() volatil de Excel: aqui las
-// horas las sella el servidor, asi que la medicion de productividad es confiable.
-//
-// El reloj arranca al digitar el PLU (el registro se crea en ese momento, con
-// las cantidades todavia en cero) y se detiene al asignar la ubicacion final.
-// Por el medio el PLU puede pasar a un ayudante: cada persona que lo tuvo en
-// mano deja su propio tramo (ver TramoMontacargas), asi que el tiempo total no
-// se le carga a quien lo empezo.
-model MovimientoMontacargas {
-  id     String                      @id @default(cuid())
-  tipo   TipoMovimientoMontacargas
-  estado EstadoMovimientoMontacargas @default(EN_CURSO)
-
-  plu         String  @db.VarChar(100)
-  // Lo que leyo la pistola, si se capturo por codigo de barras en vez de por PLU.
-  ean         String? @db.VarChar(20)
-  descripcion String  @db.VarChar(255)
-
-  // Cajas master completas. Arranca en 0: el registro nace al digitar el PLU y
-  // las cantidades se completan despues, sin parar el reloj.
-  cajas            Int     @default(0)
-  unidadesPorCaja  Int     @default(0) @map("unidades_por_caja")
-  // El maestro no trae "Und Emp" para parte del catalogo; cuando la escribe el
-  // operario se marca aqui, y esa lista es el trabajo de completar el catalogo.
-  unidadesManuales Boolean @default(false) @map("unidades_manuales")
-
-  // Reguero: unidades sueltas que no vienen en caja master.
-  hayReguero      Boolean @default(false) @map("hay_reguero")
-  unidadesSueltas Int     @default(0) @map("unidades_sueltas")
-
-  // cajas * unidadesPorCaja + unidadesSueltas, sellado en cada cambio. Se
-  // persiste (en vez de derivarse) porque es la cifra que agregan KPIs y export.
-  cantidadTotal Int @default(0) @map("cantidad_total")
-
-  // Solo en MOVIMIENTO y RESURTIDO: de donde sale la mercancia. En RECEPCION es
-  // null porque el contenedor no tiene ubicacion previa.
-  ubicacionInicial String? @map("ubicacion_inicial") @db.VarChar(120)
-  // Ubicacion final. Null mientras el registro esta abierto: asignarla es lo
-  // que lo cierra.
-  ubicacionFinal   String? @map("ubicacion_final") @db.VarChar(120)
-
-  fecha            DateTime  @db.Date
-  horaInicio       DateTime  @map("hora_inicio")
-  horaFinalizacion DateTime? @map("hora_finalizacion")
-  motivoCorreccion String?   @map("motivo_correccion")
-  deletedAt        DateTime? @map("deleted_at")
-
-  // De donde salio este registro cuando es un SOBRANTE: al ayudante no le cabieron
-  // todas las unidades, almaceno las que pudo y el resto volvio al montacarguista
-  // como un registro propio, con su ubicacion y su reloj. Se enlaza para poder
-  // reconstruir la estiba completa: dos filas, dos ubicaciones, un solo PLU.
-  origenId  String?                 @map("origen_id")
-  origen    MovimientoMontacargas?  @relation("SobrantesMontacargas", fields: [origenId], references: [id])
-  sobrantes MovimientoMontacargas[] @relation("SobrantesMontacargas")
-
-  creadoPorId      String  @map("creado_por_id")
-  creadoPor        User    @relation("MovimientosMontacargasCreados", fields: [creadoPorId], references: [id])
-  // Quien tiene el PLU en la mano ahora mismo. Cambia con cada traspaso; es lo
-  // que decide en la bandeja de quien aparece el registro.
-  responsableId    String  @map("responsable_id")
-  responsable      User    @relation("MovimientosMontacargasResponsable", fields: [responsableId], references: [id])
-  actualizadoPorId String? @map("actualizado_por_id")
-  actualizadoPor   User?   @relation("MovimientosMontacargasActualizados", fields: [actualizadoPorId], references: [id])
-
-  tramos    TramoMontacargas[]
-  novedades NovedadMontacargas[]
-
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
-
-  // Sirve la consulta caliente: "los registros abiertos de esta persona en este tipo".
-  @@index([responsableId, tipo, estado, deletedAt])
-  @@index([tipo, fecha])
-  @@index([plu])
-  @@index([origenId])
-  @@map("movimientos_montacargas")
-}
-
-// Un tramo por cada persona que tuvo el PLU en la mano. Se cierra al traspasar,
-// al abrir una novedad o al asignar la ubicacion final.
-//
-// Existe como tabla y no como un par de columnas porque el PLU puede pasar por
-// varias manos (el ayudante puede volver a pasarlo) y porque la productividad se
-// mide por persona: sumar todo el tiempo a quien lo empezo seria mentir.
-// La ventana de una novedad NO es un tramo: verificar no se cronometra.
-model TramoMontacargas {
-  id           String                @id @default(cuid())
-  movimientoId String                @map("movimiento_id")
-  movimiento   MovimientoMontacargas @relation(fields: [movimientoId], references: [id], onDelete: Cascade)
-  usuarioId    String                @map("usuario_id")
-  usuario      User                  @relation("TramosMontacargas", fields: [usuarioId], references: [id])
-  orden        Int
-  inicio       DateTime
-  // Null mientras la persona todavia lo tiene en la mano.
-  fin          DateTime?
-  createdAt    DateTime              @default(now()) @map("created_at")
-
-  @@index([movimientoId, orden])
-  @@index([usuarioId, fin])
-  @@map("tramos_montacargas")
-}
-
-// El ayudante no corrige cantidades ni ubicaciones: si no cuadran, abre una
-// novedad. Eso detiene el reloj y saca el registro de la medicion hasta que
-// alguien verifique y confirme. La verificacion no se cronometra a proposito.
-model NovedadMontacargas {
-  id                  String                 @id @default(cuid())
-  movimientoId        String                 @map("movimiento_id")
-  movimiento          MovimientoMontacargas  @relation(fields: [movimientoId], references: [id], onDelete: Cascade)
-  tipo                TipoNovedadMontacargas
-  detalle             String?
-  // Cifras que el ayudante encontro, para que quien verifica vea el descuadre
-  // sin tener que preguntar.
-  cantidadEncontrada  Int?                   @map("cantidad_encontrada")
-  ubicacionEncontrada String?                @map("ubicacion_encontrada") @db.VarChar(120)
-
-  abiertaPorId String   @map("abierta_por_id")
-  abiertaPor   User     @relation("NovedadesMontacargasAbiertas", fields: [abiertaPorId], references: [id])
-  abiertaAt    DateTime @default(now()) @map("abierta_at")
-
-  resueltaPorId  String?   @map("resuelta_por_id")
-  resueltaPor    User?     @relation("NovedadesMontacargasResueltas", fields: [resueltaPorId], references: [id])
-  resueltaAt     DateTime? @map("resuelta_at")
-  notaResolucion String?   @map("nota_resolucion")
-
-  @@index([movimientoId])
-  @@index([resueltaAt])
-  @@map("novedades_montacargas")
-}
-
-/// Medida de UNA caja master, tal como la levanta el equipo de medicion.
-///
-/// Un producto puede llegar en varias cajas ("partes"): en la ultima medicion,
-/// 240 vienen en 2, 53 en 3, 7 en 4 y 2 en 5. Por eso es una fila por parte y
-/// no columnas en productos_maestro.
-///
-/// Sin FK a productos_maestro a proposito: el maestro se recarga entero cada
-/// tanto y una FK convertiria cada recarga en un problema de orden. El PLU es
-/// la clave de negocio, igual que en el resto del proyecto.
-model MedidaCajaMaster {
-  id          String   @id @default(cuid())
-  plu         String   @db.VarChar(100)
-  parte       Int
-  pesoBrutoKg Decimal? @map("peso_bruto_kg") @db.Decimal(8, 3)
-  pesoNetoKg  Decimal? @map("peso_neto_kg") @db.Decimal(8, 3)
-  altoCm      Decimal? @map("alto_cm") @db.Decimal(8, 2)
-  anchoCm     Decimal? @map("ancho_cm") @db.Decimal(8, 2)
-  profCm      Decimal? @map("prof_cm") @db.Decimal(8, 2)
-  /// alto x ancho x prof / 1.000.000. Se sella al importar en vez de calcularse
-  /// al vuelo: es el numero con el que se compara ocupacion, y una medida que se
-  /// corrige despues no debe cambiar en silencio lo ya calculado.
-  volumenM3   Decimal? @map("volumen_m3") @db.Decimal(10, 6)
-  createdAt   DateTime @default(now()) @map("created_at")
-  updatedAt   DateTime @updatedAt @map("updated_at")
-
-  @@unique([plu, parte])
-  @@index([plu])
-  @@map("medidas_caja_master")
-}
-
-/// Ficha de medicion del producto: lo que se midio y NO es de la caja master.
-///
-/// Tabla aparte de productos_maestro para no meter estas columnas en el
-/// INSERT ... ON CONFLICT del importador de precios, que es justo donde un
-/// descuido ya vacio datos de 19k productos una vez.
-model MedidaProducto {
-  id             String   @id @default(cuid())
-  plu            String   @unique @db.VarChar(100)
-  /// GOURMET, MUEBLES... viene de la hoja de medicion, no del maestro.
-  zona           String?  @db.VarChar(60)
-  /// "Producto/Partes": cuantas cajas declara el archivo. Se guarda aparte de
-  /// las medidas reales porque no siempre coinciden.
-  partes         Int?
-  unidadesSet    Int?     @map("unidades_set")
-  subEmpaque     Int?     @map("sub_empaque")
-  empaqueAltoCm  Decimal? @map("empaque_alto_cm") @db.Decimal(8, 2)
-  empaqueAnchoCm Decimal? @map("empaque_ancho_cm") @db.Decimal(8, 2)
-  empaqueProfCm  Decimal? @map("empaque_prof_cm") @db.Decimal(8, 2)
-  piezaAltoCm    Decimal? @map("pieza_alto_cm") @db.Decimal(8, 2)
-  piezaAnchoCm   Decimal? @map("pieza_ancho_cm") @db.Decimal(8, 2)
-  piezaProfCm    Decimal? @map("pieza_prof_cm") @db.Decimal(8, 2)
-  createdAt      DateTime @default(now()) @map("created_at")
-  updatedAt      DateTime @updatedAt @map("updated_at")
-
-  @@map("medidas_producto")
-}
-
-enum TipoProductoRecepcion {
-  GOURMET
-  MUEBLES
-}
-
-enum EstadoRecepcion {
-  EN_CURSO
-  CERRADO
-}
-
-/// Tipos de novedad de un contenedor. Faltante y sobrante van separados en vez
-/// de un solo tipo con signo: en la planilla de papel son dos casillas distintas
-/// y contarlos juntos escondia cual de los dos problema tiene el proveedor.
-enum TipoNovedadRecepcion {
-  FALTANTE
-  SOBRANTE
-  AVERIA
-  MALTRATADA
-}
-
-/// Planilla de recepcion de un contenedor.
-///
-/// El reloj arranca al registrar el numero de pedido y se cierra cuando el
-/// operario vuelve a la planilla con las estibas usadas: es el tiempo real que
-/// tomo bajar el contenedor. Los reportes de novedad llegan DESPUES de cerrar y
-/// no cuentan tiempo, igual que la verificacion en Control Montacargas.
-model RecepcionContenedor {
-  id     String          @id @default(cuid())
-  estado EstadoRecepcion @default(EN_CURSO)
-
-  numeroPedido String                @map("numero_pedido") @db.VarChar(50)
-  proveedor    String                @db.VarChar(160)
-  tipoProducto TipoProductoRecepcion @map("tipo_producto")
-
-  /// Peso del contenedor en kilos, tal como viene en la documentacion.
-  pesoKg               Decimal @map("peso_kg") @db.Decimal(10, 2)
-  referenciasEsperadas Int     @map("referencias_esperadas")
-  cajas                Int
-  unidades             Int
-
-  /// Se llenan al cerrar, cuando ya se sabe como quedo la descarga.
-  estibasUsadas     Int? @map("estibas_usadas")
-  referenciasNuevas Int? @map("referencias_nuevas")
-  unidadesNuevas    Int? @map("unidades_nuevas")
-
-  fecha            DateTime  @db.Date
-  horaInicio       DateTime  @map("hora_inicio")
-  horaFinalizacion DateTime? @map("hora_finalizacion")
-
-  motivoCorreccion String?   @map("motivo_correccion")
-  deletedAt        DateTime? @map("deleted_at")
-
-  creadoPorId      String  @map("creado_por_id")
-  creadoPor        User    @relation("RecepcionesCreadas", fields: [creadoPorId], references: [id])
-  actualizadoPorId String? @map("actualizado_por_id")
-  actualizadoPor   User?   @relation("RecepcionesActualizadas", fields: [actualizadoPorId], references: [id])
-
-  descargadores DescargadorRecepcion[]
-  novedades     NovedadRecepcion[]
-
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
-
-  @@index([estado, deletedAt])
-  @@index([fecha])
-  @@index([numeroPedido])
-  @@index([creadoPorId])
-  @@map("recepciones_contenedor")
-}
-
-/// Quien estuvo descargando. Tabla propia y no un campo de texto: son usuarios
-/// reales del sistema, y asi el indicador puede repartir el trabajo por persona.
-model DescargadorRecepcion {
-  id          String              @id @default(cuid())
-  recepcionId String              @map("recepcion_id")
-  recepcion   RecepcionContenedor @relation(fields: [recepcionId], references: [id], onDelete: Cascade)
-  usuarioId   String              @map("usuario_id")
-  usuario     User                @relation("DescargasRecepcion", fields: [usuarioId], references: [id])
-  createdAt   DateTime            @default(now()) @map("created_at")
-
-  @@unique([recepcionId, usuarioId])
-  @@index([usuarioId])
-  @@map("descargadores_recepcion")
-}
-
-/// Una linea de novedad del contenedor: un PLU con su cantidad.
-///
-/// Cada fila es una linea, no un "reporte": un contenedor puede traer varios
-/// faltantes a la vez, y preguntar "hay reporte de averias?" es mirar si existe
-/// alguna fila de ese tipo. La foto es por linea porque se fotografia la caja
-/// averiada concreta, no el contenedor entero.
-model NovedadRecepcion {
-  id          String               @id @default(cuid())
-  recepcionId String               @map("recepcion_id")
-  recepcion   RecepcionContenedor  @relation(fields: [recepcionId], references: [id], onDelete: Cascade)
-  tipo        TipoNovedadRecepcion
-
-  plu         String  @db.VarChar(100)
-  /// Copiada del maestro al registrarla: si el maestro cambia despues, el
-  /// reporte tiene que seguir diciendo lo que se vio ese dia.
-  descripcion String  @db.VarChar(255)
-  cantidad    Int
-  fotoUrl     String? @map("foto_url")
-  observacion String?
-
-  creadoPorId String   @map("creado_por_id")
-  creadoPor   User     @relation("NovedadesRecepcionCreadas", fields: [creadoPorId], references: [id])
-  createdAt   DateTime @default(now()) @map("created_at")
-
-  @@index([recepcionId, tipo])
-  @@index([plu])
-  @@map("novedades_recepcion")
-}
-
-enum EstadoMontajeResurtido {
-  EN_CURSO
-  COMPLETADO
-}
-
-enum EstadoTareaResurtido {
-  PENDIENTE
-  EN_CURSO
-  COMPLETADA
-}
-
-enum EstadoPendienteGourmet {
-  SOLICITADO
-  ASIGNADO
-  EN_CURSO
-  COMPLETADO
-  DEVUELTO
-  /// El operario encontro un problema (sin existencias, en inspeccion, en
-  /// pasillo). Sale de su lista y queda en rojo para que alguien decida.
-  NOVEDAD
-}
-
-/// Un archivo de resurtido subido y asignado a un operario.
-///
-/// El montaje no se cronometra: quien lo sube no esta haciendo el trabajo, solo
-/// repartiendolo. Lo que se mide es cada tarea, una por una.
-model MontajeResurtido {
-  id            String                 @id @default(cuid())
-  estado        EstadoMontajeResurtido @default(EN_CURSO)
-  nombreArchivo String                 @map("nombre_archivo") @db.VarChar(255)
-
-  /// A quien le toca ejecutarlo. Se reasigna cambiando este campo.
-  operarioId String @map("operario_id")
-  operario   User   @relation("ResurtidosAsignados", fields: [operarioId], references: [id])
-
-  creadoPorId String @map("creado_por_id")
-  creadoPor   User   @relation("ResurtidosMontados", fields: [creadoPorId], references: [id])
-
-  fecha        DateTime  @db.Date
-  /// Desde aqui corre el tiempo transcurrido que ve quien lo monto.
-  montadoAt    DateTime  @default(now()) @map("montado_at")
-  completadoAt DateTime? @map("completado_at")
-  deletedAt    DateTime? @map("deleted_at")
-
-  tareas TareaResurtido[]
-
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
-
-  @@index([operarioId, estado, deletedAt])
-  @@index([fecha])
-  @@map("montajes_resurtido")
-}
-
-/// Una linea del archivo convertida en tarea.
-///
-/// El reloj de la tarea arranca al ESCANEAR LA POSICION de origen —no al abrirla—
-/// para que el tiempo mida caminar hasta el sitio y bajar la mercancia, no el
-/// rato que la tarea estuvo abierta en la pantalla.
-model TareaResurtido {
-  id        String               @id @default(cuid())
-  montajeId String               @map("montaje_id")
-  montaje   MontajeResurtido     @relation(fields: [montajeId], references: [id], onDelete: Cascade)
-  estado    EstadoTareaResurtido @default(PENDIENTE)
-
-  /// Posicion en la ruta: se ordena por la ubicacion de origen para que el
-  /// operario recorra el almacen una sola vez y en linea recta.
-  orden Int
-
-  plu                 String @db.VarChar(100)
-  /// Del maestro, no del archivo: el archivo trae un NOMBRE que puede estar viejo.
-  descripcion         String @db.VarChar(255)
-  /// De donde hay que bajar el producto.
-  altura              String @db.VarChar(120)
-  /// Ubicacion de picking recomendada por el archivo.
-  pickingSugerido     String @map("picking_sugerido") @db.VarChar(120)
-  unidadesSolicitadas Int    @map("unidades_solicitadas")
-
-  /// Se sumo un pendiente a esta tarea: sube al principio de la lista y se pinta
-  /// en rojo, porque un pendiente es alguien esperando en la tienda.
-  prioridad          Boolean            @default(false)
-  /// Unidades que llegaron de pendientes. Aparte de las del archivo para que se
-  /// pueda ver cuanto pidio el resurtido y cuanto se sumo encima.
-  unidadesPendientes Int                @default(0) @map("unidades_pendientes")
-  pendientes         PendienteGourmet[] @relation("PendientesEnResurtido")
-
-  /// Lo que realmente bajo: depende del espacio que haya en el picking, asi que
-  /// puede no coincidir con lo solicitado.
-  unidadesBajadas Int?    @map("unidades_bajadas")
-  pickingFinal    String? @map("picking_final") @db.VarChar(120)
-
-  horaInicio DateTime? @map("hora_inicio")
-  horaFin    DateTime? @map("hora_fin")
-
-  /// Quien la tiene en la mano ahora. Null = el operario del montaje. Cambia al
-  /// pasarla a un ayudante, que es quien la cierra.
-  responsableId String? @map("responsable_id")
-  responsable   User?   @relation("TareasResurtidoResponsable", fields: [responsableId], references: [id])
-  /// Quien se la paso al responsable actual, si fue asi.
-  pasadoPorId   String? @map("pasado_por_id")
-  pasadoPor     User?   @relation("TareasResurtidoPasadas", fields: [pasadoPorId], references: [id])
-  tramos        TramoTareaResurtido[]
-
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
-
-  @@index([montajeId, orden])
-  @@index([montajeId, estado])
-  @@index([plu])
-  @@map("tareas_resurtido")
-}
-
-/// Un pendiente que pide operaciones gourmet y que almacenamiento resuelve.
-///
-/// Quien lo solicita no lo ejecuta y quien lo asigna tampoco: el reloj corre
-/// solo mientras el operario lo esta bajando. El tiempo transcurrido desde la
-/// solicitud es otra cosa —lo que lleva esperando— y se calcula sobre solicitadoAt.
-model PendienteGourmet {
-  id     String                 @id @default(cuid())
-  estado EstadoPendienteGourmet @default(SOLICITADO)
-
-  plu                 String  @db.VarChar(100)
-  descripcion         String  @db.VarChar(255)
-  unidadesSolicitadas Int     @map("unidades_solicitadas")
-  observacion         String?
-
-  solicitadoPorId String   @map("solicitado_por_id")
-  solicitadoPor   User     @relation("PendientesSolicitados", fields: [solicitadoPorId], references: [id])
-  solicitadoAt    DateTime @default(now()) @map("solicitado_at")
-
-  asignadoPorId String?   @map("asignado_por_id")
-  asignadoPor   User?     @relation("PendientesAsignados", fields: [asignadoPorId], references: [id])
-  operarioId    String?   @map("operario_id")
-  operario      User?     @relation("PendientesRecibidos", fields: [operarioId], references: [id])
-  asignadoAt    DateTime? @map("asignado_at")
-
-  /// Devuelto al solicitante: el operario vio que el PLU no le corresponde
-  /// -tipicamente porque es de muebles y no de gourmet- y lo regresa en vez de
-  /// bajarlo. No es un fallo suyo, asi que no cuenta como tarea hecha ni fallida.
-  devueltoPorId    String?   @map("devuelto_por_id")
-  devueltoPor      User?     @relation("PendientesDevueltos", fields: [devueltoPorId], references: [id])
-  devueltoAt       DateTime? @map("devuelto_at")
-  motivoDevolucion String?   @map("motivo_devolucion")
-
-  /// Novedad que reporto el operario. El area de muebles no llega aqui: esa se
-  /// DEVUELVE a quien lo pidio, porque no es un problema de almacenamiento.
-  tipoNovedad  String?   @map("tipo_novedad") @db.VarChar(40)
-  novedadAt    DateTime? @map("novedad_at")
-  novedadPorId String?   @map("novedad_por_id")
-  novedadPor   User?     @relation("PendientesConNovedad", fields: [novedadPorId], references: [id])
-
-  /// Si el PLU ya estaba en el resurtido del operario, el pendiente no es una
-  /// tarea aparte: se suma a esa, y se da por ubicado cuando esa se completa.
-  tareaResurtidoId String?         @map("tarea_resurtido_id")
-  tareaResurtido   TareaResurtido? @relation("PendientesEnResurtido", fields: [tareaResurtidoId], references: [id], onDelete: SetNull)
-
-  /// Quien se lo paso a un ayudante, si fue asi.
-  pasadoPorId String? @map("pasado_por_id")
-  pasadoPor   User?   @relation("PendientesPasados", fields: [pasadoPorId], references: [id])
-
-  /// Borrado con justificante: quien lo borro y por que. Obligatorio para uno
-  /// ya ubicado (historia que cuenta en los indicadores del operario).
-  motivoBorrado String? @map("motivo_borrado")
-  borradoPorId  String? @map("borrado_por_id")
-  borradoPor    User?   @relation("PendientesBorrados", fields: [borradoPorId], references: [id])
-
-  /// De donde se saco: se escanea con el PLU y los dos arrancan el reloj.
-  ubicacionInicial String?          @map("ubicacion_inicial") @db.VarChar(120)
-  tramos           TramoPendiente[]
-
-  /// Ejecucion, igual que un movimiento de deposito: el reloj arranca al
-  /// escanear el PLU y se cierra al escribir la ubicacion final.
-  unidadesBajadas Int?      @map("unidades_bajadas")
-  ubicacionFinal  String?   @map("ubicacion_final") @db.VarChar(120)
-  horaInicio      DateTime? @map("hora_inicio")
-  horaFin         DateTime? @map("hora_fin")
-  completadoAt    DateTime? @map("completado_at")
-
-  fecha     DateTime  @db.Date
-  deletedAt DateTime? @map("deleted_at")
-
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
-
-  @@index([estado, deletedAt])
-  @@index([operarioId, estado])
-  @@index([solicitadoPorId])
-  @@index([fecha])
-  @@map("pendientes_gourmet")
-}
-
-/// Justificacion de un tiempo muerto: un rato de 10 minutos o mas sin ningun
-/// PLU en la mano dentro del dia de una persona.
-///
-/// El tiempo muerto no se guarda: se calcula de los tramos de trabajo cada vez
-/// (ver src/lib/indicadores.ts). Lo que se guarda es la explicacion del
-/// supervisor y el rato de reloj que cubre, asi que si el hueco cambia despues
-/// (se borra un PLU) lo nuevo vuelve a pedir explicacion.
-///
-/// No se sobrescriben: justificar otra vez el mismo rato crea otra fila, que
-/// manda sobre la anterior, y la anterior queda como historia.
-model JustificacionTiempoMuerto {
-  id               String    @id @default(cuid())
-  usuarioId        String    @map("usuario_id")
-  usuario          User      @relation("TiemposMuertos", fields: [usuarioId], references: [id])
-  inicio           DateTime
-  fin              DateTime
-  /// Codigo de MOTIVOS_TIEMPO_MUERTO (texto y no enum: la lista la ajusta
-  /// operacion y cambiarla no deberia pedir una migracion).
-  motivo           String    @db.VarChar(40)
-  observacion      String?
-  justificadoPorId String    @map("justificado_por_id")
-  justificadoPor   User      @relation("TiemposMuertosJustificados", fields: [justificadoPorId], references: [id])
-  deletedAt        DateTime? @map("deleted_at")
-  createdAt        DateTime  @default(now()) @map("created_at")
-  updatedAt        DateTime  @updatedAt @map("updated_at")
-
-  @@index([usuarioId, inicio], map: "justificaciones_tiempo_muerto_usuario_inicio_idx")
-  @@index([justificadoPorId], map: "justificaciones_tiempo_muerto_justificado_por_idx")
-  @@map("justificaciones_tiempo_muerto")
-}
-
-/// Un tramo por cada persona que tuvo el pendiente en la mano, igual que
-/// tramos_montacargas: quien lo empezo hasta que se lo paso a un ayudante, y el
-/// ayudante desde ahi hasta ubicarlo. Pasarlo no reinicia el reloj.
-model TramoPendiente {
-  id          String           @id @default(cuid())
-  pendienteId String           @map("pendiente_id")
-  pendiente   PendienteGourmet @relation(fields: [pendienteId], references: [id], onDelete: Cascade)
-  usuarioId   String           @map("usuario_id")
-  usuario     User             @relation("TramosPendiente", fields: [usuarioId], references: [id])
-  orden       Int
-  inicio      DateTime
-  /// Null mientras la persona todavia lo tiene en la mano.
-  fin         DateTime?
-  createdAt   DateTime         @default(now()) @map("created_at")
-
-  @@index([pendienteId, orden], map: "tramos_pendiente_pendiente_orden_idx")
-  @@index([usuarioId, fin], map: "tramos_pendiente_usuario_fin_idx")
-  @@map("tramos_pendiente")
-}
-
-/// Un cuadro de turnos subido en Excel: vale para un rango de fechas.
-///
-/// Sin turno, los indicadores solo saben cuanto tiempo hubo un PLU en la mano;
-/// con el se puede decir cuanto de la jornada fue eso (la efectividad).
-model CuadroTurnos {
-  id            String   @id @default(cuid())
-  nombreArchivo String   @map("nombre_archivo") @db.VarChar(255)
-  desde         DateTime @db.Date
-  hasta         DateTime @db.Date
-
-  subidoPorId String @map("subido_por_id")
-  subidoPor   User   @relation("CuadrosTurnoSubidos", fields: [subidoPorId], references: [id])
-
-  deletedAt DateTime? @map("deleted_at")
-  createdAt DateTime  @default(now()) @map("created_at")
-  updatedAt DateTime  @updatedAt @map("updated_at")
-
-  turnos TurnoOperario[]
-
-  @@index([desde, hasta], map: "cuadros_turno_desde_hasta_idx")
-  @@map("cuadros_turno")
-}
-
-/// El turno de una persona un dia de la semana. Un descanso no deja fila.
-model TurnoOperario {
-  id        String       @id @default(cuid())
-  cuadroId  String       @map("cuadro_id")
-  cuadro    CuadroTurnos @relation(fields: [cuadroId], references: [id], onDelete: Cascade)
-  usuarioId String       @map("usuario_id")
-  usuario   User         @relation("TurnosOperario", fields: [usuarioId], references: [id])
-
-  /// 0 = domingo … 6 = sabado.
-  diaSemana Int @map("dia_semana")
-  /// Minutos desde la medianoche. Si el fin es menor o igual que el inicio, el
-  /// turno cruza la medianoche (20:30 a 6:00).
-  inicioMin Int @map("inicio_min")
-  finMin    Int @map("fin_min")
-
-  createdAt DateTime @default(now()) @map("created_at")
-
-  @@unique([cuadroId, usuarioId, diaSemana], map: "turnos_operario_cuadro_usuario_dia_key")
-  @@index([usuarioId, diaSemana], map: "turnos_operario_usuario_dia_idx")
-  @@map("turnos_operario")
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Picking e Inspeccion de Muebles
-//
-// Dos modulos, un mismo registro de trabajo: el PLU. El operario lo pickea y el
-// inspector lo revisa, asi que ambos relojes viven en LineaMuebles en vez de en
-// dos tablas que habria que mantener en sync.
-// ─────────────────────────────────────────────────────────────────────────────
-
-enum TipoEquipoMuebles {
-  ORDER_PICKER
-  GENIE
-}
-
-/// Equipo de altura del area de muebles.
-///
-/// Sin capacidad: el area decidio no medir cuanto cabe en el Order Picker ni en
-/// el Genie. Lo que se mide son los m3 que acumula cada orden, que no necesitan
-/// un maximo contra el que compararse. El equipo sigue aqui porque importa saber
-/// con cual se trabajo — es la razon por la que a veces hay que reasignar un PLU.
-model EquipoMuebles {
-  id     String            @id @default(cuid())
-  codigo String            @unique @db.VarChar(40)
-  tipo   TipoEquipoMuebles
-  activo Boolean           @default(true)
-
-  asignaciones  AsignacionEquipoMuebles[]
-  ordenes       OrdenMuebles[]
-  participantes ParticipanteOrdenMuebles[]
-
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
-
-  @@index([activo])
-  @@map("equipos_muebles")
-}
-
-/// Un equipo por operario por dia, asignado por ADMIN. Sin asignacion del dia el
-/// operario no puede abrir una orden: sin equipo no hay contra que medir la
-/// capacidad, que es la mitad del valor del modulo.
-model AsignacionEquipoMuebles {
-  id        String        @id @default(cuid())
-  equipoId  String        @map("equipo_id")
-  equipo    EquipoMuebles @relation(fields: [equipoId], references: [id])
-  usuarioId String        @map("usuario_id")
-  usuario   User          @relation("EquiposMueblesAsignados", fields: [usuarioId], references: [id])
-  fecha     DateTime      @db.Date
-
-  asignadoPorId String @map("asignado_por_id")
-  asignadoPor   User   @relation("EquiposMueblesAsignadosPor", fields: [asignadoPorId], references: [id])
-
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
-
-  @@unique([usuarioId, fecha])
-  @@index([fecha])
-  @@map("asignaciones_equipo_muebles")
-}
-
-enum EstadoOrdenMuebles {
-  EN_PICKING // El operario esta agregando PLUs; reloj de la orden corriendo
-  EN_INSPECCION // Paso a inspeccion; reloj de picking cerrado, el de inspeccion abierto
-  INSPECCIONADA // Todos los PLUs listos
-}
-
-/// Orden de NetSuite (TSDM/OVDM) trabajada por el area de muebles.
-///
-/// Lleva dos relojes encadenados: el de picking (crear la orden -> pasarla a
-/// inspeccion) y el de inspeccion (ese mismo instante -> ultimo PLU listo). El
-/// segundo arranca exactamente donde para el primero, en la misma transaccion,
-/// para que no quede un hueco de tiempo sin dueno.
-model OrdenMuebles {
-  id        String             @id @default(cuid())
-  codigo    String             @unique @db.VarChar(40)
-  /// Derivado del prefijo con derivarTipoOrden(); se persiste para no volver a
-  /// parsearlo en cada consulta.
-  tipoOrden String             @map("tipo_orden") @db.VarChar(10)
-  estado    EstadoOrdenMuebles @default(EN_PICKING)
-  fecha     DateTime           @db.Date
-
-  horaInicio         DateTime  @map("hora_inicio")
-  horaPasoInspeccion DateTime? @map("hora_paso_inspeccion")
-  horaFinInspeccion  DateTime? @map("hora_fin_inspeccion")
-
-  operarioId  String         @map("operario_id")
-  operario    User           @relation("OrdenesMueblesOperario", fields: [operarioId], references: [id])
-  /// Equipo que el operario tenia asignado al crear la orden. Se sella aqui: si
-  /// manana le cambian de equipo, la carga que llevo esta orden no debe moverse.
-  equipoId    String?        @map("equipo_id")
-  equipo      EquipoMuebles? @relation(fields: [equipoId], references: [id])
-  /// Inspector del catalogo que se asigno la orden. Null = disponible para tomar.
-  inspectorId String?        @map("inspector_id")
-  inspector   Inspector?     @relation("OrdenesInspeccionadas", fields: [inspectorId], references: [id])
-
-  actualizadoPorId String?   @map("actualizado_por_id")
-  actualizadoPor   User?     @relation("OrdenesMueblesActualizadas", fields: [actualizadoPorId], references: [id])
-  motivoCorreccion String?   @map("motivo_correccion")
-  deletedAt        DateTime? @map("deleted_at")
-
-  lineas        LineaMuebles[]
-  pendientes    PendienteMuebles[]
-  participantes ParticipanteOrdenMuebles[]
-
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
-
-  @@index([estado, fecha])
-  @@index([operarioId, estado, deletedAt])
-  @@index([inspectorId, estado])
-  @@map("ordenes_muebles")
-}
-
-enum EstadoLineaMuebles {
-  EN_PICKING // Reloj de picking corriendo: se escaneo el PLU
-  PICKEADA // Rotulo escaneado; esperando inspeccion
-  EN_INSPECCION // Reloj de inspeccion corriendo
-  EN_EBANISTERIA // Inspeccion pausada; reloj de ebanisteria corriendo
-  LISTO // Inspeccionado y aprobado
-}
-
-/// Un PLU dentro de una orden. Es la unidad de trabajo de los dos modulos.
-///
-/// Peso, volumen y partes se COPIAN del maestro al escanear el PLU y se sellan
-/// aqui: si manana se corrige una medida del maestro, una capacidad ya calculada
-/// no debe cambiar en silencio (mismo criterio que volumen_m3 en
-/// medidas_caja_master).
-model LineaMuebles {
-  id      String       @id @default(cuid())
-  ordenId String       @map("orden_id")
-  orden   OrdenMuebles @relation(fields: [ordenId], references: [id], onDelete: Cascade)
-  plu     String       @db.VarChar(100)
-
-  descripcion       String?  @db.VarChar(255)
-  partes            Int?
-  pesoUnitarioKg    Decimal? @map("peso_unitario_kg") @db.Decimal(10, 3)
-  volumenUnitarioM3 Decimal? @map("volumen_unitario_m3") @db.Decimal(10, 6)
-
-  unidades   Int     @default(0)
-  /// Texto libre: se guarda tal cual lo lee la pistola. Validar el formato aqui
-  /// solo serviria para bloquear al operario frente a la estanteria.
-  ubicacion  String? @db.VarChar(120)
-  /// QR del rotulo, del que sale el numero de caja (p.ej. "M123134").
-  numeroCaja String? @map("numero_caja") @db.VarChar(60)
-
-  /// unidades * unitario, sellado al cerrar la linea. Es la cifra con la que se
-  /// suman los m3 y los kg de la orden.
-  volumenTotalM3 Decimal? @map("volumen_total_m3") @db.Decimal(12, 6)
-  pesoTotalKg    Decimal? @map("peso_total_kg") @db.Decimal(12, 3)
-
-  /// Quien pickeo ESTE PLU. La orden puede tener dos operarios (un PLU que el
-  /// Genie no puede bajar se reasigna al del Order Picker), y cargarle todo el
-  /// tiempo a quien abrio la orden seria mentir — mismo criterio que los tramos
-  /// de montacargas.
-  operarioId String @map("operario_id")
-  operario   User   @relation("LineasMueblesOperario", fields: [operarioId], references: [id])
-
-  estado     EstadoLineaMuebles @default(EN_PICKING)
-  /// Escaneo del PLU.
-  horaInicio DateTime           @map("hora_inicio")
-  /// Escaneo del QR del rotulo.
-  horaFin    DateTime?          @map("hora_fin")
-
-  // ── Inspeccion ──
-  /// Inspector que trabajo este PLU. Puede ser distinto del de la orden: las PCs
-  /// se comparten y una orden puede terminarla otra persona.
-  inspectorId    String?    @map("inspector_id")
-  inspector      Inspector? @relation("LineasInspeccionadas", fields: [inspectorId], references: [id])
-  inspHoraInicio DateTime?  @map("insp_hora_inicio")
-  inspHoraFin    DateTime?  @map("insp_hora_fin")
-
-  /// Ventana de ebanisteria. Corre en paralelo al reloj de inspeccion del PLU y
-  /// se descuenta de el: el mueble no esta siendo inspeccionado mientras esta
-  /// en el taller.
-  ebanisteriaInicio        DateTime?  @map("ebanisteria_inicio")
-  ebanisteriaFin           DateTime?  @map("ebanisteria_fin")
-  motivoEbanisteria        String?    @map("motivo_ebanisteria")
-  enviadoEbanisteriaPorId  String?    @map("enviado_ebanisteria_por_id")
-  enviadoEbanisteriaPor    Inspector? @relation("EnviosEbanisteria", fields: [enviadoEbanisteriaPorId], references: [id])
-  recibidoEbanisteriaPorId String?    @map("recibido_ebanisteria_por_id")
-  recibidoEbanisteriaPor   Inspector? @relation("RecepcionesEbanisteria", fields: [recibidoEbanisteriaPorId], references: [id])
-
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
-
-  @@unique([ordenId, plu])
-  @@index([ordenId, estado])
-  @@index([estado])
-  @@index([plu])
-  @@map("lineas_muebles")
-}
-
-/// Catalogo de inspectores. NO son usuarios: el area tiene 2 PCs para ~5
-/// personas, asi que comparten un solo login y la trazabilidad del tiempo la da
-/// esta tabla. Si algun dia hace falta impedir que uno fiche por otro, el paso
-/// siguiente es un PIN aqui, sin tocar el resto del modelo.
-model Inspector {
-  id     String  @id @default(cuid())
-  nombre String  @db.VarChar(120)
-  activo Boolean @default(true)
-
-  ordenes              OrdenMuebles[]     @relation("OrdenesInspeccionadas")
-  lineas               LineaMuebles[]     @relation("LineasInspeccionadas")
-  enviosEbanisteria    LineaMuebles[]     @relation("EnviosEbanisteria")
-  recepcionEbanisteria LineaMuebles[]     @relation("RecepcionesEbanisteria")
-  pendientesCreados    PendienteMuebles[] @relation("PendientesMueblesCreados")
-
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
-
-  @@index([activo])
-  @@map("inspectores_muebles")
-}
-
-enum EstadoPendienteMuebles {
-  PENDIENTE // Reportado, sin dueno
-  ASIGNADO // Un supervisor se lo dio a un operario
-  RESUELTO
-}
-
-/// PLU faltante que un operario de picking debe ir a recolectar. Nace sin dueno
-/// (lo reporta el inspector) y un supervisor lo asigna: no bloquea la inspeccion
-/// de la orden, que sigue su curso con los demas PLUs.
-model PendienteMuebles {
-  id      String        @id @default(cuid())
-  ordenId String?       @map("orden_id")
-  orden   OrdenMuebles? @relation(fields: [ordenId], references: [id])
-  plu     String        @db.VarChar(100)
-
-  unidades    Int
-  observacion String?
-  estado      EstadoPendienteMuebles @default(PENDIENTE)
-
-  creadoPorInspectorId String?    @map("creado_por_inspector_id")
-  creadoPorInspector   Inspector? @relation("PendientesMueblesCreados", fields: [creadoPorInspectorId], references: [id])
-
-  asignadoAId   String? @map("asignado_a_id")
-  asignadoA     User?   @relation("PendientesMueblesAsignados", fields: [asignadoAId], references: [id])
-  asignadoPorId String? @map("asignado_por_id")
-  asignadoPor   User?   @relation("PendientesMueblesAsignadosPor", fields: [asignadoPorId], references: [id])
-  resueltoPorId String? @map("resuelto_por_id")
-  resueltoPor   User?   @relation("PendientesMueblesResueltos", fields: [resueltoPorId], references: [id])
-
-  /// Cuando se reporto, separado de cuando el operario lo empezo: lo que lleva
-  /// esperando es un numero distinto de lo que costo resolverlo.
-  solicitadoAt DateTime  @default(now()) @map("solicitado_at")
-  horaInicio   DateTime? @map("hora_inicio")
-  horaFin      DateTime? @map("hora_fin")
-
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
-
-  @@index([estado, solicitadoAt])
-  @@index([asignadoAId, estado])
-  @@map("pendientes_muebles")
-}
-
-/// Tipos de mueble que reconoce el clasificador. Los nombro el area: son los que
-/// se pickean de forma lo bastante distinta como para que mezclar sus tiempos en
-/// un unico promedio no diga nada util.
-enum TipoMercanciaMueble {
-  SOFA
-  SILLA
-  MESA
-  LUMINARIA
-  RECLINABLE
-  POLTRONA
-  OTRO
-}
-
-enum OrigenTipoMueble {
-  DERIVADO // Lo dedujo la app de la descripcion del maestro
-  MANUAL // Lo corrigio una persona: la heuristica ya no vuelve a tocarlo
-}
-
-/// Tipo de mercancia por PLU.
-///
-/// Tabla aparte de productos_maestro a proposito: el importador del maestro hace
-/// un INSERT ... ON CONFLICT que ya vacio datos de 19k productos una vez, y una
-/// correccion manual no puede perderse en la siguiente recarga. Mismo criterio
-/// que medidas_producto.
-///
-/// El tipo NO se sella en la linea, a diferencia del peso y el volumen: una
-/// medida sellada protege una cifra ya calculada, pero una etiqueta corregida
-/// debe arreglar el informe hacia atras. Si se sellara, una mala clasificacion
-/// envenenaria el historico para siempre.
-model TipoMueblePlu {
-  id     String              @id @default(cuid())
-  plu    String              @unique @db.VarChar(100)
-  tipo   TipoMercanciaMueble
-  origen OrigenTipoMueble    @default(DERIVADO)
-
-  actualizadoPorId String? @map("actualizado_por_id")
-  actualizadoPor   User?   @relation("TiposMuebleActualizados", fields: [actualizadoPorId], references: [id])
-
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
-
-  @@index([tipo])
-  @@index([origen])
-  @@map("tipos_mueble_plu")
-}
-
-/// Quien trabaja una orden de picking.
-///
-/// Existe como tabla y no como un segundo campo en la orden porque el que se une
-/// tambien "ocupa" su turno: ordenAbierta() mira aqui, asi que unirse cuenta como
-/// tener orden abierta y esa persona no puede abrir otra propia.
-///
-/// El caso real: por el tipo de mercancia el Genie no puede bajar un PLU y se le
-/// reasigna al del Order Picker, que entra a la MISMA orden en vez de crear una
-/// paralela que despues nadie sabria juntar.
-model ParticipanteOrdenMuebles {
-  id        String       @id @default(cuid())
-  ordenId   String       @map("orden_id")
-  orden     OrdenMuebles @relation(fields: [ordenId], references: [id], onDelete: Cascade)
-  usuarioId String       @map("usuario_id")
-  usuario   User         @relation("ParticipacionesMuebles", fields: [usuarioId], references: [id])
-
-  /// Equipo que llevaba al entrar. Se sella: si manana le cambian de equipo, lo
-  /// que hizo en esta orden no debe moverse.
-  equipoId String?        @map("equipo_id")
-  equipo   EquipoMuebles? @relation(fields: [equipoId], references: [id])
-
-  /// El que abrio la orden. El resto entraron por reasignacion.
-  esCreador Boolean  @default(false) @map("es_creador")
-  seUnioAt  DateTime @default(now()) @map("se_unio_at")
-
-  @@unique([ordenId, usuarioId])
-  @@index([usuarioId])
-  @@map("participantes_orden_muebles")
-}
-
-/// Un tramo por cada persona que tuvo la tarea de resurtido en la mano. Igual
-/// que TramoPendiente: se cierra al pasarla y se abre el del ayudante en el mismo
-/// instante, asi el reloj no se corta y cada uno queda con su parte del tiempo.
-model TramoTareaResurtido {
-  id        String         @id @default(cuid())
-  tareaId   String         @map("tarea_id")
-  tarea     TareaResurtido @relation(fields: [tareaId], references: [id], onDelete: Cascade)
-  usuarioId String         @map("usuario_id")
-  usuario   User           @relation("TramosTareaResurtido", fields: [usuarioId], references: [id])
-  orden     Int
-  inicio    DateTime
-  /// Null mientras la persona todavia la tiene en la mano.
-  fin       DateTime?
-  createdAt DateTime       @default(now()) @map("created_at")
-
-  @@index([tareaId, orden], map: "tramos_tarea_resurtido_tarea_orden_idx")
-  @@index([usuarioId, fin], map: "tramos_tarea_resurtido_usuario_fin_idx")
-  @@map("tramos_tarea_resurtido")
 }

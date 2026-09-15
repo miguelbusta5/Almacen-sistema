@@ -1,21 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireRole } from "@/lib/authz";
 import { prisma } from "@/lib/prisma";
-import {
-  columnasPresentes,
-  mapExcelProductoRow,
-  MAESTRO_SHEET_NAMES,
-  ProductoMaestroDTO,
-} from "@/lib/productosMaestro";
-import { mapMedicionRows, tieneColumnasDeMedicion } from "@/lib/medidasCajaMaster";
-import { guardarMediciones } from "@/lib/medidasCajaMasterDb";
-import { guardarProductosMaestro } from "@/lib/productosMaestroDb";
-import { readWorkbook, worksheetObjects, worksheetRows } from "@/lib/excel";
+import { mapExcelProductoRow } from "@/lib/productosMaestro";
+import { readWorkbook, worksheetObjects } from "@/lib/excel";
 import { validateImportFile, validateRowLimit } from "@/lib/fileSecurity";
 
-const MAX_MAESTRO_ROWS = 25000;
-
-export const maxDuration = 60;
+const SHEET_NAME = "ResultadosMaestrodeproductosPV";
 
 export async function POST(req: NextRequest) {
   const actor = await requireRole(["ADMIN"]);
@@ -31,73 +21,51 @@ export async function POST(req: NextRequest) {
 
   const buffer = Buffer.from(await file.arrayBuffer());
   const workbook = await readWorkbook(buffer);
-  // Se prueban los nombres conocidos en orden antes de caer al primer worksheet:
-  // la planilla de montacargas trae varias hojas y la primera es la de un
-  // operario, no el maestro.
-  const sheet =
-    MAESTRO_SHEET_NAMES.map((name) => workbook.getWorksheet(name)).find(Boolean) ??
-    workbook.worksheets[0];
+  const sheet = workbook.getWorksheet(SHEET_NAME) ?? workbook.worksheets[0];
   if (!sheet) return NextResponse.json({ error: "No se encontro hoja en el archivo" }, { status: 400 });
 
   const rows = worksheetObjects(sheet);
-  const rowLimitError = validateRowLimit(rows.length, MAX_MAESTRO_ROWS);
+  const rowLimitError = validateRowLimit(rows.length);
   if (rowLimitError) return NextResponse.json({ error: rowLimitError }, { status: 400 });
-
-  // Las mediciones se leen aparte porque el archivo de medicion trae una
-  // cabecera de DOS niveles y worksheetObjects() solo mira la primera fila: ahi
-  // "PARTE 1 PESO CAJA MASTER (KG)" nombra a la vez el peso bruto y el neto.
-  const filasCrudas = worksheetRows(sheet);
-
-  // Solo se actualizan las columnas que el archivo TRAE. Sin esto, importar un
-  // maestro parcial (la planilla de montacargas no lleva Fabricante, PRECIO ni
-  // MARCAS) vaciaba esos campos en los ~19k productos existentes — y `precio`
-  // alimenta el costo unitario de Novedades.
-  const columnas = columnasPresentes(rows);
-  if (!columnas.length) {
-    return NextResponse.json(
-      { error: "El archivo no trae ninguna columna reconocida del maestro" },
-      { status: 400 }
-    );
-  }
-
+  let importados = 0;
+  let actualizados = 0;
   let ignorados = 0;
-  // Mapa por PLU: si el archivo trae PLUs repetidos, gana la ultima fila (mismo
-  // comportamiento que el upsert secuencial anterior).
-  const productosPorPlu = new Map<string, ProductoMaestroDTO>();
-  rows.forEach((row) => {
+  const errores: string[] = [];
+
+  for (const [index, row] of rows.entries()) {
     const producto = mapExcelProductoRow(row);
     if (!producto) {
       ignorados += 1;
-      return;
+      continue;
     }
-    productosPorPlu.set(producto.plu, producto);
-  });
-  const productos = [...productosPorPlu.values()];
 
-  const { importados, actualizados, errores } = await guardarProductosMaestro(
-    prisma,
-    productos,
-    columnas
-  );
-
-  // Mediciones de caja master: solo si el archivo TRAE esa cabecera. Misma
-  // filosofia que columnasPresentes — un maestro de precios no debe vaciar unas
-  // medidas que no menciona.
-  let mediciones = { productos: 0, cajas: 0 };
-  if (tieneColumnasDeMedicion(filasCrudas)) {
-    const medidos = mapMedicionRows(filasCrudas);
-    if (medidos.length) {
-      const res = await guardarMediciones(prisma, medidos);
-      mediciones = { productos: res.productos, cajas: res.cajas };
-      errores.push(...res.errores);
+    try {
+      const existing = await prisma.productoMaestro.findUnique({
+        where: { plu: producto.plu },
+        select: { id: true },
+      });
+      await prisma.productoMaestro.upsert({
+        where: { plu: producto.plu },
+        create: {
+          plu: producto.plu,
+          descripcion: producto.descripcion,
+          fabricante: producto.fabricante,
+          precio: producto.precio,
+          marca: producto.marca,
+        },
+        update: {
+          descripcion: producto.descripcion,
+          fabricante: producto.fabricante,
+          precio: producto.precio,
+          marca: producto.marca,
+        },
+      });
+      if (existing) actualizados += 1;
+      else importados += 1;
+    } catch (error: any) {
+      errores.push(`Fila ${index + 2}: ${error?.message ?? "error al importar"}`);
     }
   }
-
-  const resumen =
-    `${importados} importados, ${actualizados} actualizados, ${ignorados} ignorados` +
-    (mediciones.productos
-      ? `, ${mediciones.productos} con medidas (${mediciones.cajas} cajas)`
-      : "");
 
   await prisma.activityLog.create({
     data: {
@@ -105,12 +73,12 @@ export async function POST(req: NextRequest) {
       action: "IMPORT",
       module: "productos-maestro",
       recordId: file.name,
-      details: resumen,
+      details: `${importados} importados, ${actualizados} actualizados, ${ignorados} ignorados`,
     },
   }).catch(() => {});
 
   return NextResponse.json({
     success: true,
-    data: { importados, actualizados, ignorados, errores, columnas, mediciones },
+    data: { importados, actualizados, ignorados, errores },
   });
 }
