@@ -80,7 +80,7 @@ const cargando = ref(false)
 
 // Tiempo laborado y tiempos muertos salen de la misma consulta y de los mismos
 // filtros: cambiar de pestaña no recarga nada.
-const pestana = ref<'laborado' | 'muertos' | 'turnos' | 'pausas'>('laborado')
+const pestana = ref<'laborado' | 'muertos' | 'turnos' | 'pausas' | 'ubicaciones'>('laborado')
 // El registro de pausas es solo para el administrador y quien reparte el
 // trabajo (permiso por persona: Felipe Ossa y Eduardo Zurita). El servidor lo
 // vuelve a comprobar.
@@ -398,7 +398,7 @@ const formatoHoras = (v: number) => fmtHorasDecimal(v)
 
       <!-- En noche, que quede claro que la fecha es la noche que empieza y que va
            completa hasta la mañana siguiente. -->
-      <p v-if="jornada === 'noche' && pestana !== 'pausas'" class="aviso-noche">
+      <p v-if="jornada === 'noche' && pestana !== 'pausas' && pestana !== 'ubicaciones'" class="aviso-noche">
         <Moon :size="14" />
         <span>
           <b v-if="tituloNoche">{{ tituloNoche }}.</b>
@@ -434,6 +434,13 @@ const formatoHoras = (v: number) => fmtHorasDecimal(v)
         >
           Pausas
         </button>
+        <button
+          v-if="puedeVerPausas"
+          class="tab" role="tab" :class="{ on: pestana === 'ubicaciones' }"
+          :aria-selected="pestana === 'ubicaciones'" @click="pestana = 'ubicaciones'"
+        >
+          Ubicaciones
+        </button>
       </nav>
 
       <!-- El cuadro de turnos no depende del periodo ni de los datos: se ve
@@ -444,6 +451,13 @@ const formatoHoras = (v: number) => fmtHorasDecimal(v)
       <IndicadoresPausas
         v-else-if="pestana === 'pausas' && puedeVerPausas"
         :desde="desde" :hasta="hasta" :rol="rol" :usuario-id="usuarioId"
+      />
+
+      <!-- Pendientes donde no se uso la altura o el picking sugeridos por el teorico. -->
+      <IndicadoresUbicaciones
+        v-else-if="pestana === 'ubicaciones' && puedeVerPausas"
+        :desde="desde" :hasta="hasta" :usuario-id="usuarioId"
+        :equipo-ids="rol ? equipo.filter((u) => u.rol === rol).map((u) => u.id) : []"
       />
 
       <ListSkeleton v-else-if="!datos" />

@@ -380,6 +380,9 @@ const cerrados = computed(() => items.value.filter((p) => p.estado === 'COMPLETA
               Va dentro del resurtido de {{ p.operarioNombre }}
             </p>
 
+            <!-- Altura y picking sugeridos al asignar (sin cruce con el resurtido). -->
+            <PendientesSugerencia v-if="p.sugerencia && !p.tareaResurtidoId" :sugerencia="p.sugerencia" compacto />
+
             <!-- Devuelto por el operario: no es un fallo suyo, el PLU no le
                  correspondia. Quien lo pidio decide si lo corrige o lo deja. -->
             <p v-if="p.estado === 'DEVUELTO'" class="vin-dev">

@@ -1597,6 +1597,10 @@ model PendienteGourmet {
   borradoPorId  String? @map("borrado_por_id")
   borradoPor    User?   @relation("PendientesBorrados", fields: [borradoPorId], references: [id])
 
+  /// Sugerencia de altura(s) y picking segun el teorico vigente, calculada al
+  /// asignar (ver src/lib/sugerenciaPendiente.ts). Null si cruzo con el resurtido.
+  sugerencia       Json?
+
   /// De donde se saco: se escanea con el PLU y los dos arrancan el reloj.
   ubicacionInicial String?          @map("ubicacion_inicial") @db.VarChar(120)
   tramos           TramoPendiente[]

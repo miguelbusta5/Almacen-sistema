@@ -7,6 +7,7 @@ import {
 } from './montacargasCalc'
 import { segundosRecepcion } from './recepcionCalc'
 import { progresoMontaje, segundosEntre } from './resurtidoCalc'
+import { desvioSugerencia } from './sugerenciaPendienteCalc'
 import {
   duracionInspeccionNetaMinutos,
   duracionMinutos as duracionMinutosMuebles,
@@ -556,6 +557,10 @@ export function mapPendiente(p: any) {
     tareaResurtidoId: p.tareaResurtidoId ?? null,
     pasadoPorId: p.pasadoPorId ?? null,
     pasadoPorNombre: p.pasadoPor?.name ?? null,
+    // De que altura sacarlo y a que picking llevarlo (teorico vigente al asignar),
+    // y si se uso otra ubicacion.
+    sugerencia: p.sugerencia ?? null,
+    desvio: desvioSugerencia(p.sugerencia ?? null, p.ubicacionInicial ?? null, p.ubicacionFinal ?? null),
     // Lo que lleva ESPERANDO desde que se pidio. Es otra cosa que el tiempo de
     // trabajo: mide al sistema, no al operario.
     esperaSegundos: segundosEntre(p.solicitadoAt, p.completadoAt, new Date()) ?? 0,

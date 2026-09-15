@@ -283,6 +283,8 @@ cargar()
               {{ p.unidadesSolicitadas }} und · pedido por {{ p.solicitadoPorNombre ?? 'gourmet' }}
               <template v-if="p.pasadoPorNombre && p.horaInicio"> · te lo pasó {{ p.pasadoPorNombre }}</template>
             </span>
+            <!-- De donde sacarlo y a donde llevarlo, segun el teorico vigente. -->
+            <PendientesSugerencia v-if="p.sugerencia" :sugerencia="p.sugerencia" compacto class="t-sug" />
           </span>
           <span class="t-der">
             <span v-if="p.horaInicio" class="t-crono tnum">{{ p.pausaId ? 'En pausa · ' : '' }}{{ cronometroTarea(p, ahora) }}</span>
@@ -308,6 +310,8 @@ cargar()
         </header>
 
         <div class="m-body">
+          <!-- Sugerencia: se puede usar otra ubicacion, pero queda registrado. -->
+          <PendientesSugerencia v-if="abierto.sugerencia" :sugerencia="abierto.sugerencia" />
           <PausaOperativa secundaria />
           <!-- Paso 1: el PLU arranca el reloj, igual que en movimientos -->
           <section class="paso" :class="{ hecho: enCurso }">
@@ -326,7 +330,7 @@ cargar()
                 <span class="lbl">Ubicación inicial</span>
                 <input
                   ref="ubicIniInput" v-model="ubicacionInicial" class="field mono grande"
-                  placeholder="De dónde lo sacas" autocomplete="off" autocapitalize="characters"
+                  :placeholder="abierto.sugerencia?.alturas[0]?.ubicacion ?? 'De dónde lo sacas'" autocomplete="off" autocapitalize="characters"
                   enterkeyhint="go" :disabled="guardando === abierto.id"
                 >
               </label>
@@ -458,6 +462,7 @@ cargar()
 .p-recibido { display: flex; align-items: center; gap: 6px; margin: 6px 0 0; font-size: 12.5px; font-weight: 600; color: var(--info); }
 @media (max-width: 560px) { .p-form.p-form-2 { grid-template-columns: 1fr; } }
 .fila { display: flex; align-items: stretch; gap: 8px; }
+.t-sug { margin-top: 5px; }
 .fila .tarea { flex: 1; min-width: 0; }
 .pasar-lista { flex-shrink: 0; height: auto; align-self: stretch; white-space: nowrap; }
 @media (max-width: 560px) {

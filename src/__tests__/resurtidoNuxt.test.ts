@@ -619,3 +619,33 @@ describe("montaje — reasignar lo que falta", () => {
     expect(ui).toContain("<th>Responsable</th>");
   });
 });
+
+// Al asignar un pendiente que no cruza con el resurtido, el teorico vigente
+// dice de que altura sacarlo y a que picking llevarlo.
+describe("pendientes — altura y picking sugeridos por el teorico", () => {
+  const asignar = leer("nuxt-app/server/api/pendientes/[id]/asignar.post.ts");
+  const util = leer("nuxt-app/server/utils/sugerenciaPendiente.ts");
+
+  it("se calcula solo sin cruce con el resurtido y se recalcula al reasignar", () => {
+    expect(asignar).toContain("const sugerencia = tarea");
+    expect(asignar).toContain("calcularSugerenciaPendiente(tx, { id, plu: p.plu, unidadesSolicitadas: p.unidadesSolicitadas }, now)");
+    expect(asignar).toContain("Prisma.DbNull");
+    expect(asignar).toContain("textoSugerencia(sugerencia)");
+  });
+
+  it("usa el teorico de las ultimas 12 horas, la capacidad registrada y descuenta lo comprometido", () => {
+    expect(util).toContain("teoricoVigente(teorico.creadoAt, ahora)");
+    expect(util).toContain("tx.pickingCapacidad.findUnique");
+    expect(util).toContain("estado: { in: ['ASIGNADO', 'EN_CURSO'] }");
+    expect(util).toContain("tx.tareaResurtido.findMany");
+  });
+
+  it("el operario y el modulo Pendientes lo ven; supervision tiene el registro de desvios", () => {
+    expect(leer("nuxt-app/app/components/resurtido/PendientesTareas.vue")).toContain("<PendientesSugerencia");
+    expect(leer("nuxt-app/app/components/pendientes/Module.vue")).toContain("<PendientesSugerencia");
+    const api = leer("nuxt-app/server/api/indicadores/ubicaciones-pendientes.get.ts");
+    expect(api).toContain("actor.role === 'ADMIN' || (await puedeMontarResurtido(actor.id))");
+    expect(api).toContain("desvioSugerencia(s, p.ubicacionInicial, p.ubicacionFinal)");
+    expect(leer("nuxt-app/app/components/indicadores/Module.vue")).toContain("<IndicadoresUbicaciones");
+  });
+});

@@ -1,6 +1,7 @@
 import { defineOperacionAlmacenHandler } from '../../../utils/operacionAlmacen'
 import { defineEventHandler, getRouterParam, readBody, createError } from 'h3'
 import { z } from 'zod'
+import { Prisma } from '@prisma/client'
 import { prisma } from '../../../utils/prisma'
 import { requireAuth } from '../../../utils/auth'
 import { mapPendiente } from '../../../utils/mapRow'
@@ -8,6 +9,7 @@ import {
   assertVePendientes, avisar, cerrarTramoPendiente, PENDIENTE_INCLUDE, puedeMontarResurtido,
 } from '../../../utils/resurtido'
 import { puedeAsignarPendiente } from '../../../utils/resurtidoCalc'
+import { calcularSugerenciaPendiente, textoSugerencia } from '../../../utils/sugerenciaPendiente'
 
 const schema = z.object({ operarioId: z.string().min(1) })
 
@@ -23,7 +25,9 @@ const schema = z.object({ operarioId: z.string().min(1) })
  * - Si el operario YA TIENE ese PLU en su resurtido, el pendiente no es una
  *   tarea aparte: se suman sus unidades a esa tarea, que sube al principio y se
  *   pinta en rojo. Se dara por ubicado cuando esa tarea se complete.
- * - Si no, queda como tarea propia y su pantalla la pone la primera de la lista.
+ * - Si no, queda como tarea propia y su pantalla la pone la primera de la lista,
+ *   con la altura de donde sacarlo y el picking donde ubicarlo segun el teorico
+ *   vigente (se recalcula cada vez que se asigna o reasigna).
  */
 export default defineOperacionAlmacenHandler(async (event) => {
   const actor = await requireAuth(event)
@@ -93,6 +97,10 @@ export default defineOperacionAlmacenHandler(async (event) => {
     // Reasignar uno que ya estaba en marcha: el tramo de quien lo tenia se
     // cierra y el nuevo operario empieza desde cero, escaneando.
     await cerrarTramoPendiente(tx, id, now)
+    // Sin cruce con el resurtido: de que altura sacarlo y a que picking llevarlo.
+    const sugerencia = tarea
+      ? null
+      : await calcularSugerenciaPendiente(tx, { id, plu: p.plu, unidadesSolicitadas: p.unidadesSolicitadas }, now)
     await tx.pendienteGourmet.update({
       where: { id },
       data: {
@@ -106,6 +114,7 @@ export default defineOperacionAlmacenHandler(async (event) => {
         tipoNovedad: null,
         novedadAt: null,
         novedadPorId: null,
+        sugerencia: sugerencia ? (JSON.parse(JSON.stringify(sugerencia)) as Prisma.InputJsonValue) : Prisma.DbNull,
         ...(tarea && { tareaResurtidoId: tarea.id }),
       },
     })
@@ -135,7 +144,7 @@ export default defineOperacionAlmacenHandler(async (event) => {
       await avisar(tx, [operario.id], {
         tipo: 'PENDIENTE_ASIGNADO',
         titulo: 'Tienes un pendiente prioritario',
-        descripcion: `${p.unidadesSolicitadas} de ${p.descripcion}`,
+        descripcion: [`${p.unidadesSolicitadas} de ${p.descripcion}`, textoSugerencia(sugerencia)].filter(Boolean).join('. '),
         enlace: '/dashboard/resurtido',
       })
     }

@@ -458,6 +458,20 @@ export interface MontajeResurtidoDTO {
   tareas: TareaResurtidoDTO[]
 }
 
+/** De que altura sacar un pendiente y a que picking llevarlo (teorico vigente al asignar). */
+export interface SugerenciaPendienteDTO {
+  teoricoId: string | null
+  teoricoCreadoAt: string | null
+  calculadoAt: string
+  picking: string | null
+  pickingOrigen: 'CAPACIDAD' | 'TEORICO' | null
+  unidadesPorCaja: number | null
+  unidadesSugeridas: number
+  alturas: { ubicacion: string; cajas: number | null; unidades: number }[]
+  faltante: number
+  avisos: string[]
+}
+
 export interface PendienteDTO {
   pausaId?: string | null
   pausaInicio?: string | null
@@ -493,6 +507,10 @@ export interface PendienteDTO {
   /** Quien se lo paso: a quien se le devuelve si no cabe nada. */
   pasadoPorId: string | null
   pasadoPorNombre: string | null
+  /** Altura(s) y picking sugeridos al asignar. Null si cruzo con el resurtido o es anterior. */
+  sugerencia?: SugerenciaPendienteDTO | null
+  /** Si el operario uso otra ubicacion que la sugerida (null: nada que comparar). */
+  desvio?: { altura: boolean | null; picking: boolean | null }
   /** Lo que lleva esperando desde que se pidio, este o no en curso. */
   esperaSegundos: number
   /** Lo que tardo el operario en bajarlo. Null si aun no lo empezo. */
