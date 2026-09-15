@@ -1,6 +1,6 @@
 # PROJECT SOURCE OF TRUTH — Control Logístico CEDI (Grupo Ambiente)
 
-> **2026-09-15 — Capacidad picking:** implementación local de informes con pausas, capacidades acumuladas y resurtido por teórico, junto con búsqueda y grupos plegables del menú. Detalle y activación: `docs/cerebro/capacidad-picking.md`. Requiere aplicar el esquema y habilitar permisos individuales antes del despliegue; aún pendiente de conexión a la base.
+> **2026-09-15 — Capacidad picking:** informes con pausas, capacidades acumuladas y resurtido por teórico, junto con búsqueda y grupos plegables del menú. **En producción**: tablas creadas con `prisma/migrate-capacidad-picking.sql` y permiso individual para Bryan Torres, Felipe Ossa y Eduardo Zurita. Detalle: `docs/cerebro/capacidad-picking.md`.
 
 > **Este es el documento maestro del proyecto.** Tiene **prioridad sobre cualquier otra
 > documentación**: `HANDOFF.md`, `README.md`, instrucciones antiguas, decisiones previas o
@@ -999,3 +999,17 @@ npx prisma db push     # aplicar schema a Railway (NO migrations)
 node prisma/seed.js    # crear admin inicial (lee ADMIN_* del entorno)
 git push origin master # deploy a producción (CI: tsc + tests + vercel)
 ```
+
+
+## 21. Pausas operativas (2026-09-14, en producción)
+
+Control Montacargas, Resurtido y Recepción Contenedores incorporan pausas personales
+por alimentación y cambio de baterías. Una pausa detiene los registros propios en
+curso, conserva datos/estado y permite reanudar sin contabilizar el tiempo pausado.
+La implementación vive en Nuxt; incluye historial persistente, guardas de servidor,
+tramos de tiempo y controles compartidos con `canSeeModule`.
+
+Activa en producción desde 2026-09-14 (script aditivo `prisma/migrate-pausas-operativas.sql`).
+El registro de uso (veces y tiempo por persona) está en Indicadores › Pausas, visible solo
+para ADMIN y quien tiene el permiso de montar resurtido. Alcance, concurrencia y
+limitaciones: `docs/cerebro/pausas-operativas.md`.
