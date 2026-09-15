@@ -15,6 +15,7 @@ const MODULE_HREF: Record<ModuleKey, string> = {
   "recepcion-contenedores": "/dashboard/recepcion-contenedores",
   "montaje-resurtido": "/dashboard/montaje-resurtido",
   pendientes: "/dashboard/pendientes",
+  "tareas-generales": "/dashboard/tareas-generales",
   indicadores: "/dashboard/indicadores",
   exportaciones: "/dashboard/exportaciones",
   "exportaciones-mexico": "/dashboard/exportaciones-mexico",

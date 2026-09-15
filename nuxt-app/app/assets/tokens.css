@@ -55,6 +55,7 @@
   --viz-3: #1BAF7A;   /* resurtido */
   --viz-4: #EDA100;   /* pendientes */
   --viz-5: #E87BA4;   /* recepción de contenedores */
+  --viz-6: #8A63D2;   /* tareas generales */
   /* Serie única (und/hora, tiempos): un tono que no es de ninguna tarea, para
      que una barra de productividad no se lea como "recepción". */
   --viz-medida: #4A3AA7;

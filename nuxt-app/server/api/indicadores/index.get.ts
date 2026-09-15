@@ -94,7 +94,7 @@ export default defineEventHandler(async (event) => {
     return new Date(Math.min(ahora.getTime(), tope))
   }
 
-  const [tramos, cerrados, tareas, pendientes, recepciones, cuadros, justificadas] = await Promise.all([
+  const [tramos, cerrados, tareas, pendientes, recepciones, generales, cuadros, justificadas] = await Promise.all([
     // 1. Control Montacargas: recepcion, movimientos y resurtido. Un tramo por
     // cada persona que tuvo el PLU en la mano.
     prisma.tramoMontacargas.findMany({
@@ -165,7 +165,16 @@ export default defineEventHandler(async (event) => {
         descargadores: { select: { usuarioId: true } },
       },
     }),
-    // 5. Los cuadros de turno que cubren el periodo, para la jornada.
+    // 5. Tareas generales: lo que mando supervision fuera de los modulos. Un
+    // tramo por persona, porque a cada una se le cierra por separado.
+    prisma.asignadoTareaGeneral.findMany({
+      where: {
+        horaInicio: { lt: finConsulta },
+        OR: [{ horaFin: { gt: ini } }, { horaFin: null }],
+      },
+      select: { usuarioId: true, horaInicio: true, horaFin: true, tareaId: true },
+    }),
+    // 6. Los cuadros de turno que cubren el periodo, para la jornada.
     prisma.cuadroTurnos.findMany({
       where: {
         deletedAt: null,
@@ -277,6 +286,14 @@ export default defineEventHandler(async (event) => {
         else enCurso.push({ ...base, ...tramo })
       }
     }
+  }
+
+  // Una tarea general no es un PLU: su tiempo cuenta, pero no entra en el
+  // promedio por PLU ni en und/hora (registro null).
+  for (const a of generales) {
+    const base = { usuarioId: a.usuarioId, inicio: a.horaInicio, tipo: 'tarea' as const, registro: null }
+    if (a.horaFin) tiempos.push({ ...base, fin: a.horaFin })
+    else enCurso.push({ ...base, fin: finAbierto(a.horaInicio, a.usuarioId) })
   }
 
   const justificaciones: JustificacionTiempoMuerto[] = justificadas.flatMap((j) =>

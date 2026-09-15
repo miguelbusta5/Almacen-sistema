@@ -20,6 +20,7 @@ export const TIPOS_TAREA = [
   "resurtido",
   "pendiente",
   "contenedor",
+  "tarea",
 ] as const;
 export type TipoTarea = (typeof TIPOS_TAREA)[number];
 
@@ -29,6 +30,7 @@ export const TIPO_TAREA_LABEL: Record<TipoTarea, string> = {
   resurtido: "Resurtido",
   pendiente: "Pendientes",
   contenedor: "Recepción de contenedores",
+  tarea: "Tareas generales",
 };
 
 export interface Intervalo {
@@ -49,7 +51,7 @@ export interface Reparto {
 }
 
 function vacio(): Record<TipoTarea, number> {
-  return { recepcion: 0, movimiento: 0, resurtido: 0, pendiente: 0, contenedor: 0 };
+  return { recepcion: 0, movimiento: 0, resurtido: 0, pendiente: 0, contenedor: 0, tarea: 0 };
 }
 
 /**

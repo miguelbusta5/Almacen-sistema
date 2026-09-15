@@ -123,7 +123,8 @@ describe("buildControlLogisticoResumen", () => {
 
     const resumen = await buildControlLogisticoResumen(actor("ETIQUETADO"));
 
-    expect(resumen.visibleModules).toEqual(["exportaciones", "exportaciones-mexico", "exportaciones-eeuu"]);
+    expect(resumen.visibleModules).toEqual(["exportaciones", "exportaciones-mexico", "exportaciones-eeuu", "tareas-generales"]);
+    // Tareas generales no tiene tarjeta en el Centro de Control: solo se ve el modulo.
     expect(resumen.modules.map((m) => m.key)).toEqual(["exportaciones", "exportaciones-mexico", "exportaciones-eeuu"]);
     expect(resumen.actions.map((a) => a.href)).toEqual(["/dashboard/exportaciones"]);
     expect(mocks.exportacionCount).toHaveBeenCalledWith({

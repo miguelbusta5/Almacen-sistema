@@ -18,7 +18,8 @@ describe("canSeeModule — Sprint 8", () => {
 
   describe("ETIQUETADO", () => {
     it("solo ve exportaciones (Ecuador/México/EE.UU)", () => {
-      expect(getVisibleModules("ETIQUETADO")).toEqual(["exportaciones", "exportaciones-mexico", "exportaciones-eeuu"]);
+      // Tareas generales las ve todo el CEDI: cada quien solo las suyas.
+      expect(getVisibleModules("ETIQUETADO")).toEqual(["exportaciones", "exportaciones-mexico", "exportaciones-eeuu", "tareas-generales"]);
     });
     it("NO ve otros modulos operativos", () => {
       expect(canSeeModule("ETIQUETADO", "transporte")).toBe(false);

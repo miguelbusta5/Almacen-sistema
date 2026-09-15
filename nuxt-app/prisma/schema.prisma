@@ -163,6 +163,10 @@ model User {
   tramosPendiente       TramoPendiente[]     @relation("TramosPendiente")
   tareasResurtidoResponsable TareaResurtido[]      @relation("TareasResurtidoResponsable")
   tareasResurtidoPasadas     TareaResurtido[]      @relation("TareasResurtidoPasadas")
+  tareasGeneralesCreadas     TareaGeneral[]         @relation("TareasGeneralesCreadas")
+  tareasGeneralesFinalizadas TareaGeneral[]         @relation("TareasGeneralesFinalizadas")
+  tareasGeneralesAsignadas   AsignadoTareaGeneral[] @relation("TareasGeneralesAsignadas")
+  tareasGeneralesCerradas    AsignadoTareaGeneral[] @relation("TareasGeneralesCerradas")
   tramosTareaResurtido       TramoTareaResurtido[] @relation("TramosTareaResurtido")
   cuadrosTurnoSubidos   CuadroTurnos[]       @relation("CuadrosTurnoSubidos")
   turnos                TurnoOperario[]      @relation("TurnosOperario")
@@ -2204,4 +2208,52 @@ model PickingTeorico {
   validaciones Json @default("{}")
   montajeId String? @unique
   @@map("picking_teoricos")
+}
+
+/// Tarea suelta que manda un supervisor (Felipe Ossa, Eduardo) y que no cabe en
+/// ningun modulo: organizar una zona, apoyar una descarga, un aseo.
+///
+/// Se describe en texto libre porque justamente es lo que no tiene formulario.
+/// El reloj de cada persona arranca cuando se la asignan y para cuando el
+/// supervisor la da por terminada, a una sola o a todas.
+model TareaGeneral {
+  id          String   @id @default(cuid())
+  descripcion String
+  estado      String   @default("EN_CURSO") @db.VarChar(20)
+  fecha       DateTime @db.Date
+  horaInicio  DateTime @default(now()) @map("hora_inicio")
+  horaFin     DateTime? @map("hora_fin")
+
+  creadoPorId     String  @map("creado_por_id")
+  creadoPor       User    @relation("TareasGeneralesCreadas", fields: [creadoPorId], references: [id])
+  finalizadaPorId String? @map("finalizada_por_id")
+  finalizadaPor   User?   @relation("TareasGeneralesFinalizadas", fields: [finalizadaPorId], references: [id])
+
+  asignados AsignadoTareaGeneral[]
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([estado, horaInicio], map: "tareas_generales_estado_inicio_idx")
+  @@index([fecha], map: "tareas_generales_fecha_idx")
+  @@map("tareas_generales")
+}
+
+/// Un tramo por persona: cada una tiene su inicio y su fin, porque al supervisor
+/// se le puede terminar la tarea a uno y dejar a los demas trabajando.
+model AsignadoTareaGeneral {
+  id         String       @id @default(cuid())
+  tareaId    String       @map("tarea_id")
+  tarea      TareaGeneral @relation(fields: [tareaId], references: [id], onDelete: Cascade)
+  usuarioId  String       @map("usuario_id")
+  usuario    User         @relation("TareasGeneralesAsignadas", fields: [usuarioId], references: [id])
+  horaInicio DateTime     @default(now()) @map("hora_inicio")
+  horaFin    DateTime?    @map("hora_fin")
+
+  finalizadoPorId String? @map("finalizado_por_id")
+  finalizadoPor   User?   @relation("TareasGeneralesCerradas", fields: [finalizadoPorId], references: [id])
+
+  @@unique([tareaId, usuarioId])
+  @@index([usuarioId, horaFin], map: "asignados_tarea_general_usuario_fin_idx")
+  @@map("asignados_tarea_general")
 }

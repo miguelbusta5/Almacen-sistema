@@ -58,6 +58,7 @@ const NAV_GROUPS: NavGroup[] = [
       { icon: ClipboardList, label: 'Montaje Resurtido', href: '/dashboard/montaje-resurtido', key: 'montaje-resurtido', moduleKey: 'montaje-resurtido' },
       { icon: PackageSearch, label: 'Capacidad picking', href: '/dashboard/capacidad-picking', key: 'capacidad-picking', moduleKey: 'capacidad-picking' },
       { icon: PackageSearch, label: 'Pendientes', href: '/dashboard/pendientes', key: 'pendientes', moduleKey: 'pendientes' },
+      { icon: ClipboardList, label: 'Tareas generales', href: '/dashboard/tareas-generales', key: 'tareas-generales', moduleKey: 'tareas-generales' },
       { icon: Forklift, label: 'Control Montacargas', href: '/dashboard/control-montacargas', key: 'control-montacargas', moduleKey: 'control-montacargas' },
       { icon: PackageOpen, label: 'Resurtido', href: '/dashboard/resurtido', key: 'resurtido', moduleKey: 'resurtido' },
       { icon: ScanLine, label: 'Cargue Gourmet', href: '/dashboard/cargue-gourmet', key: 'cargue-gourmet', moduleKey: 'cargue-gourmet' },

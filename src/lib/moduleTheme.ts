@@ -46,6 +46,7 @@ function mod(
 
 export const MODULE_THEME: Record<ModuleThemeKey, ModuleTheme> = {
   'capacidad-picking': mod('capacidad-picking', 'Capacidad picking', 'Capacidad', 'Capacidad real y resurtido de picking'),
+  'tareas-generales': mod('tareas-generales', 'Tareas generales', 'Tareas', 'Tareas sueltas que manda supervision, con su tiempo'),
   home: mod("home", PRODUCT.displayName, PRODUCT.shortName, PRODUCT.tagline),
   transporte: mod("transporte", "Guardados Transporte", "Transporte", "Custodia, guardados y pendientes operativos"),
   tienda: mod("tienda", "Facturas Contado", "Facturas", "Facturas contado desde tienda hacia el flujo CEDI"),

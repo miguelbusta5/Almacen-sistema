@@ -39,7 +39,7 @@ describe("indicadores — el cliente usa los mismos tipos y colores", () => {
   it("cada tipo tiene su ranura fija de la paleta validada", () => {
     TIPOS_TAREA.forEach((t, i) => expect(cliente).toContain(`${t}: 'var(--viz-${i + 1})'`));
     const tokens = leer("nuxt-app/app/assets/tokens.css");
-    for (const hex of ["#2A78D6", "#EB6834", "#1BAF7A", "#EDA100", "#E87BA4"]) expect(tokens).toContain(hex);
+    for (const hex of ["#2A78D6", "#EB6834", "#1BAF7A", "#EDA100", "#E87BA4", "#8A63D2"]) expect(tokens).toContain(hex);
     expect(tokens).toContain("--viz-medida:");
   });
 });

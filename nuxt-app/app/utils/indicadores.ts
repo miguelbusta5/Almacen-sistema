@@ -14,6 +14,7 @@ export const TIPOS_TAREA = [
   'resurtido',
   'pendiente',
   'contenedor',
+  'tarea',
 ] as const
 export type TipoTarea = (typeof TIPOS_TAREA)[number]
 
@@ -23,6 +24,7 @@ export const TIPO_TAREA_LABEL: Record<TipoTarea, string> = {
   resurtido: 'Resurtido',
   pendiente: 'Pendientes',
   contenedor: 'Recepción de contenedores',
+  tarea: 'Tareas generales',
 }
 
 /** El color sigue a la tarea en todos los graficos (tokens.css, --viz-*). */
@@ -32,6 +34,7 @@ export const TIPO_TAREA_COLOR: Record<TipoTarea, string> = {
   resurtido: 'var(--viz-3)',
   pendiente: 'var(--viz-4)',
   contenedor: 'var(--viz-5)',
+  tarea: 'var(--viz-6)',
 }
 
 export const ROL_MEDIDO_LABEL: Record<string, string> = {
