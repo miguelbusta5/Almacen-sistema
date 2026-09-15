@@ -9,7 +9,7 @@
 // cada PLU conserva su tiempo en su modulo, pero a la persona se le cuenta el
 // rato que tuvo trabajo en la mano, una sola vez.
 import { computed, onMounted, ref, watch } from 'vue'
-import { BarChart3, RefreshCw } from '@lucide/vue'
+import { BarChart3, Moon, RefreshCw, Sun } from '@lucide/vue'
 import { ensureSession, useSessionState } from '~/composables/useSession'
 import { useToast } from '~/composables/useToast'
 import { canSeeModule } from '~/utils/modulePermissions'
@@ -17,9 +17,9 @@ import { fmtTiempo } from '~/utils/montacargas'
 import { hoyBogota } from '~/utils/exportaciones'
 import {
   API_INDICADORES, ejeDeTiempo, fmtDiaCorto, fmtHorasDecimal, fmtNumero, fmtPorcentaje,
-  MIN_SEGUNDOS_PRODUCTIVIDAD, PRESETS_RANGO, rangoDePreset, ROL_MEDIDO_LABEL,
+  etiquetaNoche, MIN_SEGUNDOS_PRODUCTIVIDAD, PRESETS_NOCHE, PRESETS_RANGO, rangoDePreset, ROL_MEDIDO_LABEL,
   TIPO_TAREA_COLOR, TIPO_TAREA_LABEL, TIPOS_TAREA,
-  type BarraH, type ColumnaTabla, type IndicadoresPeriodo, type PresetRango,
+  type BarraH, type ColumnaTabla, type IndicadoresPeriodo, type Jornada, type PresetRango,
   type RespuestaIndicadores, type TiemposMuertosPeriodo,
 } from '~/utils/indicadores'
 
@@ -29,9 +29,31 @@ const puedeVer = computed(() => canSeeModule(me.value?.role, 'indicadores'))
 
 // ── Filtros: una sola fila, arriba, y mandan sobre todo lo de abajo ────
 const hoy = hoyBogota()
-const preset = ref<PresetRango>('7d')
-const desde = ref(rangoDePreset('7d', hoy).desde)
-const hasta = ref(hoy)
+
+// Turno día y turno noche se miran por separado: el de noche empieza un día y
+// termina al siguiente, y mezclarlo con el de día por fechas de calendario lo
+// dejaba partido a medianoche. En noche, cada fecha es la noche que empieza ese
+// día y se ve entera. Se recuerda en este equipo.
+const CLAVE_JORNADA = 'indicadores.jornada'
+function jornadaGuardada(): Jornada {
+  try { return localStorage.getItem(CLAVE_JORNADA) === 'noche' ? 'noche' : 'dia' } catch { return 'dia' }
+}
+const jornada = ref<Jornada>(jornadaGuardada())
+const presetInicial: Exclude<PresetRango, 'custom'> = jornada.value === 'noche' ? 'anoche' : '7d'
+const preset = ref<PresetRango>(presetInicial)
+const desde = ref(rangoDePreset(presetInicial, hoy).desde)
+const hasta = ref(rangoDePreset(presetInicial, hoy).hasta)
+const presets = computed(() => (jornada.value === 'noche' ? PRESETS_NOCHE : PRESETS_RANGO))
+const tituloNoche = computed(() =>
+  jornada.value === 'noche' && desde.value === hasta.value ? etiquetaNoche(desde.value) : null)
+
+function elegirJornada(j: Jornada) {
+  if (jornada.value === j) return
+  jornada.value = j
+  try { localStorage.setItem(CLAVE_JORNADA, j) } catch { /* sin almacenamiento, no se recuerda */ }
+  usuarioId.value = ''
+  elegirPreset(j === 'noche' ? 'anoche' : '7d')
+}
 const rol = ref('')
 const usuarioId = ref('')
 
@@ -44,7 +66,8 @@ function elegirPreset(p: Exclude<PresetRango, 'custom'>) {
 function fechaEditada() { preset.value = 'custom' }
 
 const equipo = ref<RespuestaIndicadores['equipo']>([])
-const equipoDelRol = computed(() => equipo.value.filter((u) => !rol.value || u.rol === rol.value))
+const equipoDelRol = computed(() => equipo.value.filter((u) =>
+  (!rol.value || u.rol === rol.value) && (u.jornada ?? 'dia') === jornada.value))
 // Cambiar de rol con una persona del otro rol elegida la dejaria sin datos.
 watch(rol, () => {
   if (usuarioId.value && !equipoDelRol.value.some((u) => u.id === usuarioId.value)) usuarioId.value = ''
@@ -70,6 +93,7 @@ async function cargar() {
         hasta: hasta.value,
         rol: rol.value || undefined,
         usuarioId: usuarioId.value || undefined,
+        turno: jornada.value,
       },
     })
     datos.value = res.data
@@ -86,7 +110,7 @@ onMounted(ensureSession)
 // La sesion puede llegar despues del montaje (o ya estar cargada): se carga en
 // cuanto se sabe que la persona puede verlo.
 watch(puedeVer, (v) => { if (v && !datos.value) cargar() }, { immediate: true })
-watch([desde, hasta, rol, usuarioId], () => { if (puedeVer.value) cargar() })
+watch([desde, hasta, rol, usuarioId, jornada], () => { if (puedeVer.value) cargar() })
 
 const vacio = computed(() => {
   const r = datos.value?.resumen
@@ -320,9 +344,23 @@ const formatoHoras = (v: number) => fmtHorasDecimal(v)
     <template v-else>
       <!-- Filtros: una fila, arriba de todo, y lo de abajo siempre cuadra con ellos. -->
       <div class="filtros card">
+        <div class="presets jornada" role="group" aria-label="Turno">
+          <button
+            type="button" class="preset" :class="{ on: jornada === 'dia' }" :aria-pressed="jornada === 'dia'"
+            @click="elegirJornada('dia')"
+          >
+            <Sun :size="13" /> Turno día
+          </button>
+          <button
+            type="button" class="preset" :class="{ on: jornada === 'noche' }" :aria-pressed="jornada === 'noche'"
+            @click="elegirJornada('noche')"
+          >
+            <Moon :size="13" /> Turno noche
+          </button>
+        </div>
         <div class="presets" role="group" aria-label="Periodo">
           <button
-            v-for="p in PRESETS_RANGO" :key="p.key" type="button" class="preset"
+            v-for="p in presets" :key="p.key" type="button" class="preset"
             :class="{ on: preset === p.key }" :aria-pressed="preset === p.key"
             @click="elegirPreset(p.key)"
           >
@@ -330,11 +368,11 @@ const formatoHoras = (v: number) => fmtHorasDecimal(v)
           </button>
         </div>
         <label class="f">
-          <span class="lbl">Desde</span>
+          <span class="lbl">{{ jornada === 'noche' ? 'Noche desde' : 'Desde' }}</span>
           <input v-model="desde" class="field" type="date" :max="hasta" @input="fechaEditada">
         </label>
         <label class="f">
-          <span class="lbl">Hasta</span>
+          <span class="lbl">{{ jornada === 'noche' ? 'Noche hasta' : 'Hasta' }}</span>
           <input v-model="hasta" class="field" type="date" :min="desde" @input="fechaEditada">
         </label>
         <label class="f">
@@ -353,6 +391,16 @@ const formatoHoras = (v: number) => fmtHorasDecimal(v)
           </select>
         </label>
       </div>
+
+      <!-- En noche, que quede claro que la fecha es la noche que empieza y que va
+           completa hasta la mañana siguiente. -->
+      <p v-if="jornada === 'noche'" class="aviso-noche">
+        <Moon :size="14" />
+        <span>
+          <b v-if="tituloNoche">{{ tituloNoche }}.</b>
+          Solo el personal de noche. Cada noche va completa, desde que empieza hasta su cierre a la mañana siguiente.
+        </span>
+      </p>
 
       <nav class="tabs" role="tablist">
         <button
@@ -538,6 +586,15 @@ const formatoHoras = (v: number) => fmtHorasDecimal(v)
   font-size: 12.5px; font-weight: 600; color: var(--muted); cursor: pointer; white-space: nowrap;
 }
 .preset:hover { color: var(--ink-2); }
+.presets.jornada .preset { display: inline-flex; align-items: center; gap: 6px; }
+.aviso-noche {
+  display: flex; align-items: center; gap: 9px; margin: 0 0 14px; padding: 10px 14px;
+  border-radius: var(--r-sm); font-size: 12.5px; color: var(--ink-2);
+  background: color-mix(in srgb, var(--info) 9%, transparent);
+  border: 1px solid color-mix(in srgb, var(--info) 30%, transparent);
+}
+.aviso-noche > svg { color: var(--info); flex-shrink: 0; }
+.aviso-noche b { color: var(--ink); }
 .preset.on { background: var(--surface); color: var(--ink); box-shadow: var(--shadow-xs); }
 .preset:focus-visible { outline: none; box-shadow: var(--ring); }
 

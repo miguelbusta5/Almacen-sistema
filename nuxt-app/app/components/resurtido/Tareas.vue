@@ -48,9 +48,11 @@ async function cargar() {
   loading.value = true
   try {
     const res = await $fetch<{
-      data: MontajeResurtidoDTO[]; prioritarios: PendienteDTO[]; recibidas?: TareaResurtidoDTO[]
+      data: MontajeResurtidoDTO[]; reasignados?: MontajeResurtidoDTO[]
+      prioritarios: PendienteDTO[]; recibidas?: TareaResurtidoDTO[]
     }>('/api/resurtido-tareas')
-    montajes.value = res.data
+    // Los reasignados por supervision se trabajan igual que los propios.
+    montajes.value = [...res.data, ...(res.reasignados ?? [])]
     prioritarios.value = res.prioritarios ?? []
     recibidas.value = res.recibidas ?? []
     // Si la tarea abierta ya no existe (otro la completó o se borró el montaje),
@@ -69,10 +71,29 @@ defineExpose({ cargar })
 
 const todas = computed(() => montajes.value.flatMap((m) => m.tareas))
 
-// La tiene esta persona: nadie se la ha pasado a otro, o se la pasaron a ella.
-// Las que paso a un ayudante siguen en su lista, pero ya no las puede abrir.
+// De quien es el montaje de cada tarea: sin responsable, la tarea es del dueño.
+const duenoDeTarea = computed(() => {
+  const m = new Map<string, string>()
+  for (const mont of montajes.value) for (const t of mont.tareas) m.set(t.id, mont.operarioId)
+  return m
+})
+// Resurtidos de otro operario que supervision le reasigno a este.
+const reasignados = computed(() => montajes.value
+  .filter((m) => m.operarioId !== me.value?.id)
+  .map((m) => ({
+    id: m.id,
+    de: m.operarioNombre ?? 'otro operario',
+    archivo: m.nombreArchivo,
+    faltan: m.tareas.filter((t) => t.estado !== 'COMPLETADA' && t.responsableId === me.value?.id).length,
+  })))
+
+// La tiene esta persona: se la pasaron o reasignaron, o es de su montaje y nadie
+// la ha pasado. Las que paso a un ayudante siguen en su lista, pero ya no las
+// puede abrir.
 function esMia(t: TareaResurtidoDTO): boolean {
-  return !t.responsableId || t.responsableId === me.value?.id
+  if (t.responsableId) return t.responsableId === me.value?.id
+  const dueno = duenoDeTarea.value.get(t.id)
+  return !dueno || dueno === me.value?.id
 }
 // Lo prioritario primero; lo demas por la ruta, para no romper el recorrido.
 const pendientes = computed(() =>
@@ -254,6 +275,15 @@ cargar()
 
     <template v-else>
       <!-- Avance del día -->
+      <!-- Reasignado por supervision: no se alcanzo a terminar en el turno de otro. -->
+      <p v-for="r in reasignados" :key="r.id" class="reasignado">
+        <UserPlus :size="14" />
+        <span>
+          <b>Reasignado de {{ r.de }}</b> · {{ r.faltan }} tarea{{ r.faltan === 1 ? '' : 's' }} por terminar
+          <span class="reasignado-archivo">{{ r.archivo }}</span>
+        </span>
+      </p>
+
       <div v-if="todas.length" class="resumen card">
         <div class="barra" role="progressbar" :aria-valuenow="progresoTotal.pct">
           <span class="barra-fill" :style="{ width: `${progresoTotal.pct}%` }" />
@@ -490,6 +520,15 @@ cargar()
 .tareas { display: flex; flex-direction: column; gap: 14px; }
 
 .resumen { padding: 13px 16px; }
+.reasignado {
+  display: flex; align-items: center; gap: 9px; margin: 0; padding: 10px 14px; border-radius: var(--r-sm);
+  font-size: 12.5px; color: var(--ink-2);
+  background: color-mix(in srgb, var(--info) 9%, transparent);
+  border: 1px solid color-mix(in srgb, var(--info) 30%, transparent);
+}
+.reasignado > svg { color: var(--info); flex-shrink: 0; }
+.reasignado b { color: var(--ink); }
+.reasignado-archivo { margin-left: 6px; color: var(--faint); }
 .barra { height: 9px; border-radius: 99px; background: var(--surface-3); overflow: hidden; }
 .barra-fill { display: block; height: 100%; border-radius: 99px; background: var(--brand-grad); transition: width .4s cubic-bezier(.16,1,.3,1); }
 .resumen-txt { margin: 9px 0 0; font-size: 12.5px; color: var(--muted); }

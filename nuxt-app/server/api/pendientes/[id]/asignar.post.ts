@@ -76,7 +76,13 @@ export default defineOperacionAlmacenHandler(async (event) => {
     where: {
       plu: p.plu,
       estado: { not: 'COMPLETADA' },
-      montaje: { operarioId: operario.id, estado: 'EN_CURSO', deletedAt: null },
+      montaje: { estado: 'EN_CURSO', deletedAt: null },
+      // La tarea es de quien la tiene en la mano: la suya sin pasar, o una que
+      // le pasaron o reasignaron.
+      OR: [
+        { responsableId: null, montaje: { operarioId: operario.id } },
+        { responsableId: operario.id },
+      ],
     },
     orderBy: { orden: 'asc' },
     select: { id: true, unidadesPendientes: true },

@@ -271,6 +271,61 @@ export function periodoDePersona(
   return { inicio: new Date(Math.min(a, b)), fin: new Date(b), turnos }
 }
 
+// ── Turno día / turno noche ──────────────────────────────────────────
+export type Jornada = "dia" | "noche"
+export const JORNADAS: readonly Jornada[] = ["dia", "noche"]
+
+export function esJornada(v: unknown): v is Jornada {
+  return v === "dia" || v === "noche"
+}
+
+/** Un turno es de noche cuando termina otro día de Bogotá (cruza la medianoche). */
+export function esTurnoNoche(v: { dia: string; fin: Date }): boolean {
+  return diaBogota(new Date(v.fin.getTime() - 1)) > v.dia
+}
+
+/** Hora de Bogotá (0-23) de un instante. */
+function horaBogota(d: Date): number {
+  return new Date(d.getTime() + DESFASE_BOGOTA_MS).getUTCHours()
+}
+
+/**
+ * Si cada persona es del turno de día o del de noche en el periodo.
+ *
+ * Manda el cuadro de turnos: noche si la mayoría de sus turnos del periodo cruzan
+ * la medianoche. Sin turno en el periodo, se mira a qué hora empezó su trabajo:
+ * noche si la mayoría de sus tramos arrancan entre las 18:00 y las 05:00. Sin
+ * nada que mirar, día.
+ */
+export function clasificarJornadas(entrada: {
+  personas: readonly PersonaMedida[]
+  ventanas: readonly VentanaTurno[]
+  tiempos: readonly { usuarioId: string; inicio: Date }[]
+  desde: string
+  hasta: string
+}): Map<string, Jornada> {
+  const turnos = new Map<string, { noche: number; dia: number }>()
+  for (const v of entrada.ventanas) {
+    if (v.dia < entrada.desde || v.dia > entrada.hasta) continue
+    const c = turnos.get(v.usuarioId) ?? { noche: 0, dia: 0 }
+    if (esTurnoNoche(v)) c.noche += 1
+    else c.dia += 1
+    turnos.set(v.usuarioId, c)
+  }
+  const horas = new Map<string, { noche: number; dia: number }>()
+  for (const t of entrada.tiempos) {
+    const h = horaBogota(t.inicio)
+    const c = horas.get(t.usuarioId) ?? { noche: 0, dia: 0 }
+    if (h >= 18 || h < 5) c.noche += 1
+    else c.dia += 1
+    horas.set(t.usuarioId, c)
+  }
+  return new Map(entrada.personas.map((p) => {
+    const c = turnos.get(p.id) ?? horas.get(p.id)
+    return [p.id, c && c.noche > c.dia ? "noche" : "dia"] as [string, Jornada]
+  }))
+}
+
 /** El día al que se apunta un instante: el de su turno si cae dentro de uno. */
 function diaDeTrabajo(t: number, turnos: readonly VentanaTurno[], desde: string, hasta: string): string {
   const turno = turnos.find((v) => v.inicio.getTime() <= t && t < v.fin.getTime())

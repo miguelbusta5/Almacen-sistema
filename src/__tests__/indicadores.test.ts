@@ -4,6 +4,8 @@ import {
   huecosEnVentana,
   segundosEnVentanas,
   agregarTiemposMuertos,
+  clasificarJornadas,
+  esTurnoNoche,
   detectarTiemposMuertos,
   diaBogota,
   diasDelRango,
@@ -649,5 +651,54 @@ describe("tiempos muertos con el turno delante", () => {
       hasta: "2026-09-10",
     });
     expect(r.resumen.segundos).toBe(0);
+  });
+});
+
+// Los indicadores se miran por separado para el personal de día y el de noche.
+describe("turno día / turno noche", () => {
+  const personas = [
+    { id: "carlos", nombre: "carlos ibarra", rol: "MONTACARGAS" },
+    { id: "seb", nombre: "SEBASTIAN JURADO", rol: "MONTACARGAS" },
+    { id: "ronny", nombre: "RONNY", rol: "MONTACARGAS" },
+  ];
+  const noche = { usuarioId: "carlos", dia: "2026-09-13", inicio: h("20:30:00", "2026-09-13"), fin: h("06:00:00", "2026-09-14") };
+  const dia = { usuarioId: "seb", dia: "2026-09-13", inicio: h("06:00:00", "2026-09-13"), fin: h("15:30:00", "2026-09-13") };
+
+  it("un turno es de noche cuando cruza la medianoche", () => {
+    expect(esTurnoNoche(noche)).toBe(true);
+    expect(esTurnoNoche(dia)).toBe(false);
+    // Termina justo a medianoche: sigue siendo del mismo día.
+    expect(esTurnoNoche({ dia: "2026-09-13", fin: h("00:00:00", "2026-09-14") })).toBe(false);
+  });
+
+  it("manda el cuadro; sin cuadro, la hora a la que empezó a trabajar", () => {
+    const j = clasificarJornadas({
+      personas,
+      ventanas: [noche, dia],
+      tiempos: [
+        // Ronny no está en el cuadro: trabajó de noche.
+        { usuarioId: "ronny", inicio: h("22:10:00", "2026-09-13") },
+        { usuarioId: "ronny", inicio: h("02:00:00", "2026-09-14") },
+        // A Carlos lo decide el cuadro aunque tenga un tramo de día.
+        { usuarioId: "carlos", inicio: h("10:00:00", "2026-09-13") },
+      ],
+      desde: "2026-09-13",
+      hasta: "2026-09-13",
+    });
+    expect(j.get("carlos")).toBe("noche");
+    expect(j.get("seb")).toBe("dia");
+    expect(j.get("ronny")).toBe("noche");
+  });
+
+  it("la noche del 13 consultada como el día 13 trae su madrugada entera", () => {
+    const tiempos = [
+      { usuarioId: "carlos", inicio: h("21:00:00", "2026-09-13"), fin: h("22:00:00", "2026-09-13"), tipo: "movimiento" as const, registro: "a" },
+      { usuarioId: "carlos", inicio: h("04:00:00", "2026-09-14"), fin: h("05:30:00", "2026-09-14"), tipo: "movimiento" as const, registro: "b" },
+    ];
+    const r = agregarIndicadores({
+      personas: [personas[0]], tiempos, unidades: [], ventanas: [noche], desde: "2026-09-13", hasta: "2026-09-13",
+    });
+    expect(r.personas[0].segundos).toBe(2.5 * 3600);
+    expect(r.personas[0].jornadaSegundos).toBe(9.5 * 3600);
   });
 });

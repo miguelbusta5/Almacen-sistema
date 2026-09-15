@@ -579,3 +579,43 @@ describe("devolver el total cuando no cupo nada", () => {
     expect(leer("nuxt-app/server/utils/mapRow.ts")).toContain("pasadoPorId: p.pasadoPorId ?? null");
   });
 });
+
+// Cuando el turno se acaba sin terminar el resurtido, supervision le pasa lo que
+// falta a otro operario.
+describe("montaje — reasignar lo que falta", () => {
+  const re = leer("nuxt-app/server/api/montaje-resurtido/[id]/reasignar.post.ts");
+  const lista = leer("nuxt-app/server/api/resurtido-tareas/index.get.ts");
+  const ui = leer("nuxt-app/app/components/montaje/Module.vue");
+
+  it("solo quien puede montar, dentro del bloqueo de operaciones", () => {
+    expect(re).toContain("defineOperacionAlmacenHandler");
+    expect(re).toContain("await assertPuedeMontar(actor.id)");
+  });
+
+  // Lo hecho es del primero y sigue en sus indicadores.
+  it("no toca las completadas y pasa las en curso con el reloj corriendo", () => {
+    expect(re).toContain("where: { estado: { not: 'COMPLETADA' } }");
+    expect(re).toContain("await cerrarTramoTarea(tx, t.id, now)");
+    expect(re).toContain("await abrirTramoTarea(tx, t.id, nuevo.id, now)");
+    expect(re).not.toContain("horaInicio: null");
+    expect(re).toContain("RESURTIDO_REASIGNADO");
+    expect(re).toContain("activityLog.create");
+  });
+
+  it("el nuevo operario ve el resurtido reasignado entero", () => {
+    expect(lista).toContain("reasignados: reasignados.map(mapMontaje)");
+    expect(lista).toContain("tareas: { some: { responsableId: actor.id, pasadoPorId: null");
+    expect(leer("nuxt-app/app/components/resurtido/Tareas.vue")).toContain("Reasignado de {{ r.de }}");
+  });
+
+  it("un pendiente cruza con la tarea de quien la tiene en la mano", () => {
+    expect(leer("nuxt-app/server/api/pendientes/[id]/asignar.post.ts"))
+      .toContain("{ responsableId: operario.id }");
+  });
+
+  it("supervision tiene el boton y ve quien tiene cada tarea", () => {
+    expect(ui).toContain("Reasignar lo que falta");
+    expect(ui).toContain("`${API_MONTAJE}/${m.id}/reasignar`");
+    expect(ui).toContain("<th>Responsable</th>");
+  });
+});

@@ -5,7 +5,7 @@
 // ve por montaje es el tiempo transcurrido desde que se repartió y cuánto lleva
 // hecho el operario, que es lo que sirve para saber si va a tiempo.
 import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
-import { RefreshCw, Upload, ClipboardList, Trash2, User } from '@lucide/vue'
+import { RefreshCw, Upload, ClipboardList, Trash2, User, UserPlus } from '@lucide/vue'
 import { ensureSession, useSessionState } from '~/composables/useSession'
 import { useToast } from '~/composables/useToast'
 import { useAutoRefresh } from '~/composables/useAutoRefresh'
@@ -110,6 +110,55 @@ async function borrar(m: MontajeResurtidoDTO) {
   }
 }
 
+// ── Reasignar lo que falta ─────────────────────────────────────────
+// Cuando el turno se acaba sin terminar el resurtido: las completadas quedan del
+// primero, lo sin empezar y lo en curso pasa al nuevo (lo en curso con el reloj
+// corriendo, cada uno con su tramo).
+const reasignando = ref<MontajeResurtidoDTO | null>(null)
+const reasignarA = ref('')
+const reasignandoGuardar = ref(false)
+
+function responsable(t: MontajeResurtidoDTO['tareas'][number], m: MontajeResurtidoDTO): string {
+  return t.responsableId ?? m.operarioId
+}
+const conteoReasignar = computed(() => {
+  const m = reasignando.value
+  if (!m) return { pendientes: 0, enCurso: 0, completadas: 0 }
+  const faltan = m.tareas.filter((t) => t.estado !== 'COMPLETADA' && responsable(t, m) !== reasignarA.value)
+  return {
+    pendientes: faltan.filter((t) => !t.horaInicio).length,
+    enCurso: faltan.filter((t) => t.horaInicio).length,
+    completadas: m.tareas.filter((t) => t.estado === 'COMPLETADA').length,
+  }
+})
+const hayEnPausa = computed(() =>
+  reasignando.value?.tareas.some((t) => t.pausaId && t.estado !== 'COMPLETADA') ?? false)
+
+function abrirReasignar(m: MontajeResurtidoDTO) {
+  reasignando.value = m
+  reasignarA.value = ''
+}
+
+async function reasignar() {
+  const m = reasignando.value
+  if (!m || !reasignarA.value) return
+  reasignandoGuardar.value = true
+  try {
+    const res = await $fetch<{ reasignadas: { pendientes: number; enCurso: number } }>(
+      `${API_MONTAJE}/${m.id}/reasignar`, { method: 'POST', body: { operarioId: reasignarA.value } },
+    )
+    const nombre = operarios.value.find((o) => o.id === reasignarA.value)?.nombre ?? 'el operario'
+    const total = res.reasignadas.pendientes + res.reasignadas.enCurso
+    showToast(`${total} tarea${total === 1 ? '' : 's'} reasignada${total === 1 ? '' : 's'} a ${nombre}`)
+    reasignando.value = null
+    await cargar()
+  } catch (e) {
+    showToast(apiErr(e, 'No se pudo reasignar'), true)
+  } finally {
+    reasignandoGuardar.value = false
+  }
+}
+
 // El tiempo que lleva un montaje corriendo: desde que se repartió hasta que se
 // completó, o hasta ahora si sigue abierto.
 function transcurrido(m: MontajeResurtidoDTO): string {
@@ -211,6 +260,12 @@ function transcurrido(m: MontajeResurtidoDTO): string {
           <footer class="vin-acc">
             <button class="btn-link" @click="detalle = m">Ver tareas</button>
             <button
+              v-if="puedeMontar && m.estado !== 'COMPLETADO' && m.progreso.completadas < m.progreso.total"
+              class="btn-link" @click="abrirReasignar(m)"
+            >
+              <UserPlus :size="12" /> Reasignar lo que falta
+            </button>
+            <button
               v-if="puedeMontar" class="btn-link danger" :disabled="borrando === m.id"
               @click="borrar(m)"
             >
@@ -220,6 +275,47 @@ function transcurrido(m: MontajeResurtidoDTO): string {
         </article>
       </div>
     </template>
+
+    <!-- Reasignar lo que falta a otro operario -->
+    <div v-if="reasignando" class="overlay" @click.self="reasignando = null">
+      <section class="card modal modal-sm">
+        <header class="m-head">
+          <div>
+            <h2 class="m-title">Reasignar lo que falta</h2>
+            <p class="m-sub">{{ reasignando.operarioNombre }} · {{ reasignando.nombreArchivo }}</p>
+          </div>
+          <button class="btn btn-sm" @click="reasignando = null">Cerrar</button>
+        </header>
+        <div class="m-body reasig">
+          <label class="f">
+            <span class="lbl">Operario que lo termina</span>
+            <select v-model="reasignarA" class="field" :disabled="reasignandoGuardar">
+              <option value="">Elige un operario</option>
+              <option v-for="o in operarios" :key="o.id" :value="o.id">{{ o.nombre }}</option>
+            </select>
+          </label>
+          <p v-if="reasignarA" class="reasig-resumen">
+            Pasan <b>{{ conteoReasignar.pendientes }}</b> sin empezar y <b>{{ conteoReasignar.enCurso }}</b> en curso
+            (con el reloj corriendo). Las <b>{{ conteoReasignar.completadas }}</b> completadas quedan de
+            {{ reasignando.operarioNombre }}.
+          </p>
+          <p v-if="hayEnPausa" class="reasig-aviso">
+            Hay una tarea en pausa: su responsable debe finalizar la pausa antes de reasignar.
+          </p>
+          <div class="reasig-acc">
+            <button class="btn btn-sm" :disabled="reasignandoGuardar" @click="reasignando = null">Cancelar</button>
+            <button
+              class="btn btn-sm btn-primary"
+              :disabled="!reasignarA || reasignandoGuardar || conteoReasignar.pendientes + conteoReasignar.enCurso === 0"
+              @click="reasignar"
+            >
+              <Spinner v-if="reasignandoGuardar" :size="13" /><UserPlus v-else :size="13" />
+              Reasignar
+            </button>
+          </div>
+        </div>
+      </section>
+    </div>
 
     <!-- Detalle de las tareas de un montaje -->
     <div v-if="detalle" class="overlay" @click.self="detalle = null">
@@ -237,7 +333,7 @@ function transcurrido(m: MontajeResurtidoDTO): string {
               <tr>
                 <th class="num">#</th><th>PLU</th><th>Descripción</th><th>Altura</th>
                 <th>Picking</th><th class="num">Solicitadas</th><th class="num">Bajadas</th>
-                <th>Estado</th><th class="num">Tiempo</th>
+                <th>Estado</th><th>Responsable</th><th class="num">Tiempo</th>
               </tr>
             </thead>
             <tbody>
@@ -250,6 +346,7 @@ function transcurrido(m: MontajeResurtidoDTO): string {
                 <td class="tnum">{{ t.unidadesSolicitadas }}</td>
                 <td class="tnum strong">{{ t.unidadesBajadas ?? '—' }}</td>
                 <td>{{ ESTADO_TAREA_LABEL[t.estado] }}</td>
+                <td>{{ t.responsableNombre ?? detalle.operarioNombre }}</td>
                 <td class="tnum">{{ fmtDuracionTarea(t.duracionSegundos) }}</td>
               </tr>
             </tbody>
@@ -304,6 +401,12 @@ function transcurrido(m: MontajeResurtidoDTO): string {
 .m-title { margin: 0; font-family: var(--display); font-size: 17px; font-weight: 700; color: var(--ink); }
 .m-sub { margin: 3px 0 0; font-size: 12px; color: var(--muted); }
 .m-body { overflow: auto; }
+.modal-sm { width: min(480px, 100%); }
+.reasig { display: flex; flex-direction: column; gap: 12px; padding: 16px 18px 18px; }
+.reasig-resumen { margin: 0; font-size: 12.5px; line-height: 1.5; color: var(--ink-2); }
+.reasig-resumen b { color: var(--ink); }
+.reasig-aviso { margin: 0; font-size: 12px; color: var(--u-aviso); }
+.reasig-acc { display: flex; justify-content: flex-end; gap: 9px; }
 
 .table { width: 100%; min-width: 900px; border-collapse: separate; border-spacing: 0; }
 .table th { position: sticky; top: 0; z-index: 1; text-align: left; font-size: 10.5px; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); padding: 10px 13px; white-space: nowrap; background: var(--surface-2); border-bottom: 1px solid var(--border-strong); }

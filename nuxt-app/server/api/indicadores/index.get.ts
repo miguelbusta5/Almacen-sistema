@@ -4,7 +4,8 @@ import { prisma } from '../../utils/prisma'
 import { requireAuth } from '../../utils/auth'
 import { assertGestorMontacargas } from '../../utils/montacargas'
 import {
-  agregarIndicadores, agregarTiemposMuertos, diaBogota, diasDelRango, esMotivoTiempoMuerto,
+  agregarIndicadores, agregarTiemposMuertos, clasificarJornadas, diaBogota, diasDelRango, esJornada,
+  esMotivoTiempoMuerto,
   finDelDiaBogota, limitesRango,
   type JustificacionTiempoMuerto, type TiempoRegistrado, type TipoTarea, type UnidadesRegistradas,
   type VentanaTurno,
@@ -54,6 +55,8 @@ export default defineEventHandler(async (event) => {
   if (desde > hasta) [desde, hasta] = [hasta, desde]
   const rol = (MEDIDOS as readonly string[]).includes(String(sp.rol ?? '')) ? String(sp.rol) : null
   const usuarioId = sp.usuarioId ? String(sp.usuarioId) : null
+  // Turno dia o turno noche: se miran por separado. Sin el, todo el equipo.
+  const turno = esJornada(sp.turno) ? sp.turno : null
   const { inicio: ini, fin } = limitesRango(desde, hasta)
   // Los turnos de noche pasan de la medianoche: el del ultimo dia se trae con
   // su madrugada, y se mira el turno de la noche ANTERIOR al primer dia para
@@ -192,7 +195,9 @@ export default defineEventHandler(async (event) => {
 
   // Cada dia usa el cuadro mas reciente que lo cubra: si operacion sube uno
   // corregido, manda el nuevo sin tener que borrar el anterior.
-  const medidosIds = new Set(personas.map((p) => p.id))
+  // Los turnos de TODO el equipo: con ellos se decide quien es de dia y quien de
+  // noche, tambien para el selector de persona.
+  const medidosIds = new Set(equipo.map((u) => u.id))
   // Tambien el dia anterior: su turno de noche se lleva la madrugada del primero.
   for (const dia of diasDelRango(diaAnterior, hasta)) {
     const cuadro = cuadros.find(
@@ -288,13 +293,25 @@ export default defineEventHandler(async (event) => {
       }]
       : [])
 
+  // Dia o noche por el cuadro de turnos (o, sin cuadro, por la hora a la que
+  // empezo a trabajar). La noche se mide entera, con su madrugada.
+  const jornadas = clasificarJornadas({
+    personas: equipo.map((u) => ({ id: u.id, nombre: u.name, rol: u.role })),
+    ventanas,
+    tiempos: [...tiempos, ...enCurso],
+    desde,
+    hasta,
+  })
+  const delTurno = turno ? personas.filter((p) => jornadas.get(p.id) === turno) : personas
+
   return {
     success: true,
     rango: { desde, hasta },
-    equipo: equipo.map((u) => ({ id: u.id, nombre: u.name, rol: u.role })),
-    data: agregarIndicadores({ personas, tiempos, unidades, ventanas, desde, hasta }),
+    turno,
+    equipo: equipo.map((u) => ({ id: u.id, nombre: u.name, rol: u.role, jornada: jornadas.get(u.id) ?? 'dia' })),
+    data: agregarIndicadores({ personas: delTurno, tiempos, unidades, ventanas, desde, hasta }),
     muertos: agregarTiemposMuertos({
-      personas, tiempos: [...tiempos, ...enCurso], justificaciones, ventanas, desde, hasta,
+      personas: delTurno, tiempos: [...tiempos, ...enCurso], justificaciones, ventanas, desde, hasta,
     }),
   }
 })

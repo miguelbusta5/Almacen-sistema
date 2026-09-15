@@ -80,9 +80,13 @@ export interface IndicadoresPeriodo {
   porTipo: Record<TipoTarea, number>
 }
 
+/** Turno de día o de noche (el de noche cruza la medianoche). */
+export type Jornada = 'dia' | 'noche'
+
 export interface RespuestaIndicadores {
   rango: { desde: string; hasta: string }
-  equipo: { id: string; nombre: string; rol: string }[]
+  turno?: Jornada | null
+  equipo: { id: string; nombre: string; rol: string; jornada?: Jornada }[]
   data: IndicadoresPeriodo
   muertos: TiemposMuertosPeriodo
 }
@@ -162,7 +166,7 @@ export function anclaDeElemento(el: Element): { x: number; y: number } {
 export const MIN_SEGUNDOS_PRODUCTIVIDAD = 15 * 60
 
 // ── Rango de fechas ──────────────────────────────────────────────────
-export type PresetRango = 'hoy' | '7d' | '30d' | 'mes' | 'custom'
+export type PresetRango = 'hoy' | '7d' | '30d' | 'mes' | 'anoche' | 'estaNoche' | '7n' | 'custom'
 
 export const PRESETS_RANGO: { key: Exclude<PresetRango, 'custom'>; label: string }[] = [
   { key: 'hoy', label: 'Hoy' },
@@ -170,6 +174,25 @@ export const PRESETS_RANGO: { key: Exclude<PresetRango, 'custom'>; label: string
   { key: '30d', label: '30 días' },
   { key: 'mes', label: 'Este mes' },
 ]
+
+/**
+ * En el turno de noche cada fecha es LA NOCHE QUE EMPIEZA ese día y se mide
+ * entera, hasta su cierre a la mañana siguiente. "Anoche" es la última noche que
+ * ya terminó; "Esta noche", la que está en curso.
+ */
+export const PRESETS_NOCHE: { key: Exclude<PresetRango, 'custom'>; label: string }[] = [
+  { key: 'anoche', label: 'Anoche' },
+  { key: 'estaNoche', label: 'Esta noche' },
+  { key: '7n', label: '7 noches' },
+  { key: 'mes', label: 'Este mes' },
+]
+
+/** "Noche del 13 al 14 sep" para un periodo de una sola noche. */
+export function etiquetaNoche(dia: string): string {
+  const fmt = (ymd: string) => new Date(`${ymd}T12:00:00-05:00`)
+    .toLocaleDateString('es-CO', { day: 'numeric', month: 'short', timeZone: 'America/Bogota' })
+  return `Noche del ${fmt(dia).replace(/ .*/, '')} al ${fmt(moverDias(dia, 1))}`
+}
 
 function moverDias(ymd: string, dias: number): string {
   const d = new Date(`${ymd}T12:00:00.000Z`)
@@ -179,7 +202,9 @@ function moverDias(ymd: string, dias: number): string {
 
 /** Desde/hasta de un preset, contando el dia de hoy (en Bogota). */
 export function rangoDePreset(preset: Exclude<PresetRango, 'custom'>, hoy: string): { desde: string; hasta: string } {
-  if (preset === 'hoy') return { desde: hoy, hasta: hoy }
+  if (preset === 'hoy' || preset === 'estaNoche') return { desde: hoy, hasta: hoy }
+  if (preset === 'anoche') return { desde: moverDias(hoy, -1), hasta: moverDias(hoy, -1) }
+  if (preset === '7n') return { desde: moverDias(hoy, -7), hasta: moverDias(hoy, -1) }
   if (preset === '7d') return { desde: moverDias(hoy, -6), hasta: hoy }
   if (preset === '30d') return { desde: moverDias(hoy, -29), hasta: hoy }
   return { desde: `${hoy.slice(0, 8)}01`, hasta: hoy }

@@ -53,7 +53,7 @@ describe("indicadores — el endpoint", () => {
 
   // La cuenta vive en la funcion pura (con tests); el endpoint solo junta filas.
   it("la cuenta la hace agregarIndicadores", () => {
-    expect(api).toContain("agregarIndicadores({ personas, tiempos, unidades, ventanas, desde, hasta })");
+    expect(api).toContain("agregarIndicadores({ personas: delTurno, tiempos, unidades, ventanas, desde, hasta })");
     expect(api).not.toContain("repartirTiempo(");
   });
 
@@ -187,7 +187,7 @@ describe("tiempos muertos — el endpoint de indicadores", () => {
 
   // Lo que sigue en curso no es tiempo laborado, pero tampoco tiempo muerto.
   it("lo abierto solo sirve para no inventar huecos", () => {
-    expect(api).toContain("data: agregarIndicadores({ personas, tiempos, unidades, ventanas, desde, hasta })");
+    expect(api).toContain("data: agregarIndicadores({ personas: delTurno, tiempos, unidades, ventanas, desde, hasta })");
     expect(api).toContain("tiempos: [...tiempos, ...enCurso]");
   });
 
@@ -327,7 +327,7 @@ describe("cuadro de turnos — subirlo y usarlo", () => {
   });
 
   it("la jornada y la efectividad van con los indicadores y los tiempos muertos", () => {
-    expect(api).toContain("agregarIndicadores({ personas, tiempos, unidades, ventanas, desde, hasta })");
+    expect(api).toContain("agregarIndicadores({ personas: delTurno, tiempos, unidades, ventanas, desde, hasta })");
     expect(api).toContain("justificaciones, ventanas, desde, hasta");
   });
 
@@ -376,5 +376,29 @@ describe("indicadores — nada de sumar horas de varias personas", () => {
     const tp = leer("nuxt-app/app/components/indicadores/TiempoPersonas.vue");
     expect(tp).toContain("fondo: p.jornadaSegundos || undefined");
     expect(tp).toContain("efectividad del turno");
+  });
+});
+
+// Turno dia y turno noche se miran por separado: la noche va completa, con su
+// madrugada, y no se mezcla con el personal de dia.
+describe("indicadores — turno dia / turno noche", () => {
+  const api = leer("nuxt-app/server/api/indicadores/index.get.ts");
+  const modulo = leer("nuxt-app/app/components/indicadores/Module.vue");
+
+  it("el endpoint clasifica a cada persona y filtra por turno", () => {
+    expect(api).toContain("const turno = esJornada(sp.turno) ? sp.turno : null");
+    expect(api).toContain("clasificarJornadas({");
+    expect(api).toContain("agregarIndicadores({ personas: delTurno, tiempos, unidades, ventanas, desde, hasta })");
+    // Los turnos de todo el equipo, para clasificar tambien el selector.
+    expect(api).toContain("const medidosIds = new Set(equipo.map((u) => u.id))");
+  });
+
+  it("la pantalla tiene el selector, presets de noche y lo recuerda", () => {
+    expect(modulo).toContain("Turno noche");
+    expect(modulo).toContain("turno: jornada.value");
+    expect(modulo).toContain("PRESETS_NOCHE");
+    expect(modulo).toContain("localStorage.setItem(CLAVE_JORNADA, j)");
+    expect(leer("nuxt-app/app/utils/indicadores.ts"))
+      .toContain("if (preset === 'anoche') return { desde: moverDias(hoy, -1), hasta: moverDias(hoy, -1) }");
   });
 });

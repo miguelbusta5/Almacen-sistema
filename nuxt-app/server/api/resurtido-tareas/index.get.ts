@@ -15,9 +15,21 @@ export default defineEventHandler(async (event) => {
   const actor = await requireAuth(event)
   assertEjecutor(actor.role)
 
-  const [montajes, pendientes, recibidas] = await Promise.all([
+  const [montajes, reasignados, pendientes, recibidas] = await Promise.all([
     prisma.montajeResurtido.findMany({
       where: { operarioId: actor.id, estado: 'EN_CURSO', deletedAt: null },
+      include: MONTAJE_INCLUDE,
+      orderBy: { montadoAt: 'asc' },
+    }),
+    // Resurtidos de otro operario que supervision le reasigno a este porque no
+    // se alcanzaron a terminar en el turno: se ven enteros, en orden de ruta.
+    prisma.montajeResurtido.findMany({
+      where: {
+        operarioId: { not: actor.id },
+        estado: 'EN_CURSO',
+        deletedAt: null,
+        tareas: { some: { responsableId: actor.id, pasadoPorId: null, estado: { not: 'COMPLETADA' } } },
+      },
       include: MONTAJE_INCLUDE,
       orderBy: { montadoAt: 'asc' },
     }),
@@ -31,10 +43,12 @@ export default defineEventHandler(async (event) => {
       include: PENDIENTE_INCLUDE,
       orderBy: { asignadoAt: 'asc' },
     }),
-    // Tareas de otro operario que le pasaron a este: las cierra el.
+    // Tareas sueltas de otro operario que le PASARON a este: las cierra el. Las
+    // reasignadas (sin pasadoPor) ya vienen dentro de su montaje.
     prisma.tareaResurtido.findMany({
       where: {
         responsableId: actor.id,
+        pasadoPorId: { not: null },
         estado: { not: 'COMPLETADA' },
         montaje: { operarioId: { not: actor.id }, deletedAt: null },
       },
@@ -46,6 +60,7 @@ export default defineEventHandler(async (event) => {
   return {
     success: true,
     data: montajes.map(mapMontaje),
+    reasignados: reasignados.map(mapMontaje),
     prioritarios: pendientes.map(mapPendiente),
     recibidas: recibidas.map(mapTareaResurtido),
   }
