@@ -402,3 +402,22 @@ describe("indicadores — turno dia / turno noche", () => {
       .toContain("if (preset === 'anoche') return { desde: moverDias(hoy, -1), hasta: moverDias(hoy, -1) }");
   });
 });
+
+// Cuantas veces y cuanto tiempo usa cada persona las pausas; solo lo ven el
+// administrador y quien reparte el trabajo (Felipe Ossa, Eduardo Zurita).
+describe("indicadores — registro de pausas", () => {
+  const api = leer("nuxt-app/server/api/indicadores/pausas.get.ts");
+  const modulo = leer("nuxt-app/app/components/indicadores/Module.vue");
+
+  it("el servidor solo lo entrega al admin y a quien puede montar", () => {
+    expect(api).toContain("actor.role === 'ADMIN' || (await puedeMontarResurtido(actor.id))");
+    expect(api).toContain("statusCode: 403");
+    expect(api).toContain("resumenPausas({");
+  });
+
+  it("es una pestana aparte, oculta para el resto", () => {
+    expect(modulo).toContain("me.value?.role === 'ADMIN' || me.value?.can?.montarResurtido === true");
+    expect(modulo).toContain('v-if="puedeVerPausas"');
+    expect(modulo).toContain("<IndicadoresPausas");
+  });
+});

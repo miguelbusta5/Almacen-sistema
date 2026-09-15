@@ -7,7 +7,6 @@ export type AppRole = UserRole;
 
 export type ModuleKey =
   | "transporte"
-  | "preoperacional"
   | "tienda"
   | "solicitudes-transporte"
   | "exportaciones"
@@ -31,7 +30,6 @@ export type ModuleKey =
 
 export const MODULE_ACCESS: Record<ModuleKey, AppRole[]> = {
   transporte: ["TRANSPORTE", "SUPERVISOR_TRANSPORTE", "GERENTE", "ADMIN", "OPERADOR"],
-  preoperacional: ["TRANSPORTISTA", "ADMIN", "GERENTE", "SUPERVISOR_TRANSPORTE"],
   tienda: ["TIENDA", "SUPERVISOR_TIENDA", "SUPERVISOR_TRANSPORTE", "GERENTE", "ADMIN"],
   // Los dos roles OPERACIONES_* quedan fuera a proposito: son patinadores de area
   // y solo operan Integracion de Pedidos (+ Cargue Gourmet en el caso gourmet),
@@ -143,7 +141,7 @@ export const ROLE_DESCRIPTION: Record<AppRole, string> = {
   ADMIN: "Acceso total al sistema.",
   GERENTE: "Ve todo. Sin acceso a configuracion de sistema.",
   OPERADOR: "Acceso general a inventario y transporte.",
-  TRANSPORTISTA: "Solo ve el modulo Preoperacional.",
+  TRANSPORTISTA: "Sin modulos activos (Preoperacional se retiro).",
   INVENTARIO: "Solo ve el modulo de inventario.",
   TRANSPORTE: "Solo ve guardados y pendientes asignados.",
   SUPERVISOR_INVENTARIO: "Inventario + analisis operacional.",

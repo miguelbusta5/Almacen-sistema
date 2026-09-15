@@ -62,7 +62,6 @@ async function computeControlLogisticoResumen(actor: SessionUser): Promise<Contr
     solicitudesAlertas,
     exportacionesEnCurso,
     integracionesPendientes,
-    preopBloqueadas,
     exportacionesMexicoEnCurso,
     exportacionesEeuuEnCurso,
   ] = await Promise.all([
@@ -100,9 +99,6 @@ async function computeControlLogisticoResumen(actor: SessionUser): Promise<Contr
       },
     }) : 0,
     see("integracion") ? prisma.integracionPedido.count({ where: { estado: { not: "COMPLETADA" } } }) : 0,
-    see("preoperacional") && role !== "TRANSPORTISTA"
-      ? prisma.inspeccionPreoperacional.count({ where: { estado: "BLOQUEADA", vigente: true } })
-      : 0,
     see("exportaciones-mexico") ? prisma.etiquetadoExportacionMexico.count({
       where: {
         deletedAt: null,
@@ -179,16 +175,6 @@ async function computeControlLogisticoResumen(actor: SessionUser): Promise<Contr
       href: "/dashboard/integracion",
     });
   }
-  if (see("preoperacional") && preopBloqueadas > 0) {
-    priorities.push({
-      id: "preop-bloqueadas",
-      moduleKey: "preoperacional",
-      level: "critical",
-      title: `${preopBloqueadas} inspeccion${preopBloqueadas === 1 ? "" : "es"} bloqueada${preopBloqueadas === 1 ? "" : "s"}`,
-      context: "Vehiculos no aptos para operar",
-      href: "/dashboard/preoperacional",
-    });
-  }
 
   const flow: ControlFlowStage[] = [
     ...(see("tienda") ? [{
@@ -228,7 +214,6 @@ async function computeControlLogisticoResumen(actor: SessionUser): Promise<Contr
     ...(see("exportaciones") ? [moduleSignal("exportaciones", exportacionesEnCurso, statusFrom(exportacionesEnCurso, 1, 20), "/dashboard/exportaciones")] : []),
     ...(see("exportaciones-mexico") ? [moduleSignal("exportaciones-mexico", exportacionesMexicoEnCurso, statusFrom(exportacionesMexicoEnCurso, 1, 20), "/dashboard/exportaciones-mexico")] : []),
     ...(see("exportaciones-eeuu") ? [moduleSignal("exportaciones-eeuu", exportacionesEeuuEnCurso, statusFrom(exportacionesEeuuEnCurso, 1, 20), "/dashboard/exportaciones-eeuu")] : []),
-    ...(see("preoperacional") ? [moduleSignal("preoperacional", preopBloqueadas, statusFrom(preopBloqueadas, 1, 2), "/dashboard/preoperacional")] : []),
     ...(see("integracion") ? [moduleSignal("integracion", integracionesPendientes, statusFrom(integracionesPendientes, 1, 8), "/dashboard/integracion")] : []),
     ...(see("usuarios") ? [moduleSignal("usuarios", undefined, "neutral", "/dashboard/usuarios")] : []),
     ...(see("auditoria") ? [moduleSignal("auditoria", undefined, "neutral", "/dashboard/auditoria")] : []),
@@ -237,7 +222,7 @@ async function computeControlLogisticoResumen(actor: SessionUser): Promise<Contr
 
   const critical = priorities.filter((p) => p.level === "critical").length;
   const warning = priorities.filter((p) => p.level === "warning").length;
-  const pending = guardadosPendientes + tiendaCreados + tiendaNovedad + tiendaRechazados + pendientesGuardado + solicitudesPendientes + exportacionesEnCurso + exportacionesMexicoEnCurso + exportacionesEeuuEnCurso + integracionesPendientes + preopBloqueadas;
+  const pending = guardadosPendientes + tiendaCreados + tiendaNovedad + tiendaRechazados + pendientesGuardado + solicitudesPendientes + exportacionesEnCurso + exportacionesMexicoEnCurso + exportacionesEeuuEnCurso + integracionesPendientes;
 
   return {
     success: true,

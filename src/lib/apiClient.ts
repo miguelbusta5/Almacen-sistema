@@ -48,7 +48,7 @@ export function buildQuery(params?: QueryParams): string {
 
 // Parseo central de la respuesta. Lanza `ApiError` si `!res.ok` o si el cuerpo
 // trae `success: false` explícito. No exige `success` (hay endpoints como
-// `/api/stats` o `GET /api/preoperacional` que no lo incluyen). Devuelve el
+// `/api/stats` que no lo incluyen). Devuelve el
 // cuerpo JSON completo (la envoltura, incl. `total`/`page`/`historial`/etc.).
 async function parseApiResponse<T>(res: Response): Promise<T> {
   const body: unknown = await res.json().catch(() => ({}));

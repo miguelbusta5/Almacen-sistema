@@ -47,7 +47,6 @@ function mod(
 export const MODULE_THEME: Record<ModuleThemeKey, ModuleTheme> = {
   home: mod("home", PRODUCT.displayName, PRODUCT.shortName, PRODUCT.tagline),
   transporte: mod("transporte", "Guardados Transporte", "Transporte", "Custodia, guardados y pendientes operativos"),
-  preoperacional: mod("preoperacional", "Preoperacional", "Preop", "Inspeccion diaria de vehiculos"),
   tienda: mod("tienda", "Facturas Contado", "Facturas", "Facturas contado desde tienda hacia el flujo CEDI"),
   "solicitudes-transporte": mod("solicitudes-transporte", "Solicitudes Transporte", "Solicitudes", "Solicitudes internas que gestiona el lider de transporte"),
   exportaciones: mod("exportaciones", "Exportaciones Ecuador", "Export EC", "Etiquetado operativo de cajas de exportacion a Ecuador"),

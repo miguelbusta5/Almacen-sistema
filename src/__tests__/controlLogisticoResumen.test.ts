@@ -55,11 +55,12 @@ describe("buildControlLogisticoResumen", () => {
     mocks.inspeccionCount.mockResolvedValue(0);
   });
 
-  it("TRANSPORTISTA solo recibe preoperacional y no consulta modulos suspendidos ni tienda", async () => {
+  // Preoperacional se retiro: al transportista no le queda ningun modulo.
+  it("TRANSPORTISTA no recibe modulos y no consulta modulos suspendidos ni tienda", async () => {
     const resumen = await buildControlLogisticoResumen(actor("TRANSPORTISTA"));
 
-    expect(resumen.visibleModules).toEqual(["preoperacional"]);
-    expect(resumen.modules.map((m) => m.key)).toEqual(["preoperacional"]);
+    expect(resumen.visibleModules).toEqual([]);
+    expect(resumen.modules.map((m) => m.key)).toEqual([]);
     expect(resumen.flow).toEqual([]);
     expect(resumen.priorities).toEqual([]);
     expect(mocks.despachoCount).not.toHaveBeenCalled();
@@ -105,10 +106,10 @@ describe("buildControlLogisticoResumen", () => {
     const resumen = await buildControlLogisticoResumen(actor("SUPERVISOR_TRANSPORTE"));
     const moduleKeys = resumen.modules.map((m) => m.key);
 
-    expect(resumen.visibleModules).toEqual(["transporte", "preoperacional", "tienda", "solicitudes-transporte", "centro-control", "integracion", "cargue-gourmet"]);
+    expect(resumen.visibleModules).toEqual(["transporte", "tienda", "solicitudes-transporte", "centro-control", "integracion", "cargue-gourmet"]);
     expect(moduleKeys).toContain("tienda");
     expect(moduleKeys).toContain("transporte");
-    expect(moduleKeys).toContain("preoperacional");
+    expect(moduleKeys).not.toContain("preoperacional");
     expect(moduleKeys).toContain("integracion");
     expect(moduleKeys).toContain("solicitudes-transporte");
     expect(moduleKeys).toContain("centro-control");

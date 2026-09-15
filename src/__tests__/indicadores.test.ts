@@ -5,6 +5,7 @@ import {
   segundosEnVentanas,
   agregarTiemposMuertos,
   clasificarJornadas,
+  resumenPausas,
   esTurnoNoche,
   detectarTiemposMuertos,
   diaBogota,
@@ -700,5 +701,39 @@ describe("turno día / turno noche", () => {
     });
     expect(r.personas[0].segundos).toBe(2.5 * 3600);
     expect(r.personas[0].jornadaSegundos).toBe(9.5 * 3600);
+  });
+});
+
+describe("pausas de alimentación y cambio de baterías", () => {
+  const personas = [
+    { id: "seb", nombre: "SEBASTIAN JURADO", rol: "MONTACARGAS" },
+    { id: "car", nombre: "carlos ibarra", rol: "MONTACARGAS" },
+  ];
+  const ahora = h("12:00:00");
+
+  it("cuenta veces y tiempo por persona y motivo, la abierta hasta ahora", () => {
+    const r = resumenPausas({
+      personas,
+      ahora,
+      pausas: [
+        { id: "1", usuarioId: "seb", motivo: "ALIMENTACION", inicio: h("08:00:00"), fin: h("08:30:00") },
+        { id: "2", usuarioId: "seb", motivo: "ALIMENTACION", inicio: h("10:00:00"), fin: h("10:15:00") },
+        { id: "3", usuarioId: "seb", motivo: "CAMBIO_BATERIAS", inicio: h("11:00:00"), fin: h("11:10:00") },
+        // Sigue en pausa: cuenta hasta ahora.
+        { id: "4", usuarioId: "car", motivo: "CAMBIO_BATERIAS", inicio: h("11:40:00"), fin: null },
+        // Alguien que no se mide no entra.
+        { id: "5", usuarioId: "otro", motivo: "ALIMENTACION", inicio: h("09:00:00"), fin: h("09:30:00") },
+      ],
+    });
+    const seb = r.personas.find((p) => p.id === "seb")!;
+    expect(seb.veces).toEqual({ ALIMENTACION: 2, CAMBIO_BATERIAS: 1 });
+    expect(seb.segundos).toEqual({ ALIMENTACION: 45 * 60, CAMBIO_BATERIAS: 10 * 60 });
+    expect(seb.totalSegundos).toBe(55 * 60);
+    const car = r.personas.find((p) => p.id === "car")!;
+    expect(car.enPausa).toBe(true);
+    expect(car.segundos.CAMBIO_BATERIAS).toBe(20 * 60);
+    expect(r.resumen.veces).toEqual({ ALIMENTACION: 2, CAMBIO_BATERIAS: 2 });
+    expect(r.detalle[0].id).toBe("4");
+    expect(r.detalle).toHaveLength(4);
   });
 });

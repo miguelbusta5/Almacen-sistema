@@ -66,16 +66,12 @@ describe("getHomeActionsByRole", () => {
 
   // ── TRANSPORTISTA ────────────────────────────────────
   describe("TRANSPORTISTA", () => {
-    it("ve preoperacional", () => expect(hasAction("TRANSPORTISTA", "preoperacional")).toBe(true));
+    it("ya no ve preoperacional (se retiro)", () => expect(hasAction("TRANSPORTISTA", "preoperacional")).toBe(false));
     it("NO ve nuevo-guardado", () => expect(hasAction("TRANSPORTISTA", "nuevo-guardado")).toBe(false));
     it("NO ve nuevo-despacho-tienda", () => expect(hasAction("TRANSPORTISTA", "nuevo-despacho-tienda")).toBe(false));
     it("NO ve gestionar-usuarios", () => expect(hasAction("TRANSPORTISTA", "gestionar-usuarios")).toBe(false));
     it("NO ve centro-control", () => expect(hasAction("TRANSPORTISTA", "centro-control")).toBe(false));
     it("NO ve indicadores-cedi", () => expect(hasAction("TRANSPORTISTA", "indicadores-cedi")).toBe(false));
-    it("navega a /dashboard/preoperacional", () => {
-      const action = getHomeActionsByRole("TRANSPORTISTA", 99).find((a) => a.id === "preoperacional");
-      expect(action?.href).toBe("/dashboard/preoperacional");
-    });
   });
 
   describe("ETIQUETADO", () => {

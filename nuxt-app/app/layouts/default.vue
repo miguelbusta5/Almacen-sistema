@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, nextTick, onMounted, ref, watch } from 'vue'
 import {
-  ShieldCheck, Store, GitMerge, ScanLine, Forklift, PackageOpen, Tags, Globe, FileText, Truck,
+  Store, GitMerge, ScanLine, Forklift, PackageOpen, Tags, Globe, FileText, Truck,
   BarChart3, Users, ScrollText, Search, Bell, CheckCircle2, TriangleAlert, Container,
   Menu, X, LogOut, KeyRound, CornerDownLeft, Inbox, ClipboardList, PackageSearch, BellRing,
   ChartColumnIncreasing, Hammer, ClipboardCheck, SlidersHorizontal,
@@ -51,12 +51,6 @@ const NAV_GROUPS: NavGroup[] = [
   // Sin ítem "Inicio": /dashboard ya no es una página, redirige al primer módulo
   // visible del rol (src/app/(dashboard)/dashboard/page.tsx), así que para muchos
   // roles el enlace devolvía al usuario justo donde ya estaba.
-  {
-    titulo: null,
-    items: [
-      { icon: ShieldCheck, label: 'Preoperacional', href: '/dashboard/preoperacional', key: 'preoperacional', moduleKey: 'preoperacional' },
-    ],
-  },
   {
     titulo: 'Centro de distribución',
     items: [

@@ -10,7 +10,6 @@
 
 export type ModuleKey =
   | 'transporte'
-  | 'preoperacional'
   | 'tienda'
   | 'solicitudes-transporte'
   | 'exportaciones'
@@ -34,7 +33,6 @@ export type ModuleKey =
 
 export const MODULE_ACCESS: Record<ModuleKey, string[]> = {
   transporte: ['TRANSPORTE', 'SUPERVISOR_TRANSPORTE', 'GERENTE', 'ADMIN', 'OPERADOR'],
-  preoperacional: ['TRANSPORTISTA', 'ADMIN', 'GERENTE', 'SUPERVISOR_TRANSPORTE'],
   tienda: ['TIENDA', 'SUPERVISOR_TIENDA', 'SUPERVISOR_TRANSPORTE', 'GERENTE', 'ADMIN'],
   // Sin los roles OPERACIONES_*: son patinadores de área y solo operan Integración
   // de Pedidos (+ Cargue Gourmet el gourmet).

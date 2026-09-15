@@ -9,7 +9,7 @@ import { useSession } from "next-auth/react";
 import {
   Search, Home, Truck,
   Users, ScrollText, Plus, ArrowRight, X,
-  BarChart3, FileText, Store, ShieldCheck, GitMerge, CheckSquare, Tags,
+  BarChart3, FileText, Store, GitMerge, CheckSquare, Tags,
 } from "lucide-react";
 import { useCommandPalette } from "@/contexts/CommandPaletteContext";
 import { canSeeModule } from "@/lib/modulePermissions";
@@ -17,7 +17,7 @@ import { getModuleColor } from "@/lib/moduleTheme";
 import { PRODUCT } from "@/config/product";
 
 // ── Tipos ─────────────────────────────────────────────────
-type ResultGroup = "actions" | "navigate" | "transporte" | "solicitudes" | "tienda" | "integracion" | "preoperacional" | "admin";
+type ResultGroup = "actions" | "navigate" | "transporte" | "solicitudes" | "tienda" | "integracion" | "admin";
 
 interface PaletteResult {
   id: string;
@@ -36,11 +36,10 @@ const GROUP_LABEL: Record<ResultGroup, string> = {
   solicitudes: "Solicitudes Transporte",
   tienda:     "Facturas Contado",
   integracion:"Integración Pedidos",
-  preoperacional: "Preoperacional",
   admin:      "Administración",
 };
 
-const GROUP_ORDER: ResultGroup[] = ["actions", "navigate", "solicitudes", "tienda", "transporte", "integracion", "preoperacional", "admin"];
+const GROUP_ORDER: ResultGroup[] = ["actions", "navigate", "solicitudes", "tienda", "transporte", "integracion", "admin"];
 
 // ── Búsqueda debounced ────────────────────────────────────
 function useDebounce<T>(value: T, delay = 300): T {
@@ -96,7 +95,6 @@ export default function CommandPalette() {
       ...(see("solicitudes-transporte") ? [{ id: "a-solicitud-transporte", group: "actions" as ResultGroup, icon: <FileText size={14} />, label: "Nueva solicitud de transporte", description: "Pedir gestion de transporte interna", color: getModuleColor("solicitudes-transporte"), action: () => go("/dashboard/solicitudes-transporte") }] : []),
       ...(see("exportaciones") ? [{ id: "a-exportaciones", group: "actions" as ResultGroup, icon: <Tags size={14} />, label: "Registrar exportacion", description: "Capturar caja, PLU y unidad de empaque", color: getModuleColor("exportaciones"), action: () => go("/dashboard/exportaciones") }] : []),
       ...(see("tienda")     ? [{ id: "a-despacho", group: "actions" as ResultGroup, icon: <Store size={14} />, label: "Nueva Factura Contado", description: "Registrar factura contado para el flujo CEDI", color: getModuleColor("tienda"), action: () => go("/dashboard/tienda") }] : []),
-      ...(see("preoperacional") ? [{ id: "a-preop", group: "actions" as ResultGroup, icon: <ShieldCheck size={14} />, label: "Registrar preoperacional", description: "Inspección diaria del vehículo", color: getModuleColor("preoperacional"), action: () => go("/dashboard/preoperacional") }] : []),
       ...(see("integracion") ? [{ id: "a-integracion", group: "actions" as ResultGroup, icon: <GitMerge size={14} />, label: "Nueva integración de pedido", description: "Coordinar OVDM/TSDM entre áreas", color: getModuleColor("integracion"), action: () => go("/dashboard/integracion") }] : []),
       ...(see("centro-control") ? [{ id: "a-control", group: "actions" as ResultGroup, icon: <BarChart3 size={14} />, label: "Abrir centro de control", description: "KPIs y señales operativas", color: getModuleColor("centro-control"), action: () => go("/dashboard/centro-control") }] : []),
       ...(see("usuarios") ? [{ id: "a-usuarios", group: "admin" as ResultGroup, icon: <Users size={14} />, label: "Gestionar usuarios", description: "Roles, vehículos y transportistas", color: getModuleColor("usuarios"), action: () => go("/dashboard/usuarios") }] : []),
@@ -108,7 +106,6 @@ export default function CommandPalette() {
       ...(see("solicitudes-transporte") ? [{ id: "n-solicitudes-transporte", group: "navigate" as ResultGroup, icon: <FileText size={14} />, label: "Solicitudes Transporte", action: () => go("/dashboard/solicitudes-transporte") }] : []),
       ...(see("exportaciones") ? [{ id: "n-exportaciones", group: "navigate" as ResultGroup, icon: <Tags size={14} />, label: "Exportaciones", action: () => go("/dashboard/exportaciones") }] : []),
       ...(see("transporte")    ? [{ id: "n-transporte",  group: "navigate" as ResultGroup, icon: <Truck size={14} />,          label: "Guardados Transporte",    action: () => go("/dashboard/transporte") }] : []),
-      ...(see("preoperacional")? [{ id: "n-preop",       group: "navigate" as ResultGroup, icon: <ShieldCheck size={14} />,    label: "Preoperacional",          action: () => go("/dashboard/preoperacional") }] : []),
       ...(see("integracion")   ? [{ id: "n-integracion", group: "navigate" as ResultGroup, icon: <GitMerge size={14} />,       label: "Integración Pedidos",     action: () => go("/dashboard/integracion") }] : []),
       ...(see("centro-control")? [{ id: "n-control",     group: "navigate" as ResultGroup, icon: <BarChart3 size={14} />,      label: "Centro de Control",       action: () => go("/dashboard/centro-control") }] : []),
       ...(see("usuarios")      ? [{ id: "n-usuarios",    group: "navigate" as ResultGroup, icon: <Users size={14} />,          label: "Usuarios",                action: () => go("/dashboard/usuarios") }] : []),

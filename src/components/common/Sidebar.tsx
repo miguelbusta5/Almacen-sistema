@@ -21,7 +21,6 @@ import {
   PackageSearch,
   ScanLine,
   ScrollText,
-  ShieldCheck,
   SlidersHorizontal,
   Store,
   Tags,
@@ -48,7 +47,6 @@ interface NavItem {
 
 const ALL_ITEMS: NavItem[] = [
   { href: "/dashboard", label: "Inicio", icon: <Home size={16} strokeWidth={2.1} />, moduleKey: null },
-  { href: "/dashboard/preoperacional", label: "Preoperacional", icon: <ShieldCheck size={16} strokeWidth={2.1} />, moduleKey: "preoperacional" },
   { href: "/dashboard/tienda", label: "Facturas Contado", icon: <Store size={16} strokeWidth={2.1} />, moduleKey: "tienda" },
   { href: "/dashboard/integracion", label: "Integracion Pedidos", icon: <GitMerge size={16} strokeWidth={2.1} />, moduleKey: "integracion" },
   { href: "/dashboard/cargue-gourmet", label: "Cargue Gourmet", icon: <ScanLine size={16} strokeWidth={2.1} />, moduleKey: "cargue-gourmet" },
@@ -73,7 +71,7 @@ const ALL_ITEMS: NavItem[] = [
 ];
 
 const GROUPS = [
-  ["/dashboard", "/dashboard/preoperacional"],
+  ["/dashboard"],
   [
     "/dashboard/tienda",
     "/dashboard/integracion",

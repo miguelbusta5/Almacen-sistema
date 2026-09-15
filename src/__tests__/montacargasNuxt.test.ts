@@ -518,7 +518,6 @@ describe("tablas — scroll horizontal dentro de la tarjeta", () => {
     "nuxt-app/app/components/exportaciones/Tabla.vue",
     "nuxt-app/app/components/integracion/Table.vue",
     "nuxt-app/app/components/montacargas/Tabla.vue",
-    "nuxt-app/app/components/preoperacional/SupervisorView.vue",
     "nuxt-app/app/components/solicitudes-transporte/Tabla.vue",
     "nuxt-app/app/components/usuarios/Tabla.vue",
   ];

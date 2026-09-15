@@ -80,7 +80,11 @@ const cargando = ref(false)
 
 // Tiempo laborado y tiempos muertos salen de la misma consulta y de los mismos
 // filtros: cambiar de pestaña no recarga nada.
-const pestana = ref<'laborado' | 'muertos' | 'turnos'>('laborado')
+const pestana = ref<'laborado' | 'muertos' | 'turnos' | 'pausas'>('laborado')
+// El registro de pausas es solo para el administrador y quien reparte el
+// trabajo (permiso por persona: Felipe Ossa y Eduardo Zurita). El servidor lo
+// vuelve a comprobar.
+const puedeVerPausas = computed(() => me.value?.role === 'ADMIN' || me.value?.can?.montarResurtido === true)
 const porJustificar = computed(() => muertos.value?.resumen.cantidadPendientes ?? 0)
 
 async function cargar() {
@@ -394,7 +398,7 @@ const formatoHoras = (v: number) => fmtHorasDecimal(v)
 
       <!-- En noche, que quede claro que la fecha es la noche que empieza y que va
            completa hasta la mañana siguiente. -->
-      <p v-if="jornada === 'noche'" class="aviso-noche">
+      <p v-if="jornada === 'noche' && pestana !== 'pausas'" class="aviso-noche">
         <Moon :size="14" />
         <span>
           <b v-if="tituloNoche">{{ tituloNoche }}.</b>
@@ -423,11 +427,24 @@ const formatoHoras = (v: number) => fmtHorasDecimal(v)
         >
           Turnos
         </button>
+        <button
+          v-if="puedeVerPausas"
+          class="tab" role="tab" :class="{ on: pestana === 'pausas' }"
+          :aria-selected="pestana === 'pausas'" @click="pestana = 'pausas'"
+        >
+          Pausas
+        </button>
       </nav>
 
       <!-- El cuadro de turnos no depende del periodo ni de los datos: se ve
            aunque el rango elegido no tenga trabajo. -->
       <IndicadoresTurnos v-if="pestana === 'turnos'" @actualizar="cargar" />
+
+      <!-- Alimentación y cambio de baterías: cuántas veces y cuánto tiempo. -->
+      <IndicadoresPausas
+        v-else-if="pestana === 'pausas' && puedeVerPausas"
+        :desde="desde" :hasta="hasta" :rol="rol" :usuario-id="usuarioId"
+      />
 
       <ListSkeleton v-else-if="!datos" />
 

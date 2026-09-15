@@ -56,8 +56,8 @@ async function handleSubmit() {
           <div class="status-chip"><Wifi :size="14" /> Datos en vivo</div>
           <h1>Control Logistico CEDI</h1>
           <p class="tagline">
-            Portal interno para controlar inventario, facturas contado, transporte,
-            preoperacional y exportaciones con trazabilidad por rol.
+            Portal interno para controlar inventario, facturas contado,
+            transporte y exportaciones con trazabilidad por rol.
           </p>
         </div>
 

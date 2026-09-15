@@ -80,6 +80,38 @@ export interface IndicadoresPeriodo {
   porTipo: Record<TipoTarea, number>
 }
 
+// ── Pausas de alimentación y cambio de baterías ─────────────────────
+export type MotivoPausa = 'ALIMENTACION' | 'CAMBIO_BATERIAS'
+
+export const MOTIVO_PAUSA_LABEL: Record<MotivoPausa, string> = {
+  ALIMENTACION: 'Alimentación',
+  CAMBIO_BATERIAS: 'Cambio de baterías',
+}
+
+export interface PausasPeriodo {
+  resumen: { veces: Record<MotivoPausa, number>; segundos: Record<MotivoPausa, number>; personas: number }
+  personas: {
+    id: string
+    nombre: string
+    rol: string
+    veces: Record<MotivoPausa, number>
+    segundos: Record<MotivoPausa, number>
+    totalVeces: number
+    totalSegundos: number
+    enPausa: boolean
+  }[]
+  detalle: {
+    id: string
+    usuarioId: string
+    nombre: string
+    motivo: MotivoPausa
+    dia: string
+    inicio: string
+    fin: string | null
+    segundos: number
+  }[]
+}
+
 /** Turno de día o de noche (el de noche cruza la medianoche). */
 export type Jornada = 'dia' | 'noche'
 

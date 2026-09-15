@@ -3,17 +3,16 @@ import { canSeeModule, getVisibleModules } from "@/lib/modulePermissions";
 
 describe("canSeeModule — Sprint 8", () => {
 
-  // ── TRANSPORTISTA: solo Preoperacional ───────────────
+  // ── TRANSPORTISTA: Preoperacional se retiro (sin uso); no le queda modulo ───
   describe("TRANSPORTISTA", () => {
-    it("ve preoperacional", () => expect(canSeeModule("TRANSPORTISTA", "preoperacional")).toBe(true));
     it("NO ve transporte",  () => expect(canSeeModule("TRANSPORTISTA", "transporte")).toBe(false));
     it("NO ve tienda",      () => expect(canSeeModule("TRANSPORTISTA", "tienda")).toBe(false));
     it("NO ve usuarios",    () => expect(canSeeModule("TRANSPORTISTA", "usuarios")).toBe(false));
     it("NO ve auditoria",   () => expect(canSeeModule("TRANSPORTISTA", "auditoria")).toBe(false));
     it("NO ve centro-control", () => expect(canSeeModule("TRANSPORTISTA", "centro-control")).toBe(false));
     it("NO ve solicitudes-transporte", () => expect(canSeeModule("TRANSPORTISTA", "solicitudes-transporte")).toBe(false));
-    it("solo tiene acceso a 1 módulo", () =>
-      expect(getVisibleModules("TRANSPORTISTA")).toEqual(["preoperacional"])
+    it("no tiene modulos activos", () =>
+      expect(getVisibleModules("TRANSPORTISTA")).toEqual([])
     );
   });
 
@@ -24,11 +23,10 @@ describe("canSeeModule — Sprint 8", () => {
     it("NO ve otros modulos operativos", () => {
       expect(canSeeModule("ETIQUETADO", "transporte")).toBe(false);
       expect(canSeeModule("ETIQUETADO", "solicitudes-transporte")).toBe(false);
-      expect(canSeeModule("ETIQUETADO", "preoperacional")).toBe(false);
     });
   });
 
-  // ── ADMIN: ve todo incluido preoperacional (vista supervisor) ──
+  // ── ADMIN: ve todo ──
   describe("ADMIN", () => {
     it("ve transporte",      () => expect(canSeeModule("ADMIN", "transporte")).toBe(true));
     it("ve tienda",          () => expect(canSeeModule("ADMIN", "tienda")).toBe(true));
@@ -39,7 +37,6 @@ describe("canSeeModule — Sprint 8", () => {
     it("ve centro-control",  () => expect(canSeeModule("ADMIN", "centro-control")).toBe(true));
     it("ve solicitudes-transporte", () => expect(canSeeModule("ADMIN", "solicitudes-transporte")).toBe(true));
     it("ve exportaciones", () => expect(canSeeModule("ADMIN", "exportaciones")).toBe(true));
-    it("ve preoperacional (vista supervisor)", () => expect(canSeeModule("ADMIN", "preoperacional")).toBe(true));
   });
 
   it.each(["ADMIN", "GERENTE", "SUPERVISOR_ALMACENAMIENTO"] as const)(
@@ -52,22 +49,11 @@ describe("canSeeModule — Sprint 8", () => {
     it("ve solicitudes-transporte", () => expect(canSeeModule("TIENDA", "solicitudes-transporte")).toBe(true));
     it("NO ve transporte",  () => expect(canSeeModule("TIENDA", "transporte")).toBe(false));
     it("NO ve usuarios",    () => expect(canSeeModule("TIENDA", "usuarios")).toBe(false));
-    it("NO ve preoperacional", () => expect(canSeeModule("TIENDA", "preoperacional")).toBe(false));
   });
 
   // ── Roles sin acceso a usuarios ───────────────────────
   it.each(["GERENTE", "OPERADOR", "INVENTARIO", "TRANSPORTE", "TIENDA", "SUPERVISOR_INVENTARIO", "SUPERVISOR_TRANSPORTE", "SUPERVISOR_TIENDA", "TRANSPORTISTA"] as const)(
     "%s NO ve usuarios", (role) => expect(canSeeModule(role, "usuarios")).toBe(false)
-  );
-
-  // ── Supervisores que VEN preoperacional (vista supervisor) ───
-  it.each(["ADMIN", "GERENTE", "SUPERVISOR_TRANSPORTE"] as const)(
-    "%s ve preoperacional (supervisor)", (role) => expect(canSeeModule(role, "preoperacional")).toBe(true)
-  );
-
-  // ── Roles sin acceso a preoperacional ────────────────
-  it.each(["OPERADOR", "INVENTARIO", "TRANSPORTE", "TIENDA", "SUPERVISOR_INVENTARIO", "SUPERVISOR_TIENDA"] as const)(
-    "%s NO ve preoperacional", (role) => expect(canSeeModule(role, "preoperacional")).toBe(false)
   );
 
   // ── Módulo integración ────────────────────────────────
@@ -76,7 +62,6 @@ describe("canSeeModule — Sprint 8", () => {
     it("NO ve transporte",    () => expect(canSeeModule("OPERACIONES_MUEBLES", "transporte")).toBe(false));
     it("NO ve tienda",        () => expect(canSeeModule("OPERACIONES_MUEBLES", "tienda")).toBe(false));
     it("NO ve usuarios",      () => expect(canSeeModule("OPERACIONES_MUEBLES", "usuarios")).toBe(false));
-    it("NO ve preoperacional",() => expect(canSeeModule("OPERACIONES_MUEBLES", "preoperacional")).toBe(false));
     it("NO ve auditoria",     () => expect(canSeeModule("OPERACIONES_MUEBLES", "auditoria")).toBe(false));
     it("NO ve centro-control",() => expect(canSeeModule("OPERACIONES_MUEBLES", "centro-control")).toBe(false));
   });

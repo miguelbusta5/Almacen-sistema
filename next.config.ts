@@ -83,12 +83,6 @@ const nextConfig: NextConfig = {
         { source: "/dashboard/cargue-gourmet/:path*", destination: `${NUXT_PILOT_GOURMET_URL}/dashboard/cargue-gourmet/:path*` },
       );
     }
-    if (NUXT_PILOT_PREOP_URL) {
-      beforeFiles.push(
-        { source: "/dashboard/preoperacional", destination: `${NUXT_PILOT_PREOP_URL}/dashboard/preoperacional` },
-        { source: "/dashboard/preoperacional/:path*", destination: `${NUXT_PILOT_PREOP_URL}/dashboard/preoperacional/:path*` },
-      );
-    }
     if (NUXT_PILOT_INTEGRACION_URL) {
       beforeFiles.push(
         { source: "/dashboard/integracion", destination: `${NUXT_PILOT_INTEGRACION_URL}/dashboard/integracion` },

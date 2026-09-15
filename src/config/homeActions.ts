@@ -100,17 +100,6 @@ export const HOME_ACTIONS: HomeAction[] = [
     roles: ["OPERACIONES_MUEBLES", "OPERACIONES_GOURMET", "ADMIN", "GERENTE"],
     priority: 1,
   },
-  {
-    id: "preoperacional",
-    title: "Preoperacional",
-    description: "Registrar inspección diaria del vehículo",
-    href: "/dashboard/preoperacional",
-    icon: "ShieldCheck",
-    color: getModuleColor("preoperacional"),
-    moduleKey: "preoperacional",
-    roles: ["TRANSPORTISTA"],
-    priority: 1,
-  },
   // ── Supervisión ─────────────────────────────────────────
   {
     id: "centro-control",

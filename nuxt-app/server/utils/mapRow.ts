@@ -217,31 +217,6 @@ export const ESTADO_DESPACHO_LABEL: Record<string, string> = {
   CON_NOVEDAD: 'Con novedad',
 }
 
-// Mapea InspeccionPreoperacional (+ vehiculo/conductor/items) al shape del
-// cliente — igual que src/app/api/preoperacional/route.ts.
-export function mapInspeccion(i: any) {
-  return {
-    id: i.id,
-    fecha: i.fecha instanceof Date ? i.fecha.toISOString().slice(0, 10) : i.fecha,
-    kilometraje: i.kilometraje ?? null,
-    observaciones: i.observaciones ?? null,
-    estado: i.estado,
-    vigente: i.vigente,
-    createdAt: i.createdAt.toISOString(),
-    vehiculo: i.vehiculo ? { id: i.vehiculo.id, placa: i.vehiculo.placa, tipo: i.vehiculo.tipo } : null,
-    conductor: i.conductor ? { id: i.conductor.id, nombre: i.conductor.nombre } : null,
-    items: (i.items ?? []).map((item: any) => ({
-      id: item.id,
-      categoria: item.categoria,
-      item: item.item,
-      resultado: item.resultado,
-      esCritico: item.esCritico,
-      fotoUrl: item.fotoUrl ?? null,
-      observacion: item.observacion ?? null,
-    })),
-  }
-}
-
 // Mapea IntegracionPedido (+ plines/creadoPor/completadoPor) al shape del
 // cliente — igual que src/app/api/integracion/route.ts.
 export function mapIntegracion(r: any) {

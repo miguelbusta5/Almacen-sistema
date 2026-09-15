@@ -116,8 +116,8 @@ function LoginPageInner() {
               {PRODUCT.displayName}
             </h1>
             <p style={{ color: "var(--muted)", fontSize: 15, lineHeight: 1.65, maxWidth: 560, marginTop: 16 }}>
-              Portal interno para controlar inventario, facturas contado, transporte,
-              preoperacional y exportaciones con trazabilidad por rol.
+              Portal interno para controlar inventario, facturas contado,
+              transporte y exportaciones con trazabilidad por rol.
             </p>
           </div>
 

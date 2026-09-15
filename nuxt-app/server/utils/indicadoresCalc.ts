@@ -1027,3 +1027,104 @@ export function agregarTiemposMuertos(entrada: {
     tramos,
   }
 }
+
+// ── Pausas de alimentación y cambio de baterías ──────────────────────
+// Cuántas veces y cuánto tiempo usa cada persona los botones de pausa. Solo lo
+// ve quien reparte el trabajo (Felipe Ossa, Eduardo Zurita) y el administrador.
+
+export const MOTIVOS_PAUSA = ["ALIMENTACION", "CAMBIO_BATERIAS"] as const
+export type MotivoPausa = (typeof MOTIVOS_PAUSA)[number]
+
+export interface PausaRegistrada {
+  id: string
+  usuarioId: string
+  motivo: string
+  inicio: Date
+  /** Null mientras sigue en pausa. */
+  fin: Date | null
+}
+
+export interface PausasPersona {
+  id: string
+  nombre: string
+  rol: string
+  veces: Record<MotivoPausa, number>
+  segundos: Record<MotivoPausa, number>
+  totalVeces: number
+  totalSegundos: number
+  /** Está en pausa ahora mismo. */
+  enPausa: boolean
+}
+
+export interface PausasPeriodo {
+  resumen: { veces: Record<MotivoPausa, number>; segundos: Record<MotivoPausa, number>; personas: number }
+  personas: PausasPersona[]
+  /** Cada pausa, la más reciente primero. */
+  detalle: {
+    id: string
+    usuarioId: string
+    nombre: string
+    motivo: MotivoPausa
+    dia: string
+    inicio: Date
+    fin: Date | null
+    segundos: number
+  }[]
+}
+
+function porMotivo(): Record<MotivoPausa, number> {
+  return { ALIMENTACION: 0, CAMBIO_BATERIAS: 0 }
+}
+
+/**
+ * Resume las pausas de un periodo por persona y motivo.
+ *
+ * Una pausa cuenta en el periodo en que EMPIEZA. La que sigue abierta cuenta
+ * hasta `ahora`, así el tiempo de quien lleva rato en pausa no sale en cero.
+ */
+export function resumenPausas(entrada: {
+  personas: readonly PersonaMedida[]
+  pausas: readonly PausaRegistrada[]
+  ahora: Date
+}): PausasPeriodo {
+  const medidas = new Map(entrada.personas.map((p) => [p.id, p]))
+  const acc = new Map<string, PausasPersona>()
+  const resumen = { veces: porMotivo(), segundos: porMotivo(), personas: 0 }
+  const detalle: PausasPeriodo["detalle"] = []
+
+  for (const pausa of entrada.pausas) {
+    const persona = medidas.get(pausa.usuarioId)
+    if (!persona) continue
+    const motivo = (MOTIVOS_PAUSA as readonly string[]).includes(pausa.motivo)
+      ? (pausa.motivo as MotivoPausa)
+      : null
+    if (!motivo) continue
+    const hasta = pausa.fin ?? entrada.ahora
+    const segundos = Math.max(0, Math.round((hasta.getTime() - pausa.inicio.getTime()) / 1000))
+
+    let p = acc.get(persona.id)
+    if (!p) {
+      p = {
+        id: persona.id, nombre: persona.nombre, rol: persona.rol,
+        veces: porMotivo(), segundos: porMotivo(), totalVeces: 0, totalSegundos: 0, enPausa: false,
+      }
+      acc.set(persona.id, p)
+    }
+    p.veces[motivo] += 1
+    p.segundos[motivo] += segundos
+    p.totalVeces += 1
+    p.totalSegundos += segundos
+    if (!pausa.fin) p.enPausa = true
+    resumen.veces[motivo] += 1
+    resumen.segundos[motivo] += segundos
+    detalle.push({
+      id: pausa.id, usuarioId: persona.id, nombre: persona.nombre, motivo,
+      dia: diaBogota(pausa.inicio), inicio: pausa.inicio, fin: pausa.fin, segundos,
+    })
+  }
+
+  const personas = [...acc.values()].sort((a, b) => b.totalSegundos - a.totalSegundos || a.nombre.localeCompare(b.nombre))
+  resumen.personas = personas.length
+  detalle.sort((a, b) => b.inicio.getTime() - a.inicio.getTime())
+  return { resumen, personas, detalle }
+}
