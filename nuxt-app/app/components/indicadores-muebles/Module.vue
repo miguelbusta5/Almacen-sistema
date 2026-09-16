@@ -96,8 +96,10 @@ watch(puedeVer, (v) => { if (v && !datos.value) cargar() }, { immediate: true })
 watch([desde, hasta, operarioId], () => { if (puedeVer.value) cargar() })
 
 // ── Formato ──
-const horas = (min: number) => `${(min / 60).toFixed(1)} h`
-const min1 = (v: number | null) => (v == null ? '—' : `${v} min`)
+// Los tiempos llegan en minutos con decimales. Un picking de segundos se ve en
+// segundos y uno corto en minutos: "0.0 h" hacia creer que no se contaba nada.
+const horas = (min: number) => (min < 1 ? `${Math.round(min * 60)} s` : min < 60 ? `${Math.round(min)} min` : `${(min / 60).toFixed(1)} h`)
+const min1 = (v: number | null) => (v == null ? '—' : horas(v))
 const seg = (v: number | null) => (v == null ? '—' : `${Math.round(v)} s`)
 
 const tiles = computed(() => {

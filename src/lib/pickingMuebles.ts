@@ -79,6 +79,22 @@ export function normalizarRotulo(value: unknown): string {
 // Ninguna se persiste: se calculan, igual que en Exportaciones. Persistirlas
 // obligaria a recalcular cada fila cuando se corrige una hora.
 
+/**
+ * Como duracionMinutos pero con dos decimales. Para lo que se SUMA o se promedia:
+ * redondear cada PLU a minutos enteros antes de sumar deja en cero los trabajos
+ * de segundos.
+ */
+export function minutosPrecisos(
+  inicio: Date | string | null | undefined,
+  fin: Date | string | null | undefined,
+): number | null {
+  if (!inicio || !fin) return null;
+  const a = inicio instanceof Date ? inicio : new Date(inicio);
+  const b = fin instanceof Date ? fin : new Date(fin);
+  if (Number.isNaN(a.getTime()) || Number.isNaN(b.getTime())) return null;
+  return Math.round(Math.max(0, (b.getTime() - a.getTime()) / 60000) * 100) / 100;
+}
+
 export function duracionMinutos(
   inicio: Date | string | null | undefined,
   fin: Date | string | null | undefined,
@@ -105,14 +121,15 @@ export function duracionInspeccionNetaMinutos(linea: {
   reposicionFin?: Date | string | null;
   inspPausaSegundos?: number | null;
 }): number | null {
-  const bruta = duracionMinutos(linea.inspHoraInicio, linea.inspHoraFin);
+  // Con decimales: una inspeccion de 40 s no es "0 min" (ver minutosPrecisos).
+  const bruta = minutosPrecisos(linea.inspHoraInicio, linea.inspHoraFin);
   if (bruta == null) return null;
-  const enTaller = duracionMinutos(linea.ebanisteriaInicio, linea.ebanisteriaFin) ?? 0;
+  const enTaller = minutosPrecisos(linea.ebanisteriaInicio, linea.ebanisteriaFin) ?? 0;
   // Esperar el repuesto de un PLU averiado tampoco es inspeccionar, igual que
   // estar en el taller. Y el almuerzo del inspector menos.
-  const enReposicion = duracionMinutos(linea.reposicionInicio, linea.reposicionFin) ?? 0;
+  const enReposicion = minutosPrecisos(linea.reposicionInicio, linea.reposicionFin) ?? 0;
   const almuerzo = (linea.inspPausaSegundos ?? 0) / 60;
-  return Math.max(0, bruta - enTaller - enReposicion - almuerzo);
+  return Math.round(Math.max(0, bruta - enTaller - enReposicion - almuerzo) * 100) / 100;
 }
 
 // ── Totales de linea ────────────────────────────────────────────────────────

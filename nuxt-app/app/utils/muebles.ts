@@ -202,8 +202,11 @@ export function fmtKg(v: number | null | undefined): string {
 
 export function fmtMin(v: number | null | undefined): string {
   if (v == null) return '—'
-  if (v < 60) return `${v} min`
-  return `${Math.floor(v / 60)}h ${v % 60}m`
+  // Llegan con decimales: menos de un minuto se muestra en segundos.
+  if (v < 1) return `${Math.round(v * 60)} s`
+  const min = Math.round(v)
+  if (min < 60) return `${min} min`
+  return `${Math.floor(min / 60)}h ${min % 60}m`
 }
 
 export function fmtHora(iso: string | null | undefined): string {

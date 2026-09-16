@@ -108,6 +108,19 @@ describe("agregarIndicadoresMuebles", () => {
     tipoPorPlu: tipos,
   };
 
+  // Caso real (SANAYDER, 16-09): once PLU de ~10 s cada uno. Redondear cada PLU a
+  // minutos enteros antes de sumar daba "0.0 h" de picking y "0 min" por PLU.
+  it("los PLU de segundos suman: no se redondean a cero antes de sumar", () => {
+    const S = (hhmmss: string) => new Date(`2026-09-12T${hhmmss}-05:00`);
+    const lineas = Array.from({ length: 11 }, (_, i) =>
+      linea({ plu: `P${i}`, operarioId: "a", horaInicio: S(`08:${String(10 + i * 2).padStart(2, "0")}:00`), horaFin: S(`08:${String(10 + i * 2).padStart(2, "0")}:12`) }));
+    const r = agregarIndicadoresMuebles({ ...base, lineas });
+    const ana = r.operarios.find((o) => o.id === "a")!;
+    expect(ana.minutosPicking).toBeCloseTo(2.2, 1); // 11 x 12 s
+    expect(ana.promedioPluMin).toBeCloseTo(0.2, 2);
+    expect(r.resumen.desplazamientoPorcentaje).toBeLessThan(100);
+  });
+
   // El almuerzo del operario no es tiempo de picking: si contara, un PLU de 10
   // minutos con una hora de pausa diria 70.
   it("descuenta la pausa del reloj del PLU y del de la orden", () => {

@@ -191,9 +191,20 @@ export interface IndicadoresMuebles {
   ordenes: FilaOrden[]
 }
 
+/**
+ * Minutos CON DECIMALES (dos). Redondear cada PLU a minutos enteros antes de
+ * sumar dejaba en cero a quien pickea rapido: once PLU de 10 s daban "0.0 h".
+ * Se redondea solo al mostrar.
+ */
 function minutos(inicio: Date | null, fin: Date | null, pausaSegundos = 0): number | null {
   if (!inicio || !fin) return null
-  return Math.max(0, Math.round((fin.getTime() - inicio.getTime()) / 60000 - pausaSegundos / 60))
+  return redondear(Math.max(0, (fin.getTime() - inicio.getTime()) / 60000 - pausaSegundos / 60), 2)
+}
+
+/** Promedio en minutos con dos decimales (promedio() redondea a enteros). */
+function promedioMin(valores: readonly number[]): number | null {
+  if (valores.length === 0) return null
+  return redondear(valores.reduce((a, b) => a + b, 0) / valores.length, 2)
 }
 
 /** Reloj de picking de un PLU, sin el tiempo que estuvo en pausa. */
@@ -235,8 +246,8 @@ function agruparEn(
       clave: k,
       etiqueta: etiqueta(k),
       plus: grupo.length,
-      promedioPickingMin: promedio(picking),
-      promedioInspeccionMin: promedio(insp),
+      promedioPickingMin: promedioMin(picking),
+      promedioInspeccionMin: promedioMin(insp),
       m3: redondear(grupo.reduce((a, l) => a + (l.volumenTotalM3 ?? 0), 0), 3),
     }
   })
@@ -270,8 +281,8 @@ export function agregarIndicadoresMuebles(entrada: {
       id: p.id,
       nombre: p.nombre,
       plus: suyas.length,
-      minutosPicking: duraciones.reduce((a, b) => a + b, 0),
-      promedioPluMin: promedio(duraciones),
+      minutosPicking: redondear(duraciones.reduce((a, b) => a + b, 0), 2),
+      promedioPluMin: promedioMin(duraciones),
       desplazamientoPromedioSeg: promedio(huecos),
       desplazamientoTotalMin: Math.round(huecos.reduce((a, b) => a + b, 0) / 60),
       m3: redondear(suyas.reduce((a, l) => a + (l.volumenTotalM3 ?? 0), 0), 3),
@@ -289,8 +300,8 @@ export function agregarIndicadoresMuebles(entrada: {
       id: p.id,
       nombre: p.nombre,
       plus: suyas.length,
-      minutosInspeccion: duraciones.reduce((a, b) => a + b, 0),
-      promedioPluMin: promedio(duraciones),
+      minutosInspeccion: redondear(duraciones.reduce((a, b) => a + b, 0), 2),
+      promedioPluMin: promedioMin(duraciones),
       enviadosEbanisteria: suyas.filter((l) => l.ebanisteriaInicio != null).length,
     }
   }).filter((f) => f.plus > 0)
@@ -334,7 +345,7 @@ export function agregarIndicadoresMuebles(entrada: {
   const ebanisteria: Ebanisteria = {
     enviados: aTaller.length,
     enTallerAhora: aTaller.filter((l) => l.ebanisteriaFin == null).length,
-    promedioEsperaMin: promedio(esperas),
+    promedioEsperaMin: promedioMin(esperas),
     maximoEsperaMin: esperas.length > 0 ? Math.max(...esperas) : null,
     motivos: [...motivos.entries()]
       .map(([motivo, veces]) => ({ motivo, veces }))
@@ -361,7 +372,7 @@ export function agregarIndicadoresMuebles(entrada: {
   // ── Resumen ──
   const minutosPicking = filasOperario.reduce((a, f) => a + f.minutosPicking, 0)
   const todosLosHuecos = operarios.flatMap((p) => desplazamientos(lineas.filter((l) => l.operarioId === p.id)))
-  const desplazamientoTotalMin = Math.round(todosLosHuecos.reduce((a, b) => a + b, 0) / 60)
+  const desplazamientoTotalMin = redondear(todosLosHuecos.reduce((a, b) => a + b, 0) / 60, 2)
 
   return {
     resumen: {
@@ -372,7 +383,7 @@ export function agregarIndicadoresMuebles(entrada: {
       kg: redondear(lineas.reduce((a, l) => a + (l.pesoTotalKg ?? 0), 0), 1),
       desplazamientoPromedioSeg: promedio(todosLosHuecos),
       ordenesEntregadas: filasOrden.filter((f) => f.leadTimeMin != null).length,
-      leadTimePromedioMin: promedio(
+      leadTimePromedioMin: promedioMin(
         filasOrden.map((f) => f.leadTimeMin).filter((v): v is number => v != null),
       ),
       // Contra picking + desplazamiento, que es el tiempo que el operario estuvo
