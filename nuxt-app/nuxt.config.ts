@@ -6,7 +6,9 @@
 // version nueva y tiene que actualizarse (plugins/version.client.ts).
 const BUILD_ID = process.env.VERCEL_DEPLOYMENT_ID
   || process.env.VERCEL_GIT_COMMIT_SHA
-  || `local-${Date.now()}`
+  // En Vercel las variables de sistema no siempre llegan al build: la hora del
+  // build basta, porque cada despliegue compila de nuevo y da un valor distinto.
+  || `build-${Date.now()}`
 
 export default defineNuxtConfig({
   runtimeConfig: { buildId: BUILD_ID },
