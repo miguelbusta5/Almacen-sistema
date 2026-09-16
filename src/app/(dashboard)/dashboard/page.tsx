@@ -48,6 +48,8 @@ const PRIORITY_ORDER: ModuleKey[] = [
   "exportaciones-eeuu",
   "picking-muebles",
   "inspeccion-muebles",
+  "entrega-muebles",
+  "tareas-generales",
   "solicitudes-transporte",
   "indicadores",
   "indicadores-muebles",
@@ -62,7 +64,12 @@ export default async function DashboardHome() {
   const role = session?.user?.role;
 
   const visible = new Set(getVisibleModules(role));
-  const firstModule = PRIORITY_ORDER.find((key) => visible.has(key));
+  // Si un modulo nuevo no se agrego a PRIORITY_ORDER, igual se entra a el: antes
+  // un rol cuyo unico modulo faltaba en la lista (el Patinador Muebles) caia en
+  // "sin modulos" aunque tuviera acceso.
+  const firstModule =
+    PRIORITY_ORDER.find((key) => visible.has(key)) ??
+    [...visible].find((key) => MODULE_HREF[key]);
 
   if (firstModule) redirect(MODULE_HREF[firstModule]);
 

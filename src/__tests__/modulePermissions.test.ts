@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { canSeeModule, getVisibleModules } from "@/lib/modulePermissions";
+import { readFileSync } from "node:fs";
+import path from "node:path";
+import { canSeeModule, getVisibleModules, MODULE_ACCESS } from "@/lib/modulePermissions";
 
 describe("canSeeModule — Sprint 8", () => {
 
@@ -108,4 +110,28 @@ describe("canSeeModule — Sprint 8", () => {
   it("role undefined → false", () => expect(canSeeModule(undefined, "transporte")).toBe(false));
   it("role null → false",      () => expect(canSeeModule(null, "transporte")).toBe(false));
   it("role desconocido → false", () => expect(canSeeModule("SUPERADMIN", "transporte")).toBe(false));
+});
+
+// El inicio (/dashboard) manda a cada rol a su primer modulo. Un modulo que no
+// estaba en PRIORITY_ORDER dejaba al Patinador Muebles en "sin modulos" aunque
+// tuviera acceso a Entrega a Transporte.
+describe("inicio: todo rol con modulos entra a alguno", () => {
+  const home = readFileSync(path.join(process.cwd(), "src/app/(dashboard)/dashboard/page.tsx"), "utf8");
+
+  it("cada modulo con ruta esta en el orden de prioridad", () => {
+    const orden = home.slice(home.indexOf("PRIORITY_ORDER"));
+    for (const key of Object.keys(MODULE_ACCESS)) {
+      if (!home.includes(`"${key}": "/dashboard/`) && !home.includes(`${key}: "/dashboard/`) && !home.includes(`'${key}': '/dashboard/`)) continue;
+      if (key === "capacidad-picking") continue; // requiere permiso por persona
+      expect(orden, key).toContain(`"${key}"`);
+    }
+  });
+
+  it("el patinador entra a Entrega a Transporte", () => {
+    expect(getVisibleModules("PATINADOR_MUEBLES")).toEqual(["entrega-muebles"]);
+  });
+
+  it("y si alguno falta, igual se entra al primero visible", () => {
+    expect(home).toContain("[...visible].find((key) => MODULE_HREF[key])");
+  });
 });
