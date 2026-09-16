@@ -483,3 +483,25 @@ export function inspeccionRepartida<T extends LineaInspeccion>(lineas: readonly 
   }
   return res
 }
+
+// ── Codigo de barras ────────────────────────────────────────────────────────
+
+/**
+ * Prefijo GS1 de Grupo Ambiente: pais (770) + empresa (3596). Un EAN-13 propio
+ * es este prefijo + el PLU de 5 digitos + el digito de control
+ * (7703596 22024 3 -> PLU 22024).
+ */
+export const PREFIJO_EAN_AMBIENTE = '7703596'
+
+/**
+ * El PLU que va dentro de un codigo de barras de Ambiente, o null si no lo es.
+ *
+ * La pistola lee la etiqueta del mueble, que trae el EAN y no el PLU: sin esto
+ * la linea quedaba con el EAN como "PLU", sin descripcion ni medidas (el 16-09
+ * fueron 18 PLU de la TSDM104386 y la TSDM104387). Solo es un respaldo: primero
+ * se busca el EAN en el maestro, y el PLU derivado se confirma contra el maestro.
+ */
+export function pluDesdeEanAmbiente(codigo: string): string | null {
+  const m = /^7703596(\d{5})\d$/.exec(codigo.trim())
+  return m ? m[1]! : null
+}

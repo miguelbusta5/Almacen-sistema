@@ -5,7 +5,7 @@ import { requireAuth } from '../../../../../utils/auth'
 import { auditar, ordenPorId, ORDEN_INCLUDE } from '../../../../../utils/muebles'
 import { totalesLinea } from '../../../../../utils/mueblesCalc'
 import { normalizePlu } from '../../../../../utils/exportacionesCalc'
-import { datosPlu, existePlu } from '../../../../../utils/maestroMuebles'
+import { datosPlu, existePlu, resolverPlu } from '../../../../../utils/maestroMuebles'
 import { tipoDePlu } from '../../../../../utils/tiposMuebles'
 import { mapOrdenMuebles } from '../../../../../utils/mapRow'
 
@@ -65,7 +65,7 @@ export default defineEventHandler(async (event) => {
   // ── PLU: tiene que existir y no repetirse en la orden ──
   let medidas: Awaited<ReturnType<typeof datosPlu>> | null = null
   if (d.plu !== undefined) {
-    const plu = normalizePlu(d.plu)
+    const plu = await resolverPlu(normalizePlu(d.plu))
     if (plu !== linea.plu) {
       if (!(await existePlu(plu))) throw createError({ statusCode: 400, statusMessage: `El PLU ${plu} no está en el maestro` })
       const repetido = await prisma.lineaMuebles.findFirst({ where: { ordenId: orden.id, plu, id: { not: linea.id } }, select: { id: true } })

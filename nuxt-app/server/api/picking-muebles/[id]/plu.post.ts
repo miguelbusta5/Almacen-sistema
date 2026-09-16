@@ -4,7 +4,7 @@ import { prisma } from '../../../utils/prisma'
 import { auditar, esParticipante, ordenPorId, requirePickingActivo } from '../../../utils/muebles'
 import { validarAgregarPlu } from '../../../utils/mueblesCalc'
 import { normalizePlu } from '../../../utils/exportacionesCalc'
-import { datosPlu } from '../../../utils/maestroMuebles'
+import { datosPlu, resolverPlu } from '../../../utils/maestroMuebles'
 import { tipoDePlu } from '../../../utils/tiposMuebles'
 import { mapLineaMuebles } from '../../../utils/mapRow'
 
@@ -29,7 +29,9 @@ export default defineEventHandler(async (event) => {
   if (!parsed.success) {
     throw createError({ statusCode: 400, statusMessage: parsed.error.issues[0]!.message })
   }
-  const plu = normalizePlu(parsed.data.plu)
+  // La pistola suele leer el codigo de barras (EAN) de la etiqueta: se guarda
+  // el PLU real, que es el que tiene descripcion y medidas en el maestro.
+  const plu = await resolverPlu(normalizePlu(parsed.data.plu))
 
   const orden = await ordenPorId(id)
   // Cualquier participante puede escanear: la orden puede tener dos operarios

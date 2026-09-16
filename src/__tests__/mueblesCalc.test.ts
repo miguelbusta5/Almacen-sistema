@@ -6,6 +6,7 @@ import {
   duracionMinutos,
   normalizarRotulo,
   ordenInspeccionCompleta,
+  pluDesdeEanAmbiente,
   puedeInspeccionar,
   puedePickear,
   resumenOrden,
@@ -297,5 +298,20 @@ describe("resumen de la orden", () => {
 
   it("orden vacia no divide por cero", () => {
     expect(resumenOrden([]).progreso).toBe(0);
+  });
+});
+
+// La pistola lee el codigo de barras de la etiqueta, no el PLU. El 16-09 quedaron
+// 18 PLU de la TSDM104386/104387 sin descripcion por eso.
+describe("codigo de barras de Ambiente", () => {
+  it("saca el PLU del EAN: 770 3596 PLU control", () => {
+    expect(pluDesdeEanAmbiente("7703596220243")).toBe("22024");
+    expect(pluDesdeEanAmbiente("7703596295036")).toBe("29503");
+  });
+
+  it("no inventa un PLU de lo que no es un EAN de Ambiente", () => {
+    expect(pluDesdeEanAmbiente("22024")).toBeNull();
+    expect(pluDesdeEanAmbiente("7701234220243")).toBeNull();
+    expect(pluDesdeEanAmbiente("05-J-12-04-01")).toBeNull();
   });
 });

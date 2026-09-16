@@ -4,7 +4,7 @@ import { prisma } from '../../../../utils/prisma'
 import { auditar, ordenPorId, ORDEN_INCLUDE, requireInspeccion } from '../../../../utils/muebles'
 import { totalesLinea } from '../../../../utils/mueblesCalc'
 import { normalizePlu } from '../../../../utils/exportacionesCalc'
-import { datosPlu } from '../../../../utils/maestroMuebles'
+import { datosPlu, resolverPlu } from '../../../../utils/maestroMuebles'
 import { tipoDePlu } from '../../../../utils/tiposMuebles'
 import { mapOrdenMuebles } from '../../../../utils/mapRow'
 
@@ -32,7 +32,7 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 400, statusMessage: parsed.error.issues[0]!.message })
   }
   const d = parsed.data
-  const plu = normalizePlu(d.plu)
+  const plu = await resolverPlu(normalizePlu(d.plu))
 
   const orden = await ordenPorId(id)
   if (orden.estado !== 'EN_INSPECCION') {

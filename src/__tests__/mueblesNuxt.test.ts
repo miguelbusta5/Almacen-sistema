@@ -484,3 +484,19 @@ describe("muebles — historial de ordenes", () => {
     expect(map).toContain("netoMin(minutosPrecisos(o.horaPasoInspeccion, o.horaFinInspeccion), o.inspPausaSegundos)");
   });
 });
+
+describe("muebles — el EAN escaneado se convierte en PLU", () => {
+  const maestro = leer("nuxt-app/server/utils/maestroMuebles.ts");
+
+  it("primero PLU, luego EAN del maestro, luego EAN de Ambiente confirmado", () => {
+    expect(maestro).toContain("if (await existePlu(codigo)) return codigo");
+    expect(maestro).toContain("where: { ean: codigo }");
+    expect(maestro).toContain("pluDesdeEanAmbiente(codigo)");
+  });
+
+  it("se usa al escanear, al agregar en inspeccion y al corregir", () => {
+    expect(leer("nuxt-app/server/api/picking-muebles/[id]/plu.post.ts")).toContain("await resolverPlu(normalizePlu(");
+    expect(leer("nuxt-app/server/api/inspeccion-muebles/[id]/linea/index.post.ts")).toContain("await resolverPlu(normalizePlu(");
+    expect(leer("nuxt-app/server/api/historial-muebles/[id]/linea/[lineaId]/corregir.post.ts")).toContain("await resolverPlu(normalizePlu(");
+  });
+});
