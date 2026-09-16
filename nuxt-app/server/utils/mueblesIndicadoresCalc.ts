@@ -10,7 +10,7 @@
 // Meter 'picking' e 'inspeccion' ahi obligaria a tocar los tres archivos y a
 // revisar todo lo de montacargas. Aqui solo se reutilizan helpers sueltos de
 // fecha, que es lo que de verdad se comparte.
-import { duracionInspeccionNetaMinutos, TIPOS_MERCANCIA_MUEBLE, type TipoMercanciaMueble } from './mueblesCalc'
+import { duracionInspeccionNetaMinutos } from './mueblesCalc'
 import { diaBogota, promedio } from './indicadoresCalc'
 
 /**
@@ -50,6 +50,8 @@ export function tramoDe(valor: number | null | undefined, cortes: readonly numbe
 
 export interface LineaMedida {
   plu: string
+  /** Descripcion sellada del maestro al escanear. Es por lo que se agrupa. */
+  descripcion?: string | null
   operarioId: string
   ordenId: string
   horaInicio: Date
@@ -184,7 +186,12 @@ export interface IndicadoresMuebles {
   }
   operarios: FilaOperario[]
   inspectores: FilaInspector[]
-  porTipo: FilaGrupo[]
+  /**
+   * Promedio por DESCRIPCION exacta del producto, de mas a menos pickeado. Lo
+   * pidio el area en lugar del tipo de mercancia: un "SOFA" de dos puestos y uno
+   * seccional no tardan lo mismo, y la descripcion si los separa.
+   */
+  porDescripcion: FilaGrupo[]
   porVolumen: FilaGrupo[]
   porPeso: FilaGrupo[]
   ebanisteria: Ebanisteria
@@ -266,9 +273,8 @@ export function agregarIndicadoresMuebles(entrada: {
   ordenes: readonly OrdenMedida[]
   operarios: readonly Persona[]
   inspectores: readonly Persona[]
-  tipoPorPlu: ReadonlyMap<string, TipoMercanciaMueble>
 }): IndicadoresMuebles {
-  const { lineas, ordenes, operarios, inspectores, tipoPorPlu } = entrada
+  const { lineas, ordenes, operarios, inspectores } = entrada
 
   // ── Por operario ──
   const filasOperario: FilaOperario[] = operarios.map((p) => {
@@ -307,12 +313,13 @@ export function agregarIndicadoresMuebles(entrada: {
   }).filter((f) => f.plus > 0)
 
   // ── Clasificaciones ──
-  const porTipo = agruparEn(
+  // Descripcion exacta; sin descripcion se agrupa por PLU para no perderlo.
+  const porDescripcion = agruparEn(
     lineas,
-    (l) => tipoPorPlu.get(l.plu) ?? 'OTRO',
+    (l) => (l.descripcion ?? '').trim().toUpperCase() || `PLU ${l.plu}`,
     (k) => k,
-    TIPOS_MERCANCIA_MUEBLE,
-  )
+    [],
+  ).sort((a, b) => b.plus - a.plus || a.etiqueta.localeCompare(b.etiqueta))
 
   const clavesVolumen = [...Array(TRAMOS_VOLUMEN_M3.length + 1).keys()].map(String)
   const porVolumen = agruparEn(
@@ -394,7 +401,7 @@ export function agregarIndicadoresMuebles(entrada: {
     },
     operarios: filasOperario.sort((a, b) => b.minutosPicking - a.minutosPicking),
     inspectores: filasInspector.sort((a, b) => b.minutosInspeccion - a.minutosInspeccion),
-    porTipo,
+    porDescripcion,
     porVolumen,
     porPeso,
     ebanisteria,

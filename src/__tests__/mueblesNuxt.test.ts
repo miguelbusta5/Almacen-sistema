@@ -445,3 +445,42 @@ describe("muebles — entrega a transporte", () => {
     expect(leer("nuxt-app/app/components/indicadores-muebles/Module.vue")).toContain("Lead time");
   });
 });
+
+// Historial de ordenes: ver como quedaron los tiempos de cualquier orden y, solo
+// el administrador, corregir lo que se escaneo mal.
+describe("muebles — historial de ordenes", () => {
+  const lista = leer("nuxt-app/server/api/historial-muebles/index.get.ts");
+  const detalle = leer("nuxt-app/server/api/historial-muebles/[id]/index.get.ts");
+  const corregir = leer("nuxt-app/server/api/historial-muebles/[id]/linea/[lineaId]/corregir.post.ts");
+  const modal = leer("nuxt-app/app/components/historial-muebles/CorregirModal.vue");
+
+  it("es de supervision y buscar por codigo ignora las fechas", () => {
+    expect(lista).toContain("esGestionMuebles(actor.role)");
+    expect(detalle).toContain("esGestionMuebles(actor.role)");
+    expect(lista).toContain("codigo ? { codigo: { contains: codigo } } : { horaInicio: { gte: inicio, lte: fin } }");
+  });
+
+  it("corregir es solo del admin, con motivo, y queda en la bitacora con el valor anterior", () => {
+    expect(corregir).toContain("actor.role !== 'ADMIN'");
+    expect(corregir).toContain("motivo: z.string().trim().min(5");
+    expect(corregir).toContain("`${etiqueta}: ${fmt(antes)} -> ${fmt(despues)}`");
+    expect(corregir).toContain("`Correccion en ${orden.codigo}");
+  });
+
+  it("un PLU corregido se valida contra el maestro y trae sus medidas", () => {
+    expect(corregir).toContain("existePlu(plu)");
+    expect(corregir).toContain("medidas = await datosPlu(plu)");
+    expect(corregir).toContain("totalesLinea(unidades, volumen, peso)");
+    expect(corregir).toContain("El fin del picking no puede ser antes del inicio");
+  });
+
+  it("la pantalla solo manda lo que se toco", () => {
+    expect(modal).toContain("if (f.value[k] !== inicial[k]) c[k] = aIso(f.value[k])");
+  });
+
+  it("los tiempos del detalle no se redondean a cero y descuentan el almuerzo", () => {
+    const map = leer("nuxt-app/server/utils/mapRow.ts");
+    expect(map).toContain("duracionPickingMin: netoMin(minutosPrecisos(l.horaInicio, l.horaFin), l.pausaSegundos)");
+    expect(map).toContain("netoMin(minutosPrecisos(o.horaPasoInspeccion, o.horaFinInspeccion), o.inspPausaSegundos)");
+  });
+});

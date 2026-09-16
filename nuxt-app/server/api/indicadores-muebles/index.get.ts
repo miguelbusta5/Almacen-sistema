@@ -3,7 +3,6 @@ import { prisma } from '../../utils/prisma'
 import { requireAuth } from '../../utils/auth'
 import { esGestionMuebles } from '../../utils/mueblesCalc'
 import { agregarIndicadoresMuebles } from '../../utils/mueblesIndicadoresCalc'
-import { tiposDePlus } from '../../utils/tiposMuebles'
 import { diaBogota, limitesRango } from '../../utils/indicadoresCalc'
 
 const RE_DIA = /^\d{4}-\d{2}-\d{2}$/
@@ -46,7 +45,7 @@ export default defineEventHandler(async (event) => {
         ...(operarioId ? { operarioId } : {}),
       },
       select: {
-        plu: true, operarioId: true, ordenId: true,
+        plu: true, descripcion: true, operarioId: true, ordenId: true,
         horaInicio: true, horaFin: true,
         volumenTotalM3: true, pesoTotalKg: true,
         inspectorId: true, inspHoraInicio: true, inspHoraFin: true,
@@ -69,8 +68,6 @@ export default defineEventHandler(async (event) => {
     prisma.inspector.findMany({ select: { id: true, nombre: true }, orderBy: { nombre: 'asc' } }),
   ])
 
-  const tipoPorPlu = await tiposDePlus(lineas.map((l) => l.plu))
-
   return {
     success: true,
     rango: { desde, hasta },
@@ -84,7 +81,6 @@ export default defineEventHandler(async (event) => {
       ordenes,
       operarios: operarios.map((o) => ({ id: o.id, nombre: o.name })),
       inspectores,
-      tipoPorPlu,
     }),
   }
 })

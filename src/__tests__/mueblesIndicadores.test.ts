@@ -105,7 +105,6 @@ describe("agregarIndicadoresMuebles", () => {
       id: "o1", codigo: "TSDM1",
       horaInicio: H("08:00"), horaPasoInspeccion: H("09:00"), horaFinInspeccion: H("09:40"),
     }],
-    tipoPorPlu: tipos,
   };
 
   // Caso real (SANAYDER, 16-09): once PLU de ~10 s cada uno. Redondear cada PLU a
@@ -160,26 +159,28 @@ describe("agregarIndicadoresMuebles", () => {
     expect(r.operarios.map((o) => o.id)).toEqual(["a"]);
   });
 
-  it("agrupa por tipo de mercancia usando el tipo corregible, no uno sellado", () => {
+  // Lo pidio el area: por descripcion exacta, no por tipo. Un sofa de dos puestos
+  // y uno seccional no tardan lo mismo.
+  it("agrupa por descripcion exacta, de mas a menos pickeado", () => {
     const r = agregarIndicadoresMuebles({
       ...base,
       lineas: [
-        linea({ plu: "1001", operarioId: "a", horaInicio: H("08:00"), horaFin: H("08:20") }),
-        linea({ plu: "1002", operarioId: "a", horaInicio: H("08:30"), horaFin: H("08:40") }),
+        linea({ plu: "1001", descripcion: "SOFA LINO 3P", operarioId: "a", horaInicio: H("08:00"), horaFin: H("08:20") }),
+        linea({ plu: "1002", descripcion: "MESA ROBLE", operarioId: "a", horaInicio: H("08:30"), horaFin: H("08:40") }),
+        linea({ plu: "1003", descripcion: "mesa roble ", operarioId: "b", horaInicio: H("09:00"), horaFin: H("09:20"), ordenId: "o2" }),
       ],
     });
-    const sofa = r.porTipo.find((g) => g.clave === "SOFA")!;
-    const mesa = r.porTipo.find((g) => g.clave === "MESA")!;
-    expect(sofa.promedioPickingMin).toBe(20);
-    expect(mesa.promedioPickingMin).toBe(10);
+    expect(r.porDescripcion.map((g) => g.etiqueta)).toEqual(["MESA ROBLE", "SOFA LINO 3P"]);
+    expect(r.porDescripcion[0]!.plus).toBe(2);
+    expect(r.porDescripcion[0]!.promedioPickingMin).toBe(15);
   });
 
-  it("un PLU sin tipo conocido cae en OTRO, no desaparece del informe", () => {
+  it("un PLU sin descripcion no desaparece: se agrupa por su PLU", () => {
     const r = agregarIndicadoresMuebles({
       ...base,
       lineas: [linea({ plu: "9999", operarioId: "a" })],
     });
-    expect(r.porTipo.find((g) => g.clave === "OTRO")?.plus).toBe(1);
+    expect(r.porDescripcion.find((g) => g.etiqueta === "PLU 9999")?.plus).toBe(1);
   });
 
   it("agrupa por tramo de volumen y de peso", () => {

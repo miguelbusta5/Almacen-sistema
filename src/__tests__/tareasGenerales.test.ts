@@ -32,10 +32,10 @@ describe("quien manda y quien recibe", () => {
 
   // Solo operarios de almacenamiento: el resto de roles esta amarrado a su
   // propio modulo y sacarlos de ahi rompe la medicion de su area.
-  it("se asigna solo a operarios de almacenamiento", () => {
+  it("se asigna a operarios de almacenamiento y montacarguistas", () => {
     expect(esAsignable("OPERARIO_ALMACENAMIENTO")).toBe(true);
+    expect(esAsignable("MONTACARGAS")).toBe(true);
     expect(esAsignable("PICKING_MUEBLES")).toBe(false);
-    expect(esAsignable("MONTACARGAS")).toBe(false);
     expect(esAsignable("TIENDA")).toBe(false);
   });
 });

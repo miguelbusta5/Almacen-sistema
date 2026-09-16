@@ -11,7 +11,7 @@ import { ChartColumnIncreasing, RefreshCw, Loader2 } from '@lucide/vue'
 import { useToast } from '~/composables/useToast'
 import { ensureSession, useSessionState } from '~/composables/useSession'
 import { canSeeModule } from '~/utils/modulePermissions'
-import { API_INDICADORES_MUEBLES, TIPO_MERCANCIA_LABEL, fmtM3, mensajeError } from '~/utils/muebles'
+import { API_INDICADORES_MUEBLES, fmtM3, mensajeError } from '~/utils/muebles'
 import { PRESETS_RANGO, rangoDePreset, type BarraH, type ColumnaTabla, type PresetRango } from '~/utils/indicadores'
 import { hoyBogota } from '~/utils/exportaciones'
 
@@ -37,7 +37,7 @@ interface Datos {
   }
   operarios: FilaOperario[]
   inspectores: FilaInspector[]
-  porTipo: FilaGrupo[]
+  porDescripcion: FilaGrupo[]
   porVolumen: FilaGrupo[]
   porPeso: FilaGrupo[]
   ebanisteria: {
@@ -172,7 +172,22 @@ const barrasDe = (g: FilaGrupo[], etiqueta?: (c: string) => string): BarraH[] =>
   }))
 const ejeMin = (v: number) => `${Math.round(v)} min`
 
-const etiquetaTipo = (clave: string) => TIPO_MERCANCIA_LABEL[clave] ?? clave
+// Por descripcion exacta pueden salir cientos de productos: el grafico muestra
+// los mas pickeados y la tabla trae todos, con buscador.
+const TOP_DESCRIPCION = 10
+const buscaDescripcion = ref('')
+const normaliza = (t: string) => t.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toUpperCase()
+const descripcionesFiltradas = computed(() => {
+  const q = normaliza(buscaDescripcion.value.trim())
+  const todas = datos.value?.porDescripcion ?? []
+  return q ? todas.filter((f) => normaliza(f.etiqueta).includes(q)) : todas
+})
+const colsDescripcion: ColumnaTabla[] = [
+  { key: 'etiqueta', label: 'Descripción' },
+  { key: 'plus', label: 'PLUs', num: true },
+  { key: 'picking', label: 'Prom. picking', num: true },
+  { key: 'inspeccion', label: 'Prom. inspección', num: true },
+]
 
 const colsOrden: ColumnaTabla[] = [
   { key: 'codigo', label: 'Orden' },
@@ -251,16 +266,20 @@ const filasOrden = computed(() => (datos.value?.ordenes ?? []).slice(0, 40).map(
         </IndicadoresTarjeta>
 
         <IndicadoresTarjeta
-          class="bloque" titulo="Promedio de picking por tipo de mercancía"
-          subtitulo="El tipo se deduce de la descripción del maestro y se puede corregir"
+          class="bloque" titulo="Promedio de picking por descripción"
+          :subtitulo="`${datos.porDescripcion.length} productos distintos · el gráfico muestra los ${TOP_DESCRIPCION} más pickeados`"
         >
           <IndicadoresBarrasH
-            :items="barrasDe(datos.porTipo, etiquetaTipo)" medida="min por PLU" :formato-eje="ejeMin"
+            :items="barrasDe(datos.porDescripcion.slice(0, TOP_DESCRIPCION))" medida="min por PLU" :formato-eje="ejeMin"
           />
           <template #tabla>
+            <label class="busca">
+              <span class="sr-only">Buscar descripción</span>
+              <input v-model="buscaDescripcion" class="busca-input" type="search" placeholder="Buscar producto…">
+            </label>
             <IndicadoresTabla
-              :columnas="colsGrupo"
-              :filas="filasDe(datos.porTipo).map((f) => ({ ...f, etiqueta: etiquetaTipo(f.etiqueta) }))"
+              :columnas="colsDescripcion"
+              :filas="filasDe(descripcionesFiltradas)"
               principal="etiqueta"
             />
           </template>
@@ -348,4 +367,7 @@ const filasOrden = computed(() => (datos.value?.ordenes ?? []).slice(0, 40).map(
 @keyframes girar { to { transform: rotate(360deg); } }
 
 @media (max-width: 720px) { .hero-title { font-size: 24px; } }
+.busca { display: block; margin: 12px 18px 10px; }
+.busca-input { width: 100%; max-width: 320px; padding: 8px 11px; border: 1px solid var(--border-strong); border-radius: var(--r-sm); background: var(--surface); color: var(--ink); font-size: 13px; }
+.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 </style>

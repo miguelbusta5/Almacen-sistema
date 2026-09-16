@@ -15,13 +15,14 @@ export const ROLES_MANDAN_TAREA = ["SUPERVISOR_ALMACENAMIENTO", "ADMIN"] as cons
 export const ROLES_MIRAN_TAREA = ["GERENTE"] as const;
 
 /**
- * A quien se le puede asignar: los operarios de almacenamiento. Son los que
- * estan disponibles para lo que salga; el resto de roles esta amarrado a su
- * propio modulo (picking, inspeccion, etiquetado) y sacarlos de ahi rompe la
- * medicion de su area.
+ * A quien se le puede asignar: operarios de almacenamiento y montacarguistas.
+ * Son los que estan disponibles para lo que salga en el CEDI; el resto de roles
+ * esta amarrado a su propio modulo (picking, inspeccion, etiquetado) y sacarlos
+ * de ahi rompe la medicion de su area.
  */
 export const ROLES_ASIGNABLES = [
   "OPERARIO_ALMACENAMIENTO",
+  "MONTACARGAS",
 ] as const;
 
 export function puedeMandarTarea(role: string | null | undefined): boolean {

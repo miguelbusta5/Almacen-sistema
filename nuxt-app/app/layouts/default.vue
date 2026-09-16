@@ -89,6 +89,7 @@ const NAV_GROUPS: NavGroup[] = [
     items: [
       { icon: ChartColumnIncreasing, label: 'Indicadores', href: '/dashboard/indicadores', key: 'indicadores', moduleKey: 'indicadores' },
       { icon: ChartColumnIncreasing, label: 'Indicadores Muebles', href: '/dashboard/indicadores-muebles', key: 'indicadores-muebles', moduleKey: 'indicadores-muebles' },
+      { icon: ScrollText, label: 'Historial Muebles', href: '/dashboard/historial-muebles', key: 'historial-muebles', moduleKey: 'historial-muebles' },
       { icon: BarChart3, label: 'Centro de Control', href: '/dashboard/centro-control', key: null, moduleKey: 'centro-control' },
       { icon: SlidersHorizontal, label: 'Admin Muebles', href: '/dashboard/admin-muebles', key: 'admin-muebles', moduleKey: 'admin-muebles' },
       { icon: Users, label: 'Usuarios', href: '/dashboard/usuarios', key: 'usuarios', moduleKey: 'usuarios' },

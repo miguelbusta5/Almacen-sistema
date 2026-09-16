@@ -32,6 +32,7 @@ export type ModuleKey =
   | 'admin-muebles'
   | 'tareas-generales'
   | 'entrega-muebles'
+  | 'historial-muebles'
 
 export const MODULE_ACCESS: Record<ModuleKey, string[]> = {
   transporte: ['TRANSPORTE', 'SUPERVISOR_TRANSPORTE', 'GERENTE', 'ADMIN', 'OPERADOR'],
@@ -84,13 +85,16 @@ export const MODULE_ACCESS: Record<ModuleKey, string[]> = {
   'indicadores-muebles': ['SUPERVISOR_ALMACENAMIENTO', 'GERENTE', 'ADMIN'],
   // Equipos, inspectores, asignacion del dia y tipos de PLU. Solo gestion.
   'admin-muebles': ['SUPERVISOR_ALMACENAMIENTO', 'GERENTE', 'ADMIN'],
-  // Lo que manda supervision y no cabe en ningun modulo. Solo se le asigna a
-  // operarios de almacenamiento, que son los disponibles para lo que salga; el
+  // Lo que manda supervision y no cabe en ningun modulo. Se le asigna a
+  // operarios de almacenamiento y montacarguistas, los disponibles para lo que salga; el
   // operario entra a ver SOLO lo suyo y crear/cerrar es de supervision.
   // El patinador entrega a transporte lo que ya quedo inspeccionado. Es su
   // unico modulo: no pickea ni inspecciona.
+  // Consultar como quedaron los tiempos de cada orden. Corregir es solo ADMIN
+  // (lo exige el servidor).
+  'historial-muebles': ['SUPERVISOR_ALMACENAMIENTO', 'GERENTE', 'ADMIN'],
   'entrega-muebles': ['PATINADOR_MUEBLES', 'SUPERVISOR_ALMACENAMIENTO', 'GERENTE', 'ADMIN'],
-  'tareas-generales': ['SUPERVISOR_ALMACENAMIENTO', 'GERENTE', 'ADMIN', 'OPERARIO_ALMACENAMIENTO'],
+  'tareas-generales': ['SUPERVISOR_ALMACENAMIENTO', 'GERENTE', 'ADMIN', 'OPERARIO_ALMACENAMIENTO', 'MONTACARGAS'],
 }
 
 export function canSeeModule(role: string | undefined | null, moduleKey: ModuleKey): boolean {

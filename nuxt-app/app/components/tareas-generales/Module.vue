@@ -54,6 +54,16 @@ onMounted(() => {
 })
 onBeforeUnmount(() => { if (tick) clearInterval(tick) })
 
+// Operarios y montacarguistas por separado: al elegir a quién mandar, importa
+// quién tiene equipo.
+const GRUPOS_ROL: Array<{ rol: string; titulo: string }> = [
+  { rol: 'OPERARIO_ALMACENAMIENTO', titulo: 'Operarios de almacenamiento' },
+  { rol: 'MONTACARGAS', titulo: 'Montacarguistas' },
+]
+const grupos = computed(() => GRUPOS_ROL
+  .map((g) => ({ ...g, gente: operarios.value.filter((o) => o.rol === g.rol) }))
+  .filter((g) => g.gente.length > 0))
+
 const puedeCrear = computed(() => descripcion.value.trim().length > 0 && elegidos.value.length > 0)
 // Cuánta gente hay trabajando ahora mismo en algo mandado: es el número que
 // mira el supervisor antes de repartir más.
@@ -200,16 +210,19 @@ async function finalizar(t: Tarea, usuarioId: string | null) {
           ¿Quién la hace?
           <span v-if="elegidos.length" class="campo-n">{{ elegidos.length }} seleccionados</span>
         </span>
-        <div class="gente">
-          <button
-            v-for="o in operarios" :key="o.id" type="button"
-            class="chip" :class="{ on: elegidos.includes(o.id) }" @click="alternar(o.id)"
-          >
-            <Check v-if="elegidos.includes(o.id)" :size="13" />
-            {{ o.nombre }}
-          </button>
+        <div v-for="g in grupos" :key="g.rol" class="grupo">
+          <span class="grupo-titulo">{{ g.titulo }}</span>
+          <div class="gente">
+            <button
+              v-for="o in g.gente" :key="o.id" type="button"
+              class="chip" :class="{ on: elegidos.includes(o.id) }" @click="alternar(o.id)"
+            >
+              <Check v-if="elegidos.includes(o.id)" :size="13" />
+              {{ o.nombre }}
+            </button>
+          </div>
         </div>
-        <p v-if="!operarios.length" class="campo-vacio">No hay operarios de almacenamiento activos.</p>
+        <p v-if="!operarios.length" class="campo-vacio">No hay operarios ni montacarguistas activos.</p>
       </div>
 
       <div class="crear-pie">
@@ -286,6 +299,8 @@ async function finalizar(t: Tarea, usuarioId: string | null) {
 .campo-vacio { margin: 8px 0 0; font-size: 12px; color: var(--muted); }
 .input { width: 100%; padding: 10px 12px; border: 1px solid var(--border-strong); border-radius: var(--r-sm); background: var(--surface); color: var(--ink); font-size: 13px; resize: vertical; }
 .gente { display: flex; gap: 7px; flex-wrap: wrap; }
+.grupo + .grupo { margin-top: 10px; }
+.grupo-titulo { display: block; margin-bottom: 6px; font-size: 10.5px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
 .chip { display: inline-flex; align-items: center; gap: 5px; padding: 7px 13px; border-radius: var(--r-pill); border: 1px solid var(--border-strong); background: var(--surface); color: var(--ink-2); font-size: 12.5px; font-weight: 600; cursor: pointer; }
 .chip.on { color: var(--brand); border-color: var(--brand); background: var(--brand-tint); }
 .crear-pie { display: flex; justify-content: flex-end; gap: 8px; flex-wrap: wrap; }

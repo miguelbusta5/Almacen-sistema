@@ -12,6 +12,7 @@ import {
   duracionInspeccionNetaMinutos,
   duracionMinutos as duracionMinutosMuebles,
   leadTimeMinutos,
+  minutosPrecisos,
   resumenOrden,
   volumenOrden,
 } from './mueblesCalc'
@@ -574,6 +575,12 @@ export function mapPendiente(p: any) {
 // Exportaciones. Persistirlas obligaria a recalcular cada fila al corregir una
 // hora, y la correccion de horas es un caso real del area.
 
+/** Minutos menos lo que estuvo en pausa (almuerzo), sin bajar de cero. */
+function netoMin(min: number | null, pausaSegundos: number | null | undefined): number | null {
+  if (min == null) return null
+  return Math.round(Math.max(0, min - (pausaSegundos ?? 0) / 60) * 100) / 100
+}
+
 export function mapLineaMuebles(l: any) {
   return {
     id: l.id,
@@ -590,7 +597,8 @@ export function mapLineaMuebles(l: any) {
     estado: l.estado,
     horaInicio: l.horaInicio?.toISOString?.() ?? l.horaInicio ?? null,
     horaFin: l.horaFin?.toISOString?.() ?? l.horaFin ?? null,
-    duracionPickingMin: duracionMinutosMuebles(l.horaInicio, l.horaFin),
+    // Con decimales y sin el almuerzo: un PLU de 12 s no es "0 min".
+    duracionPickingMin: netoMin(minutosPrecisos(l.horaInicio, l.horaFin), l.pausaSegundos),
     inspHoraInicio: l.inspHoraInicio?.toISOString?.() ?? l.inspHoraInicio ?? null,
     inspHoraFin: l.inspHoraFin?.toISOString?.() ?? l.inspHoraFin ?? null,
     duracionInspeccionMin: duracionInspeccionNetaMinutos(l),
@@ -628,8 +636,8 @@ export function mapOrdenMuebles(o: any) {
     horaInicio: o.horaInicio?.toISOString?.() ?? o.horaInicio ?? null,
     horaPasoInspeccion: o.horaPasoInspeccion?.toISOString?.() ?? o.horaPasoInspeccion ?? null,
     horaFinInspeccion: o.horaFinInspeccion?.toISOString?.() ?? o.horaFinInspeccion ?? null,
-    duracionPickingMin: duracionMinutosMuebles(o.horaInicio, o.horaPasoInspeccion),
-    duracionInspeccionMin: duracionMinutosMuebles(o.horaPasoInspeccion, o.horaFinInspeccion),
+    duracionPickingMin: netoMin(minutosPrecisos(o.horaInicio, o.horaPasoInspeccion), o.pausaSegundos),
+    duracionInspeccionMin: netoMin(minutosPrecisos(o.horaPasoInspeccion, o.horaFinInspeccion), o.inspPausaSegundos),
     operario: o.operario ? { id: o.operario.id, nombre: o.operario.name } : null,
     equipo: o.equipo ? mapEquipoMuebles(o.equipo) : null,
     // En orden de entrada: el ultimo es quien pasa la orden a inspeccion.

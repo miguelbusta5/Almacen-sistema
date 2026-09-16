@@ -1073,3 +1073,17 @@ Lógica pura en `src/lib/tareasGenerales.ts` (copia de Nitro en
 - Script: `prisma/migrate-entrega-muebles.sql`.
 - **Tareas generales** ahora solo se asignan a operarios de almacenamiento (el resto de
   roles está amarrado a su propio módulo y sacarlos de ahí rompe la medición del área).
+
+### Historial de órdenes de Muebles y promedio por descripción (2026-09-16, en producción)
+- **Indicadores Muebles**: el promedio de picking ya no va por tipo de mercancía sino por
+  **descripción exacta** del producto (de más a menos pickeado; gráfico con los 10 primeros
+  y tabla completa con buscador).
+- Los tiempos se calculan **con decimales** y se redondean solo al mostrar: antes cada PLU
+  se redondeaba a minutos enteros antes de sumar y los picking de segundos daban 0.
+- Módulo nuevo **Historial Muebles** (supervisión, gerencia, admin): buscar cualquier orden
+  (código, fechas, estado, ciudad, operario) y abrir su detalle con los relojes de la orden
+  (picking, inspección, lead time) y el tiempo de cada PLU con quién lo hizo.
+- **Corregir un PLU es solo ADMIN**: PLU (se revalida contra el maestro y trae medidas),
+  ubicación, rótulo, unidades y horas. Motivo obligatorio; la pantalla envía solo lo que se
+  tocó y cada cambio queda en Auditoría con su valor anterior (prefijo "Correccion").
+- **Tareas generales** se asignan a operarios de almacenamiento **y montacarguistas**.

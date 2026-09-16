@@ -29,7 +29,8 @@ export type ModuleKey =
   | "indicadores-muebles"
   | "admin-muebles"
   | "tareas-generales"
-  | "entrega-muebles";
+  | "entrega-muebles"
+  | "historial-muebles";
 
 export const MODULE_ACCESS: Record<ModuleKey, AppRole[]> = {
   "capacidad-picking": ["ADMIN", "GERENTE", "SUPERVISOR_ALMACENAMIENTO", "OPERARIO_ALMACENAMIENTO", "MONTACARGAS", "INVENTARIO", "SUPERVISOR_INVENTARIO", "OPERADOR"],
@@ -108,11 +109,14 @@ export const MODULE_ACCESS: Record<ModuleKey, AppRole[]> = {
   // Equipos, inspectores, asignacion del dia y tipos de PLU. Solo gestion: el
   // operario no configura el area en la que trabaja.
   "admin-muebles": ["SUPERVISOR_ALMACENAMIENTO", "GERENTE", "ADMIN"],
-  // Lo que manda supervision y no cabe en ningun modulo. Solo se le asigna a
-  // operarios de almacenamiento, que son los disponibles para lo que salga; el
+  // Lo que manda supervision y no cabe en ningun modulo. Se le asigna a
+  // operarios de almacenamiento y montacarguistas, los disponibles para lo que salga; el
   // operario entra a ver SOLO lo suyo y crear/cerrar es de supervision.
+  // Consultar como quedaron los tiempos de cada orden. Corregir es solo ADMIN
+  // (lo exige el servidor).
+  "historial-muebles": ["SUPERVISOR_ALMACENAMIENTO", "GERENTE", "ADMIN"],
   "entrega-muebles": ["PATINADOR_MUEBLES", "SUPERVISOR_ALMACENAMIENTO", "GERENTE", "ADMIN"],
-  "tareas-generales": ["SUPERVISOR_ALMACENAMIENTO", "GERENTE", "ADMIN", "OPERARIO_ALMACENAMIENTO"],
+  "tareas-generales": ["SUPERVISOR_ALMACENAMIENTO", "GERENTE", "ADMIN", "OPERARIO_ALMACENAMIENTO", "MONTACARGAS"],
 };
 
 export function canSeeModule(role: string | undefined | null, moduleKey: ModuleKey): boolean {

@@ -27,6 +27,7 @@ export const LINEA_SELECT = {
   inspHoraFin: true,
   inspPausaInicio: true,
   inspPausaSegundos: true,
+  pausaSegundos: true,
   averiado: true,
   motivoAveria: true,
   reposicionInicio: true,

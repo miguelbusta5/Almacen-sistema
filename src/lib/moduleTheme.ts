@@ -46,6 +46,7 @@ function mod(
 
 export const MODULE_THEME: Record<ModuleThemeKey, ModuleTheme> = {
   'capacidad-picking': mod('capacidad-picking', 'Capacidad picking', 'Capacidad', 'Capacidad real y resurtido de picking'),
+  'historial-muebles': mod('historial-muebles', 'Historial de ordenes', 'Historial', 'Tiempos de cada orden de muebles, PLU por PLU'),
   'entrega-muebles': mod('entrega-muebles', 'Entrega a Transporte', 'Entrega', 'Ordenes de muebles listas para salir del CEDI'),
   'tareas-generales': mod('tareas-generales', 'Tareas generales', 'Tareas', 'Tareas sueltas que manda supervision, con su tiempo'),
   home: mod("home", PRODUCT.displayName, PRODUCT.shortName, PRODUCT.tagline),
