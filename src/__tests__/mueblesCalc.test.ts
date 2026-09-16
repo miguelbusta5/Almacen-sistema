@@ -315,3 +315,20 @@ describe("codigo de barras de Ambiente", () => {
     expect(pluDesdeEanAmbiente("05-J-12-04-01")).toBeNull();
   });
 });
+
+// La pistola lee igual la etiqueta del rack que la del mueble.
+describe("una ubicacion no entra como PLU", () => {
+  it("detecta ubicaciones del CEDI, completas o a medias", async () => {
+    const { pareceUbicacion } = await import("@/lib/pickingMuebles");
+    expect(pareceUbicacion("05-J-12-04-01")).toBe(true);
+    expect(pareceUbicacion("04-g3-12-01-01")).toBe(true);
+    expect(pareceUbicacion(" 02-D-08 ")).toBe(true);
+  });
+
+  it("no confunde PLU ni codigos de barras", async () => {
+    const { pareceUbicacion } = await import("@/lib/pickingMuebles");
+    expect(pareceUbicacion("10072")).toBe(false);
+    expect(pareceUbicacion("7703596220243")).toBe(false);
+    expect(pareceUbicacion("BONO100")).toBe(false);
+  });
+});

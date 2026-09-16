@@ -533,3 +533,19 @@ describe("codigo de barras -> PLU en todos los modulos", () => {
     expect(leer("nuxt-app/server/api/productos-maestro/buscar.get.ts")).toContain("pluDesdeEanAmbiente(codigo)");
   });
 });
+
+describe("picking muebles — escaneo a prueba de errores", () => {
+  const captura = leer("nuxt-app/app/components/picking-muebles/CapturaPlu.vue");
+  const plu = leer("nuxt-app/server/api/picking-muebles/[id]/plu.post.ts");
+
+  it("con orden en curso no se puede pegar ni copiar en PLU ni en ubicacion", () => {
+    expect(captura.match(/@paste="bloquearPegado" @drop="bloquearPegado" @copy.prevent @cut.prevent @contextmenu.prevent/g)?.length).toBe(2);
+  });
+
+  it("una ubicacion en el campo del PLU sale con alerta y no se envia", () => {
+    expect(captura).toContain("if (pareceUbicacion(v)) {");
+    expect(captura).toContain("Eso es una ubicación, no un PLU");
+    expect(plu).toContain("if (pareceUbicacion(parsed.data.plu))");
+    for (const src of [fuente, calcServidor]) expect(src).toContain("export function pareceUbicacion");
+  });
+});

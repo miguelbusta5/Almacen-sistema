@@ -2,7 +2,7 @@ import { defineEventHandler, getRouterParam, readBody, createError } from 'h3'
 import { z } from 'zod'
 import { prisma } from '../../../../utils/prisma'
 import { auditar, ordenPorId, ORDEN_INCLUDE, requireInspeccion } from '../../../../utils/muebles'
-import { totalesLinea } from '../../../../utils/mueblesCalc'
+import { MENSAJE_PLU_ES_UBICACION, pareceUbicacion, totalesLinea } from '../../../../utils/mueblesCalc'
 import { normalizePlu } from '../../../../utils/exportacionesCalc'
 import { datosPlu, resolverPlu } from '../../../../utils/maestroMuebles'
 import { tipoDePlu } from '../../../../utils/tiposMuebles'
@@ -32,6 +32,7 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 400, statusMessage: parsed.error.issues[0]!.message })
   }
   const d = parsed.data
+  if (pareceUbicacion(d.plu)) throw createError({ statusCode: 400, statusMessage: MENSAJE_PLU_ES_UBICACION })
   const plu = await resolverPlu(normalizePlu(d.plu))
 
   const orden = await ordenPorId(id)

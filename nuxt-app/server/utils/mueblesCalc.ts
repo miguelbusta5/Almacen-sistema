@@ -505,3 +505,20 @@ export function pluDesdeEanAmbiente(codigo: string): string | null {
   const m = /^7703596(\d{5})\d$/.exec(codigo.trim())
   return m ? m[1]! : null
 }
+
+// ── PLU vs ubicacion ────────────────────────────────────────────────────────
+
+/**
+ * ¿Lo escaneado en el campo del PLU es una ubicacion?
+ *
+ * La pistola lee igual la etiqueta del rack que la del mueble, y una ubicacion
+ * guardada como PLU deja la linea sin descripcion ni medidas (le paso al
+ * PLU 28138 de la TSDM104350). Basta con que empiece como una ubicacion del CEDI
+ * (bodega-pasillo-modulo: 05-J-12…): ningun PLU tiene esa forma.
+ */
+export function pareceUbicacion(valor: string): boolean {
+  return /^\d{2}-[A-Z]\d?-\d{2}/.test(String(valor ?? '').trim().toUpperCase())
+}
+
+export const MENSAJE_PLU_ES_UBICACION =
+  'Escaneaste una UBICACIÓN en el campo del PLU. Escanea la etiqueta del producto'

@@ -2,7 +2,7 @@ import { defineEventHandler, getRouterParam, readBody, createError } from 'h3'
 import { z } from 'zod'
 import { prisma } from '../../../utils/prisma'
 import { auditar, esParticipante, ordenPorId, requirePickingActivo } from '../../../utils/muebles'
-import { validarAgregarPlu } from '../../../utils/mueblesCalc'
+import { MENSAJE_PLU_ES_UBICACION, pareceUbicacion, validarAgregarPlu } from '../../../utils/mueblesCalc'
 import { normalizePlu } from '../../../utils/exportacionesCalc'
 import { datosPlu, resolverPlu } from '../../../utils/maestroMuebles'
 import { tipoDePlu } from '../../../utils/tiposMuebles'
@@ -31,6 +31,11 @@ export default defineEventHandler(async (event) => {
   }
   // La pistola suele leer el codigo de barras (EAN) de la etiqueta: se guarda
   // el PLU real, que es el que tiene descripcion y medidas en el maestro.
+  // Una ubicacion en el campo del PLU no se guarda nunca (la pantalla ya avisa;
+  // esto cubre cualquier otra via).
+  if (pareceUbicacion(parsed.data.plu)) {
+    throw createError({ statusCode: 400, statusMessage: MENSAJE_PLU_ES_UBICACION })
+  }
   const plu = await resolverPlu(normalizePlu(parsed.data.plu))
 
   const orden = await ordenPorId(id)
