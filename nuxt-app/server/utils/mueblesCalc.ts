@@ -522,3 +522,47 @@ export function pareceUbicacion(valor: string): boolean {
 
 export const MENSAJE_PLU_ES_UBICACION =
   'Escaneaste una UBICACIÓN en el campo del PLU. Escanea la etiqueta del producto'
+
+// ── Errores de picking ──────────────────────────────────────────────────────
+
+export const TIPOS_ERROR_PICKING = [
+  'PLU_EQUIVOCADO',
+  'UNIDADES_ERRADAS',
+  'FALTANTE',
+  'ORDEN_EQUIVOCADA',
+  'ROTULO_UBICACION',
+  'OTRO',
+] as const
+export type TipoErrorPicking = (typeof TIPOS_ERROR_PICKING)[number]
+
+export const TIPO_ERROR_PICKING_LABEL: Record<TipoErrorPicking, string> = {
+  PLU_EQUIVOCADO: 'PLU equivocado',
+  UNIDADES_ERRADAS: 'Unidades erradas',
+  FALTANTE: 'Faltante',
+  ORDEN_EQUIVOCADA: 'Orden equivocada',
+  ROTULO_UBICACION: 'Rótulo o ubicación errada',
+  OTRO: 'Otro',
+}
+
+export function esTipoErrorPicking(valor: unknown): valor is TipoErrorPicking {
+  return (TIPOS_ERROR_PICKING as readonly string[]).includes(String(valor))
+}
+
+/**
+ * ¿Se puede terminar la orden con errores de picking?
+ *
+ * Regla del area: los PLU con error pueden quedar sin revisar (el error ya dice
+ * lo que paso), pero todos los demas tienen que estar inspeccionados. Sin ningun
+ * error marcado no hay nada que justifique saltarse la inspeccion.
+ */
+export function validarTerminarConErrores(
+  lineas: ReadonlyArray<{ plu: string; estado: string; tieneError: boolean }>,
+): string | null {
+  if (!lineas.some((l) => l.tieneError)) return 'Marca al menos un error de picking para terminar la orden'
+  const pendientes = lineas.filter((l) => !l.tieneError && l.estado !== 'LISTO')
+  if (pendientes.length > 0) {
+    const plus = pendientes.slice(0, 3).map((l) => l.plu).join(', ')
+    return `Faltan por inspeccionar ${pendientes.length} PLU sin error (${plus}${pendientes.length > 3 ? '…' : ''})`
+  }
+  return null
+}

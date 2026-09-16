@@ -12,7 +12,7 @@ import { ChartColumnIncreasing, RefreshCw, Loader2 } from '@lucide/vue'
 import { useToast } from '~/composables/useToast'
 import { ensureSession, useSessionState } from '~/composables/useSession'
 import { canSeeModule } from '~/utils/modulePermissions'
-import { API_INDICADORES_MUEBLES, fmtM3, mensajeError } from '~/utils/muebles'
+import { API_INDICADORES_MUEBLES, TIPO_ERROR_PICKING_LABEL, fmtM3, mensajeError } from '~/utils/muebles'
 import { PRESETS_RANGO, rangoDePreset, type BarraH, type ColumnaTabla, type PresetRango } from '~/utils/indicadores'
 import { hoyBogota } from '~/utils/exportaciones'
 
@@ -29,6 +29,19 @@ interface FilaGrupo {
   clave: string; etiqueta: string; plus: number
   promedioPickingMin: number | null; promedioInspeccionMin: number | null; m3: number
 }
+interface ErroresPicking {
+  total: number
+  ordenesConError: number
+  porcentajeOrdenes: number | null
+  porOperario: Array<{ id: string; nombre: string; errores: number; plus: number; porcentaje: number | null }>
+  porTipo: Array<{ tipo: string; cantidad: number }>
+  detalle: Array<{
+    ordenId: string; codigoOrden: string; plu: string; descripcion: string | null
+    operarioNombre: string; tipo: string; nota: string | null; marcadoPorNombre: string; fecha: string
+  }>
+}
+const errores = ref<ErroresPicking | null>(null)
+
 interface Datos {
   resumen: {
     plusPickeados: number; minutosPicking: number; minutosInspeccion: number
@@ -80,11 +93,12 @@ async function cargar() {
   // Un refresco automatico no pone el esqueleto: la pantalla no parpadea.
   if (!enRefrescoSilencioso()) cargando.value = true
   try {
-    const res = await $fetch<{ data: Datos; equipo: Array<{ id: string; nombre: string }> }>(
+    const res = await $fetch<{ data: Datos; equipo: Array<{ id: string; nombre: string }>; erroresPicking?: ErroresPicking }>(
       API_INDICADORES_MUEBLES,
       { query: { desde: desde.value, hasta: hasta.value, operarioId: operarioId.value || undefined } },
     )
     datos.value = res.data
+    errores.value = res.erroresPicking ?? null
     equipo.value = res.equipo
   } catch (e) {
     show(mensajeError(e, 'No se pudieron cargar los indicadores'), true)
@@ -115,8 +129,62 @@ const tiles = computed(() => {
     // Lead time: lo que espera el cliente, de abrir el picking a subir al camion.
     { label: 'Lead time promedio', valor: horas(r.leadTimePromedioMin ?? 0) },
     { label: 'Órdenes entregadas', valor: String(r.ordenesEntregadas ?? 0) },
+    // Errores de picking marcados en inspeccion.
+    {
+      label: 'Órdenes con error de picking',
+      valor: errores.value?.porcentajeOrdenes == null ? '—' : `${errores.value.porcentajeOrdenes}%`,
+    },
   ]
 })
+
+// ── Errores de picking ──
+const etiquetaError = (t: string) => TIPO_ERROR_PICKING_LABEL[t] ?? t
+const ejeEntero = (v: number) => String(Math.round(v))
+const colsErrOperario: ColumnaTabla[] = [
+  { key: 'nombre', label: 'Operario' },
+  { key: 'errores', label: 'Errores', num: true },
+  { key: 'plus', label: 'PLUs pickeados', num: true },
+  { key: 'porcentaje', label: '% de error', num: true },
+]
+const filasErrOperario = computed(() => (errores.value?.porOperario ?? []).map((o) => ({
+  nombre: o.nombre,
+  errores: String(o.errores),
+  plus: String(o.plus),
+  porcentaje: o.porcentaje == null ? '—' : `${o.porcentaje}%`,
+})))
+const colsErrTipo: ColumnaTabla[] = [
+  { key: 'etiqueta', label: 'Tipo de error' },
+  { key: 'cantidad', label: 'Cantidad', num: true },
+]
+const filasErrTipo = computed(() => (errores.value?.porTipo ?? []).map((t) => ({
+  etiqueta: etiquetaError(t.tipo),
+  cantidad: String(t.cantidad),
+})))
+const barrasErrTipo = computed<BarraH[]>(() => (errores.value?.porTipo ?? []).map((t) => ({
+  id: t.tipo,
+  etiqueta: etiquetaError(t.tipo),
+  valor: t.cantidad,
+  texto: String(t.cantidad),
+})))
+const colsErrDetalle: ColumnaTabla[] = [
+  { key: 'fecha', label: 'Fecha' },
+  { key: 'orden', label: 'Orden' },
+  { key: 'plu', label: 'PLU' },
+  { key: 'operario', label: 'Operario' },
+  { key: 'tipo', label: 'Tipo' },
+  { key: 'nota', label: 'Nota' },
+  { key: 'marco', label: 'Lo marcó' },
+]
+const fechaCorta = (iso: string) => new Intl.DateTimeFormat('es-CO', { timeZone: 'America/Bogota', dateStyle: 'short', timeStyle: 'short' }).format(new Date(iso))
+const filasErrDetalle = computed(() => (errores.value?.detalle ?? []).map((e) => ({
+  fecha: fechaCorta(e.fecha),
+  orden: e.codigoOrden,
+  plu: e.descripcion ? `${e.plu} · ${e.descripcion}` : e.plu,
+  operario: e.operarioNombre,
+  tipo: etiquetaError(e.tipo),
+  nota: e.nota ?? '—',
+  marco: e.marcadoPorNombre,
+})))
 
 const colsOperario: ColumnaTabla[] = [
   { key: 'nombre', label: 'Operario' },
@@ -266,6 +334,32 @@ useAutoRefresh({ intervalMs: 60_000, onRefresh: () => cargar() })
           <IndicadoresTabla :columnas="colsOperario" :filas="filasOperario" principal="nombre" />
         </IndicadoresTarjeta>
 
+        <!-- Errores de picking: los marca el administrador en Inspección. -->
+        <IndicadoresTarjeta
+          class="bloque" titulo="Errores de picking"
+          :subtitulo="errores && errores.total
+            ? `${errores.total} ${errores.total === 1 ? 'error' : 'errores'} en ${errores.ordenesConError} ${errores.ordenesConError === 1 ? 'orden' : 'órdenes'} · ${errores.porcentajeOrdenes ?? 0}% de las órdenes del periodo`
+            : 'Sin errores de picking en el periodo'"
+        >
+          <template v-if="errores && errores.total">
+            <IndicadoresTabla :columnas="colsErrOperario" :filas="filasErrOperario" principal="nombre" />
+          </template>
+          <p v-else class="sin-errores">Ningún PLU marcado con error de picking.</p>
+          <template #tabla>
+            <IndicadoresTabla :columnas="colsErrDetalle" :filas="filasErrDetalle" principal="orden" />
+          </template>
+        </IndicadoresTarjeta>
+
+        <IndicadoresTarjeta
+          v-if="errores && errores.total" class="bloque" titulo="Errores por tipo"
+          subtitulo="El detalle de cada error está en Errores de picking › Ver tabla"
+        >
+          <IndicadoresBarrasH :items="barrasErrTipo" medida="errores" :formato-eje="ejeEntero" />
+          <template #tabla>
+            <IndicadoresTabla :columnas="colsErrTipo" :filas="filasErrTipo" principal="etiqueta" />
+          </template>
+        </IndicadoresTarjeta>
+
         <IndicadoresTarjeta class="bloque" titulo="Tiempo de inspección por inspector">
           <IndicadoresTabla :columnas="colsInspector" :filas="filasInspector" principal="nombre" />
         </IndicadoresTarjeta>
@@ -375,4 +469,5 @@ useAutoRefresh({ intervalMs: 60_000, onRefresh: () => cargar() })
 .busca { display: block; margin: 12px 18px 10px; }
 .busca-input { width: 100%; max-width: 320px; padding: 8px 11px; border: 1px solid var(--border-strong); border-radius: var(--r-sm); background: var(--surface); color: var(--ink); font-size: 13px; }
 .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.sin-errores { margin: 0; padding: 14px 0 4px; font-size: 13px; color: var(--muted); }
 </style>

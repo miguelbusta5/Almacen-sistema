@@ -2,7 +2,7 @@ import { defineEventHandler, getQuery, createError } from 'h3'
 import { prisma } from '../../utils/prisma'
 import { requireAuth } from '../../utils/auth'
 import { esGestionMuebles } from '../../utils/mueblesCalc'
-import { agregarIndicadoresMuebles } from '../../utils/mueblesIndicadoresCalc'
+import { agregarIndicadoresMuebles, resumirErroresPicking } from '../../utils/mueblesIndicadoresCalc'
 import { diaBogota, limitesRango } from '../../utils/indicadoresCalc'
 
 const RE_DIA = /^\d{4}-\d{2}-\d{2}$/
@@ -37,7 +37,7 @@ export default defineEventHandler(async (event) => {
   // El rango se filtra por el inicio del PICKING del PLU, que es cuando empieza
   // el trabajo. Filtrar por el fin dejaria fuera lo que sigue abierto, que es
   // justo lo que interesa ver de un dia en curso.
-  const [lineas, ordenes, operarios, inspectores] = await Promise.all([
+  const [lineas, ordenes, operarios, inspectores, errores] = await Promise.all([
     prisma.lineaMuebles.findMany({
       where: {
         horaInicio: { gte: inicio, lte: fin },
@@ -66,12 +66,41 @@ export default defineEventHandler(async (event) => {
       orderBy: { name: 'asc' },
     }),
     prisma.inspector.findMany({ select: { id: true, nombre: true }, orderBy: { nombre: 'asc' } }),
+    // Errores de picking de los PLU del periodo (mismo corte: inicio del picking).
+    prisma.errorPickingMuebles.findMany({
+      where: {
+        deletedAt: null,
+        orden: { deletedAt: null },
+        linea: { horaInicio: { gte: inicio, lte: fin } },
+        ...(operarioId ? { operarioId } : {}),
+      },
+      select: {
+        ordenId: true, plu: true, tipo: true, nota: true, createdAt: true, operarioId: true,
+        orden: { select: { codigo: true } },
+        linea: { select: { descripcion: true } },
+        operario: { select: { name: true } },
+        marcadoPor: { select: { name: true } },
+      },
+    }),
   ])
+
+  const erroresPicking = resumirErroresPicking(
+    errores.map((e) => ({
+      ordenId: e.ordenId, codigoOrden: e.orden.codigo, plu: e.plu,
+      descripcion: e.linea?.descripcion ?? null,
+      operarioId: e.operarioId, operarioNombre: e.operario.name,
+      tipo: e.tipo, nota: e.nota ?? null,
+      marcadoPorNombre: e.marcadoPor.name, fecha: e.createdAt,
+    })),
+    lineas,
+    ordenes.length,
+  )
 
   return {
     success: true,
     rango: { desde, hasta },
     equipo: operarios.map((o) => ({ id: o.id, nombre: o.name })),
+    erroresPicking,
     data: agregarIndicadoresMuebles({
       lineas: lineas.map((l) => ({
         ...l,

@@ -1104,3 +1104,14 @@ Lógica pura en `src/lib/tareasGenerales.ts` (copia de Nitro en
   Montaje, Recepción, Picking/Inspección/Entrega Muebles, Tareas generales, Historial,
   Faltantes, Indicadores Muebles, Exportaciones, Solicitudes, Cargue Gourmet,
   Integración, Facturas y Guardados). Una pantalla nueva debe usarlo igual.
+
+### Errores de picking en Muebles (2026-09-16, en producción)
+- **Solo ADMIN**, en Inspección Muebles: botón "Error picking" en cada PLU de una orden en
+  inspección. Tipos: PLU equivocado, unidades erradas, faltante, orden equivocada, rótulo o
+  ubicación errada, otro; nota opcional. Un error vigente por PLU (se corrige o se quita).
+  Queda a nombre del operario que pickeó ese PLU (`errores_picking_muebles`, sellado).
+- **Terminar orden (N errores):** pasa la orden a "Lista para entregar a transporte". Los PLU
+  con error pueden quedar sin revisar; los demás tienen que estar inspeccionados. Un PLU con
+  error que estaba en revisión cierra su reloj a esa hora; los no empezados quedan sin tiempo.
+- **Indicadores Muebles:** % de órdenes con error (tarjeta), errores por operario (sobre sus
+  PLU), por tipo y detalle de cada error. Script: `prisma/migrate-errores-picking-muebles.sql`.

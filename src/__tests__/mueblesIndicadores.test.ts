@@ -296,3 +296,23 @@ describe("agregarIndicadoresMuebles", () => {
     expect(r.ebanisteria.enviados).toBe(0);
   });
 });
+
+describe("errores de picking en el indicador", () => {
+  it("por operario sobre sus PLU, por tipo y % de ordenes", async () => {
+    const { resumirErroresPicking } = await import("@/lib/mueblesIndicadores");
+    const e = (ordenId: string, operarioId: string, tipo: string) => ({
+      ordenId, codigoOrden: ordenId, plu: "1", descripcion: null, operarioId,
+      operarioNombre: operarioId.toUpperCase(), tipo, nota: null, marcadoPorNombre: "Admin", fecha: new Date(),
+    });
+    const r = resumirErroresPicking(
+      [e("o1", "a", "FALTANTE"), e("o1", "a", "PLU_EQUIVOCADO"), e("o2", "b", "FALTANTE")],
+      [{ operarioId: "a" }, { operarioId: "a" }, { operarioId: "a" }, { operarioId: "a" }, { operarioId: "b" }],
+      4,
+    );
+    expect(r.total).toBe(3);
+    expect(r.ordenesConError).toBe(2);
+    expect(r.porcentajeOrdenes).toBe(50);
+    expect(r.porOperario[0]).toMatchObject({ id: "a", errores: 2, plus: 4, porcentaje: 50 });
+    expect(r.porTipo[0]).toEqual({ tipo: "FALTANTE", cantidad: 2 });
+  });
+});

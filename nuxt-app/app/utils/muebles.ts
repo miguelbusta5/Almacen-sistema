@@ -68,6 +68,8 @@ export interface Linea {
   ebanisteriaFin: string | null
   duracionEbanisteriaMin: number | null
   motivoEbanisteria: string | null
+  /** Error de picking marcado por el administrador. */
+  errorPicking: { id: string; tipo: string; nota: string | null; marcadoPor: string | null } | null
   /** Averia: el mueble llego dañado y picking trae otro. */
   averiado: boolean
   motivoAveria: string | null
@@ -230,4 +232,14 @@ export function cronometro(desde: string | null | undefined, ahora: number): str
 export function mensajeError(e: unknown, fallback = 'No se pudo completar la acción'): string {
   const err = e as { statusMessage?: string; data?: { statusMessage?: string; message?: string } }
   return err?.data?.statusMessage || err?.statusMessage || err?.data?.message || fallback
+}
+
+/** Tipos de error de picking (espejo de mueblesCalc). */
+export const TIPO_ERROR_PICKING_LABEL: Record<string, string> = {
+  PLU_EQUIVOCADO: 'PLU equivocado',
+  UNIDADES_ERRADAS: 'Unidades erradas',
+  FALTANTE: 'Faltante',
+  ORDEN_EQUIVOCADA: 'Orden equivocada',
+  ROTULO_UBICACION: 'Rótulo o ubicación errada',
+  OTRO: 'Otro',
 }

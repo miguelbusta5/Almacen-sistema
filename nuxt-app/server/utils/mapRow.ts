@@ -625,6 +625,14 @@ export function mapLineaMuebles(l: any) {
     motivoEbanisteria: l.motivoEbanisteria ?? null,
     // Averia: esperando reposicion mientras reposicionInicio no tenga fin.
     averiado: l.averiado ?? false,
+    errorPicking: l.erroresPicking?.[0]
+      ? {
+          id: l.erroresPicking[0].id,
+          tipo: l.erroresPicking[0].tipo,
+          nota: l.erroresPicking[0].nota ?? null,
+          marcadoPor: l.erroresPicking[0].marcadoPor?.name ?? null,
+        }
+      : null,
     motivoAveria: l.motivoAveria ?? null,
     esperandoReposicion: Boolean(l.reposicionInicio && !l.reposicionFin),
     reposicionInicio: l.reposicionInicio?.toISOString?.() ?? l.reposicionInicio ?? null,

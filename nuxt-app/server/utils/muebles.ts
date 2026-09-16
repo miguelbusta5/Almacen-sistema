@@ -29,6 +29,11 @@ export const LINEA_SELECT = {
   inspPausaSegundos: true,
   pausaSegundos: true,
   averiado: true,
+  // El error de picking vigente del PLU (como mucho uno).
+  erroresPicking: {
+    where: { deletedAt: null },
+    select: { id: true, tipo: true, nota: true, createdAt: true, marcadoPor: { select: { name: true } } },
+  },
   motivoAveria: true,
   reposicionInicio: true,
   reposicionFin: true,

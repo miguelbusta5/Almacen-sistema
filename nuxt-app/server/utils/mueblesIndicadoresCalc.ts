@@ -418,3 +418,70 @@ export function agregarIndicadoresMuebles(entrada: {
     ordenes: filasOrden,
   }
 }
+
+// ── Errores de picking ──
+
+export interface ErrorMedido {
+  ordenId: string
+  codigoOrden: string
+  plu: string
+  descripcion: string | null
+  operarioId: string
+  operarioNombre: string
+  tipo: string
+  nota: string | null
+  marcadoPorNombre: string
+  fecha: Date
+}
+
+export interface ResumenErrores {
+  total: number
+  ordenesConError: number
+  /** Ordenes con al menos un error sobre las ordenes del periodo, en %. */
+  porcentajeOrdenes: number | null
+  porOperario: Array<{ id: string; nombre: string; errores: number; plus: number; porcentaje: number | null }>
+  porTipo: Array<{ tipo: string; cantidad: number }>
+  detalle: ErrorMedido[]
+}
+
+/**
+ * Errores de picking del periodo: por operario (sobre los PLU que pickeo), por
+ * tipo y el detalle. El % de ordenes va contra las ordenes del periodo.
+ */
+export function resumirErroresPicking(
+  errores: readonly ErrorMedido[],
+  lineas: readonly { operarioId: string }[],
+  totalOrdenes: number,
+): ResumenErrores {
+  const ordenesConError = new Set(errores.map((e) => e.ordenId)).size
+  const plusPorOperario = new Map<string, number>()
+  for (const l of lineas) plusPorOperario.set(l.operarioId, (plusPorOperario.get(l.operarioId) ?? 0) + 1)
+
+  const porOperarioMap = new Map<string, { id: string; nombre: string; errores: number }>()
+  for (const e of errores) {
+    const f = porOperarioMap.get(e.operarioId) ?? { id: e.operarioId, nombre: e.operarioNombre, errores: 0 }
+    f.errores++
+    porOperarioMap.set(e.operarioId, f)
+  }
+  const porOperario = [...porOperarioMap.values()]
+    .map((f) => {
+      const plus = plusPorOperario.get(f.id) ?? 0
+      return { ...f, plus, porcentaje: plus > 0 ? Math.round((f.errores / plus) * 1000) / 10 : null }
+    })
+    .sort((a, b) => b.errores - a.errores || a.nombre.localeCompare(b.nombre))
+
+  const porTipoMap = new Map<string, number>()
+  for (const e of errores) porTipoMap.set(e.tipo, (porTipoMap.get(e.tipo) ?? 0) + 1)
+  const porTipo = [...porTipoMap.entries()]
+    .map(([tipo, cantidad]) => ({ tipo, cantidad }))
+    .sort((a, b) => b.cantidad - a.cantidad)
+
+  return {
+    total: errores.length,
+    ordenesConError,
+    porcentajeOrdenes: totalOrdenes > 0 ? Math.round((ordenesConError / totalOrdenes) * 1000) / 10 : null,
+    porOperario,
+    porTipo,
+    detalle: [...errores].sort((a, b) => b.fecha.getTime() - a.fecha.getTime()),
+  }
+}

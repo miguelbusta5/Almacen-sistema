@@ -549,3 +549,30 @@ describe("picking muebles — escaneo a prueba de errores", () => {
     for (const src of [fuente, calcServidor]) expect(src).toContain("export function pareceUbicacion");
   });
 });
+
+describe("errores de picking — solo el administrador", () => {
+  const marcar = leer("nuxt-app/server/api/inspeccion-muebles/[id]/linea/[lineaId]/error-picking.post.ts");
+  const terminar = leer("nuxt-app/server/api/inspeccion-muebles/[id]/terminar.post.ts");
+  const detalle = leer("nuxt-app/app/components/inspeccion-muebles/OrdenDetalle.vue");
+  const ind = leer("nuxt-app/server/api/indicadores-muebles/index.get.ts");
+
+  it("marcar y terminar exigen ADMIN en el servidor", () => {
+    expect(marcar).toContain("actor.role !== 'ADMIN'");
+    expect(terminar).toContain("actor.role !== 'ADMIN'");
+  });
+
+  it("el error queda a nombre de quien pickeo el PLU", () => {
+    expect(marcar).toContain("operarioId: linea.operarioId");
+  });
+
+  it("terminar deja la orden lista para el patinador y cierra el reloj abierto", () => {
+    expect(terminar).toContain("validarTerminarConErrores(");
+    expect(terminar).toContain("estado: 'INSPECCIONADA', horaFinInspeccion: now");
+    expect(terminar).toContain("l.inspHoraInicio && !l.inspHoraFin ? { inspHoraFin: now } : {}");
+  });
+
+  it("los botones solo salen al admin y el indicador trae los errores", () => {
+    expect(detalle).toContain('v-if="esAdmin"');
+    expect(ind).toContain("resumirErroresPicking(");
+  });
+});

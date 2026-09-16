@@ -332,3 +332,28 @@ describe("una ubicacion no entra como PLU", () => {
     expect(pareceUbicacion("BONO100")).toBe(false);
   });
 });
+
+// Errores de picking: los PLU con error pueden quedar sin revisar; los demas no.
+describe("terminar una orden con errores de picking", () => {
+  it("exige al menos un error marcado", async () => {
+    const { validarTerminarConErrores } = await import("@/lib/pickingMuebles");
+    expect(validarTerminarConErrores([{ plu: "1", estado: "LISTO", tieneError: false }])).toMatch(/al menos un error/);
+  });
+
+  it("los PLU con error pueden quedar sin revisar", async () => {
+    const { validarTerminarConErrores } = await import("@/lib/pickingMuebles");
+    expect(validarTerminarConErrores([
+      { plu: "1", estado: "LISTO", tieneError: false },
+      { plu: "2", estado: "PICKEADA", tieneError: true },
+      { plu: "3", estado: "EN_INSPECCION", tieneError: true },
+    ])).toBeNull();
+  });
+
+  it("los demas tienen que estar inspeccionados", async () => {
+    const { validarTerminarConErrores } = await import("@/lib/pickingMuebles");
+    expect(validarTerminarConErrores([
+      { plu: "1", estado: "PICKEADA", tieneError: false },
+      { plu: "2", estado: "PICKEADA", tieneError: true },
+    ])).toMatch(/Faltan por inspeccionar 1 PLU sin error \(1\)/);
+  });
+});

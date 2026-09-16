@@ -6,9 +6,9 @@
 // hacer lo suyo, y quien estaba aqui encuentra la orden exactamente como la dejo.
 // Esa es la garantia central del modulo, con 2 PCs para ~5 personas.
 import { computed } from 'vue'
-import { ArrowLeft, Play, Check, Hammer, PackageX, Undo2, Utensils, TriangleAlert, Plus, UserPlus, MapPin } from '@lucide/vue'
+import { ArrowLeft, Play, Check, Hammer, PackageX, Undo2, Utensils, TriangleAlert, Plus, UserPlus, MapPin, Flag, CircleCheckBig } from '@lucide/vue'
 import {
-  ESTADO_LINEA_LABEL, ESTADO_LINEA_TONE, cronometro, fmtMin,
+  ESTADO_LINEA_LABEL, ESTADO_LINEA_TONE, TIPO_ERROR_PICKING_LABEL, cronometro, fmtMin,
   type Linea, type Orden,
 } from '~/utils/muebles'
 
@@ -18,6 +18,8 @@ const props = defineProps<{
   orden: Orden
   ahora: number
   guardando: boolean
+  /** Solo el administrador marca errores de picking y termina la orden con ellos. */
+  esAdmin?: boolean
 }>()
 
 const emit = defineEmits<{
@@ -33,7 +35,13 @@ const emit = defineEmits<{
   (e: 'almuerzo', accion: 'iniciar' | 'terminar'): void
   (e: 'unirse'): void
   (e: 'ciudad'): void
+  (e: 'error-picking', linea: Linea): void
+  (e: 'terminar'): void
 }>()
+
+const conError = computed(() => props.orden.lineas.filter((l) => l.errorPicking).length)
+// Espejo de validarTerminarConErrores: los PLU sin error tienen que estar listos.
+const faltanSinError = computed(() => props.orden.lineas.filter((l) => !l.errorPicking && l.estado !== 'LISTO').length)
 
 // La orden en almuerzo esta detenida: no corre ningun reloj suyo.
 const enAlmuerzo = computed(() => props.orden.almuerzoInicio != null)
@@ -61,6 +69,14 @@ function reloj(l: Linea): string {
         <ArrowLeft :size="15" /> Salir de la orden
       </button>
       <div class="head-acciones">
+        <button
+          v-if="esAdmin && conError > 0" class="btn btn-sm btn-primary"
+          :disabled="guardando || faltanSinError > 0"
+          :title="faltanSinError > 0 ? `Faltan ${faltanSinError} PLU sin error por inspeccionar` : 'Pasa a Entrega a Transporte'"
+          @click="emit('terminar')"
+        >
+          <CircleCheckBig :size="14" /> Terminar orden ({{ conError }} {{ conError === 1 ? 'error' : 'errores' }})
+        </button>
         <button class="btn btn-sm" :class="{ 'btn-primary': !orden.ciudadEnvio }" @click="emit('ciudad')">
           <MapPin :size="14" /> {{ orden.ciudadEnvio || 'Asignar ciudad' }}
         </button>
@@ -102,6 +118,11 @@ function reloj(l: Linea): string {
       Asigna la ciudad de envío para poder empezar a inspeccionar.
     </p>
 
+    <p v-if="esAdmin && conError > 0 && faltanSinError > 0" class="aviso">
+      Hay {{ conError }} {{ conError === 1 ? 'PLU con error' : 'PLU con error' }}. Para terminar la orden faltan
+      {{ faltanSinError }} PLU sin error por inspeccionar.
+    </p>
+
     <p v-if="enAlmuerzo" class="aviso">
       Orden en almuerzo. Los tiempos están detenidos hasta que lo termines.
     </p>
@@ -120,6 +141,10 @@ function reloj(l: Linea): string {
           <span v-if="l.descripcion" class="l-desc">{{ l.descripcion }}</span>
           <p class="l-meta">
             {{ l.unidades }} unid. · caja {{ l.numeroCaja || '—' }} · {{ l.ubicacion || '—' }}
+          </p>
+          <p v-if="l.errorPicking" class="l-error">
+            <Flag :size="13" /> Error de picking: {{ TIPO_ERROR_PICKING_LABEL[l.errorPicking.tipo] ?? l.errorPicking.tipo }}
+            <span v-if="l.errorPicking.nota"> · {{ l.errorPicking.nota }}</span>
           </p>
           <p v-if="l.averiado" class="l-averia">
             <TriangleAlert :size="13" />
@@ -172,6 +197,13 @@ function reloj(l: Linea): string {
           </button>
 
           <span v-else class="l-ok"><Check :size="14" /> Listo</span>
+
+          <button
+            v-if="esAdmin" class="btn btn-sm error-btn" :class="{ marcado: l.errorPicking }"
+            :disabled="guardando" @click="emit('error-picking', l)"
+          >
+            <Flag :size="13" /> {{ l.errorPicking ? 'Editar error' : 'Error picking' }}
+          </button>
         </div>
       </li>
     </ul>
@@ -201,6 +233,9 @@ function reloj(l: Linea): string {
 .l-desc { margin-left: 8px; font-size: 12.5px; color: var(--ink-2); }
 .l-meta { margin: 3px 0 0; font-size: 11.5px; color: var(--muted); }
 .l-motivo { margin: 4px 0 0; font-size: 11.5px; font-weight: 600; color: var(--u-aviso); }
+.l-error { display: flex; align-items: center; gap: 5px; flex-wrap: wrap; margin: 4px 0 0; font-size: 11.5px; font-weight: 700; color: var(--error); }
+.error-btn { color: var(--error); }
+.error-btn.marcado { border-color: var(--error); background: var(--error-tint); }
 .l-averia { display: flex; align-items: center; gap: 5px; margin: 4px 0 0; font-size: 11.5px; font-weight: 700; color: var(--error); }
 .l-espera { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; font-weight: 700; color: var(--error); }
 

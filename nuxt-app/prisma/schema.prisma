@@ -164,6 +164,8 @@ model User {
   tareasResurtidoResponsable TareaResurtido[]      @relation("TareasResurtidoResponsable")
   tareasResurtidoPasadas     TareaResurtido[]      @relation("TareasResurtidoPasadas")
   ordenesMueblesEntregadas   OrdenMuebles[]         @relation("OrdenesMueblesEntregadas")
+  erroresPickingOperario     ErrorPickingMuebles[]  @relation("ErroresPickingOperario")
+  erroresPickingMarcados     ErrorPickingMuebles[]  @relation("ErroresPickingMarcados")
   tareasGeneralesCreadas     TareaGeneral[]         @relation("TareasGeneralesCreadas")
   tareasGeneralesFinalizadas TareaGeneral[]         @relation("TareasGeneralesFinalizadas")
   tareasGeneralesAsignadas   AsignadoTareaGeneral[] @relation("TareasGeneralesAsignadas")
@@ -1850,6 +1852,9 @@ model OrdenMuebles {
   /// el tiempo de cada uno sale del inspector de cada PLU.
   inspectores InspectorOrdenMuebles[]
 
+  /// Errores de picking marcados sobre sus PLU.
+  erroresPicking ErrorPickingMuebles[]
+
   actualizadoPorId String?   @map("actualizado_por_id")
   actualizadoPor   User?     @relation("OrdenesMueblesActualizadas", fields: [actualizadoPorId], references: [id])
   motivoCorreccion String?   @map("motivo_correccion")
@@ -1932,6 +1937,9 @@ model LineaMuebles {
   /// Averia: el mueble llego dañado y hay que reponerlo. La ventana de espera
   /// corre en paralelo al reloj de inspeccion y se descuenta de el, igual que
   /// la de ebanisteria; la orden no cierra hasta reinspeccionar el repuesto.
+  /// Error de picking marcado por el administrador (uno vigente como mucho).
+  erroresPicking ErrorPickingMuebles[]
+
   averiado         Boolean   @default(false)
   motivoAveria     String?   @map("motivo_averia")
   reposicionInicio DateTime? @map("reposicion_inicio")
@@ -2271,4 +2279,32 @@ model AsignadoTareaGeneral {
   @@unique([tareaId, usuarioId])
   @@index([usuarioId, horaFin], map: "asignados_tarea_general_usuario_fin_idx")
   @@map("asignados_tarea_general")
+}
+
+/// Error de picking que el administrador marca sobre un PLU de una orden en
+/// inspeccion. Queda a nombre del operario que pickeo ese PLU (sellado: si la
+/// linea se corrige despues, el error sigue diciendo lo que paso) y sale en
+/// Indicadores Muebles. Con los errores marcados la orden se puede terminar
+/// aunque esos PLU no se hayan inspeccionado. Un solo error vigente por PLU.
+model ErrorPickingMuebles {
+  id           String       @id @default(cuid())
+  ordenId      String       @map("orden_id")
+  orden        OrdenMuebles @relation(fields: [ordenId], references: [id], onDelete: Cascade)
+  lineaId      String       @map("linea_id")
+  linea        LineaMuebles @relation(fields: [lineaId], references: [id], onDelete: Cascade)
+  plu          String       @db.VarChar(100)
+  operarioId   String       @map("operario_id")
+  operario     User         @relation("ErroresPickingOperario", fields: [operarioId], references: [id])
+  /// PLU_EQUIVOCADO | UNIDADES_ERRADAS | FALTANTE | ORDEN_EQUIVOCADA | ROTULO_UBICACION | OTRO
+  tipo         String       @db.VarChar(30)
+  nota         String?
+  marcadoPorId String       @map("marcado_por_id")
+  marcadoPor   User         @relation("ErroresPickingMarcados", fields: [marcadoPorId], references: [id])
+  createdAt    DateTime     @default(now()) @map("created_at")
+  deletedAt    DateTime?    @map("deleted_at")
+
+  @@index([ordenId], map: "errores_picking_muebles_orden_idx")
+  @@index([lineaId], map: "errores_picking_muebles_linea_idx")
+  @@index([operarioId, createdAt], map: "errores_picking_muebles_operario_idx")
+  @@map("errores_picking_muebles")
 }

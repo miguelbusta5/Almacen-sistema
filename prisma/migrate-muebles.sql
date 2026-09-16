@@ -162,6 +162,23 @@ CREATE TABLE IF NOT EXISTS "inspectores_orden_muebles" (
 );
 
 -- CreateTable
+-- Errores de picking que marca el administrador sobre un PLU en inspeccion.
+CREATE TABLE IF NOT EXISTS "errores_picking_muebles" (
+    "id" TEXT NOT NULL,
+    "orden_id" TEXT NOT NULL,
+    "linea_id" TEXT NOT NULL,
+    "plu" VARCHAR(100) NOT NULL,
+    "operario_id" TEXT NOT NULL,
+    "tipo" VARCHAR(30) NOT NULL,
+    "nota" TEXT,
+    "marcado_por_id" TEXT NOT NULL,
+    "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "deleted_at" TIMESTAMP(3),
+
+    CONSTRAINT "errores_picking_muebles_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
 CREATE TABLE IF NOT EXISTS "pendientes_muebles" (
     "id" TEXT NOT NULL,
     "orden_id" TEXT,
