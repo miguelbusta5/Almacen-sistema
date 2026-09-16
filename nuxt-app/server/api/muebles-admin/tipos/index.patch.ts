@@ -5,6 +5,7 @@ import { requireRole } from '../../../utils/auth'
 import { ROLES_GESTION_MUEBLES, TIPOS_MERCANCIA_MUEBLE } from '../../../utils/mueblesCalc'
 import { auditar } from '../../../utils/muebles'
 import { normalizePlu } from '../../../utils/exportacionesCalc'
+import { resolverPluMaestro } from '../../../utils/codigoProducto'
 
 const schema = z.object({
   plu: z.string().min(1).max(100),
@@ -26,7 +27,7 @@ export default defineEventHandler(async (event) => {
   if (!parsed.success) {
     throw createError({ statusCode: 400, statusMessage: parsed.error.issues[0]!.message })
   }
-  const plu = normalizePlu(parsed.data.plu)
+  const plu = await resolverPluMaestro(normalizePlu(parsed.data.plu))
 
   const fila = await prisma.tipoMueblePlu.upsert({
     where: { plu },

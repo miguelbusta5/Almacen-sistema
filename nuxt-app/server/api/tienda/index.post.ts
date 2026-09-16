@@ -4,6 +4,7 @@ import { prisma } from '../../utils/prisma'
 import { requireCan } from '../../utils/auth'
 import { mapDespacho } from '../../utils/mapRow'
 import { derivePlinFromMaestro, normalizePlu, productoToClient } from '../../utils/productosMaestro'
+import { resolverPluMaestro } from '../../utils/codigoProducto'
 
 const plinSchema = z.object({
   plu: z.string().min(1).max(100),
@@ -65,7 +66,9 @@ export default defineEventHandler(async (event) => {
     })
 
     if (d.plines && d.plines.length > 0) {
-      const normalizedPlus = [...new Set(d.plines.map((p) => normalizePlu(p.plu)).filter(Boolean))]
+      // Codigo de barras -> PLU antes de buscar en el maestro.
+      const plines = await Promise.all(d.plines.map(async (p) => ({ ...p, plu: await resolverPluMaestro(normalizePlu(p.plu), tx) })))
+      const normalizedPlus = [...new Set(plines.map((p) => p.plu).filter(Boolean))]
       const productos = normalizedPlus.length > 0
         ? await tx.productoMaestro.findMany({
             where: { plu: { in: normalizedPlus } },
@@ -74,8 +77,8 @@ export default defineEventHandler(async (event) => {
         : []
       const productosByPlu = new Map(productos.map((p) => [p.plu, productoToClient(p)]))
       await tx.plinDespacho.createMany({
-        data: d.plines.map((p) => {
-          const plu = normalizePlu(p.plu)
+        data: plines.map((p) => {
+          const plu = p.plu
           const derived = derivePlinFromMaestro(
             { descripcion: p.descripcion ?? null },
             productosByPlu.get(plu) ?? null,

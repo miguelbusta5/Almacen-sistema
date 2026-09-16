@@ -4,6 +4,7 @@ import { prisma } from '../../../utils/prisma'
 import { auditar, requireInspeccion } from '../../../utils/muebles'
 import { normalizePlu } from '../../../utils/exportacionesCalc'
 import { mapPendienteMuebles } from '../../../utils/mapRow'
+import { resolverPluMaestro } from '../../../utils/codigoProducto'
 
 const schema = z.object({
   ordenId: z.string().min(1).nullable().optional(),
@@ -38,7 +39,7 @@ export default defineEventHandler(async (event) => {
   const pendiente = await prisma.pendienteMuebles.create({
     data: {
       ordenId: d.ordenId ?? null,
-      plu: normalizePlu(d.plu),
+      plu: await resolverPluMaestro(normalizePlu(d.plu)),
       unidades: d.unidades,
       observacion: d.observacion?.trim() || null,
       creadoPorInspectorId: inspector.id,

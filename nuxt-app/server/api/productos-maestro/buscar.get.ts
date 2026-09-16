@@ -2,6 +2,7 @@ import { defineEventHandler, getQuery, createError } from 'h3'
 import { prisma } from '../../utils/prisma'
 import { requireAuth } from '../../utils/auth'
 import { normalizarCodigoProducto, pareceEan } from '../../utils/montacargasCalc'
+import { pluDesdeEanAmbiente } from '../../utils/mueblesCalc'
 
 // GET /api/productos-maestro/buscar?codigo=… — resuelve por PLU **o** por EAN.
 // Existe aparte de [plu].get.ts porque la pistola del montacarguista lee el
@@ -26,7 +27,10 @@ export default defineEventHandler(async (event) => {
   const porEan = () => prisma.productoMaestro.findFirst({ where: { ean: codigo }, select })
 
   const [primero, segundo] = pareceEan(codigo) ? [porEan, porPlu] : [porPlu, porEan]
+  const derivado = pluDesdeEanAmbiente(codigo)
+  // Producto nuevo sin el EAN cargado: el PLU va dentro del codigo de barras.
   const producto = (await primero()) ?? (await segundo())
+    ?? (derivado ? await prisma.productoMaestro.findUnique({ where: { plu: derivado }, select }) : null)
 
   if (!producto) {
     throw createError({ statusCode: 404, statusMessage: 'Código no encontrado en el maestro' })

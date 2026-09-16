@@ -15,6 +15,8 @@ type Tx = Prisma.TransactionClient | PrismaClient
 export const TAREA_INCLUDE = {
   responsable: { select: { name: true } },
   pasadoPor: { select: { name: true } },
+  // El reloj de pantalla es el de quien la tiene AHORA (ver cronometroTarea).
+  tramos: { select: { usuarioId: true, orden: true, inicio: true, fin: true }, orderBy: { orden: 'asc' } },
 } as const
 
 export const MONTAJE_INCLUDE = {
@@ -30,6 +32,7 @@ export const PENDIENTE_INCLUDE = {
   devueltoPor: { select: { name: true } },
   novedadPor: { select: { name: true } },
   pasadoPor: { select: { name: true } },
+  tramos: { select: { usuarioId: true, orden: true, inicio: true, fin: true }, orderBy: { orden: 'asc' } },
 } as const
 
 export function puedeVerAlmacenamiento(role: string): boolean {

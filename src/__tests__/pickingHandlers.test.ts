@@ -24,7 +24,7 @@ function reportScenario() {
     activityLog: { create: vi.fn() },
   }
   const permission = vi.fn(async () => {})
-  const handler = load('api/capacidad-picking/index.post.ts', { h3, '../../utils/auth': { requireAuth: async () => ({id:'u1',name:'Brayan'}) }, '../../utils/picking': { exigirPicking: permission, bloquearPicking: vi.fn(), informeConMaestro: async (_db: unknown, r: any) => ({ ...r, lineas: r.lineas.map((l: any) => ({ ...l, descripcion: 'Producto', unidadesPorCaja: 12, unidades: l.cajas * 12 })) }) }, '../../utils/prisma': { prisma: { $transaction: async (fn: any) => fn(tx) } }, '../../utils/pickingCalc': { textoPicking: (s: unknown) => String(s ?? '').trim().toUpperCase() } })
+  const handler = load('api/capacidad-picking/index.post.ts', { h3, '../../utils/auth': { requireAuth: async () => ({id:'u1',name:'Brayan'}) }, '../../utils/picking': { exigirPicking: permission, bloquearPicking: vi.fn(), informeConMaestro: async (_db: unknown, r: any) => ({ ...r, lineas: r.lineas.map((l: any) => ({ ...l, descripcion: 'Producto', unidadesPorCaja: 12, unidades: l.cajas * 12 })) }) }, '../../utils/prisma': { prisma: { $transaction: async (fn: any) => fn(tx) } }, '../../utils/pickingCalc': { textoPicking: (s: unknown) => String(s ?? '').trim().toUpperCase() }, '../../utils/codigoProducto': { resolverPluMaestro: async (c: unknown) => String(c ?? '') } })
   return { handler, tx, report, permission }
 }
 afterEach(() => vi.useRealTimers())

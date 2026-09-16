@@ -414,6 +414,8 @@ export const API_MONTAJE = '/api/montaje-resurtido'
 export const API_PENDIENTES = '/api/pendientes'
 
 export interface TareaResurtidoDTO {
+  /** Tramos por persona: dan el reloj de quien lo tiene ahora. */
+  tramos?: TramoTiempo[]
   pausaId?: string | null
   pausaInicio?: string | null
   pausaSegundos?: number
@@ -473,6 +475,8 @@ export interface SugerenciaPendienteDTO {
 }
 
 export interface PendienteDTO {
+  /** Tramos por persona: dan el reloj de quien lo tiene ahora. */
+  tramos?: TramoTiempo[]
   pausaId?: string | null
   pausaInicio?: string | null
   pausaSegundos?: number
@@ -552,8 +556,31 @@ export function cronometroDesde(inicio: string | null, ahora: number): string | 
   return h > 0 ? `${h}:${mm}:${ss}` : `${m}:${ss}`
 }
 
-/** Reloj efectivo del registro: excluye pausas cerradas y congela la actual. */
-export function cronometroTarea(t: { horaInicio: string | null; pausaInicio?: string | null; pausaSegundos?: number }, ahora: number): string | null {
+export interface TramoTiempo { usuarioId: string; orden: number; inicio: string; fin: string | null }
+
+/**
+ * Reloj de pantalla del registro: el de QUIEN LO TIENE AHORA.
+ *
+ * Suma los tramos seguidos de la ultima persona (los separa una pausa, que
+ * cierra y reabre el tramo, asi que la pausa no cuenta). Antes contaba desde
+ * que la tarea empezo: al ayudante le llegaba un PLU "con 20 minutos" que eran
+ * del primero. Sin tramos (registros viejos) cae al reloj desde el inicio.
+ */
+export function cronometroTarea(
+  t: { horaInicio: string | null; pausaInicio?: string | null; pausaSegundos?: number; tramos?: TramoTiempo[] },
+  ahora: number,
+): string | null {
+  const tramos = [...(t.tramos ?? [])].sort((a, b) => b.orden - a.orden)
+  if (tramos.length > 0) {
+    const quien = tramos[0]!.usuarioId
+    let ms = 0
+    for (const x of tramos) {
+      if (x.usuarioId !== quien) break
+      ms += Math.max(0, (x.fin ? new Date(x.fin).getTime() : ahora) - new Date(x.inicio).getTime())
+    }
+    const seg = Math.floor(ms / 1000)
+    return `${Math.floor(seg / 60)}:${String(seg % 60).padStart(2, '0')}`
+  }
   const hasta = t.pausaInicio ? new Date(t.pausaInicio).getTime() : ahora
   return cronometroDesde(t.horaInicio, hasta - (t.pausaSegundos ?? 0) * 1000)
 }

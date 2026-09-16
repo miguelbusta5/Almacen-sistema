@@ -24,6 +24,7 @@ import {
   whereScope,
   type PaisConfigSrv,
 } from './exportaciones'
+import { resolverPluMaestro } from './codigoProducto'
 
 function assertUsuario(role: string) {
   if (!puedeUsarExportaciones(role)) {
@@ -91,7 +92,7 @@ export function makeCreateHandler(cfg: PaisConfigSrv) {
     const validation = validarCapturaExportacion(parsed.data)
     if (validation) throw createError({ statusCode: 400, statusMessage: validation })
 
-    const plu = normalizePlu(parsed.data.plu)
+    const plu = await resolverPluMaestro(normalizePlu(parsed.data.plu))
     const producto = await prisma.productoMaestro.findUnique({
       where: { plu },
       select: { descripcion: true },
@@ -199,7 +200,7 @@ export function makePatchHandler(cfg: PaisConfigSrv) {
     }
 
     if (d.plu !== undefined) {
-      const plu = normalizePlu(d.plu)
+      const plu = await resolverPluMaestro(normalizePlu(d.plu))
       const producto = await prisma.productoMaestro.findUnique({ where: { plu }, select: { descripcion: true } })
       if (!producto?.descripcion?.trim()) {
         throw createError({ statusCode: 400, statusMessage: 'PLU no encontrado en maestro' })

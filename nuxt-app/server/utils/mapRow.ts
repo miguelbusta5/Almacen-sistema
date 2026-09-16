@@ -480,6 +480,14 @@ export function mapRecepcion(r: any) {
 // ── Montaje de resurtido, tareas y pendientes ────────────────────────
 export function mapTareaResurtido(t: any) {
   return {
+    // Tramos por persona: con ellos la pantalla muestra el reloj de quien la
+    // tiene ahora, no el de la tarea desde que la empezo el primero.
+    tramos: (t.tramos ?? []).map((x: any) => ({
+      usuarioId: x.usuarioId,
+      orden: x.orden,
+      inicio: x.inicio?.toISOString?.() ?? x.inicio,
+      fin: x.fin?.toISOString?.() ?? x.fin ?? null,
+    })),
     pausaId: t.pausaId ?? null,
     pausaInicio: t.pausaInicio?.toISOString() ?? null,
     pausaSegundos: t.pausaSegundos ?? 0,
@@ -529,6 +537,14 @@ export function mapMontaje(m: any) {
 
 export function mapPendiente(p: any) {
   return {
+    // Tramos por persona: con ellos la pantalla muestra el reloj de quien la
+    // tiene ahora, no el de la tarea desde que la empezo el primero.
+    tramos: (p.tramos ?? []).map((x: any) => ({
+      usuarioId: x.usuarioId,
+      orden: x.orden,
+      inicio: x.inicio?.toISOString?.() ?? x.inicio,
+      fin: x.fin?.toISOString?.() ?? x.fin ?? null,
+    })),
     pausaId: p.pausaId ?? null,
     pausaInicio: p.pausaInicio?.toISOString() ?? null,
     pausaSegundos: p.pausaSegundos ?? 0,

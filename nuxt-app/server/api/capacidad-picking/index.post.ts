@@ -3,6 +3,7 @@ import { requireAuth } from '../../utils/auth'
 import { bloquearPicking, exigirPicking, informeConMaestro } from '../../utils/picking'
 import { prisma } from '../../utils/prisma'
 import { textoPicking } from '../../utils/pickingCalc'
+import { resolverPluMaestro } from '../../utils/codigoProducto'
 export default defineEventHandler(async event => {
   const actor = await requireAuth(event); await exigirPicking(actor)
   const b = await readBody(event)
@@ -27,7 +28,7 @@ export default defineEventHandler(async event => {
         if (!['ALIMENTACION', 'FIN_TURNO'].includes(b.motivo)) throw createError({ statusCode: 400, statusMessage: 'Motivo inválido' })
         await tx.pickingInforme.update({ where: { id: r.id }, data: { pausaInicio: now, pausaMotivo: b.motivo } })
       } else if (b.accion === 'linea') {
-        const plu = textoPicking(b.plu), ubicacion = textoPicking(b.ubicacion)
+        const plu = await resolverPluMaestro(textoPicking(b.plu), tx), ubicacion = textoPicking(b.ubicacion)
         if (!plu || plu.length > 100 || !ubicacion || ubicacion.length > 120 || !Number.isSafeInteger(b.cajas) || b.cajas < 1 || b.cajas > 100000 || !['SENCILLO', 'DOBLE'].includes(b.tipo)) throw createError({ statusCode: 400, statusMessage: 'Completa PLU, ubicación, cajas enteras y tipo de picking' })
         if (!await tx.productoMaestro.findUnique({ where: { plu } })) throw createError({ statusCode: 400, statusMessage: 'PLU no encontrado en el maestro' })
         if (r.lineas.some(l => l.ubicacion === ubicacion && l.plu !== plu)) throw createError({ statusCode: 409, statusMessage: 'Esta ubicación ya tiene otro PLU en el informe' })

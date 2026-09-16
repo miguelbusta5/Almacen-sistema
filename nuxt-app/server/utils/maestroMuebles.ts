@@ -8,7 +8,7 @@
 // medidas: el maestro se recarga entero cada tanto y una FK convertiria cada
 // recarga en un problema de orden. El PLU es la clave de negocio.
 import { prisma } from './prisma'
-import { pluDesdeEanAmbiente } from './mueblesCalc'
+import { resolverPluMaestro } from './codigoProducto'
 
 export interface DatosPlu {
   plu: string
@@ -76,21 +76,7 @@ export async function existePlu(plu: string): Promise<boolean> {
   return row != null
 }
 
-/**
- * El PLU real de lo que leyo la pistola.
- *
- * La etiqueta del mueble trae el codigo de barras (EAN), no el PLU. Orden:
- * 1) si ya es un PLU del maestro, ese; 2) si es un EAN registrado en el maestro,
- * su PLU; 3) si es un EAN de Ambiente (7703596 + PLU + control) cuyo PLU existe,
- * ese PLU (hay productos nuevos que aun no tienen el EAN cargado). Si nada
- * coincide se devuelve tal cual: el picking no se bloquea por el maestro.
- */
-export async function resolverPlu(codigo: string): Promise<string> {
-  if (await existePlu(codigo)) return codigo
-  if (!/^\d{8,14}$/.test(codigo)) return codigo
-  const porEan = await prisma.productoMaestro.findFirst({ where: { ean: codigo }, select: { plu: true } })
-  if (porEan) return porEan.plu
-  const derivado = pluDesdeEanAmbiente(codigo)
-  if (derivado && (await existePlu(derivado))) return derivado
-  return codigo
+/** El PLU real de lo que leyo la pistola (ver resolverPluMaestro). */
+export function resolverPlu(codigo: string): Promise<string> {
+  return resolverPluMaestro(codigo)
 }

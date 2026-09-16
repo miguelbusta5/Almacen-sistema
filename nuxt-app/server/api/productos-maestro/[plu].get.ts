@@ -2,12 +2,13 @@ import { defineEventHandler, getRouterParam, createError } from 'h3'
 import { prisma } from '../../utils/prisma'
 import { requireAuth } from '../../utils/auth'
 import { normalizePlu, productoToClient } from '../../utils/productosMaestro'
+import { resolverPluMaestro } from '../../utils/codigoProducto'
 
 // GET /api/productos-maestro/[plu]
 export default defineEventHandler(async (event) => {
   await requireAuth(event)
   const plu = getRouterParam(event, 'plu')!
-  const normalized = normalizePlu(decodeURIComponent(plu))
+  const normalized = await resolverPluMaestro(normalizePlu(decodeURIComponent(plu)))
   if (!normalized) throw createError({ statusCode: 400, statusMessage: 'PLU requerido' })
 
   const producto = await prisma.productoMaestro.findUnique({

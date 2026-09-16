@@ -10,6 +10,7 @@ import { assertSinPausa } from './operacionAlmacen'
 import { createError } from 'h3'
 import type { Prisma, PrismaClient } from '@prisma/client'
 import { prisma } from './prisma'
+import { pluDesdeEanAmbiente } from './mueblesCalc'
 import {
   normalizarCodigoProducto,
   pareceEan,
@@ -153,7 +154,11 @@ export async function resolverProducto(codigoCrudo: string): Promise<ProductoRes
   const porEan = () => prisma.productoMaestro.findFirst({ where: { ean: codigo }, select })
 
   const [primero, segundo] = pareceEan(codigo) ? [porEan, porPlu] : [porPlu, porEan]
-  return (await primero()) ?? (await segundo())
+  const encontrado = (await primero()) ?? (await segundo())
+  if (encontrado) return encontrado
+  // Producto nuevo sin el EAN cargado: el PLU va dentro del codigo de barras.
+  const derivado = pluDesdeEanAmbiente(codigo)
+  return derivado ? prisma.productoMaestro.findUnique({ where: { plu: derivado }, select }) : null
 }
 
 // ── Tramos de tiempo ─────────────────────────────────────────────────

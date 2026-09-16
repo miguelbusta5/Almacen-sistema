@@ -144,6 +144,23 @@ describe('tiempo efectivo y cronómetros', () => {
     expect(cronometroTarea(t, d(40).getTime())).toBe('8:00')
     expect(cronometroTarea({ ...t, pausaInicio: null, pausaSegundos: 1920 }, d(45).getTime())).toBe('13:00')
   })
+  // Al pasar el PLU al ayudante, su reloj arranca en cero: antes contaba desde
+  // que la tarea empezo y le llegaba con el tiempo del primero.
+  it('el reloj de una tarea pasada al ayudante es solo el del ayudante', () => {
+    const { cronometroTarea } = cargar('app/utils/resurtidoTareas.ts', { './montacargas': cargar('app/utils/montacargas.ts') })
+    const t = {
+      horaInicio: d(0).toISOString(), pausaSegundos: 0,
+      tramos: [
+        { usuarioId: 'u1', orden: 1, inicio: d(0).toISOString(), fin: d(20).toISOString() },
+        { usuarioId: 'u2', orden: 2, inicio: d(20).toISOString(), fin: null },
+      ],
+    }
+    expect(cronometroTarea(t, d(23).getTime())).toBe('3:00')
+    // Con pausa: el tramo se cierra y se reabre; la pausa no cuenta.
+    const conPausa = { ...t, tramos: [...t.tramos.slice(0, 1), { usuarioId: 'u2', orden: 2, inicio: d(20).toISOString(), fin: d(25).toISOString() }, { usuarioId: 'u2', orden: 3, inicio: d(55).toISOString(), fin: null }] }
+    expect(cronometroTarea(conPausa, d(57).getTime())).toBe('7:00')
+  })
+
   it('suma los tramos de montacargas separados por la pausa', () => {
     const { cronometroTramo } = cargar('app/utils/montacargas.ts')
     const m = { responsableId: 'u1', pausaId: 'p', tramos: [{ orden: 1, usuarioId: 'u1', inicio: d(0).toISOString(), fin: d(10).toISOString() }] }

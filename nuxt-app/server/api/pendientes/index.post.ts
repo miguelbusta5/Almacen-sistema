@@ -12,6 +12,7 @@ import { esSolicitante, validarSolicitudPendiente } from '../../utils/resurtidoC
 import { normalizePlu, todayBogota } from '../../utils/exportacionesCalc'
 import { buscarPendienteSumable, resurtidoDelPlu, unirObservaciones } from '../../utils/pendientesSolicitud'
 import { calcularSugerenciaPendiente } from '../../utils/sugerenciaPendiente'
+import { resolverPluMaestro } from '../../utils/codigoProducto'
 
 const schema = z.object({
   plu: z.string().min(1).max(100),
@@ -45,7 +46,7 @@ export default defineOperacionAlmacenHandler(async (event) => {
   }
   const d = parsed.data
 
-  const plu = normalizePlu(d.plu)
+  const plu = await resolverPluMaestro(normalizePlu(d.plu))
   const descripcion = await descripcionMaestro(prisma, plu)
 
   const error = validarSolicitudPendiente({

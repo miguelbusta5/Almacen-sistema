@@ -488,15 +488,48 @@ describe("muebles — historial de ordenes", () => {
 describe("muebles — el EAN escaneado se convierte en PLU", () => {
   const maestro = leer("nuxt-app/server/utils/maestroMuebles.ts");
 
-  it("primero PLU, luego EAN del maestro, luego EAN de Ambiente confirmado", () => {
-    expect(maestro).toContain("if (await existePlu(codigo)) return codigo");
-    expect(maestro).toContain("where: { ean: codigo }");
-    expect(maestro).toContain("pluDesdeEanAmbiente(codigo)");
+  it("usa el traductor comun de codigos", () => {
+    expect(maestro).toContain("return resolverPluMaestro(codigo)");
   });
 
   it("se usa al escanear, al agregar en inspeccion y al corregir", () => {
     expect(leer("nuxt-app/server/api/picking-muebles/[id]/plu.post.ts")).toContain("await resolverPlu(normalizePlu(");
     expect(leer("nuxt-app/server/api/inspeccion-muebles/[id]/linea/index.post.ts")).toContain("await resolverPlu(normalizePlu(");
     expect(leer("nuxt-app/server/api/historial-muebles/[id]/linea/[lineaId]/corregir.post.ts")).toContain("await resolverPlu(normalizePlu(");
+  });
+});
+
+// El codigo de barras se traduce a PLU en TODOS los modulos, no solo en muebles:
+// en Resurtido y Pendientes el escaneo del EAN se rechazaba con "ese no es el PLU".
+describe("codigo de barras -> PLU en todos los modulos", () => {
+  const traductor = leer("nuxt-app/server/utils/codigoProducto.ts");
+
+  it("un solo traductor: PLU, luego EAN del maestro, luego EAN de Ambiente confirmado", () => {
+    expect(traductor).toContain("if (await existe(codigo)) return codigo");
+    expect(traductor).toContain("where: { ean: codigo }");
+    expect(traductor).toContain("pluDesdeEanAmbiente(codigo)");
+    expect(leer("nuxt-app/server/utils/maestroMuebles.ts")).toContain("return resolverPluMaestro(codigo)");
+  });
+
+  it.each([
+    "nuxt-app/server/api/resurtido-tareas/[id]/completar.post.ts",
+    "nuxt-app/server/api/pendientes/[id]/iniciar.post.ts",
+    "nuxt-app/server/api/pendientes/index.post.ts",
+    "nuxt-app/server/api/pendientes/[id]/index.patch.ts",
+    "nuxt-app/server/api/pendientes/consulta.get.ts",
+    "nuxt-app/server/api/recepcion-contenedores/[id]/novedad.post.ts",
+    "nuxt-app/server/api/inspeccion-muebles/pendientes/index.post.ts",
+    "nuxt-app/server/utils/exportacionesHandlers.ts",
+    "nuxt-app/server/api/tienda/index.post.ts",
+    "nuxt-app/server/api/productos-maestro/[plu].get.ts",
+    "nuxt-app/server/api/capacidad-picking/index.post.ts",
+    "nuxt-app/server/api/capacidad-picking/producto.get.ts",
+  ])("%s pasa lo escaneado por el traductor", (rel) => {
+    expect(leer(rel)).toContain("resolverPluMaestro(");
+  });
+
+  it("montacargas y el buscador tienen el respaldo para productos sin EAN cargado", () => {
+    expect(leer("nuxt-app/server/utils/montacargas.ts")).toContain("pluDesdeEanAmbiente(codigo)");
+    expect(leer("nuxt-app/server/api/productos-maestro/buscar.get.ts")).toContain("pluDesdeEanAmbiente(codigo)");
   });
 });

@@ -9,6 +9,7 @@ import {
 } from '../../../utils/recepcion'
 import { validarLineaNovedad } from '../../../utils/recepcionCalc'
 import { normalizePlu } from '../../../utils/exportacionesCalc'
+import { resolverPluMaestro } from '../../../utils/codigoProducto'
 
 const schema = z.object({
   tipo: z.enum(['FALTANTE', 'SOBRANTE', 'AVERIA', 'MALTRATADA']),
@@ -53,7 +54,7 @@ export default defineOperacionAlmacenHandler(async (event) => {
     })
   }
 
-  const plu = normalizePlu(d.plu)
+  const plu = await resolverPluMaestro(normalizePlu(d.plu))
   const descripcion = await descripcionDePlu(prisma, plu)
 
   const error = validarLineaNovedad(

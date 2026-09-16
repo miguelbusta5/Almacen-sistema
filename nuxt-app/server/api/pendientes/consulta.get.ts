@@ -5,6 +5,7 @@ import { esSolicitante } from '../../utils/resurtidoCalc'
 import { normalizePlu } from '../../utils/exportacionesCalc'
 import { buscarPendienteSumable, resurtidoDelPlu } from '../../utils/pendientesSolicitud'
 import { puedeMontarResurtido } from '../../utils/resurtido'
+import { resolverPluMaestro } from '../../utils/codigoProducto'
 
 /**
  * GET /api/pendientes/consulta?plu= - antes de pedir un pendiente.
@@ -22,7 +23,7 @@ export default defineEventHandler(async (event) => {
   if (!esSolicitante(actor.role)) {
     throw createError({ statusCode: 403, statusMessage: 'Solo operaciones gourmet solicita pendientes' })
   }
-  const plu = normalizePlu(String(getQuery(event).plu ?? ''))
+  const plu = await resolverPluMaestro(normalizePlu(String(getQuery(event).plu ?? '')))
   if (!plu) throw createError({ statusCode: 400, statusMessage: 'Escribe un PLU' })
 
   const [resurtido, existente, montador] = await Promise.all([

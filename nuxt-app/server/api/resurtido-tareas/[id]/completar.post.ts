@@ -11,6 +11,7 @@ import { validarCierreTarea, validarEscaneoPlu } from '../../../utils/resurtidoC
 // normalizarUbicacion es del modulo de montacargas: una sola forma de escribir
 // una ubicacion en todo el proyecto.
 import { normalizarUbicacion } from '../../../utils/montacargasCalc'
+import { resolverPluMaestro } from '../../../utils/codigoProducto'
 
 const schema = z.object({
   plu: z.string().min(1).max(100),
@@ -57,7 +58,8 @@ export default defineOperacionAlmacenHandler(async (event) => {
     })
   }
 
-  const errPlu = validarEscaneoPlu(d.plu, tarea.plu)
+  // La pistola lee el codigo de barras: se compara el PLU que hay detras.
+  const errPlu = validarEscaneoPlu(await resolverPluMaestro(d.plu), tarea.plu)
   if (errPlu) throw createError({ statusCode: 400, statusMessage: errPlu })
 
   const errCierre = validarCierreTarea({

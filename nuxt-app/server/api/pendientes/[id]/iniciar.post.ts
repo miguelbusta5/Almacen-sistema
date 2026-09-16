@@ -7,6 +7,7 @@ import { mapPendiente } from '../../../utils/mapRow'
 import { abrirTramoPendiente, assertEjecutor, PENDIENTE_INCLUDE } from '../../../utils/resurtido'
 import { validarEscaneoPlu } from '../../../utils/resurtidoCalc'
 import { normalizarUbicacion, validarUbicacion } from '../../../utils/montacargasCalc'
+import { resolverPluMaestro } from '../../../utils/codigoProducto'
 
 const schema = z.object({
   plu: z.string().min(1).max(100),
@@ -47,7 +48,8 @@ export default defineOperacionAlmacenHandler(async (event) => {
     throw createError({ statusCode: 409, statusMessage: 'Ese pendiente ya se ubico' })
   }
 
-  const error = validarEscaneoPlu(parsed.data.plu, p.plu)
+  // La pistola lee el codigo de barras: se compara el PLU que hay detras.
+  const error = validarEscaneoPlu(await resolverPluMaestro(parsed.data.plu), p.plu)
   if (error) throw createError({ statusCode: 400, statusMessage: error })
 
   // Volver a escanear no reinicia el reloj.
