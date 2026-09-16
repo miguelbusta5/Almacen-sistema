@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { enRefrescoSilencioso, useAutoRefresh } from '~/composables/useAutoRefresh'
 import { ref, computed, watch, onMounted } from 'vue'
 import { Plus, RefreshCw, Search, X } from '@lucide/vue'
 import { ensureSession, useSessionState } from '~/composables/useSession'
@@ -124,6 +125,8 @@ function onNeedCompleteArea2(item: Integracion) { showNueva.value = false; compl
 function onCompleted() { completarItem.value = null; showToast('Área 2 completada ✓'); refresh() }
 function onRecibidoDone() { recibidoItem.value = null; showToast('Recepción confirmada ✓'); refresh() }
 function onEditado() { editandoItem.value = null; showToast('Integración actualizada ✓'); refresh() }
+
+useAutoRefresh({ onRefresh: () => (refreshing.value ? undefined : Promise.all([loadAll(), loadConteos()])) })
 </script>
 
 <template>

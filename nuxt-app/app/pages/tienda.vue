@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { enRefrescoSilencioso, useAutoRefresh } from '~/composables/useAutoRefresh'
 import { ref, computed, watch, onMounted } from 'vue'
 import { RefreshCw, Download, Plus } from '@lucide/vue'
 import type { Despacho } from '~/utils/despacho'
@@ -75,6 +76,8 @@ async function loadAll() {
     total.value = res.total
     demo.value = false
   } catch {
+    // Un refresco automatico sin red no cambia los datos reales por los de ejemplo.
+    if (enRefrescoSilencioso()) return
     demo.value = true
     despachos.value = [...SAMPLE_DESPACHOS]
     total.value = despachos.value.length
@@ -309,6 +312,8 @@ function exportarExcel() {
   a.download = `facturas-contado-${new Date().toISOString().slice(0, 10)}.xlsx`
   a.click()
 }
+
+useAutoRefresh({ onRefresh: () => (refreshing.value || demo.value ? undefined : Promise.all([loadAll(), loadConteos(), loadAtencion()])) })
 </script>
 
 <template>

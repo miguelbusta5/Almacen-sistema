@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { enRefrescoSilencioso, useAutoRefresh } from '~/composables/useAutoRefresh'
 // Picking Muebles — pantalla del operario.
 //
 // El estado lo manda siempre el servidor: cada accion devuelve la orden completa
@@ -81,7 +82,8 @@ const motivoNoPuede = computed(() => {
 watch(pausaRevision, () => { void cargar() })
 
 async function cargar() {
-  cargando.value = true
+  // Un refresco automatico no pone el esqueleto: la pantalla no parpadea.
+  if (!enRefrescoSilencioso()) cargando.value = true
   try {
     const [abierta, pend] = await Promise.all([
       $fetch<{ data: { orden: Orden | null; equipo: Equipo | null } }>(`${API_PICKING}/abierta`),
@@ -195,6 +197,9 @@ async function resolverPendiente(id: string) {
     show(mensajeError(e, 'No se pudo resolver el pendiente'), true)
   }
 }
+
+// Faltantes y reposiciones que le asignan al operario aparecen solos.
+useAutoRefresh({ onRefresh: () => (guardando.value ? undefined : cargar()) })
 </script>
 
 <template>

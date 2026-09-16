@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { enRefrescoSilencioso, useAutoRefresh } from '~/composables/useAutoRefresh'
 // Historial de órdenes de Muebles: buscar cualquier orden y ver cómo quedaron
 // sus tiempos, PLU por PLU. El administrador además puede corregir lo que se
 // escaneó mal (con motivo, y queda en Auditoría).
@@ -31,7 +32,8 @@ onMounted(() => {
 })
 
 async function cargar() {
-  cargando.value = true
+  // Un refresco automatico no pone el esqueleto: la pantalla no parpadea.
+  if (!enRefrescoSilencioso()) cargando.value = true
   try {
     const res = await $fetch<{ data: Orden[]; puedeCorregir: boolean }>(API, {
       query: {
@@ -77,6 +79,9 @@ function fechaHora(iso: string | null): string {
 function actualizada(o: Orden) {
   ordenes.value = ordenes.value.map((x) => (x.id === o.id ? o : x))
 }
+
+// El historial se mantiene al dia mientras nadie tiene una orden abierta.
+useAutoRefresh({ intervalMs: 60_000, onRefresh: () => (abierta.value ? undefined : cargar()) })
 </script>
 
 <template>

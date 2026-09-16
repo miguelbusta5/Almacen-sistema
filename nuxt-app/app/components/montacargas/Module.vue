@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { enRefrescoSilencioso, useAutoRefresh } from '~/composables/useAutoRefresh'
 import { usePausaOperativa } from '~/composables/usePausaOperativa'
 const { revision: pausaRevision } = usePausaOperativa()
 watch(pausaRevision, () => { void Promise.all([loadLista(), loadAbiertos(), loadConteos()]) })
@@ -17,7 +18,6 @@ import { ref, computed, watch, onMounted, onBeforeUnmount, nextTick } from 'vue'
 import { RefreshCw, Download, Forklift, ScanLine, ExternalLink } from '@lucide/vue'
 import { ensureSession, useSessionState } from '~/composables/useSession'
 import { useToast } from '~/composables/useToast'
-import { useAutoRefresh } from '~/composables/useAutoRefresh'
 import { sonarVeredicto } from '~/utils/escaneoFeedback'
 import {
   API_MONTACARGAS, esAyudante as esRolAyudante, FLUJOS, recibioTraspaso,
@@ -226,9 +226,7 @@ useAutoRefresh({
     // con foco y un re-render le robaría al operario lo que está escribiendo.
     if (formDirty.value || saving.value || guardando.value || editando.value) return
     if (mios.value.length > 0) return
-    void loadLista()
-    void loadAbiertos()
-    void loadConteos()
+    return Promise.all([loadLista(), loadAbiertos(), loadConteos()])
   },
 })
 

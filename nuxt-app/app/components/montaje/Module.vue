@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { enRefrescoSilencioso, useAutoRefresh } from '~/composables/useAutoRefresh'
 // Montaje Resurtido: se sube el archivo y se reparte a un operario.
 //
 // Aquí NO corre ningún reloj de trabajo: quien monta reparte, no hace. Lo que se
@@ -8,7 +9,6 @@ import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
 import { RefreshCw, Upload, ClipboardList, Trash2, User, UserPlus } from '@lucide/vue'
 import { ensureSession, useSessionState } from '~/composables/useSession'
 import { useToast } from '~/composables/useToast'
-import { useAutoRefresh } from '~/composables/useAutoRefresh'
 import {
   API_MONTAJE, cronometroDesde, fmtDuracionTarea, ESTADO_TAREA_LABEL,
   type MontajeResurtidoDTO,
@@ -42,7 +42,8 @@ const fileInput = ref<HTMLInputElement | null>(null)
 const detalle = ref<MontajeResurtidoDTO | null>(null)
 
 async function cargar() {
-  loading.value = true
+  // Un refresco automatico no pone el esqueleto: la pantalla no parpadea.
+  if (!enRefrescoSilencioso()) loading.value = true
   try {
     const res = await $fetch<{ data: MontajeResurtidoDTO[] }>(API_MONTAJE)
     montajes.value = res.data
@@ -66,7 +67,7 @@ onMounted(() => { void cargar(); void cargarOperarios() })
 useAutoRefresh({
   onRefresh: () => {
     if (!puedeVer.value || subiendo.value || detalle.value) return
-    void cargar()
+    return cargar()
   },
 })
 

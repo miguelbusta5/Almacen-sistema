@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { enRefrescoSilencioso, useAutoRefresh } from '~/composables/useAutoRefresh'
 // Indicadores Muebles — los números del área.
 //
 // Reutiliza las piezas del módulo de Indicadores (Tarjeta, BarrasH, Tabla), que
@@ -76,7 +77,8 @@ function aplicarPreset(p: Preset) {
 
 async function cargar() {
   if (!desde.value || !hasta.value) return
-  cargando.value = true
+  // Un refresco automatico no pone el esqueleto: la pantalla no parpadea.
+  if (!enRefrescoSilencioso()) cargando.value = true
   try {
     const res = await $fetch<{ data: Datos; equipo: Array<{ id: string; nombre: string }> }>(
       API_INDICADORES_MUEBLES,
@@ -203,6 +205,9 @@ const filasOrden = computed(() => (datos.value?.ordenes ?? []).slice(0, 40).map(
   total: min1(o.totalMin),
   lead: o.leadTimeMin == null ? '—' : min1(o.leadTimeMin),
 })))
+
+// Los indicadores se ponen al dia solos; cada minuto basta (son consultas pesadas).
+useAutoRefresh({ intervalMs: 60_000, onRefresh: () => cargar() })
 </script>
 
 <template>

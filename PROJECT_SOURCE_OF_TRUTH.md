@@ -1087,3 +1087,20 @@ Lógica pura en `src/lib/tareasGenerales.ts` (copia de Nitro en
   ubicación, rótulo, unidades y horas. Motivo obligatorio; la pantalla envía solo lo que se
   tocó y cada cambio queda en Auditoría con su valor anterior (prefijo "Correccion").
 - **Tareas generales** se asignan a operarios de almacenamiento **y montacarguistas**.
+
+### Todo fluye sin recargar (2026-09-16, en producción)
+- **Versiones nuevas:** cada despliegue lleva un identificador (`VERCEL_DEPLOYMENT_ID`)
+  horneado en el JS (`__BUILD_ID__`) y en el servidor (`/api/version`). Cada pestaña
+  pregunta cada minuto y al volver a ella; si hay versión nueva recarga sola, salvo que
+  haya un campo con texto o un modal abierto: entonces muestra "Hay una versión nueva ·
+  Actualizar" y entra con la nueva al cambiar de módulo. Si un archivo viejo no carga,
+  recarga una vez (sin bucles). `plugins/version.client.ts`.
+- **Datos de otras personas:** `composables/useAutoRefresh.ts` refresca cada 20 s (60 s en
+  indicadores e historial), al volver a la pestaña y al instante cuando llega un aviso
+  nuevo a la campana (`avisarDatosCambiaron`). Nunca con trabajo a medias
+  (`hayEdicionEnCurso`: campo con texto o modal; un campo de escaneo vacío no bloquea) y
+  siempre en silencio: sin esqueleto de carga (`enRefrescoSilencioso`) ni toasts de error
+  de red. Conectado en los módulos operativos (Montacargas, Resurtido, Pendientes,
+  Montaje, Recepción, Picking/Inspección/Entrega Muebles, Tareas generales, Historial,
+  Faltantes, Indicadores Muebles, Exportaciones, Solicitudes, Cargue Gourmet,
+  Integración, Facturas y Guardados). Una pantalla nueva debe usarlo igual.

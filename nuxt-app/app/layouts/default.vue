@@ -10,12 +10,17 @@ import { ensureSession, useSessionState } from '~/composables/useSession'
 import { useToastState } from '~/composables/useToast'
 import { canSeeModule, type ModuleKey } from '~/utils/modulePermissions'
 import { puedeUsarMontacargas } from '~/utils/montacargas'
+import { avisarDatosCambiaron } from '~/composables/useAutoRefresh'
+import { useVersionNueva } from '~/composables/useVersionNueva'
 
 const route = useRoute()
 const { pausa: pausaOperativa, cargada: pausaCargada } = usePausaOperativa()
 const muestraPausa = computed(() => ['control-montacargas', 'resurtido', 'recepcion-contenedores', 'montaje-resurtido', 'picking-muebles'].some(key => route.path.endsWith('/' + key) && canSeeModule(me.value?.role, key as ModuleKey)))
 const { me, sessionLoaded, sessionInvalid } = useSessionState()
 const toast = useToastState()
+// Versión nueva desplegada mientras la persona estaba a mitad de algo.
+const hayVersionNueva = useVersionNueva()
+function actualizarVersion() { window.location.reload() }
 
 onMounted(() => { ensureSession() })
 
@@ -199,11 +204,18 @@ async function cargarPendientes() {
   }
 }
 
+let avisosCargados = false
 async function cargarAvisos() {
   if (!me.value) { avisos.value = []; return }
   try {
+    const antes = new Set(avisos.value.map((a) => a.id))
+    const primeraCarga = !avisosCargados
     const res = await $fetch<{ data: Aviso[] }>('/api/notificaciones')
     avisos.value = res.data
+    avisosCargados = true
+    // Llego un aviso nuevo (te asignaron algo): la pantalla abierta vuelve a
+    // traer sus datos ya, sin esperar su turno de refresco.
+    if (!primeraCarga && res.data.some((a) => !a.leida && !antes.has(a.id))) avisarDatosCambiaron()
   } catch {
     avisos.value = []
   }
@@ -230,7 +242,8 @@ watch(() => me.value?.id, () => {
 
 // Los avisos llegan solos: sin esto habria que recargar para enterarse.
 let latido: ReturnType<typeof setInterval> | null = null
-onMounted(() => { latido = setInterval(() => { void cargarAvisos() }, 60_000) })
+// Cada 30 s: un aviso nuevo es lo que dispara el refresco inmediato de la pantalla.
+onMounted(() => { latido = setInterval(() => { if (document.visibilityState === 'visible') void cargarAvisos() }, 30_000) })
 onBeforeUnmount(() => { if (latido) clearInterval(latido) })
 
 // ── Sesion ──────────────────────────────────────────────────────────
@@ -431,6 +444,13 @@ async function cerrarSesion() {
       </main>
     </div>
 
+    <!-- Versión nueva: solo sale si la persona estaba escribiendo; si no, se
+         actualizó sola. Al cambiar de módulo también entra con la nueva. -->
+    <div v-if="hayVersionNueva" class="version-nueva" role="status">
+      <span>Hay una versión nueva de la app.</span>
+      <button class="btn btn-sm btn-primary" @click="actualizarVersion">Actualizar</button>
+    </div>
+
     <!-- Toast -->
     <Transition name="toast">
       <div v-if="toast" class="toast" :class="{ err: toast.err }">
@@ -442,6 +462,7 @@ async function cerrarSesion() {
 </template>
 
 <style scoped>
+.version-nueva { position: fixed; left: 50%; bottom: 18px; transform: translateX(-50%); z-index: 900; display: flex; align-items: center; gap: 12px; flex-wrap: wrap; justify-content: center; max-width: calc(100vw - 32px); padding: 10px 14px; border-radius: var(--r-md); border: 1px solid var(--brand); background: var(--surface); color: var(--ink); font-size: 13px; font-weight: 600; box-shadow: 0 12px 34px rgba(0,0,0,.18); }
 .app { display: grid; grid-template-columns: var(--sidebar-w) 1fr; min-height: 100vh; }
 
 /* Sidebar */

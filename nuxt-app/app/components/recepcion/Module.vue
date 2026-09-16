@@ -121,9 +121,7 @@ useAutoRefresh({
     // Nunca refrescar con trabajo a medias: se le robaría al operario lo que
     // está escribiendo en la planilla.
     if (formDirty.value || saving.value || guardando.value || novedadesDe.value) return
-    void loadLista()
-    void loadAbierta()
-    void loadConteos()
+    return Promise.all([loadLista(), loadAbierta(), loadConteos()])
   },
 })
 

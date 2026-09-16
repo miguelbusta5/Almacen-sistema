@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { enRefrescoSilencioso, useAutoRefresh } from '~/composables/useAutoRefresh'
 import { usePausaOperativa } from '~/composables/usePausaOperativa'
 const { revision: pausaRevision, pausa: pausaActual } = usePausaOperativa()
 watch(pausaRevision, () => { void cargar() })
@@ -44,7 +45,8 @@ const pluInput = ref<HTMLInputElement | null>(null)
 const ubicInput = ref<HTMLInputElement | null>(null)
 
 async function cargar() {
-  loading.value = true
+  // Un refresco automatico no pone el esqueleto: la pantalla no parpadea.
+  if (!enRefrescoSilencioso()) loading.value = true
   try {
     const res = await $fetch<{ data: PendienteDTO[] }>(`${API_PENDIENTES}/mis-tareas`)
     items.value = res.data
@@ -262,6 +264,9 @@ async function pasar() {
 }
 
 cargar()
+
+// Los pendientes que asignan aparecen solos.
+useAutoRefresh({ onRefresh: () => cargar() })
 </script>
 
 <template>

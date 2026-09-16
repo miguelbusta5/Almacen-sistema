@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { enRefrescoSilencioso, useAutoRefresh } from '~/composables/useAutoRefresh'
 import { ref, computed, watch, onMounted } from 'vue'
 import { RefreshCw, Download, Plus, PackageCheck, Undo2 } from '@lucide/vue'
 import { ESTADOS_NO_DESPACHABLES_MASIVO, type PedidoGourmet, type EscaneoEnCola } from '~/utils/gourmet'
@@ -535,6 +536,9 @@ async function exportarExcel() {
   a.download = `cargue-gourmet-${new Date().toISOString().slice(0, 10)}.xlsx`
   a.click()
 }
+
+// El detalle abierto (panel de escaneo) no se toca: solo el listado y los conteos.
+useAutoRefresh({ onRefresh: () => (refreshing.value || panelId.value ? undefined : Promise.all([load(), loadConteos()])) })
 </script>
 
 <template>

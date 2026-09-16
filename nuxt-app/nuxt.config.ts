@@ -1,5 +1,16 @@
 // https://nuxt.com/docs/api/configuration/nuxt-config
+
+// Identificador de esta version. Va horneado en el JS del navegador
+// (__BUILD_ID__) y en el servidor (runtimeConfig.buildId): si una pestaña
+// abierta pregunta /api/version y le responden otro, es que se desplego una
+// version nueva y tiene que actualizarse (plugins/version.client.ts).
+const BUILD_ID = process.env.VERCEL_DEPLOYMENT_ID
+  || process.env.VERCEL_GIT_COMMIT_SHA
+  || `local-${Date.now()}`
+
 export default defineNuxtConfig({
+  runtimeConfig: { buildId: BUILD_ID },
+  vite: { define: { __BUILD_ID__: JSON.stringify(BUILD_ID) } },
   compatibilityDate: '2025-07-15',
   devtools: { enabled: true },
   devServer: { port: 3001 },

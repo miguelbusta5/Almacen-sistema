@@ -290,7 +290,7 @@ useAutoRefresh({
   onRefresh: () => {
     if (!puedeVer.value) return
     if (showForm.value || showRechazar.value || busy.value || deleting.value || borrando.value) return
-    void loadLista()
+    return loadLista()
   },
 })
 

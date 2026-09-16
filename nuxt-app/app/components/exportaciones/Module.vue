@@ -1,11 +1,11 @@
 <script setup lang="ts">
+import { enRefrescoSilencioso, useAutoRefresh } from '~/composables/useAutoRefresh'
 // Orquestador de los 3 módulos de Exportación. Las páginas
 // (app/pages/exportaciones{,-mexico,-eeuu}.vue) solo le pasan su PaisConfig.
 import { ref, computed, watch, onMounted } from 'vue'
 import { RefreshCw, Download, FileSpreadsheet, Tags } from '@lucide/vue'
 import { ensureSession, useSessionState } from '~/composables/useSession'
 import { useToast } from '~/composables/useToast'
-import { useAutoRefresh } from '~/composables/useAutoRefresh'
 import {
   hoyBogota, puedeGestionarExportaciones, puedeUsarExportaciones, sumarDias,
   type Exportacion, type ExportConteos, type Operario, type PaisConfig, type UserStat,
@@ -144,9 +144,7 @@ useAutoRefresh({
   onRefresh: () => {
     if (!puedeVer.value) return
     if (formDirty.value || saving.value || finalizing.value || editando.value || borrando.value || showMover.value) return
-    void loadLista()
-    void loadAbierto()
-    void loadConteos()
+    return Promise.all([loadLista(), loadAbierto(), loadConteos()])
   },
 })
 

@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { enRefrescoSilencioso, useAutoRefresh } from '~/composables/useAutoRefresh'
 // Pendientes: operaciones gourmet pide mercancía a picking y almacenamiento la
 // reparte.
 //
@@ -13,7 +14,6 @@ import {
 import { useDebounceFn } from '@vueuse/core'
 import { ensureSession, useSessionState } from '~/composables/useSession'
 import { useToast } from '~/composables/useToast'
-import { useAutoRefresh } from '~/composables/useAutoRefresh'
 import {
   API_PENDIENTES, colorPendiente, cronometroDesde, ESTADO_PENDIENTE_LABEL,
   esSolicitante, fmtDuracionTarea, NOVEDAD_PENDIENTE_LABEL, puedeBorrarPendiente, puedeEditarPendiente,
@@ -130,7 +130,8 @@ async function crear(confirmado = false) {
 
 // ── Datos ──────────────────────────────────────────────────────────
 async function cargar() {
-  loading.value = true
+  // Un refresco automatico no pone el esqueleto: la pantalla no parpadea.
+  if (!enRefrescoSilencioso()) loading.value = true
   try {
     const res = await $fetch<{ data: PendienteDTO[] }>(API_PENDIENTES)
     items.value = res.data
@@ -160,7 +161,7 @@ watch(() => me.value?.id, () => { void cargarOperarios() }, { immediate: true })
 useAutoRefresh({
   onRefresh: () => {
     if (!puedeVer.value || creando.value || guardando.value) return
-    void cargar()
+    return cargar()
   },
 })
 

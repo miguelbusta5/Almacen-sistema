@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { enRefrescoSilencioso, useAutoRefresh } from '~/composables/useAutoRefresh'
 // Cola de faltantes que reportan los inspectores. Nacen sin dueno y aqui se les
 // asigna un operario: quien esta libre lo sabe el supervisor, no el inspector.
 import { onMounted, ref } from 'vue'
@@ -13,7 +14,8 @@ const cargando = ref(true)
 const guardandoId = ref<string | null>(null)
 
 async function cargar() {
-  cargando.value = true
+  // Un refresco automatico no pone el esqueleto: la pantalla no parpadea.
+  if (!enRefrescoSilencioso()) cargando.value = true
   try {
     const res = await $fetch<{ data: { pendientes: Pendiente[]; operarios: Array<{ id: string; nombre: string }> } }>(
       `${API_ADMIN_MUEBLES}/pendientes`,
@@ -44,6 +46,9 @@ async function asignar(p: Pendiente, operarioId: string) {
     guardandoId.value = null
   }
 }
+
+// Faltantes nuevos que reportan los inspectores aparecen solos.
+useAutoRefresh({ onRefresh: () => cargar() })
 </script>
 
 <template>

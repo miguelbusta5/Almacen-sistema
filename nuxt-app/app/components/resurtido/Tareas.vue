@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { enRefrescoSilencioso, useAutoRefresh } from '~/composables/useAutoRefresh'
 import { usePausaOperativa } from '~/composables/usePausaOperativa'
 const { revision: pausaRevision, pausa: pausaActual } = usePausaOperativa()
 watch(pausaRevision, () => { void cargar() })
@@ -45,7 +46,8 @@ const ubicInput = ref<HTMLInputElement | null>(null)
 const pluInput = ref<HTMLInputElement | null>(null)
 
 async function cargar() {
-  loading.value = true
+  // Un refresco automatico no pone el esqueleto: la pantalla no parpadea.
+  if (!enRefrescoSilencioso()) loading.value = true
   try {
     const res = await $fetch<{
       data: MontajeResurtidoDTO[]; reasignados?: MontajeResurtidoDTO[]
@@ -262,6 +264,10 @@ const crono = computed(() =>
   abierta.value?.horaInicio ? cronometroTarea(abierta.value, props.ahora) : null)
 
 cargar()
+
+// Lo que asigna o reasigna supervision aparece solo. Con una tarea a medias
+// (campos escaneados) no se refresca: hayEdicionEnCurso lo detecta.
+useAutoRefresh({ onRefresh: () => cargar() })
 </script>
 
 <template>

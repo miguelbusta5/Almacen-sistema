@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { enRefrescoSilencioso, useAutoRefresh } from '~/composables/useAutoRefresh'
 // Entrega a Transporte — pantalla del Patinador Muebles.
 //
 // Toda orden con sus PLU inspeccionados cae aquí sola. El patinador agrupa por
@@ -41,7 +42,8 @@ function esperando(o: Orden): string {
 }
 
 async function cargar() {
-  cargando.value = true
+  // Un refresco automatico no pone el esqueleto: la pantalla no parpadea.
+  if (!enRefrescoSilencioso()) cargando.value = true
   try {
     const res = await $fetch<{ data: Orden[]; ciudades: Array<{ ciudad: string; ordenes: number }> }>(API, {
       query: { ...(ciudad.value ? { ciudad: ciudad.value } : {}), ...(historico.value ? { historico: '1' } : {}) },
@@ -90,6 +92,9 @@ async function entregar() {
     guardando.value = false
   }
 }
+
+// Las ordenes que terminan inspeccion caen solas en la bandeja.
+useAutoRefresh({ onRefresh: () => (guardando.value ? undefined : cargar()) })
 </script>
 
 <template>

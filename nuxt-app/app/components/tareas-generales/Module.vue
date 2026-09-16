@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { enRefrescoSilencioso, useAutoRefresh } from '~/composables/useAutoRefresh'
 // Tareas generales — lo que manda supervisión y no cabe en ningún módulo.
 //
 // Supervisión ve todas y las cierra; el operario ve solo las suyas, con su
@@ -96,7 +97,8 @@ function mensaje(e: any, fallback = 'No se pudo completar la acción'): string {
 }
 
 async function cargar() {
-  cargando.value = true
+  // Un refresco automatico no pone el esqueleto: la pantalla no parpadea.
+  if (!enRefrescoSilencioso()) cargando.value = true
   try {
     const lista = await $fetch<{ data: Tarea[]; puedeMandar: boolean }>(API, {
       query: historico.value ? { historico: '1' } : {},
@@ -153,6 +155,9 @@ async function finalizar(t: Tarea, usuarioId: string | null) {
     guardando.value = false
   }
 }
+
+// Tareas nuevas y cierres de supervision aparecen solos.
+useAutoRefresh({ onRefresh: () => (guardando.value || creando.value ? undefined : cargar()) })
 </script>
 
 <template>

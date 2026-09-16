@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { enRefrescoSilencioso, useAutoRefresh } from '~/composables/useAutoRefresh'
 // Inspección Muebles — login compartido del área.
 //
 // Dos vistas: la parrilla de viñetas y el detalle de una orden. Entrar y salir
@@ -60,7 +61,8 @@ const nombreActivo = computed(
 )
 
 async function cargar() {
-  cargando.value = true
+  // Un refresco automatico no pone el esqueleto: la pantalla no parpadea.
+  if (!enRefrescoSilencioso()) cargando.value = true
   try {
     const [lista, cat, ops] = await Promise.all([
       $fetch<{ data: Orden[] }>(API_INSPECCION),
@@ -253,6 +255,10 @@ async function accion(url: string, body: Record<string, unknown>, exito: string)
     guardando.value = false
   }
 }
+
+// Ordenes que pasan a inspeccion y cambios de otro inspector en la misma orden
+// aparecen solos (las PCs se comparten entre varios).
+useAutoRefresh({ onRefresh: () => (guardando.value ? undefined : cargar()) })
 </script>
 
 <template>

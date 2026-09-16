@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { enRefrescoSilencioso, useAutoRefresh } from '~/composables/useAutoRefresh'
 import { ref, computed, watch, onMounted } from 'vue'
 import { onClickOutside } from '@vueuse/core'
 import { RefreshCw, Download, Plus, Calendar } from '@lucide/vue'
@@ -103,6 +104,8 @@ async function loadAll() {
     }))
     demo.value = false
   } catch {
+    // Un refresco automatico sin red no cambia los datos reales por los de ejemplo.
+    if (enRefrescoSilencioso()) return
     // Sin sesión/credenciales o error real -> modo demo con datos de ejemplo.
     demo.value = true
     guardados.value = [...SAMPLE_GUARDADOS]
@@ -348,6 +351,8 @@ function guardarFecha() {
   })
 }
 
+
+useAutoRefresh({ onRefresh: () => (refreshing.value || demo.value ? undefined : Promise.all([loadAll(), loadConteos()])) })
 </script>
 
 <template>
