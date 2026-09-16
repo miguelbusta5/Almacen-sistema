@@ -6,7 +6,7 @@
 // hacer lo suyo, y quien estaba aqui encuentra la orden exactamente como la dejo.
 // Esa es la garantia central del modulo, con 2 PCs para ~5 personas.
 import { computed } from 'vue'
-import { ArrowLeft, Play, Check, Hammer, PackageX, Undo2, Utensils, TriangleAlert, Plus, UserPlus } from '@lucide/vue'
+import { ArrowLeft, Play, Check, Hammer, PackageX, Undo2, Utensils, TriangleAlert, Plus, UserPlus, MapPin } from '@lucide/vue'
 import {
   ESTADO_LINEA_LABEL, ESTADO_LINEA_TONE, cronometro, fmtMin,
   type Linea, type Orden,
@@ -32,6 +32,7 @@ const emit = defineEmits<{
   (e: 'agregar-plu'): void
   (e: 'almuerzo', accion: 'iniciar' | 'terminar'): void
   (e: 'unirse'): void
+  (e: 'ciudad'): void
 }>()
 
 // La orden en almuerzo esta detenida: no corre ningun reloj suyo.
@@ -60,6 +61,9 @@ function reloj(l: Linea): string {
         <ArrowLeft :size="15" /> Salir de la orden
       </button>
       <div class="head-acciones">
+        <button class="btn btn-sm" :class="{ 'btn-primary': !orden.ciudadEnvio }" @click="emit('ciudad')">
+          <MapPin :size="14" /> {{ orden.ciudadEnvio || 'Asignar ciudad' }}
+        </button>
         <button class="btn btn-sm" :disabled="enAlmuerzo" @click="emit('agregar-plu')"><Plus :size="14" /> Agregar PLU</button>
         <button class="btn btn-sm" @click="emit('faltante')"><PackageX :size="14" /> Reportar faltante</button>
         <button class="btn btn-sm" @click="emit('unirse')"><UserPlus :size="14" /> Entrar a la orden</button>
@@ -92,6 +96,11 @@ function reloj(l: Linea): string {
         </p>
       </div>
     </section>
+
+    <!-- Sin ciudad no se puede empezar: es lo que agrupa la entrega. -->
+    <p v-if="!orden.ciudadEnvio" class="aviso">
+      Asigna la ciudad de envío para poder empezar a inspeccionar.
+    </p>
 
     <p v-if="enAlmuerzo" class="aviso">
       Orden en almuerzo. Los tiempos están detenidos hasta que lo termines.

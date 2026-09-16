@@ -57,7 +57,8 @@ export default defineEventHandler(async (event) => {
     }),
     prisma.ordenMuebles.findMany({
       where: { horaInicio: { gte: inicio, lte: fin }, deletedAt: null },
-      select: { id: true, codigo: true, horaInicio: true, horaPasoInspeccion: true, horaFinInspeccion: true, pausaSegundos: true, inspPausaSegundos: true },
+      select: { id: true, codigo: true, horaInicio: true, horaPasoInspeccion: true, horaFinInspeccion: true, pausaSegundos: true, inspPausaSegundos: true,
+        entregadaTransporteAt: true, ciudadEnvio: true },
       orderBy: { horaInicio: 'desc' },
     }),
     prisma.user.findMany({

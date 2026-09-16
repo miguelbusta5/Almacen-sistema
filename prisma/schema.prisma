@@ -163,6 +163,7 @@ model User {
   tramosPendiente                    TramoPendiente[]               @relation("TramosPendiente")
   tareasResurtidoResponsable         TareaResurtido[]               @relation("TareasResurtidoResponsable")
   tareasResurtidoPasadas             TareaResurtido[]               @relation("TareasResurtidoPasadas")
+  ordenesMueblesEntregadas   OrdenMuebles[]         @relation("OrdenesMueblesEntregadas")
   tareasGeneralesCreadas     TareaGeneral[]         @relation("TareasGeneralesCreadas")
   tareasGeneralesFinalizadas TareaGeneral[]         @relation("TareasGeneralesFinalizadas")
   tareasGeneralesAsignadas   AsignadoTareaGeneral[] @relation("TareasGeneralesAsignadas")
@@ -215,6 +216,7 @@ enum Role {
   MONTACARGAS // Montacarguista — Control Montacargas y Resurtido
   OPERARIO_ALMACENAMIENTO // Ayudante — solo su bandeja de PLUs asignados
   PICKING_MUEBLES // Operario de picking de muebles — solo su módulo de picking
+  PATINADOR_MUEBLES // Entrega a transporte las ordenes ya inspeccionadas
   INSPECCION_MUEBLES // Login compartido del área de inspección de muebles
 }
 
@@ -1787,7 +1789,8 @@ model AsignacionEquipoMuebles {
 enum EstadoOrdenMuebles {
   EN_PICKING // El operario esta agregando PLUs; reloj de la orden corriendo
   EN_INSPECCION // Paso a inspeccion; reloj de picking cerrado, el de inspeccion abierto
-  INSPECCIONADA // Todos los PLUs listos
+  INSPECCIONADA // Todos los PLUs listos: lista para entregar a transporte
+  ENTREGADA_TRANSPORTE // El patinador la entrego; aqui cierra la medicion
 }
 
 /// Orden de NetSuite (TSDM/OVDM) trabajada por el area de muebles.
@@ -1834,6 +1837,16 @@ model OrdenMuebles {
   /// Cliente de una factura de contado (tipoOrden = CONTADO). Null en las de NetSuite.
   cliente String? @db.VarChar(160)
 
+  /// Ciudad a la que va la orden. La escribe el inspector al empezar y se
+  /// normaliza (normalizarCiudad) para que el filtro del patinador no se parta
+  /// entre "medellin", "MEDELLÍN" y "Medellin ".
+  ciudadEnvio String? @map("ciudad_envio") @db.VarChar(80)
+
+  /// Entrega a transporte: aqui termina el lead time de la orden.
+  entregadaTransporteAt DateTime? @map("entregada_transporte_at")
+  entregadaPorId        String?   @map("entregada_por_id")
+  entregadaPor          User?     @relation("OrdenesMueblesEntregadas", fields: [entregadaPorId], references: [id])
+
   /// Inspectores que entraron a la orden. Una TSDM la trabajan varios a la vez;
   /// el tiempo de cada uno sale del inspector de cada PLU.
   inspectores InspectorOrdenMuebles[]
@@ -1853,6 +1866,8 @@ model OrdenMuebles {
   @@index([estado, fecha])
   @@index([operarioId, estado, deletedAt])
   @@index([inspectorId, estado])
+  @@index([ciudadEnvio, estado], map: "ordenes_muebles_ciudad_estado_idx")
+  @@index([entregadaTransporteAt], map: "ordenes_muebles_entregada_idx")
   @@map("ordenes_muebles")
 }
 

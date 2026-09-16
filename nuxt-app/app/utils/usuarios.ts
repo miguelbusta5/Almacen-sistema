@@ -6,7 +6,7 @@ export const USER_ROLES = [
   'OPERACIONES_MUEBLES', 'OPERACIONES_GOURMET', 'ETIQUETADO', 'SUPERVISOR_ALMACENAMIENTO',
   'MONTACARGAS',
   'OPERARIO_ALMACENAMIENTO',
-  'PICKING_MUEBLES', 'INSPECCION_MUEBLES',
+  'PICKING_MUEBLES', 'INSPECCION_MUEBLES', 'PATINADOR_MUEBLES',
 ] as const
 
 export type UserRole = typeof USER_ROLES[number]
@@ -29,6 +29,7 @@ export const ROLE_LABEL: Record<UserRole, string> = {
   MONTACARGAS: 'Montacarguista',
   OPERARIO_ALMACENAMIENTO: 'Operario de Almacenamiento',
   PICKING_MUEBLES: 'Picking Muebles',
+  PATINADOR_MUEBLES: 'Patinador Muebles',
   INSPECCION_MUEBLES: 'Inspeccion Muebles',
 }
 
@@ -50,6 +51,7 @@ export const ROLE_DESCRIPTION: Record<UserRole, string> = {
   MONTACARGAS: 'Control Montacargas y Resurtido.',
   OPERARIO_ALMACENAMIENTO: 'Ayudante: recibe PLUs y los ubica.',
   PICKING_MUEBLES: 'Picking de órdenes OVDM/TSDM del área de muebles.',
+  PATINADOR_MUEBLES: 'Entrega a transporte las órdenes de muebles ya inspeccionadas.',
   INSPECCION_MUEBLES: 'Login compartido del área de inspección de muebles.',
 }
 
@@ -72,6 +74,7 @@ export const ROLE_TONE: Record<UserRole, string> = {
   MONTACARGAS: 'var(--muted)',
   OPERARIO_ALMACENAMIENTO: 'var(--muted)',
   PICKING_MUEBLES: 'var(--muted)',
+  PATINADOR_MUEBLES: 'var(--muted)',
   INSPECCION_MUEBLES: 'var(--muted)',
 }
 

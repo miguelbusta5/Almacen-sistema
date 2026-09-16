@@ -112,6 +112,8 @@ export interface OrdenMedida {
   horaInicio: Date;
   horaPasoInspeccion: Date | null;
   horaFinInspeccion: Date | null;
+  /** Entrega a transporte: aqui termina el proceso y se cierra el lead time. */
+  entregadaTransporteAt?: Date | null;
   /** Almuerzo o cambio de baterias del operario durante el picking. */
   pausaSegundos?: number;
   /** Almuerzo del inspector dentro de la orden. */
@@ -161,6 +163,8 @@ export interface FilaOrden {
   codigo: string;
   pickingMin: number | null;
   inspeccionMin: number | null;
+  /** Del primer PLU bajado hasta la entrega a transporte. Null si no ha salido. */
+  leadTimeMin: number | null;
   totalMin: number | null;
 }
 
@@ -174,6 +178,9 @@ export interface IndicadoresMuebles {
     desplazamientoPromedioSeg: number | null;
     /** Peso del desplazamiento sobre el tiempo de picking, en %. */
     desplazamientoPorcentaje: number | null;
+    /** Ordenes que ya salieron del CEDI en el periodo, y su lead time medio. */
+    ordenesEntregadas: number;
+    leadTimePromedioMin: number | null;
   };
   operarios: FilaOperario[];
   inspectores: FilaInspector[];
@@ -345,6 +352,9 @@ export function agregarIndicadoresMuebles(entrada: {
       pickingMin,
       inspeccionMin,
       totalMin: minutos(o.horaInicio, o.horaFinInspeccion, (o.pausaSegundos ?? 0) + (o.inspPausaSegundos ?? 0)),
+      // El lead time NO descuenta pausas: mide lo que el cliente espera, no lo
+      // que trabajo el CEDI.
+      leadTimeMin: minutos(o.horaInicio, o.entregadaTransporteAt ?? null),
     };
   });
 
@@ -361,6 +371,10 @@ export function agregarIndicadoresMuebles(entrada: {
       m3: redondear(lineas.reduce((a, l) => a + (l.volumenTotalM3 ?? 0), 0), 3),
       kg: redondear(lineas.reduce((a, l) => a + (l.pesoTotalKg ?? 0), 0), 1),
       desplazamientoPromedioSeg: promedio(todosLosHuecos),
+      ordenesEntregadas: filasOrden.filter((f) => f.leadTimeMin != null).length,
+      leadTimePromedioMin: promedio(
+        filasOrden.map((f) => f.leadTimeMin).filter((v): v is number => v != null),
+      ),
       // Contra picking + desplazamiento, que es el tiempo que el operario estuvo
       // realmente en la jugada. Contra solo picking daria mas del 100%.
       desplazamientoPorcentaje: minutosPicking + desplazamientoTotalMin > 0

@@ -36,6 +36,11 @@ const pidiendoFaltante = ref(false)
 const lineaAveriada = ref<Linea | null>(null)
 const agregandoPlu = ref(false)
 const creandoContado = ref(false)
+const pidiendoCiudad = ref(false)
+// Ciudades ya usadas: se sugieren para no escribir la misma de dos formas.
+const ciudadesUsadas = computed(() => [...new Set(
+  ordenes.value.map((o) => o.ciudadEnvio).filter((c): c is string => !!c),
+)].sort())
 // Qué hacer una vez el inspector elige su nombre (tomar la orden, o la acción
 // que intentó sin haberse identificado todavía).
 const trasElegir = ref<((id: string) => void) | null>(null)
@@ -81,6 +86,8 @@ async function abrirOrden(o: Orden) {
   try {
     const res = await $fetch<{ data: Orden }>(`${API_INSPECCION}/${o.id}`)
     abierta.value = res.data
+    // Sin ciudad no se puede inspeccionar: se pide de una, no al fallar.
+    if (!res.data.ciudadEnvio) pidiendoCiudad.value = true
   } catch (e) {
     show(mensajeError(e, 'No se pudo abrir la orden'), true)
   }
@@ -160,6 +167,14 @@ async function confirmarFaltante(datos: { plu: string; unidades: number; observa
       show(mensajeError(e, 'No se pudo reportar el faltante'), true)
     }
   })
+}
+
+/** La ciudad a la que va la orden; con eso agrupa el patinador la entrega. */
+function confirmarCiudad(ciudad: string) {
+  pidiendoCiudad.value = false
+  conInspector((id) => accion(
+    `${API_INSPECCION}/${abierta.value!.id}/ciudad`, { inspectorId: id, ciudad }, `Orden hacia ${ciudad}`,
+  ))
 }
 
 /** Marcar el PLU como averiado y pedir el repuesto a un operario de picking. */
@@ -274,6 +289,7 @@ async function accion(url: string, body: Record<string, unknown>, exito: string)
       @ebanisteria="lineaEbanisteria = $event" @recibir-ebanisteria="recibirEbanisteria"
       @faltante="pidiendoFaltante = true" @averia="lineaAveriada = $event"
       @agregar-plu="agregandoPlu = true" @almuerzo="almuerzo" @unirse="unirse"
+      @ciudad="pidiendoCiudad = true"
     />
 
     <template v-else>
@@ -297,6 +313,10 @@ async function accion(url: string, body: Record<string, unknown>, exito: string)
     />
     <InspeccionMueblesAgregarPluModal
       :abierto="agregandoPlu" @cerrar="agregandoPlu = false" @confirmar="confirmarAgregarPlu"
+    />
+    <InspeccionMueblesCiudadModal
+      :abierto="pidiendoCiudad" :actual="abierta?.ciudadEnvio ?? null" :sugeridas="ciudadesUsadas"
+      @cerrar="pidiendoCiudad = false" @confirmar="confirmarCiudad"
     />
     <InspeccionMueblesContadoModal
       :abierto="creandoContado" @cerrar="creandoContado = false" @confirmar="confirmarContado"

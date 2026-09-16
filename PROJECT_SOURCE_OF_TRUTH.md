@@ -1057,3 +1057,19 @@ por terminada (a uno o a todos). El operario ve solo lo suyo, gerencia ve todo s
 tocar, y el tiempo suma en Indicadores como el tipo «Tareas generales».
 Lógica pura en `src/lib/tareasGenerales.ts` (copia de Nitro en
 `server/utils/tareasGeneralesCalc.ts`). Script: `prisma/migrate-tareas-generales.sql`.
+
+### Entrega a Transporte y rol Patinador Muebles (2026-09-16, en producción)
+- El inspector **asigna la ciudad de envío** al empezar la orden (sin ciudad no deja
+  iniciar ningún PLU). Se escribe a mano pero se guarda normalizada
+  (`normalizarCiudad`: sin tildes, mayúsculas, un solo espacio) para que el filtro no
+  se parta; la pantalla sugiere las ciudades ya usadas.
+- Rol nuevo **PATINADOR_MUEBLES** con un único módulo, **Entrega a Transporte**: toda
+  orden con sus PLU inspeccionados cae ahí sola con estado «Lista para entregar a
+  transporte». Filtra por ciudad, marca varias y las entrega de una vez.
+- Al entregar, la orden pasa a `ENTREGADA_TRANSPORTE` y **ahí cierra la medición**:
+  el **lead time** va desde que se abrió el picking hasta la entrega (no descuenta
+  pausas: mide lo que espera el cliente). Indicadores Muebles muestra el lead time por
+  orden y el promedio de las entregadas.
+- Script: `prisma/migrate-entrega-muebles.sql`.
+- **Tareas generales** ahora solo se asignan a operarios de almacenamiento (el resto de
+  roles está amarrado a su propio módulo y sacarlos de ahí rompe la medición del área).

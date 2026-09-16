@@ -33,6 +33,7 @@ interface Datos {
     plusPickeados: number; minutosPicking: number; minutosInspeccion: number
     m3: number; kg: number
     desplazamientoPromedioSeg: number | null; desplazamientoPorcentaje: number | null
+    ordenesEntregadas: number; leadTimePromedioMin: number | null
   }
   operarios: FilaOperario[]
   inspectores: FilaInspector[]
@@ -44,7 +45,11 @@ interface Datos {
     promedioEsperaMin: number | null; maximoEsperaMin: number | null
     motivos: Array<{ motivo: string; veces: number }>
   }
-  ordenes: Array<{ id: string; codigo: string; pickingMin: number | null; inspeccionMin: number | null; totalMin: number | null }>
+  ordenes: Array<{
+    id: string; codigo: string
+    pickingMin: number | null; inspeccionMin: number | null; totalMin: number | null
+    leadTimeMin: number | null
+  }>
 }
 
 const { show } = useToast()
@@ -103,6 +108,9 @@ const tiles = computed(() => {
     { label: 'Tiempo de picking', valor: horas(r.minutosPicking) },
     { label: 'Tiempo de inspección', valor: horas(r.minutosInspeccion) },
     { label: 'Volumen movido', valor: fmtM3(r.m3) },
+    // Lead time: lo que espera el cliente, de abrir el picking a subir al camion.
+    { label: 'Lead time promedio', valor: horas(r.leadTimePromedioMin ?? 0) },
+    { label: 'Órdenes entregadas', valor: String(r.ordenesEntregadas ?? 0) },
   ]
 })
 
@@ -169,12 +177,14 @@ const colsOrden: ColumnaTabla[] = [
   { key: 'picking', label: 'Picking', num: true },
   { key: 'inspeccion', label: 'Inspección', num: true },
   { key: 'total', label: 'Total', num: true },
+  { key: 'lead', label: 'Lead time', num: true },
 ]
 const filasOrden = computed(() => (datos.value?.ordenes ?? []).slice(0, 40).map((o) => ({
   codigo: o.codigo,
   picking: min1(o.pickingMin),
   inspeccion: min1(o.inspeccionMin),
   total: min1(o.totalMin),
+  lead: o.leadTimeMin == null ? '—' : min1(o.leadTimeMin),
 })))
 </script>
 
@@ -288,7 +298,10 @@ const filasOrden = computed(() => (datos.value?.ordenes ?? []).slice(0, 40).map(
           </div>
         </IndicadoresTarjeta>
 
-        <IndicadoresTarjeta class="bloque" titulo="Órdenes completas" subtitulo="De punta a punta">
+        <IndicadoresTarjeta
+          class="bloque" titulo="Órdenes completas"
+          :subtitulo="`Lead time: de abrir el picking a entregar a transporte · promedio ${horas(datos.resumen.leadTimePromedioMin ?? 0)} en ${datos.resumen.ordenesEntregadas ?? 0} órdenes entregadas`"
+        >
           <IndicadoresTabla :columnas="colsOrden" :filas="filasOrden" principal="codigo" />
         </IndicadoresTarjeta>
       </template>

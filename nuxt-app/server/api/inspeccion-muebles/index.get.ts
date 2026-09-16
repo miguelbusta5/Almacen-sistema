@@ -18,7 +18,9 @@ export default defineEventHandler(async (event) => {
   const ordenes = await prisma.ordenMuebles.findMany({
     where: {
       deletedAt: null,
-      estado: incluirCerradas ? { in: ['EN_INSPECCION', 'INSPECCIONADA'] } : 'EN_INSPECCION',
+      estado: incluirCerradas
+        ? { in: ['EN_INSPECCION', 'INSPECCIONADA', 'ENTREGADA_TRANSPORTE'] }
+        : 'EN_INSPECCION',
     },
     include: ORDEN_INCLUDE,
     orderBy: { horaPasoInspeccion: 'asc' },

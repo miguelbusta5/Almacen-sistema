@@ -30,11 +30,13 @@ describe("quien manda y quien recibe", () => {
     expect(puedeMandarTarea("GERENTE")).toBe(false);
   });
 
-  it("se asigna a quien trabaja en el CEDI, no a tienda ni a transportistas", () => {
+  // Solo operarios de almacenamiento: el resto de roles esta amarrado a su
+  // propio modulo y sacarlos de ahi rompe la medicion de su area.
+  it("se asigna solo a operarios de almacenamiento", () => {
     expect(esAsignable("OPERARIO_ALMACENAMIENTO")).toBe(true);
-    expect(esAsignable("PICKING_MUEBLES")).toBe(true);
+    expect(esAsignable("PICKING_MUEBLES")).toBe(false);
+    expect(esAsignable("MONTACARGAS")).toBe(false);
     expect(esAsignable("TIENDA")).toBe(false);
-    expect(esAsignable("TRANSPORTISTA")).toBe(false);
   });
 });
 

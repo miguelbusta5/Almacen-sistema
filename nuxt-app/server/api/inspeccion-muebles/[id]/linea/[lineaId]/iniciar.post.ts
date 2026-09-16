@@ -28,6 +28,9 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 409, statusMessage: 'Esa orden no esta en inspeccion' })
   }
 
+  if (!orden.ciudadEnvio) {
+    throw createError({ statusCode: 409, statusMessage: 'Asigna la ciudad de envío antes de empezar la orden' })
+  }
   // Durante el almuerzo la orden esta detenida: reanudar es un gesto explicito.
   if (orden.inspPausaInicio) {
     throw createError({ statusCode: 409, statusMessage: 'La orden esta en almuerzo: termina el almuerzo para seguir' })

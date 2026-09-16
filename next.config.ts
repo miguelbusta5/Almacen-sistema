@@ -119,6 +119,7 @@ const nextConfig: NextConfig = {
     if (NUXT_PILOT_MUEBLES_URL) {
       for (const modulo of [
         "picking-muebles", "inspeccion-muebles", "indicadores-muebles", "admin-muebles",
+        "entrega-muebles",
       ]) {
         beforeFiles.push(
           { source: `/dashboard/${modulo}`, destination: `${NUXT_PILOT_MUEBLES_URL}/dashboard/${modulo}` },

@@ -390,3 +390,58 @@ describe("inspeccion — averias, almuerzo, contado y varios inspectores", () =>
     expect(detalle).toContain("orden.inspectores");
   });
 });
+
+// Entrega a transporte: la ciudad la pone el inspector al empezar, la orden
+// inspeccionada cae sola en la bandeja del patinador y al entregarla se cierra
+// el lead time (de abrir el picking a subir al camion).
+describe("muebles — entrega a transporte", () => {
+  const ciudad = leer("nuxt-app/server/api/inspeccion-muebles/[id]/ciudad.post.ts");
+  const iniciar = leer("nuxt-app/server/api/inspeccion-muebles/[id]/linea/[lineaId]/iniciar.post.ts");
+  const bandeja = leer("nuxt-app/server/api/entrega-muebles/index.get.ts");
+  const entregar = leer("nuxt-app/server/api/entrega-muebles/entregar.post.ts");
+  const ui = leer("nuxt-app/app/components/entrega-muebles/Module.vue");
+
+  it("la ciudad se guarda normalizada para que el filtro no se parta", () => {
+    for (const src of [fuente, calcServidor]) {
+      expect(src).toContain("normalizarCiudad");
+      expect(src).toContain("toUpperCase()");
+    }
+    expect(ciudad).toContain("normalizarCiudad(parsed.data.ciudad)");
+    expect(ciudad).toContain("validarCiudad");
+  });
+
+  it("sin ciudad no se empieza a inspeccionar", () => {
+    expect(iniciar).toContain("!orden.ciudadEnvio");
+  });
+
+  it("a la bandeja del patinador solo llegan las ordenes completas", () => {
+    expect(bandeja).toContain("estado: historico ? 'ENTREGADA_TRANSPORTE' : 'INSPECCIONADA'");
+    expect(bandeja).toContain("groupBy");
+    expect(bandeja).toContain("puedeEntregarTransporte(actor.role)");
+  });
+
+  it("se entregan varias de una vez y ahi cierra la medicion", () => {
+    expect(entregar).toContain("ordenIds: z.array");
+    expect(entregar).toContain("estado: 'ENTREGADA_TRANSPORTE', entregadaTransporteAt: now");
+    expect(entregar).toContain("noListas");
+    expect(ui).toContain("Entregar a transporte");
+  });
+
+  it("el rol nuevo solo puede entregar", () => {
+    for (const src of [fuente, calcServidor]) {
+      expect(src).toContain("PATINADOR_MUEBLES");
+      expect(src).toContain("puedeEntregarTransporte");
+    }
+    expect(leer("src/lib/modulePermissions.ts")).toContain('"entrega-muebles": ["PATINADOR_MUEBLES"');
+  });
+
+  it("los indicadores muestran el lead time por orden y su promedio", () => {
+    for (const src of [indFuente, indServidor]) {
+      expect(src).toContain("leadTimeMin");
+      expect(src).toContain("leadTimePromedioMin");
+      expect(src).toContain("ordenesEntregadas");
+    }
+    expect(leer("nuxt-app/server/api/indicadores-muebles/index.get.ts")).toContain("entregadaTransporteAt: true");
+    expect(leer("nuxt-app/app/components/indicadores-muebles/Module.vue")).toContain("Lead time");
+  });
+});

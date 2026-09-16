@@ -327,3 +327,52 @@ export function resumenOrden(lineas: Array<{ estado: EstadoLinea }>): ResumenOrd
     progreso: total === 0 ? 0 : Math.round((listos / total) * 100),
   }
 }
+
+// ── Ciudad de envio ─────────────────────────────────────────────────────────
+
+/**
+ * La ciudad la escribe el inspector a mano, asi que se normaliza antes de
+ * guardarla: sin tildes, en mayusculas y con un solo espacio. Sin esto,
+ * "medellin", "Medellín" y "MEDELLIN " serian tres ciudades distintas y el
+ * filtro del patinador se partiria en tres.
+ */
+export function normalizarCiudad(value: unknown): string {
+  return String(value ?? "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .trim()
+    .toUpperCase()
+    .replace(/\s+/g, " ")
+    .slice(0, 80)
+}
+
+export function validarCiudad(value: unknown): string | null {
+  const ciudad = normalizarCiudad(value)
+  if (ciudad.length < 3) return "Escribe la ciudad de envio"
+  if (!/^[A-Z0-9 .'-]+$/.test(ciudad)) return "La ciudad tiene caracteres raros"
+  return null
+}
+
+/**
+ * Lead time de una orden: desde que el operario abrio el picking hasta que el
+ * patinador la entrego a transporte. Es el numero que mide el proceso completo,
+ * incluida la espera entre que queda lista y sale del CEDI.
+ */
+export function leadTimeMinutos(orden: {
+  horaInicio?: Date | string | null
+  entregadaTransporteAt?: Date | string | null
+}): number | null {
+  return duracionMinutos(orden.horaInicio, orden.entregadaTransporteAt)
+}
+
+/** Quien entrega a transporte las ordenes ya inspeccionadas. */
+export const ROLES_ENTREGA_TRANSPORTE = [
+  "PATINADOR_MUEBLES",
+  "SUPERVISOR_ALMACENAMIENTO",
+  "GERENTE",
+  "ADMIN",
+] as const
+
+export function puedeEntregarTransporte(role: string | null | undefined): boolean {
+  return !!role && (ROLES_ENTREGA_TRANSPORTE as readonly string[]).includes(role)
+}

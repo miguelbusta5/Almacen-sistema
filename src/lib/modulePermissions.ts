@@ -28,7 +28,8 @@ export type ModuleKey =
   | "inspeccion-muebles"
   | "indicadores-muebles"
   | "admin-muebles"
-  | "tareas-generales";
+  | "tareas-generales"
+  | "entrega-muebles";
 
 export const MODULE_ACCESS: Record<ModuleKey, AppRole[]> = {
   "capacidad-picking": ["ADMIN", "GERENTE", "SUPERVISOR_ALMACENAMIENTO", "OPERARIO_ALMACENAMIENTO", "MONTACARGAS", "INVENTARIO", "SUPERVISOR_INVENTARIO", "OPERADOR"],
@@ -107,10 +108,11 @@ export const MODULE_ACCESS: Record<ModuleKey, AppRole[]> = {
   // Equipos, inspectores, asignacion del dia y tipos de PLU. Solo gestion: el
   // operario no configura el area en la que trabaja.
   "admin-muebles": ["SUPERVISOR_ALMACENAMIENTO", "GERENTE", "ADMIN"],
-  // Lo que manda supervision y no cabe en ningun modulo. El operario entra a
-  // ver SOLO lo suyo: crear, asignar y cerrar sigue siendo de supervision
-  // (se exige en el servidor, no solo escondiendo botones).
-  "tareas-generales": ["SUPERVISOR_ALMACENAMIENTO", "GERENTE", "ADMIN", "OPERARIO_ALMACENAMIENTO", "MONTACARGAS", "PICKING_MUEBLES", "INSPECCION_MUEBLES", "ETIQUETADO", "INVENTARIO"],
+  // Lo que manda supervision y no cabe en ningun modulo. Solo se le asigna a
+  // operarios de almacenamiento, que son los disponibles para lo que salga; el
+  // operario entra a ver SOLO lo suyo y crear/cerrar es de supervision.
+  "entrega-muebles": ["PATINADOR_MUEBLES", "SUPERVISOR_ALMACENAMIENTO", "GERENTE", "ADMIN"],
+  "tareas-generales": ["SUPERVISOR_ALMACENAMIENTO", "GERENTE", "ADMIN", "OPERARIO_ALMACENAMIENTO"],
 };
 
 export function canSeeModule(role: string | undefined | null, moduleKey: ModuleKey): boolean {
@@ -142,6 +144,7 @@ export const ROLE_LABEL_EXT: Record<AppRole, string> = {
   OPERARIO_ALMACENAMIENTO: "Operario de Almacenamiento",
   PICKING_MUEBLES: "Picking Muebles",
   INSPECCION_MUEBLES: "Inspeccion Muebles",
+  PATINADOR_MUEBLES: "Patinador Muebles",
 };
 
 export const ROLE_DESCRIPTION: Record<AppRole, string> = {
@@ -163,4 +166,5 @@ export const ROLE_DESCRIPTION: Record<AppRole, string> = {
   OPERARIO_ALMACENAMIENTO: "Ayudante: recibe PLUs y los ubica.",
   PICKING_MUEBLES: "Solo ve su bandeja de picking de muebles.",
   INSPECCION_MUEBLES: "Login compartido del area de inspeccion de muebles.",
+  PATINADOR_MUEBLES: "Entrega a transporte las ordenes de muebles inspeccionadas.",
 };

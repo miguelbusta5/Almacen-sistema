@@ -10,7 +10,7 @@ export const API_ADMIN_MUEBLES = '/api/muebles-admin'
 export const API_INDICADORES_MUEBLES = '/api/indicadores-muebles'
 
 export type EstadoLinea = 'EN_PICKING' | 'PICKEADA' | 'EN_INSPECCION' | 'EN_EBANISTERIA' | 'LISTO'
-export type EstadoOrden = 'EN_PICKING' | 'EN_INSPECCION' | 'INSPECCIONADA'
+export type EstadoOrden = 'EN_PICKING' | 'EN_INSPECCION' | 'INSPECCIONADA' | 'ENTREGADA_TRANSPORTE'
 export type TipoEquipo = 'ORDER_PICKER' | 'GENIE'
 
 export interface Inspector { id: string; nombre: string; activo?: boolean }
@@ -109,6 +109,12 @@ export interface Orden {
   inspectores: Array<{ id: string; nombre: string; seUnioAt: string | null }>
   /** Cliente de una factura de contado. */
   cliente: string | null
+  /** Ciudad a la que va la orden; con esto agrupa el patinador. */
+  ciudadEnvio: string | null
+  entregadaTransporteAt: string | null
+  entregadaPor: { id: string; nombre: string } | null
+  /** Del primer PLU bajado a la entrega a transporte. Null si no ha salido. */
+  leadTimeMin: number | null
   /** Almuerzo de la orden: si tiene hora, esta detenida. */
   almuerzoInicio: string | null
   almuerzoSegundos: number
@@ -163,7 +169,9 @@ export const ESTADO_LINEA_TONE: Record<EstadoLinea, string> = {
 export const ESTADO_ORDEN_LABEL: Record<EstadoOrden, string> = {
   EN_PICKING: 'En picking',
   EN_INSPECCION: 'En inspección',
-  INSPECCIONADA: 'Inspeccionada',
+  // Al quedar inspeccionada ya esta en la bandeja del patinador.
+  INSPECCIONADA: 'Lista para entregar a transporte',
+  ENTREGADA_TRANSPORTE: 'Entregada a transporte',
 }
 
 export const TIPO_EQUIPO_LABEL: Record<TipoEquipo, string> = {

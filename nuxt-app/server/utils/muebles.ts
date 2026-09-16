@@ -45,6 +45,7 @@ export const ORDEN_INCLUDE = {
   operario: { select: { id: true, name: true } },
   equipo: { select: { id: true, codigo: true, tipo: true } },
   inspector: { select: { id: true, nombre: true } },
+  entregadaPor: { select: { id: true, name: true } },
   // Quien esta dentro de la orden: una TSDM la revisan varios a la vez.
   inspectores: { include: { inspector: { select: { id: true, nombre: true } } }, orderBy: { seUnioAt: 'asc' } },
   lineas: { select: LINEA_SELECT, orderBy: { horaInicio: 'asc' } },

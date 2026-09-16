@@ -5,9 +5,9 @@
 // reloj corriendo. El tiempo de cada persona es independiente: al que ya
 // terminó se le cierra sin tocar a los demás.
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
-import { ClipboardList, RefreshCw, Loader2, Plus, Check, Users } from '@lucide/vue'
+import { ClipboardList, RefreshCw, Loader2, Plus, Check, X, Timer, UserCheck } from '@lucide/vue'
 import { useToast } from '~/composables/useToast'
-import { ensureSession, useSessionState } from '~/composables/useSession'
+import { ensureSession } from '~/composables/useSession'
 
 interface Asignado {
   id: string
@@ -32,7 +32,6 @@ interface Operario { id: string; nombre: string; rol: string }
 
 const API = '/api/tareas-generales'
 const { show } = useToast()
-const { me } = useSessionState()
 
 const tareas = ref<Tarea[]>([])
 const operarios = ref<Operario[]>([])
@@ -56,16 +55,30 @@ onMounted(() => {
 onBeforeUnmount(() => { if (tick) clearInterval(tick) })
 
 const puedeCrear = computed(() => descripcion.value.trim().length > 0 && elegidos.value.length > 0)
+// Cuánta gente hay trabajando ahora mismo en algo mandado: es el número que
+// mira el supervisor antes de repartir más.
+const trabajando = computed(() => tareas.value
+  .filter((t) => t.estado === 'EN_CURSO')
+  .reduce((a, t) => a + t.asignados.filter((x) => !x.horaFin).length, 0))
+
+function segundos(a: Asignado): number {
+  const fin = a.horaFin ? new Date(a.horaFin).getTime() : ahora.value
+  return Math.max(0, Math.round((fin - new Date(a.horaInicio).getTime()) / 1000))
+}
 
 function reloj(a: Asignado): string {
-  const fin = a.horaFin ? new Date(a.horaFin).getTime() : ahora.value
-  const seg = Math.max(0, Math.round((fin - new Date(a.horaInicio).getTime()) / 1000))
+  const seg = segundos(a)
   const h = Math.floor(seg / 3600)
   const m = Math.floor((seg % 3600) / 60)
   const s = seg % 60
   return h > 0
     ? `${h}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`
     : `${m}:${String(s).padStart(2, '0')}`
+}
+
+/** Hora de inicio, para leer la tarjeta sin hacer cuentas. */
+function hora(iso: string): string {
+  return new Intl.DateTimeFormat('es-CO', { timeZone: 'America/Bogota', timeStyle: 'short' }).format(new Date(iso))
 }
 
 function mensaje(e: any, fallback = 'No se pudo completar la acción'): string {
@@ -143,17 +156,17 @@ async function finalizar(t: Tarea, usuarioId: string | null) {
         <h1 class="hero-title">Tareas generales</h1>
         <p class="hero-desc">
           {{ puedeMandar
-            ? 'Asigna una tarea a uno o varios operarios; el tiempo corre hasta que la das por terminada.'
+            ? 'Lo que mandas a hacer y no cabe en ningún módulo. El tiempo de cada persona corre hasta que la das por terminada.'
             : 'Lo que te ha asignado supervisión. El tiempo corre hasta que la den por terminada.' }}
         </p>
       </div>
 
       <div class="hero-acciones">
-        <button v-if="puedeMandar" class="btn btn-primary btn-sm" @click="creando = !creando">
+        <button v-if="puedeMandar && !creando" class="btn btn-primary btn-sm" @click="creando = true">
           <Plus :size="14" /> Asignar tarea
         </button>
         <button class="btn btn-ghost btn-sm" @click="historico = !historico; cargar()">
-          {{ historico ? 'Ver solo en curso' : 'Ver terminadas' }}
+          {{ historico ? 'En curso' : 'Terminadas' }}
         </button>
         <button class="btn btn-ghost btn-sm" :disabled="cargando" @click="cargar">
           <RefreshCw :size="14" /> Actualizar
@@ -161,7 +174,19 @@ async function finalizar(t: Tarea, usuarioId: string | null) {
       </div>
     </section>
 
+    <!-- Una sola cifra: cuánta gente está ocupada en algo mandado. -->
+    <p v-if="puedeMandar && !historico && !cargando" class="resumen">
+      <UserCheck :size="14" />
+      <span v-if="trabajando"><strong>{{ trabajando }}</strong> {{ trabajando === 1 ? 'persona' : 'personas' }} en tareas ahora mismo</span>
+      <span v-else>Nadie tiene una tarea general en curso</span>
+    </p>
+
     <section v-if="creando && puedeMandar" class="crear">
+      <header class="crear-head">
+        <h2 class="crear-titulo">Nueva tarea</h2>
+        <button class="icono" aria-label="Cerrar" @click="creando = false"><X :size="16" /></button>
+      </header>
+
       <label class="campo">
         <span class="campo-label">¿Qué hay que hacer?</span>
         <textarea
@@ -171,21 +196,26 @@ async function finalizar(t: Tarea, usuarioId: string | null) {
       </label>
 
       <div class="campo">
-        <span class="campo-label"><Users :size="13" /> ¿Quién la hace?</span>
+        <span class="campo-label">
+          ¿Quién la hace?
+          <span v-if="elegidos.length" class="campo-n">{{ elegidos.length }} seleccionados</span>
+        </span>
         <div class="gente">
           <button
             v-for="o in operarios" :key="o.id" type="button"
             class="chip" :class="{ on: elegidos.includes(o.id) }" @click="alternar(o.id)"
           >
+            <Check v-if="elegidos.includes(o.id)" :size="13" />
             {{ o.nombre }}
           </button>
         </div>
+        <p v-if="!operarios.length" class="campo-vacio">No hay operarios de almacenamiento activos.</p>
       </div>
 
       <div class="crear-pie">
         <button class="btn btn-ghost btn-sm" @click="creando = false">Cancelar</button>
         <button class="btn btn-primary btn-sm" :disabled="!puedeCrear || guardando" @click="crear">
-          <Plus :size="14" /> Asignar a {{ elegidos.length || 0 }}
+          <Plus :size="14" /> Asignar
         </button>
       </div>
     </section>
@@ -194,17 +224,19 @@ async function finalizar(t: Tarea, usuarioId: string | null) {
 
     <ul v-else-if="tareas.length" class="tareas">
       <li v-for="t in tareas" :key="t.id" class="tarea" :class="{ fin: t.estado === 'FINALIZADA' }">
-        <div class="t-head">
-          <p class="t-desc">{{ t.descripcion }}</p>
+        <header class="t-head">
+          <div>
+            <p class="t-desc">{{ t.descripcion }}</p>
+            <p class="t-meta">
+              <Timer :size="12" /> {{ hora(t.horaInicio) }} · la mandó {{ t.creadoPor?.nombre ?? '—' }}
+              <span v-if="t.finalizadaPor"> · la cerró {{ t.finalizadaPor.nombre }}</span>
+            </p>
+          </div>
           <span class="t-chip">{{ t.estado === 'EN_CURSO' ? 'En curso' : 'Terminada' }}</span>
-        </div>
-        <p class="t-meta">
-          La mandó {{ t.creadoPor?.nombre ?? '—' }}
-          <span v-if="t.finalizadaPor"> · la cerró {{ t.finalizadaPor.nombre }}</span>
-        </p>
+        </header>
 
         <ul class="asignados">
-          <li v-for="a in t.asignados" :key="a.id" class="asignado">
+          <li v-for="a in t.asignados" :key="a.id" class="asignado" :class="{ cerrado: !!a.horaFin }">
             <span class="a-nombre">{{ a.nombre }}</span>
             <span class="a-reloj mono tnum" :class="{ vivo: !a.horaFin }">{{ reloj(a) }}</span>
             <button
@@ -213,15 +245,15 @@ async function finalizar(t: Tarea, usuarioId: string | null) {
             >
               <Check :size="13" /> Terminó
             </button>
-            <span v-else-if="a.horaFin" class="a-ok">Terminó</span>
+            <span v-else-if="a.horaFin" class="a-ok"><Check :size="13" /> Terminó</span>
           </li>
         </ul>
 
-        <div v-if="puedeMandar && t.estado === 'EN_CURSO'" class="t-pie">
+        <footer v-if="puedeMandar && t.estado === 'EN_CURSO'" class="t-pie">
           <button class="btn btn-primary btn-sm" :disabled="guardando" @click="finalizar(t, null)">
             <Check :size="14" /> Finalizar para todos
           </button>
-        </div>
+        </footer>
       </li>
     </ul>
 
@@ -232,38 +264,49 @@ async function finalizar(t: Tarea, usuarioId: string | null) {
 </template>
 
 <style scoped>
-.hero { display: flex; align-items: flex-end; justify-content: space-between; gap: 18px; margin-bottom: 20px; flex-wrap: wrap; }
+.hero { display: flex; align-items: flex-end; justify-content: space-between; gap: 18px; margin-bottom: 18px; flex-wrap: wrap; }
 .hero-kicker { display: flex; align-items: center; gap: 7px; font-size: 11px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); }
 .hero-ic { display: grid; place-items: center; width: 22px; height: 22px; border-radius: 7px; color: var(--brand); background: color-mix(in srgb, var(--brand) 12%, transparent); }
 .hero-title { margin: 7px 0 3px; font-family: var(--display); font-size: 30px; font-weight: 800; letter-spacing: -.035em; color: var(--ink); }
-.hero-desc { margin: 0; font-size: 13px; color: var(--muted); max-width: 60ch; }
+.hero-desc { margin: 0; font-size: 13px; color: var(--muted); max-width: 62ch; }
 .hero-acciones { display: flex; gap: 8px; flex-wrap: wrap; }
 
-.crear { padding: 16px; margin-bottom: 18px; border: 1px solid var(--border); border-radius: var(--r-md); background: var(--surface); }
-.campo { display: block; margin-bottom: 12px; }
-.campo-label { display: flex; align-items: center; gap: 5px; margin-bottom: 5px; font-size: 11.5px; font-weight: 700; color: var(--ink-2); }
-.input { width: 100%; padding: 9px 11px; border: 1px solid var(--border-strong); border-radius: var(--r-sm); background: var(--surface); color: var(--ink); font-size: 13px; }
+.resumen { display: flex; align-items: center; gap: 7px; margin: 0 0 16px; font-size: 12.5px; color: var(--muted); }
+.resumen > svg { color: var(--brand); }
+.resumen strong { color: var(--ink); font-variant-numeric: tabular-nums; }
+
+.crear { padding: 16px 18px; margin-bottom: 18px; border: 1px solid var(--brand); border-radius: var(--r-md); background: var(--surface); }
+.crear-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+.crear-titulo { margin: 0; font-size: 14px; font-weight: 800; color: var(--ink); }
+.icono { display: grid; place-items: center; width: 28px; height: 28px; border: none; border-radius: var(--r-sm); background: transparent; color: var(--muted); cursor: pointer; }
+.icono:hover { background: color-mix(in srgb, var(--ink) 6%, transparent); color: var(--ink); }
+.campo { display: block; margin-bottom: 14px; }
+.campo-label { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; font-size: 11.5px; font-weight: 700; color: var(--ink-2); }
+.campo-n { font-weight: 700; color: var(--brand); }
+.campo-vacio { margin: 8px 0 0; font-size: 12px; color: var(--muted); }
+.input { width: 100%; padding: 10px 12px; border: 1px solid var(--border-strong); border-radius: var(--r-sm); background: var(--surface); color: var(--ink); font-size: 13px; resize: vertical; }
 .gente { display: flex; gap: 7px; flex-wrap: wrap; }
-.chip { padding: 6px 11px; border-radius: var(--r-pill); border: 1px solid var(--border-strong); background: var(--surface); color: var(--ink-2); font-size: 12.5px; font-weight: 600; cursor: pointer; }
+.chip { display: inline-flex; align-items: center; gap: 5px; padding: 7px 13px; border-radius: var(--r-pill); border: 1px solid var(--border-strong); background: var(--surface); color: var(--ink-2); font-size: 12.5px; font-weight: 600; cursor: pointer; }
 .chip.on { color: var(--brand); border-color: var(--brand); background: var(--brand-tint); }
 .crear-pie { display: flex; justify-content: flex-end; gap: 8px; flex-wrap: wrap; }
 
 .tareas { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
-.tarea { padding: 14px 16px; border: 1px solid var(--border); border-radius: var(--r-md); background: var(--surface); }
-.tarea.fin { opacity: .72; }
-.t-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
-.t-desc { margin: 0; font-size: 14.5px; font-weight: 700; color: var(--ink); }
-.t-chip { padding: 3px 9px; border-radius: var(--r-pill); font-size: 11px; font-weight: 700; color: var(--brand); background: var(--brand-tint); }
+.tarea { padding: 15px 17px; border: 1px solid var(--border); border-radius: var(--r-md); background: var(--surface); border-left: 3px solid var(--brand); }
+.tarea.fin { border-left-color: var(--border-strong); opacity: .78; }
+.t-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 12px; }
+.t-desc { margin: 0; font-size: 14.5px; font-weight: 700; line-height: 1.35; color: var(--ink); }
+.t-meta { display: flex; align-items: center; gap: 5px; margin: 5px 0 0; font-size: 11.5px; color: var(--muted); flex-wrap: wrap; }
+.t-chip { flex-shrink: 0; padding: 3px 10px; border-radius: var(--r-pill); font-size: 11px; font-weight: 700; color: var(--brand); background: var(--brand-tint); }
 .tarea.fin .t-chip { color: var(--muted); background: color-mix(in srgb, var(--muted) 12%, transparent); }
-.t-meta { margin: 4px 0 10px; font-size: 11.5px; color: var(--muted); }
 
 .asignados { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
-.asignado { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding: 7px 10px; border-radius: var(--r-sm); background: color-mix(in srgb, var(--ink) 4%, transparent); }
+.asignado { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; padding: 8px 12px; border-radius: var(--r-sm); background: color-mix(in srgb, var(--ink) 4%, transparent); }
+.asignado.cerrado { background: transparent; border: 1px dashed var(--border); }
 .a-nombre { flex: 1 1 140px; font-size: 13px; font-weight: 600; color: var(--ink); }
-.a-reloj { font-size: 12.5px; font-weight: 700; color: var(--muted); }
+.a-reloj { min-width: 62px; text-align: right; font-size: 13px; font-weight: 800; color: var(--muted); }
 .a-reloj.vivo { color: var(--brand); }
-.a-ok { font-size: 12px; font-weight: 700; color: var(--u-ok); }
-.t-pie { display: flex; justify-content: flex-end; margin-top: 10px; }
+.a-ok { display: inline-flex; align-items: center; gap: 4px; font-size: 12px; font-weight: 700; color: var(--u-ok); }
+.t-pie { display: flex; justify-content: flex-end; margin-top: 12px; }
 
 .cargando { display: flex; align-items: center; gap: 9px; padding: 26px; justify-content: center; color: var(--muted); font-size: 13px; }
 .vacio { padding: 32px; text-align: center; color: var(--muted); font-size: 13px; border: 1px dashed var(--border-strong); border-radius: var(--r-md); }
@@ -273,5 +316,7 @@ async function finalizar(t: Tarea, usuarioId: string | null) {
 @media (max-width: 640px) {
   .hero-acciones, .hero-acciones .btn { width: 100%; }
   .hero-acciones .btn { justify-content: center; }
+  .a-reloj { text-align: left; }
+  .t-pie .btn, .crear-pie .btn { flex: 1; justify-content: center; }
 }
 </style>

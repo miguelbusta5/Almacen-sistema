@@ -11,6 +11,7 @@ import { desvioSugerencia } from './sugerenciaPendienteCalc'
 import {
   duracionInspeccionNetaMinutos,
   duracionMinutos as duracionMinutosMuebles,
+  leadTimeMinutos,
   resumenOrden,
   volumenOrden,
 } from './mueblesCalc'
@@ -646,6 +647,11 @@ export function mapOrdenMuebles(o: any) {
       seUnioAt: i.seUnioAt?.toISOString?.() ?? i.seUnioAt ?? null,
     })),
     cliente: o.cliente ?? null,
+    ciudadEnvio: o.ciudadEnvio ?? null,
+    entregadaTransporteAt: o.entregadaTransporteAt?.toISOString?.() ?? o.entregadaTransporteAt ?? null,
+    entregadaPor: o.entregadaPor ? { id: o.entregadaPor.id, nombre: o.entregadaPor.name } : null,
+    // Todo el proceso: del primer PLU bajado a la entrega a transporte.
+    leadTimeMin: leadTimeMinutos(o),
     almuerzoInicio: o.inspPausaInicio?.toISOString?.() ?? o.inspPausaInicio ?? null,
     almuerzoSegundos: o.inspPausaSegundos ?? 0,
     motivoCorreccion: o.motivoCorreccion ?? null,
