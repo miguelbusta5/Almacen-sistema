@@ -396,3 +396,93 @@ export const ROLES_ENTREGA_TRANSPORTE = [
 export function puedeEntregarTransporte(role: string | null | undefined): boolean {
   return !!role && (ROLES_ENTREGA_TRANSPORTE as readonly string[]).includes(role);
 }
+
+// ── Inspeccion repartida ────────────────────────────────────────────────────
+
+export interface LineaInspeccion {
+  inspectorId?: string | null;
+  inspector?: { id: string } | null;
+  inspHoraInicio?: Date | string | null;
+  inspHoraFin?: Date | string | null;
+  ebanisteriaInicio?: Date | string | null;
+  ebanisteriaFin?: Date | string | null;
+  reposicionInicio?: Date | string | null;
+  reposicionFin?: Date | string | null;
+  inspPausaSegundos?: number | null;
+}
+
+/**
+ * Minutos de inspeccion de cada PLU, REPARTIENDO el tiempo que se solapa.
+ *
+ * Un inspector puede tener varios PLU abiertos a la vez: el 16-09 SANTIAGO abrio
+ * los 23 PLU de la TSDM104350 en 40 s y los cerro todos 10 min despues. Sumar
+ * relojes daba 23 x 10,5 min = 4 h de inspeccion por 11 min reales. Aqui, por
+ * inspector, cada tramo de tiempo se divide entre los PLU que estaban abiertos
+ * en ese momento: la suma de sus PLU es el tiempo de reloj que de verdad trabajo.
+ *
+ * Igual que duracionInspeccionNetaMinutos, se descuentan ebanisteria, espera del
+ * repuesto y almuerzo. Devuelve un Map por la propia linea (identidad del
+ * objeto), asi no hace falta que la linea traiga id.
+ */
+export function inspeccionRepartida<T extends LineaInspeccion>(lineas: readonly T[]): Map<T, number> {
+  const ms = (v: Date | string | null | undefined): number | null => {
+    if (v == null) return null;
+    const t = new Date(v).getTime();
+    return Number.isNaN(t) ? null : t;
+  };
+
+  // Tramos de cada linea: su ventana de inspeccion menos taller y repuesto.
+  const tramos: Array<{ linea: T; a: number; b: number }> = [];
+  const bruto = new Map<T, number>();
+  for (const l of lineas) {
+    const ini = ms(l.inspHoraInicio);
+    const fin = ms(l.inspHoraFin);
+    if (ini == null || fin == null || fin <= ini) continue;
+    let partes: Array<[number, number]> = [[ini, fin]];
+    for (const [ei, ef] of [[l.ebanisteriaInicio, l.ebanisteriaFin], [l.reposicionInicio, l.reposicionFin]] as const) {
+      const x = ms(ei);
+      if (x == null) continue;
+      const y = ms(ef) ?? fin;
+      partes = partes.flatMap(([a, b]): Array<[number, number]> => {
+        if (y <= a || x >= b) return [[a, b]];
+        return ([[a, Math.max(a, x)], [Math.min(b, y), b]] as Array<[number, number]>).filter(([p, q]) => q > p);
+      });
+    }
+    let total = 0;
+    for (const [a, b] of partes) {
+      tramos.push({ linea: l, a, b });
+      total += b - a;
+    }
+    bruto.set(l, total);
+  }
+
+  // Barrido por inspector: cada trozo se reparte entre los PLU abiertos.
+  const asignado = new Map<T, number>();
+  const porInspector = new Map<string, typeof tramos>();
+  tramos.forEach((t, i) => {
+    const k = t.linea.inspectorId ?? t.linea.inspector?.id ?? `sin-inspector-${i}`;
+    const lista = porInspector.get(k) ?? [];
+    lista.push(t);
+    porInspector.set(k, lista);
+  });
+  for (const grupo of porInspector.values()) {
+    const cortes = [...new Set(grupo.flatMap((t) => [t.a, t.b]))].sort((x, y) => x - y);
+    for (let i = 0; i < cortes.length - 1; i++) {
+      const a = cortes[i]!;
+      const b = cortes[i + 1]!;
+      const abiertos = grupo.filter((t) => t.a <= a && t.b >= b);
+      if (abiertos.length === 0) continue;
+      const parte = (b - a) / abiertos.length;
+      for (const t of abiertos) asignado.set(t.linea, (asignado.get(t.linea) ?? 0) + parte);
+    }
+  }
+
+  // El almuerzo se descuenta en la misma proporcion que le toco a la linea.
+  const res = new Map<T, number>();
+  for (const [l, total] of bruto) {
+    const parte = asignado.get(l) ?? 0;
+    const almuerzo = (l.inspPausaSegundos ?? 0) * 1000 * (total > 0 ? parte / total : 0);
+    res.set(l, Math.round(Math.max(0, parte - almuerzo) / 600) / 100);
+  }
+  return res;
+}

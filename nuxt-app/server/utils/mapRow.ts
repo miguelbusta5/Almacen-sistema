@@ -10,6 +10,7 @@ import { progresoMontaje, segundosEntre } from './resurtidoCalc'
 import { desvioSugerencia } from './sugerenciaPendienteCalc'
 import {
   duracionInspeccionNetaMinutos,
+  inspeccionRepartida,
   duracionMinutos as duracionMinutosMuebles,
   leadTimeMinutos,
   minutosPrecisos,
@@ -626,7 +627,13 @@ export function mapEquipoMuebles(e: any) {
 }
 
 export function mapOrdenMuebles(o: any) {
-  const lineas = (o.lineas ?? []).map(mapLineaMuebles)
+  // El tiempo de inspeccion de cada PLU va repartido entre los que el inspector
+  // tenia abiertos a la vez; si no, abrir 23 PLU juntos daba 4 h por 11 min.
+  const reparto = inspeccionRepartida(o.lineas ?? [])
+  const lineas = (o.lineas ?? []).map((l: any) => {
+    const m = mapLineaMuebles(l)
+    return reparto.has(l) ? { ...m, duracionInspeccionMin: reparto.get(l)! } : m
+  })
   return {
     id: o.id,
     codigo: o.codigo,

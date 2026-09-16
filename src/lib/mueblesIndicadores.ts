@@ -10,7 +10,7 @@
 // Meter "picking" e "inspeccion" ahi obligaria a tocar los tres archivos y a
 // revisar todo lo de montacargas. Aqui solo se reutilizan helpers sueltos de
 // fecha, que es lo que de verdad se comparte.
-import { duracionInspeccionNetaMinutos } from "@/lib/pickingMuebles";
+import { inspeccionRepartida } from "@/lib/pickingMuebles";
 import { diaBogota, promedio } from "@/lib/indicadores";
 
 /**
@@ -229,6 +229,8 @@ function agruparEn(
   clave: (l: LineaMedida) => string | null,
   etiqueta: (clave: string) => string,
   ordenClaves: readonly string[],
+  /** Minutos de inspeccion de la linea, ya repartidos (inspeccionRepartida). */
+  inspeccion: (l: LineaMedida) => number | null,
 ): FilaGrupo[] {
   const mapa = new Map<string, LineaMedida[]>();
   for (const l of lineas) {
@@ -247,7 +249,7 @@ function agruparEn(
     const grupo = mapa.get(k)!;
     const picking = grupo.map(minutosPickingLinea).filter((v): v is number => v != null);
     const insp = grupo
-      .map((l) => duracionInspeccionNetaMinutos(l))
+      .map(inspeccion)
       .filter((v): v is number => v != null);
     return {
       clave: k,
@@ -296,11 +298,16 @@ export function agregarIndicadoresMuebles(entrada: {
     };
   }).filter((f) => f.plus > 0);
 
+  const reparto = inspeccionRepartida(lineas);
+  const minInspeccion = (l: LineaMedida): number | null => reparto.get(l) ?? null;
+
   // ── Por inspector ──
   const filasInspector: FilaInspector[] = inspectores.map((p) => {
     const suyas = lineas.filter((l) => l.inspectorId === p.id);
+    // Repartidos: cinco PLU abiertos a la vez durante 10 min son 10 min de
+    // trabajo, no 50 (ver inspeccionRepartida).
     const duraciones = suyas
-      .map((l) => duracionInspeccionNetaMinutos(l))
+      .map(minInspeccion)
       .filter((v): v is number => v != null);
     return {
       id: p.id,
@@ -319,6 +326,7 @@ export function agregarIndicadoresMuebles(entrada: {
     (l) => (l.descripcion ?? "").trim().toUpperCase() || `PLU ${l.plu}`,
     (k) => k,
     [],
+    minInspeccion,
   ).sort((a, b) => b.plus - a.plus || a.etiqueta.localeCompare(b.etiqueta));
 
   const clavesVolumen = [...Array(TRAMOS_VOLUMEN_M3.length + 1).keys()].map(String);
@@ -327,6 +335,7 @@ export function agregarIndicadoresMuebles(entrada: {
     (l) => { const t = tramoDe(l.volumenTotalM3, TRAMOS_VOLUMEN_M3); return t == null ? null : String(t); },
     (k) => etiquetaTramo(TRAMOS_VOLUMEN_M3, Number(k), "m³"),
     clavesVolumen,
+    minInspeccion,
   );
 
   const clavesPeso = [...Array(TRAMOS_PESO_KG.length + 1).keys()].map(String);
@@ -335,6 +344,7 @@ export function agregarIndicadoresMuebles(entrada: {
     (l) => { const t = tramoDe(l.pesoTotalKg, TRAMOS_PESO_KG); return t == null ? null : String(t); },
     (k) => etiquetaTramo(TRAMOS_PESO_KG, Number(k), "kg"),
     clavesPeso,
+    minInspeccion,
   );
 
   // ── Ebanisteria ──

@@ -107,6 +107,31 @@ describe("agregarIndicadoresMuebles", () => {
     }],
   };
 
+  // Caso real (SANTIAGO, TSDM104350, 16-09): abrio los 23 PLU en 40 s y los
+  // cerro todos unos 10,5 min despues. Sumar relojes daba 4 h de inspeccion.
+  it("la inspeccion de PLU abiertos a la vez se reparte: 23 PLU en 11 min son 11 min", () => {
+    const S = (hhmmss: string) => new Date(`2026-09-12T${hhmmss}-05:00`);
+    const lineas = Array.from({ length: 23 }, (_, i) => linea({
+      plu: `P${i}`, operarioId: "a", inspectorId: "i1",
+      inspHoraInicio: S(`09:05:${String(i).padStart(2, "0")}`),
+      inspHoraFin: S(`09:15:${String(30 + i).padStart(2, "0")}`),
+    }));
+    const r = agregarIndicadoresMuebles({ ...base, lineas });
+    const santiago = r.inspectores.find((x) => x.id === "i1")!;
+    expect(santiago.minutosInspeccion).toBeGreaterThan(10);
+    expect(santiago.minutosInspeccion).toBeLessThan(11.2);
+    expect(r.resumen.minutosInspeccion).toBeLessThan(11.2);
+  });
+
+  it("dos inspectores distintos no se reparten entre ellos", () => {
+    const lineas = [
+      linea({ plu: "A", operarioId: "a", inspectorId: "i1", inspHoraInicio: H("09:00"), inspHoraFin: H("09:10") }),
+      linea({ plu: "B", operarioId: "a", inspectorId: "i2", inspHoraInicio: H("09:00"), inspHoraFin: H("09:10") }),
+    ];
+    const r = agregarIndicadoresMuebles({ ...base, inspectores: [{ id: "i1", nombre: "A" }, { id: "i2", nombre: "B" }], lineas });
+    expect(r.resumen.minutosInspeccion).toBe(20);
+  });
+
   // Caso real (SANAYDER, 16-09): once PLU de ~10 s cada uno. Redondear cada PLU a
   // minutos enteros antes de sumar daba "0.0 h" de picking y "0 min" por PLU.
   it("los PLU de segundos suman: no se redondean a cero antes de sumar", () => {
