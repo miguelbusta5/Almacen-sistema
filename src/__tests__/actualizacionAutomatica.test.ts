@@ -43,8 +43,8 @@ describe("refresco automatico de datos", () => {
   const toast = leer("nuxt-app/app/composables/useToast.ts");
   const layout = leer("nuxt-app/app/layouts/default.vue");
 
-  it("cada 20 s, al volver a la pestana y cuando llega un aviso nuevo", () => {
-    expect(comp).toContain("opts.intervalMs ?? 20_000");
+  it("cada 60 s, al volver a la pestana y cuando llega un aviso nuevo", () => {
+    expect(comp).toContain("opts.intervalMs ?? 60_000");
     expect(comp).toContain("visibilitychange");
     expect(comp).toContain("window.addEventListener('focus'");
     expect(comp).toContain("EVENTO_DATOS_CAMBIARON");
@@ -94,5 +94,21 @@ describe("refresco automatico de datos", () => {
   it("un refresco sin red no cambia los datos reales por los de ejemplo", () => {
     expect(leer("nuxt-app/app/pages/tienda.vue")).toContain("if (enRefrescoSilencioso()) return");
     expect(leer("nuxt-app/app/pages/transporte.vue")).toContain("if (enRefrescoSilencioso()) return");
+  });
+});
+
+// El 17-09 Vercel pauso el proyecto por uso: las pestañas abiertas sin nadie
+// delante consultaban cada 20 s toda la noche.
+describe("sin nadie delante no se consulta", () => {
+  const comp = leer("nuxt-app/app/composables/useAutoRefresh.ts");
+  it("el refresco se detiene tras 5 min sin actividad y vuelve al usar la pantalla", () => {
+    expect(comp).toContain("INACTIVO_MS = 5 * 60_000");
+    expect(comp).toContain("if (!forzar && !hayActividadReciente()) return");
+    expect(comp).toContain("if (estabaInactivo) avisarDatosCambiaron()");
+  });
+  it("avisos, pausa y version tambien respetan la inactividad y van mas espaciados", () => {
+    expect(leer("nuxt-app/app/layouts/default.vue")).toContain("hayActividadReciente()) void cargarAvisos() }, 60_000)");
+    expect(leer("nuxt-app/app/components/PausaOperativa.vue")).toContain("hayActividadReciente() && !ocupada.value) void actualizar() }, 60_000)");
+    expect(leer("nuxt-app/app/plugins/version.client.ts")).toContain("REVISAR_CADA_MS = 10 * 60_000");
   });
 });

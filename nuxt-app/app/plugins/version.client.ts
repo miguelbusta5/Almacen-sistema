@@ -1,4 +1,4 @@
-import { hayEdicionEnCurso } from '~/composables/useAutoRefresh'
+import { hayActividadReciente, hayEdicionEnCurso } from '~/composables/useAutoRefresh'
 import { useVersionNueva } from '~/composables/useVersionNueva'
 
 /**
@@ -15,7 +15,8 @@ import { useVersionNueva } from '~/composables/useVersionNueva'
  *   cambio de modulo (que ya es una recarga natural).
  * - Si un archivo de la version vieja no carga, recarga una vez.
  */
-const REVISAR_CADA_MS = 60_000
+// Cada 10 min basta: al volver a la pestaña tambien se revisa.
+const REVISAR_CADA_MS = 10 * 60_000
 const CLAVE_RECARGA = 'app-recarga-por-version'
 
 export default defineNuxtPlugin((nuxtApp) => {
@@ -56,6 +57,6 @@ export default defineNuxtPlugin((nuxtApp) => {
   nuxtApp.hook('app:chunkError', () => { recargar() })
   window.addEventListener('vite:preloadError', (e) => { e.preventDefault(); recargar() })
 
-  window.setInterval(() => { void revisar() }, REVISAR_CADA_MS)
+  window.setInterval(() => { if (hayActividadReciente()) void revisar() }, REVISAR_CADA_MS)
   document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') void revisar() })
 })

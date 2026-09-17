@@ -10,7 +10,7 @@ import { ensureSession, useSessionState } from '~/composables/useSession'
 import { useToastState } from '~/composables/useToast'
 import { canSeeModule, type ModuleKey } from '~/utils/modulePermissions'
 import { puedeUsarMontacargas } from '~/utils/montacargas'
-import { avisarDatosCambiaron } from '~/composables/useAutoRefresh'
+import { avisarDatosCambiaron, hayActividadReciente } from '~/composables/useAutoRefresh'
 import { useVersionNueva } from '~/composables/useVersionNueva'
 
 const route = useRoute()
@@ -242,8 +242,9 @@ watch(() => me.value?.id, () => {
 
 // Los avisos llegan solos: sin esto habria que recargar para enterarse.
 let latido: ReturnType<typeof setInterval> | null = null
-// Cada 30 s: un aviso nuevo es lo que dispara el refresco inmediato de la pantalla.
-onMounted(() => { latido = setInterval(() => { if (document.visibilityState === 'visible') void cargarAvisos() }, 30_000) })
+// Cada 60 s y solo con alguien usando la pantalla: un aviso nuevo dispara el
+// refresco inmediato de la pantalla.
+onMounted(() => { latido = setInterval(() => { if (document.visibilityState === 'visible' && hayActividadReciente()) void cargarAvisos() }, 60_000) })
 onBeforeUnmount(() => { if (latido) clearInterval(latido) })
 
 // ── Sesion ──────────────────────────────────────────────────────────

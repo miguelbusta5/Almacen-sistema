@@ -1,7 +1,8 @@
 // Refresco automatico de datos: que lo que hace otra persona aparezca sin recargar.
 //
 // Cada pantalla le pasa su funcion de carga y esto la vuelve a correr:
-// - cada `intervalMs` (20 s por defecto) mientras la pestaña esta visible;
+// - cada `intervalMs` (60 s por defecto) mientras la pestaña esta visible y
+//   alguien la esta usando (ver INACTIVO_MS);
 // - al volver a la pestaña o desbloquear el celular;
 // - en cuanto llega un aviso nuevo a la campana (te asignaron algo).
 //
@@ -18,6 +19,37 @@ export function avisarDatosCambiaron() {
 }
 
 let silenciosos = 0
+
+// ── Pantallas desatendidas ──
+// Un PC del CEDI puede quedar con un modulo abierto toda la noche. "Visible" no
+// basta: sin nadie delante no se consulta nada. Tras INACTIVO_MS sin teclado,
+// mouse ni toque el refresco se detiene, y al volver la actividad refresca ya.
+// (El 17-09 Vercel pauso el proyecto por uso: cada pestaña abierta consultaba
+// cada 20 s aunque no hubiera nadie.)
+export const INACTIVO_MS = 5 * 60_000
+let ultimaActividad = Date.now()
+let escuchandoActividad = false
+
+function escucharActividad() {
+  if (escuchandoActividad || typeof window === 'undefined') return
+  escuchandoActividad = true
+  const marcar = () => {
+    const estabaInactivo = Date.now() - ultimaActividad > INACTIVO_MS
+    ultimaActividad = Date.now()
+    // Vuelve alguien a una pantalla que llevaba rato quieta: datos al dia ya.
+    if (estabaInactivo) avisarDatosCambiaron()
+  }
+  for (const ev of ['pointerdown', 'keydown', 'touchstart', 'wheel', 'focus']) {
+    window.addEventListener(ev, marcar, { passive: true })
+  }
+  // Volver a la pestaña o desbloquear el celular tambien es alguien delante.
+  document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') marcar() })
+}
+
+/** true si alguien uso la pantalla en los ultimos INACTIVO_MS. */
+export function hayActividadReciente(): boolean {
+  return Date.now() - ultimaActividad <= INACTIVO_MS
+}
 
 /**
  * true mientras corre un refresco automatico. Las funciones de carga lo miran
@@ -58,7 +90,8 @@ export function useAutoRefresh(opts: {
   onRefresh: () => void | Promise<unknown>
 }) {
   const enabled = opts.enabled ?? true
-  const intervalMs = opts.intervalMs ?? 20_000
+  // 60 s: con 20 s cada pestaña abierta multiplicaba las consultas a Vercel.
+  const intervalMs = opts.intervalMs ?? 60_000
   const pause = opts.pause ?? false
   const refreshing = ref(false)
   const lastUpdatedAt = ref<Date | null>(null)
@@ -66,6 +99,9 @@ export function useAutoRefresh(opts: {
 
   const refreshNow = async (forzar = false) => {
     if (!enabled || pause || document.visibilityState === 'hidden') return
+    // Nadie delante de la pantalla: no se consulta (ver INACTIVO_MS). El aviso
+    // de "algo cambio" (forzar) si pasa, porque llega por actividad real.
+    if (!forzar && !hayActividadReciente()) return
     if (refreshing.value) return
     if (!forzar && Date.now() - ultimo < ESPERA_MINIMA_MS) return
     if (hayEdicionEnCurso()) return
@@ -84,6 +120,7 @@ export function useAutoRefresh(opts: {
   }
 
   onMounted(() => {
+    escucharActividad()
     if (!enabled || pause) return
     const id = window.setInterval(() => { void refreshNow() }, intervalMs)
     const alVolver = () => { if (document.visibilityState === 'visible') void refreshNow() }

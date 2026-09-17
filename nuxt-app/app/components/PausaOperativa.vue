@@ -4,6 +4,7 @@ import { Utensils, BatteryCharging, Play } from '@lucide/vue'
 import { usePausaOperativa } from '~/composables/usePausaOperativa'
 import { useToast } from '~/composables/useToast'
 import { useSessionState } from '~/composables/useSession'
+import { hayActividadReciente } from '~/composables/useAutoRefresh'
 const props = defineProps<{ secundaria?: boolean }>()
 const { pausa, cargada, ocupada, cargar, cambiar } = usePausaOperativa()
 const { me } = useSessionState()
@@ -32,7 +33,8 @@ onMounted(() => {
   if (props.secundaria) return
   void actualizar()
   reloj = setInterval(() => { ahora.value = Date.now() }, 1000)
-  consulta = setInterval(() => { if (document.visibilityState === 'visible' && !ocupada.value) void actualizar() }, 15000)
+  // Cada 60 s y solo con alguien usando la pantalla (ver hayActividadReciente).
+  consulta = setInterval(() => { if (document.visibilityState === 'visible' && hayActividadReciente() && !ocupada.value) void actualizar() }, 60_000)
   window.addEventListener('focus', actualizar)
 })
 onBeforeUnmount(() => { clearInterval(reloj); clearInterval(consulta); window.removeEventListener('focus', actualizar) })
