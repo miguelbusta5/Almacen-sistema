@@ -690,3 +690,21 @@ describe("pendientes — sumar solicitudes y avisar resurtido", () => {
     expect(ui).toContain("confirmarResurtido: confirmado || undefined");
   });
 });
+
+// Felipe Ossa (Supervisor de Almacenamiento) monta pendientes igual que el admin:
+// el rol solo no lo dejaba pedir, aunque ya podia montarlo pese al resurtido.
+describe("pendientes — quien arma el resurtido tambien los pide", () => {
+  const post = leer("nuxt-app/server/api/pendientes/index.post.ts");
+  const consulta = leer("nuxt-app/server/api/pendientes/consulta.get.ts");
+  const ui = leer("nuxt-app/app/components/pendientes/Module.vue");
+
+  it("el servidor acepta el permiso por persona ademas del rol", () => {
+    for (const src of [post, consulta]) {
+      expect(src).toContain("!esSolicitante(actor.role) && !(await puedeMontarResurtido(actor.id))");
+    }
+  });
+
+  it("la pantalla le muestra el formulario de pedir", () => {
+    expect(ui).toContain("esSolicitante(me.value?.role ?? '') || me.value?.can?.montarResurtido === true");
+  });
+});

@@ -20,7 +20,9 @@ import { resolverPluMaestro } from '../../utils/codigoProducto'
  */
 export default defineEventHandler(async (event) => {
   const actor = await requireAuth(event)
-  if (!esSolicitante(actor.role)) {
+  // Pide gourmet (y gerencia/admin) y tambien quien arma el resurtido (Felipe
+  // Ossa, Eduardo: permiso por persona), que monta pendientes igual que el admin.
+  if (!esSolicitante(actor.role) && !(await puedeMontarResurtido(actor.id))) {
     throw createError({ statusCode: 403, statusMessage: 'Solo operaciones gourmet solicita pendientes' })
   }
   const plu = await resolverPluMaestro(normalizePlu(String(getQuery(event).plu ?? '')))

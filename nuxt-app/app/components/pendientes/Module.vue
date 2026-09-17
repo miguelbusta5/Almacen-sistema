@@ -25,7 +25,9 @@ const { me, sessionLoaded } = useSessionState()
 const { show: showToast } = useToast()
 
 const puedeVer = computed(() => canSeeModule(me.value?.role, 'pendientes'))
-const solicita = computed(() => esSolicitante(me.value?.role ?? ''))
+// Pide gourmet, y tambien quien tiene el permiso de montar resurtido (Felipe
+// Ossa, Eduardo), igual que el administrador.
+const solicita = computed(() => esSolicitante(me.value?.role ?? '') || me.value?.can?.montarResurtido === true)
 // Asignar es permiso por persona, igual que montar un resurtido.
 const puedeAsignar = computed(() => me.value?.can?.montarResurtido === true)
 
