@@ -31,6 +31,7 @@ describe("muebles — las dos copias de la logica", () => {
     "duracionMinutos",
     "duracionInspeccionNetaMinutos",
     "totalesLinea",
+    "medidaPorUnidad",
     "volumenOrden",
     "clasificarPorDescripcion",
     "quienCierra",

@@ -9,13 +9,19 @@
 // recarga en un problema de orden. El PLU es la clave de negocio.
 import { prisma } from './prisma'
 import { resolverPluMaestro } from './codigoProducto'
+import { medidaPorUnidad } from './mueblesCalc'
 
 export interface DatosPlu {
   plu: string
   descripcion: string | null
   /** Cuantas cajas componen el mueble. */
   partes: number | null
-  /** Suma de las partes. Null si el PLU no esta medido todavia. */
+  /** Lo que trae la caja master del maestro (1 si no esta declarado). */
+  unidadesPorCaja: number
+  /**
+   * Lo que pesa y ocupa UNA unidad: la suma de las cajas del PLU dividida entre
+   * las unidades que trae la caja. Null si el PLU no esta medido todavia.
+   */
   pesoUnitarioKg: number | null
   volumenUnitarioM3: number | null
   /** true cuando el PLU no tiene medidas: la UI avisa que la capacidad va corta. */
@@ -49,17 +55,21 @@ export async function datosPlu(plu: string): Promise<DatosPlu> {
       orderBy: { parte: 'asc' },
     }),
     prisma.medidaProducto.findUnique({ where: { plu }, select: { partes: true } }),
-    prisma.productoMaestro.findUnique({ where: { plu }, select: { descripcion: true } }),
+    prisma.productoMaestro.findUnique({ where: { plu }, select: { descripcion: true, unidadesPorCaja: true } }),
   ])
 
-  const pesoUnitarioKg = sumar(cajas.map((c) => aNumero(c.pesoBrutoKg)))
-  const volumenUnitarioM3 = sumar(cajas.map((c) => aNumero(c.volumenM3)))
+  // Las medidas del maestro son de la CAJA; una caja puede traer varias unidades.
+  const porCaja = producto?.unidadesPorCaja
+  const unidadesPorCaja = porCaja && porCaja > 0 ? Math.trunc(porCaja) : 1
+  const pesoUnitarioKg = medidaPorUnidad(sumar(cajas.map((c) => aNumero(c.pesoBrutoKg))), unidadesPorCaja, 3)
+  const volumenUnitarioM3 = medidaPorUnidad(sumar(cajas.map((c) => aNumero(c.volumenM3))), unidadesPorCaja, 6)
   const partes = cajas.length > 0 ? cajas.length : (medida?.partes ?? null)
 
   return {
     plu,
     descripcion: producto?.descripcion ?? null,
     partes,
+    unidadesPorCaja,
     pesoUnitarioKg,
     volumenUnitarioM3,
     sinMedidas: volumenUnitarioM3 == null,

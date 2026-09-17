@@ -40,3 +40,22 @@ describe("entrega a transporte — buscador", () => {
     expect(ui).toContain("Buscar entregadas por orden");
   });
 });
+
+describe("medidas por unidad de empaque", () => {
+  it("una unidad ocupa y pesa lo de la caja entre lo que trae", async () => {
+    const { medidaPorUnidad } = await import("@/lib/pickingMuebles");
+    // SILLA X NEGRA COUNTER: caja de 4, 0,365568 m3 y 21 kg.
+    expect(medidaPorUnidad(0.365568, 4, 6)).toBe(0.091392);
+    expect(medidaPorUnidad(21, 4, 3)).toBe(5.25);
+    // Sin unidad de empaque valida se asume 1 por caja.
+    for (const n of [null, undefined, 0, -2]) expect(medidaPorUnidad(0.8448, n as number | null, 6)).toBe(0.8448);
+    // PLU sin medir sigue sin medida: un cero mentiria.
+    expect(medidaPorUnidad(null, 4, 6)).toBeNull();
+  });
+
+  it("el maestro de muebles reparte la caja entre sus unidades", () => {
+    const f = readFileSync(path.join(process.cwd(), "nuxt-app/server/utils/maestroMuebles.ts"), "utf8");
+    expect(f).toContain("medidaPorUnidad(sumar(cajas.map((c) => aNumero(c.volumenM3))), unidadesPorCaja, 6)");
+    expect(f).toContain("select: { descripcion: true, unidadesPorCaja: true }");
+  });
+});

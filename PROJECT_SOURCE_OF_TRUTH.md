@@ -1152,3 +1152,12 @@ Lógica pura en `src/lib/tareasGenerales.ts` (copia de Nitro en
   sale de más vacío a más lleno, con casilla por picking; los rojos vienen marcados y hay
   botones + Rojos / + Amarillos / + Verdes / Todos / Ninguno. `generar` exige `plus` y solo
   crea las tareas de los elegidos.
+
+### Muebles: m³ y kg por unidad, no por caja (2026-09-17)
+- Las medidas del maestro (`medidas_caja_master`) son de la **caja master**, que puede traer
+  varias unidades (`productos_maestro.unidades_por_caja`, "Und Emp"). En muebles se abre la
+  caja y se saca lo que pide la orden, así que **una unidad = caja ÷ unidades por caja**
+  (`medidaPorUnidad` en pickingMuebles/mueblesCalc; sin dato válido se asume 1 por caja).
+  `datosPlu` ya sella la línea con la medida por unidad.
+- Se corrigieron los 18 renglones ya cerrados de los 15 PLU empacados de a 2 o 4 (sillas y
+  mecedoras): 11,9 m³ anotados → 3,63 m³ reales. Queda en `activity_logs`.

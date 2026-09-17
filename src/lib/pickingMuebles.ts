@@ -140,6 +140,27 @@ export interface TotalesLinea {
 }
 
 /**
+ * Medida de UNA unidad a partir de la de la caja.
+ *
+ * Las medidas del maestro son de la CAJA MASTER como llega del proveedor, y una
+ * caja puede traer varias unidades (4 sillas, por ejemplo). En muebles se saca
+ * de la caja lo que pide la orden, asi que una unidad ocupa y pesa lo de la caja
+ * dividido entre lo que trae. Sin unidad de empaque valida se asume 1 por caja:
+ * es lo que pasa con la mayoria de los muebles.
+ */
+export function medidaPorUnidad(
+  medidaCaja: number | null | undefined,
+  unidadesPorCaja: number | null | undefined,
+  decimales: number,
+): number | null {
+  if (medidaCaja == null || !Number.isFinite(medidaCaja)) return null;
+  const n = unidadesPorCaja == null || !Number.isFinite(unidadesPorCaja) || unidadesPorCaja < 1
+    ? 1
+    : Math.trunc(unidadesPorCaja);
+  return redondear(medidaCaja / n, decimales);
+}
+
+/**
  * Se sellan al cerrar la linea. Nulos cuando el maestro no trae la medida: el
  * modulo debe dejar trabajar aunque el PLU no este medido todavia, y un cero
  * mentiria diciendo que el mueble no ocupa nada.
