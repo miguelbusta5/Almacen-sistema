@@ -6,7 +6,7 @@ import { assertGestorMontacargas } from '../../utils/montacargas'
 import {
   agregarIndicadores, agregarTiemposMuertos, clasificarJornadas, diaBogota, diasDelRango, esJornada,
   esMotivoTiempoMuerto,
-  finDelDiaBogota, limitesRango,
+  finDelDiaBogota, limitesRango, resumirResurtidoPorOperario,
   type JustificacionTiempoMuerto, type TiempoRegistrado, type TipoTarea, type UnidadesRegistradas,
   type VentanaTurno,
 } from '../../utils/indicadoresCalc'
@@ -172,7 +172,7 @@ export default defineEventHandler(async (event) => {
         horaInicio: { lt: finConsulta },
         OR: [{ horaFin: { gt: ini } }, { horaFin: null }],
       },
-      select: { usuarioId: true, horaInicio: true, horaFin: true, tareaId: true },
+      select: { usuarioId: true, horaInicio: true, horaFin: true, tareaId: true, apoyaAId: true },
     }),
     // 6. Los cuadros de turno que cubren el periodo, para la jornada.
     prisma.cuadroTurnos.findMany({
@@ -291,10 +291,21 @@ export default defineEventHandler(async (event) => {
   // Una tarea general no es un PLU: su tiempo cuenta, pero no entra en el
   // promedio por PLU ni en und/hora (registro null).
   for (const a of generales) {
-    const base = { usuarioId: a.usuarioId, inicio: a.horaInicio, tipo: 'tarea' as const, registro: null }
-    if (a.horaFin) tiempos.push({ ...base, fin: a.horaFin })
-    else enCurso.push({ ...base, fin: finAbierto(a.horaInicio, a.usuarioId) })
+    // El patinador de apoyo le cuenta tambien al montacarguista que acompaña. Al
+    // medirse por reloj de pared, si ese rato el montacarguista ya estaba
+    // trabajando no se le cuenta dos veces.
+    for (const uid of a.apoyaAId ? [a.usuarioId, a.apoyaAId] : [a.usuarioId]) {
+      const base = { usuarioId: uid, inicio: a.horaInicio, tipo: 'tarea' as const, registro: null }
+      if (a.horaFin) tiempos.push({ ...base, fin: a.horaFin })
+      else enCurso.push({ ...base, fin: finAbierto(a.horaInicio, uid) })
+    }
   }
+
+  // Cierres de resurtido del periodo, para el promedio por operario: el PLU es
+  // de quien cerro la tarea.
+  const cierresResurtido = tareas
+    .filter((t) => t.estado === 'COMPLETADA' && t.horaFin && t.horaFin >= ini && t.horaFin <= fin)
+    .map((t) => ({ usuarioId: t.responsableId ?? t.montaje.operarioId, cuando: t.horaFin! }))
 
   const justificaciones: JustificacionTiempoMuerto[] = justificadas.flatMap((j) =>
     esMotivoTiempoMuerto(j.motivo)
@@ -321,12 +332,15 @@ export default defineEventHandler(async (event) => {
   })
   const delTurno = turno ? personas.filter((p) => jornadas.get(p.id) === turno) : personas
 
+  const datos = agregarIndicadores({ personas: delTurno, tiempos, unidades, ventanas, desde, hasta })
+
   return {
     success: true,
     rango: { desde, hasta },
     turno,
     equipo: equipo.map((u) => ({ id: u.id, nombre: u.name, rol: u.role, jornada: jornadas.get(u.id) ?? 'dia' })),
-    data: agregarIndicadores({ personas: delTurno, tiempos, unidades, ventanas, desde, hasta }),
+    data: datos,
+    resurtido: resumirResurtidoPorOperario(datos.personas, cierresResurtido),
     muertos: agregarTiemposMuertos({
       personas: delTurno, tiempos: [...tiempos, ...enCurso], justificaciones, ventanas, desde, hasta,
     }),

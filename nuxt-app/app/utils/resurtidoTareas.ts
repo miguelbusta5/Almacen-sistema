@@ -456,6 +456,8 @@ export interface MontajeResurtidoDTO {
   fecha: string | null
   montadoAt: string
   completadoAt: string | null
+  /** Supervision lo paro: las tareas sin empezar estan detenidas. */
+  detenidoAt?: string | null
   progreso: ProgresoMontaje
   tareas: TareaResurtidoDTO[]
 }

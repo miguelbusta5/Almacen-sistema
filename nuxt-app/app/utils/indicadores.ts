@@ -124,6 +124,19 @@ export interface RespuestaIndicadores {
   equipo: { id: string; nombre: string; rol: string; jornada?: Jornada }[]
   data: IndicadoresPeriodo
   muertos: TiemposMuertosPeriodo
+  /** PLUs resurtidos y ritmo de cada operario en el periodo. */
+  resurtido?: ResurtidoOperario[]
+}
+
+export interface ResurtidoOperario {
+  id: string
+  nombre: string
+  plus: number
+  dias: number
+  segundos: number
+  plusPorHora: number | null
+  plusPorDia: number | null
+  segundosPorPlu: number | null
 }
 
 // ── Piezas de los graficos ──────────────────────────────────────────

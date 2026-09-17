@@ -2,6 +2,7 @@ import { defineEventHandler } from 'h3'
 import { prisma } from '../../utils/prisma'
 import { requireAuth } from '../../utils/auth'
 import { mapMontaje, mapPendiente, mapTareaResurtido } from '../../utils/mapRow'
+import { progresoMontaje } from '../../utils/resurtidoCalc'
 import { assertEjecutor, MONTAJE_INCLUDE, PENDIENTE_INCLUDE, TAREA_INCLUDE } from '../../utils/resurtido'
 
 /**
@@ -57,10 +58,21 @@ export default defineEventHandler(async (event) => {
     }),
   ])
 
+  // Resurtido parado por supervision: se quitan las tareas sin empezar; si no le
+  // queda nada en curso, el montaje no se muestra.
+  const visibles = (lista: typeof montajes) => lista
+    .map(mapMontaje)
+    .map((m) => {
+      if (!m.detenidoAt) return m
+      const tareas = m.tareas.filter((t: { estado: string }) => t.estado !== 'PENDIENTE')
+      return { ...m, tareas, progreso: progresoMontaje(tareas) }
+    })
+    .filter((m) => !m.detenidoAt || m.tareas.some((t: { estado: string }) => t.estado === 'EN_CURSO'))
+
   return {
     success: true,
-    data: montajes.map(mapMontaje),
-    reasignados: reasignados.map(mapMontaje),
+    data: visibles(montajes),
+    reasignados: visibles(reasignados),
     prioritarios: pendientes.map(mapPendiente),
     recibidas: recibidas.map(mapTareaResurtido),
   }

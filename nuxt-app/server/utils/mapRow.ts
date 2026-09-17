@@ -530,6 +530,8 @@ export function mapMontaje(m: any) {
     fecha: formatDateOnly(m.fecha),
     montadoAt: m.montadoAt.toISOString(),
     completadoAt: m.completadoAt ? m.completadoAt.toISOString() : null,
+    // Supervision lo paro: las tareas sin empezar estan detenidas.
+    detenidoAt: m.detenidoAt ? m.detenidoAt.toISOString() : null,
     progreso: progresoMontaje(tareas),
     tareas,
   }

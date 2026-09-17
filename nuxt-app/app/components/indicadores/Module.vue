@@ -20,7 +20,7 @@ import {
   etiquetaNoche, MIN_SEGUNDOS_PRODUCTIVIDAD, PRESETS_NOCHE, PRESETS_RANGO, rangoDePreset, ROL_MEDIDO_LABEL,
   TIPO_TAREA_COLOR, TIPO_TAREA_LABEL, TIPOS_TAREA,
   type BarraH, type ColumnaTabla, type IndicadoresPeriodo, type Jornada, type PresetRango,
-  type RespuestaIndicadores, type TiemposMuertosPeriodo,
+  type RespuestaIndicadores, type ResurtidoOperario, type TiemposMuertosPeriodo,
 } from '~/utils/indicadores'
 
 const { me, sessionLoaded } = useSessionState()
@@ -76,6 +76,7 @@ watch(rol, () => {
 // ── Datos ──────────────────────────────────────────────────────────
 const datos = ref<IndicadoresPeriodo | null>(null)
 const muertos = ref<TiemposMuertosPeriodo | null>(null)
+const resurtido = ref<ResurtidoOperario[]>([])
 const cargando = ref(false)
 
 // Tiempo laborado y tiempos muertos salen de la misma consulta y de los mismos
@@ -102,6 +103,7 @@ async function cargar() {
     })
     datos.value = res.data
     muertos.value = res.muertos
+    resurtido.value = res.resurtido ?? []
     equipo.value = res.equipo
   } catch (e) {
     showToast(apiErr(e, 'No se pudieron cargar los indicadores'), true)
@@ -215,6 +217,35 @@ const barrasEfectividad = computed<BarraH[]>(() => (datos.value?.personas ?? [])
       { etiqueta: 'PLUs', valor: fmtNumero(p.plus) },
     ],
   })))
+// ── Resurtido por operario ──
+// PLU cerrados por cada uno y su ritmo sobre el tiempo real en tareas de resurtido.
+const columnasResurtido: ColumnaTabla[] = [
+  { key: 'nombre', label: 'Operario' },
+  { key: 'plus', label: 'PLU resurtidos', num: true },
+  { key: 'porHora', label: 'PLU por hora', num: true },
+  { key: 'porDia', label: 'PLU por día', num: true },
+  { key: 'porPlu', label: 'Tiempo por PLU', num: true },
+  { key: 'dias', label: 'Días', num: true },
+  { key: 'tiempo', label: 'Tiempo en resurtido', num: true },
+]
+const tablaResurtido = computed(() => resurtido.value.map((r) => ({
+  nombre: r.nombre,
+  plus: fmtNumero(r.plus),
+  porHora: r.plusPorHora == null ? '—' : fmtNumero(r.plusPorHora),
+  porDia: r.plusPorDia == null ? '—' : fmtNumero(r.plusPorDia),
+  porPlu: r.segundosPorPlu == null ? '—' : fmtTiempo(r.segundosPorPlu),
+  dias: fmtNumero(r.dias),
+  tiempo: fmtTiempo(r.segundos),
+})))
+const barrasResurtido = computed<BarraH[]>(() => resurtido.value
+  .filter((r) => r.plusPorHora != null && r.segundos >= MIN_SEGUNDOS_PRODUCTIVIDAD)
+  .map((r) => ({
+    id: r.id,
+    etiqueta: r.nombre,
+    valor: r.plusPorHora!,
+    texto: `${fmtNumero(r.plusPorHora)} PLU/h`,
+  })))
+
 const columnasEfectividad: ColumnaTabla[] = [
   { key: 'nombre', label: 'Persona' },
   { key: 'rol', label: 'Rol' },
@@ -491,6 +522,20 @@ const formatoHoras = (v: number) => fmtHorasDecimal(v)
         </p>
 
         <IndicadoresTiempoPersonas class="bloque" :personas="datos.personas" />
+
+        <IndicadoresTarjeta
+          v-if="resurtido.length" class="bloque" titulo="Resurtido por operario"
+          subtitulo="PLU resurtidos cerrados en el periodo y su ritmo sobre el tiempo real en resurtido."
+        >
+          <IndicadoresBarrasH
+            v-if="barrasResurtido.length" :items="barrasResurtido" medida="PLU/hora"
+            :formato-eje="fmtNumero"
+          />
+          <IndicadoresTabla v-else :columnas="columnasResurtido" :filas="tablaResurtido" principal="nombre" />
+          <template #tabla>
+            <IndicadoresTabla :columnas="columnasResurtido" :filas="tablaResurtido" principal="nombre" />
+          </template>
+        </IndicadoresTarjeta>
 
         <IndicadoresTarjeta
           class="bloque" titulo="Efectividad del turno por persona"

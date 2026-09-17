@@ -1146,3 +1146,59 @@ export function resumenPausas(entrada: {
   detalle.sort((a, b) => b.inicio.getTime() - a.inicio.getTime())
   return { resumen, personas, detalle }
 }
+
+// ── Resurtido por operario ───────────────────────────────────────────
+
+export interface ResurtidoOperario {
+  id: string
+  nombre: string
+  /** Tareas de resurtido que cerro (un PLU por tarea). */
+  plus: number
+  /** Dias con al menos un PLU resurtido. */
+  dias: number
+  /** Tiempo real en resurtido (reloj de pared, sin duplicar). */
+  segundos: number
+  plusPorHora: number | null
+  plusPorDia: number | null
+  /** Segundos promedio por PLU resurtido. */
+  segundosPorPlu: number | null
+}
+
+/**
+ * Promedios de resurtido por operario.
+ *
+ * Los PLU son de quien cerro la tarea (igual que las unidades). El tiempo es el
+ * de resurtido que ya calcula agregarIndicadores por persona (reloj de pared:
+ * si pasó la tarea a un ayudante, cada uno tiene su parte).
+ */
+export function resumirResurtidoPorOperario(
+  personas: readonly { id: string; nombre: string; porTipo: { resurtido: number } }[],
+  cierres: readonly { usuarioId: string; cuando: Date }[],
+): ResurtidoOperario[] {
+  const plus = new Map<string, number>()
+  const dias = new Map<string, Set<string>>()
+  for (const c of cierres) {
+    plus.set(c.usuarioId, (plus.get(c.usuarioId) ?? 0) + 1)
+    const d = dias.get(c.usuarioId) ?? new Set<string>()
+    d.add(diaBogota(c.cuando))
+    dias.set(c.usuarioId, d)
+  }
+  return personas
+    .map((p) => {
+      const n = plus.get(p.id) ?? 0
+      const nDias = dias.get(p.id)?.size ?? 0
+      const seg = p.porTipo.resurtido
+      return {
+        id: p.id,
+        nombre: p.nombre,
+        plus: n,
+        dias: nDias,
+        segundos: seg,
+        plusPorHora: n > 0 && seg > 0 ? Math.round((n / (seg / 3600)) * 10) / 10 : null,
+        plusPorDia: nDias > 0 ? Math.round((n / nDias) * 10) / 10 : null,
+        segundosPorPlu: n > 0 && seg > 0 ? Math.round(seg / n) : null,
+      }
+    })
+    .filter((f) => f.plus > 0 || f.segundos > 0)
+    .sort((a, b) => b.plus - a.plus || a.nombre.localeCompare(b.nombre))
+}

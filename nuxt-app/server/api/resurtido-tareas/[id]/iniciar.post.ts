@@ -31,7 +31,7 @@ export default defineOperacionAlmacenHandler(async (event) => {
 
   const tarea = await prisma.tareaResurtido.findUnique({
     where: { id },
-    include: { montaje: { select: { operarioId: true, deletedAt: true } } },
+    include: { montaje: { select: { operarioId: true, deletedAt: true, detenidoAt: true } } },
   })
   if (!tarea || tarea.montaje.deletedAt) {
     throw createError({ statusCode: 404, statusMessage: 'Tarea no encontrada' })
@@ -41,6 +41,10 @@ export default defineOperacionAlmacenHandler(async (event) => {
   }
   if (tarea.estado === 'COMPLETADA') {
     throw createError({ statusCode: 409, statusMessage: 'Esa tarea ya esta completada' })
+  }
+  // Resurtido parado por supervision: lo sin empezar no se inicia.
+  if (tarea.montaje.detenidoAt && !tarea.horaInicio) {
+    throw createError({ statusCode: 409, statusMessage: 'Supervisión paró este resurtido: esta tarea quedó detenida' })
   }
 
   const error = validarEscaneoPosicion(parsed.data.ubicacion, tarea.altura)

@@ -166,6 +166,7 @@ model User {
   ordenesMueblesEntregadas   OrdenMuebles[]         @relation("OrdenesMueblesEntregadas")
   erroresPickingOperario     ErrorPickingMuebles[]  @relation("ErroresPickingOperario")
   erroresPickingMarcados     ErrorPickingMuebles[]  @relation("ErroresPickingMarcados")
+  tareasGeneralesApoyo       AsignadoTareaGeneral[] @relation("TareasGeneralesApoyo")
   tareasGeneralesCreadas     TareaGeneral[]         @relation("TareasGeneralesCreadas")
   tareasGeneralesFinalizadas TareaGeneral[]         @relation("TareasGeneralesFinalizadas")
   tareasGeneralesAsignadas   AsignadoTareaGeneral[] @relation("TareasGeneralesAsignadas")
@@ -1472,6 +1473,11 @@ model MontajeResurtido {
   completadoAt DateTime? @map("completado_at")
   deletedAt    DateTime? @map("deleted_at")
 
+  /// Supervision paro el resurtido: las tareas sin empezar quedan detenidas
+  /// hasta que se reasigne lo que falta. Las en curso las termina el operario.
+  detenidoAt    DateTime? @map("detenido_at")
+  detenidoPorId String?   @map("detenido_por_id")
+
   tareas TareaResurtido[]
 
   createdAt DateTime @default(now()) @map("created_at")
@@ -2272,6 +2278,11 @@ model AsignadoTareaGeneral {
   usuario    User         @relation("TareasGeneralesAsignadas", fields: [usuarioId], references: [id])
   horaInicio DateTime     @default(now()) @map("hora_inicio")
   horaFin    DateTime?    @map("hora_fin")
+
+  /// Patinador de apoyo: el montacarguista al que acompaña. Su tiempo tambien
+  /// le cuenta a ese montacarguista en Indicadores (sin duplicar).
+  apoyaAId String? @map("apoya_a_id")
+  apoyaA   User?   @relation("TareasGeneralesApoyo", fields: [apoyaAId], references: [id])
 
   finalizadoPorId String? @map("finalizado_por_id")
   finalizadoPor   User?   @relation("TareasGeneralesCerradas", fields: [finalizadoPorId], references: [id])

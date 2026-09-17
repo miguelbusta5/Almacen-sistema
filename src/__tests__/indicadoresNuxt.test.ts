@@ -187,7 +187,7 @@ describe("tiempos muertos — el endpoint de indicadores", () => {
 
   // Lo que sigue en curso no es tiempo laborado, pero tampoco tiempo muerto.
   it("lo abierto solo sirve para no inventar huecos", () => {
-    expect(api).toContain("data: agregarIndicadores({ personas: delTurno, tiempos, unidades, ventanas, desde, hasta })");
+    expect(api).toContain("const datos = agregarIndicadores({ personas: delTurno, tiempos, unidades, ventanas, desde, hasta })");
     expect(api).toContain("tiempos: [...tiempos, ...enCurso]");
   });
 

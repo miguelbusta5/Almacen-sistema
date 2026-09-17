@@ -1115,3 +1115,16 @@ Lógica pura en `src/lib/tareasGenerales.ts` (copia de Nitro en
   error que estaba en revisión cierra su reloj a esa hora; los no empezados quedan sin tiempo.
 - **Indicadores Muebles:** % de órdenes con error (tarjeta), errores por operario (sobre sus
   PLU), por tipo y detalle de cada error. Script: `prisma/migrate-errores-picking-muebles.sql`.
+
+### Resurtido: fechas, parar y ritmo por operario; apoyo a montacarguista (2026-09-17)
+- **Montaje:** cada tarjeta muestra fecha y hora de montado/completado y hay filtro por
+  fechas (`?desde&hasta`, días de Bogotá; sin filtro, los 60 más recientes).
+- **Parar** (`POST /api/montaje-resurtido/:id/parar`, permiso `puedeMontarResurtido`): las
+  tareas SIN EMPEZAR quedan detenidas (`detenido_at`); el operario deja de verlas y no las
+  puede iniciar. Las en curso las termina él. "Reasignar lo que falta" quita la detención.
+- **Indicadores CEDI › Resurtido por operario:** PLU cerrados, PLU por hora (sobre el tiempo
+  real en resurtido), PLU por día trabajado y tiempo por PLU (`resumirResurtidoPorOperario`).
+- **Tareas generales:** a un operario de almacenamiento (patinador) se le puede indicar a qué
+  montacarguista apoya (`asignados_tarea_general.apoya_a_id`). Su tiempo suma a los dos, por
+  reloj de pared (sin duplicar si el montacarguista ya estaba trabajando).
+  Script: `prisma/migrate-resurtido-parar-apoyo.sql`.

@@ -17,6 +17,7 @@ interface Asignado {
   horaInicio: string
   horaFin: string | null
   finalizadoPor: { id: string; nombre: string } | null
+  apoyaA?: { id: string; nombre: string } | null
 }
 interface Tarea {
   id: string
@@ -44,6 +45,11 @@ const guardando = ref(false)
 const creando = ref(false)
 const descripcion = ref('')
 const elegidos = ref<string[]>([])
+// Patinador -> montacarguista al que apoya: su tiempo le suma tambien a el.
+const apoyos = ref<Record<string, string>>({})
+const montacarguistas = computed(() => operarios.value.filter((o) => o.rol === 'MONTACARGAS'))
+const patinadoresElegidos = computed(() => operarios.value
+  .filter((o) => o.rol === 'OPERARIO_ALMACENAMIENTO' && elegidos.value.includes(o.id)))
 
 const ahora = ref(Date.now())
 let tick: ReturnType<typeof setInterval> | null = null
@@ -117,9 +123,13 @@ async function cargar() {
 }
 
 function alternar(id: string) {
-  elegidos.value = elegidos.value.includes(id)
-    ? elegidos.value.filter((x) => x !== id)
-    : [...elegidos.value, id]
+  if (elegidos.value.includes(id)) {
+    elegidos.value = elegidos.value.filter((x) => x !== id)
+    const { [id]: _, ...resto } = apoyos.value
+    apoyos.value = resto
+  } else {
+    elegidos.value = [...elegidos.value, id]
+  }
 }
 
 async function crear() {
@@ -128,11 +138,16 @@ async function crear() {
   try {
     await $fetch(API, {
       method: 'POST',
-      body: { descripcion: descripcion.value.trim(), usuarioIds: elegidos.value },
+      body: {
+        descripcion: descripcion.value.trim(),
+        usuarioIds: elegidos.value,
+        apoyos: Object.fromEntries(Object.entries(apoyos.value).filter(([p, m]) => m && elegidos.value.includes(p))),
+      },
     })
     show('Tarea asignada')
     descripcion.value = ''
     elegidos.value = []
+    apoyos.value = {}
     creando.value = false
     await cargar()
   } catch (e) {
@@ -230,6 +245,21 @@ useAutoRefresh({ onRefresh: () => (guardando.value || creando.value ? undefined 
         <p v-if="!operarios.length" class="campo-vacio">No hay operarios ni montacarguistas activos.</p>
       </div>
 
+      <!-- Patinador apoyando a un montacarguista: el tiempo le cuenta a los dos. -->
+      <div v-if="patinadoresElegidos.length && montacarguistas.length" class="campo">
+        <span class="campo-label">¿Apoya a un montacarguista? <span class="campo-opc">opcional</span></span>
+        <p class="campo-ayuda">El tiempo del patinador le suma también al montacarguista, sin contarlo doble.</p>
+        <div class="apoyos">
+          <label v-for="p in patinadoresElegidos" :key="p.id" class="apoyo">
+            <span class="apoyo-nombre">{{ p.nombre }}</span>
+            <select v-model="apoyos[p.id]" class="input apoyo-sel">
+              <option value="">No apoya a nadie</option>
+              <option v-for="m in montacarguistas" :key="m.id" :value="m.id">Apoya a {{ m.nombre }}</option>
+            </select>
+          </label>
+        </div>
+      </div>
+
       <div class="crear-pie">
         <button class="btn btn-ghost btn-sm" @click="creando = false">Cancelar</button>
         <button class="btn btn-primary btn-sm" :disabled="!puedeCrear || guardando" @click="crear">
@@ -255,7 +285,10 @@ useAutoRefresh({ onRefresh: () => (guardando.value || creando.value ? undefined 
 
         <ul class="asignados">
           <li v-for="a in t.asignados" :key="a.id" class="asignado" :class="{ cerrado: !!a.horaFin }">
-            <span class="a-nombre">{{ a.nombre }}</span>
+            <span class="a-nombre">
+              {{ a.nombre }}
+              <span v-if="a.apoyaA" class="a-apoya">apoya a {{ a.apoyaA.nombre }}</span>
+            </span>
             <span class="a-reloj mono tnum" :class="{ vivo: !a.horaFin }">{{ reloj(a) }}</span>
             <button
               v-if="puedeMandar && !a.horaFin" class="btn btn-sm"
@@ -308,6 +341,13 @@ useAutoRefresh({ onRefresh: () => (guardando.value || creando.value ? undefined 
 .grupo-titulo { display: block; margin-bottom: 6px; font-size: 10.5px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
 .chip { display: inline-flex; align-items: center; gap: 5px; padding: 7px 13px; border-radius: var(--r-pill); border: 1px solid var(--border-strong); background: var(--surface); color: var(--ink-2); font-size: 12.5px; font-weight: 600; cursor: pointer; }
 .chip.on { color: var(--brand); border-color: var(--brand); background: var(--brand-tint); }
+.campo-opc { font-weight: 600; color: var(--muted); }
+.campo-ayuda { margin: -2px 0 8px; font-size: 11.5px; color: var(--muted); }
+.apoyos { display: flex; flex-direction: column; gap: 6px; }
+.apoyo { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.apoyo-nombre { flex: 1 1 140px; font-size: 13px; font-weight: 600; color: var(--ink); }
+.apoyo-sel { flex: 1 1 200px; width: auto; resize: none; }
+.a-apoya { display: inline-block; margin-left: 6px; padding: 1px 8px; border-radius: var(--r-pill); font-size: 11px; font-weight: 700; color: var(--brand); background: var(--brand-tint); }
 .crear-pie { display: flex; justify-content: flex-end; gap: 8px; flex-wrap: wrap; }
 
 .tareas { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }

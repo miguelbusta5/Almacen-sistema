@@ -10,6 +10,8 @@ import { avisar } from '../../utils/resurtido'
 const schema = z.object({
   descripcion: z.string().min(1).max(MAX_DESCRIPCION),
   usuarioIds: z.array(z.string().min(1)).min(1).max(20),
+  // Patinador (operario de almacenamiento) -> montacarguista al que apoya.
+  apoyos: z.record(z.string().min(1), z.string().min(1)).optional(),
 })
 
 /**
@@ -40,6 +42,22 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 400, statusMessage: 'Alguno de los operarios ya no está disponible' })
   }
 
+  // Apoyo: solo un operario de almacenamiento asignado apoya, y solo a un
+  // montacarguista activo. Su tiempo le cuenta a los dos (sin duplicar).
+  const apoyos = Object.entries(d.apoyos ?? {}).filter(([, m]) => !!m)
+  if (apoyos.length) {
+    const rolDe = new Map(usuarios.map((u) => [u.id, u.role]))
+    if (apoyos.some(([p]) => rolDe.get(p) !== 'OPERARIO_ALMACENAMIENTO')) {
+      throw createError({ statusCode: 400, statusMessage: 'Solo un operario de almacenamiento asignado puede apoyar a un montacarguista' })
+    }
+    const idsMonta = [...new Set(apoyos.map(([, m]) => m))]
+    const montas = await prisma.user.count({ where: { id: { in: idsMonta }, active: true, role: 'MONTACARGAS' } })
+    if (montas !== idsMonta.length) {
+      throw createError({ statusCode: 400, statusMessage: 'El montacarguista elegido ya no está disponible' })
+    }
+  }
+  const apoyaA = new Map(apoyos)
+
   const now = new Date()
   const tarea = await prisma.$transaction(async (tx) => {
     const creada = await tx.tareaGeneral.create({
@@ -48,7 +66,9 @@ export default defineEventHandler(async (event) => {
         fecha: todayBogota(now),
         horaInicio: now,
         creadoPorId: actor.id,
-        asignados: { create: usuarios.map((u) => ({ usuarioId: u.id, horaInicio: now })) },
+        asignados: {
+          create: usuarios.map((u) => ({ usuarioId: u.id, horaInicio: now, apoyaAId: apoyaA.get(u.id) ?? null })),
+        },
       },
       select: { id: true },
     })
@@ -63,7 +83,7 @@ export default defineEventHandler(async (event) => {
 
   await auditarTarea(
     actor.id, 'CREATE', tarea.id,
-    `Tarea general para ${usuarios.map((u) => u.name).join(', ')}: ${d.descripcion.trim()}`,
+    `Tarea general para ${usuarios.map((u) => u.name).join(', ')}${apoyos.length ? ` (${apoyos.length} apoyando a montacarguista)` : ''}: ${d.descripcion.trim()}`,
   )
 
   return { success: true, data: mapTareaGeneral(tarea) }

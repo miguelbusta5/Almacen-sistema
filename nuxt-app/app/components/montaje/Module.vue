@@ -6,7 +6,7 @@ import { enRefrescoSilencioso, useAutoRefresh } from '~/composables/useAutoRefre
 // ve por montaje es el tiempo transcurrido desde que se repartió y cuánto lleva
 // hecho el operario, que es lo que sirve para saber si va a tiempo.
 import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
-import { RefreshCw, Upload, ClipboardList, Trash2, User, UserPlus } from '@lucide/vue'
+import { RefreshCw, Upload, ClipboardList, Trash2, User, UserPlus, CirclePause, CalendarDays } from '@lucide/vue'
 import { ensureSession, useSessionState } from '~/composables/useSession'
 import { useToast } from '~/composables/useToast'
 import {
@@ -41,11 +41,23 @@ const operarioId = ref('')
 const fileInput = ref<HTMLInputElement | null>(null)
 const detalle = ref<MontajeResurtidoDTO | null>(null)
 
+// ── Fechas ──
+// Sin filtro: los mas recientes. Con fechas: los montados en ese rango.
+const desde = ref('')
+const hasta = ref('')
+const fmtFechaHora = (iso: string) => new Intl.DateTimeFormat('es-CO', {
+  timeZone: 'America/Bogota', day: '2-digit', month: 'short', hour: 'numeric', minute: '2-digit',
+}).format(new Date(iso))
+function limpiarFechas() { desde.value = ''; hasta.value = ''; void cargar() }
+
 async function cargar() {
   // Un refresco automatico no pone el esqueleto: la pantalla no parpadea.
   if (!enRefrescoSilencioso()) loading.value = true
   try {
-    const res = await $fetch<{ data: MontajeResurtidoDTO[] }>(API_MONTAJE)
+    const query: Record<string, string> = {}
+    if (desde.value) query.desde = desde.value
+    if (hasta.value || desde.value) query.hasta = hasta.value || desde.value
+    const res = await $fetch<{ data: MontajeResurtidoDTO[] }>(API_MONTAJE, { query })
     montajes.value = res.data
   } catch (e) {
     showToast(apiErr(e, 'No se pudieron cargar los montajes'), true)
@@ -94,6 +106,26 @@ async function subir() {
     showToast(apiErr(e, 'No se pudo subir el archivo'), true)
   } finally {
     subiendo.value = false
+  }
+}
+
+// ── Parar ──
+// Las tareas sin empezar quedan detenidas; lo en curso lo termina el operario.
+// Se retoma con "Reasignar lo que falta".
+const parando = ref<string | null>(null)
+const sinEmpezar = (m: MontajeResurtidoDTO) => m.tareas.filter((t) => t.estado === 'PENDIENTE').length
+async function parar(m: MontajeResurtidoDTO) {
+  const n = sinEmpezar(m)
+  if (!confirm(`¿Parar el resurtido de ${m.operarioNombre}? ${n} tarea${n === 1 ? '' : 's'} sin empezar quedan detenidas; lo que está en curso lo termina el operario.`)) return
+  parando.value = m.id
+  try {
+    const res = await $fetch<{ data: MontajeResurtidoDTO }>(`${API_MONTAJE}/${m.id}/parar`, { method: 'POST' })
+    montajes.value = montajes.value.map((x) => (x.id === m.id ? res.data : x))
+    showToast('Resurtido parado. Usa "Reasignar lo que falta" para dárselo a otro operario')
+  } catch (e) {
+    showToast(apiErr(e, 'No se pudo parar el resurtido'), true)
+  } finally {
+    parando.value = null
   }
 }
 
@@ -231,6 +263,21 @@ function transcurrido(m: MontajeResurtidoDTO): string {
         description="No tienes permiso para montar resurtidos. Puedes ver los que ya están repartidos."
       />
 
+      <!-- Filtro por fecha de montaje -->
+      <form class="card fechas bloque" @submit.prevent="cargar">
+        <CalendarDays :size="15" class="fechas-ic" />
+        <label class="f-fecha">
+          <span class="lbl">Desde</span>
+          <input v-model="desde" class="field" type="date">
+        </label>
+        <label class="f-fecha">
+          <span class="lbl">Hasta</span>
+          <input v-model="hasta" class="field" type="date" :min="desde || undefined">
+        </label>
+        <button class="btn btn-sm btn-primary" type="submit" :disabled="!desde">Filtrar</button>
+        <button v-if="desde || hasta" class="btn btn-sm btn-ghost" type="button" @click="limpiarFechas">Ver recientes</button>
+      </form>
+
       <ListSkeleton v-if="loading" />
       <EmptyState
         v-else-if="!montajes.length" title="Sin montajes"
@@ -246,6 +293,13 @@ function transcurrido(m: MontajeResurtidoDTO): string {
           </header>
 
           <p class="vin-file" :title="m.nombreArchivo">{{ m.nombreArchivo }}</p>
+          <p class="vin-fechas">
+            <span>Montado {{ fmtFechaHora(m.montadoAt) }}</span>
+            <span v-if="m.completadoAt"> · Completado {{ fmtFechaHora(m.completadoAt) }}</span>
+          </p>
+          <p v-if="m.detenidoAt && m.estado !== 'COMPLETADO'" class="vin-parado">
+            <CirclePause :size="13" /> Parado {{ fmtFechaHora(m.detenidoAt) }} · reasígnalo para continuar
+          </p>
 
           <!-- Barra de avance: es lo que se mira de un vistazo para saber si el
                resurtido va a tiempo. -->
@@ -265,6 +319,12 @@ function transcurrido(m: MontajeResurtidoDTO): string {
               class="btn-link" @click="abrirReasignar(m)"
             >
               <UserPlus :size="12" /> Reasignar lo que falta
+            </button>
+            <button
+              v-if="puedeMontar && m.estado !== 'COMPLETADO' && !m.detenidoAt && sinEmpezar(m) > 0"
+              class="btn-link" :disabled="parando === m.id" @click="parar(m)"
+            >
+              <CirclePause :size="12" /> Parar
             </button>
             <button
               v-if="puedeMontar" class="btn-link danger" :disabled="borrando === m.id"
@@ -382,6 +442,11 @@ function transcurrido(m: MontajeResurtidoDTO): string {
 .vin-top { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
 .vin-op { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 700; color: var(--ink); }
 .vin-tiempo { font-family: var(--display); font-size: 15px; font-weight: 700; color: var(--brand); }
+.vin-fechas { margin: 0; font-size: 11.5px; color: var(--muted); }
+.vin-parado { display: flex; align-items: center; gap: 5px; margin: 0; padding: 5px 8px; border-radius: var(--r-sm); font-size: 11.5px; font-weight: 700; color: var(--u-aviso); background: color-mix(in srgb, var(--u-aviso) 12%, transparent); }
+.fechas { display: flex; align-items: flex-end; gap: 10px; flex-wrap: wrap; padding: 12px 14px; }
+.fechas-ic { color: var(--muted); margin-bottom: 9px; }
+.f-fecha { display: flex; flex-direction: column; gap: 4px; flex: 0 1 170px; }
 .vin-file { margin: 0; font-size: 11.5px; color: var(--faint); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
 .barra { height: 8px; border-radius: 99px; background: var(--surface-3); overflow: hidden; }

@@ -11,6 +11,7 @@ export const TAREA_GENERAL_INCLUDE = {
     include: {
       usuario: { select: { id: true, name: true } },
       finalizadoPor: { select: { id: true, name: true } },
+      apoyaA: { select: { id: true, name: true } },
     },
     orderBy: { horaInicio: 'asc' },
   },
@@ -39,6 +40,8 @@ export function mapTareaGeneral(t: any) {
       horaInicio: a.horaInicio?.toISOString?.() ?? a.horaInicio ?? null,
       horaFin: a.horaFin?.toISOString?.() ?? a.horaFin ?? null,
       finalizadoPor: a.finalizadoPor ? { id: a.finalizadoPor.id, nombre: a.finalizadoPor.name } : null,
+      // Patinador que apoya a un montacarguista: su tiempo tambien le suma a el.
+      apoyaA: a.apoyaA ? { id: a.apoyaA.id, nombre: a.apoyaA.name } : null,
     })),
   }
 }

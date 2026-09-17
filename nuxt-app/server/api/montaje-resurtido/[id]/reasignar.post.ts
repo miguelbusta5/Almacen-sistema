@@ -96,6 +96,9 @@ export default defineOperacionAlmacenHandler(async (event) => {
       })
     }
 
+    // Reasignar retoma un resurtido parado: las tareas vuelven a verse.
+    await tx.montajeResurtido.update({ where: { id }, data: { detenidoAt: null, detenidoPorId: null } })
+
     const total = pendientes + enCurso
     await avisar(tx, [nuevo.id], {
       tipo: 'RESURTIDO_REASIGNADO',

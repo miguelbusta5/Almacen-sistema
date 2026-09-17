@@ -603,7 +603,7 @@ describe("montaje — reasignar lo que falta", () => {
   });
 
   it("el nuevo operario ve el resurtido reasignado entero", () => {
-    expect(lista).toContain("reasignados: reasignados.map(mapMontaje)");
+    expect(lista).toContain("reasignados: visibles(reasignados)");
     expect(lista).toContain("tareas: { some: { responsableId: actor.id, pasadoPorId: null");
     expect(leer("nuxt-app/app/components/resurtido/Tareas.vue")).toContain("Reasignado de {{ r.de }}");
   });
