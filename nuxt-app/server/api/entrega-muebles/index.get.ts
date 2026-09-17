@@ -23,12 +23,23 @@ export default defineEventHandler(async (event) => {
   const q = getQuery(event)
   const historico = String(q.historico ?? '') === '1'
   const ciudad = q.ciudad ? normalizarCiudad(q.ciudad) : ''
+  // Buscador: por orden, cliente, ciudad o PLU. En entregadas busca en todo el
+  // historico, no solo en las ultimas 100.
+  const buscar = String(q.buscar ?? '').trim().slice(0, 60)
 
   const ordenes = await prisma.ordenMuebles.findMany({
     where: {
       deletedAt: null,
       estado: historico ? 'ENTREGADA_TRANSPORTE' : 'INSPECCIONADA',
       ...(ciudad ? { ciudadEnvio: ciudad } : {}),
+      ...(buscar ? {
+        OR: [
+          { codigo: { contains: buscar, mode: 'insensitive' as const } },
+          { cliente: { contains: buscar, mode: 'insensitive' as const } },
+          { ciudadEnvio: { contains: buscar, mode: 'insensitive' as const } },
+          { lineas: { some: { plu: buscar } } },
+        ],
+      } : {}),
     },
     include: ORDEN_INCLUDE,
     orderBy: historico ? { entregadaTransporteAt: 'desc' } : { horaFinInspeccion: 'asc' },

@@ -1128,3 +1128,11 @@ Lógica pura en `src/lib/tareasGenerales.ts` (copia de Nitro en
   montacarguista apoya (`asignados_tarea_general.apoya_a_id`). Su tiempo suma a los dos, por
   reloj de pared (sin duplicar si el montacarguista ya estaba trabajando).
   Script: `prisma/migrate-resurtido-parar-apoyo.sql`.
+
+### Muebles: quién toma la orden y buscador de entrega (2026-09-17)
+- **Inspección Muebles:** al entrar a cualquier orden se pregunta "¿Quién toma la orden?" sin
+  nombre preseleccionado (antes quedaba el de la PC y se trabajaba a nombre de otro). El
+  elegido entra a la orden (`unirse`: si nadie la tenía queda como dueño) y queda como nombre
+  de la PC. Después, si falta, se pide la ciudad. Cancelar vuelve a la parrilla.
+- **Entrega a Transporte:** buscador en pendientes y entregadas por orden, cliente, ciudad o
+  PLU (`?buscar=`, en entregadas busca en todo el histórico).

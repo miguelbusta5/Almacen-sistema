@@ -6,7 +6,7 @@ import { enRefrescoSilencioso, useAutoRefresh } from '~/composables/useAutoRefre
 // ciudad, selecciona las que sube al camión y las marca de una vez: ahí cierra
 // la medición de la orden (el lead time va desde que se abrió el picking).
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
-import { Truck, RefreshCw, Loader2, Check, MapPin } from '@lucide/vue'
+import { Truck, RefreshCw, Loader2, Check, MapPin, Search, X } from '@lucide/vue'
 import { useToast } from '~/composables/useToast'
 import { ensureSession } from '~/composables/useSession'
 import { fmtMin, mensajeError, type Orden } from '~/utils/muebles'
@@ -21,6 +21,18 @@ const historico = ref(false)
 const cargando = ref(true)
 const guardando = ref(false)
 const elegidas = ref<string[]>([])
+// Buscador por orden, cliente, ciudad o PLU (pendientes y entregadas).
+const buscar = ref('')
+let esperaBusqueda: ReturnType<typeof setTimeout> | null = null
+function alBuscar() {
+  if (esperaBusqueda) clearTimeout(esperaBusqueda)
+  esperaBusqueda = setTimeout(() => { elegidas.value = []; void cargar() }, 350)
+}
+function limpiarBusqueda() {
+  buscar.value = ''
+  elegidas.value = []
+  void cargar()
+}
 
 const ahora = ref(Date.now())
 let tick: ReturnType<typeof setInterval> | null = null
@@ -46,7 +58,11 @@ async function cargar() {
   if (!enRefrescoSilencioso()) cargando.value = true
   try {
     const res = await $fetch<{ data: Orden[]; ciudades: Array<{ ciudad: string; ordenes: number }> }>(API, {
-      query: { ...(ciudad.value ? { ciudad: ciudad.value } : {}), ...(historico.value ? { historico: '1' } : {}) },
+      query: {
+        ...(ciudad.value ? { ciudad: ciudad.value } : {}),
+        ...(historico.value ? { historico: '1' } : {}),
+        ...(buscar.value.trim() ? { buscar: buscar.value.trim() } : {}),
+      },
     })
     ordenes.value = res.data
     ciudades.value = res.ciudades
@@ -133,6 +149,18 @@ useAutoRefresh({ onRefresh: () => (guardando.value ? undefined : cargar()) })
       </button>
     </section>
 
+    <label class="buscar">
+      <Search :size="15" class="buscar-ic" />
+      <input
+        v-model="buscar" class="buscar-input" type="search" autocomplete="off"
+        :placeholder="historico ? 'Buscar entregadas por orden, cliente, ciudad o PLU' : 'Buscar pendientes por orden, cliente, ciudad o PLU'"
+        @input="alBuscar"
+      >
+      <button v-if="buscar" type="button" class="buscar-x" aria-label="Limpiar búsqueda" @click="limpiarBusqueda">
+        <X :size="14" />
+      </button>
+    </label>
+
     <div v-if="cargando" class="cargando"><Loader2 :size="18" class="spin" /> Cargando…</div>
 
     <template v-else-if="ordenes.length">
@@ -181,7 +209,9 @@ useAutoRefresh({ onRefresh: () => (guardando.value ? undefined : cargar()) })
     </template>
 
     <p v-else class="vacio">
-      {{ historico ? 'Todavía no hay órdenes entregadas.' : 'No hay órdenes listas para entregar.' }}
+      {{ buscar.trim()
+        ? `Nada coincide con «${buscar.trim()}».`
+        : historico ? 'Todavía no hay órdenes entregadas.' : 'No hay órdenes listas para entregar.' }}
     </p>
   </div>
 </template>
@@ -199,6 +229,11 @@ useAutoRefresh({ onRefresh: () => (guardando.value ? undefined : cargar()) })
 .chip.on { color: var(--brand); border-color: var(--brand); background: var(--brand-tint); }
 .chip-n { font-weight: 800; font-variant-numeric: tabular-nums; }
 
+.buscar { position: relative; display: flex; align-items: center; margin-bottom: 14px; }
+.buscar-ic { position: absolute; left: 12px; color: var(--muted); pointer-events: none; }
+.buscar-input { width: 100%; padding: 10px 38px 10px 36px; border: 1px solid var(--border-strong); border-radius: var(--r-md); background: var(--surface); color: var(--ink); font-size: 13.5px; }
+.buscar-input:focus { outline: none; border-color: var(--brand); }
+.buscar-x { position: absolute; right: 8px; display: grid; place-items: center; width: 26px; height: 26px; border: none; border-radius: var(--r-sm); background: transparent; color: var(--muted); cursor: pointer; }
 .barra { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; padding: 11px 14px; margin-bottom: 12px; border: 1px solid var(--border); border-radius: var(--r-md); background: var(--surface); }
 .todas { display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 600; color: var(--ink-2); cursor: pointer; }
 

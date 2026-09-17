@@ -43,6 +43,9 @@ const lineaAveriada = ref<Linea | null>(null)
 const agregandoPlu = ref(false)
 const creandoContado = ref(false)
 const pidiendoCiudad = ref(false)
+// Al entrar a una orden se pregunta quien la toma, SIN nombre preseleccionado:
+// con el nombre recordado de la PC los inspectores trabajaban a nombre de otro.
+const pidiendoQuien = ref(false)
 // Ciudades ya usadas: se sugieren para no escribir la misma de dos formas.
 const ciudadesUsadas = computed(() => [...new Set(
   ordenes.value.map((o) => o.ciudadEnvio).filter((c): c is string => !!c),
@@ -93,11 +96,29 @@ async function abrirOrden(o: Orden) {
   try {
     const res = await $fetch<{ data: Orden }>(`${API_INSPECCION}/${o.id}`)
     abierta.value = res.data
-    // Sin ciudad no se puede inspeccionar: se pide de una, no al fallar.
-    if (!res.data.ciudadEnvio) pidiendoCiudad.value = true
+    // Primero quien toma la orden; la ciudad (si falta) se pide despues.
+    pidiendoQuien.value = true
   } catch (e) {
     show(mensajeError(e, 'No se pudo abrir la orden'), true)
   }
+}
+
+/**
+ * Quien toma la orden al entrar. Queda como el nombre de esta PC y entra a la
+ * orden (si nadie la tenia, queda como dueño). Cancelar vuelve a la parrilla:
+ * sin nombre no se trabaja una orden.
+ */
+async function confirmarQuien(id: string) {
+  pidiendoQuien.value = false
+  recordar(id)
+  const nombre = inspectores.value.find((i) => i.id === id)?.nombre ?? ''
+  await accion(`${API_INSPECCION}/${abierta.value!.id}/unirse`, { inspectorId: id }, `${nombre} en la orden`)
+  // Sin ciudad no se puede inspeccionar: se pide de una, no al fallar.
+  if (abierta.value && !abierta.value.ciudadEnvio) pidiendoCiudad.value = true
+}
+function cancelarQuien() {
+  pidiendoQuien.value = false
+  salir()
 }
 
 /** Salir es solo volver a la parrilla. Nada más — a propósito. */
@@ -347,6 +368,11 @@ useAutoRefresh({ onRefresh: () => (guardando.value ? undefined : cargar()) })
     <InspeccionMueblesErrorPickingModal
       :linea="lineaError" :guardando="guardando"
       @cerrar="lineaError = null" @confirmar="confirmarError" @quitar="quitarError"
+    />
+    <InspeccionMueblesSelectorInspector
+      :abierto="pidiendoQuien" :inspectores="inspectores" :seleccionado="null"
+      :titulo="`¿Quién toma la orden ${abierta?.codigo ?? ''}?`"
+      @cerrar="cancelarQuien" @confirmar="confirmarQuien"
     />
     <InspeccionMueblesCiudadModal
       :abierto="pidiendoCiudad" :actual="abierta?.ciudadEnvio ?? null" :sugeridas="ciudadesUsadas"
