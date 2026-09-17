@@ -20,6 +20,7 @@ import {
   type MontajeResurtidoDTO, type PendienteDTO, type TareaResurtidoDTO,
 } from '~/utils/resurtidoTareas'
 import { API_MONTACARGAS, type Ayudante } from '~/utils/montacargas'
+import { fmtKg, fmtM3 } from '~/utils/carga'
 
 const props = defineProps<{ ahora: number }>()
 // Un pendiente prioritario se hace desde su propia pestaña (su flujo es por
@@ -341,6 +342,7 @@ useAutoRefresh({ onRefresh: () => cargar() })
                 <b class="mono">{{ t.plu }}</b> · {{ t.unidadesSolicitadas + t.unidadesPendientes }} und
                 <b v-if="t.unidadesPendientes" class="t-mas">(+{{ t.unidadesPendientes }} de pendiente)</b> ·
                 a <span class="mono">{{ t.pickingSugerido }}</span>
+                <span v-if="t.carga" class="t-carga">· {{ fmtKg(t.carga.kg) }} · {{ fmtM3(t.carga.m3) }}</span>
               </span>
             </span>
             <span v-if="t.horaInicio" class="t-crono tnum">{{ t.pausaId ? 'En pausa · ' : '' }}{{ cronometroTarea(t, ahora) }}</span>
@@ -364,6 +366,7 @@ useAutoRefresh({ onRefresh: () => cargar() })
                 <b class="mono">{{ t.plu }}</b> · {{ t.unidadesSolicitadas + t.unidadesPendientes }} und
                 <b v-if="t.unidadesPendientes" class="t-mas">(+{{ t.unidadesPendientes }} de pendiente)</b> ·
                 a <span class="mono">{{ t.pickingSugerido }}</span>
+                <span v-if="t.carga" class="t-carga">· {{ fmtKg(t.carga.kg) }} · {{ fmtM3(t.carga.m3) }}</span>
               </span>
               <span v-if="!esMia(t)" class="t-pasada">
                 <UserPlus :size="11" /> Pasada a {{ t.responsableNombre ?? 'un ayudante' }}: la cierra él
@@ -626,4 +629,5 @@ useAutoRefresh({ onRefresh: () => cargar() })
   .p-form { flex-direction: column; }
   .m-body :deep(.field) { height: 44px; font-size: 16px; }
 }
+.t-carga { color: var(--muted); }
 </style>

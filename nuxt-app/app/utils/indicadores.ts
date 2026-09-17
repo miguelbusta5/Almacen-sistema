@@ -126,6 +126,18 @@ export interface RespuestaIndicadores {
   muertos: TiemposMuertosPeriodo
   /** PLUs resurtidos y ritmo de cada operario en el periodo. */
   resurtido?: ResurtidoOperario[]
+  /** Kg y m3 que movio cada persona, con el desglose por modulo. */
+  carga?: CargaPersona[]
+}
+
+export interface CargaPersona {
+  id: string
+  nombre: string
+  kg: number
+  m3: number
+  /** Trabajos que no se pudieron contar porque su PLU no esta medido. */
+  sinMedida: number
+  porTipo: Record<'resurtido' | 'pendiente' | 'montacargas', { kg: number; m3: number }>
 }
 
 export interface ResurtidoOperario {

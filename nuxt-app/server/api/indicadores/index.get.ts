@@ -11,6 +11,8 @@ import {
   type VentanaTurno,
 } from '../../utils/indicadoresCalc'
 import { ventanaTurno } from '../../utils/turnosCalc'
+import { medidasDePlus } from '../../utils/carga'
+import { cargaDeUnidades, resumirCargaPorPersona, type TipoCarga } from '../../utils/cargaCalc'
 
 // A quien se mide: los que mueven la mercancia.
 const MEDIDOS = ['MONTACARGAS', 'OPERARIO_ALMACENAMIENTO'] as const
@@ -111,7 +113,7 @@ export default defineEventHandler(async (event) => {
     // Las unidades son de quien UBICO la mercancia: el responsable al cerrar.
     prisma.movimientoMontacargas.findMany({
       where: { deletedAt: null, estado: 'CERRADO', horaFinalizacion: { gte: ini, lte: finConsulta } },
-      select: { responsableId: true, cantidadTotal: true, horaFinalizacion: true },
+      select: { responsableId: true, cantidadTotal: true, horaFinalizacion: true, plu: true },
     }),
     // 2. Tareas de resurtido por archivo. Sin las de montajes borrados: hay mas
     // de mil de pruebas que ensuciarian todo.
@@ -125,7 +127,7 @@ export default defineEventHandler(async (event) => {
         montaje: { deletedAt: null },
       },
       select: {
-        id: true, estado: true, horaInicio: true, horaFin: true, unidadesBajadas: true, responsableId: true,
+        id: true, estado: true, horaInicio: true, horaFin: true, unidadesBajadas: true, responsableId: true, plu: true,
         montaje: { select: { operarioId: true } },
         // Tiempo por persona: quien la empezo y el ayudante que la cerro.
         tramos: { select: { usuarioId: true, inicio: true, fin: true } },
@@ -144,7 +146,7 @@ export default defineEventHandler(async (event) => {
         ],
       },
       select: {
-        id: true, estado: true, operarioId: true, horaInicio: true, horaFin: true, unidadesBajadas: true,
+        id: true, estado: true, operarioId: true, horaInicio: true, horaFin: true, unidadesBajadas: true, plu: true,
         // Tiempo por persona: quien lo empezo y el ayudante que lo cerro.
         tramos: { select: { usuarioId: true, inicio: true, fin: true } },
       },
@@ -229,9 +231,12 @@ export default defineEventHandler(async (event) => {
     if (t.fin) tiempos.push({ usuarioId: t.usuarioId, inicio: t.inicio, fin: t.fin, tipo, registro })
     else enCurso.push({ usuarioId: t.usuarioId, inicio: t.inicio, fin: finAbierto(t.inicio, t.usuarioId), tipo, registro })
   }
+  // Peso y m3 de lo CERRADO en el periodo: se calcula con el maestro vigente.
+  const movidos: { usuarioId: string; tipo: TipoCarga; plu: string; unidades: number }[] = []
   for (const m of cerrados) {
     if (m.horaFinalizacion) {
       unidades.push({ usuarioId: m.responsableId, cuando: m.horaFinalizacion, unidades: m.cantidadTotal })
+      movidos.push({ usuarioId: m.responsableId, tipo: 'montacargas', plu: m.plu, unidades: m.cantidadTotal })
     }
   }
   for (const t of tareas) {
@@ -250,7 +255,9 @@ export default defineEventHandler(async (event) => {
     }
     // Las unidades son de quien la cerro.
     if (cerrada) {
-      unidades.push({ usuarioId: t.responsableId ?? t.montaje.operarioId, cuando: t.horaFin!, unidades: t.unidadesBajadas ?? 0 })
+      const quien = t.responsableId ?? t.montaje.operarioId
+      unidades.push({ usuarioId: quien, cuando: t.horaFin!, unidades: t.unidadesBajadas ?? 0 })
+      movidos.push({ usuarioId: quien, tipo: 'resurtido', plu: t.plu, unidades: t.unidadesBajadas ?? 0 })
     }
   }
   for (const p of pendientes) {
@@ -268,7 +275,10 @@ export default defineEventHandler(async (event) => {
       else enCurso.push({ ...base, fin: t.fin ?? finAbierto(t.inicio, t.usuarioId) })
     }
     // Las unidades son de quien lo ubico.
-    if (cerrado) unidades.push({ usuarioId: p.operarioId, cuando: p.horaFin!, unidades: p.unidadesBajadas ?? 0 })
+    if (cerrado) {
+      unidades.push({ usuarioId: p.operarioId, cuando: p.horaFin!, unidades: p.unidadesBajadas ?? 0 })
+      movidos.push({ usuarioId: p.operarioId, tipo: 'pendiente', plu: p.plu, unidades: p.unidadesBajadas ?? 0 })
+    }
   }
   // Un contenedor no es un PLU: su tiempo cuenta, pero no entra en el promedio
   // por PLU ni en und/hora (registro null).
@@ -334,6 +344,14 @@ export default defineEventHandler(async (event) => {
 
   const datos = agregarIndicadores({ personas: delTurno, tiempos, unidades, ventanas, desde, hasta })
 
+  // Kg y m3 movidos: del maestro vigente, no sellados. Corregir una medida mal
+  // cargada arregla tambien lo que ya paso.
+  const medidasCarga = await medidasDePlus(movidos.map((m) => m.plu))
+  const carga = resumirCargaPorPersona(
+    datos.personas,
+    movidos.map((m) => ({ usuarioId: m.usuarioId, tipo: m.tipo, carga: cargaDeUnidades(m.unidades, medidasCarga.get(m.plu)) })),
+  )
+
   return {
     success: true,
     rango: { desde, hasta },
@@ -341,6 +359,7 @@ export default defineEventHandler(async (event) => {
     equipo: equipo.map((u) => ({ id: u.id, nombre: u.name, rol: u.role, jornada: jornadas.get(u.id) ?? 'dia' })),
     data: datos,
     resurtido: resumirResurtidoPorOperario(datos.personas, cierresResurtido),
+    carga,
     muertos: agregarTiemposMuertos({
       personas: delTurno, tiempos: [...tiempos, ...enCurso], justificaciones, ventanas, desde, hasta,
     }),

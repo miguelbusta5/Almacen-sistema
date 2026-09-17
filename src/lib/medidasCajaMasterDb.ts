@@ -125,3 +125,46 @@ export async function guardarMediciones(
 
   return { productos: productos.length, cajas: cajasGuardadas, errores };
 }
+
+/**
+ * Vuelve a calcular el peso y el m3 de las lineas de muebles ya registradas.
+ *
+ * Las medidas no se congelan: si se corrige el maestro, lo que ya paso tambien
+ * queda bien (decision del 17-09; antes una medida mal cargada quedaba para
+ * siempre en esa orden). Una linea abierta no tiene totales todavia: solo se
+ * actualiza su medida por unidad.
+ *
+ * La medida del maestro es de la CAJA MASTER, que puede traer varias unidades
+ * ("Und Emp"): una unidad es la caja entre lo que trae.
+ */
+export async function recalcularLineasMuebles(
+  prisma: Pick<PrismaClient, "$executeRaw">,
+  plus: readonly string[]
+): Promise<number> {
+  const unicos = [...new Set(plus)].filter(Boolean);
+  if (!unicos.length) return 0;
+  return prisma.$executeRaw`
+    WITH cajas AS (
+      SELECT plu, SUM(volumen_m3) AS m3, SUM(peso_bruto_kg) AS kg
+      FROM medidas_caja_master
+      WHERE plu IN (${Prisma.join(unicos)})
+      GROUP BY plu
+    ), medidas AS (
+      SELECT c.plu,
+        c.m3 / GREATEST(COALESCE(pm.unidades_por_caja, 1), 1) AS m3_unidad,
+        c.kg / GREATEST(COALESCE(pm.unidades_por_caja, 1), 1) AS kg_unidad
+      FROM cajas c
+      LEFT JOIN productos_maestro pm ON pm.plu = c.plu
+    )
+    UPDATE lineas_muebles l SET
+      volumen_unitario_m3 = ROUND(m.m3_unidad::numeric, 6),
+      peso_unitario_kg    = ROUND(m.kg_unidad::numeric, 3),
+      volumen_total_m3 = CASE WHEN l.hora_fin IS NULL THEN l.volumen_total_m3
+                              ELSE ROUND((m.m3_unidad * l.unidades)::numeric, 6) END,
+      peso_total_kg    = CASE WHEN l.hora_fin IS NULL THEN l.peso_total_kg
+                              ELSE ROUND((m.kg_unidad * l.unidades)::numeric, 3) END,
+      updated_at = now()
+    FROM medidas m
+    WHERE l.plu = m.plu
+  `;
+}

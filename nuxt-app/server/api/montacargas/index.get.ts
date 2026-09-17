@@ -5,6 +5,7 @@ import { sanearPaginacion } from '../../utils/paginacion'
 import { mapMovimientoMontacargas } from '../../utils/mapRow'
 import { assertUsuarioMontacargas, buildMovimientoWhere, MOVIMIENTO_INCLUDE } from '../../utils/montacargas'
 import { esTipoMovimiento } from '../../utils/montacargasCalc'
+import { conCargaMovimientos } from '../../utils/carga'
 
 // GET /api/montacargas?tipo=RECEPCION|MOVIMIENTO|RESURTIDO
 // Listado paginado. Un MONTACARGAS solo ve los suyos.
@@ -41,5 +42,5 @@ export default defineEventHandler(async (event) => {
     prisma.movimientoMontacargas.count({ where: where as never }),
   ])
 
-  return { success: true, data: items.map(mapMovimientoMontacargas), total, page, pageSize }
+  return { success: true, data: await conCargaMovimientos(items.map(mapMovimientoMontacargas)), total, page, pageSize }
 })

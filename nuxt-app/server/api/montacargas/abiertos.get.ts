@@ -4,6 +4,7 @@ import { requireAuth } from '../../utils/auth'
 import { mapMovimientoMontacargas } from '../../utils/mapRow'
 import { assertUsuarioMontacargas, MOVIMIENTO_INCLUDE, puedeResolverNovedades } from '../../utils/montacargas'
 import { esTipoMovimiento } from '../../utils/montacargasCalc'
+import { conCargaMovimientos } from '../../utils/carga'
 
 // GET /api/montacargas/abiertos?tipo=... - lo que el actor tiene que atender.
 //
@@ -39,5 +40,5 @@ export default defineEventHandler(async (event) => {
     orderBy: { horaInicio: 'asc' },
   })
 
-  return { success: true, data: rows.map(mapMovimientoMontacargas) }
+  return { success: true, data: await conCargaMovimientos(rows.map(mapMovimientoMontacargas)) }
 })

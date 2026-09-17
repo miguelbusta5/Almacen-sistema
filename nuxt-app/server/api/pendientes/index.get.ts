@@ -4,6 +4,7 @@ import { requireAuth } from '../../utils/auth'
 import { mapPendiente } from '../../utils/mapRow'
 import { assertVePendientes, PENDIENTE_INCLUDE, puedeVerAlmacenamiento } from '../../utils/resurtido'
 import { esSolicitante } from '../../utils/resurtidoCalc'
+import { conCargaPendientes } from '../../utils/carga'
 
 /**
  * GET /api/pendientes
@@ -36,5 +37,5 @@ export default defineEventHandler(async (event) => {
     }),
   ])
 
-  return { success: true, data: [...abiertos, ...ubicados].map(mapPendiente) }
+  return { success: true, data: await conCargaPendientes([...abiertos, ...ubicados].map(mapPendiente)) }
 })

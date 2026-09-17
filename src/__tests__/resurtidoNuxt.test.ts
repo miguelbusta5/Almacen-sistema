@@ -327,7 +327,7 @@ describe("pendientes — prioridad sobre el resurtido", () => {
   });
 
   it("los pendientes sueltos salen delante en la lista del operario", () => {
-    expect(lista).toContain("prioritarios: pendientes.map(mapPendiente)");
+    expect(lista).toContain("conCargaPendientes(pendientes.map(mapPendiente))");
     // Los sumados a una tarea no salen sueltos.
     expect(lista).toContain("tareaResurtidoId: null");
   });
@@ -512,7 +512,7 @@ describe("resurtido — pasar una tarea a un ayudante", () => {
   });
 
   it("el ayudante la ve en su lista y la pantalla tiene la opcion", () => {
-    expect(lista).toContain("recibidas: recibidas.map(mapTareaResurtido)");
+    expect(lista).toContain("conCargaTareas(recibidas.map(mapTareaResurtido))");
     expect(ui).toContain("`/api/resurtido-tareas/${t.id}/traspasar`");
     expect(ui).toContain('v-if="esMia(t) && t.horaInicio" class="btn btn-sm pasar-lista"');
     expect(ui).toContain("te la pasó: tú la cierras");
@@ -603,7 +603,7 @@ describe("montaje — reasignar lo que falta", () => {
   });
 
   it("el nuevo operario ve el resurtido reasignado entero", () => {
-    expect(lista).toContain("reasignados: visibles(reasignados)");
+    expect(lista).toContain("conCargaMontajes(visibles(reasignados))");
     expect(lista).toContain("tareas: { some: { responsableId: actor.id, pasadoPorId: null");
     expect(leer("nuxt-app/app/components/resurtido/Tareas.vue")).toContain("Reasignado de {{ r.de }}");
   });

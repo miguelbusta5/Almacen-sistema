@@ -1161,3 +1161,19 @@ Lógica pura en `src/lib/tareasGenerales.ts` (copia de Nitro en
   `datosPlu` ya sella la línea con la medida por unidad.
 - Se corrigieron los 18 renglones ya cerrados de los 15 PLU empacados de a 2 o 4 (sillas y
   mecedoras): 11,9 m³ anotados → 3,63 m³ reales. Queda en `activity_logs`.
+
+### Peso y m³ en todo el CEDI (2026-09-17)
+- **Una sola cuenta** (`src/lib/carga.ts`, copia `nuxt-app/server/utils/cargaCalc.ts`):
+  una unidad = caja master (suma de sus partes) ÷ unidades por caja del maestro. Contar
+  cajas o unidades da lo mismo. PLU sin medir = null, se cuenta aparte (`sinMedida`);
+  nunca cero.
+- **Siempre del maestro vigente, no sellado.** Corregir una medida arregla también lo ya
+  hecho: resurtido, pendientes, montacargas y capacidad se calculan al leer, y en muebles
+  la importación del maestro recalcula las líneas ya registradas
+  (`recalcularLineasMuebles`, las abiertas solo la medida por unidad).
+- **Dónde se ve:** tarjeta y tabla de Montaje (carga antes de repartir), tareas del operario
+  en Resurtido, tarjetas de Pendientes, registro abierto de Control Montacargas, tabla y
+  total de lo marcado en Resurtido por capacidad, y en Indicadores (CEDI) la tarjeta
+  "Peso y volumen movido" por persona con el desglose resurtido / pendientes / montacargas.
+- Pendiente del usuario: 3 PLU de muebles sin "Und Emp" en el maestro; se cuentan como 1
+  por caja hasta que se corrija el maestro.

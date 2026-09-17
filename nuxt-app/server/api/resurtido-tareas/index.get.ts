@@ -3,6 +3,7 @@ import { prisma } from '../../utils/prisma'
 import { requireAuth } from '../../utils/auth'
 import { mapMontaje, mapPendiente, mapTareaResurtido } from '../../utils/mapRow'
 import { progresoMontaje } from '../../utils/resurtidoCalc'
+import { conCargaMontajes, conCargaTareas, conCargaPendientes } from '../../utils/carga'
 import { assertEjecutor, MONTAJE_INCLUDE, PENDIENTE_INCLUDE, TAREA_INCLUDE } from '../../utils/resurtido'
 
 /**
@@ -71,9 +72,9 @@ export default defineEventHandler(async (event) => {
 
   return {
     success: true,
-    data: visibles(montajes),
-    reasignados: visibles(reasignados),
-    prioritarios: pendientes.map(mapPendiente),
-    recibidas: recibidas.map(mapTareaResurtido),
+    data: await conCargaMontajes(visibles(montajes)),
+    reasignados: await conCargaMontajes(visibles(reasignados)),
+    prioritarios: await conCargaPendientes(pendientes.map(mapPendiente)),
+    recibidas: await conCargaTareas(recibidas.map(mapTareaResurtido)),
   }
 })

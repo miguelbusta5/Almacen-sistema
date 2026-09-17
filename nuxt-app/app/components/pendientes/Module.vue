@@ -20,6 +20,7 @@ import {
   type NovedadPendiente, type PendienteDTO,
 } from '~/utils/resurtidoTareas'
 import { canSeeModule } from '~/utils/modulePermissions'
+import { fmtKg, fmtM3 } from '~/utils/carga'
 
 const { me, sessionLoaded } = useSessionState()
 const { show: showToast } = useToast()
@@ -432,7 +433,10 @@ const cerrados = computed(() => items.value.filter((p) => p.estado === 'COMPLETA
               <span class="estado" :class="`e-${colorPendiente(p.estado)}`">{{ ESTADO_PENDIENTE_LABEL[p.estado] }}</span>
             </header>
             <p class="vin-desc" :title="p.descripcion">{{ p.descripcion }}</p>
-            <p class="vin-und"><b class="tnum">{{ p.unidadesSolicitadas }}</b> unidades solicitadas</p>
+            <p class="vin-und">
+              <b class="tnum">{{ p.unidadesSolicitadas }}</b> unidades solicitadas
+              <span v-if="p.carga" class="vin-carga">· {{ fmtKg(p.carga.kg) }} · {{ fmtM3(p.carga.m3) }}</span>
+            </p>
             <p v-if="p.observacion" class="vin-obs">{{ p.observacion }}</p>
 
             <dl class="vin-meta">

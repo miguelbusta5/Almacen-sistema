@@ -8,7 +8,7 @@ import {
   ProductoMaestroDTO,
 } from "@/lib/productosMaestro";
 import { mapMedicionRows, tieneColumnasDeMedicion } from "@/lib/medidasCajaMaster";
-import { guardarMediciones } from "@/lib/medidasCajaMasterDb";
+import { guardarMediciones, recalcularLineasMuebles } from "@/lib/medidasCajaMasterDb";
 import { guardarProductosMaestro } from "@/lib/productosMaestroDb";
 import { readWorkbook, worksheetObjects, worksheetRows } from "@/lib/excel";
 import { validateImportFile, validateRowLimit } from "@/lib/fileSecurity";
@@ -84,12 +84,20 @@ export async function POST(req: NextRequest) {
   // filosofia que columnasPresentes — un maestro de precios no debe vaciar unas
   // medidas que no menciona.
   let mediciones = { productos: 0, cajas: 0 };
+  let lineasRecalculadas = 0;
   if (tieneColumnasDeMedicion(filasCrudas)) {
     const medidos = mapMedicionRows(filasCrudas);
     if (medidos.length) {
       const res = await guardarMediciones(prisma, medidos);
       mediciones = { productos: res.productos, cajas: res.cajas };
       errores.push(...res.errores);
+      // Las medidas no se congelan en el trabajo ya hecho: corregir el maestro
+      // arregla tambien las ordenes de muebles anteriores.
+      try {
+        lineasRecalculadas = await recalcularLineasMuebles(prisma, medidos.map((m) => m.plu));
+      } catch (error) {
+        errores.push(`recalculo de lineas de muebles: ${String(error)}`);
+      }
     }
   }
 
@@ -97,7 +105,8 @@ export async function POST(req: NextRequest) {
     `${importados} importados, ${actualizados} actualizados, ${ignorados} ignorados` +
     (mediciones.productos
       ? `, ${mediciones.productos} con medidas (${mediciones.cajas} cajas)`
-      : "");
+      : "") +
+    (lineasRecalculadas ? `, ${lineasRecalculadas} lineas de muebles recalculadas` : "");
 
   await prisma.activityLog.create({
     data: {
@@ -111,6 +120,6 @@ export async function POST(req: NextRequest) {
 
   return NextResponse.json({
     success: true,
-    data: { importados, actualizados, ignorados, errores, columnas, mediciones },
+    data: { importados, actualizados, ignorados, errores, columnas, mediciones, lineasRecalculadas },
   });
 }

@@ -1,7 +1,9 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
 import type { PickingResultado, SemaforoPicking } from '../../../server/utils/pickingCalc'
-type Preview = { carga: { id: string; nombre: string; montajeId: string | null }; filas: PickingResultado[] }
+import { fmtKg, fmtM3, type Carga } from '~/utils/carga'
+type FilaPicking = PickingResultado & { cargaTarea?: Carga }
+type Preview = { carga: { id: string; nombre: string; montajeId: string | null }; filas: FilaPicking[] }
 const preview = ref<Preview | null>(null), cargas = ref<{ id: string; nombre: string }[]>([]), operarios = ref<{ id: string; nombre: string }[]>([])
 const operarioId = ref(''), busy = ref(false), error = ref(''), archivo = ref<File | null>(null)
 
@@ -10,7 +12,7 @@ const operarioId = ref(''), busy = ref(false), error = ref(''), archivo = ref<Fi
 // genera el resurtido de los marcados; los rojos vienen marcados de entrada.
 const elegidos = ref<string[]>([])
 const SEMAFORO_LABEL: Record<SemaforoPicking, string> = { ROJO: 'Rojo', AMARILLO: 'Amarillo', VERDE: 'Verde' }
-const conTareas = (r: PickingResultado) => r.tareas.length > 0
+const conTareas = (r: FilaPicking) => r.tareas.length > 0
 const ORDEN_SEMAFORO: Record<string, number> = { ROJO: 0, AMARILLO: 1, VERDE: 2 }
 // Los mas vacios primero: es donde urge resurtir.
 const filasOrdenadas = computed(() => [...(preview.value?.filas ?? [])].sort((a, z) =>
@@ -22,6 +24,17 @@ const conteo = computed(() => {
   return c
 })
 const cajasElegidas = computed(() => (preview.value?.filas ?? []).filter(r => elegidos.value.includes(r.plu)).reduce((a, r) => a + r.tareas.length, 0))
+// Peso y m3 de lo marcado: es lo que va a mover el operario.
+const cargaElegida = computed(() => {
+  let kg = 0, m3 = 0, sinMedida = 0
+  for (const r of preview.value?.filas ?? []) {
+    if (!elegidos.value.includes(r.plu)) continue
+    if (!r.cargaTarea || (r.cargaTarea.kg == null && r.cargaTarea.m3 == null)) { sinMedida++; continue }
+    kg += r.cargaTarea.kg ?? 0
+    m3 += r.cargaTarea.m3 ?? 0
+  }
+  return { kg: Math.round(kg * 10) / 10, m3: Math.round(m3 * 1000) / 1000, sinMedida }
+})
 function alternar(plu: string) {
   elegidos.value = elegidos.value.includes(plu) ? elegidos.value.filter(p => p !== plu) : [...elegidos.value, plu]
 }
@@ -45,7 +58,7 @@ function aplicarPreview(p: Preview) {
 async function ejecutar(fn: () => Promise<void>) { busy.value = true; error.value = ''; try { await fn() } catch (e: any) { error.value = e.data?.statusMessage ?? 'No se pudo completar. Intenta de nuevo.' } finally { busy.value = false } }
 async function cargar(id: string) { await ejecutar(async () => { aplicarPreview(await $fetch<Preview>('/api/picking-teorico', { query: { id } })) }) }
 async function subir() { if (!archivo.value) return; await ejecutar(async () => { const fd = new FormData(); fd.append('archivo', archivo.value!); aplicarPreview(await $fetch<Preview>('/api/picking-teorico', { method: 'POST', body: fd })); cargas.value = (await $fetch<{ cargas: typeof cargas.value }>('/api/picking-teorico')).cargas }) }
-async function accion(accion: string, fila?: PickingResultado) {
+async function accion(accion: string, fila?: FilaPicking) {
   await ejecutar(async () => { aplicarPreview(await $fetch<Preview>('/api/picking-teorico/accion', { method: 'POST', body: { accion, id: preview.value?.carga.id, plu: fila?.plu, ubicacion: fila?.ubicacion, operarioId: operarioId.value, plus: elegidos.value, firma: JSON.stringify(preview.value?.filas) } })) })
 }
 onMounted(() => ejecutar(async () => {
@@ -70,20 +83,24 @@ onMounted(() => ejecutar(async () => {
 
     <article class="picking-card"><h2>Revisión del resurtido</h2><p>El semáforo compara lo que tiene hoy cada picking (teórico) con su capacidad (informe de capacidad). Solo se generan cajas master completas de los picking marcados.</p><p v-if="!preview.filas.length">Aún no hay capacidades publicadas. Finaliza un informe en Capacidad picking.</p>
       <div v-if="!preview.carga.montajeId && preview.filas.length" class="picking-actions sem-marcar">
-        <span class="sem-marcados">{{ elegidos.length }} picking marcados · {{ cajasElegidas }} tareas</span>
+        <span class="sem-marcados">
+          {{ elegidos.length }} picking marcados · {{ cajasElegidas }} tareas ·
+          {{ fmtKg(cargaElegida.kg) }} · {{ fmtM3(cargaElegida.m3) }}
+          <span v-if="cargaElegida.sinMedida" class="sem-sinmed">({{ cargaElegida.sinMedida }} sin medida)</span>
+        </span>
         <button class="btn" :disabled="busy" @click="marcarColor('ROJO')">+ Rojos</button>
         <button class="btn" :disabled="busy" @click="marcarColor('AMARILLO')">+ Amarillos</button>
         <button class="btn" :disabled="busy" @click="marcarColor('VERDE')">+ Verdes</button>
         <button class="btn" :disabled="busy" @click="marcarTodos">Todos</button>
         <button class="btn" :disabled="busy" @click="marcarNinguno">Ninguno</button>
       </div>
-      <div class="picking-table-wrap"><table><thead><tr><th v-if="!preview.carga.montajeId">Resurtir</th><th>Semáforo</th><th>PLU / picking</th><th>Capacidad actual</th><th>Capacidad / disponible (un.)</th><th>Cajas requeridas</th><th>Origen y unidades a bajar</th><th>Faltante (cajas)</th><th>Estado</th></tr></thead><tbody>
+      <div class="picking-table-wrap"><table><thead><tr><th v-if="!preview.carga.montajeId">Resurtir</th><th>Semáforo</th><th>PLU / picking</th><th>Capacidad actual</th><th>Capacidad / disponible (un.)</th><th>Cajas requeridas</th><th>Peso / m³</th><th>Origen y unidades a bajar</th><th>Faltante (cajas)</th><th>Estado</th></tr></thead><tbody>
         <tr v-for="r in filasOrdenadas" :key="r.plu" :class="{ 'sem-fila-on': elegidos.includes(r.plu) }">
           <td v-if="!preview.carga.montajeId"><input type="checkbox" :aria-label="`Resurtir PLU ${r.plu}`" :checked="elegidos.includes(r.plu)" :disabled="busy || !conTareas(r)" @change="alternar(r.plu)"></td>
           <td><span v-if="r.semaforo" class="sem-chip" :class="`sem-${r.semaforo.toLowerCase()}`"><span class="sem-dot" />{{ SEMAFORO_LABEL[r.semaforo] }}</span><span v-else class="sem-sin">Sin dato</span></td>
           <td>{{ r.plu }}<br>{{ r.ubicacion }}</td>
           <td><strong v-if="r.porcentaje != null" class="sem-pct">{{ r.porcentaje }} %</strong><span v-else>—</span></td>
-          <td>{{ r.capacidad }} / {{ r.disponible ?? 'Sin dato' }}</td><td>{{ r.cajasSolicitadas }}</td><td><div v-for="t in r.tareas" :key="t.altura">{{ t.altura }} · {{ t.unidadesSolicitadas }} un.</div></td><td>{{ r.faltantes }}</td><td>{{ r.aviso || (r.doble ? 'Picking validado' : 'Listo') }}</td>
+          <td>{{ r.capacidad }} / {{ r.disponible ?? 'Sin dato' }}</td><td>{{ r.cajasSolicitadas }}</td><td>{{ fmtKg(r.cargaTarea?.kg) }} · {{ fmtM3(r.cargaTarea?.m3) }}</td><td><div v-for="t in r.tareas" :key="t.altura">{{ t.altura }} · {{ t.unidadesSolicitadas }} un.</div></td><td>{{ r.faltantes }}</td><td>{{ r.aviso || (r.doble ? 'Picking validado' : 'Listo') }}</td>
         </tr>
       </tbody></table></div>
     <div v-if="!preview.carga.montajeId" class="picking-actions"><label>Asignar a<select v-model="operarioId" :disabled="busy"><option value="">Seleccionar operario</option><option v-for="o in operarios" :key="o.id" :value="o.id">{{ o.nombre }}</option></select></label><button class="btn primary" :disabled="busy || !operarioId || !cajasElegidas" @click="accion('generar')">Generar resurtido de {{ elegidos.length }} picking</button></div></article>
@@ -106,4 +123,5 @@ onMounted(() => ejecutar(async () => {
 .sem-marcados { margin-right: auto; font-size: 13px; font-weight: 700; color: var(--ink); }
 .sem-fila-on td { background: color-mix(in srgb, var(--brand) 6%, transparent); }
 @media (max-width: 700px) { .semaforo-resumen { grid-template-columns: 1fr; } .sem-marcados { width: 100%; } }
+.sem-sinmed { color: var(--u-aviso); font-weight: 700; }
 </style>

@@ -11,6 +11,7 @@
 // ayudante, y entonces está en modo confirmación aunque su rol sea el de crear.
 import { ref, reactive, computed, watch, nextTick } from 'vue'
 import { UserPlus, Trash2, TriangleAlert, CheckCircle2, Boxes } from '@lucide/vue'
+import { fmtKg, fmtM3 } from '~/utils/carga'
 import {
   calcularCantidadTotal, esUbicacionCanonica, fmtHoraMovimiento, normalizarUbicacion,
   requiereUbicacionInicial, tieneCantidades, TIPO_NOVEDAD_LABEL, cronometroTramo,
@@ -178,6 +179,7 @@ function ubicar() {
         {{ m.cajas }} cajas × {{ m.unidadesPorCaja }}
         <template v-if="m.hayReguero"> + {{ m.unidadesSueltas }} sueltas</template>
         = <b class="tnum">{{ m.cantidadTotal }}</b> unidades
+        <template v-if="m.carga"> · {{ fmtKg(m.carga.kg) }} · {{ fmtM3(m.carga.m3) }}</template>
       </template>
       <template v-else>Sin cantidades todavía</template>
       <template v-if="m.ubicacionInicial"> · desde {{ m.ubicacionInicial }}</template>

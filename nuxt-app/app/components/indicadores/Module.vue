@@ -20,8 +20,9 @@ import {
   etiquetaNoche, MIN_SEGUNDOS_PRODUCTIVIDAD, PRESETS_NOCHE, PRESETS_RANGO, rangoDePreset, ROL_MEDIDO_LABEL,
   TIPO_TAREA_COLOR, TIPO_TAREA_LABEL, TIPOS_TAREA,
   type BarraH, type ColumnaTabla, type IndicadoresPeriodo, type Jornada, type PresetRango,
-  type RespuestaIndicadores, type ResurtidoOperario, type TiemposMuertosPeriodo,
+  type CargaPersona, type RespuestaIndicadores, type ResurtidoOperario, type TiemposMuertosPeriodo,
 } from '~/utils/indicadores'
+import { fmtKg, fmtM3 } from '~/utils/carga'
 
 const { me, sessionLoaded } = useSessionState()
 const { show: showToast } = useToast()
@@ -77,6 +78,7 @@ watch(rol, () => {
 const datos = ref<IndicadoresPeriodo | null>(null)
 const muertos = ref<TiemposMuertosPeriodo | null>(null)
 const resurtido = ref<ResurtidoOperario[]>([])
+const carga = ref<CargaPersona[]>([])
 const cargando = ref(false)
 
 // Tiempo laborado y tiempos muertos salen de la misma consulta y de los mismos
@@ -104,6 +106,7 @@ async function cargar() {
     datos.value = res.data
     muertos.value = res.muertos
     resurtido.value = res.resurtido ?? []
+    carga.value = res.carga ?? []
     equipo.value = res.equipo
   } catch (e) {
     showToast(apiErr(e, 'No se pudieron cargar los indicadores'), true)
@@ -245,6 +248,31 @@ const barrasResurtido = computed<BarraH[]>(() => resurtido.value
     valor: r.plusPorHora!,
     texto: `${fmtNumero(r.plusPorHora)} PLU/h`,
   })))
+
+// ── Peso y volumen movido ──
+// Del maestro vigente: corregir una medida arregla tambien lo que ya paso.
+const columnasCarga: ColumnaTabla[] = [
+  { key: 'nombre', label: 'Persona' },
+  { key: 'kg', label: 'Peso total', num: true },
+  { key: 'm3', label: 'Volumen total', num: true },
+  { key: 'resurtido', label: 'Resurtido', num: true },
+  { key: 'pendiente', label: 'Pendientes', num: true },
+  { key: 'montacargas', label: 'Montacargas', num: true },
+  { key: 'sinMedida', label: 'Sin medida', num: true },
+]
+const tablaCarga = computed(() => carga.value.map((c) => ({
+  nombre: c.nombre,
+  kg: fmtKg(c.kg),
+  m3: fmtM3(c.m3),
+  resurtido: fmtM3(c.porTipo.resurtido.m3),
+  pendiente: fmtM3(c.porTipo.pendiente.m3),
+  montacargas: fmtM3(c.porTipo.montacargas.m3),
+  sinMedida: c.sinMedida ? String(c.sinMedida) : '-',
+})))
+const barrasCarga = computed<BarraH[]>(() => carga.value
+  .filter((c) => c.m3 > 0)
+  .map((c) => ({ id: c.id, etiqueta: c.nombre, valor: c.m3, texto: fmtM3(c.m3) })))
+const sinMedidaTotal = computed(() => carga.value.reduce((a, c) => a + c.sinMedida, 0))
 
 const columnasEfectividad: ColumnaTabla[] = [
   { key: 'nombre', label: 'Persona' },
@@ -522,6 +550,24 @@ const formatoHoras = (v: number) => fmtHorasDecimal(v)
         </p>
 
         <IndicadoresTiempoPersonas class="bloque" :personas="datos.personas" />
+
+        <IndicadoresTarjeta
+          v-if="carga.length" class="bloque" titulo="Peso y volumen movido"
+          subtitulo="Lo que bajó y ubicó cada persona en el periodo: resurtido, pendientes y montacargas. Sale del maestro de medidas."
+        >
+          <IndicadoresBarrasH
+            v-if="barrasCarga.length" :items="barrasCarga" medida="m³"
+            :formato-eje="(v) => `${Math.round(v)} m³`"
+          />
+          <p v-else class="aviso">Todavía no hay trabajo cerrado con PLU medidos en este periodo.</p>
+          <p v-if="sinMedidaTotal" class="pie">
+            {{ sinMedidaTotal }} {{ sinMedidaTotal === 1 ? 'trabajo no se pudo contar' : 'trabajos no se pudieron contar' }}:
+            su PLU no tiene medidas en el maestro.
+          </p>
+          <template #tabla>
+            <IndicadoresTabla :columnas="columnasCarga" :filas="tablaCarga" principal="nombre" />
+          </template>
+        </IndicadoresTarjeta>
 
         <IndicadoresTarjeta
           v-if="resurtido.length" class="bloque" titulo="Resurtido por operario"

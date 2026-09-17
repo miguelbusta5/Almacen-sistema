@@ -414,6 +414,8 @@ export const API_MONTAJE = '/api/montaje-resurtido'
 export const API_PENDIENTES = '/api/pendientes'
 
 export interface TareaResurtidoDTO {
+  /** Peso y m3 de lo que hay que bajar (del maestro vigente). */
+  carga?: { kg: number | null; m3: number | null }
   /** Tramos por persona: dan el reloj de quien lo tiene ahora. */
   tramos?: TramoTiempo[]
   pausaId?: string | null
@@ -458,6 +460,8 @@ export interface MontajeResurtidoDTO {
   completadoAt: string | null
   /** Supervision lo paro: las tareas sin empezar estan detenidas. */
   detenidoAt?: string | null
+  /** Peso y m3 de todo lo que hay que bajar (del maestro vigente). */
+  carga?: { kg: number; m3: number; sinMedida: number }
   progreso: ProgresoMontaje
   tareas: TareaResurtidoDTO[]
 }
@@ -477,6 +481,8 @@ export interface SugerenciaPendienteDTO {
 }
 
 export interface PendienteDTO {
+  /** Peso y m3 de lo que hay que bajar (del maestro vigente). */
+  carga?: { kg: number | null; m3: number | null }
   /** Tramos por persona: dan el reloj de quien lo tiene ahora. */
   tramos?: TramoTiempo[]
   pausaId?: string | null

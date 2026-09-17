@@ -4,6 +4,7 @@ import { requireAuth } from '../../utils/auth'
 import { mapMontaje } from '../../utils/mapRow'
 import { assertVeMontaje, MONTAJE_INCLUDE } from '../../utils/resurtido'
 import { limitesRango } from '../../utils/indicadoresCalc'
+import { conCargaMontajes } from '../../utils/carga'
 
 const RE_DIA = /^\d{4}-\d{2}-\d{2}$/
 
@@ -30,5 +31,6 @@ export default defineEventHandler(async (event) => {
     take: rango ? 300 : 60,
   })
 
-  return { success: true, data: rows.map(mapMontaje) }
+  // Peso y m3 de lo que hay que bajar: supervision lo ve antes de repartir.
+  return { success: true, data: await conCargaMontajes(rows.map(mapMontaje)) }
 })

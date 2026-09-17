@@ -6,7 +6,8 @@ import { enRefrescoSilencioso, useAutoRefresh } from '~/composables/useAutoRefre
 // ve por montaje es el tiempo transcurrido desde que se repartió y cuánto lleva
 // hecho el operario, que es lo que sirve para saber si va a tiempo.
 import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
-import { RefreshCw, Upload, ClipboardList, Trash2, User, UserPlus, CirclePause, CalendarDays } from '@lucide/vue'
+import { RefreshCw, Upload, ClipboardList, Trash2, User, UserPlus, CirclePause, CalendarDays, Weight } from '@lucide/vue'
+import { avisoSinMedida, fmtKg, fmtM3 } from '~/utils/carga'
 import { ensureSession, useSessionState } from '~/composables/useSession'
 import { useToast } from '~/composables/useToast'
 import {
@@ -303,6 +304,13 @@ function transcurrido(m: MontajeResurtidoDTO): string {
 
           <!-- Barra de avance: es lo que se mira de un vistazo para saber si el
                resurtido va a tiempo. -->
+          <!-- Lo que va a mover el operario: se ve antes de repartir. -->
+          <p v-if="m.carga" class="vin-carga">
+            <Weight :size="13" />
+            <b>{{ fmtKg(m.carga.kg) }}</b> · <b>{{ fmtM3(m.carga.m3) }}</b>
+            <span v-if="m.carga.sinMedida" class="vin-sinmed">{{ avisoSinMedida(m.carga.sinMedida) }}</span>
+          </p>
+
           <div class="barra" :aria-valuenow="m.progreso.porcentaje" role="progressbar">
             <span class="barra-fill" :style="{ width: `${m.progreso.porcentaje}%` }" />
           </div>
@@ -394,6 +402,7 @@ function transcurrido(m: MontajeResurtidoDTO): string {
               <tr>
                 <th class="num">#</th><th>PLU</th><th>Descripción</th><th>Altura</th>
                 <th>Picking</th><th class="num">Solicitadas</th><th class="num">Bajadas</th>
+                <th class="num">Peso</th><th class="num">m³</th>
                 <th>Estado</th><th>Responsable</th><th class="num">Tiempo</th>
               </tr>
             </thead>
@@ -406,6 +415,8 @@ function transcurrido(m: MontajeResurtidoDTO): string {
                 <td><span class="ubic">{{ t.pickingFinal ?? t.pickingSugerido }}</span></td>
                 <td class="tnum">{{ t.unidadesSolicitadas }}</td>
                 <td class="tnum strong">{{ t.unidadesBajadas ?? '—' }}</td>
+                <td class="tnum">{{ fmtKg(t.carga?.kg) }}</td>
+                <td class="tnum">{{ fmtM3(t.carga?.m3) }}</td>
                 <td>{{ ESTADO_TAREA_LABEL[t.estado] }}</td>
                 <td>{{ t.responsableNombre ?? detalle.operarioNombre }}</td>
                 <td class="tnum">{{ fmtDuracionTarea(t.duracionSegundos) }}</td>
@@ -443,6 +454,10 @@ function transcurrido(m: MontajeResurtidoDTO): string {
 .vin-op { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 700; color: var(--ink); }
 .vin-tiempo { font-family: var(--display); font-size: 15px; font-weight: 700; color: var(--brand); }
 .vin-fechas { margin: 0; font-size: 11.5px; color: var(--muted); }
+.vin-carga { display: flex; align-items: center; gap: 6px; margin: 0; font-size: 12px; color: var(--muted); }
+.vin-carga > svg { color: var(--brand); }
+.vin-carga b { color: var(--ink); font-variant-numeric: tabular-nums; }
+.vin-sinmed { margin-left: auto; font-weight: 700; color: var(--u-aviso); }
 .vin-parado { display: flex; align-items: center; gap: 5px; margin: 0; padding: 5px 8px; border-radius: var(--r-sm); font-size: 11.5px; font-weight: 700; color: var(--u-aviso); background: color-mix(in srgb, var(--u-aviso) 12%, transparent); }
 .fechas { display: flex; align-items: flex-end; gap: 10px; flex-wrap: wrap; padding: 12px 14px; }
 .fechas-ic { color: var(--muted); margin-bottom: 9px; }

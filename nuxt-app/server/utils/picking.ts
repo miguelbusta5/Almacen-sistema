@@ -3,6 +3,8 @@ import type { Prisma } from '@prisma/client'
 import { prisma } from './prisma'
 import { calcularPicking, unidadesCapacidad, type PickingFila, type PickingValidacion } from './pickingCalc'
 import { assertPuedeMontar, assertVeMontaje } from './resurtido'
+import { medidasDePlus } from './carga'
+import { cargaDeUnidades } from './cargaCalc'
 import type { SessionUser } from './auth'
 
 export async function accesoPicking(id: string) {
@@ -69,5 +71,11 @@ export async function previewPicking(tx: Prisma.TransactionClient, id: string) {
   const productos = await tx.productoMaestro.findMany({ where: { plu: { in: plus } }, select: { plu: true, unidadesPorCaja: true, descripcion: true } })
   const maestro = new Map(productos.map(p => [p.plu, p]))
   const filas = calcularPicking(capacidades.map(c => ({ ...c, unidadesPorCaja: maestro.get(c.plu)?.unidadesPorCaja ?? 0, descripcion: maestro.get(c.plu)?.descripcion ?? c.plu })), carga.filas as unknown as PickingFila[], await plusOcupados(tx, plus), carga.validaciones as unknown as Record<string, PickingValidacion>)
-  return { carga: { id: carga.id, nombre: carga.nombre, creadoAt: carga.creadoAt, montajeId: carga.montajeId }, filas }
+  // Peso y m3 de lo que hay que bajar en cada picking: se ve antes de repartir.
+  const medidas = await medidasDePlus(filas.map(f => f.plu), tx)
+  const conPeso = filas.map(f => ({
+    ...f,
+    cargaTarea: cargaDeUnidades(f.tareas.reduce((a, t) => a + t.unidadesSolicitadas, 0), medidas.get(f.plu)),
+  }))
+  return { carga: { id: carga.id, nombre: carga.nombre, creadoAt: carga.creadoAt, montajeId: carga.montajeId }, filas: conPeso }
 }

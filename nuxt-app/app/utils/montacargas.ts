@@ -113,6 +113,8 @@ export interface NovedadMovimiento {
 }
 
 export interface Movimiento {
+  /** Peso y m3 de lo movido (del maestro vigente). */
+  carga?: { kg: number | null; m3: number | null }
   pausaId?: string | null
   pausaInicio?: string | null
   pausaSegundos?: number
