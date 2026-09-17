@@ -7,7 +7,7 @@ import { USER_ROLE_VALUES } from "@/lib/roles";
 import type { Prisma } from "@prisma/client";
 
 const updateSchema = z.object({
-  name: z.string().min(2).optional(),
+  name: z.string().trim().min(2).transform((s) => s.toUpperCase()).optional(),
   role: z.enum(USER_ROLE_VALUES).optional(),
   active: z.boolean().optional(),
   password: z.string().min(8, "Contraseña mínimo 8 caracteres").optional(),

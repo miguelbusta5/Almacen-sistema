@@ -1136,3 +1136,19 @@ Lógica pura en `src/lib/tareasGenerales.ts` (copia de Nitro en
   de la PC. Después, si falta, se pide la ciudad. Cancelar vuelve a la parrilla.
 - **Entrega a Transporte:** buscador en pendientes y entregadas por orden, cliente, ciudad o
   PLU (`?buscar=`, en entregadas busca en todo el histórico).
+
+### Admin con permisos por persona, nombres en mayúscula y semáforo de capacidad (2026-09-17)
+- **ADMIN** tiene siempre los permisos por persona (`puedeMontarResurtido`,
+  `puedeResolverNovedades`): montar/parar/reasignar resurtido, pendientes, resurtido por
+  capacidad, verificar novedades de montacargas. `me.can` lo refleja. Los avisos siguen
+  llegando solo a quien tiene el permiso marcado.
+- **Nombres de usuario en MAYÚSCULA:** crear y editar (Nuxt y Next) guardan `trim().toUpperCase()`;
+  los existentes se pasaron a mayúscula el 2026-09-17 (queda en `activity_logs`).
+- **Tareas generales:** un montacarguista asignado también puede apoyar a otro montacarguista
+  (no a sí mismo); su tiempo suma a los dos sin duplicar.
+- **Resurtido por capacidad (Montaje › Por capacidad picking):** cada picking lleva
+  `porcentaje` = disponible del teórico / capacidad del informe y `semaforo`
+  (ROJO ≤25 %, AMARILLO ≤50 %, VERDE >50 %; `semaforoPicking` en `pickingCalc`). La tabla
+  sale de más vacío a más lleno, con casilla por picking; los rojos vienen marcados y hay
+  botones + Rojos / + Amarillos / + Verdes / Todos / Ninguno. `generar` exige `plus` y solo
+  crea las tareas de los elegidos.

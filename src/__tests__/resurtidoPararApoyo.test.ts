@@ -87,9 +87,9 @@ describe("resurtido — parar y fechas", () => {
 });
 
 describe("tareas generales — patinador apoyando a un montacarguista", () => {
-  it("solo un operario de almacenamiento apoya y solo a un montacarguista activo", () => {
+  it("un operario o un montacarguista apoya, y solo a un montacarguista activo", () => {
     const api = leer("nuxt-app/server/api/tareas-generales/index.post.ts");
-    expect(api).toContain("rolDe.get(p) !== 'OPERARIO_ALMACENAMIENTO'");
+    expect(api).toContain("['OPERARIO_ALMACENAMIENTO', 'MONTACARGAS'].includes(rolDe.get(p)");
     expect(api).toContain("role: 'MONTACARGAS'");
     expect(api).toContain("apoyaAId: apoyaA.get(u.id)");
   });

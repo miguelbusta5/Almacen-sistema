@@ -48,8 +48,9 @@ const elegidos = ref<string[]>([])
 // Patinador -> montacarguista al que apoya: su tiempo le suma tambien a el.
 const apoyos = ref<Record<string, string>>({})
 const montacarguistas = computed(() => operarios.value.filter((o) => o.rol === 'MONTACARGAS'))
+// Patinador: un operario de almacenamiento o un montacarguista elegido.
 const patinadoresElegidos = computed(() => operarios.value
-  .filter((o) => o.rol === 'OPERARIO_ALMACENAMIENTO' && elegidos.value.includes(o.id)))
+  .filter((o) => ['OPERARIO_ALMACENAMIENTO', 'MONTACARGAS'].includes(o.rol) && elegidos.value.includes(o.id)))
 
 const ahora = ref(Date.now())
 let tick: ReturnType<typeof setInterval> | null = null
@@ -254,7 +255,7 @@ useAutoRefresh({ onRefresh: () => (guardando.value || creando.value ? undefined 
             <span class="apoyo-nombre">{{ p.nombre }}</span>
             <select v-model="apoyos[p.id]" class="input apoyo-sel">
               <option value="">No apoya a nadie</option>
-              <option v-for="m in montacarguistas" :key="m.id" :value="m.id">Apoya a {{ m.nombre }}</option>
+              <option v-for="m in montacarguistas.filter((x) => x.id !== p.id)" :key="m.id" :value="m.id">Apoya a {{ m.nombre }}</option>
             </select>
           </label>
         </div>

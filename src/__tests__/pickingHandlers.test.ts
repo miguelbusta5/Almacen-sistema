@@ -78,7 +78,7 @@ describe('confirmación de teórico', () => {
     const tx = { user: {findFirst: vi.fn(async () => ({id:'o1'}))}, montajeResurtido: {create:vi.fn(async () => ({id:'m1'}))}, pickingTeorico:{update:vi.fn(async ({data}: any) => {montajeId=data.montajeId})}, activityLog:{create:vi.fn()} }
     const preview = vi.fn(async () => ({carga:{id:'t1',nombre:'Excel',montajeId},filas}))
     const handler = load('api/picking-teorico/accion.post.ts',{h3,'../../utils/auth':{requireAuth:async()=>({id:'u1',role:'ADMIN'})},'../../utils/picking':{bloquearPicking:async()=>{},exigirTeorico:async()=>{},previewPicking:preview},'../../utils/prisma':{prisma:{$transaction:(fn:any)=>{const run=cola.then(()=>fn(tx));cola=run.catch(()=>{});return run}}},'../../utils/exportacionesCalc':{todayBogota:()=>new Date()}})
-    return {handler,tx,preview,body:{id:'t1',accion:'generar',operarioId:'o1',firma:JSON.stringify(filas)}}
+    return {handler,tx,preview,body:{id:'t1',accion:'generar',operarioId:'o1',plus:['10'],firma:JSON.stringify(filas)}}
   }
   it('recalcula y rechaza una vista previa desactualizada', async () => {
     const e = scenario(); await expect(e.handler({...e.body,firma:'vieja'})).rejects.toMatchObject({statusCode:409}); expect(e.tx.montajeResurtido.create).not.toHaveBeenCalled()

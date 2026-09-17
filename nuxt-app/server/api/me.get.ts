@@ -27,10 +27,11 @@ export default defineEventHandler(async (event) => {
         create: can(user.role, 'create'),
         edit: can(user.role, 'edit'),
         delete: can(user.role, 'delete'),
-        resolverNovedades: extra?.puedeResolverNovedades ?? false,
+        // El administrador tiene siempre los permisos por persona.
+        resolverNovedades: user.role === 'ADMIN' || (extra?.puedeResolverNovedades ?? false),
         // Montar un resurtido y asignar pendientes: permiso por persona, igual
         // que el de cerrar novedades.
-        montarResurtido: extra?.puedeMontarResurtido ?? false,
+        montarResurtido: user.role === 'ADMIN' || (extra?.puedeMontarResurtido ?? false),
         capacidadPicking: await accesoPicking(user.id).catch(() => false),
       },
     },

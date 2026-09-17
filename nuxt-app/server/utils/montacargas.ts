@@ -61,9 +61,10 @@ export function assertGestorMontacargas(role: string, mensaje = 'No autorizado')
 export async function puedeResolverNovedades(usuarioId: string): Promise<boolean> {
   const u = await prisma.user.findUnique({
     where: { id: usuarioId },
-    select: { puedeResolverNovedades: true },
+    select: { puedeResolverNovedades: true, role: true, active: true },
   })
-  return u?.puedeResolverNovedades === true
+  // El administrador puede lo mismo que quien tiene el permiso por persona.
+  return u?.puedeResolverNovedades === true || (u?.role === 'ADMIN' && u.active === true)
 }
 
 export async function assertPuedeResolverNovedades(usuarioId: string) {

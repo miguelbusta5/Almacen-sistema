@@ -5,7 +5,20 @@ export interface PickingResultado {
   plu: string; ubicacion: string; descripcion: string; disponible: number | null;
   capacidad: number; cajasSolicitadas: number; faltantes: number; aviso: string;
   doble: boolean; ubicaciones: string[];
+  porcentaje: number | null; semaforo: SemaforoPicking | null;
   tareas: { plu: string; descripcion: string; altura: string; pickingSugerido: string; unidadesSolicitadas: number }[];
+}
+// Semaforo del picking: lo que tiene hoy (teorico) sobre su capacidad (informe).
+export type SemaforoPicking = 'ROJO' | 'AMARILLO' | 'VERDE';
+export const LIMITE_ROJO = 25;
+export const LIMITE_AMARILLO = 50;
+export function porcentajePicking(disponible: number | null | undefined, capacidad: number): number | null {
+  if (disponible == null || !Number.isFinite(disponible) || !Number.isFinite(capacidad) || capacidad <= 0) return null;
+  return Math.round((disponible / capacidad) * 100);
+}
+export function semaforoPicking(porcentaje: number | null): SemaforoPicking | null {
+  if (porcentaje == null) return null;
+  return porcentaje <= LIMITE_ROJO ? 'ROJO' : porcentaje <= LIMITE_AMARILLO ? 'AMARILLO' : 'VERDE';
 }
 export function textoPicking(v: unknown): string {
   return String(v ?? '').trim().normalize('NFD').replace(/[\u0300-\u036f]/g, '').toUpperCase();
@@ -37,7 +50,9 @@ export function calcularPicking(bases: PickingBase[], filas: PickingFila[], bloq
     const fs = porPlu.get(b.plu) ?? [], retiros = fs.filter(f => f.concepto === 'RETIRO');
     const ubicaciones = [...new Set(retiros.map(f => f.ubicacion))];
     const retiro = retiros.find(f => f.ubicacion === b.ubicacion);
-    const r: PickingResultado = { plu: b.plu, ubicacion: b.ubicacion, descripcion: b.descripcion, disponible: retiro?.disponible ?? null, capacidad: b.cajas * b.unidadesPorCaja, cajasSolicitadas: 0, faltantes: 0, aviso: '', doble: ubicaciones.length > 1, ubicaciones, tareas: [] };
+    const r: PickingResultado = { plu: b.plu, ubicacion: b.ubicacion, descripcion: b.descripcion, disponible: retiro?.disponible ?? null, capacidad: b.cajas * b.unidadesPorCaja, cajasSolicitadas: 0, faltantes: 0, aviso: '', doble: ubicaciones.length > 1, ubicaciones, tareas: [], porcentaje: null, semaforo: null };
+    r.porcentaje = porcentajePicking(r.disponible, r.capacidad);
+    r.semaforo = semaforoPicking(r.porcentaje);
     if (bloqueados.has(b.plu)) { r.aviso = 'Resurtido pendiente o en ejecución'; return r; }
     if (r.doble && validaciones[b.plu]?.ubicacion !== b.ubicacion) { r.aviso = 'Pendiente por validar: doble picking'; return r; }
     if (!retiro) { r.aviso = 'Picking ausente del teórico'; return r; }

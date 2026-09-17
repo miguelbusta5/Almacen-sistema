@@ -35,14 +35,15 @@ export const BCRYPT_ROUNDS = 12
 
 export const createUserSchema = z.object({
   email: z.string().email('Email invalido'),
-  name: z.string().min(2, 'Nombre muy corto'),
+  // Los nombres se guardan siempre en MAYUSCULA.
+  name: z.string().trim().min(2, 'Nombre muy corto').transform((s) => s.toUpperCase()),
   password: z.string().min(8, 'Contrasena minimo 8 caracteres'),
   role: roleSchema.default('INVENTARIO'),
   transportistaId: z.string().nullable().optional(),
 })
 
 export const updateUserSchema = z.object({
-  name: z.string().min(2).optional(),
+  name: z.string().trim().min(2).transform((s) => s.toUpperCase()).optional(),
   role: roleSchema.optional(),
   active: z.boolean().optional(),
   password: z.string().min(8, 'Contraseña mínimo 8 caracteres').optional(),

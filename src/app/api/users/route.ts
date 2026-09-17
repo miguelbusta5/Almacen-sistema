@@ -8,7 +8,8 @@ import type { Role } from "@prisma/client";
 
 const createUserSchema = z.object({
   email: z.string().email("Email invalido"),
-  name: z.string().min(2, "Nombre muy corto"),
+  // Los nombres se guardan siempre en MAYUSCULA.
+  name: z.string().trim().min(2, "Nombre muy corto").transform((s) => s.toUpperCase()),
   password: z.string().min(8, "Contrasena minimo 8 caracteres"),
   role: z.enum(USER_ROLE_VALUES).default("INVENTARIO"),
   transportistaId: z.string().nullable().optional(), // vincular a transportista existente

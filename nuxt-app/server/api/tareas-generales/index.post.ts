@@ -42,13 +42,17 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 400, statusMessage: 'Alguno de los operarios ya no está disponible' })
   }
 
-  // Apoyo: solo un operario de almacenamiento asignado apoya, y solo a un
-  // montacarguista activo. Su tiempo le cuenta a los dos (sin duplicar).
+  // Apoyo: un operario de almacenamiento o un montacarguista asignado apoya a
+  // un montacarguista activo (no a si mismo). Su tiempo le cuenta a los dos
+  // (sin duplicar).
   const apoyos = Object.entries(d.apoyos ?? {}).filter(([, m]) => !!m)
   if (apoyos.length) {
     const rolDe = new Map(usuarios.map((u) => [u.id, u.role]))
-    if (apoyos.some(([p]) => rolDe.get(p) !== 'OPERARIO_ALMACENAMIENTO')) {
-      throw createError({ statusCode: 400, statusMessage: 'Solo un operario de almacenamiento asignado puede apoyar a un montacarguista' })
+    if (apoyos.some(([p]) => !['OPERARIO_ALMACENAMIENTO', 'MONTACARGAS'].includes(rolDe.get(p) ?? ''))) {
+      throw createError({ statusCode: 400, statusMessage: 'Solo un operario de almacenamiento o un montacarguista asignado puede apoyar a un montacarguista' })
+    }
+    if (apoyos.some(([p, m]) => p === m)) {
+      throw createError({ statusCode: 400, statusMessage: 'Un montacarguista no puede apoyarse a sí mismo' })
     }
     const idsMonta = [...new Set(apoyos.map(([, m]) => m))]
     const montas = await prisma.user.count({ where: { id: { in: idsMonta }, active: true, role: 'MONTACARGAS' } })

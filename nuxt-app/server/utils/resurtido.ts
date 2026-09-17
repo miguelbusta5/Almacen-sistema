@@ -47,13 +47,14 @@ export function puedeVerAlmacenamiento(role: string): boolean {
  * y un supervisor que se cree manana no debe heredarlo solo por serlo. Se
  * consulta contra la base y no contra el token porque un ADMIN lo concede desde
  * Usuarios: leerlo del JWT lo dejaria obsoleto hasta el proximo inicio de sesion.
+ * El administrador lo tiene siempre.
  */
 export async function puedeMontarResurtido(usuarioId: string): Promise<boolean> {
   const u = await prisma.user.findUnique({
     where: { id: usuarioId },
-    select: { puedeMontarResurtido: true },
+    select: { puedeMontarResurtido: true, role: true, active: true },
   })
-  return u?.puedeMontarResurtido === true
+  return u?.puedeMontarResurtido === true || (u?.role === 'ADMIN' && u.active === true)
 }
 
 export async function assertPuedeMontar(usuarioId: string) {
