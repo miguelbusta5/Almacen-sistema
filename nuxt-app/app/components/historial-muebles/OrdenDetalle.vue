@@ -4,7 +4,7 @@
 import { computed, onMounted, ref } from 'vue'
 import { X, Loader2, Pencil, MapPin, TriangleAlert, Hammer } from '@lucide/vue'
 import { useToast } from '~/composables/useToast'
-import { ESTADO_LINEA_LABEL, ESTADO_ORDEN_LABEL, fmtMin, mensajeError, type Linea, type Orden } from '~/utils/muebles'
+import { ESTADO_LINEA_LABEL, ESTADO_ORDEN_LABEL, fmtKg, fmtM3, fmtMin, mensajeError, type Linea, type Orden } from '~/utils/muebles'
 
 const props = defineProps<{ ordenId: string; puedeCorregir: boolean }>()
 const emit = defineEmits<{
@@ -70,6 +70,10 @@ async function corregido() {
             <span v-if="orden.ciudadEnvio"> · <MapPin :size="12" /> {{ orden.ciudadEnvio }}</span>
             <span v-if="orden.cliente"> · {{ orden.cliente }}</span>
             · {{ orden.resumen.total }} PLU
+            · {{ fmtKg(orden.volumen.kg) }} · {{ fmtM3(orden.volumen.m3) }}
+            <span v-if="orden.volumen.lineasSinMedida" class="p-sinmed">
+              ({{ orden.volumen.lineasSinMedida }} sin medida)
+            </span>
           </p>
         </div>
         <button class="icono" aria-label="Cerrar" @click="emit('cerrar')"><X :size="18" /></button>
@@ -99,6 +103,7 @@ async function corregido() {
                 <th>PLU</th>
                 <th>Ubicación / rótulo</th>
                 <th class="num">Und</th>
+                <th class="num">Peso / m³</th>
                 <th>Picking</th>
                 <th>Inspección</th>
                 <th>Estado</th>
@@ -116,6 +121,10 @@ async function corregido() {
                   <span class="desc mono">{{ l.numeroCaja || '—' }}</span>
                 </td>
                 <td class="num">{{ l.unidades }}</td>
+                <td class="num">
+                  <strong class="tnum">{{ fmtKg(l.pesoTotalKg) }}</strong>
+                  <span class="desc tnum">{{ fmtM3(l.volumenTotalM3) }}</span>
+                </td>
                 <td>
                   <strong class="tnum">{{ fmtMin(l.duracionPickingMin) }}</strong>
                   <span class="desc">{{ l.operario?.nombre ?? '—' }} · {{ hora(l.horaInicio) }}</span>
@@ -194,4 +203,5 @@ async function corregido() {
 .cargando { display: flex; align-items: center; gap: 9px; padding: 26px; justify-content: center; color: var(--muted); font-size: 13px; }
 .spin { animation: girar 1s linear infinite; }
 @keyframes girar { to { transform: rotate(360deg); } }
+.p-sinmed { color: var(--u-aviso); font-weight: 700; }
 </style>

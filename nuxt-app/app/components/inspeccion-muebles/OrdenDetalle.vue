@@ -8,7 +8,7 @@
 import { computed } from 'vue'
 import { ArrowLeft, Play, Check, Hammer, PackageX, Undo2, Utensils, TriangleAlert, Plus, UserPlus, MapPin, Flag, CircleCheckBig } from '@lucide/vue'
 import {
-  ESTADO_LINEA_LABEL, ESTADO_LINEA_TONE, TIPO_ERROR_PICKING_LABEL, cronometro, fmtMin,
+  ESTADO_LINEA_LABEL, ESTADO_LINEA_TONE, TIPO_ERROR_PICKING_LABEL, cronometro, fmtKg, fmtM3, fmtMin,
   type Linea, type Orden,
 } from '~/utils/muebles'
 
@@ -105,6 +105,12 @@ function reloj(l: Linea): string {
         <p class="orden-meta">
           {{ orden.resumen.inspeccionadas }} de {{ orden.resumen.total }} PLU listos ·
           en inspección hace <strong class="vivo">{{ cronometro(orden.horaPasoInspeccion, ahora) }}</strong>
+        </p>
+        <p class="orden-meta">
+          {{ fmtKg(orden.volumen.kg) }} · {{ fmtM3(orden.volumen.m3) }}
+          <template v-if="orden.volumen.lineasSinMedida">
+            · {{ orden.volumen.lineasSinMedida }} PLU sin medidas en el maestro
+          </template>
         </p>
         <p v-if="orden.cliente" class="orden-meta">Cliente: {{ orden.cliente }}</p>
         <p v-if="orden.inspectores.length" class="orden-meta">

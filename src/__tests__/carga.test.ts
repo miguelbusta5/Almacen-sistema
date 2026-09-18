@@ -100,3 +100,19 @@ describe("carga — copia de Nitro y conexiones", () => {
     expect(leer("nuxt-app/app/components/picking/Teorico.vue")).toContain("cargaElegida");
   });
 });
+
+describe("muebles — peso y m³ en las pantallas", () => {
+  it("historial: por orden y por PLU", () => {
+    const lista = leer("nuxt-app/app/components/historial-muebles/Module.vue");
+    expect(lista).toContain("fmtKg(o.volumen.kg)");
+    expect(lista).toContain("o.volumen.lineasSinMedida");
+    const detalle = leer("nuxt-app/app/components/historial-muebles/OrdenDetalle.vue");
+    expect(detalle).toContain("fmtKg(l.pesoTotalKg)");
+    expect(detalle).toContain("fmtM3(l.volumenTotalM3)");
+  });
+
+  it("inspección y entrega muestran la carga de la orden", () => {
+    expect(leer("nuxt-app/app/components/inspeccion-muebles/OrdenDetalle.vue")).toContain("fmtKg(orden.volumen.kg)");
+    expect(leer("nuxt-app/app/components/entrega-muebles/Module.vue")).toContain("fmtKg(o.volumen.kg)");
+  });
+});

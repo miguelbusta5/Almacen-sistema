@@ -9,7 +9,7 @@ import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { Truck, RefreshCw, Loader2, Check, MapPin, Search, X } from '@lucide/vue'
 import { useToast } from '~/composables/useToast'
 import { ensureSession } from '~/composables/useSession'
-import { fmtMin, mensajeError, type Orden } from '~/utils/muebles'
+import { fmtKg, fmtM3, fmtMin, mensajeError, type Orden } from '~/utils/muebles'
 
 const API = '/api/entrega-muebles'
 const { show } = useToast()
@@ -191,6 +191,7 @@ useAutoRefresh({ onRefresh: () => (guardando.value ? undefined : cargar()) })
             <span class="o-tipo">{{ o.tipoOrden }}</span>
             <span class="o-ciudad"><MapPin :size="12" /> {{ o.ciudadEnvio || 'Sin ciudad' }}</span>
             <span class="o-plus">{{ o.resumen.total }} PLU</span>
+            <span class="o-carga">{{ fmtKg(o.volumen.kg) }} · {{ fmtM3(o.volumen.m3) }}</span>
             <span v-if="o.cliente" class="o-cliente">{{ o.cliente }}</span>
           </div>
 
@@ -260,4 +261,5 @@ useAutoRefresh({ onRefresh: () => (guardando.value ? undefined : cargar()) })
   .o-tiempo { align-items: flex-start; }
   .barra .btn { width: 100%; justify-content: center; }
 }
+.o-carga { font-weight: 700; color: var(--ink-2); }
 </style>

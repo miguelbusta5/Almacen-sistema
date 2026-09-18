@@ -7,7 +7,7 @@ import { computed, onMounted, ref } from 'vue'
 import { History, RefreshCw, Loader2, Search, MapPin } from '@lucide/vue'
 import { useToast } from '~/composables/useToast'
 import { ensureSession } from '~/composables/useSession'
-import { ESTADO_ORDEN_LABEL, fmtMin, mensajeError, type EstadoOrden, type Orden } from '~/utils/muebles'
+import { ESTADO_ORDEN_LABEL, fmtKg, fmtM3, fmtMin, mensajeError, type EstadoOrden, type Orden } from '~/utils/muebles'
 import { hoyBogota } from '~/utils/exportaciones'
 
 const API = '/api/historial-muebles'
@@ -155,6 +155,8 @@ useAutoRefresh({ intervalMs: 60_000, onRefresh: () => (abierta.value ? undefined
             <th>Operario</th>
             <th>Inicio</th>
             <th class="num">PLU</th>
+            <th class="num">Peso</th>
+            <th class="num">Volumen</th>
             <th class="num">Picking</th>
             <th class="num">Inspección</th>
             <th class="num">Lead time</th>
@@ -171,6 +173,11 @@ useAutoRefresh({ intervalMs: 60_000, onRefresh: () => (abierta.value ? undefined
             <td>{{ o.operario?.nombre ?? '—' }}</td>
             <td class="muted">{{ fechaHora(o.horaInicio) }}</td>
             <td class="num">{{ o.resumen.total }}</td>
+            <td class="num tnum">{{ fmtKg(o.volumen.kg) }}</td>
+            <td class="num tnum">
+              {{ fmtM3(o.volumen.m3) }}
+              <span v-if="o.volumen.lineasSinMedida" class="sinmed" :title="`${o.volumen.lineasSinMedida} PLU sin medidas en el maestro`">*</span>
+            </td>
             <td class="num">{{ fmtMin(o.duracionPickingMin) }}</td>
             <td class="num">{{ fmtMin(o.duracionInspeccionMin) }}</td>
             <td class="num">{{ fmtMin(o.leadTimeMin) }}</td>
@@ -225,4 +232,5 @@ useAutoRefresh({ intervalMs: 60_000, onRefresh: () => (abierta.value ? undefined
 .vacio { margin-top: 12px; padding: 32px; text-align: center; color: var(--muted); font-size: 13px; border: 1px dashed var(--border-strong); border-radius: var(--r-md); }
 .spin { animation: girar 1s linear infinite; }
 @keyframes girar { to { transform: rotate(360deg); } }
+.sinmed { color: var(--u-aviso); font-weight: 800; }
 </style>

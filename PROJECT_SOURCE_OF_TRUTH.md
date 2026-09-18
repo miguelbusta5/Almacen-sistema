@@ -1177,3 +1177,8 @@ Lógica pura en `src/lib/tareasGenerales.ts` (copia de Nitro en
   "Peso y volumen movido" por persona con el desglose resurtido / pendientes / montacargas.
 - Pendiente del usuario: 3 PLU de muebles sin "Und Emp" en el maestro; se cuentan como 1
   por caja hasta que se corrija el maestro.
+
+- **Muebles, dónde se ve la carga (2026-09-17):** Picking (ficha del PLU y total de la orden),
+  Inspección (cabecera de la orden), Entrega a Transporte (cada orden de la bandeja),
+  Historial (columnas Peso y Volumen en la lista, con * si hay PLU sin medida, y Peso/m³ por
+  PLU en el detalle) e Indicadores Muebles (volumen y peso movido).
