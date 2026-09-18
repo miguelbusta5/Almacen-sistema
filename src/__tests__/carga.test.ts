@@ -116,3 +116,13 @@ describe("muebles — peso y m³ en las pantallas", () => {
     expect(leer("nuxt-app/app/components/entrega-muebles/Module.vue")).toContain("fmtKg(o.volumen.kg)");
   });
 });
+
+describe("formato de m³ y kg", () => {
+  it("usa coma decimal y punto de miles (es-CO)", () => {
+    const muebles = leer("nuxt-app/app/utils/muebles.ts");
+    expect(muebles).not.toContain("toFixed(3)");
+    expect(muebles).toContain("toLocaleString('es-CO'");
+    // 19.222 con toFixed se leia como diecinueve mil.
+    expect((19.222).toLocaleString("es-CO", { minimumFractionDigits: 2, maximumFractionDigits: 3 })).toBe("19,222");
+  });
+});

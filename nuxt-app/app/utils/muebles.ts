@@ -191,15 +191,20 @@ export const TIPO_MERCANCIA_LABEL: Record<string, string> = {
   OTRO: 'Otro',
 }
 
-/** m³ con 3 decimales: por debajo de eso, un mueble no se distingue de otro. */
+/**
+ * m3 en formato colombiano: coma decimal y punto para los miles.
+ *
+ * Con toFixed() "19.222 m3" se leia como diecinueve mil (17-09). Hasta 3
+ * decimales porque por debajo de eso un mueble no se distingue de otro.
+ */
 export function fmtM3(v: number | null | undefined): string {
   if (v == null) return '—'
-  return `${v.toFixed(3)} m³`
+  return `${v.toLocaleString('es-CO', { minimumFractionDigits: 2, maximumFractionDigits: 3 })} m³`
 }
 
 export function fmtKg(v: number | null | undefined): string {
   if (v == null) return '—'
-  return `${v.toFixed(1)} kg`
+  return `${v.toLocaleString('es-CO', { minimumFractionDigits: 1, maximumFractionDigits: 1 })} kg`
 }
 
 export function fmtMin(v: number | null | undefined): string {
