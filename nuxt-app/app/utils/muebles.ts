@@ -6,6 +6,8 @@
 
 export const API_PICKING = '/api/picking-muebles'
 export const API_INSPECCION = '/api/inspeccion-muebles'
+/** Desde cuantas cajas se avisa que el PLU viene partido. */
+export const MINIMO_PARTES_AVISO = 2
 export const API_ADMIN_MUEBLES = '/api/muebles-admin'
 export const API_INDICADORES_MUEBLES = '/api/indicadores-muebles'
 
@@ -39,10 +41,32 @@ export interface Equipo {
 }
 
 export interface Participante {
+  salioAt?: string | null
   id: string
   nombre: string
   equipo: string | null
   esCreador: boolean
+}
+
+/** Una caja master del PLU, como esta medida en el maestro. */
+export interface CajaPlu {
+  parte: number
+  altoCm: number | null
+  anchoCm: number | null
+  profCm: number | null
+  pesoBrutoKg: number | null
+  volumenM3: number | null
+}
+
+/** En cuantas cajas viene un PLU. Vacio = no esta medido y no se avisa nada. */
+export async function cajasDelPlu(plu: string): Promise<CajaPlu[]> {
+  try {
+    const res = await $fetch<{ cajas: CajaPlu[] }>('/api/muebles/plu-cajas', { query: { plu } })
+    return res.cajas ?? []
+  } catch {
+    // Un aviso que no se pudo consultar no puede frenar el trabajo.
+    return []
+  }
 }
 
 export interface Linea {

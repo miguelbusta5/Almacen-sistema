@@ -15,7 +15,8 @@ import { ClipboardCheck, RefreshCw, Loader2, Receipt } from '@lucide/vue'
 import { useToast } from '~/composables/useToast'
 import { useSessionState } from '~/composables/useSession'
 import {
-  API_INSPECCION, mensajeError, type Inspector, type Linea, type Orden,
+  API_INSPECCION, cajasDelPlu, mensajeError, MINIMO_PARTES_AVISO,
+  type CajaPlu, type Inspector, type Linea, type Orden,
 } from '~/utils/muebles'
 
 const { show } = useToast()
@@ -46,6 +47,12 @@ const pidiendoCiudad = ref(false)
 // Al entrar a una orden se pregunta quien la toma, SIN nombre preseleccionado:
 // con el nombre recordado de la PC los inspectores trabajaban a nombre de otro.
 const pidiendoQuien = ref(false)
+// ── PLU partido ──
+// Al iniciarlo se avisa que viene en varias cajas, y al darlo por listo se
+// pregunta si estaban todas. Un PLU sin medir no avisa nada.
+const cajasPlu = ref<CajaPlu[]>([])
+const lineaAvisada = ref<Linea | null>(null)
+const lineaCajas = ref<Linea | null>(null)
 // Ciudades ya usadas: se sugieren para no escribir la misma de dos formas.
 const ciudadesUsadas = computed(() => [...new Set(
   ordenes.value.map((o) => o.ciudadEnvio).filter((c): c is string => !!c),
@@ -158,11 +165,68 @@ async function asignar(inspectorId: string) {
 }
 
 function iniciar(l: Linea) {
-  conInspector((id) => accion(`${API_INSPECCION}/${abierta.value!.id}/linea/${l.id}/iniciar`, { inspectorId: id }, `PLU ${l.plu} en inspección`))
+  conInspector(async (id) => {
+    await accion(`${API_INSPECCION}/${abierta.value!.id}/linea/${l.id}/iniciar`, { inspectorId: id }, `PLU ${l.plu} en inspección`)
+    await avisarPartes(l)
+  })
 }
 
+/** "Viene en N cajas": tapa la pantalla al empezar el PLU. */
+async function avisarPartes(l: Linea) {
+  if ((l.partes ?? 0) < MINIMO_PARTES_AVISO) return
+  const cajas = await cajasDelPlu(l.plu)
+  if (cajas.length < MINIMO_PARTES_AVISO) return
+  cajasPlu.value = cajas
+  lineaAvisada.value = l
+}
+
+/**
+ * Dar por listo un PLU. Si viene en varias cajas, primero se pregunta si
+ * estaban todas: lo que falte se reporta a picking sin frenar la orden.
+ */
 function completar(l: Linea) {
-  conInspector(() => accion(`${API_INSPECCION}/${abierta.value!.id}/linea/${l.id}/completar`, {}, `PLU ${l.plu} listo`))
+  conInspector(() => {
+    if ((l.partes ?? 0) >= MINIMO_PARTES_AVISO) {
+      lineaCajas.value = l
+      return
+    }
+    void completarLinea(l)
+  })
+}
+
+function completarLinea(l: Linea) {
+  return accion(`${API_INSPECCION}/${abierta.value!.id}/linea/${l.id}/completar`, {}, `PLU ${l.plu} listo`)
+}
+
+function cajasCompletas() {
+  const l = lineaCajas.value
+  lineaCajas.value = null
+  if (l) void completarLinea(l)
+}
+
+/** Faltaron cajas: el PLU queda revisado y lo que falta se va a picking. */
+async function cajasFaltantes(datos: { cajas: number; nota: string }) {
+  const l = lineaCajas.value
+  lineaCajas.value = null
+  if (!l || !inspectorActivo.value) return
+  const total = l.partes ?? 0
+  const detalle = `Faltaron ${datos.cajas} de ${total} cajas del PLU${datos.nota ? `: ${datos.nota}` : ''}`
+  try {
+    await $fetch(`${API_INSPECCION}/pendientes`, {
+      method: 'POST',
+      body: {
+        plu: l.plu,
+        unidades: Math.max(1, l.unidades || 1),
+        ordenId: abierta.value?.id ?? null,
+        inspectorId: inspectorActivo.value,
+        observacion: detalle,
+      },
+    })
+    show(`Faltante de ${l.plu} reportado: ${datos.cajas} ${datos.cajas === 1 ? 'caja' : 'cajas'}`)
+  } catch (e) {
+    show(mensajeError(e, 'No se pudo reportar el faltante'), true)
+  }
+  await completarLinea(l)
 }
 
 function recibirEbanisteria(l: Linea) {
@@ -373,6 +437,15 @@ useAutoRefresh({ onRefresh: () => (guardando.value ? undefined : cargar()) })
       :abierto="pidiendoQuien" :inspectores="inspectores" :seleccionado="null"
       :titulo="`¿Quién toma la orden ${abierta?.codigo ?? ''}?`"
       @cerrar="cancelarQuien" @confirmar="confirmarQuien"
+    />
+    <MueblesPartesModal
+      :abierto="lineaAvisada != null" :plu="lineaAvisada?.plu ?? ''"
+      :descripcion="lineaAvisada?.descripcion ?? null" :cajas="cajasPlu"
+      @entendido="lineaAvisada = null"
+    />
+    <InspeccionMueblesCajasCompletasModal
+      :linea="lineaCajas" :partes="lineaCajas?.partes ?? 0" :guardando="guardando"
+      @cerrar="lineaCajas = null" @completas="cajasCompletas" @faltan="cajasFaltantes"
     />
     <InspeccionMueblesCiudadModal
       :abierto="pidiendoCiudad" :actual="abierta?.ciudadEnvio ?? null" :sugeridas="ciudadesUsadas"

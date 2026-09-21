@@ -10,7 +10,7 @@
 // modo teclado, que escribe el codigo y manda un Enter. Nada de camara.
 import { computed, nextTick, ref, watch } from 'vue'
 import { ScanLine, CornerDownLeft, Loader2, TriangleAlert } from '@lucide/vue'
-import { fmtKg, fmtM3, type Linea } from '~/utils/muebles'
+import { cajasDelPlu, fmtKg, fmtM3, MINIMO_PARTES_AVISO, type CajaPlu, type Linea } from '~/utils/muebles'
 import { sonarVeredicto } from '~/utils/escaneoFeedback'
 
 const props = defineProps<{ lineaEnCurso: Linea | null; guardando: boolean }>()
@@ -31,15 +31,45 @@ const inputCaja = ref<HTMLInputElement | null>(null)
 
 const enCurso = computed(() => props.lineaEnCurso != null)
 
+// ── Aviso de PLU partido ──
+// El mueble viene en varias cajas: bajar una y dejar la otra arriba es el error
+// que mas se repite. El aviso tapa la pantalla y hay que confirmarlo; mientras
+// esta abierto no se enfoca la ubicacion, para que no se lo salte disparando la
+// pistola.
+const cajasPlu = ref<CajaPlu[]>([])
+const avisoPartes = ref(false)
+
+async function revisarPartes(linea: Linea) {
+  cajasPlu.value = []
+  avisoPartes.value = false
+  // Sin medidas en el maestro no se sabe en cuantas viene: no se inventa aviso.
+  if ((linea.partes ?? 0) < MINIMO_PARTES_AVISO) return false
+  const cajas = await cajasDelPlu(linea.plu)
+  if (cajas.length < MINIMO_PARTES_AVISO) return false
+  cajasPlu.value = cajas
+  avisoPartes.value = true
+  return true
+}
+
+function entendidoPartes() {
+  avisoPartes.value = false
+  void nextTick(() => inputUbicacion.value?.focus())
+}
+
 // El foco salta solo al campo que toca: con la pistola en la mano, tocar la
 // pantalla para enfocar es justo el gesto que hace lento el proceso.
 watch(enCurso, async (hay) => {
   await nextTick()
-  if (hay) inputUbicacion.value?.focus()
+  if (hay) {
+    const avisa = await revisarPartes(props.lineaEnCurso!)
+    if (!avisa) inputUbicacion.value?.focus()
+  }
   else {
     ubicacion.value = ''
     unidades.value = null
     numeroCaja.value = ''
+    cajasPlu.value = []
+    avisoPartes.value = false
     inputPlu.value?.focus()
   }
 })
@@ -191,6 +221,12 @@ defineExpose({ enfocar: () => (enCurso.value ? inputUbicacion.value?.focus() : i
       </button>
     </template>
   </section>
+
+  <MueblesPartesModal
+    :abierto="avisoPartes" :plu="lineaEnCurso?.plu ?? ''"
+    :descripcion="lineaEnCurso?.descripcion ?? null" :cajas="cajasPlu"
+    @entendido="entendidoPartes"
+  />
 </template>
 
 <style scoped>
