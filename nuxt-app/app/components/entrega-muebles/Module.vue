@@ -6,10 +6,10 @@ import { enRefrescoSilencioso, useAutoRefresh } from '~/composables/useAutoRefre
 // ciudad, selecciona las que sube al camión y las marca de una vez: ahí cierra
 // la medición de la orden (el lead time va desde que se abrió el picking).
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
-import { Truck, RefreshCw, Loader2, Check, MapPin, Search, X } from '@lucide/vue'
+import { Truck, RefreshCw, Loader2, Check, MapPin, Search, X, ListTree } from '@lucide/vue'
 import { useToast } from '~/composables/useToast'
 import { ensureSession } from '~/composables/useSession'
-import { fmtKg, fmtM3, fmtMin, mensajeError, type Orden } from '~/utils/muebles'
+import { ESTADO_LINEA_LABEL, fmtKg, fmtM3, fmtMin, mensajeError, type Orden } from '~/utils/muebles'
 
 const API = '/api/entrega-muebles'
 const { show } = useToast()
@@ -32,6 +32,15 @@ function limpiarBusqueda() {
   buscar.value = ''
   elegidas.value = []
   void cargar()
+}
+
+// Ver que lleva una orden por dentro, sin salir de la bandeja: los PLU vienen
+// en la misma consulta, asi que abrirla no cuesta otra llamada.
+const detalle = ref<Orden | null>(null)
+// Si la lista se refresca, el detalle abierto se queda con la version nueva.
+function sincronizarDetalle(lista: Orden[]) {
+  if (!detalle.value) return
+  detalle.value = lista.find((o) => o.id === detalle.value!.id) ?? null
 }
 
 const ahora = ref(Date.now())
@@ -66,6 +75,7 @@ async function cargar() {
     })
     ordenes.value = res.data
     ciudades.value = res.ciudades
+    sincronizarDetalle(res.data)
     // Una orden que ya no está en la lista no puede quedar seleccionada.
     elegidas.value = elegidas.value.filter((id) => res.data.some((o) => o.id === id))
   } catch (e) {
@@ -187,6 +197,10 @@ useAutoRefresh({ onRefresh: () => (guardando.value ? undefined : cargar()) })
             <span class="o-codigo">{{ o.codigo }}</span>
           </label>
 
+          <button class="btn btn-sm o-ver" type="button" @click="detalle = o">
+            <ListTree :size="14" /> Ver PLU ({{ o.resumen.total }})
+          </button>
+
           <div class="o-datos">
             <span class="o-tipo">{{ o.tipoOrden }}</span>
             <span class="o-ciudad"><MapPin :size="12" /> {{ o.ciudadEnvio || 'Sin ciudad' }}</span>
@@ -197,6 +211,7 @@ useAutoRefresh({ onRefresh: () => (guardando.value ? undefined : cargar()) })
 
           <div class="o-tiempo">
             <template v-if="historico">
+              <span class="o-quien">Entregado el {{ o.entregadaTransporteAt ? new Date(o.entregadaTransporteAt).toLocaleString('es-CO', { timeZone: 'America/Bogota' }) : 'Sin fecha' }}</span>
               <span class="o-lead">Lead time <strong>{{ fmtMin(o.leadTimeMin) }}</strong></span>
               <span class="o-quien">Entregó {{ o.entregadaPor?.nombre ?? '—' }}</span>
             </template>
@@ -209,7 +224,66 @@ useAutoRefresh({ onRefresh: () => (guardando.value ? undefined : cargar()) })
       </ul>
     </template>
 
-    <p v-else class="vacio">
+    <!-- Que lleva la orden por dentro. Solo para mirar: aqui no se toca nada. -->
+    <div v-if="detalle" class="overlay" @click.self="detalle = null">
+      <section class="panel" role="dialog" aria-modal="true" :aria-label="`PLU de la orden ${detalle.codigo}`">
+        <header class="p-head">
+          <div>
+            <span class="o-tipo">{{ detalle.tipoOrden }}</span>
+            <h2 class="p-codigo">{{ detalle.codigo }}</h2>
+            <p class="p-meta">
+              <MapPin :size="12" /> {{ detalle.ciudadEnvio || 'Sin ciudad' }}
+              · {{ detalle.resumen.total }} PLU
+              · {{ fmtKg(detalle.volumen.kg) }} · {{ fmtM3(detalle.volumen.m3) }}
+              <template v-if="detalle.cliente"> · {{ detalle.cliente }}</template>
+            </p>
+            <p v-if="detalle.volumen.lineasSinMedida" class="p-aviso">
+              {{ detalle.volumen.lineasSinMedida }} PLU sin medidas en el maestro: el peso y el volumen van cortos.
+            </p>
+          </div>
+          <button class="icono" aria-label="Cerrar" @click="detalle = null"><X :size="18" /></button>
+        </header>
+
+        <div class="tabla-wrap">
+          <table class="tabla">
+            <thead>
+              <tr>
+                <th>PLU</th>
+                <th>Ubicación / rótulo</th>
+                <th class="num">Und</th>
+                <th class="num">Peso / m³</th>
+                <th>Estado</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="l in detalle.lineas" :key="l.id">
+                <td>
+                  <strong class="l-plu mono">{{ l.plu }}</strong>
+                  <span class="l-desc">{{ l.descripcion || 'Sin descripción en el maestro' }}</span>
+                </td>
+                <td>
+                  <span class="mono">{{ l.ubicacion || '—' }}</span>
+                  <span class="l-desc mono">{{ l.numeroCaja || '—' }}</span>
+                </td>
+                <td class="num tnum">{{ l.unidades }}</td>
+                <td class="num">
+                  <strong class="tnum">{{ fmtKg(l.pesoTotalKg) }}</strong>
+                  <span class="l-desc tnum">{{ fmtM3(l.volumenTotalM3) }}</span>
+                </td>
+                <td><span class="l-estado">{{ ESTADO_LINEA_LABEL[l.estado] }}</span></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <footer class="p-pie">
+          <span class="p-quien">Inspeccionó {{ detalle.inspector?.nombre ?? '—' }}</span>
+          <button class="btn btn-ghost btn-sm" @click="detalle = null">Cerrar</button>
+        </footer>
+      </section>
+    </div>
+
+    <p v-else-if="!cargando && !ordenes.length" class="vacio">
       {{ buscar.trim()
         ? `Nada coincide con «${buscar.trim()}».`
         : historico ? 'Todavía no hay órdenes entregadas.' : 'No hay órdenes listas para entregar.' }}
@@ -262,4 +336,24 @@ useAutoRefresh({ onRefresh: () => (guardando.value ? undefined : cargar()) })
   .barra .btn { width: 100%; justify-content: center; }
 }
 .o-carga { font-weight: 700; color: var(--ink-2); }
+.o-ver { flex-shrink: 0; }
+
+.overlay { position: fixed; inset: 0; z-index: 60; display: grid; place-items: center; padding: 18px; background: rgba(10,14,20,.5); }
+.panel { width: 100%; max-width: 860px; max-height: 86vh; display: flex; flex-direction: column; padding: 20px; border-radius: var(--r-md); background: var(--surface); border: 1px solid var(--border); box-shadow: 0 18px 50px rgba(0,0,0,.2); }
+.p-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+.p-codigo { margin: 6px 0 4px; font-size: 20px; font-weight: 800; color: var(--ink); }
+.p-meta { display: flex; align-items: center; gap: 5px; flex-wrap: wrap; margin: 0; font-size: 12.5px; color: var(--muted); }
+.p-aviso { margin: 8px 0 0; font-size: 12px; font-weight: 700; color: var(--u-aviso); }
+.icono { display: grid; place-items: center; width: 30px; height: 30px; border: none; border-radius: var(--r-sm); background: transparent; color: var(--muted); cursor: pointer; }
+.icono:hover { background: color-mix(in srgb, var(--ink) 6%, transparent); color: var(--ink); }
+.tabla-wrap { overflow: auto; margin: 14px 0 4px; }
+.tabla { width: 100%; border-collapse: collapse; font-size: 13px; text-align: left; }
+.tabla th { position: sticky; top: 0; padding: 9px 10px; font-size: 10.5px; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); background: var(--surface); border-bottom: 1px solid var(--border); }
+.tabla td { padding: 9px 10px; border-bottom: 1px solid var(--border); vertical-align: top; }
+.tabla .num { text-align: right; }
+.l-plu { display: block; font-size: 13.5px; font-weight: 800; color: var(--ink); }
+.l-desc { display: block; font-size: 11.5px; color: var(--muted); }
+.l-estado { padding: 2px 9px; border-radius: var(--r-pill); font-size: 11px; font-weight: 700; color: var(--brand); background: var(--brand-tint); }
+.p-pie { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; padding-top: 12px; font-size: 12.5px; color: var(--muted); }
+@media (max-width: 640px) { .panel { padding: 14px; max-height: 92vh; } .o-ver { width: 100%; justify-content: center; } }
 </style>

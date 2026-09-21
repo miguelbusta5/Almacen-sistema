@@ -59,3 +59,19 @@ describe("medidas por unidad de empaque", () => {
     expect(f).toContain("select: { descripcion: true, unidadesPorCaja: true }");
   });
 });
+
+describe("entrega a transporte — ver los PLU de la orden", () => {
+  const ui = leer("nuxt-app/app/components/entrega-muebles/Module.vue");
+
+  it("cada orden se puede abrir y muestra sus lineas", () => {
+    expect(ui).toContain("Ver PLU ({{ o.resumen.total }})");
+    expect(ui).toContain('v-for="l in detalle.lineas"');
+    expect(ui).toContain("fmtKg(l.pesoTotalKg)");
+  });
+
+  it("no cuesta otra consulta: los PLU ya vienen en la bandeja", () => {
+    expect(ui).not.toMatch(/\$fetch[^\n]*entrega-muebles\/\$\{/);
+    // Si la bandeja se refresca sola, el detalle abierto se actualiza.
+    expect(ui).toContain("sincronizarDetalle(res.data)");
+  });
+});
