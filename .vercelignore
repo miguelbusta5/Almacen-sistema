@@ -1,0 +1,12 @@
+.git
+.mcp.json
+.env*
+**/.env*
+**/node_modules
+**/.nuxt
+**/.output
+**/.vercel
+.next
+coverage
+*.tsbuildinfo
+scripts/output
