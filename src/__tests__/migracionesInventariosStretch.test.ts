@@ -73,3 +73,20 @@ describe("SQL de inventarios y stretch", () => {
     }
   });
 });
+
+describe("el administrador entra a inventarios y stretch", () => {
+  it("no necesita darse acceso a si mismo", () => {
+    const inv = leer("nuxt-app/server/utils/inventarios.ts");
+    expect(inv).toContain("if (usuario.role === 'ADMIN') return true");
+    // Gestionar si; contar no, para no salir en la lista de quien cuenta.
+    expect(inv).toContain("gestionar: admin || !!p?.gestionar, contar: !!p?.contar");
+    const str = leer("nuxt-app/server/utils/stretch.ts");
+    expect(str).toContain("gestionar: admin || !!p?.gestionar, solicitar: admin || !!p?.solicitar");
+  });
+
+  it("el menu sigue pidiendo el permiso, que ahora el admin tiene", () => {
+    const layout = leer("nuxt-app/app/layouts/default.vue");
+    expect(layout).toContain("me.value?.can.gestionarInventarios || me.value?.can.contarInventarios");
+    expect(layout).toContain("me.value?.can.stretch?.gestionar || me.value?.can.stretch?.solicitar");
+  });
+});

@@ -11,9 +11,12 @@ export const pedidoStretch = z.object({ id: idSolicitud, solicitante: z.string()
 export const hashStretch = (token: string) => createHash('sha256').update(token).digest('hex')
 export const COOKIE_STRETCH = 'cedi-stretch'
 export async function permisoStretch(userId: string) {
-  const user = await prisma.user.findUnique({ where: { id: userId }, select: { active: true } })
+  const user = await prisma.user.findUnique({ where: { id: userId }, select: { active: true, role: true } })
   const p = user?.active ? await prisma.stretchAcceso.findUnique({ where: { userId } }) : null
-  return { gestionar: !!p?.gestionar, solicitar: !!p?.solicitar }
+  // El administrador puede lo mismo que Eduardo y Felipe, sin darse acceso a si
+  // mismo (misma regla que montar resurtido).
+  const admin = user?.active === true && user.role === 'ADMIN'
+  return { gestionar: admin || !!p?.gestionar, solicitar: admin || !!p?.solicitar }
 }
 export async function actorStretch(event: H3Event, gestion = false) {
   const actor = await requireAuth(event), permiso = await permisoStretch(actor.id)
