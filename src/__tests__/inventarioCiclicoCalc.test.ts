@@ -1,7 +1,9 @@
 import { describe, expect, it } from 'vitest'
-import { consolidarInventario, estadoInventario, fisicoInventario, leerTeoricoInventario } from '../../nuxt-app/server/utils/inventarioCiclicoCalc'
-import { compararEquipos } from '../../nuxt-app/server/utils/mueblesEquiposCalc'
-import { avancePersonas } from '../../nuxt-app/server/utils/resurtidoAvance'
+import { cargarNuxt } from './apoyo/nuxt'
+// Logica pura de nuxt-app: se carga como texto (ver apoyo/nuxt.ts), no se importa.
+const { consolidarInventario, estadoInventario, fisicoInventario, leerTeoricoInventario } = cargarNuxt('utils/inventarioCiclicoCalc.ts')
+const { compararEquipos } = cargarNuxt('utils/mueblesEquiposCalc.ts')
+const { avancePersonas } = cargarNuxt('utils/resurtidoAvance.ts')
 const h1 = ['Artículo','Nombre para mostrar','Número de depósito','Disponible','WMS Aisle']
 const h2 = ['Nombre','Teorico']
 describe('Cíclico: archivo, captura y cierre', () => {
@@ -21,8 +23,8 @@ describe('Cíclico: archivo, captura y cierre', () => {
   it('excluye con aviso únicamente productos sin teórico y con existencia cero',()=>{
     const r=leerTeoricoInventario([h1,['1','A','A1',1,'RETIRO'],['BONO100','Bono','',0,'']],[h2,['1',1]])
     expect(r.avisos).toEqual([{plu:'BONO100',descripcion:'Bono',ubicaciones:[],motivo:expect.stringContaining('Excluido')}])
-    expect(r.filas.map(f=>f.plu)).toEqual(['1'])
-    expect(consolidarInventario(r.filas,r.teorico,[]).map(f=>f.plu)).toEqual(['1'])
+    expect(r.filas.map((f:any)=>f.plu)).toEqual(['1'])
+    expect(consolidarInventario(r.filas,r.teorico,[]).map((f:any)=>f.plu)).toEqual(['1'])
   })
   it.each([
     [['2','B','H2',1,'Almacenamiento']],
@@ -56,6 +58,6 @@ describe('Equipos y ayudantes',()=>{
   })
   it('separa participaciones del porcentaje de cierre sin duplicar tareas',()=>{
     const r=avancePersonas({operarioId:'a',operario:{name:'A'},tareas:[{estado:'COMPLETADA',responsableId:'b',responsable:{name:'B'},tramos:[{usuarioId:'a'},{usuarioId:'b'},{usuarioId:'a'}]},{estado:'PENDIENTE'}]})
-    expect(r.find(p=>p.id==='b')).toMatchObject({completadas:1,porcentaje:50,participadas:1});expect(r.find(p=>p.id==='a')).toMatchObject({porcentaje:0,participadas:1})
+    expect(r.find((p:any)=>p.id==='b')).toMatchObject({completadas:1,porcentaje:50,participadas:1});expect(r.find((p:any)=>p.id==='a')).toMatchObject({porcentaje:0,participadas:1})
   })
 })

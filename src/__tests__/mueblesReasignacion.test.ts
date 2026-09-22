@@ -1,11 +1,15 @@
 import {beforeEach,expect,it,vi} from 'vitest'
-const m=vi.hoisted(()=>({body:vi.fn(),actor:vi.fn(),orden:vi.fn(),abierta:vi.fn(),equipo:vi.fn(),audit:vi.fn(),user:{findFirst:vi.fn()},participante:{update:vi.fn(),upsert:vi.fn()},linea:{updateMany:vi.fn()},noti:{create:vi.fn()}}))
-vi.mock('../../nuxt-app/node_modules/h3/dist/index.mjs',()=>({getRouterParam:()=> 'o',readBody:m.body,createError:(o:object)=>Object.assign(new Error(),o)}))
-vi.mock('../../nuxt-app/server/utils/operacionAlmacen',()=>({defineOperacionAlmacenHandler:(f:unknown)=>f}))
-vi.mock('../../nuxt-app/server/utils/prisma',()=>({prisma:{user:m.user,participanteOrdenMuebles:m.participante,lineaMuebles:m.linea,notificacion:m.noti}}))
-vi.mock('../../nuxt-app/server/utils/muebles',()=>({requirePickingActivo:m.actor,ordenPorId:m.orden,ordenAbierta:m.abierta,equipoDelDia:m.equipo,auditar:m.audit,esParticipante:(o:any,id:string)=>o.participantes.some((p:any)=>p.usuarioId===id&&!p.salioAt)}))
-import handler from '../../nuxt-app/server/api/picking-muebles/[id]/reasignar.post'
-const event={} as Parameters<typeof handler>[0]
+import { cargarHandlerNuxt, h3Falso } from './apoyo/nuxt'
+// El endpoint se carga como texto (ver apoyo/nuxt.ts): importarlo obliga a CI a
+// resolver el tsconfig de Nuxt, que ahi no existe.
+const m={body:vi.fn(),actor:vi.fn(),orden:vi.fn(),abierta:vi.fn(),equipo:vi.fn(),audit:vi.fn(),user:{findFirst:vi.fn()},participante:{update:vi.fn(),upsert:vi.fn()},linea:{updateMany:vi.fn()},noti:{create:vi.fn()}}
+const handler=cargarHandlerNuxt('api/picking-muebles/[id]/reasignar.post.ts',{
+  h3:h3Falso({getRouterParam:()=>'o',readBody:m.body}),
+  '../../../utils/operacionAlmacen':{defineOperacionAlmacenHandler:(f:unknown)=>f},
+  '../../../utils/prisma':{prisma:{user:m.user,participanteOrdenMuebles:m.participante,lineaMuebles:m.linea,notificacion:m.noti}},
+  '../../../utils/muebles':{requirePickingActivo:m.actor,ordenPorId:m.orden,ordenAbierta:m.abierta,equipoDelDia:m.equipo,auditar:m.audit,esParticipante:(o:any,id:string)=>o.participantes.some((p:any)=>p.usuarioId===id&&!p.salioAt)},
+})
+const event={} as never
 let orden:any
 beforeEach(()=>{vi.resetAllMocks();orden={id:'o',codigo:'QA',estado:'EN_PICKING',lineas:[{operarioId:'a',estado:'PICKING_LISTO'}],participantes:[{usuarioId:'a',salioAt:null}]};m.actor.mockResolvedValue({id:'a',name:'Primero'});m.orden.mockImplementation(async()=>orden);m.body.mockResolvedValue({operarioId:'b'});m.user.findFirst.mockResolvedValue({id:'b',name:'Segundo'});m.abierta.mockResolvedValue(null);m.equipo.mockResolvedValue({id:'equipo'});m.participante.update.mockImplementation(async()=>{orden.participantes[0].salioAt=new Date()})})
 it('libera al primero, incorpora al segundo y no cambia la autoría de PLU',async()=>{await handler(event);expect(orden.participantes[0].salioAt).toBeInstanceOf(Date);expect(m.participante.upsert).toHaveBeenCalledWith(expect.objectContaining({create:expect.objectContaining({usuarioId:'b',ordenId:'o'})}));expect(orden.lineas[0].operarioId).toBe('a');expect(m.linea.updateMany).not.toHaveBeenCalled();expect(m.noti.create).toHaveBeenCalledOnce()})

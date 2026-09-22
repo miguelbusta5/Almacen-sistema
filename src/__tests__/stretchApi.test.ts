@@ -1,11 +1,15 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-const m=vi.hoisted(()=>({auth:vi.fn(),body:vi.fn(),cookie:vi.fn(),tx:vi.fn(),user:{findUnique:vi.fn(),findMany:vi.fn()},acceso:{findUnique:vi.fn(),findMany:vi.fn()},stock:{upsert:vi.fn(),update:vi.fn()},pedido:{findUnique:vi.fn(),create:vi.fn(),update:vi.fn(),count:vi.fn()},mov:{findUnique:vi.fn(),create:vi.fn()},sesion:{findUnique:vi.fn(),create:vi.fn(),update:vi.fn()},log:{create:vi.fn()},noti:{create:vi.fn(),createMany:vi.fn()},lock:vi.fn()}))
-vi.mock('../../nuxt-app/node_modules/h3/dist/index.mjs',()=>({defineEventHandler:(f:unknown)=>f,readBody:m.body,getCookie:m.cookie,createError:(o:object)=>Object.assign(new Error(),o)}))
-vi.mock('../../nuxt-app/server/utils/auth',()=>({requireAuth:m.auth}))
-vi.mock('../../nuxt-app/server/utils/prisma',()=>({prisma:{$transaction:m.tx,user:m.user,stretchAcceso:m.acceso}}))
-import accion from '../../nuxt-app/server/api/stretch-film/accion.post'
-import publico from '../../nuxt-app/server/api/stretch-publico/pedido.post'
-const event={} as Parameters<typeof accion>[0], id='11111111-1111-4111-8111-111111111111'
+import { cargarHandlerNuxt, cargarNuxt, h3Falso } from './apoyo/nuxt'
+// Los endpoints se cargan como texto (ver apoyo/nuxt.ts): importarlos obliga a
+// CI a resolver el tsconfig de Nuxt, que ahi no existe.
+const m={auth:vi.fn(),body:vi.fn(),cookie:vi.fn(),tx:vi.fn(),user:{findUnique:vi.fn(),findMany:vi.fn()},acceso:{findUnique:vi.fn(),findMany:vi.fn()},stock:{upsert:vi.fn(),update:vi.fn()},pedido:{findUnique:vi.fn(),create:vi.fn(),update:vi.fn(),count:vi.fn()},mov:{findUnique:vi.fn(),create:vi.fn()},sesion:{findUnique:vi.fn(),create:vi.fn(),update:vi.fn()},log:{create:vi.fn()},noti:{create:vi.fn(),createMany:vi.fn()},lock:vi.fn()}
+const h3 = h3Falso({ readBody: m.body, getCookie: m.cookie })
+const prisma = { prisma: { $transaction: m.tx, user: m.user, stretchAcceso: m.acceso } }
+// utils/stretch va de verdad: ahi viven los permisos y el saldo que se prueban.
+const stretch = cargarNuxt('utils/stretch.ts', { h3, './prisma': prisma, './auth': { requireAuth: m.auth } })
+const accion = cargarHandlerNuxt('api/stretch-film/accion.post.ts', { h3, '../../utils/prisma': prisma, '../../utils/stretch': stretch })
+const publico = cargarHandlerNuxt('api/stretch-publico/pedido.post.ts', { h3, '../../utils/prisma': prisma, '../../utils/stretch': stretch })
+const event={} as never, id='11111111-1111-4111-8111-111111111111'
 const pedido=()=>({id,usuarioId:'viviana',solicitante:'Viviana',destino:'Tienda 1',tipo:'TIENDA',rollos:8,estado:'PENDIENTE'})
 beforeEach(()=>{
   vi.resetAllMocks();m.auth.mockResolvedValue({id:'felipe',name:'Felipe'});m.user.findUnique.mockResolvedValue({active:true});m.user.findMany.mockResolvedValue([{id:'felipe'}]);m.acceso.findUnique.mockResolvedValue({gestionar:true,solicitar:true});m.acceso.findMany.mockResolvedValue([{userId:'felipe'}]);m.stock.upsert.mockResolvedValue({rollos:10});m.pedido.findUnique.mockResolvedValue(pedido())

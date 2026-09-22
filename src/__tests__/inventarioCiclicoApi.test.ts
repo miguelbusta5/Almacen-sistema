@@ -1,11 +1,17 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-const m=vi.hoisted(()=>({auth:vi.fn(),permiso:vi.fn(),body:vi.fn(),tx:vi.fn(),ciclo:{findUnique:vi.fn(),update:vi.fn()},tarea:{findFirst:vi.fn(),update:vi.fn(),create:vi.fn()},caso:{create:vi.fn(),update:vi.fn()},conteo:{upsert:vi.fn()},producto:vi.fn(),lock:vi.fn(),audit:vi.fn(),noti:{create:vi.fn()},acceso:{findUnique:vi.fn()},user:{findUnique:vi.fn()}}))
-vi.mock('../../nuxt-app/node_modules/h3/dist/index.mjs',()=>({defineEventHandler:(f:unknown)=>f,readBody:m.body,createError:(o:object)=>Object.assign(new Error(),o)}))
-vi.mock('../../nuxt-app/server/utils/auth',()=>({requireAuth:m.auth}))
-vi.mock('../../nuxt-app/server/utils/prisma',()=>({prisma:{$transaction:m.tx}}))
-vi.mock('../../nuxt-app/server/utils/inventarioCiclico',()=>({actorInventario:m.permiso,lockInventario:m.lock,auditarInventario:m.audit,filasInventario:(x:unknown)=>x,productoInventario:m.producto}))
-import handler from '../../nuxt-app/server/api/inventarios/accion.post'
-const event={} as Parameters<typeof handler>[0]
+import { cargarHandlerNuxt, cargarNuxt, h3Falso } from './apoyo/nuxt'
+// El endpoint se carga como texto (ver apoyo/nuxt.ts): importarlo obliga a CI a
+// resolver el tsconfig de Nuxt, que ahi no existe.
+const m={auth:vi.fn(),permiso:vi.fn(),body:vi.fn(),tx:vi.fn(),ciclo:{findUnique:vi.fn(),update:vi.fn()},tarea:{findFirst:vi.fn(),update:vi.fn(),create:vi.fn()},caso:{create:vi.fn(),update:vi.fn()},conteo:{upsert:vi.fn()},producto:vi.fn(),lock:vi.fn(),audit:vi.fn(),noti:{create:vi.fn()},acceso:{findUnique:vi.fn()},user:{findUnique:vi.fn()}}
+const handler=cargarHandlerNuxt('api/inventarios/accion.post.ts',{
+  h3:h3Falso({readBody:m.body}),
+  '../../utils/prisma':{prisma:{$transaction:m.tx}},
+  '../../utils/auth':{requireAuth:m.auth},
+  '../../utils/inventarioCiclico':{actorInventario:m.permiso,lockInventario:m.lock,auditarInventario:m.audit,filasInventario:(x:unknown)=>x,productoInventario:m.producto},
+  // La logica pura va de verdad: es lo que se quiere probar.
+  '../../utils/inventarioCiclicoCalc':cargarNuxt('utils/inventarioCiclicoCalc.ts'),
+})
+const event={} as never
 const task=()=>({id:'t',usuarioId:'u',ubicacion:'A1',tipo:'INICIAL',estado:'EN_CURSO',revision:0,inicio:new Date('2026-09-20T12:00:00Z'),pausaInicio:null,pausaSegundos:0,pausas:[],registros:[]})
 let ciclo:any
 beforeEach(()=>{

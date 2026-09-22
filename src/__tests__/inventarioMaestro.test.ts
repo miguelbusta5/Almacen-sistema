@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest'
-import { fechasCronograma, leerMaestroPvp } from '../../nuxt-app/server/utils/inventarioMaestro'
+import { cargarNuxt } from './apoyo/nuxt'
+// Logica pura de nuxt-app: se carga como texto (ver apoyo/nuxt.ts), no se importa.
+const { fechasCronograma, leerMaestroPvp } = cargarNuxt('utils/inventarioMaestro.ts')
 
 const headers = ['Referencia Original', 'Nombre para mostrar', 'Nombre del proveedor', 'Fabricante', 'Código UPC', 'Precio unitario', 'MARCAS', 'GRUPO']
 const producto = ['00123', 'Plato', 'REF-1', 'Proveedor correcto', '0001234567890', 1200.50, 'Gourmet', 'Mesa']

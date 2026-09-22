@@ -1,16 +1,18 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-
-const mocks = vi.hoisted(() => ({ auth: vi.fn(), acceso: vi.fn(), multipart: vi.fn(), workbook: vi.fn(), rows: vi.fn(), tx: vi.fn(), cronograma: { findUnique: vi.fn(), create: vi.fn() }, versiones: { findFirst: vi.fn(), create: vi.fn() }, productos: { createMany: vi.fn() }, log: { create: vi.fn() }, lock: vi.fn() }))
-vi.mock('../../nuxt-app/server/utils/auth', () => ({ requireAuth: mocks.auth }))
-vi.mock('../../nuxt-app/server/utils/inventarios', () => ({ exigirInventarios: mocks.acceso }))
-vi.mock('../../nuxt-app/server/utils/prisma', () => ({ prisma: { $transaction: mocks.tx } }))
-vi.mock('../../nuxt-app/server/utils/excel', () => ({ readWorkbook: mocks.workbook, worksheetRows: mocks.rows }))
-vi.mock('../../nuxt-app/node_modules/h3/dist/index.mjs', async () => {
-  // Use the same h3 resolved by the handlers under nuxt-app.
-  return { defineEventHandler: (f: unknown) => f, readMultipartFormData: mocks.multipart, createError: (data: object) => Object.assign(new Error(), data) }
+import { cargarHandlerNuxt, cargarNuxt, h3Falso } from './apoyo/nuxt'
+// El endpoint se carga como texto (ver apoyo/nuxt.ts): importarlo obliga a CI a
+// resolver el tsconfig de Nuxt, que ahi no existe.
+const mocks = { auth: vi.fn(), acceso: vi.fn(), multipart: vi.fn(), workbook: vi.fn(), rows: vi.fn(), tx: vi.fn(), cronograma: { findUnique: vi.fn(), create: vi.fn() }, versiones: { findFirst: vi.fn(), create: vi.fn() }, productos: { createMany: vi.fn() }, log: { create: vi.fn() }, lock: vi.fn() }
+const guardar = cargarHandlerNuxt('api/inventarios/guardar.post.ts', {
+  h3: h3Falso({ readMultipartFormData: mocks.multipart }),
+  '../../utils/auth': { requireAuth: mocks.auth },
+  '../../utils/inventarios': { exigirInventarios: mocks.acceso },
+  '../../utils/prisma': { prisma: { $transaction: mocks.tx } },
+  '../../utils/excel': { readWorkbook: mocks.workbook, worksheetRows: mocks.rows },
+  // La lectura del Excel va de verdad: es lo que se quiere probar.
+  '../../utils/inventarioMaestro': cargarNuxt('utils/inventarioMaestro.ts'),
 })
-import guardar from '../../nuxt-app/server/api/inventarios/guardar.post'
-const event = {} as Parameters<typeof guardar>[0]
+const event = {} as never
 function parts(fields: Record<string, string>) {
   return [{ name: 'archivo', filename: 'maestro.xlsx', data: Buffer.from('excel') }, ...Object.entries(fields).map(([name, value]) => ({ name, data: Buffer.from(value) }))]
 }
