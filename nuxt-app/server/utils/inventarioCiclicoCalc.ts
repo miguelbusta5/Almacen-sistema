@@ -67,3 +67,74 @@ export function consolidarInventario(filas: FilaInventario[], teorico: Record<st
     return { plu, teorico: t, fisico: f, diferencia: redondear(f - t), estado: estadoInventario(f, t) }
   })
 }
+
+// ── Ubicaciones y tareas ────────────────────────────────────────────────────
+// El operario trabaja escaneando: estas funciones son las que convierten lo que
+// lee la pistola en la tarea que toca, y las que dejan la lista manejable
+// cuando un ciclico trae 2.000 ubicaciones.
+
+export interface TareaInventario {
+  id: string
+  ubicacion: string
+  tipo: string
+  estado: string
+  usuarioId: string | null
+}
+
+/** Lo que escanea la pistola, comparable con lo guardado (mismo criterio que el servidor). */
+export function normalizarUbicacionInventario(v: unknown): string {
+  return String(v ?? '').trim().toUpperCase()
+}
+
+export type MotivoUbicacion = 'NO_EXISTE' | 'AJENA' | 'COMPLETADA'
+
+/**
+ * La tarea que corresponde a una ubicacion escaneada.
+ *
+ * Devuelve el motivo y no un null: al operario hay que decirle si esa ubicacion
+ * no esta en el ciclico, si es de otro o si ya la termino. Cada caso se resuelve
+ * distinto y confundirlos le hace perder el viaje.
+ */
+export function buscarTareaPorUbicacion<T extends TareaInventario>(
+  tareas: readonly T[],
+  texto: unknown,
+  usuarioId: string,
+): { tarea: T } | { motivo: MotivoUbicacion } {
+  const ubicacion = normalizarUbicacionInventario(texto)
+  if (!ubicacion) return { motivo: 'NO_EXISTE' }
+  const suyas = tareas.filter(t => t.ubicacion === ubicacion)
+  if (!suyas.length) return { motivo: 'NO_EXISTE' }
+  // Una ubicacion puede tener el conteo inicial y ademas un reconteo: sirve la
+  // que todavia esta viva, y entre esas primero la que ya arranco.
+  const viva = suyas.find(t => t.usuarioId === usuarioId && t.estado === 'EN_CURSO')
+    ?? suyas.find(t => t.usuarioId === usuarioId && t.estado === 'PENDIENTE')
+  if (viva) return { tarea: viva }
+  if (suyas.some(t => t.usuarioId === usuarioId)) return { motivo: 'COMPLETADA' }
+  return { motivo: 'AJENA' }
+}
+
+/** Filtra la lista por texto de ubicacion y estado. Sin filtro, la devuelve entera. */
+export function filtrarTareas<T extends TareaInventario>(
+  tareas: readonly T[],
+  filtros: { q?: unknown; estado?: unknown; usuarioId?: string } = {},
+): T[] {
+  const q = normalizarUbicacionInventario(filtros.q)
+  const estado = String(filtros.estado ?? '')
+  return tareas.filter(t =>
+    (!q || t.ubicacion.includes(q))
+    && (!estado || t.estado === estado)
+    && (!filtros.usuarioId || t.usuarioId === filtros.usuarioId))
+}
+
+/** Cuantas van y cuantas faltan, para la cabecera. */
+export function resumenTareas(tareas: readonly TareaInventario[]) {
+  const cuenta = (estado: string) => tareas.filter(t => t.estado === estado).length
+  return { total: tareas.length, pendientes: cuenta('PENDIENTE'), enCurso: cuenta('EN_CURSO'), completadas: cuenta('COMPLETADA') }
+}
+
+/** Los PLU que el teorico espera en una ubicacion (solo las filas de RETIRO). */
+export function esperadosDeUbicacion(filas: readonly FilaInventario[], ubicacion: string) {
+  return filas
+    .filter(f => f.concepto === 'RETIRO' && f.ubicacion === ubicacion)
+    .map(f => ({ plu: f.plu, descripcion: f.descripcion }))
+}
