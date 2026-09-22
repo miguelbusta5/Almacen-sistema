@@ -45,6 +45,8 @@ function mod(
 }
 
 export const MODULE_THEME: Record<ModuleThemeKey, ModuleTheme> = {
+  'stretch-film': mod('stretch-film', 'Stretch film', 'Stretch film', 'Inventario y pedidos en rollos'),
+  inventarios: mod('inventarios', 'Inventarios', 'Inventarios', 'Cronogramas y maestro PVP'),
   'capacidad-picking': mod('capacidad-picking', 'Capacidad picking', 'Capacidad', 'Capacidad real y resurtido de picking'),
   'historial-muebles': mod('historial-muebles', 'Historial de ordenes', 'Historial', 'Tiempos de cada orden de muebles, PLU por PLU'),
   'entrega-muebles': mod('entrega-muebles', 'Entrega a Transporte', 'Entrega', 'Ordenes de muebles listas para salir del CEDI'),

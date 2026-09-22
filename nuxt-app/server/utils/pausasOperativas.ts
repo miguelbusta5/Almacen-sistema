@@ -29,7 +29,7 @@ export async function iniciarPausa(usuarioId: string, motivo: 'ALIMENTACION' | '
     prisma.tareaResurtido.findMany({ where: { estado: 'EN_CURSO', horaInicio: reciente, montaje: { deletedAt: null }, OR: [{ responsableId: usuarioId }, { responsableId: null, montaje: { operarioId: usuarioId } }] }, select: { id: true } }),
     prisma.pendienteGourmet.findMany({ where: { operarioId: usuarioId, estado: 'EN_CURSO', deletedAt: null, tareaResurtidoId: null, horaInicio: reciente }, select: { id: true } }),
     prisma.recepcionContenedor.findMany({ where: { creadoPorId: usuarioId, estado: 'EN_CURSO', deletedAt: null, horaInicio: reciente }, select: { id: true } }),
-    prisma.ordenMuebles.findMany({ where: { estado: 'EN_PICKING', deletedAt: null, horaInicio: reciente, participantes: { some: { usuarioId } } }, select: { id: true } }),
+    prisma.ordenMuebles.findMany({ where: { estado: 'EN_PICKING', deletedAt: null, horaInicio: reciente, participantes: { some: { usuarioId, salioAt: null } } }, select: { id: true } }),
     prisma.lineaMuebles.findMany({ where: { operarioId: usuarioId, estado: 'EN_PICKING', horaInicio: reciente, orden: { deletedAt: null } }, select: { id: true } }),
   ])
   const ids = (rows: { id: string }[]) => rows.map(r => r.id)

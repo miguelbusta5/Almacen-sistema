@@ -154,6 +154,7 @@ useAutoRefresh({ intervalMs: 60_000, onRefresh: () => (abierta.value ? undefined
             <th>Ciudad</th>
             <th>Operario</th>
             <th>Inicio</th>
+            <th>Entrega a transporte</th>
             <th class="num">PLU</th>
             <th class="num">Peso</th>
             <th class="num">Volumen</th>
@@ -172,6 +173,7 @@ useAutoRefresh({ intervalMs: 60_000, onRefresh: () => (abierta.value ? undefined
             <td><span v-if="o.ciudadEnvio" class="ciudad"><MapPin :size="12" /> {{ o.ciudadEnvio }}</span><span v-else class="muted">—</span></td>
             <td>{{ o.operario?.nombre ?? '—' }}</td>
             <td class="muted">{{ fechaHora(o.horaInicio) }}</td>
+            <td class="muted">{{ fechaHora(o.entregadaTransporteAt) }}</td>
             <td class="num">{{ o.resumen.total }}</td>
             <td class="num tnum">{{ fmtKg(o.volumen.kg) }}</td>
             <td class="num tnum">

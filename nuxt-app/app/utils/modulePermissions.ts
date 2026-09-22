@@ -3,6 +3,8 @@
 // en sync con la fuente de verdad en el app Next.js.
 
 export type ModuleKey =
+  | 'stretch-film'
+  | 'inventarios'
   | 'capacidad-picking'
   | 'transporte'
   | 'tienda'
@@ -30,6 +32,8 @@ export type ModuleKey =
   | 'historial-muebles'
 
 export const MODULE_ACCESS: Record<ModuleKey, string[]> = {
+  'stretch-film': ['ADMIN', 'GERENTE', 'SUPERVISOR_ALMACENAMIENTO', 'OPERACIONES_GOURMET'],
+  inventarios: ['ADMIN', 'SUPERVISOR_INVENTARIO', 'INVENTARIO', 'GERENTE', 'OPERADOR'],
   'capacidad-picking': ['ADMIN', 'GERENTE', 'SUPERVISOR_ALMACENAMIENTO', 'OPERARIO_ALMACENAMIENTO', 'MONTACARGAS', 'INVENTARIO', 'SUPERVISOR_INVENTARIO', 'OPERADOR'],
   transporte: ['TRANSPORTE', 'SUPERVISOR_TRANSPORTE', 'GERENTE', 'ADMIN', 'OPERADOR'],
   tienda: ['TIENDA', 'SUPERVISOR_TIENDA', 'SUPERVISOR_TRANSPORTE', 'GERENTE', 'ADMIN'],

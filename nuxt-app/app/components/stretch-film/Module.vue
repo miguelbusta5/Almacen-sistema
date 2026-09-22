@@ -1,0 +1,39 @@
+<script setup lang="ts">
+import { ensureSession, useSessionState } from '~/composables/useSession'
+const { me } = useSessionState()
+const gestion = computed(() => !!me.value?.can.stretch?.gestionar)
+const permitido = computed(() => gestion.value || !!me.value?.can.stretch?.solicitar)
+interface Pedido { id:string; solicitante:string; tipo:string; destino:string; rollos:number; estado:string; createdAt:string; procesadoAt:string|null; procesadoPorId:string|null; nota:string|null }
+interface Datos { stock:number|null; pedidos:Pedido[]; movimientos:Array<{id:string;tipo:string;cantidad:number;saldo:number;motivo:string;createdAt:string;usuarioId:string}>; sesiones:Array<{id:string;nombre:string;expiraAt:string;activada:boolean}>; personas?:Array<{id:string;name:string}> }
+const datos=ref<Datos|null>(null), busy=ref(false), error=ref(''), aviso=ref(''), filtro=ref('PENDIENTE')
+const cantidad=ref<number|null>(null), motivo=ref(''), operacion=ref('entrada'), inventarioId=ref('')
+const destino=ref(''), tipo=ref('INTERNO'), rollos=ref<number|null>(null), pedidoId=ref(''), nombreSesion=ref('Pantalla CEDI'), codigo=ref('')
+const rechazos=ref<Record<string,string>>({})
+const pedidos=computed(()=>datos.value?.pedidos.filter(p=>!filtro.value||p.estado===filtro.value)??[])
+const nombre=(id:string|null)=>datos.value?.personas?.find(p=>p.id===id)?.name??'—'
+const fecha=(s:string)=>new Date(s).toLocaleString('es-CO',{timeZone:'America/Bogota'})
+async function cargar(){try{datos.value=await $fetch<Datos>('/api/stretch-film')}catch(e:any){error.value=e.data?.statusMessage??'No se pudieron cargar los pedidos'}}
+async function enviar(body:Record<string,unknown>){if(busy.value)return false;busy.value=true;error.value='';aviso.value='';try{const r=await $fetch<{codigo?:string}>('/api/stretch-film/accion',{method:'POST',body});if(r.codigo)codigo.value=r.codigo;await cargar();aviso.value='Operación guardada';return true}catch(e:any){error.value=e.data?.statusMessage??'No se pudo guardar. Intenta nuevamente.';return false}finally{busy.value=false}}
+async function inventario(){if(await enviar({accion:operacion.value,id:inventarioId.value,rollos:cantidad.value,motivo:motivo.value})){inventarioId.value=crypto.randomUUID();cantidad.value=null;motivo.value=''}}
+async function solicitar(){if(await enviar({accion:'solicitar',id:pedidoId.value,solicitante:me.value?.name,tipo:tipo.value,destino:destino.value,rollos:rollos.value})){pedidoId.value=crypto.randomUUID();destino.value='';rollos.value=null}}
+onMounted(async()=>{await ensureSession();inventarioId.value=crypto.randomUUID();pedidoId.value=crypto.randomUUID();if(permitido.value)await cargar()})
+</script>
+<template>
+  <main class="stretch"><header><h1>Stretch film</h1><p>Inventario y pedidos en rollos.</p></header>
+    <p v-if="!permitido">No tienes permiso para este módulo.</p>
+    <template v-else>
+      <p v-if="error" role="alert" class="notice">{{error}}</p><p v-if="aviso" role="status">{{aviso}}</p>
+      <button :disabled="busy" @click="cargar">Actualizar</button>
+      <div class="grid">
+        <section v-if="gestion" class="card"><h2>Disponible: {{datos?.stock??0}} rollos</h2><form @submit.prevent="inventario"><fieldset :disabled="busy"><label>Movimiento<select v-model="operacion"><option value="entrada">Entrada: sumar rollos recibidos</option><option value="ajuste">Ajuste: establecer existencia real</option></select></label><label>{{operacion==='entrada'?'Rollos recibidos':'Existencia real en rollos'}}<input v-model.number="cantidad" type="number" :min="operacion==='entrada'?1:0" max="1000000" step="1" required /></label><label>Motivo o referencia<input v-model="motivo" required minlength="3" maxlength="500" /></label><p v-if="operacion==='ajuste'">El saldo pasará de {{datos?.stock??0}} a {{cantidad??'…'}} rollos. El ajuste conservará su motivo y responsable.</p><button>Guardar movimiento</button></fieldset></form></section>
+        <section class="card"><h2>Solicitar rollos</h2><form @submit.prevent="solicitar"><fieldset :disabled="busy"><label>Uso<select v-model="tipo"><option value="INTERNO">Interno CEDI</option><option value="TIENDA">Tienda</option></select></label><label>{{tipo==='INTERNO'?'Área':'Tienda de destino'}}<input v-model="destino" required minlength="2" maxlength="160" /></label><label>Rollos<input v-model.number="rollos" type="number" min="1" max="1000000" step="1" required /></label><button>Enviar solicitud</button></fieldset></form></section>
+      </div>
+      <section class="card"><h2>Pedidos</h2><label>Estado<select v-model="filtro"><option value="PENDIENTE">Pendientes</option><option value="ENTREGADO">Entregados</option><option value="RECHAZADO">Rechazados</option><option value="">Todos</option></select></label><p v-if="!pedidos.length">No hay pedidos en este estado.</p><article v-for="p in pedidos" :key="p.id" class="pedido"><h3>{{p.rollos}} rollos · {{p.destino}}</h3><p>{{p.solicitante}} · {{p.tipo}} · {{fecha(p.createdAt)}} · {{p.estado}}</p><p v-if="p.procesadoAt">{{fecha(p.procesadoAt)}} · {{nombre(p.procesadoPorId)}} {{p.nota}}</p><div v-if="gestion&&p.estado==='PENDIENTE'"><button :disabled="busy||p.rollos>(datos?.stock??0)" @click="enviar({accion:'procesar',pedidoId:p.id})">Entregar y descontar {{p.rollos}} rollos</button><p v-if="p.rollos>(datos?.stock??0)">Stock insuficiente para este pedido.</p><form @submit.prevent="enviar({accion:'rechazar',pedidoId:p.id,motivo:rechazos[p.id]})"><label>Motivo del rechazo<input v-model="rechazos[p.id]" required minlength="3" maxlength="500" /></label><button :disabled="busy">Rechazar solicitud</button></form></div></article></section>
+      <section v-if="gestion" class="card"><h2>Pantalla compartida CEDI</h2><p>La sesión dura hasta 12 horas y solo permite solicitar. Abre <a href="/dashboard/stretch-pedidos" target="_blank" rel="noopener">la pantalla de solicitudes</a> en el equipo compartido e introduce un código nuevo.</p><form @submit.prevent="enviar({accion:'sesion',nombre:nombreSesion})"><label>Nombre del equipo<input v-model="nombreSesion" required minlength="3" maxlength="100" /></label><button :disabled="busy">Generar código de un solo uso</button></form><label v-if="codigo">Código para activar la pantalla<input :value="codigo" readonly @focus="($event.target as HTMLInputElement).select()" /></label><ul><li v-for="s in datos?.sesiones" :key="s.id">{{s.nombre}} · {{s.activada?'Activa':'Sin activar'}} · vence {{fecha(s.expiraAt)}} <button :disabled="busy" @click="enviar({accion:'revocar',sesionId:s.id})">Revocar</button></li></ul></section>
+      <section v-if="gestion" class="card"><h2>Movimientos recientes</h2><p v-if="!datos?.movimientos.length">Sin movimientos.</p><article v-for="m in datos?.movimientos" :key="m.id" class="pedido"><strong>{{m.tipo}} · {{m.cantidad>0?'+':''}}{{m.cantidad}} rollos · saldo {{m.saldo}}</strong><p>{{m.motivo}} · {{nombre(m.usuarioId)}} · {{fecha(m.createdAt)}}</p></article></section>
+    </template>
+  </main>
+</template>
+<style scoped>
+.stretch{display:grid;gap:18px;min-width:0;color:var(--ink)}.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,320px),1fr));gap:18px}.card{padding:20px;border:1px solid var(--border);border-radius:14px;background:var(--surface);min-width:0}h1{font-size:28px}h2{font-size:20px}h3{font-size:16px}p{color:var(--muted);line-height:1.5;overflow-wrap:anywhere}label{display:grid;gap:8px;margin:12px 0}input,select,button{padding:11px;border:1px solid var(--border-strong);background:var(--surface);color:var(--ink);border-radius:8px;font:inherit;min-width:0;max-width:100%;box-sizing:border-box}button{cursor:pointer}button:disabled{opacity:.5;cursor:default}fieldset{border:0;padding:0;min-width:0}.pedido{padding:16px 0;border-top:1px solid var(--border)}.notice{color:var(--u-aviso)}:focus-visible{outline:2px solid var(--brand);outline-offset:3px}a{color:var(--brand-deep)}
+</style>

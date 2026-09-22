@@ -2,6 +2,7 @@
 // cliente de Prisma para el delegate por país, y mapRow lo usan los handlers de
 // TODOS los módulos. Ver la nota en exportacionesCalc.ts.
 import { calcularDuracionMinutos, formatDateOnly } from './exportacionesCalc'
+import { avancePersonas } from './resurtidoAvance'
 import {
   huboTraspaso, segundosDeAyudantes, segundosDelCreador, segundosTrabajados,
 } from './montacargasCalc'
@@ -529,10 +530,12 @@ export function mapMontaje(m: any) {
     creadoPorNombre: m.creadoPor?.name ?? null,
     fecha: formatDateOnly(m.fecha),
     montadoAt: m.montadoAt.toISOString(),
+    detenidoSegundos: m.detenidoSegundos ?? 0,
     completadoAt: m.completadoAt ? m.completadoAt.toISOString() : null,
     // Supervision lo paro: las tareas sin empezar estan detenidas.
     detenidoAt: m.detenidoAt ? m.detenidoAt.toISOString() : null,
     progreso: progresoMontaje(tareas),
+    personas: avancePersonas(m),
     tareas,
   }
 }
@@ -675,6 +678,7 @@ export function mapOrdenMuebles(o: any) {
     equipo: o.equipo ? mapEquipoMuebles(o.equipo) : null,
     // En orden de entrada: el ultimo es quien pasa la orden a inspeccion.
     participantes: (o.participantes ?? []).map((p: any) => ({
+      salioAt: p.salioAt?.toISOString() ?? null,
       id: p.usuarioId,
       nombre: p.usuario?.name ?? '',
       equipo: p.equipo?.codigo ?? null,

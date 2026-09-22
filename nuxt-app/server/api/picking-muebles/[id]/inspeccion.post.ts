@@ -1,3 +1,4 @@
+import { defineOperacionAlmacenHandler } from '../../../utils/operacionAlmacen'
 import { defineEventHandler, getRouterParam, createError } from 'h3'
 import { prisma } from '../../../utils/prisma'
 import { auditar, esParticipante, ordenPorId, ORDEN_INCLUDE, requirePickingActivo } from '../../../utils/muebles'
@@ -14,7 +15,7 @@ import { mapOrdenMuebles } from '../../../utils/mapRow'
  * El operario descarga el equipo al hacer esto, y como la capacidad se calcula
  * sobre las lineas de la orden abierta, vuelve a cero sola.
  */
-export default defineEventHandler(async (event) => {
+export default defineOperacionAlmacenHandler(async (event) => {
   const actor = await requirePickingActivo(event)
   const id = getRouterParam(event, 'id')!
 
@@ -25,8 +26,8 @@ export default defineEventHandler(async (event) => {
   // La pasa el ULTIMO que se unio: si hubo reasignacion, es el que termina el
   // trabajo. Gestion puede siempre, para que la orden no se quede abierta toda
   // la noche si esa persona sale de turno.
-  if (!puedeCerrarOrden(orden.participantes, actor.id, actor.role)) {
-    const cierra = orden.participantes[orden.participantes.length - 1]
+  if (!puedeCerrarOrden(orden.participantes.filter(p => !p.salioAt), actor.id, actor.role)) {
+    const cierra = orden.participantes.filter(p => !p.salioAt).at(-1)
     throw createError({
       statusCode: 403,
       statusMessage: `La pasa a inspeccion ${cierra?.usuario.name ?? 'el operario que se unio'}, que es quien termina`,

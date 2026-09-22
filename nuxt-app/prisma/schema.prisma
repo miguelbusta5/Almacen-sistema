@@ -1,6 +1,190 @@
 generator client {
   provider = "prisma-client-js"
 }
+model InventarioCiclico {
+  id String @id @default(cuid())
+  cronogramaId String @map("cronograma_id")
+  cronograma InventarioCronograma @relation(fields: [cronogramaId], references: [id], onDelete: Restrict)
+  nombre String @db.VarChar(120)
+  archivo String @db.VarChar(255)
+  estado String @default("BORRADOR") @db.VarChar(20)
+  filas Json
+  teorico Json
+  avisos Json @default("[]")
+  autorId String @map("autor_id")
+  createdAt DateTime @default(now()) @map("created_at")
+  cerradoAt DateTime? @map("cerrado_at")
+  versionCierreId String? @map("version_cierre_id")
+  cierre Json?
+  tareas InventarioTarea[]
+  casos InventarioCaso[]
+  @@index([cronogramaId, createdAt])
+  @@map("inventario_ciclicos")
+}
+model InventarioTarea {
+  id String @id @default(cuid())
+  cicloId String @map("ciclo_id")
+  ciclo InventarioCiclico @relation(fields: [cicloId], references: [id], onDelete: Restrict)
+  ubicacion String @db.VarChar(120)
+  tipo String @default("INICIAL") @db.VarChar(20)
+  usuarioId String? @map("usuario_id")
+  casoId String? @map("caso_id")
+  caso InventarioCaso? @relation(fields: [casoId], references: [id], onDelete: Restrict)
+  estado String @default("PENDIENTE") @db.VarChar(20)
+  inicio DateTime?
+  fin DateTime?
+  pausaInicio DateTime? @map("pausa_inicio")
+  pausaMotivo String? @map("pausa_motivo")
+  pausaSegundos Float @default(0) @map("pausa_segundos")
+  pausas Json @default("[]")
+  revision Int @default(0)
+  registros InventarioConteo[]
+  @@index([cicloId, tipo, estado])
+  @@index([usuarioId, estado])
+  @@map("inventario_tareas")
+}
+model InventarioConteo {
+  id String @id @default(cuid())
+  tareaId String @map("tarea_id")
+  tarea InventarioTarea @relation(fields: [tareaId], references: [id], onDelete: Restrict)
+  plu String @db.VarChar(100)
+  cajas Int
+  empaque Int
+  reguero Int
+  fisico Int
+  teoricoActual Int? @map("teorico_actual")
+  estado String @db.VarChar(20)
+  inesperado Boolean @default(false)
+  updatedAt DateTime @updatedAt @map("updated_at")
+  @@unique([tareaId, plu])
+  @@map("inventario_conteos")
+}
+model InventarioCaso {
+  id String @id @default(cuid())
+  cicloId String @map("ciclo_id")
+  ciclo InventarioCiclico @relation(fields: [cicloId], references: [id], onDelete: Restrict)
+  ubicacion String @db.VarChar(120)
+  plu String @db.VarChar(100)
+  estado String @default("ABIERTO") @db.VarChar(20)
+  resultadoId String? @map("resultado_id")
+  cerradoPorId String? @map("cerrado_por_id")
+  cerradoAt DateTime? @map("cerrado_at")
+  observacion String?
+  tareas InventarioTarea[]
+  @@unique([cicloId, ubicacion, plu])
+  @@map("inventario_casos")
+}
+model StretchAcceso {
+  userId String @id @map("user_id")
+  gestionar Boolean @default(false)
+  solicitar Boolean @default(false)
+  @@map("stretch_accesos")
+}
+
+model StretchStock {
+  id String @id @default("principal")
+  rollos Int @default(0)
+  updatedAt DateTime @updatedAt @map("updated_at")
+  @@map("stretch_stock")
+}
+
+model StretchPedido {
+  id String @id
+  solicitante String
+  destino String
+  tipo String
+  rollos Int
+  usuarioId String? @map("usuario_id")
+  sesionId String? @map("sesion_id")
+  estado String @default("PENDIENTE")
+  createdAt DateTime @default(now()) @map("created_at")
+  procesadoAt DateTime? @map("procesado_at")
+  procesadoPorId String? @map("procesado_por_id")
+  nota String?
+  @@index([estado, createdAt])
+  @@index([sesionId, createdAt])
+  @@map("stretch_pedidos")
+}
+
+model StretchMovimiento {
+  id String @id @default(cuid())
+  solicitudId String @unique @map("solicitud_id")
+  tipo String
+  cantidad Int
+  saldo Int
+  motivo String
+  usuarioId String @map("usuario_id")
+  pedidoId String? @unique @map("pedido_id")
+  createdAt DateTime @default(now()) @map("created_at")
+  @@index([createdAt])
+  @@map("stretch_movimientos")
+}
+
+model StretchSesion {
+  id String @id @default(cuid())
+  tokenHash String @unique @map("token_hash")
+  nombre String
+  creadaPorId String @map("creada_por_id")
+  activada Boolean @default(false)
+  expiraAt DateTime @map("expira_at")
+  revocadaAt DateTime? @map("revocada_at")
+  createdAt DateTime @default(now()) @map("created_at")
+  @@map("stretch_sesiones")
+}
+
+model InventarioAcceso {
+  userId String @id @map("user_id")
+  contar Boolean @default(false)
+  gestionar Boolean @default(false)
+  @@map("inventario_accesos")
+}
+
+model InventarioCronograma {
+  ciclos InventarioCiclico[]
+  id String @id @default(cuid())
+  nombre String @db.VarChar(120)
+  fechaInicio DateTime @db.Date @map("fecha_inicio")
+  fechaFin DateTime @db.Date @map("fecha_fin")
+  estado String @default("ABIERTO") @db.VarChar(20)
+  autorId String @map("autor_id")
+  autorNombre String @map("autor_nombre")
+  createdAt DateTime @default(now()) @map("created_at")
+  versiones InventarioMaestroVersion[]
+  @@map("inventario_cronogramas")
+}
+
+model InventarioMaestroVersion {
+  id String @id @default(cuid())
+  cronogramaId String @map("cronograma_id")
+  cronograma InventarioCronograma @relation(fields: [cronogramaId], references: [id], onDelete: Restrict)
+  numero Int
+  archivo String @db.VarChar(255)
+  hash String @db.VarChar(64)
+  total Int
+  resumen Json
+  autorId String @map("autor_id")
+  autorNombre String @map("autor_nombre")
+  createdAt DateTime @default(now()) @map("created_at")
+  productos InventarioProductoPvp[]
+  @@unique([cronogramaId, numero])
+  @@map("inventario_maestro_versiones")
+}
+
+model InventarioProductoPvp {
+  id String @id @default(cuid())
+  versionId String @map("version_id")
+  version InventarioMaestroVersion @relation(fields: [versionId], references: [id], onDelete: Restrict)
+  plu String @db.VarChar(100)
+  descripcion String @db.VarChar(500)
+  proveedor String @db.VarChar(500)
+  upc String @db.VarChar(50)
+  precio Decimal? @db.Decimal(12, 2)
+  marca String @db.VarChar(500)
+  linea String @db.VarChar(500)
+  @@unique([versionId, plu])
+  @@index([versionId, upc])
+  @@map("inventario_productos_pvp")
+}
 
 datasource db {
   provider = "postgresql"
@@ -69,24 +253,24 @@ model ProductoMaestro {
 }
 
 model TransporteGuardado {
-  id             Int       @id @default(autoincrement())
-  client_id      String    @unique @db.VarChar(100)
-  fecha          DateTime  @db.Date
-  documento      String    @db.VarChar(255)
-  ubicacion      String
-  estado         String    @default("PENDIENTE DESPACHO") @db.VarChar(60)
-  tipo           String    @default("COMUN") @db.VarChar(20) // COMUN | ECOMMERCE
-  fecha_despacho DateTime? @db.Date
-  nota           String?
-  ciudad         String?   @db.VarChar(100) // Ciudad de destino (opcional)
-  codigoTienda   String?   @map("codigo_tienda") @db.VarChar(50) // Código del catálogo Gourmet (MaestroTiendaGourmet)
-  nombreTienda   String?   @map("nombre_tienda") @db.VarChar(255)
-  clienteNombre     String?   @map("cliente_nombre") @db.VarChar(255)
-  clienteDocumento  String?   @map("cliente_documento") @db.VarChar(50)
-  netsuiteId     String?   @map("netsuite_id") // ID interno de NetSuite (futuro)
-  posicionesOcupadas Int?   @map("posiciones_ocupadas")
-  created_at     DateTime? @default(now()) @db.Timestamp(6)
-  updated_at     DateTime? @default(now()) @db.Timestamp(6)
+  id                 Int       @id @default(autoincrement())
+  client_id          String    @unique @db.VarChar(100)
+  fecha              DateTime  @db.Date
+  documento          String    @db.VarChar(255)
+  ubicacion          String
+  estado             String    @default("PENDIENTE DESPACHO") @db.VarChar(60)
+  tipo               String    @default("COMUN") @db.VarChar(20) // COMUN | ECOMMERCE
+  fecha_despacho     DateTime? @db.Date
+  nota               String?
+  ciudad             String?   @db.VarChar(100) // Ciudad de destino (opcional)
+  codigoTienda       String?   @map("codigo_tienda") @db.VarChar(50) // Código del catálogo Gourmet (MaestroTiendaGourmet)
+  nombreTienda       String?   @map("nombre_tienda") @db.VarChar(255)
+  clienteNombre      String?   @map("cliente_nombre") @db.VarChar(255)
+  clienteDocumento   String?   @map("cliente_documento") @db.VarChar(50)
+  netsuiteId         String?   @map("netsuite_id") // ID interno de NetSuite (futuro)
+  posicionesOcupadas Int?      @map("posiciones_ocupadas")
+  created_at         DateTime? @default(now()) @db.Timestamp(6)
+  updated_at         DateTime? @default(now()) @db.Timestamp(6)
 
   @@index([client_id], map: "idx_transporte_client_id")
   @@index([estado, fecha], map: "idx_transporte_estado_fecha")
@@ -105,64 +289,64 @@ model TransporteDeleted {
 // ═══════════════════════════════════════════
 
 model User {
-  id        String   @id @default(cuid())
-  email     String   @unique
-  name      String
-  password  String
-  role      Role     @default(OPERADOR)
-  active    Boolean  @default(true)
-  mustChangePassword Boolean @default(false) @map("must_change_password")
+  id                     String    @id @default(cuid())
+  email                  String    @unique
+  name                   String
+  password               String
+  role                   Role      @default(OPERADOR)
+  active                 Boolean   @default(true)
+  mustChangePassword     Boolean   @default(false) @map("must_change_password")
   // Bloqueo por fuerza bruta. Se persiste en vez de guardarse en memoria porque
   // en serverless cada instancia tendria su propio contador y el limite seria
   // trivial de esquivar repartiendo los intentos.
-  intentosFallidos   Int       @default(0) @map("intentos_fallidos")
-  bloqueadoHasta     DateTime? @map("bloqueado_hasta")
+  intentosFallidos       Int       @default(0) @map("intentos_fallidos")
+  bloqueadoHasta         DateTime? @map("bloqueado_hasta")
   // Quien puede cerrar una novedad de montacargas. Es un permiso POR PERSONA y
   // no por rol a proposito: lo tienen dos personas concretas, y atarlo al rol
   // se lo daria en silencio a cualquier supervisor que se cree despues.
-  puedeResolverNovedades Boolean @default(false) @map("puede_resolver_novedades")
+  puedeResolverNovedades Boolean   @default(false) @map("puede_resolver_novedades")
 
   /// Quien puede montar un resurtido y asignar pendientes. Permiso POR PERSONA y
   /// no por rol, igual que el de cerrar novedades: hoy lo tienen Felipe Ossa y
   /// Eduardo Zurita, y un supervisor que se cree manana no debe heredarlo solo
   /// por serlo.
-  puedeMontarResurtido Boolean @default(false) @map("puede_montar_resurtido")
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
+  puedeMontarResurtido Boolean  @default(false) @map("puede_montar_resurtido")
+  createdAt            DateTime @default(now()) @map("created_at")
+  updatedAt            DateTime @updatedAt @map("updated_at")
 
-  activityLogs                   ActivityLog[]
-  transportista                  Transportista?
-  novedadesAsign                 Novedad[]                      @relation("NovedadesAsignadas")
-  contactosGuard                 ContactoGuardado[]
-  despachosTienda                DespachoTienda[]               @relation("DespachosCreadosPor")
-  historialDespachos             HistorialDespacho[]            @relation("HistorialDespachoUsuario")
-  inspecciones                   InspeccionPreoperacional[]     @relation("InspeccionesRealizadas")
-  notificaciones                 Notificacion[]
-  guardadosPendientes            GuardadoPendienteTienda[]      @relation("GuardadosPendientesAsignados")
-  integracionesCreadoras         IntegracionPedido[]            @relation("integracionesCreadoras")
-  integracionesCompletadas       IntegracionPedido[]            @relation("integracionesCompletadas")
-  solicitudesTransporte          SolicitudTransporte[]          @relation("SolicitudesTransporteCreadas")
-  solicitudesGestionadas         SolicitudTransporte[]          @relation("SolicitudesTransporteGestionadas")
-  historialSolicitudesTransporte HistorialSolicitudTransporte[] @relation("HistorialSolicitudTransporteUsuario")
-  exportacionesEtiquetado        EtiquetadoExportacion[]        @relation("ExportacionesEtiquetadoCreadas")
-  exportacionesActualizadas      EtiquetadoExportacion[]        @relation("ExportacionesEtiquetadoActualizadas")
-  exportacionesMexicoCreadas     EtiquetadoExportacionMexico[]  @relation("ExportacionesMexicoEtiquetadoCreadas")
-  exportacionesMexicoActualizadas EtiquetadoExportacionMexico[] @relation("ExportacionesMexicoEtiquetadoActualizadas")
-  exportacionesEeuuCreadas       EtiquetadoExportacionEeuu[]    @relation("ExportacionesEeuuEtiquetadoCreadas")
-  exportacionesEeuuActualizadas  EtiquetadoExportacionEeuu[]    @relation("ExportacionesEeuuEtiquetadoActualizadas")
-  gourmetPedidosCreados          GourmetPedido[]                @relation("GourmetPedidosCreados")
-  resurtidosAsignados   MontajeResurtido[]   @relation("ResurtidosAsignados")
-  resurtidosMontados    MontajeResurtido[]   @relation("ResurtidosMontados")
-  pendientesSolicitados PendienteGourmet[]   @relation("PendientesSolicitados")
-  pendientesAsignados   PendienteGourmet[]   @relation("PendientesAsignados")
-  pendientesRecibidos   PendienteGourmet[]   @relation("PendientesRecibidos")
-  pendientesDevueltos   PendienteGourmet[]   @relation("PendientesDevueltos")
-  pendientesConNovedad  PendienteGourmet[]   @relation("PendientesConNovedad")
-  pendientesPasados     PendienteGourmet[]   @relation("PendientesPasados")
-  pendientesBorrados    PendienteGourmet[]   @relation("PendientesBorrados")
-  tramosPendiente       TramoPendiente[]     @relation("TramosPendiente")
-  tareasResurtidoResponsable TareaResurtido[]      @relation("TareasResurtidoResponsable")
-  tareasResurtidoPasadas     TareaResurtido[]      @relation("TareasResurtidoPasadas")
+  activityLogs                       ActivityLog[]
+  transportista                      Transportista?
+  novedadesAsign                     Novedad[]                      @relation("NovedadesAsignadas")
+  contactosGuard                     ContactoGuardado[]
+  despachosTienda                    DespachoTienda[]               @relation("DespachosCreadosPor")
+  historialDespachos                 HistorialDespacho[]            @relation("HistorialDespachoUsuario")
+  inspecciones                       InspeccionPreoperacional[]     @relation("InspeccionesRealizadas")
+  notificaciones                     Notificacion[]
+  guardadosPendientes                GuardadoPendienteTienda[]      @relation("GuardadosPendientesAsignados")
+  integracionesCreadoras             IntegracionPedido[]            @relation("integracionesCreadoras")
+  integracionesCompletadas           IntegracionPedido[]            @relation("integracionesCompletadas")
+  solicitudesTransporte              SolicitudTransporte[]          @relation("SolicitudesTransporteCreadas")
+  solicitudesGestionadas             SolicitudTransporte[]          @relation("SolicitudesTransporteGestionadas")
+  historialSolicitudesTransporte     HistorialSolicitudTransporte[] @relation("HistorialSolicitudTransporteUsuario")
+  exportacionesEtiquetado            EtiquetadoExportacion[]        @relation("ExportacionesEtiquetadoCreadas")
+  exportacionesActualizadas          EtiquetadoExportacion[]        @relation("ExportacionesEtiquetadoActualizadas")
+  exportacionesMexicoCreadas         EtiquetadoExportacionMexico[]  @relation("ExportacionesMexicoEtiquetadoCreadas")
+  exportacionesMexicoActualizadas    EtiquetadoExportacionMexico[]  @relation("ExportacionesMexicoEtiquetadoActualizadas")
+  exportacionesEeuuCreadas           EtiquetadoExportacionEeuu[]    @relation("ExportacionesEeuuEtiquetadoCreadas")
+  exportacionesEeuuActualizadas      EtiquetadoExportacionEeuu[]    @relation("ExportacionesEeuuEtiquetadoActualizadas")
+  gourmetPedidosCreados              GourmetPedido[]                @relation("GourmetPedidosCreados")
+  resurtidosAsignados                MontajeResurtido[]             @relation("ResurtidosAsignados")
+  resurtidosMontados                 MontajeResurtido[]             @relation("ResurtidosMontados")
+  pendientesSolicitados              PendienteGourmet[]             @relation("PendientesSolicitados")
+  pendientesAsignados                PendienteGourmet[]             @relation("PendientesAsignados")
+  pendientesRecibidos                PendienteGourmet[]             @relation("PendientesRecibidos")
+  pendientesDevueltos                PendienteGourmet[]             @relation("PendientesDevueltos")
+  pendientesConNovedad               PendienteGourmet[]             @relation("PendientesConNovedad")
+  pendientesPasados                  PendienteGourmet[]             @relation("PendientesPasados")
+  pendientesBorrados                 PendienteGourmet[]             @relation("PendientesBorrados")
+  tramosPendiente                    TramoPendiente[]               @relation("TramosPendiente")
+  tareasResurtidoResponsable         TareaResurtido[]               @relation("TareasResurtidoResponsable")
+  tareasResurtidoPasadas             TareaResurtido[]               @relation("TareasResurtidoPasadas")
   ordenesMueblesEntregadas   OrdenMuebles[]         @relation("OrdenesMueblesEntregadas")
   erroresPickingOperario     ErrorPickingMuebles[]  @relation("ErroresPickingOperario")
   erroresPickingMarcados     ErrorPickingMuebles[]  @relation("ErroresPickingMarcados")
@@ -171,31 +355,31 @@ model User {
   tareasGeneralesFinalizadas TareaGeneral[]         @relation("TareasGeneralesFinalizadas")
   tareasGeneralesAsignadas   AsignadoTareaGeneral[] @relation("TareasGeneralesAsignadas")
   tareasGeneralesCerradas    AsignadoTareaGeneral[] @relation("TareasGeneralesCerradas")
-  tramosTareaResurtido       TramoTareaResurtido[] @relation("TramosTareaResurtido")
-  cuadrosTurnoSubidos   CuadroTurnos[]       @relation("CuadrosTurnoSubidos")
-  turnos                TurnoOperario[]      @relation("TurnosOperario")
-  recepcionesCreadas      RecepcionContenedor[]  @relation("RecepcionesCreadas")
-  recepcionesActualizadas RecepcionContenedor[]  @relation("RecepcionesActualizadas")
-  descargasRecepcion      DescargadorRecepcion[] @relation("DescargasRecepcion")
-  novedadesRecepcion      NovedadRecepcion[]     @relation("NovedadesRecepcionCreadas")
-  movimientosMontacargasCreados      MovimientoMontacargas[] @relation("MovimientosMontacargasCreados")
-  movimientosMontacargasResponsable  MovimientoMontacargas[] @relation("MovimientosMontacargasResponsable")
-  movimientosMontacargasActualizados MovimientoMontacargas[] @relation("MovimientosMontacargasActualizados")
-  tramosMontacargas                  TramoMontacargas[]      @relation("TramosMontacargas")
-  novedadesMontacargasAbiertas       NovedadMontacargas[]    @relation("NovedadesMontacargasAbiertas")
-  novedadesMontacargasResueltas      NovedadMontacargas[]    @relation("NovedadesMontacargasResueltas")
-  tiemposMuertos                     JustificacionTiempoMuerto[] @relation("TiemposMuertos")
-  tiemposMuertosJustificados         JustificacionTiempoMuerto[] @relation("TiemposMuertosJustificados")
-  equiposMueblesAsignados            AsignacionEquipoMuebles[]   @relation("EquiposMueblesAsignados")
-  equiposMueblesAsignadosPor         AsignacionEquipoMuebles[]   @relation("EquiposMueblesAsignadosPor")
-  ordenesMueblesOperario             OrdenMuebles[]              @relation("OrdenesMueblesOperario")
-  ordenesMueblesActualizadas         OrdenMuebles[]              @relation("OrdenesMueblesActualizadas")
-  pendientesMueblesAsignados         PendienteMuebles[]          @relation("PendientesMueblesAsignados")
-  pendientesMueblesAsignadosPor      PendienteMuebles[]          @relation("PendientesMueblesAsignadosPor")
-  pendientesMueblesResueltos         PendienteMuebles[]          @relation("PendientesMueblesResueltos")
-  lineasMueblesPickeadas             LineaMuebles[]              @relation("LineasMueblesOperario")
-  participacionesMuebles             ParticipanteOrdenMuebles[]  @relation("ParticipacionesMuebles")
-  tiposMuebleActualizados            TipoMueblePlu[]             @relation("TiposMuebleActualizados")
+  tramosTareaResurtido               TramoTareaResurtido[]          @relation("TramosTareaResurtido")
+  cuadrosTurnoSubidos                CuadroTurnos[]                 @relation("CuadrosTurnoSubidos")
+  turnos                             TurnoOperario[]                @relation("TurnosOperario")
+  recepcionesCreadas                 RecepcionContenedor[]          @relation("RecepcionesCreadas")
+  recepcionesActualizadas            RecepcionContenedor[]          @relation("RecepcionesActualizadas")
+  descargasRecepcion                 DescargadorRecepcion[]         @relation("DescargasRecepcion")
+  novedadesRecepcion                 NovedadRecepcion[]             @relation("NovedadesRecepcionCreadas")
+  movimientosMontacargasCreados      MovimientoMontacargas[]        @relation("MovimientosMontacargasCreados")
+  movimientosMontacargasResponsable  MovimientoMontacargas[]        @relation("MovimientosMontacargasResponsable")
+  movimientosMontacargasActualizados MovimientoMontacargas[]        @relation("MovimientosMontacargasActualizados")
+  tramosMontacargas                  TramoMontacargas[]             @relation("TramosMontacargas")
+  novedadesMontacargasAbiertas       NovedadMontacargas[]           @relation("NovedadesMontacargasAbiertas")
+  novedadesMontacargasResueltas      NovedadMontacargas[]           @relation("NovedadesMontacargasResueltas")
+  tiemposMuertos                     JustificacionTiempoMuerto[]    @relation("TiemposMuertos")
+  tiemposMuertosJustificados         JustificacionTiempoMuerto[]    @relation("TiemposMuertosJustificados")
+  equiposMueblesAsignados            AsignacionEquipoMuebles[]      @relation("EquiposMueblesAsignados")
+  equiposMueblesAsignadosPor         AsignacionEquipoMuebles[]      @relation("EquiposMueblesAsignadosPor")
+  ordenesMueblesOperario             OrdenMuebles[]                 @relation("OrdenesMueblesOperario")
+  ordenesMueblesActualizadas         OrdenMuebles[]                 @relation("OrdenesMueblesActualizadas")
+  pendientesMueblesAsignados         PendienteMuebles[]             @relation("PendientesMueblesAsignados")
+  pendientesMueblesAsignadosPor      PendienteMuebles[]             @relation("PendientesMueblesAsignadosPor")
+  pendientesMueblesResueltos         PendienteMuebles[]             @relation("PendientesMueblesResueltos")
+  lineasMueblesPickeadas             LineaMuebles[]                 @relation("LineasMueblesOperario")
+  participacionesMuebles             ParticipanteOrdenMuebles[]     @relation("ParticipacionesMuebles")
+  tiposMuebleActualizados            TipoMueblePlu[]                @relation("TiposMuebleActualizados")
 
   @@index([email])
   @@map("users")
@@ -893,8 +1077,8 @@ enum EstadoPedidoGourmet {
 
 // Tipo de carga del pedido — GOURMET (por defecto) exige códigos de caja
 // únicos sin repetir; MUEBLES permite repetir un número de caja cuando el
-// mueble viene en más de una parte física ("tiene parte 2" en el escaneo),
-// contando cada parte como una caja adicional.
+// mueble viene en más de una parte física (ver "tiene parte 2" en el
+// escaneo), contando cada parte como una caja adicional.
 enum TipoPedidoGourmet {
   GOURMET
   MUEBLES
@@ -1001,6 +1185,7 @@ model GourmetPedidoEstiba {
   secuencia   Int
   // ubicacion es nullable para permitir crear estibas durante el escaneo
   // inicial (creación del pedido, G1), antes de asignarles ubicación física.
+  // Al "Asignar ubicación" se rellena. Pedidos legacy tienen ubicacion siempre.
   ubicacion   String?             @db.VarChar(120)
   observacion String?
   createdAt   DateTime            @default(now()) @map("created_at")
@@ -1132,7 +1317,7 @@ model MovimientoMontacargas {
   pausaInicio DateTime? @map("pausa_inicio")
   pausaSegundos Float @default(0) @map("pausa_segundos")
 
-  id     String                     @id @default(cuid())
+  id     String                      @id @default(cuid())
   tipo   TipoMovimientoMontacargas
   estado EstadoMovimientoMontacargas @default(EN_CURSO)
 
@@ -1143,8 +1328,8 @@ model MovimientoMontacargas {
 
   // Cajas master completas. Arranca en 0: el registro nace al digitar el PLU y
   // las cantidades se completan despues, sin parar el reloj.
-  cajas           Int @default(0)
-  unidadesPorCaja Int @default(0) @map("unidades_por_caja")
+  cajas            Int     @default(0)
+  unidadesPorCaja  Int     @default(0) @map("unidades_por_caja")
   // El maestro no trae "Und Emp" para parte del catalogo; cuando la escribe el
   // operario se marca aqui, y esa lista es el trabajo de completar el catalogo.
   unidadesManuales Boolean @default(false) @map("unidades_manuales")
@@ -1178,12 +1363,12 @@ model MovimientoMontacargas {
   origen    MovimientoMontacargas?  @relation("SobrantesMontacargas", fields: [origenId], references: [id])
   sobrantes MovimientoMontacargas[] @relation("SobrantesMontacargas")
 
-  creadoPorId String @map("creado_por_id")
-  creadoPor   User   @relation("MovimientosMontacargasCreados", fields: [creadoPorId], references: [id])
+  creadoPorId      String  @map("creado_por_id")
+  creadoPor        User    @relation("MovimientosMontacargasCreados", fields: [creadoPorId], references: [id])
   // Quien tiene el PLU en la mano ahora mismo. Cambia con cada traspaso; es lo
   // que decide en la bandeja de quien aparece el registro.
-  responsableId String @map("responsable_id")
-  responsable   User   @relation("MovimientosMontacargasResponsable", fields: [responsableId], references: [id])
+  responsableId    String  @map("responsable_id")
+  responsable      User    @relation("MovimientosMontacargasResponsable", fields: [responsableId], references: [id])
   actualizadoPorId String? @map("actualizado_por_id")
   actualizadoPor   User?   @relation("MovimientosMontacargasActualizados", fields: [actualizadoPorId], references: [id])
 
@@ -1209,16 +1394,16 @@ model MovimientoMontacargas {
 // mide por persona: sumar todo el tiempo a quien lo empezo seria mentir.
 // La ventana de una novedad NO es un tramo: verificar no se cronometra.
 model TramoMontacargas {
-  id            String                @id @default(cuid())
-  movimientoId  String                @map("movimiento_id")
-  movimiento    MovimientoMontacargas @relation(fields: [movimientoId], references: [id], onDelete: Cascade)
-  usuarioId     String                @map("usuario_id")
-  usuario       User                  @relation("TramosMontacargas", fields: [usuarioId], references: [id])
-  orden         Int
-  inicio        DateTime
+  id           String                @id @default(cuid())
+  movimientoId String                @map("movimiento_id")
+  movimiento   MovimientoMontacargas @relation(fields: [movimientoId], references: [id], onDelete: Cascade)
+  usuarioId    String                @map("usuario_id")
+  usuario      User                  @relation("TramosMontacargas", fields: [usuarioId], references: [id])
+  orden        Int
+  inicio       DateTime
   // Null mientras la persona todavia lo tiene en la mano.
-  fin           DateTime?
-  createdAt     DateTime              @default(now()) @map("created_at")
+  fin          DateTime?
+  createdAt    DateTime              @default(now()) @map("created_at")
 
   @@index([movimientoId, orden])
   @@index([usuarioId, fin])
@@ -1229,24 +1414,24 @@ model TramoMontacargas {
 // novedad. Eso detiene el reloj y saca el registro de la medicion hasta que
 // alguien verifique y confirme. La verificacion no se cronometra a proposito.
 model NovedadMontacargas {
-  id           String                 @id @default(cuid())
-  movimientoId String                 @map("movimiento_id")
-  movimiento   MovimientoMontacargas  @relation(fields: [movimientoId], references: [id], onDelete: Cascade)
-  tipo         TipoNovedadMontacargas
-  detalle      String?
+  id                  String                 @id @default(cuid())
+  movimientoId        String                 @map("movimiento_id")
+  movimiento          MovimientoMontacargas  @relation(fields: [movimientoId], references: [id], onDelete: Cascade)
+  tipo                TipoNovedadMontacargas
+  detalle             String?
   // Cifras que el ayudante encontro, para que quien verifica vea el descuadre
   // sin tener que preguntar.
-  cantidadEncontrada Int?    @map("cantidad_encontrada")
-  ubicacionEncontrada String? @map("ubicacion_encontrada") @db.VarChar(120)
+  cantidadEncontrada  Int?                   @map("cantidad_encontrada")
+  ubicacionEncontrada String?                @map("ubicacion_encontrada") @db.VarChar(120)
 
   abiertaPorId String   @map("abierta_por_id")
   abiertaPor   User     @relation("NovedadesMontacargasAbiertas", fields: [abiertaPorId], references: [id])
   abiertaAt    DateTime @default(now()) @map("abierta_at")
 
-  resueltaPorId    String?   @map("resuelta_por_id")
-  resueltaPor      User?     @relation("NovedadesMontacargasResueltas", fields: [resueltaPorId], references: [id])
-  resueltaAt       DateTime? @map("resuelta_at")
-  notaResolucion   String?   @map("nota_resolucion")
+  resueltaPorId  String?   @map("resuelta_por_id")
+  resueltaPor    User?     @relation("NovedadesMontacargasResueltas", fields: [resueltaPorId], references: [id])
+  resueltaAt     DateTime? @map("resuelta_at")
+  notaResolucion String?   @map("nota_resolucion")
 
   @@index([movimientoId])
   @@index([resueltaAt])
@@ -1350,10 +1535,10 @@ model RecepcionContenedor {
   tipoProducto TipoProductoRecepcion @map("tipo_producto")
 
   /// Peso del contenedor en kilos, tal como viene en la documentacion.
-  pesoKg                Decimal @map("peso_kg") @db.Decimal(10, 2)
-  referenciasEsperadas  Int     @map("referencias_esperadas")
-  cajas                 Int
-  unidades              Int
+  pesoKg               Decimal @map("peso_kg") @db.Decimal(10, 2)
+  referenciasEsperadas Int     @map("referencias_esperadas")
+  cajas                Int
+  unidades             Int
 
   /// Se llenan al cerrar, cuando ya se sabe como quedo la descarga.
   estibasUsadas     Int? @map("estibas_usadas")
@@ -1456,6 +1641,7 @@ enum EstadoPendienteGourmet {
 /// El montaje no se cronometra: quien lo sube no esta haciendo el trabajo, solo
 /// repartiendolo. Lo que se mide es cada tarea, una por una.
 model MontajeResurtido {
+  detenidoSegundos Float @default(0) @map("detenido_segundos")
   id            String                 @id @default(cuid())
   estado        EstadoMontajeResurtido @default(EN_CURSO)
   nombreArchivo String                 @map("nombre_archivo") @db.VarChar(255)
@@ -1508,11 +1694,11 @@ model TareaResurtido {
   /// operario recorra el almacen una sola vez y en linea recta.
   orden Int
 
-  plu         String @db.VarChar(100)
+  plu                 String @db.VarChar(100)
   /// Del maestro, no del archivo: el archivo trae un NOMBRE que puede estar viejo.
-  descripcion String @db.VarChar(255)
+  descripcion         String @db.VarChar(255)
   /// De donde hay que bajar el producto.
-  altura      String @db.VarChar(120)
+  altura              String @db.VarChar(120)
   /// Ubicacion de picking recomendada por el archivo.
   pickingSugerido     String @map("picking_sugerido") @db.VarChar(120)
   unidadesSolicitadas Int    @map("unidades_solicitadas")
@@ -1565,9 +1751,9 @@ model PendienteGourmet {
   id     String                 @id @default(cuid())
   estado EstadoPendienteGourmet @default(SOLICITADO)
 
-  plu                 String @db.VarChar(100)
-  descripcion         String @db.VarChar(255)
-  unidadesSolicitadas Int    @map("unidades_solicitadas")
+  plu                 String  @db.VarChar(100)
+  descripcion         String  @db.VarChar(255)
+  unidadesSolicitadas Int     @map("unidades_solicitadas")
   observacion         String?
 
   solicitadoPorId String   @map("solicitado_por_id")
@@ -1755,13 +1941,13 @@ enum TipoEquipoMuebles {
 /// un maximo contra el que compararse. El equipo sigue aqui porque importa saber
 /// con cual se trabajo — es la razon por la que a veces hay que reasignar un PLU.
 model EquipoMuebles {
-  id          String            @id @default(cuid())
-  codigo      String            @unique @db.VarChar(40)
-  tipo        TipoEquipoMuebles
-  activo      Boolean           @default(true)
+  id     String            @id @default(cuid())
+  codigo String            @unique @db.VarChar(40)
+  tipo   TipoEquipoMuebles
+  activo Boolean           @default(true)
 
-  asignaciones AsignacionEquipoMuebles[]
-  ordenes      OrdenMuebles[]
+  asignaciones  AsignacionEquipoMuebles[]
+  ordenes       OrdenMuebles[]
   participantes ParticipanteOrdenMuebles[]
 
   createdAt DateTime @default(now()) @map("created_at")
@@ -1866,8 +2052,8 @@ model OrdenMuebles {
   motivoCorreccion String?   @map("motivo_correccion")
   deletedAt        DateTime? @map("deleted_at")
 
-  lineas     LineaMuebles[]
-  pendientes PendienteMuebles[]
+  lineas        LineaMuebles[]
+  pendientes    PendienteMuebles[]
   participantes ParticipanteOrdenMuebles[]
 
   createdAt DateTime @default(now()) @map("created_at")
@@ -1896,6 +2082,7 @@ enum EstadoLineaMuebles {
 /// no debe cambiar en silencio (mismo criterio que volumen_m3 en
 /// medidas_caja_master).
 model LineaMuebles {
+  tipoEquipo String? @map("tipo_equipo") @db.VarChar(30)
   id      String       @id @default(cuid())
   ordenId String       @map("orden_id")
   orden   OrdenMuebles @relation(fields: [ordenId], references: [id], onDelete: Cascade)
@@ -2122,6 +2309,7 @@ model TipoMueblePlu {
 /// reasigna al del Order Picker, que entra a la MISMA orden en vez de crear una
 /// paralela que despues nadie sabria juntar.
 model ParticipanteOrdenMuebles {
+  salioAt DateTime? @map("salio_at")
   id        String       @id @default(cuid())
   ordenId   String       @map("orden_id")
   orden     OrdenMuebles @relation(fields: [ordenId], references: [id], onDelete: Cascade)

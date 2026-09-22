@@ -203,12 +203,12 @@ describe("picking — orden compartida por reasignacion", () => {
   it("unirse no arranca ningun reloj nuevo", () => {
     // El de la orden ya corre desde que la abrio el primero.
     expect(unirse).not.toContain("horaInicio: now");
-    expect(unirse).toContain("participanteOrdenMuebles.create");
+    expect(unirse).toContain("participanteOrdenMuebles.upsert");
   });
 
   it("unirse ocupa el turno: no se puede tener ademas una orden propia", () => {
     expect(unirse).toContain("ordenAbierta(actor.id)");
-    expect(helpers).toContain("participantes: { some: { usuarioId } }");
+    expect(helpers).toContain("participantes: { some: { usuarioId, salioAt: null } }");
   });
 
   it("cada linea guarda quien la pickeo", () => {
@@ -224,7 +224,7 @@ describe("picking — orden compartida por reasignacion", () => {
   });
 
   it("la pasa a inspeccion el que se unio, y gestion como salida de emergencia", () => {
-    expect(pasarInspeccion).toContain("puedeCerrarOrden(orden.participantes, actor.id, actor.role)");
+    expect(pasarInspeccion).toContain("puedeCerrarOrden(orden.participantes.filter(p => !p.salioAt), actor.id, actor.role)");
     expect(pasarInspeccion).toContain("cerrada por supervision");
   });
 });

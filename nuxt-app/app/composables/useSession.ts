@@ -11,6 +11,9 @@ export interface MeInfo {
     resolverNovedades?: boolean
     montarResurtido?: boolean
     capacidadPicking?: boolean
+    gestionarInventarios?: boolean
+    contarInventarios?: boolean
+    stretch?: { gestionar: boolean; solicitar: boolean }
   }
 }
 

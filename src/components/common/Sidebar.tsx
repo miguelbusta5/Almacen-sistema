@@ -46,6 +46,8 @@ interface NavItem {
 }
 
 const ALL_ITEMS: NavItem[] = [
+  { href: "/dashboard/stretch-film", label: "Stretch film", icon: <PackageOpen size={16} />, moduleKey: "stretch-film" },
+  { href: "/dashboard/inventarios", label: "Inventarios", icon: <ClipboardCheck size={16} />, moduleKey: "inventarios" },
   { href: "/dashboard/capacidad-picking", label: "Capacidad picking", icon: <PackageSearch size={16} />, moduleKey: "capacidad-picking" },
   { href: "/dashboard", label: "Inicio", icon: <Home size={16} strokeWidth={2.1} />, moduleKey: null },
   { href: "/dashboard/tienda", label: "Facturas Contado", icon: <Store size={16} strokeWidth={2.1} />, moduleKey: "tienda" },
@@ -85,6 +87,8 @@ const GROUPS = [
     "/dashboard/recepcion-contenedores",
     "/dashboard/montaje-resurtido",
     "/dashboard/capacidad-picking",
+    "/dashboard/inventarios",
+    "/dashboard/stretch-film",
     "/dashboard/pendientes",
     "/dashboard/tareas-generales",
     "/dashboard/picking-muebles",
@@ -110,12 +114,14 @@ export default function Sidebar({ role }: SidebarProps) {
   const [query, setQuery] = useState("");
   const [collapsed, setCollapsed] = useState<Record<number, boolean>>({});
   const [pickingAccess, setPickingAccess] = useState(false);
-  useEffect(() => { fetch('/dashboard/api/me').then(r => r.ok ? r.json() : null).then(r => setPickingAccess(r?.user?.can?.capacidadPicking === true)).catch(() => {}); }, []);
+  const [inventariosAccess, setInventariosAccess] = useState(false);
+  const [stretchAccess, setStretchAccess] = useState(false);
+  useEffect(() => { fetch('/dashboard/api/me').then(r => r.ok ? r.json() : null).then(r => { setPickingAccess(r?.user?.can?.capacidadPicking === true); setStretchAccess(r?.user?.can?.stretch?.gestionar === true || r?.user?.can?.stretch?.solicitar === true); setInventariosAccess(r?.user?.can?.gestionarInventarios === true || r?.user?.can?.contarInventarios === true); }).catch(() => {}); }, []);
 
   useEffect(() => { setOpen(false); }, [path]);
 
   const visibleItems = ALL_ITEMS.filter((item) =>
-    (item.moduleKey === null || canSeeModule(role, item.moduleKey)) && (item.moduleKey !== 'capacidad-picking' || pickingAccess) && item.label.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().includes(query.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase())
+    (item.moduleKey === null || canSeeModule(role, item.moduleKey)) && (item.moduleKey !== 'capacidad-picking' || pickingAccess) && (item.moduleKey !== 'inventarios' || inventariosAccess) && (item.moduleKey !== 'stretch-film' || stretchAccess) && item.label.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().includes(query.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase())
   );
 
   const isActive = (href: string) =>

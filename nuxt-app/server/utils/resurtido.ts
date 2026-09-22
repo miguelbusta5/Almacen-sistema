@@ -16,7 +16,7 @@ export const TAREA_INCLUDE = {
   responsable: { select: { name: true } },
   pasadoPor: { select: { name: true } },
   // El reloj de pantalla es el de quien la tiene AHORA (ver cronometroTarea).
-  tramos: { select: { usuarioId: true, orden: true, inicio: true, fin: true }, orderBy: { orden: 'asc' } },
+  tramos: { select: { usuarioId: true, usuario: { select: { name: true } }, orden: true, inicio: true, fin: true }, orderBy: { orden: 'asc' } },
 } as const
 
 export const MONTAJE_INCLUDE = {

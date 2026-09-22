@@ -59,6 +59,8 @@ const NAV_GROUPS: NavGroup[] = [
   {
     titulo: 'Centro de distribución',
     items: [
+      { icon: PackageOpen, label: 'Stretch film', href: '/dashboard/stretch-film', key: 'stretch-film', moduleKey: 'stretch-film' },
+      { icon: ClipboardCheck, label: 'Inventarios', href: '/dashboard/inventarios', key: 'inventarios', moduleKey: 'inventarios' },
       { icon: Container, label: 'Recepción Contenedores', href: '/dashboard/recepcion-contenedores', key: 'recepcion-contenedores', moduleKey: 'recepcion-contenedores' },
       { icon: ClipboardList, label: 'Montaje Resurtido', href: '/dashboard/montaje-resurtido', key: 'montaje-resurtido', moduleKey: 'montaje-resurtido' },
       { icon: PackageSearch, label: 'Capacidad picking', href: '/dashboard/capacidad-picking', key: 'capacidad-picking', moduleKey: 'capacidad-picking' },
@@ -108,7 +110,7 @@ const normalizeNav = (s: string) => s.normalize('NFD').replace(/[\u0300-\u036f]/
 const visibleGroups = computed(() => NAV_GROUPS
   .map((g) => ({
     titulo: g.titulo,
-    items: g.items.filter((item) => (item.moduleKey === null || canSeeModule(me.value?.role, item.moduleKey)) && (item.moduleKey !== 'capacidad-picking' || me.value?.can.capacidadPicking) && normalizeNav(item.label).includes(normalizeNav(navSearch.value))),
+    items: g.items.filter((item) => (item.moduleKey === null || canSeeModule(me.value?.role, item.moduleKey)) && (item.moduleKey !== 'capacidad-picking' || me.value?.can.capacidadPicking) && (item.moduleKey !== 'inventarios' || me.value?.can.gestionarInventarios || me.value?.can.contarInventarios) && (item.moduleKey !== 'stretch-film' || me.value?.can.stretch?.gestionar || me.value?.can.stretch?.solicitar) && normalizeNav(item.label).includes(normalizeNav(navSearch.value))),
   }))
   .filter((g) => g.items.length > 0))
 // Igualdad exacta, NO startsWith: con `startsWith`, la clave 'exportaciones'

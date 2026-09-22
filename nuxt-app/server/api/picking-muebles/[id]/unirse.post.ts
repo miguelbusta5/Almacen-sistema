@@ -1,3 +1,4 @@
+import { defineOperacionAlmacenHandler } from '../../../utils/operacionAlmacen'
 import { defineEventHandler, getRouterParam, createError } from 'h3'
 import { prisma } from '../../../utils/prisma'
 import {
@@ -18,7 +19,7 @@ import { mapOrdenMuebles } from '../../../utils/mapRow'
  *
  * No arranca ningun reloj: el de la orden ya corre desde que la abrio el primero.
  */
-export default defineEventHandler(async (event) => {
+export default defineOperacionAlmacenHandler(async (event) => {
   const actor = await requirePickingActivo(event)
   const id = getRouterParam(event, 'id')!
 
@@ -49,8 +50,12 @@ export default defineEventHandler(async (event) => {
   }
 
   const actualizada = await prisma.$transaction(async (tx) => {
-    await tx.participanteOrdenMuebles.create({
-      data: { ordenId: orden.id, usuarioId: actor.id, equipoId: equipo.id, esCreador: false },
+    const previo = orden.participantes.find(p => p.usuarioId === actor.id)
+    if (previo?.equipo) await tx.lineaMuebles.updateMany({ where: { ordenId: orden.id, operarioId: actor.id, tipoEquipo: null }, data: { tipoEquipo: previo.equipo.tipo } })
+    await tx.participanteOrdenMuebles.upsert({
+      where: { ordenId_usuarioId: { ordenId: orden.id, usuarioId: actor.id } },
+      create: { ordenId: orden.id, usuarioId: actor.id, equipoId: equipo.id, esCreador: false },
+      update: { salioAt: null, seUnioAt: new Date(), equipoId: equipo.id },
     })
     return tx.ordenMuebles.findUniqueOrThrow({ where: { id: orden.id }, include: ORDEN_INCLUDE })
   })

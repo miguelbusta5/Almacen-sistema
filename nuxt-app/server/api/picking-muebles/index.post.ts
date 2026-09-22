@@ -1,3 +1,4 @@
+import { defineOperacionAlmacenHandler } from '../../utils/operacionAlmacen'
 import { defineEventHandler, readBody, createError } from 'h3'
 import { z } from 'zod'
 import { prisma } from '../../utils/prisma'
@@ -15,7 +16,7 @@ const schema = z.object({ codigo: z.string().min(1).max(40) })
  * tiempo de orden deja de significar nada, y en el area se trabaja una orden
  * completa antes de pasar a la siguiente.
  */
-export default defineEventHandler(async (event) => {
+export default defineOperacionAlmacenHandler(async (event) => {
   const actor = await requirePickingActivo(event)
 
   const parsed = schema.safeParse(await readBody(event).catch(() => null))

@@ -116,7 +116,7 @@ describe('pausas operativas persistentes', () => {
     expect(e.prisma.pendienteGourmet.findMany).toHaveBeenCalledWith(expect.objectContaining({ where: { operarioId: 'u1', estado: 'EN_CURSO', deletedAt: null, tareaResurtidoId: null, horaInicio: { gte: expect.any(Date) } } }))
     expect(e.prisma.recepcionContenedor.findMany).toHaveBeenCalledWith(expect.objectContaining({ where: { creadoPorId: 'u1', estado: 'EN_CURSO', deletedAt: null, horaInicio: { gte: expect.any(Date) } } }))
     // La orden es de quien participa en ella, no solo de quien la creo.
-    expect(e.prisma.ordenMuebles.findMany).toHaveBeenCalledWith(expect.objectContaining({ where: { estado: 'EN_PICKING', deletedAt: null, horaInicio: { gte: expect.any(Date) }, participantes: { some: { usuarioId: 'u1' } } } }))
+    expect(e.prisma.ordenMuebles.findMany).toHaveBeenCalledWith(expect.objectContaining({ where: { estado: 'EN_PICKING', deletedAt: null, horaInicio: { gte: expect.any(Date) }, participantes: { some: { usuarioId: 'u1', salioAt: null } } } }))
     expect(e.prisma.lineaMuebles.findMany).toHaveBeenCalledWith(expect.objectContaining({ where: { operarioId: 'u1', estado: 'EN_PICKING', horaInicio: { gte: expect.any(Date) }, orden: { deletedAt: null } } }))
   })
   it('rechaza roles sin acceso a los módulos', () => {

@@ -3,6 +3,8 @@ import { getSessionUser } from '../utils/auth'
 import { can } from '../utils/permissions'
 import { prisma } from '../utils/prisma'
 import { accesoPicking } from '../utils/picking'
+import { accesoInventarios, permisosInventarios } from '../utils/inventarios'
+import { permisoStretch } from '../utils/stretch'
 
 // Devuelve la sesión actual (o authenticated:false). La UI usa el rol para
 // ocultar acciones; el servidor siempre revalida con requireCan.
@@ -33,6 +35,9 @@ export default defineEventHandler(async (event) => {
         // que el de cerrar novedades.
         montarResurtido: user.role === 'ADMIN' || (extra?.puedeMontarResurtido ?? false),
         capacidadPicking: await accesoPicking(user.id).catch(() => false),
+        gestionarInventarios: await accesoInventarios(user.id).catch(() => false),
+        contarInventarios: (await permisosInventarios(user.id).catch(() => ({ contar: false }))).contar,
+        stretch: await permisoStretch(user.id).catch(() => ({ gestionar: false, solicitar: false })),
       },
     },
   }

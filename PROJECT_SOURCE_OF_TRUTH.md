@@ -1,5 +1,7 @@
 # PROJECT SOURCE OF TRUTH — Control Logístico CEDI (Grupo Ambiente)
 
+> **2026-09-22 — Inventarios y pendientes operativos:** implementados localmente cronogramas, maestro PVP, conteo, reconteos y cierre Excel; Stretch film con inventario y sesión compartida; reasignación y comparación de equipos de Muebles; ayudantes y tiempo detenido de resurtidos. **Aún sin publicar esta actualización.** Confirmado: reguero entero y exclusión con aviso persistente de los 7 PLU con disponible cero sin teórico de hoja 2; seis sí tienen RETIRO. Excel original validado: 2.106 ubicaciones. Esquemas aplicados con `prisma db push` sin pérdida de datos, accesos individuales configurados y tablas privadas protegidas. `CONTADO-OVDM121515` eliminado por autorización expresa, conservando `OVDM121515`. Ver `docs/cerebro/inventarios-ciclicos.md` y `docs/cerebro/entrega-septiembre-2026.md`.
+
 > **2026-09-15 — Capacidad picking:** informes con pausas, capacidades acumuladas y resurtido por teórico, junto con búsqueda y grupos plegables del menú. **En producción**: tablas creadas con `prisma/migrate-capacidad-picking.sql` y permiso individual para Bryan Torres, Felipe Ossa y Eduardo Zurita. Detalle: `docs/cerebro/capacidad-picking.md`.
 
 > **Este es el documento maestro del proyecto.** Tiene **prioridad sobre cualquier otra
@@ -1182,3 +1184,14 @@ Lógica pura en `src/lib/tareasGenerales.ts` (copia de Nitro en
   Inspección (cabecera de la orden), Entrega a Transporte (cada orden de la bandeja),
   Historial (columnas Peso y Volumen en la lista, con * si hay PLU sin medida, y Peso/m³ por
   PLU en el detalle) e Indicadores Muebles (volumen y peso movido).
+
+### Muebles: aviso de PLU que viene en varias cajas (2026-09-21)
+- `GET /api/muebles/plu-cajas?plu=` devuelve las cajas master del PLU (del maestro vigente,
+  no de lo sellado en la línea). Lo pueden pedir picking e inspección.
+- **Picking:** al escanear el PLU, si trae 2 o más cajas sale `MueblesPartesModal`, que tapa
+  la pantalla con el número de cajas y la medida y el peso de cada una. Hasta confirmarlo, la
+  ubicación NO toma el foco (si no, la pistola se lo salta). Un PLU sin medir no avisa.
+- **Inspección:** el mismo aviso al iniciar el PLU. Al darlo por listo, si viene en varias
+  cajas, `CajasCompletasModal` pregunta "¿Estaban las N cajas?". Si faltan, se pide cuántas
+  y una nota: el PLU queda revisado igual (la orden no se frena) y se crea el faltante en la
+  cola de picking con la observación "Faltaron X de N cajas del PLU".

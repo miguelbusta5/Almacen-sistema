@@ -1,3 +1,4 @@
+import { defineOperacionAlmacenHandler } from '../../../utils/operacionAlmacen'
 import { defineEventHandler, getRouterParam, readBody, createError } from 'h3'
 import { z } from 'zod'
 import { prisma } from '../../../utils/prisma'
@@ -21,7 +22,7 @@ const schema = z.object({ plu: z.string().min(1).max(100) })
  * Peso, volumen y partes se COPIAN del maestro y se sellan en la linea: si
  * manana se corrige una medida, una capacidad ya calculada no debe moverse.
  */
-export default defineEventHandler(async (event) => {
+export default defineOperacionAlmacenHandler(async (event) => {
   const actor = await requirePickingActivo(event)
   const id = getRouterParam(event, 'id')!
 
@@ -70,6 +71,7 @@ export default defineEventHandler(async (event) => {
       estado: 'EN_PICKING',
       horaInicio: now,
       operarioId: actor.id,
+      tipoEquipo: orden.participantes.find(p => p.usuarioId === actor.id)?.equipo?.tipo ?? null,
     },
     select: {
       id: true, plu: true, descripcion: true, partes: true, pesoUnitarioKg: true,

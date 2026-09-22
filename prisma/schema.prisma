@@ -1,6 +1,190 @@
 generator client {
   provider = "prisma-client-js"
 }
+model InventarioCiclico {
+  id String @id @default(cuid())
+  cronogramaId String @map("cronograma_id")
+  cronograma InventarioCronograma @relation(fields: [cronogramaId], references: [id], onDelete: Restrict)
+  nombre String @db.VarChar(120)
+  archivo String @db.VarChar(255)
+  estado String @default("BORRADOR") @db.VarChar(20)
+  filas Json
+  teorico Json
+  avisos Json @default("[]")
+  autorId String @map("autor_id")
+  createdAt DateTime @default(now()) @map("created_at")
+  cerradoAt DateTime? @map("cerrado_at")
+  versionCierreId String? @map("version_cierre_id")
+  cierre Json?
+  tareas InventarioTarea[]
+  casos InventarioCaso[]
+  @@index([cronogramaId, createdAt])
+  @@map("inventario_ciclicos")
+}
+model InventarioTarea {
+  id String @id @default(cuid())
+  cicloId String @map("ciclo_id")
+  ciclo InventarioCiclico @relation(fields: [cicloId], references: [id], onDelete: Restrict)
+  ubicacion String @db.VarChar(120)
+  tipo String @default("INICIAL") @db.VarChar(20)
+  usuarioId String? @map("usuario_id")
+  casoId String? @map("caso_id")
+  caso InventarioCaso? @relation(fields: [casoId], references: [id], onDelete: Restrict)
+  estado String @default("PENDIENTE") @db.VarChar(20)
+  inicio DateTime?
+  fin DateTime?
+  pausaInicio DateTime? @map("pausa_inicio")
+  pausaMotivo String? @map("pausa_motivo")
+  pausaSegundos Float @default(0) @map("pausa_segundos")
+  pausas Json @default("[]")
+  revision Int @default(0)
+  registros InventarioConteo[]
+  @@index([cicloId, tipo, estado])
+  @@index([usuarioId, estado])
+  @@map("inventario_tareas")
+}
+model InventarioConteo {
+  id String @id @default(cuid())
+  tareaId String @map("tarea_id")
+  tarea InventarioTarea @relation(fields: [tareaId], references: [id], onDelete: Restrict)
+  plu String @db.VarChar(100)
+  cajas Int
+  empaque Int
+  reguero Int
+  fisico Int
+  teoricoActual Int? @map("teorico_actual")
+  estado String @db.VarChar(20)
+  inesperado Boolean @default(false)
+  updatedAt DateTime @updatedAt @map("updated_at")
+  @@unique([tareaId, plu])
+  @@map("inventario_conteos")
+}
+model InventarioCaso {
+  id String @id @default(cuid())
+  cicloId String @map("ciclo_id")
+  ciclo InventarioCiclico @relation(fields: [cicloId], references: [id], onDelete: Restrict)
+  ubicacion String @db.VarChar(120)
+  plu String @db.VarChar(100)
+  estado String @default("ABIERTO") @db.VarChar(20)
+  resultadoId String? @map("resultado_id")
+  cerradoPorId String? @map("cerrado_por_id")
+  cerradoAt DateTime? @map("cerrado_at")
+  observacion String?
+  tareas InventarioTarea[]
+  @@unique([cicloId, ubicacion, plu])
+  @@map("inventario_casos")
+}
+model StretchAcceso {
+  userId String @id @map("user_id")
+  gestionar Boolean @default(false)
+  solicitar Boolean @default(false)
+  @@map("stretch_accesos")
+}
+
+model StretchStock {
+  id String @id @default("principal")
+  rollos Int @default(0)
+  updatedAt DateTime @updatedAt @map("updated_at")
+  @@map("stretch_stock")
+}
+
+model StretchPedido {
+  id String @id
+  solicitante String
+  destino String
+  tipo String
+  rollos Int
+  usuarioId String? @map("usuario_id")
+  sesionId String? @map("sesion_id")
+  estado String @default("PENDIENTE")
+  createdAt DateTime @default(now()) @map("created_at")
+  procesadoAt DateTime? @map("procesado_at")
+  procesadoPorId String? @map("procesado_por_id")
+  nota String?
+  @@index([estado, createdAt])
+  @@index([sesionId, createdAt])
+  @@map("stretch_pedidos")
+}
+
+model StretchMovimiento {
+  id String @id @default(cuid())
+  solicitudId String @unique @map("solicitud_id")
+  tipo String
+  cantidad Int
+  saldo Int
+  motivo String
+  usuarioId String @map("usuario_id")
+  pedidoId String? @unique @map("pedido_id")
+  createdAt DateTime @default(now()) @map("created_at")
+  @@index([createdAt])
+  @@map("stretch_movimientos")
+}
+
+model StretchSesion {
+  id String @id @default(cuid())
+  tokenHash String @unique @map("token_hash")
+  nombre String
+  creadaPorId String @map("creada_por_id")
+  activada Boolean @default(false)
+  expiraAt DateTime @map("expira_at")
+  revocadaAt DateTime? @map("revocada_at")
+  createdAt DateTime @default(now()) @map("created_at")
+  @@map("stretch_sesiones")
+}
+
+model InventarioAcceso {
+  userId String @id @map("user_id")
+  contar Boolean @default(false)
+  gestionar Boolean @default(false)
+  @@map("inventario_accesos")
+}
+
+model InventarioCronograma {
+  ciclos InventarioCiclico[]
+  id String @id @default(cuid())
+  nombre String @db.VarChar(120)
+  fechaInicio DateTime @db.Date @map("fecha_inicio")
+  fechaFin DateTime @db.Date @map("fecha_fin")
+  estado String @default("ABIERTO") @db.VarChar(20)
+  autorId String @map("autor_id")
+  autorNombre String @map("autor_nombre")
+  createdAt DateTime @default(now()) @map("created_at")
+  versiones InventarioMaestroVersion[]
+  @@map("inventario_cronogramas")
+}
+
+model InventarioMaestroVersion {
+  id String @id @default(cuid())
+  cronogramaId String @map("cronograma_id")
+  cronograma InventarioCronograma @relation(fields: [cronogramaId], references: [id], onDelete: Restrict)
+  numero Int
+  archivo String @db.VarChar(255)
+  hash String @db.VarChar(64)
+  total Int
+  resumen Json
+  autorId String @map("autor_id")
+  autorNombre String @map("autor_nombre")
+  createdAt DateTime @default(now()) @map("created_at")
+  productos InventarioProductoPvp[]
+  @@unique([cronogramaId, numero])
+  @@map("inventario_maestro_versiones")
+}
+
+model InventarioProductoPvp {
+  id String @id @default(cuid())
+  versionId String @map("version_id")
+  version InventarioMaestroVersion @relation(fields: [versionId], references: [id], onDelete: Restrict)
+  plu String @db.VarChar(100)
+  descripcion String @db.VarChar(500)
+  proveedor String @db.VarChar(500)
+  upc String @db.VarChar(50)
+  precio Decimal? @db.Decimal(12, 2)
+  marca String @db.VarChar(500)
+  linea String @db.VarChar(500)
+  @@unique([versionId, plu])
+  @@index([versionId, upc])
+  @@map("inventario_productos_pvp")
+}
 
 datasource db {
   provider = "postgresql"
@@ -1457,6 +1641,7 @@ enum EstadoPendienteGourmet {
 /// El montaje no se cronometra: quien lo sube no esta haciendo el trabajo, solo
 /// repartiendolo. Lo que se mide es cada tarea, una por una.
 model MontajeResurtido {
+  detenidoSegundos Float @default(0) @map("detenido_segundos")
   id            String                 @id @default(cuid())
   estado        EstadoMontajeResurtido @default(EN_CURSO)
   nombreArchivo String                 @map("nombre_archivo") @db.VarChar(255)
@@ -1897,6 +2082,7 @@ enum EstadoLineaMuebles {
 /// no debe cambiar en silencio (mismo criterio que volumen_m3 en
 /// medidas_caja_master).
 model LineaMuebles {
+  tipoEquipo String? @map("tipo_equipo") @db.VarChar(30)
   id      String       @id @default(cuid())
   ordenId String       @map("orden_id")
   orden   OrdenMuebles @relation(fields: [ordenId], references: [id], onDelete: Cascade)
@@ -2123,6 +2309,7 @@ model TipoMueblePlu {
 /// reasigna al del Order Picker, que entra a la MISMA orden en vez de crear una
 /// paralela que despues nadie sabria juntar.
 model ParticipanteOrdenMuebles {
+  salioAt DateTime? @map("salio_at")
   id        String       @id @default(cuid())
   ordenId   String       @map("orden_id")
   orden     OrdenMuebles @relation(fields: [ordenId], references: [id], onDelete: Cascade)

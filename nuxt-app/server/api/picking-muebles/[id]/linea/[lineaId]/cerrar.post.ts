@@ -1,3 +1,4 @@
+import { defineOperacionAlmacenHandler } from '../../../../../utils/operacionAlmacen'
 import { defineEventHandler, getRouterParam, readBody, createError } from 'h3'
 import { z } from 'zod'
 import { prisma } from '../../../../../utils/prisma'
@@ -21,7 +22,7 @@ const schema = z.object({
  * escaneo del QR del rotulo, que es el que da el numero de caja. Aqui se sellan
  * los totales con los que se calcula la capacidad del equipo.
  */
-export default defineEventHandler(async (event) => {
+export default defineOperacionAlmacenHandler(async (event) => {
   const actor = await requirePickingActivo(event)
   const id = getRouterParam(event, 'id')!
   const lineaId = getRouterParam(event, 'lineaId')!

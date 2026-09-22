@@ -41,6 +41,16 @@ const archivo = ref<File | null>(null)
 const operarioId = ref('')
 const fileInput = ref<HTMLInputElement | null>(null)
 const detalle = ref<MontajeResurtidoDTO | null>(null)
+const tareasAyudante = ref<string[]>([]), ayudanteId = ref(''), repartiendo = ref(false)
+async function repartirAyudante() {
+  if (!detalle.value || repartiendo.value) return
+  repartiendo.value = true
+  try {
+    const res = await $fetch<{ data: MontajeResurtidoDTO }>(`${API_MONTAJE}/${detalle.value.id}/ayudante`, { method: 'POST', body: { ayudanteId: ayudanteId.value, tareas: tareasAyudante.value } })
+    detalle.value = res.data; tareasAyudante.value = []; await cargar(); showToast('Tareas asignadas al ayudante')
+  } catch (e) { showToast(apiErr(e, 'No se pudieron repartir las tareas'), true) }
+  finally { repartiendo.value = false }
+}
 
 // ── Fechas ──
 // Sin filtro: los mas recientes. Con fechas: los montados en ese rango.
@@ -196,11 +206,8 @@ async function reasignar() {
 // El tiempo que lleva un montaje corriendo: desde que se repartió hasta que se
 // completó, o hasta ahora si sigue abierto.
 function transcurrido(m: MontajeResurtidoDTO): string {
-  if (m.completadoAt) {
-    const seg = Math.round((new Date(m.completadoAt).getTime() - new Date(m.montadoAt).getTime()) / 1000)
-    return fmtDuracionTarea(seg)
-  }
-  return cronometroDesde(m.montadoAt, ahora.value) ?? '—'
+  const fin = Math.min(m.completadoAt ? new Date(m.completadoAt).getTime() : ahora.value, m.detenidoAt ? new Date(m.detenidoAt).getTime() : Infinity)
+  return fmtDuracionTarea(Math.max(0, Math.round((fin - new Date(m.montadoAt).getTime()) / 1000 - (m.detenidoSegundos ?? 0))))
 }
 </script>
 
@@ -397,6 +404,15 @@ function transcurrido(m: MontajeResurtidoDTO): string {
           <button class="btn btn-sm" @click="detalle = null">Cerrar</button>
         </header>
         <div class="m-body">
+          <h3>Realización por operario y ayudantes</h3>
+          <p class="muted">Porcentaje de tareas cerradas por cada persona sobre el total del resurtido. Las participaciones incluyen los apoyos.</p>
+          <ul><li v-for="p in detalle.personas" :key="p.id">{{ p.nombre }}: <strong>{{ p.porcentaje }}%</strong> · {{ p.completadas }} tareas cerradas · participó en {{ p.participadas }}</li></ul>
+          <fieldset v-if="puedeMontar && !detalle.detenidoAt && detalle.estado!=='COMPLETADO'" :disabled="repartiendo">
+            <legend>Agregar ayudante</legend><p>Selecciona tareas sin empezar. El tiempo iniciará cuando el ayudante escanee la ubicación.</p>
+            <label>Ayudante <select v-model="ayudanteId"><option value="">Selecciona</option><option v-for="o in operarios" :key="o.id" :value="o.id">{{o.nombre}}</option></select></label>
+            <label v-for="t in detalle.tareas.filter(t=>t.estado==='PENDIENTE'&&!t.horaInicio)" :key="t.id" style="display:block"><input v-model="tareasAyudante" type="checkbox" :value="t.id" /> {{t.plu}} · {{t.altura}} · {{t.responsableNombre??detalle.operarioNombre}}</label>
+            <button class="btn btn-sm" :disabled="!ayudanteId||!tareasAyudante.length" @click="repartirAyudante">Asignar seleccionadas</button>
+          </fieldset>
           <table class="table">
             <thead>
               <tr>

@@ -23,6 +23,17 @@ const { me } = useSessionState()
 const esGestion = computed(() => esGestionMuebles(me.value?.role))
 
 const orden = ref<Orden | null>(null)
+const reasignables = ref<{id:string;name:string}[]>([])
+const nuevoOperario = ref('')
+async function prepararReasignacion() {
+  try { reasignables.value=await $fetch<{id:string;name:string}[]>('/api/picking-muebles/reasignables') } catch(e){show(mensajeError(e,'No se pudo consultar operarios'),true)}
+}
+async function reasignarOrden() {
+  if(!orden.value||!nuevoOperario.value||guardando.value)return
+  guardando.value=true
+  try { await $fetch(`/api/picking-muebles/${orden.value.id}/reasignar`,{method:'POST',body:{operarioId:nuevoOperario.value}});reasignables.value=[];nuevoOperario.value='';await cargar();show('Orden reasignada. Ya puedes crear otra orden.') }
+  catch(e){show(mensajeError(e,'No se pudo reasignar'),true)}finally{guardando.value=false}
+}
 const equipo = ref<Equipo | null>(null)
 // Sin orden abierta no hay volumen que mostrar. Se deriva de la orden y NO se
 // guarda aparte: un ref paralelo se quedaba en cero al unirse a una orden que
@@ -57,7 +68,7 @@ const hayAlgunoEnCurso = computed(
 // La pasa a inspeccion el ULTIMO que se unio, que es quien termina el trabajo.
 // Gestion tambien, para que no se quede abierta si esa persona sale de turno.
 const meTocaCerrar = computed(() => {
-  const ps = orden.value?.participantes ?? []
+  const ps = (orden.value?.participantes ?? []).filter(p => !p.salioAt)
   if (ps.length === 0) return false
   if (esGestion.value) return true
   return ps[ps.length - 1]!.id === me.value?.id
@@ -73,7 +84,7 @@ const motivoNoPuede = computed(() => {
       : 'Hay un PLU en curso del otro operario.'
   }
   if (!meTocaCerrar.value) {
-    const ps = orden.value.participantes
+    const ps = orden.value.participantes.filter(p => !p.salioAt)
     return `La pasa a inspección ${ps[ps.length - 1]!.nombre}, que es quien termina.`
   }
   return null
@@ -216,6 +227,10 @@ useAutoRefresh({ onRefresh: () => (guardando.value ? undefined : cargar()) })
     </section>
 
     <PickingMueblesVolumenOrden :equipo="equipo" :volumen="volumen" :participantes="orden?.participantes" />
+    <section v-if="orden && orden.estado==='EN_PICKING' && orden.participantes?.some(p=>p.id===me?.id&&!p.salioAt)" class="card" style="padding:16px;margin:12px 0">
+      <button class="btn" :disabled="guardando || !!lineaEnCurso" @click="prepararReasignacion">Reasignar orden y quedar libre</button>
+      <template v-if="reasignables.length"><label>Nuevo operario <select v-model="nuevoOperario"><option value="">Selecciona</option><option v-for="p in reasignables" :key="p.id" :value="p.id">{{p.name}}</option></select></label><button class="btn" :disabled="!nuevoOperario||guardando" @click="reasignarOrden">Confirmar reasignación</button></template>
+    </section>
 
     <!-- Pendientes asignados: van arriba porque son trabajo que alguien esta
          esperando, y abajo se perderian bajo la orden en curso. -->

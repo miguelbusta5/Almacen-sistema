@@ -212,7 +212,7 @@ export function matricesDiarias(
       }
       const col = indicePorUsuario.get(r.creadoPorId);
       if (col === undefined) continue;
-      fila[col] += metrica === "unidades" ? Math.round(r.unidadEmpaque) : 1;
+      fila[col] = (fila[col] ?? 0) + (metrica === "unidades" ? Math.round(r.unidadEmpaque) : 1);
     }
 
     const fechas = Array.from(porFecha.keys()).sort();

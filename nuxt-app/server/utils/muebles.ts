@@ -114,7 +114,7 @@ export async function ordenAbierta(usuarioId: string) {
     where: {
       estado: 'EN_PICKING',
       deletedAt: null,
-      participantes: { some: { usuarioId } },
+      participantes: { some: { usuarioId, salioAt: null } },
     },
     include: ORDEN_INCLUDE,
   })
@@ -122,10 +122,10 @@ export async function ordenAbierta(usuarioId: string) {
 
 /** true si esa persona trabaja la orden (la creo o se unio). */
 export function esParticipante(
-  orden: { participantes: Array<{ usuarioId: string }> },
+  orden: { participantes: Array<{ usuarioId: string; salioAt?: Date | null }> },
   usuarioId: string,
 ): boolean {
-  return orden.participantes.some((p) => p.usuarioId === usuarioId)
+  return orden.participantes.some((p) => p.usuarioId === usuarioId && !p.salioAt)
 }
 
 export async function ordenPorId(id: string) {

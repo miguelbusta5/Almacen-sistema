@@ -61,6 +61,8 @@ export async function middleware(request: NextRequest) {
 
   // Solo proteger rutas del dashboard (mis-tareas es accesible a todos los roles autenticados)
   if (!pathname.startsWith("/dashboard")) return NextResponse.next();
+  // Kiosco de solicitudes: sesión propia, limitada y revocable en su API.
+  if (pathname === "/dashboard/stretch-pedidos" || pathname === "/dashboard/stretch-pedidos/") return NextResponse.next();
 
   // Assets y API de Nuxt (compartidos por TODOS los módulos migrados, vía el rewrite
   // de SHARED_NUXT_URL en next.config.ts) nunca deben quedar detrás de este gate: la

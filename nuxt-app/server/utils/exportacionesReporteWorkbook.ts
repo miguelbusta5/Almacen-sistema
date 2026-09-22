@@ -240,7 +240,7 @@ function hojaDiaria(
     matriz.fechas.forEach((fecha, i) => {
       ws.getRow(filaCabecera + 1 + i).values = [
         fecha,
-        ...matriz.valores[i],
+        ...(matriz.valores[i] ?? []),
         matriz.totalesPorFecha[i],
       ]
     })

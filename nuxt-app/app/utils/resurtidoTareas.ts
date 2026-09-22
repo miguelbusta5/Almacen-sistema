@@ -449,6 +449,8 @@ export interface TareaResurtidoDTO {
 }
 
 export interface MontajeResurtidoDTO {
+  personas?: {id:string;nombre:string;completadas:number;participadas:number;porcentaje:number}[]
+  detenidoSegundos?: number
   id: string
   estado: EstadoMontajeResurtido
   nombreArchivo: string

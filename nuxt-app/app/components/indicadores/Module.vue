@@ -68,7 +68,13 @@ function fechaEditada() { preset.value = 'custom' }
 
 const equipo = ref<RespuestaIndicadores['equipo']>([])
 const equipoDelRol = computed(() => equipo.value.filter((u) =>
-  (!rol.value || u.rol === rol.value) && (u.jornada ?? 'dia') === jornada.value))
+  !rol.value || u.rol === rol.value))
+function seleccionarPersona() {
+  const persona = equipo.value.find(u => u.id === usuarioId.value)
+  if (!persona) return
+  jornada.value = persona.jornada ?? 'dia'
+  try { localStorage.setItem(CLAVE_JORNADA, jornada.value) } catch {}
+}
 // Cambiar de rol con una persona del otro rol elegida la dejaria sin datos.
 watch(rol, () => {
   if (usuarioId.value && !equipoDelRol.value.some((u) => u.id === usuarioId.value)) usuarioId.value = ''
@@ -448,9 +454,9 @@ const formatoHoras = (v: number) => fmtHorasDecimal(v)
         </label>
         <label class="f f-persona">
           <span class="lbl">Persona</span>
-          <select v-model="usuarioId" class="field">
+          <select v-model="usuarioId" class="field" @change="seleccionarPersona">
             <option value="">Todo el equipo</option>
-            <option v-for="u in equipoDelRol" :key="u.id" :value="u.id">{{ u.nombre }}</option>
+            <option v-for="u in equipoDelRol" :key="u.id" :value="u.id">{{ u.nombre }} · {{u.jornada==='noche'?'Noche':'Día'}}</option>
           </select>
         </label>
       </div>

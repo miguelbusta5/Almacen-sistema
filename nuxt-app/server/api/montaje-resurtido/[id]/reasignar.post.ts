@@ -35,7 +35,7 @@ export default defineOperacionAlmacenHandler(async (event) => {
   const montaje = await prisma.montajeResurtido.findUnique({
     where: { id },
     select: {
-      id: true, estado: true, deletedAt: true, operarioId: true, nombreArchivo: true,
+      id: true, estado: true, deletedAt: true, operarioId: true, nombreArchivo: true, detenidoAt: true,
       operario: { select: { name: true } },
       tareas: {
         where: { estado: { not: 'COMPLETADA' } },
@@ -61,7 +61,7 @@ export default defineOperacionAlmacenHandler(async (event) => {
   if (!nuevo) throw createError({ statusCode: 400, statusMessage: 'Ese operario no existe o esta inactivo' })
 
   const faltan = montaje.tareas.map((t) => ({ ...t, montaje: { operarioId: montaje.operarioId } }))
-  if (faltan.every((t) => responsableDeTarea(t) === nuevo.id)) {
+  if (!montaje.detenidoAt && faltan.every((t) => responsableDeTarea(t) === nuevo.id)) {
     throw createError({ statusCode: 400, statusMessage: 'Lo que falta ya lo tiene esa persona' })
   }
 
@@ -97,7 +97,7 @@ export default defineOperacionAlmacenHandler(async (event) => {
     }
 
     // Reasignar retoma un resurtido parado: las tareas vuelven a verse.
-    await tx.montajeResurtido.update({ where: { id }, data: { detenidoAt: null, detenidoPorId: null } })
+    await tx.montajeResurtido.update({ where: { id }, data: { detenidoSegundos: { increment: montaje.detenidoAt ? Math.max(0, (now.getTime() - montaje.detenidoAt.getTime()) / 1000) : 0 }, detenidoAt: null, detenidoPorId: null } })
 
     const total = pendientes + enCurso
     await avisar(tx, [nuevo.id], {

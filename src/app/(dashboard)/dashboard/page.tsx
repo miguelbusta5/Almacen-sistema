@@ -5,6 +5,8 @@ import { getVisibleModules, type ModuleKey } from "@/lib/modulePermissions";
 // El módulo "Inicio" se retiró (se reconstruirá desde cero más adelante) — esta
 // ruta ahora solo decide a qué módulo real mandar al usuario según su rol.
 const MODULE_HREF: Record<ModuleKey, string> = {
+  'stretch-film': '/dashboard/stretch-film',
+  inventarios: '/dashboard/inventarios',
   'capacidad-picking': '/dashboard/capacidad-picking',
   tienda: "/dashboard/tienda",
   transporte: "/dashboard/transporte",
@@ -59,6 +61,9 @@ const PRIORITY_ORDER: ModuleKey[] = [
   "centro-control",
   "usuarios",
   "auditoria",
+  "inventarios",
+  "capacidad-picking",
+  "stretch-film",
 ];
 
 export default async function DashboardHome() {

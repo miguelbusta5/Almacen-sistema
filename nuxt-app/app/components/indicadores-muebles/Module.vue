@@ -43,6 +43,7 @@ interface ErroresPicking {
 const errores = ref<ErroresPicking | null>(null)
 
 interface Datos {
+  comparacionEquipos: Array<{ tipo: string; ordenes: number; plus: number; unidades: number; minutos: number; unidadesHora: number | null }>
   resumen: {
     plusPickeados: number; minutosPicking: number; minutosInspeccion: number
     m3: number; kg: number
@@ -318,6 +319,14 @@ useAutoRefresh({ intervalMs: 60_000, onRefresh: () => cargar() })
       <div v-if="cargando && !datos" class="cargando"><Loader2 :size="18" class="spin" /> Cargando…</div>
 
       <template v-else-if="datos">
+        <section class="panel" aria-label="Comparación por equipo">
+          <h2>Genie / Order Picker</h2>
+          <p>Picking terminado en el período, descontando pausas. Una orden compartida puede aparecer en ambos equipos.</p>
+          <div style="overflow-x:auto"><table class="tabla">
+            <thead><tr><th>Equipo</th><th>Órdenes</th><th>PLU distintos</th><th>Unidades</th><th>Minutos efectivos</th><th>Unidades / hora</th></tr></thead>
+            <tbody><tr v-for="e in datos.comparacionEquipos" :key="e.tipo"><td>{{ e.tipo === 'GENIE' ? 'Genie' : 'Order Picker' }}</td><td>{{ e.ordenes }}</td><td>{{ e.plus }}</td><td>{{ e.unidades }}</td><td>{{ e.minutos.toFixed(1) }}</td><td>{{ e.unidadesHora?.toFixed(1) ?? '—' }}</td></tr></tbody>
+          </table></div>
+        </section>
         <div class="tiles">
           <div v-for="t in tiles" :key="t.label" class="tile">
             <span class="tile-num mono tnum">{{ t.valor }}</span>

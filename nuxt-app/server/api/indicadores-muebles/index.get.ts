@@ -4,6 +4,7 @@ import { requireAuth } from '../../utils/auth'
 import { esGestionMuebles } from '../../utils/mueblesCalc'
 import { agregarIndicadoresMuebles, resumirErroresPicking } from '../../utils/mueblesIndicadoresCalc'
 import { diaBogota, limitesRango } from '../../utils/indicadoresCalc'
+import { compararEquipos } from '../../utils/mueblesEquiposCalc'
 
 const RE_DIA = /^\d{4}-\d{2}-\d{2}$/
 
@@ -46,6 +47,7 @@ export default defineEventHandler(async (event) => {
       },
       select: {
         plu: true, descripcion: true, operarioId: true, ordenId: true,
+        unidades: true, tipoEquipo: true, orden: { select: { participantes: { select: { usuarioId: true, equipo: { select: { tipo: true } } } } } },
         horaInicio: true, horaFin: true,
         volumenTotalM3: true, pesoTotalKg: true,
         inspectorId: true, inspHoraInicio: true, inspHoraFin: true,
@@ -101,7 +103,7 @@ export default defineEventHandler(async (event) => {
     rango: { desde, hasta },
     equipo: operarios.map((o) => ({ id: o.id, nombre: o.name })),
     erroresPicking,
-    data: agregarIndicadoresMuebles({
+    data: { comparacionEquipos: compararEquipos(lineas), ...agregarIndicadoresMuebles({
       lineas: lineas.map((l) => ({
         ...l,
         volumenTotalM3: l.volumenTotalM3 == null ? null : Number(l.volumenTotalM3),
@@ -110,6 +112,6 @@ export default defineEventHandler(async (event) => {
       ordenes,
       operarios: operarios.map((o) => ({ id: o.id, nombre: o.name })),
       inspectores,
-    }),
+    }) },
   }
 })
