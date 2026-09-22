@@ -19,7 +19,14 @@ describe('Cíclico: archivo, captura y cierre', () => {
   it('calcula cajas por empaque más reguero, incluidos ausentes', () => {
     expect(fisicoInventario(3,12,5)).toBe(41);expect(estadoInventario(0,12)).toBe('FALTANTE');expect(estadoInventario(41,41)).toBe('OK');expect(estadoInventario(42,41)).toBe('SOBRANTE')
   })
-  it.each([[1,0,0],[-1,12,0],[1.5,12,0],[1,12,-1],[1,12,0.5],[2147483647,2,0]])('rechaza captura inválida %j', (c,e,r)=>expect(()=>fisicoInventario(c,e,r)).toThrow())
+  it.each([[-1,12,0],[1.5,12,0],[1,12,-1],[1,12,0.5],[2147483647,2,0],[3,0,0]])('rechaza captura inválida %j', (c,e,r)=>expect(()=>fisicoInventario(c,e,r)).toThrow())
+  // Una ubicación vacía y una con solo reguero son capturas normales: el `min=1`
+  // del empaque frenaba el conteo del 22-09.
+  it('acepta todo en cero y el reguero sin cajas', () => {
+    expect(fisicoInventario(0,0,0)).toBe(0)
+    expect(fisicoInventario(0,0,7)).toBe(7)
+    expect(fisicoInventario(0,12,4)).toBe(4)
+  })
   it('excluye con aviso únicamente productos sin teórico y con existencia cero',()=>{
     const r=leerTeoricoInventario([h1,['1','A','A1',1,'RETIRO'],['BONO100','Bono','',0,'']],[h2,['1',1]])
     expect(r.avisos).toEqual([{plu:'BONO100',descripcion:'Bono',ubicaciones:[],motivo:expect.stringContaining('Excluido')}])

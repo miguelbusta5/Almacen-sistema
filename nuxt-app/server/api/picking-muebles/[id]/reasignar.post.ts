@@ -15,10 +15,25 @@ export default defineOperacionAlmacenHandler(async event => {
   if (!equipo) throw createError({statusCode:409,statusMessage:'El operario debe tener equipo asignado hoy'})
   const now = new Date()
   const previo = orden.participantes.find(p => p.usuarioId === otro.id)
-  if (previo?.equipo) await prisma.lineaMuebles.updateMany({ where: { ordenId: orden.id, operarioId: otro.id, tipoEquipo: null }, data: { tipoEquipo: previo.equipo.tipo } })
-  await prisma.participanteOrdenMuebles.update({where:{ordenId_usuarioId:{ordenId:orden.id,usuarioId:actor.id}},data:{salioAt:now}})
-  await prisma.participanteOrdenMuebles.upsert({where:{ordenId_usuarioId:{ordenId:orden.id,usuarioId:otro.id}},create:{ordenId:orden.id,usuarioId:otro.id,equipoId:equipo.id,seUnioAt:now},update:{salioAt:null,seUnioAt:now,equipoId:equipo.id}})
-  await auditar(actor.id,'UPDATE','picking-muebles',orden.id,`Orden ${orden.codigo} reasignada a ${otro.name}; ${actor.name} queda libre. Los PLU previos conservan su operario.`)
-  await prisma.notificacion.create({data:{userId:otro.id,titulo:'Orden de muebles reasignada',descripcion:orden.codigo,tipo:'ASIGNACION',enlace:'/dashboard/picking-muebles'}})
+
+  // Todo junto o nada: entre sacar al saliente y meter al entrante la orden
+  // queda SIN participante activo, y esParticipante() filtra por salioAt, asi
+  // que nadie podria cerrarla ni tocarla. Mismo criterio que la reasignacion de
+  // montaje-resurtido.
+  await prisma.$transaction(async tx => {
+    // El equipo con el que el entrante trabajo antes se sella en sus lineas: si
+    // hoy entra con otro, lo ya hecho no cambia de equipo.
+    if (previo?.equipo) await tx.lineaMuebles.updateMany({ where: { ordenId: orden.id, operarioId: otro.id, tipoEquipo: null }, data: { tipoEquipo: previo.equipo.tipo } })
+    await tx.participanteOrdenMuebles.update({ where: { ordenId_usuarioId: { ordenId: orden.id, usuarioId: actor.id } }, data: { salioAt: now } })
+    await tx.participanteOrdenMuebles.upsert({
+      where: { ordenId_usuarioId: { ordenId: orden.id, usuarioId: otro.id } },
+      create: { ordenId: orden.id, usuarioId: otro.id, equipoId: equipo.id, seUnioAt: now },
+      update: { salioAt: null, seUnioAt: now, equipoId: equipo.id },
+    })
+    await tx.notificacion.create({ data: { userId: otro.id, titulo: 'Orden de muebles reasignada', descripcion: orden.codigo, tipo: 'ASIGNACION', enlace: '/dashboard/picking-muebles' } })
+  })
+
+  // La bitacora va despues del commit: no puede tumbar el trabajo del operario.
+  await auditar(actor.id, 'UPDATE', 'picking-muebles', orden.id, `Orden ${orden.codigo} reasignada a ${otro.name}; ${actor.name} queda libre. Los PLU previos conservan su operario.`)
   return {success:true}
 })

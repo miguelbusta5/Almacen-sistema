@@ -87,7 +87,9 @@ export default defineEventHandler(async event => {
           if (!plu) fallo('Código sin PLU en el maestro; solicita su actualización a Carlos')
           const caso = c.casos.find(x => x.id === t.casoId)
           if (t.tipo === 'RECONTEO' && caso?.plu !== plu) fallo('Escanea el PLU de este reconteo')
-          const cajas = b.accion === 'ausente' ? 0 : b.cajas, empaque = b.accion === 'ausente' ? 1 : b.empaque, reguero = b.accion === 'ausente' ? 0 : b.reguero
+          // 'ausente' deja el empaque en 1 y no en 0: el fisico es cero igual, y
+        // cambiarlo ahora movería la semántica de lo ya guardado sin ganar nada.
+        const cajas = b.accion === 'ausente' ? 0 : b.cajas, empaque = b.accion === 'ausente' ? 1 : b.empaque, reguero = b.accion === 'ausente' ? 0 : b.reguero
           let fisico: number
           try { fisico = fisicoInventario(cajas, empaque, reguero) } catch (e) { fallo((e as Error).message) }
           if (t.tipo === 'RECONTEO' && (!Number.isSafeInteger(b.teoricoActual) || Math.abs(b.teoricoActual) > 2147483647)) fallo('Digita el teórico actualizado de la ubicación en NetSuite')

@@ -81,7 +81,11 @@ describe("el administrador entra a inventarios y stretch", () => {
     // Gestionar si; contar no, para no salir en la lista de quien cuenta.
     expect(inv).toContain("gestionar: admin || !!p?.gestionar, contar: !!p?.contar");
     const str = leer("nuxt-app/server/utils/stretch.ts");
-    expect(str).toContain("gestionar: admin || !!p?.gestionar, solicitar: admin || !!p?.solicitar");
+    // Una sola regla para el actor y para quien creó la pantalla compartida: con
+    // dos copias, la sesión de un admin sin fila quedaba en 403 al activarla.
+    expect(str).toContain("export function permisoDeStretch");
+    expect(str).toContain("permisoDeStretch(u, acceso).gestionar");
+    expect(str).toContain("gestionar: admin || !!acceso?.gestionar, solicitar: admin || !!acceso?.solicitar");
   });
 
   it("el menu sigue pidiendo el permiso, que ahora el admin tiene", () => {

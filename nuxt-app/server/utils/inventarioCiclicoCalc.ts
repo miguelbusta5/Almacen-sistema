@@ -42,8 +42,17 @@ export function leerTeoricoInventario(hoja1: unknown[][], hoja2: unknown[][]) {
   const avisos = faltantes.map(plu => ({ plu, descripcion: lista.find(f => f.plu === plu)!.descripcion, ubicaciones: [...new Set(lista.filter(f => f.plu === plu).map(f => f.ubicacion).filter(Boolean))], motivo: 'Excluido: sin teórico en hoja 2 y disponible cero.' }))
   return { filas: lista.filter(f => !excluidos.has(f.plu)), teorico, avisos, fueraAlcance: [...fueraAlcance], ubicaciones: [...new Set(lista.filter(f => !excluidos.has(f.plu) && f.concepto === 'RETIRO').map(f => f.ubicacion))] }
 }
+/**
+ * Fisico de una captura: cajas master x unidad de empaque + reguero.
+ *
+ * Todo en cero es valido: una ubicacion puede estar vacia, o tener solo reguero
+ * sin una sola caja completa (22-09: el `min=1` del empaque frenaba el conteo).
+ * La unidad de empaque solo se exige cuando SI hay cajas; ahi un cero seria un
+ * error de captura que dejaria el fisico en cero sin que nadie lo note.
+ */
 export function fisicoInventario(cajas: number, empaque: number, reguero: number) {
-  if (![cajas, empaque, reguero].every(n => Number.isSafeInteger(n) && n >= 0) || empaque < 1) throw new Error('Cajas y reguero deben ser enteros no negativos; empaque mayor que cero')
+  if (![cajas, empaque, reguero].every(n => Number.isSafeInteger(n) && n >= 0)) throw new Error('Cajas, unidad de empaque y reguero deben ser numeros enteros, sin negativos')
+  if (cajas > 0 && empaque < 1) throw new Error('Indica cuantas unidades trae cada caja')
   const total = cajas * empaque + reguero
   if (!Number.isSafeInteger(total) || total > 2147483647) throw new Error('Cantidad fuera del límite')
   return total

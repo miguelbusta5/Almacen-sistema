@@ -10,6 +10,10 @@ const ubicacion = ref(''), codigo = ref(''), producto = ref<{plu:string;descripc
 const cajas=ref<number|null>(null), empaque=ref<number|null>(null), reguero=ref(0), teoricoActual=ref<number|null>(null)
 const elegidos=ref<Record<string,string[]>>({}), resultados=ref<Record<string,string>>({}), notas=ref<Record<string,string>>({})
 const tarea = computed(() => actual.value?.tareas.find((t:any)=>t.id===tareaId.value))
+// Todo en cero es valido (ubicacion vacia o solo reguero). Lo unico que el
+// servidor rechaza es contar cajas sin decir cuantas unidades trae cada una:
+// misma regla que fisicoInventario, no una copia con otro criterio.
+const faltaEmpaque = computed(() => Number(cajas.value ?? 0) > 0 && !(Number(empaque.value ?? 0) > 0))
 let restaurando = false
 const claveBorrador = () => `inventario-borrador:${me.value?.id}:${tareaId.value}`
 watch([codigo, producto, cajas, empaque, reguero, teoricoActual], () => {
@@ -72,7 +76,7 @@ onUnmounted(()=>clearInterval(reloj))
               <template v-else-if="tarea.pausaInicio"><p>En pausa: {{tarea.pausaMotivo}}</p><button :disabled="busy" @click="accion('reanudar')">Reanudar conteo</button></template>
               <template v-else><div class="actions"><button :disabled="busy" @click="accion('pausar',{motivo:'ALIMENTACION'})">Alimentación</button><button :disabled="busy" @click="accion('pausar',{motivo:'FIN_TURNO'})">Finalizar turno</button></div>
                 <form @submit.prevent="escanear"><label>Escanea el código de barras<input v-model="codigo" required autocomplete="off" @input="producto=null" /></label><button :disabled="busy">Consultar producto</button></form>
-                <form v-if="producto" @submit.prevent="guardar"><h3>{{producto.plu}} · {{producto.descripcion}}</h3><fieldset :disabled="busy"><div class="fields"><label>Cajas master<input v-model.number="cajas" type="number" min="0" step="1" required /></label><label>Unidad de empaque<input v-model.number="empaque" type="number" min="1" step="1" required /></label><label>Reguero<input v-model.number="reguero" type="number" min="0" step="1" required /></label><label v-if="tarea.tipo==='RECONTEO'">Teórico actualizado NetSuite de esta ubicación<input v-model.number="teoricoActual" type="number" step="1" required /></label></div><p>Total físico: {{(cajas??0)*(empaque??0)+reguero}} unidades</p><button>Guardar conteo</button></fieldset></form>
+                <form v-if="producto" @submit.prevent="guardar"><h3>{{producto.plu}} · {{producto.descripcion}}</h3><fieldset :disabled="busy"><div class="fields"><label>Cajas master<input v-model.number="cajas" type="number" min="0" step="1" inputmode="numeric" required /></label><label>Unidad de empaque<input v-model.number="empaque" type="number" min="0" step="1" inputmode="numeric" required /></label><label>Reguero<input v-model.number="reguero" type="number" min="0" step="1" inputmode="numeric" required /></label><label v-if="tarea.tipo==='RECONTEO'">Teórico actualizado NetSuite de esta ubicación<input v-model.number="teoricoActual" type="number" step="1" required /></label></div><p>Total físico: {{(cajas??0)*(empaque??0)+reguero}} unidades</p><p v-if="faltaEmpaque" class="notice" role="alert">Indica cuántas unidades trae cada caja.</p><button :disabled="faltaEmpaque">Guardar conteo</button></fieldset></form>
                 <h3>Productos esperados</h3><ul><li v-for="p in tarea.esperados" :key="p.plu">{{p.plu}} · {{p.descripcion}} <button v-if="tarea.tipo==='INICIAL'&&!tarea.registros.some((r:any)=>r.plu===p.plu)" :disabled="busy" @click="accion('ausente',{codigo:p.plu})">No está: registrar cero</button></li></ul>
                 <button :disabled="busy||!!producto" @click="accion('terminar')">Terminar esta ubicación</button>
               </template>

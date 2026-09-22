@@ -23,6 +23,18 @@ describe('Cíclico: permisos, recuperación y reconteo',()=>{
   it('no permite capturar una tarea ajena',async()=>{m.auth.mockResolvedValue({id:'otro'});m.body.mockResolvedValue({accion:'guardar',cicloId:'c',tareaId:'t',revision:0});await expect(handler(event)).rejects.toMatchObject({statusCode:403});expect(m.conteo.upsert).not.toHaveBeenCalled()})
   it('rechaza una revisión obsoleta antes de sobrescribir avances',async()=>{m.body.mockResolvedValue({accion:'guardar',cicloId:'c',tareaId:'t',revision:2});await expect(handler(event)).rejects.toMatchObject({statusCode:409})})
   it('guarda físico y estado comparando solo RETIRO',async()=>{m.body.mockResolvedValue({accion:'guardar',cicloId:'c',tareaId:'t',revision:0,codigo:'001',cajas:2,empaque:12,reguero:1});await handler(event);expect(m.conteo.upsert).toHaveBeenCalledWith(expect.objectContaining({create:expect.objectContaining({fisico:25,estado:'OK',teoricoActual:null})}));expect(m.lock).toHaveBeenCalledOnce()})
+  // Una ubicación vacía y una con solo reguero son capturas normales (22-09).
+  it('acepta la ubicación vacía y el reguero sin cajas',async()=>{
+    m.body.mockResolvedValue({accion:'guardar',cicloId:'c',tareaId:'t',revision:0,codigo:'001',cajas:0,empaque:0,reguero:0});await handler(event)
+    expect(m.conteo.upsert).toHaveBeenCalledWith(expect.objectContaining({create:expect.objectContaining({fisico:0,estado:'FALTANTE'})}))
+    m.conteo.upsert.mockClear()
+    m.body.mockResolvedValue({accion:'guardar',cicloId:'c',tareaId:'t',revision:0,codigo:'001',cajas:0,empaque:0,reguero:25});await handler(event)
+    expect(m.conteo.upsert).toHaveBeenCalledWith(expect.objectContaining({create:expect.objectContaining({fisico:25,estado:'OK'})}))
+  })
+  it('sigue rechazando cajas sin unidad de empaque',async()=>{
+    m.body.mockResolvedValue({accion:'guardar',cicloId:'c',tareaId:'t',revision:0,codigo:'001',cajas:3,empaque:0,reguero:0})
+    await expect(handler(event)).rejects.toMatchObject({statusCode:409});expect(m.conteo.upsert).not.toHaveBeenCalled()
+  })
   it('bloquea captura durante alimentación',async()=>{ciclo.tareas[0].pausaInicio=new Date();m.body.mockResolvedValue({accion:'guardar',cicloId:'c',tareaId:'t',revision:0});await expect(handler(event)).rejects.toMatchObject({statusCode:409})})
   it('reanuda al día siguiente descontando toda la pausa de turno',async()=>{vi.useFakeTimers();vi.setSystemTime(new Date('2026-09-21T12:00:00Z'));ciclo.tareas[0].pausaInicio=new Date('2026-09-20T20:00:00Z');ciclo.tareas[0].pausaMotivo='FIN_TURNO';m.body.mockResolvedValue({accion:'reanudar',cicloId:'c',tareaId:'t',revision:0});await handler(event);expect(m.tarea.update).toHaveBeenCalledWith(expect.objectContaining({data:expect.objectContaining({pausaSegundos:{increment:57600},pausaInicio:null})}));vi.useRealTimers()})
   it('impide terminar sin contar el producto esperado',async()=>{m.body.mockResolvedValue({accion:'terminar',cicloId:'c',tareaId:'t',revision:0});await expect(handler(event)).rejects.toMatchObject({statusCode:409})})
