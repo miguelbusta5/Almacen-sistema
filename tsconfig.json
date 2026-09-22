@@ -30,5 +30,9 @@
     ".next/dev/types/**/*.ts",
     "**/*.mts"
   ],
-  "exclude": ["node_modules", "nuxt-app"]
+  // Las pruebas *.integration.test.ts son opt-in (CEDI_DB_QA=1) y cargan codigo de
+  // nuxt-app contra la base real: solo corren en un equipo con las dependencias de
+  // Nuxt instaladas. En CI no estan, y al revisarlas aqui el type-check fallaba con
+  // "Cannot find module 'h3'" y frenaba el despliegue (22-09).
+  "exclude": ["node_modules", "nuxt-app", "src/__tests__/*.integration.test.ts"]
 }
