@@ -56,7 +56,6 @@ const ALL_ITEMS: NavItem[] = [
   { href: "/dashboard/picking-muebles", label: "Picking Muebles", icon: <Hammer size={16} strokeWidth={2.1} />, moduleKey: "picking-muebles" },
   { href: "/dashboard/inspeccion-muebles", label: "Inspeccion Muebles", icon: <ClipboardCheck size={16} strokeWidth={2.1} />, moduleKey: "inspeccion-muebles" },
   { href: "/dashboard/entrega-muebles", label: "Entrega a Transporte", icon: <Truck size={16} strokeWidth={2.1} />, moduleKey: "entrega-muebles" },
-  { href: "/dashboard/indicadores-muebles", label: "Indicadores Muebles", icon: <ChartColumnIncreasing size={16} strokeWidth={2.1} />, moduleKey: "indicadores-muebles" },
   { href: "/dashboard/historial-muebles", label: "Historial Muebles", icon: <ScrollText size={16} strokeWidth={2.1} />, moduleKey: "historial-muebles" },
   { href: "/dashboard/admin-muebles", label: "Admin Muebles", icon: <SlidersHorizontal size={16} strokeWidth={2.1} />, moduleKey: "admin-muebles" },
   { href: "/dashboard/control-montacargas", label: "Control Montacargas", icon: <Forklift size={16} strokeWidth={2.1} />, moduleKey: "control-montacargas" },
@@ -100,7 +99,7 @@ const GROUPS = [
     "/dashboard/solicitudes-transporte",
     "/dashboard/transporte",
   ],
-  ["/dashboard/indicadores", "/dashboard/indicadores-muebles", "/dashboard/centro-control"],
+  ["/dashboard/indicadores", "/dashboard/centro-control"],
   // Configuracion del area, junto a Usuarios y Auditoria.
   ["/dashboard/admin-muebles", "/dashboard/usuarios", "/dashboard/auditoria"],
 ];

@@ -8,7 +8,7 @@ import { enRefrescoSilencioso, useAutoRefresh } from '~/composables/useAutoRefre
 // propios guards, y meter picking/inspección ahí obligaría a tocar todo lo de
 // montacargas. Ver mueblesIndicadoresCalc.ts.
 import { computed, onMounted, ref, watch } from 'vue'
-import { ChartColumnIncreasing, RefreshCw, Loader2, LayoutList, ChartPie } from '@lucide/vue'
+import { ChartColumnIncreasing, RefreshCw, Loader2, LayoutList, ChartPie, ClipboardCheck, Download } from '@lucide/vue'
 import { useToast } from '~/composables/useToast'
 import { ensureSession, useSessionState } from '~/composables/useSession'
 import { canSeeModule } from '~/utils/modulePermissions'
@@ -16,6 +16,23 @@ import { API_INDICADORES_MUEBLES, TIPO_ERROR_PICKING_LABEL, fmtM3, mensajeError 
 import { PRESETS_RANGO, rangoDePreset, type BarraH, type ColumnaTabla, type PresetRango } from '~/utils/indicadores'
 import { hoyBogota } from '~/utils/exportaciones'
 import { API_ANALITICA_MUEBLES, type AnaliticaMueblesDTO } from '~/utils/mueblesAnalitica'
+import { exportarExcel, type HojaExcel } from '~/utils/exportarExcel'
+import { fmtDuracion, type ProcesoDTO } from '~/utils/procesos'
+
+interface ProcesosMuebles {
+  rango: { desde: string; hasta: string }
+  anterior: { desde: string; hasta: string }
+  metaVentana: { desde: string; hasta: string }
+  operarios: Array<{ id: string; nombre: string }>
+  inspectores: Array<{ id: string; nombre: string }>
+  picking: ProcesoDTO
+  inspeccion: ProcesoDTO
+  ebanisteria: {
+    enviados: number; enTaller: number; esperaMin: number | null
+    porPlu: Array<{ plu: string; descripcion: string | null; proveedor: string; veces: number; enTaller: number; esperaMin: number; motivos: string[] }>
+    porProveedor: Array<{ proveedor: string; veces: number; plus: number; esperaMin: number }>
+  }
+}
 
 interface FilaOperario {
   id: string; nombre: string; plus: number; minutosPicking: number
@@ -78,6 +95,8 @@ const preset = ref<Preset>('7d')
 const desde = ref(rangoDePreset('7d', hoy).desde)
 const hasta = ref(hoy)
 const operarioId = ref('')
+const inspectorId = ref('')
+const procesos = ref<ProcesosMuebles | null>(null)
 
 const datos = ref<Datos | null>(null)
 const equipo = ref<Array<{ id: string; nombre: string }>>([])
@@ -94,12 +113,24 @@ async function cargar() {
   if (!desde.value || !hasta.value) return
   // Un refresco automatico no pone el esqueleto: la pantalla no parpadea.
   if (!enRefrescoSilencioso()) cargando.value = true
+  // El operario filtra el picking; el inspector, la inspeccion. Cada pestana
+  // manda solo el suyo: el tiempo por descripcion sale del que se esta mirando.
+  const filtro = {
+    operarioId: pestana.value === 'picking' ? operarioId.value || undefined : undefined,
+    inspectorId: pestana.value === 'inspeccion' ? inspectorId.value || undefined : undefined,
+  }
   try {
-    const res = await $fetch<{ data: Datos; equipo: Array<{ id: string; nombre: string }>; erroresPicking?: ErroresPicking }>(
-      API_INDICADORES_MUEBLES,
-      { query: { desde: desde.value, hasta: hasta.value, operarioId: operarioId.value || undefined } },
-    )
+    const [res, pr] = await Promise.all([
+      $fetch<{ data: Datos; equipo: Array<{ id: string; nombre: string }>; erroresPicking?: ErroresPicking }>(
+        API_INDICADORES_MUEBLES,
+        { query: { desde: desde.value, hasta: hasta.value, ...filtro } },
+      ),
+      $fetch<ProcesosMuebles>(`${API_INDICADORES_MUEBLES}/procesos`, {
+        query: { desde: desde.value, hasta: hasta.value, operarioId: operarioId.value || undefined, inspectorId: inspectorId.value || undefined },
+      }),
+    ])
     datos.value = res.data
+    procesos.value = pr
     errores.value = res.erroresPicking ?? null
     equipo.value = res.equipo
   } catch (e) {
@@ -112,7 +143,8 @@ async function cargar() {
 // ── Analítica ──
 // Pestaña aparte con su propio endpoint: no se pide hasta que se abre, y no
 // depende del filtro de operario (mira el proceso entero).
-const pestana = ref<'operacion' | 'analitica'>('operacion')
+// Picking | Inspeccion | Ordenes (23-09): un proceso por pestana.
+const pestana = ref<'picking' | 'inspeccion' | 'ordenes'>('picking')
 const analitica = ref<AnaliticaMueblesDTO | null>(null)
 const analiticaDe = ref('')
 const cargandoAnalitica = ref(false)
@@ -137,15 +169,19 @@ async function cargarAnalitica() {
 
 /** Recarga solo lo que se está viendo. */
 function refrescar() {
-  return pestana.value === 'analitica' ? cargarAnalitica() : cargar()
+  return pestana.value === 'ordenes' ? cargarAnalitica() : cargar()
 }
 
 onMounted(ensureSession)
 watch(puedeVer, (v) => { if (v && !datos.value) cargar() }, { immediate: true })
-watch([desde, hasta, operarioId], () => { if (puedeVer.value) refrescar() })
+watch([desde, hasta, operarioId, inspectorId], () => { if (puedeVer.value) refrescar() })
 watch(pestana, (v) => {
-  if (v === 'analitica' && analiticaDe.value !== `${desde.value}|${hasta.value}`) cargarAnalitica()
-  if (v === 'operacion' && !datos.value) cargar()
+  if (v === 'ordenes') {
+    if (analiticaDe.value !== `${desde.value}|${hasta.value}`) cargarAnalitica()
+  } else {
+    // El tiempo por descripcion depende del filtro de la pestana.
+    cargar()
+  }
 })
 
 // ── Formato ──
@@ -154,25 +190,6 @@ watch(pestana, (v) => {
 const horas = (min: number) => (min < 1 ? `${Math.round(min * 60)} s` : min < 60 ? `${Math.round(min)} min` : `${(min / 60).toFixed(1)} h`)
 const min1 = (v: number | null) => (v == null ? '—' : horas(v))
 const seg = (v: number | null) => (v == null ? '—' : `${Math.round(v)} s`)
-
-const tiles = computed(() => {
-  const r = datos.value?.resumen
-  if (!r) return []
-  return [
-    { label: 'PLUs pickeados', valor: String(r.plusPickeados) },
-    { label: 'Tiempo de picking', valor: horas(r.minutosPicking) },
-    { label: 'Tiempo de inspección', valor: horas(r.minutosInspeccion) },
-    { label: 'Volumen movido', valor: fmtM3(r.m3) },
-    // Lead time: lo que espera el cliente, de abrir el picking a subir al camion.
-    { label: 'Lead time promedio', valor: horas(r.leadTimePromedioMin ?? 0) },
-    { label: 'Órdenes entregadas', valor: String(r.ordenesEntregadas ?? 0) },
-    // Errores de picking marcados en inspeccion.
-    {
-      label: 'Órdenes con error de picking',
-      valor: errores.value?.porcentajeOrdenes == null ? '—' : `${errores.value.porcentajeOrdenes}%`,
-    },
-  ]
-})
 
 // ── Errores de picking ──
 const etiquetaError = (t: string) => TIPO_ERROR_PICKING_LABEL[t] ?? t
@@ -305,6 +322,81 @@ const barrasDe = (g: FilaGrupo[], etiqueta?: (c: string) => string): BarraH[] =>
     filas: [{ etiqueta: 'PLUs', valor: String(f.plus) }],
   }))
 const ejeMin = (v: number) => `${Math.round(v)} min`
+const barrasInsp = (g: FilaGrupo[]): BarraH[] => g
+  .filter((f) => f.promedioInspeccionMin != null)
+  .map((f) => ({
+    id: f.clave,
+    etiqueta: f.etiqueta,
+    valor: f.promedioInspeccionMin!,
+    texto: `${f.promedioInspeccionMin} min`,
+  }))
+const porInspeccion = (g: FilaGrupo[]) => [...g].filter((f) => f.promedioInspeccionMin != null)
+
+// ── Ebanisteria por PLU y proveedor ──
+const colsEbanPlu: ColumnaTabla[] = [
+  { key: 'plu', label: 'PLU' },
+  { key: 'descripcion', label: 'Descripción' },
+  { key: 'proveedor', label: 'Proveedor' },
+  { key: 'veces', label: 'Veces', num: true },
+  { key: 'espera', label: 'Espera promedio', num: true },
+  { key: 'motivos', label: 'Motivos' },
+]
+const filasEbanPlu = computed(() => (procesos.value?.ebanisteria.porPlu ?? []).map((e) => ({
+  plu: e.plu, descripcion: e.descripcion ?? '—', proveedor: e.proveedor, veces: e.veces,
+  espera: fmtDuracion(e.esperaMin), motivos: e.motivos.join(' · ') || '—',
+})))
+const colsEbanProv: ColumnaTabla[] = [
+  { key: 'proveedor', label: 'Proveedor' },
+  { key: 'veces', label: 'Envíos', num: true },
+  { key: 'plus', label: 'PLU distintos', num: true },
+  { key: 'espera', label: 'Espera promedio', num: true },
+]
+const filasEbanProv = computed(() => (procesos.value?.ebanisteria.porProveedor ?? []).map((e) => ({
+  proveedor: e.proveedor, veces: e.veces, plus: e.plus, espera: fmtDuracion(e.esperaMin),
+})))
+const barrasEbanPlu = computed<BarraH[]>(() => (procesos.value?.ebanisteria.porPlu ?? []).slice(0, 10).map((e) => ({
+  id: e.plu,
+  etiqueta: `${e.plu} · ${e.descripcion ?? ''}`,
+  valor: e.veces,
+  texto: `${e.veces} · ${e.proveedor}`,
+  detalle: [{ etiqueta: 'Espera promedio', valor: fmtDuracion(e.esperaMin) }, { etiqueta: 'Proveedor', valor: e.proveedor }],
+})))
+
+// ── Excel de la pestana abierta ──
+const vistaPicking = ref<{ hojas: () => HojaExcel[] } | null>(null)
+const vistaInspeccion = ref<{ hojas: () => HojaExcel[] } | null>(null)
+const exportando = ref(false)
+async function exportar() {
+  if (exportando.value || !datos.value) return
+  exportando.value = true
+  try {
+    const grupo = (nombre: string, g: FilaGrupo[]) => ({ nombre, columnas: colsGrupo, filas: filasDe(g) })
+    const hojas: HojaExcel[] = pestana.value === 'picking'
+      ? [
+          ...(vistaPicking.value?.hojas() ?? []),
+          { nombre: 'Tiempo por operario', columnas: colsOperario, filas: filasOperario.value },
+          { nombre: 'Genie - Order Picker', columnas: colsEquipos, filas: filasEquipos.value },
+          grupo('Picking por descripción', datos.value.porDescripcion),
+          grupo('Picking por volumen', datos.value.porVolumen),
+          grupo('Picking por peso', datos.value.porPeso),
+          { nombre: 'Errores de picking', columnas: colsErrDetalle, filas: filasErrDetalle.value },
+        ]
+      : [
+          ...(vistaInspeccion.value?.hojas() ?? []),
+          { nombre: 'Tiempo por inspector', columnas: colsInspector, filas: filasInspector.value },
+          grupo('Inspección por descripción', porInspeccion(datos.value.porDescripcion)),
+          grupo('Inspección por volumen', porInspeccion(datos.value.porVolumen)),
+          grupo('Inspección por peso', porInspeccion(datos.value.porPeso)),
+          { nombre: 'Ebanistería por PLU', columnas: colsEbanPlu, filas: filasEbanPlu.value },
+          { nombre: 'Ebanistería por proveedor', columnas: colsEbanProv, filas: filasEbanProv.value },
+        ]
+    await exportarExcel(`indicadores-muebles-${pestana.value}-${desde.value}_${hasta.value}`, hojas)
+  } catch (e) {
+    show(mensajeError(e, 'No se pudo exportar'), true)
+  } finally {
+    exportando.value = false
+  }
+}
 
 // Por descripcion exacta pueden salir cientos de productos: el grafico muestra
 // los mas pickeados y la tabla trae todos, con buscador.
@@ -323,21 +415,6 @@ const colsDescripcion: ColumnaTabla[] = [
   { key: 'inspeccion', label: 'Prom. inspección', num: true },
 ]
 
-const colsOrden: ColumnaTabla[] = [
-  { key: 'codigo', label: 'Orden' },
-  { key: 'picking', label: 'Picking', num: true },
-  { key: 'inspeccion', label: 'Inspección', num: true },
-  { key: 'total', label: 'Total', num: true },
-  { key: 'lead', label: 'Lead time', num: true },
-]
-const filasOrden = computed(() => (datos.value?.ordenes ?? []).slice(0, 40).map((o) => ({
-  codigo: o.codigo,
-  picking: min1(o.pickingMin),
-  inspeccion: min1(o.inspeccionMin),
-  total: min1(o.totalMin),
-  lead: o.leadTimeMin == null ? '—' : min1(o.leadTimeMin),
-})))
-
 // Los indicadores se ponen al dia solos; cada minuto basta (son consultas pesadas).
 useAutoRefresh({ intervalMs: 60_000, onRefresh: () => refrescar() })
 </script>
@@ -350,8 +427,8 @@ useAutoRefresh({ intervalMs: 60_000, onRefresh: () => refrescar() })
           <span class="hero-ic"><ChartColumnIncreasing :size="13" /></span>
           CEDI · Muebles
         </span>
-        <h1 class="hero-title">Indicadores Muebles</h1>
-        <p class="hero-desc">Tiempos por persona, tipo de mercancía, volumen y peso.</p>
+        <h1 class="hero-title">Indicadores</h1>
+        <p class="hero-desc">Picking, inspección y órdenes: por día, por persona, por producto.</p>
       </div>
       <button class="btn btn-ghost btn-sm" :disabled="cargando || cargandoAnalitica" @click="refrescar">
         <RefreshCw :size="14" /> Actualizar
@@ -370,31 +447,47 @@ useAutoRefresh({ intervalMs: 60_000, onRefresh: () => refrescar() })
         </div>
         <label class="campo"><span>Desde</span><input v-model="desde" class="input" type="date"></label>
         <label class="campo"><span>Hasta</span><input v-model="hasta" class="input" type="date"></label>
-        <label v-if="pestana === 'operacion'" class="campo">
+        <label v-if="pestana === 'picking'" class="campo">
           <span>Operario</span>
           <select v-model="operarioId" class="input">
-            <option value="">Todos</option>
+            <option value="">Todos (general)</option>
             <option v-for="o in equipo" :key="o.id" :value="o.id">{{ o.nombre }}</option>
           </select>
         </label>
+        <label v-if="pestana === 'inspeccion'" class="campo">
+          <span>Inspector</span>
+          <select v-model="inspectorId" class="input">
+            <option value="">Todos (general)</option>
+            <option v-for="i in procesos?.inspectores ?? []" :key="i.id" :value="i.id">{{ i.nombre }}</option>
+          </select>
+        </label>
+        <button v-if="pestana !== 'ordenes'" class="btn btn-sm exportar" :disabled="!datos || exportando" @click="exportar">
+          <Loader2 v-if="exportando" :size="13" class="spin" /><Download v-else :size="13" /> Exportar a Excel
+        </button>
       </section>
 
-      <nav class="tabs" role="tablist" aria-label="Vista de indicadores">
+      <nav class="tabs" role="tablist" aria-label="Proceso">
         <button
-          class="tab" role="tab" :class="{ on: pestana === 'operacion' }"
-          :aria-selected="pestana === 'operacion'" @click="pestana = 'operacion'"
+          class="tab" role="tab" :class="{ on: pestana === 'picking' }"
+          :aria-selected="pestana === 'picking'" @click="pestana = 'picking'"
         >
-          <LayoutList :size="14" /> Operación
+          <LayoutList :size="14" /> Picking
         </button>
         <button
-          class="tab" role="tab" :class="{ on: pestana === 'analitica' }"
-          :aria-selected="pestana === 'analitica'" @click="pestana = 'analitica'"
+          class="tab" role="tab" :class="{ on: pestana === 'inspeccion' }"
+          :aria-selected="pestana === 'inspeccion'" @click="pestana = 'inspeccion'"
         >
-          <ChartPie :size="14" /> Analítica
+          <ClipboardCheck :size="14" /> Inspección
+        </button>
+        <button
+          class="tab" role="tab" :class="{ on: pestana === 'ordenes' }"
+          :aria-selected="pestana === 'ordenes'" @click="pestana = 'ordenes'"
+        >
+          <ChartPie :size="14" /> Órdenes
         </button>
       </nav>
 
-      <template v-if="pestana === 'analitica'">
+      <template v-if="pestana === 'ordenes'">
         <div v-if="cargandoAnalitica && !analitica" class="cargando"><Loader2 :size="18" class="spin" /> Cargando…</div>
         <IndicadoresMueblesAnalitica
           v-else-if="analitica" :datos="analitica"
@@ -404,72 +497,15 @@ useAutoRefresh({ intervalMs: 60_000, onRefresh: () => refrescar() })
 
       <div v-else-if="cargando && !datos" class="cargando"><Loader2 :size="18" class="spin" /> Cargando…</div>
 
-      <template v-else-if="datos">
-        <div class="tiles">
-          <div v-for="t in tiles" :key="t.label" class="tile">
-            <span class="tile-num mono tnum">{{ t.valor }}</span>
-            <span class="tile-label">{{ t.label }}</span>
-          </div>
-        </div>
-
-        <!-- Genie contra Order Picker: va DESPUÉS de las cifras del módulo,
-             porque es un desglose, no el titular. -->
-        <IndicadoresTarjeta
-          class="bloque" titulo="Genie / Order Picker"
-          subtitulo="Picking terminado en el periodo, descontando pausas. Una orden compartida puede aportar a los dos equipos."
-        >
-          <IndicadoresBarrasH
-            v-if="barrasEquipos.length" :items="barrasEquipos" medida="und/hora"
-            :formato-eje="(v: number) => v.toFixed(0)"
-          />
-          <p v-else class="sin-errores">Todavía no hay picking terminado en el periodo.</p>
-          <template #tabla>
-            <IndicadoresTabla :columnas="colsEquipos" :filas="filasEquipos" principal="equipo" />
-          </template>
-        </IndicadoresTarjeta>
-
-        <!-- Desplazamiento: el tiempo que no está en ningún reloj pero que el
-             operario sí gasta. Verlo junto al de picking es lo que le da sentido. -->
-        <IndicadoresTarjeta
-          class="bloque" titulo="Tiempo por operario"
-          :subtitulo="`Desplazamiento entre PLUs: ${seg(datos.resumen.desplazamientoPromedioSeg)} de promedio, ${datos.resumen.desplazamientoPorcentaje ?? 0}% del tiempo en la jugada`"
-        >
-          <IndicadoresTabla :columnas="colsOperario" :filas="filasOperario" principal="nombre" />
-        </IndicadoresTarjeta>
-
-        <!-- Errores de picking: los marca el administrador en Inspección. -->
-        <IndicadoresTarjeta
-          class="bloque" titulo="Errores de picking"
-          :subtitulo="errores && errores.total
-            ? `${errores.total} ${errores.total === 1 ? 'error' : 'errores'} en ${errores.ordenesConError} ${errores.ordenesConError === 1 ? 'orden' : 'órdenes'} · ${errores.porcentajeOrdenes ?? 0}% de las órdenes del periodo`
-            : 'Sin errores de picking en el periodo'"
-        >
-          <template v-if="errores && errores.total">
-            <IndicadoresTabla :columnas="colsErrOperario" :filas="filasErrOperario" principal="nombre" />
-          </template>
-          <p v-else class="sin-errores">Ningún PLU marcado con error de picking.</p>
-          <template #tabla>
-            <IndicadoresTabla :columnas="colsErrDetalle" :filas="filasErrDetalle" principal="orden" />
-          </template>
-        </IndicadoresTarjeta>
+      <!-- ── Picking ── -->
+      <template v-else-if="datos && procesos && pestana === 'picking'">
+        <IndicadoresProcesoPlu
+          ref="vistaPicking" :proceso="procesos.picking" titulo="Picking" que="PLU pickeados" titulo-top="PLU con más demanda"
+        />
 
         <IndicadoresTarjeta
-          v-if="errores && errores.total" class="bloque" titulo="Errores por tipo"
-          subtitulo="El detalle de cada error está en Errores de picking › Ver tabla"
-        >
-          <IndicadoresBarrasH :items="barrasErrTipo" medida="errores" :formato-eje="ejeEntero" />
-          <template #tabla>
-            <IndicadoresTabla :columnas="colsErrTipo" :filas="filasErrTipo" principal="etiqueta" />
-          </template>
-        </IndicadoresTarjeta>
-
-        <IndicadoresTarjeta class="bloque" titulo="Tiempo de inspección por inspector">
-          <IndicadoresTabla :columnas="colsInspector" :filas="filasInspector" principal="nombre" />
-        </IndicadoresTarjeta>
-
-        <IndicadoresTarjeta
-          class="bloque" titulo="Promedio de picking por descripción"
-          :subtitulo="`${datos.porDescripcion.length} productos distintos · el gráfico muestra los ${TOP_DESCRIPCION} más pickeados`"
+          class="bloque" titulo="Tiempo por PLU según la descripción"
+          :subtitulo="`${operarioId ? equipo.find((o) => o.id === operarioId)?.nombre ?? 'Operario' : 'General'} · ${datos.porDescripcion.length} productos · el gráfico muestra los ${TOP_DESCRIPCION} más pickeados`"
         >
           <IndicadoresBarrasH
             :items="barrasDe(datos.porDescripcion.slice(0, TOP_DESCRIPCION))" medida="min por PLU" :formato-eje="ejeMin"
@@ -479,23 +515,18 @@ useAutoRefresh({ intervalMs: 60_000, onRefresh: () => refrescar() })
               <span class="sr-only">Buscar descripción</span>
               <input v-model="buscaDescripcion" class="busca-input" type="search" placeholder="Buscar producto…">
             </label>
-            <IndicadoresTabla
-              :columnas="colsDescripcion"
-              :filas="filasDe(descripcionesFiltradas)"
-              principal="etiqueta"
-            />
+            <IndicadoresTabla :columnas="colsDescripcion" :filas="filasDe(descripcionesFiltradas)" principal="etiqueta" />
           </template>
         </IndicadoresTarjeta>
 
         <div class="dos bloque">
-          <IndicadoresTarjeta titulo="Por tamaño del producto" subtitulo="Agrupado por volumen">
+          <IndicadoresTarjeta titulo="Según el volumen" subtitulo="Tiempo de picking por PLU">
             <IndicadoresBarrasH :items="barrasDe(datos.porVolumen)" medida="min por PLU" :formato-eje="ejeMin" />
             <template #tabla>
               <IndicadoresTabla :columnas="colsGrupo" :filas="filasDe(datos.porVolumen)" principal="etiqueta" />
             </template>
           </IndicadoresTarjeta>
-
-          <IndicadoresTarjeta titulo="Por peso del producto" subtitulo="Agrupado por kilos">
+          <IndicadoresTarjeta titulo="Según el peso" subtitulo="Tiempo de picking por PLU">
             <IndicadoresBarrasH :items="barrasDe(datos.porPeso)" medida="min por PLU" :formato-eje="ejeMin" />
             <template #tabla>
               <IndicadoresTabla :columnas="colsGrupo" :filas="filasDe(datos.porPeso)" principal="etiqueta" />
@@ -503,30 +534,115 @@ useAutoRefresh({ intervalMs: 60_000, onRefresh: () => refrescar() })
           </IndicadoresTarjeta>
         </div>
 
+        <div class="dos bloque">
+          <IndicadoresTarjeta
+            titulo="Tiempo por operario"
+            :subtitulo="`Desplazamiento entre PLUs: ${seg(datos.resumen.desplazamientoPromedioSeg)} de promedio, ${datos.resumen.desplazamientoPorcentaje ?? 0}% del tiempo`"
+          >
+            <IndicadoresTabla :columnas="colsOperario" :filas="filasOperario" principal="nombre" />
+          </IndicadoresTarjeta>
+          <IndicadoresTarjeta
+            titulo="Genie / Order Picker"
+            subtitulo="Picking terminado, descontando pausas. Una orden compartida aporta a los dos."
+          >
+            <IndicadoresBarrasH
+              v-if="barrasEquipos.length" :items="barrasEquipos" medida="und/hora"
+              :formato-eje="(v: number) => v.toFixed(0)"
+            />
+            <p v-else class="sin-errores">Todavía no hay picking terminado en el periodo.</p>
+            <template #tabla>
+              <IndicadoresTabla :columnas="colsEquipos" :filas="filasEquipos" principal="equipo" />
+            </template>
+          </IndicadoresTarjeta>
+        </div>
+
+        <div class="dos bloque">
+          <IndicadoresTarjeta
+            titulo="Errores de picking"
+            :subtitulo="errores && errores.total
+              ? `${errores.total} ${errores.total === 1 ? 'error' : 'errores'} en ${errores.ordenesConError} ${errores.ordenesConError === 1 ? 'orden' : 'órdenes'} · ${errores.porcentajeOrdenes ?? 0}% de las órdenes`
+              : 'Sin errores de picking en el periodo'"
+          >
+            <IndicadoresTabla v-if="errores && errores.total" :columnas="colsErrOperario" :filas="filasErrOperario" principal="nombre" />
+            <p v-else class="sin-errores">Ningún PLU marcado con error de picking.</p>
+            <template #tabla>
+              <IndicadoresTabla :columnas="colsErrDetalle" :filas="filasErrDetalle" principal="orden" />
+            </template>
+          </IndicadoresTarjeta>
+          <IndicadoresTarjeta v-if="errores && errores.total" titulo="Errores por tipo">
+            <IndicadoresBarrasH :items="barrasErrTipo" medida="errores" :formato-eje="ejeEntero" />
+            <template #tabla>
+              <IndicadoresTabla :columnas="colsErrTipo" :filas="filasErrTipo" principal="etiqueta" />
+            </template>
+          </IndicadoresTarjeta>
+        </div>
+      </template>
+
+      <!-- ── Inspección ── -->
+      <template v-else-if="datos && procesos && pestana === 'inspeccion'">
+        <IndicadoresProcesoPlu
+          ref="vistaInspeccion" :proceso="procesos.inspeccion" titulo="Inspección" que="PLU inspeccionados"
+          persona="inspector" titulo-top="PLU más inspeccionados"
+        />
+
         <IndicadoresTarjeta
-          class="bloque" titulo="Ebanistería"
-          :subtitulo="`${datos.ebanisteria.enviados} enviados · ${datos.ebanisteria.enTallerAhora} en el taller ahora`"
+          class="bloque" titulo="Tiempo por PLU según la descripción"
+          :subtitulo="`${inspectorId ? procesos.inspectores.find((i) => i.id === inspectorId)?.nombre ?? 'Inspector' : 'General'} · tiempo de inspección por PLU (sin taller ni almuerzo)`"
         >
-          <div class="eban">
-            <div class="eban-cifras">
-              <div><strong class="mono tnum">{{ min1(datos.ebanisteria.promedioEsperaMin) }}</strong><span>espera promedio</span></div>
-              <div><strong class="mono tnum">{{ min1(datos.ebanisteria.maximoEsperaMin) }}</strong><span>la más larga</span></div>
-            </div>
+          <IndicadoresBarrasH
+            :items="barrasInsp(porInspeccion(datos.porDescripcion).slice(0, TOP_DESCRIPCION))" medida="min por PLU" :formato-eje="ejeMin"
+          />
+          <template #tabla>
+            <IndicadoresTabla :columnas="colsDescripcion" :filas="filasDe(porInspeccion(datos.porDescripcion))" principal="etiqueta" />
+          </template>
+        </IndicadoresTarjeta>
+
+        <div class="dos bloque">
+          <IndicadoresTarjeta titulo="Según el volumen" subtitulo="Tiempo de inspección por PLU">
+            <IndicadoresBarrasH :items="barrasInsp(datos.porVolumen)" medida="min por PLU" :formato-eje="ejeMin" />
+            <template #tabla>
+              <IndicadoresTabla :columnas="colsGrupo" :filas="filasDe(porInspeccion(datos.porVolumen))" principal="etiqueta" />
+            </template>
+          </IndicadoresTarjeta>
+          <IndicadoresTarjeta titulo="Según el peso" subtitulo="Tiempo de inspección por PLU">
+            <IndicadoresBarrasH :items="barrasInsp(datos.porPeso)" medida="min por PLU" :formato-eje="ejeMin" />
+            <template #tabla>
+              <IndicadoresTabla :columnas="colsGrupo" :filas="filasDe(porInspeccion(datos.porPeso))" principal="etiqueta" />
+            </template>
+          </IndicadoresTarjeta>
+        </div>
+
+        <IndicadoresTarjeta class="bloque" titulo="Tiempo de inspección por inspector">
+          <IndicadoresTabla :columnas="colsInspector" :filas="filasInspector" principal="nombre" />
+        </IndicadoresTarjeta>
+
+        <IndicadoresTarjeta
+          class="bloque" titulo="Ebanistería: PLU que más van al taller"
+          :subtitulo="`${procesos.ebanisteria.enviados} envíos · ${procesos.ebanisteria.enTaller} en el taller ahora · espera promedio ${fmtDuracion(procesos.ebanisteria.esperaMin)}. El proveedor es el fabricante del maestro.`"
+        >
+          <IndicadoresBarrasH
+            v-if="barrasEbanPlu.length" :items="barrasEbanPlu" medida="envíos"
+            :formato-eje="ejeEntero" :reserva="190" :ancho-etiqueta="240"
+          />
+          <p v-else class="sin-errores">Sin envíos a ebanistería en el periodo.</p>
+          <template #tabla>
+            <IndicadoresTabla :columnas="colsEbanPlu" :filas="filasEbanPlu" principal="plu" />
+          </template>
+        </IndicadoresTarjeta>
+
+        <div class="dos bloque">
+          <IndicadoresTarjeta titulo="Ebanistería por proveedor" subtitulo="Envíos y espera promedio en el taller.">
+            <IndicadoresTabla :columnas="colsEbanProv" :filas="filasEbanProv" principal="proveedor" />
+          </IndicadoresTarjeta>
+          <IndicadoresTarjeta titulo="Motivos de ebanistería" :subtitulo="`La espera más larga: ${min1(datos.ebanisteria.maximoEsperaMin)}`">
             <ul v-if="datos.ebanisteria.motivos.length" class="eban-motivos">
               <li v-for="m in datos.ebanisteria.motivos" :key="m.motivo">
                 <span class="eban-veces">{{ m.veces }}×</span> {{ m.motivo }}
               </li>
             </ul>
             <p v-else class="eban-vacio">Sin envíos a ebanistería en el periodo.</p>
-          </div>
-        </IndicadoresTarjeta>
-
-        <IndicadoresTarjeta
-          class="bloque" titulo="Órdenes completas"
-          :subtitulo="`Lead time: de abrir el picking a entregar a transporte · promedio ${horas(datos.resumen.leadTimePromedioMin ?? 0)} en ${datos.resumen.ordenesEntregadas ?? 0} órdenes entregadas`"
-        >
-          <IndicadoresTabla :columnas="colsOrden" :filas="filasOrden" principal="codigo" />
-        </IndicadoresTarjeta>
+          </IndicadoresTarjeta>
+        </div>
       </template>
     </template>
   </div>
@@ -544,6 +660,7 @@ useAutoRefresh({ intervalMs: 60_000, onRefresh: () => refrescar() })
 .chip { padding: 6px 12px; border-radius: var(--r-pill); border: 1px solid var(--border-strong); background: var(--surface); font-size: 12px; font-weight: 600; color: var(--muted); cursor: pointer; }
 .chip.on { color: var(--brand); border-color: var(--brand); background: var(--brand-tint); }
 .campo { display: flex; flex-direction: column; gap: 4px; }
+.exportar { margin-left: auto; }
 .campo span { font-size: 10.5px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
 
 .tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin-bottom: 18px; }

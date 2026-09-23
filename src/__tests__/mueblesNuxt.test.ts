@@ -443,7 +443,8 @@ describe("muebles — entrega a transporte", () => {
       expect(src).toContain("ordenesEntregadas");
     }
     expect(leer("nuxt-app/server/api/indicadores-muebles/index.get.ts")).toContain("entregadaTransporteAt: true");
-    expect(leer("nuxt-app/app/components/indicadores-muebles/Module.vue")).toContain("Lead time");
+    // Desde el 23-09 el lead time vive en la pestaña Órdenes (Analitica.vue).
+    expect(leer("nuxt-app/app/components/indicadores-muebles/Analitica.vue")).toContain("Lead time");
   });
 });
 

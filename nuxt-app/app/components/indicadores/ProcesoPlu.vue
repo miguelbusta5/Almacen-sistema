@@ -16,7 +16,10 @@ const props = withDefaults(defineProps<{
   que: string
   /** Mostrar el top de PLU (en pendientes se usa el de solicitados). */
   conTop?: boolean
-}>(), { conTop: true })
+  /** Quién cierra: "operario" o "inspector". */
+  persona?: string
+  tituloTop?: string
+}>(), { conTop: true, persona: 'operario', tituloTop: 'PLU que más salen' })
 
 const a = computed(() => props.proceso.actual)
 const ant = computed(() => props.proceso.anterior)
@@ -63,7 +66,7 @@ const barras = computed<BarraH[]>(() => a.value.personas.map((p) => ({
 })))
 
 const colsPersonas: ColumnaTabla[] = [
-  { key: 'nombre', label: 'Operario' },
+  { key: 'nombre', label: props.persona.charAt(0).toUpperCase() + props.persona.slice(1) },
   { key: 'dias', label: 'Días', num: true },
   { key: 'plus', label: 'PLU / día', num: true },
   { key: 'unidades', label: 'Unidades / día', num: true },
@@ -106,7 +109,7 @@ const filasTop = computed(() => a.value.topPlus.map((t) => ({
 
 defineExpose({
   hojas: () => [
-    { nombre: `${props.titulo} por operario`, columnas: colsPersonas, filas: filasPersonas.value },
+    { nombre: `${props.titulo} por ${props.persona}`, columnas: colsPersonas, filas: filasPersonas.value },
     { nombre: `${props.titulo} por día`, columnas: colsDia, filas: filasDia.value },
     ...(props.conTop ? [{ nombre: `${props.titulo} PLU`, columnas: colsTop, filas: filasTop.value }] : []),
   ],
@@ -122,7 +125,7 @@ defineExpose({
     <p v-if="!a.total.plus" class="pp-vacio">Sin {{ que }} cerrados en el periodo.</p>
     <template v-else>
       <IndicadoresTarjeta
-        class="bloque" :titulo="`${titulo} por operario`"
+        class="bloque" :titulo="`${titulo} por ${persona}`"
         :subtitulo="`PLU por día trabajado. ${meta ? `Verde: llega al día típico del equipo (${fmtCifra(meta.plus)} PLU); amarillo: 80 % o más; rojo: debajo.` : 'Sin meta todavía: faltan 4 semanas de historia.'}`"
       >
         <IndicadoresBarrasH :items="barras" medida="PLU por día" :formato-eje="(v: number) => fmtCifra(v)" :reserva="110" />
@@ -144,7 +147,7 @@ defineExpose({
             <IndicadoresTabla :columnas="colsDia" :filas="filasDia" principal="dia" />
           </template>
         </IndicadoresTarjeta>
-        <IndicadoresTarjeta v-if="conTop" titulo="PLU que más salen" subtitulo="Veces que se cerró cada PLU en el periodo.">
+        <IndicadoresTarjeta v-if="conTop" :titulo="tituloTop" subtitulo="Veces que se cerró cada PLU en el periodo.">
           <div class="pp-tabla"><IndicadoresTabla :columnas="colsTop" :filas="filasTop.slice(0, 10)" principal="plu" /></div>
           <template #tabla>
             <IndicadoresTabla :columnas="colsTop" :filas="filasTop" principal="plu" />

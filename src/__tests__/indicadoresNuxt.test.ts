@@ -123,7 +123,12 @@ describe("indicadores — el modulo esta registrado en todas partes", () => {
   });
 
   it("existe la pagina de Nuxt", () => {
-    expect(leer("nuxt-app/app/pages/indicadores.vue")).toContain("<IndicadoresModule />");
+    // Un solo modulo con dos areas (23-09): almacenamiento y muebles.
+    const pagina = leer("nuxt-app/app/pages/indicadores.vue");
+    expect(pagina).toContain("<IndicadoresModule v-else />");
+    expect(pagina).toContain("<IndicadoresMueblesModule v-if=\"area === 'muebles'\" />");
+    // El enlace viejo de Indicadores Muebles lleva al area.
+    expect(leer("nuxt-app/app/pages/indicadores-muebles.vue")).toContain("query: { area: 'muebles' }");
   });
 });
 

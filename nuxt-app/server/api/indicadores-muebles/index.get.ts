@@ -32,6 +32,8 @@ export default defineEventHandler(async (event) => {
   let hasta = RE_DIA.test(String(sp.hasta ?? '')) ? String(sp.hasta) : hoy
   if (desde > hasta) [desde, hasta] = [hasta, desde]
   const operarioId = sp.operarioId ? String(sp.operarioId) : null
+  // Por inspector: el tiempo de inspeccion por descripcion, volumen y peso de uno solo.
+  const inspectorId = sp.inspectorId ? String(sp.inspectorId) : null
 
   const { inicio, fin } = limitesRango(desde, hasta)
 
@@ -44,6 +46,7 @@ export default defineEventHandler(async (event) => {
         horaInicio: { gte: inicio, lte: fin },
         orden: { deletedAt: null },
         ...(operarioId ? { operarioId } : {}),
+        ...(inspectorId ? { inspectorId } : {}),
       },
       select: {
         plu: true, descripcion: true, operarioId: true, ordenId: true,

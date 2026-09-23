@@ -152,8 +152,9 @@ export const HOME_ACTIONS: HomeAction[] = [
   {
     id: "indicadores-muebles",
     title: "Indicadores Muebles",
-    description: "Tiempos del area por persona, tipo de mercancia, volumen y peso",
-    href: "/dashboard/indicadores-muebles",
+    description: "Picking, inspeccion y ordenes del area de muebles",
+    // Muebles es un area de Indicadores desde el 23-09.
+    href: "/dashboard/indicadores?area=muebles",
     icon: "ChartColumnIncreasing",
     color: getModuleColor("indicadores-muebles"),
     moduleKey: "indicadores-muebles",
