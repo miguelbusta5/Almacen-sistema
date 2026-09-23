@@ -273,6 +273,8 @@ const totalPaginas = computed(() => Math.max(1, Math.ceil(total.value / pageSize
 
     <template v-else>
         <RecepcionKpiRail class="bloque" :counts="conteos" @filter="filtrarPor" />
+        <!-- Supervisión: tiempo de cada contenedor y cuántos caben por día. -->
+        <RecepcionProyeccion v-if="canManage" class="bloque" />
 
         <!-- Con una planilla abierta se esconde la captura: el operario está en
              un contenedor, no en dos. -->

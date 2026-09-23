@@ -307,7 +307,58 @@ export interface Recepcion {
   creadoPorNombre: string | null
   descargadores: DescargadorRecepcion[]
   novedades: NovedadRecepcionDTO[]
+  /** Lo que el montacarguista almacenó de este contenedor (mismo pedido, desde el 24-09). */
+  almacenamiento?: AlmacenamientoContenedor | null
 }
+
+/** Ver server/utils/recepcionAlmacenamientoCalc.ts. */
+export interface AlmacenamientoContenedor {
+  movimientos: number
+  abiertos: number
+  plus: number
+  unidades: number
+  m3: number
+  kg: number
+  sinMedida: number
+  montacarguistas: number
+  descargaSeg: number | null
+  almacenamientoRelojSeg: number
+  almacenamientoPersonaSeg: number
+  trabajoSeg: number | null
+  cicloSeg: number | null
+  completo: boolean
+}
+
+export interface ProyeccionTipoContenedor {
+  tipoContenedor: string
+  contenedores: number
+  plus: number
+  unidades: number
+  m3: number
+  descargaMin: number
+  almacenamientoMin: number
+  almacenamientoPersonaMin: number
+  trabajoMin: number
+  cicloMin: number
+  capacidadDescarga: number | null
+  capacidadAlmacenamiento: number | null
+  capacidad: number | null
+  cuello: 'descarga' | 'almacenamiento' | null
+}
+
+export interface RespuestaAlmacenamiento {
+  rango: { desde: string; hasta: string }
+  plantilla: { horas: number; montacarguistas: number }
+  montacarguistasObservados: number | null
+  porTipo: ProyeccionTipoContenedor[]
+  contenedores: Array<{
+    id: string; numeroPedido: string; proveedor: string; tipoContenedor: string | null
+    tipoProducto: string; fecha: string; alm: AlmacenamientoContenedor
+  }>
+  sinContenedor: Array<{ numeroPedido: string; movimientos: number; plus: number | null; desde: string }>
+}
+
+export const API_ALMACENAMIENTO_RECEPCION = '/api/recepcion-contenedores/almacenamiento'
 
 export interface RecepcionConteos {
   recepcionesHoy: number

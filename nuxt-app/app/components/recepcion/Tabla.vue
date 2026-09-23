@@ -40,6 +40,14 @@ function resumenNovedades(item: Recepcion): string {
     .join(' · ')
 }
 
+// Lo que el montacarguista almacenó de este contenedor (mismo pedido, 24-09).
+const m3Fmt = (v: number) => v.toLocaleString('es-CO', { maximumFractionDigits: 2 })
+function almacenado(item: Recepcion): string {
+  const a = item.almacenamiento
+  if (!a || !a.movimientos) return ''
+  return `${a.plus} PLU · ${m3Fmt(a.m3)} m³ · ${fmtTiempoRecepcion(a.almacenamientoRelojSeg)}`
+}
+
 const conFoto = computed(
   () => new Set(props.items.filter((i) => i.novedades.some((n) => n.fotoUrl)).map((i) => i.id)),
 )
@@ -54,6 +62,7 @@ const conFoto = computed(
           <th class="num">Peso</th><th class="num">Refs.</th><th class="num">Cajas</th>
           <th class="num">Unidades</th><th class="num">Estibas</th>
           <th class="num">Refs. nuevas</th><th class="num">Und. nuevas</th>
+          <th>Almacenado (montacargas)</th><th class="num">Trabajo total</th>
           <th>Personas</th><th>Operario</th><th>Inicio</th><th>Estado</th>
           <th class="num">Duración</th><th>Novedades</th><th />
         </tr>
@@ -75,6 +84,16 @@ const conFoto = computed(
           <td class="tnum">{{ item.estibasUsadas ?? '—' }}</td>
           <td class="tnum">{{ item.referenciasNuevas ?? '—' }}</td>
           <td class="tnum">{{ item.unidadesNuevas ?? '—' }}</td>
+          <td class="alm" :title="item.almacenamiento?.movimientos ? `${item.almacenamiento.unidades} unidades · ${item.almacenamiento.montacarguistas} montacarguista(s)` : 'Sin PLU del montacarguista con este pedido'">
+            <template v-if="almacenado(item)">
+              {{ almacenado(item) }}
+              <span v-if="item.almacenamiento!.abiertos" class="alm-abiertos">· {{ item.almacenamiento!.abiertos }} sin ubicar</span>
+            </template>
+            <span v-else class="muted">—</span>
+          </td>
+          <td class="tnum" :title="item.almacenamiento?.cicloSeg ? `Ciclo completo: ${fmtTiempoRecepcion(item.almacenamiento.cicloSeg)}` : ''">
+            {{ item.almacenamiento?.movimientos ? fmtTiempoRecepcion(item.almacenamiento.trabajoSeg) : '—' }}
+          </td>
           <td class="pers" :title="item.descargadores.map((d) => d.nombre).join(', ')">
             {{ item.descargadores.length }}
           </td>
@@ -133,6 +152,11 @@ const conFoto = computed(
           <div><dt>Personas</dt><dd class="tnum">{{ item.descargadores.length }}</dd></div>
           <div><dt>Operario</dt><dd>{{ item.creadoPorNombre ?? '—' }}</dd></div>
         </dl>
+        <p v-if="almacenado(item)" class="rc-alm">
+          Almacenado: {{ almacenado(item) }}
+          <template v-if="item.almacenamiento!.abiertos"> · {{ item.almacenamiento!.abiertos }} sin ubicar</template>
+          · trabajo total {{ fmtTiempoRecepcion(item.almacenamiento!.trabajoSeg) }}
+        </p>
         <p v-if="item.novedades.length" class="rc-nov">{{ resumenNovedades(item) }}</p>
         <div class="rc-acc">
           <button v-if="item.estado === 'CERRADO'" class="btn btn-sm" @click="emit('novedades', item)">
@@ -158,7 +182,7 @@ const conFoto = computed(
 <style scoped>
 /* Scroll horizontal DENTRO de la tarjeta, nunca en el body de la página. */
 .table-card { overflow-x: auto; overflow-y: visible; }
-.table { width: 100%; min-width: 1700px; border-collapse: separate; border-spacing: 0; }
+.table { width: 100%; min-width: 2050px; border-collapse: separate; border-spacing: 0; }
 
 .table thead th { position: sticky; top: 0; z-index: 1; }
 .table th {
@@ -186,6 +210,9 @@ const conFoto = computed(
 .nov-txt { font-size: 12.5px; }
 .nov-foto { vertical-align: -2px; margin-left: 4px; }
 .pers { text-align: center; }
+.alm { font-size: 12.5px; }
+.alm-abiertos { color: var(--u-aviso); font-weight: 600; }
+.rc-alm { margin: 10px 0 0; font-size: 12px; color: var(--ink-2); }
 /* Recepciones anteriores al 23-09: se corrigen a mano, así que tienen que verse. */
 .sin-tipo { font-size: 12px; font-weight: 600; color: var(--u-aviso); }
 .fin { display: block; font-size: 11px; color: var(--muted); margin-top: 2px; }

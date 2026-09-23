@@ -7,6 +7,12 @@ import { createError } from 'h3'
 import type { Prisma, PrismaClient } from '@prisma/client'
 import { prisma } from './prisma'
 import { puedeGestionarRecepcion, puedeUsarRecepcion } from './recepcionCalc'
+import { medidasDePlus } from './carga'
+import { cargaDeUnidades } from './cargaCalc'
+import {
+  almacenamientoContenedor, asignarMovimientos,
+  type AlmacenamientoContenedor, type MovimientoAlm, type RecepcionAlm,
+} from './recepcionAlmacenamientoCalc'
 
 type Tx = Prisma.TransactionClient | PrismaClient
 
@@ -96,4 +102,48 @@ export async function fijarDescargadores(
     data: [...new Set(usuarioIds)].map((usuarioId) => ({ recepcionId, usuarioId })),
     skipDuplicates: true,
   })
+}
+
+/**
+ * El almacenamiento de cada recepcion: los PLU que el montacarguista recibio
+ * en Control Montacargas con el mismo numero de pedido (desde el 24-09), con
+ * sus m3, unidades y tiempo. Ver recepcionAlmacenamientoCalc.ts.
+ *
+ * Trae TODAS las recepciones de esos pedidos (no solo las pedidas) para
+ * repartir bien los PLU cuando un pedido llega en dos contenedores.
+ */
+export async function almacenamientoDeRecepciones(
+  recs: ReadonlyArray<{ numeroPedido: string }>,
+): Promise<{ porRecepcion: Map<string, AlmacenamientoContenedor>; sinContenedor: MovimientoAlm[] }> {
+  const pedidos = [...new Set(recs.map((x) => x.numeroPedido).filter(Boolean))]
+  if (!pedidos.length) return { porRecepcion: new Map(), sinContenedor: [] }
+
+  const [todas, movs] = await Promise.all([
+    prisma.recepcionContenedor.findMany({
+      where: { deletedAt: null, numeroPedido: { in: pedidos } },
+      select: {
+        id: true, numeroPedido: true, tipoContenedor: true, estado: true,
+        horaInicio: true, horaFinalizacion: true, pausaSegundos: true,
+      },
+    }),
+    prisma.movimientoMontacargas.findMany({
+      where: { deletedAt: null, tipo: 'RECEPCION', numeroPedido: { in: pedidos } },
+      select: {
+        id: true, numeroPedido: true, plu: true, cantidadTotal: true, estado: true,
+        horaInicio: true, horaFinalizacion: true,
+        tramos: { select: { usuarioId: true, inicio: true, fin: true } },
+      },
+    }),
+  ])
+  const medidas = await medidasDePlus(movs.map((m) => m.plu))
+  const entrada: MovimientoAlm[] = movs.map((m) => {
+    const carga = cargaDeUnidades(m.cantidadTotal, medidas.get(m.plu))
+    return { ...m, numeroPedido: m.numeroPedido!, m3: carga.m3, kg: carga.kg }
+  })
+  const recAlm: RecepcionAlm[] = todas.map((x) => ({ ...x, pausaSegundos: x.pausaSegundos ?? 0 }))
+  const { porRecepcion, sinContenedor } = asignarMovimientos(recAlm, entrada)
+  return {
+    porRecepcion: new Map(recAlm.map((x) => [x.id, almacenamientoContenedor(x, porRecepcion.get(x.id) ?? [])])),
+    sinContenedor,
+  }
 }

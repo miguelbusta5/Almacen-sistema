@@ -2,7 +2,9 @@ import { defineEventHandler, getQuery } from 'h3'
 import { prisma } from '../../utils/prisma'
 import { requireAuth } from '../../utils/auth'
 import { mapRecepcion } from '../../utils/mapRow'
-import { assertUsuarioRecepcion, RECEPCION_INCLUDE, whereScopeRecepcion } from '../../utils/recepcion'
+import {
+  almacenamientoDeRecepciones, assertUsuarioRecepcion, RECEPCION_INCLUDE, whereScopeRecepcion,
+} from '../../utils/recepcion'
 import { sanearPaginacion } from '../../utils/paginacion'
 import { parseDay } from '../../utils/exportacionesCalc'
 
@@ -46,5 +48,9 @@ export default defineEventHandler(async (event) => {
     prisma.recepcionContenedor.count({ where }),
   ])
 
-  return { success: true, data: rows.map(mapRecepcion), total, page, pageSize }
+  // Lo que el montacarguista almaceno de cada contenedor (mismo pedido, 24-09).
+  const { porRecepcion } = await almacenamientoDeRecepciones(rows)
+  const data = rows.map((r) => ({ ...mapRecepcion(r), almacenamiento: porRecepcion.get(r.id) ?? null }))
+
+  return { success: true, data, total, page, pageSize }
 })
