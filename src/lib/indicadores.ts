@@ -1209,3 +1209,148 @@ export function resumirResurtidoPorOperario(
     .filter((f) => f.plus > 0 || f.segundos > 0)
     .sort((a, b) => b.plus - a.plus || a.nombre.localeCompare(b.nombre));
 }
+
+// ── Cierres por día: la proyección del turno ─────────────────────────
+
+/** El día (de turno) al que pertenece un instante: la madrugada del turno de
+ *  noche cae en el día en que empezó el turno, no en el siguiente. */
+export function diaDeTurnoDeInstante(
+  cuando: Date,
+  turnos: readonly VentanaTurno[],
+  desde: string,
+  hasta: string,
+): string {
+  return diaDeTrabajo(cuando.getTime(), turnos, desde, hasta);
+}
+
+/**
+ * Quién cerró un registro con reloj por tramos: el dueño del último tramo por
+ * `orden`. Sin tramos (registros viejos), el respaldo que diga quien llama.
+ */
+export function cerradoPor(
+  tramos: readonly { usuarioId: string; orden?: number | null }[],
+  respaldo: string,
+): string {
+  if (!tramos.length) return respaldo;
+  return [...tramos].sort((a, b) => (a.orden ?? 0) - (b.orden ?? 0))[tramos.length - 1]!.usuarioId;
+}
+
+/** Quién lo empezó: el dueño del primer tramo. Sin tramos, nadie aparte. */
+export function iniciadoPor(tramos: readonly { usuarioId: string; orden?: number | null }[]): string | null {
+  if (!tramos.length) return null;
+  return [...tramos].sort((a, b) => (a.orden ?? 0) - (b.orden ?? 0))[0]!.usuarioId;
+}
+
+export interface CierreResurtido {
+  /** Quien la cerró. */
+  usuarioId: string;
+  /** Quien la empezó; null o igual a usuarioId si fue la misma persona. */
+  iniciadoPorId: string | null;
+  cuando: Date;
+  tipo: "tarea" | "pendiente";
+}
+
+export interface CierresDiaPersona {
+  dia: string;
+  usuarioId: string;
+  nombre: string;
+  /** Tareas de resurtido que cerró ese día. */
+  tareas: number;
+  /** Pendientes que cerró ese día. */
+  pendientes: number;
+  /** tareas + pendientes: lo que terminó. */
+  total: number;
+  /**
+   * Las que empezó y terminó otra persona. NO suman al total: si Juan la empieza
+   * y Pedro la cierra, a Pedro le cuenta una cerrada y a Juan una pasada; el
+   * total del día sigue siendo una.
+   */
+  pasadas: number;
+}
+
+/**
+ * Cierres de resurtido y pendientes por día de turno y persona.
+ *
+ * El día de una pasada es el del cierre: es cuando la tarea deja de estar
+ * abierta. Solo salen las personas pedidas (respeta el filtro de turno).
+ */
+export function cierresPorDiaYPersona(entrada: {
+  personas: readonly { id: string; nombre: string }[];
+  cierres: readonly CierreResurtido[];
+  turnos: readonly VentanaTurno[];
+  desde: string;
+  hasta: string;
+}): CierresDiaPersona[] {
+  const nombres = new Map(entrada.personas.map((p) => [p.id, p.nombre]));
+  const filas = new Map<string, CierresDiaPersona>();
+  const fila = (dia: string, usuarioId: string) => {
+    const k = `${dia}|${usuarioId}`;
+    let f = filas.get(k);
+    if (!f) {
+      f = { dia, usuarioId, nombre: nombres.get(usuarioId) ?? usuarioId, tareas: 0, pendientes: 0, total: 0, pasadas: 0 };
+      filas.set(k, f);
+    }
+    return f;
+  };
+  for (const c of entrada.cierres) {
+    const deQuien = entrada.turnos.filter((v) => v.usuarioId === c.usuarioId);
+    const dia = diaDeTurnoDeInstante(c.cuando, deQuien, entrada.desde, entrada.hasta);
+    if (nombres.has(c.usuarioId)) {
+      const f = fila(dia, c.usuarioId);
+      if (c.tipo === "tarea") f.tareas++;
+      else f.pendientes++;
+      f.total++;
+    }
+    if (c.iniciadoPorId && c.iniciadoPorId !== c.usuarioId && nombres.has(c.iniciadoPorId)) {
+      fila(dia, c.iniciadoPorId).pasadas++;
+    }
+  }
+  return [...filas.values()].sort(
+    (a, b) => b.dia.localeCompare(a.dia) || b.total - a.total || b.pasadas - a.pasadas || a.nombre.localeCompare(b.nombre),
+  );
+}
+
+export interface ProyeccionPersona {
+  usuarioId: string;
+  nombre: string;
+  /** Días con algo cerrado o pasado: los que trabajó en esto. */
+  dias: number;
+  tareasDia: number;
+  pendientesDia: number;
+  totalDia: number;
+  pasadasDia: number;
+  /** El mejor día: el techo que ya demostró. */
+  maxTotal: number;
+}
+
+/**
+ * Promedio por DÍA TRABAJADO de cada persona: lo que se puede esperar que
+ * cierre en un turno. Sobre los días del rango saldría más bajo solo porque
+ * descansó o estuvo en otra cosa.
+ */
+export function proyeccionDiaria(filas: readonly CierresDiaPersona[]): ProyeccionPersona[] {
+  const acc = new Map<string, { nombre: string; dias: number; tareas: number; pendientes: number; total: number; pasadas: number; max: number }>();
+  for (const f of filas) {
+    const a = acc.get(f.usuarioId) ?? { nombre: f.nombre, dias: 0, tareas: 0, pendientes: 0, total: 0, pasadas: 0, max: 0 };
+    a.dias++;
+    a.tareas += f.tareas;
+    a.pendientes += f.pendientes;
+    a.total += f.total;
+    a.pasadas += f.pasadas;
+    a.max = Math.max(a.max, f.total);
+    acc.set(f.usuarioId, a);
+  }
+  const prom = (n: number, d: number) => Math.round((n / d) * 10) / 10;
+  return [...acc.entries()]
+    .map(([usuarioId, a]) => ({
+      usuarioId,
+      nombre: a.nombre,
+      dias: a.dias,
+      tareasDia: prom(a.tareas, a.dias),
+      pendientesDia: prom(a.pendientes, a.dias),
+      totalDia: prom(a.total, a.dias),
+      pasadasDia: prom(a.pasadas, a.dias),
+      maxTotal: a.max,
+    }))
+    .sort((a, b) => b.totalDia - a.totalDia || a.nombre.localeCompare(b.nombre));
+}

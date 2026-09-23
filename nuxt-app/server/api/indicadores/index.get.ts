@@ -7,6 +7,7 @@ import {
   agregarIndicadores, agregarTiemposMuertos, clasificarJornadas, diaBogota, diasDelRango, esJornada,
   esMotivoTiempoMuerto,
   finDelDiaBogota, limitesRango, resumirResurtidoPorOperario,
+  cerradoPor, cierresPorDiaYPersona, iniciadoPor, proyeccionDiaria, type CierreResurtido,
   type JustificacionTiempoMuerto, type TiempoRegistrado, type TipoTarea, type UnidadesRegistradas,
   type VentanaTurno,
 } from '../../utils/indicadoresCalc'
@@ -130,7 +131,7 @@ export default defineEventHandler(async (event) => {
         id: true, estado: true, horaInicio: true, horaFin: true, unidadesBajadas: true, responsableId: true, plu: true,
         montaje: { select: { operarioId: true } },
         // Tiempo por persona: quien la empezo y el ayudante que la cerro.
-        tramos: { select: { usuarioId: true, inicio: true, fin: true } },
+        tramos: { select: { usuarioId: true, inicio: true, fin: true, orden: true } },
       },
     }),
     // 3. Pendientes. Los que se sumaron a una tarea de resurtido no cuentan
@@ -148,7 +149,7 @@ export default defineEventHandler(async (event) => {
       select: {
         id: true, estado: true, operarioId: true, horaInicio: true, horaFin: true, unidadesBajadas: true, plu: true,
         // Tiempo por persona: quien lo empezo y el ayudante que lo cerro.
-        tramos: { select: { usuarioId: true, inicio: true, fin: true } },
+        tramos: { select: { usuarioId: true, inicio: true, fin: true, orden: true } },
       },
     }),
     // 4. Recepcion de contenedores: trabaja quien lleva la planilla Y cada
@@ -311,11 +312,27 @@ export default defineEventHandler(async (event) => {
     }
   }
 
-  // Cierres de resurtido del periodo, para el promedio por operario: el PLU es
-  // de quien cerro la tarea.
-  const cierresResurtido = tareas
-    .filter((t) => t.estado === 'COMPLETADA' && t.horaFin && t.horaFin >= ini && t.horaFin <= fin)
-    .map((t) => ({ usuarioId: t.responsableId ?? t.montaje.operarioId, cuando: t.horaFin! }))
+  // Cierres del periodo. La tarea es de quien la CERRO (ultimo tramo), igual que
+  // en el detalle del montaje; quien la empezo y la paso queda como "pasada".
+  const enRango = (h: Date | null): h is Date => !!h && h >= ini && h <= fin
+  const cierresTareas: CierreResurtido[] = tareas
+    .filter((t) => t.estado === 'COMPLETADA' && enRango(t.horaFin))
+    .map((t) => ({
+      usuarioId: cerradoPor(t.tramos, t.responsableId ?? t.montaje.operarioId),
+      iniciadoPorId: iniciadoPor(t.tramos),
+      cuando: t.horaFin!,
+      tipo: 'tarea',
+    }))
+  const cierresPendientes: CierreResurtido[] = pendientes
+    .filter((p) => p.estado === 'COMPLETADO' && p.operarioId && enRango(p.horaFin))
+    .map((p) => ({
+      usuarioId: cerradoPor(p.tramos, p.operarioId!),
+      iniciadoPorId: iniciadoPor(p.tramos),
+      cuando: p.horaFin!,
+      tipo: 'pendiente',
+    }))
+  // El promedio por operario de siempre sigue siendo solo de tareas de resurtido.
+  const cierresResurtido = cierresTareas.map((c) => ({ usuarioId: c.usuarioId, cuando: c.cuando }))
 
   const justificaciones: JustificacionTiempoMuerto[] = justificadas.flatMap((j) =>
     esMotivoTiempoMuerto(j.motivo)
@@ -352,6 +369,14 @@ export default defineEventHandler(async (event) => {
     movidos.map((m) => ({ usuarioId: m.usuarioId, tipo: m.tipo, carga: cargaDeUnidades(m.unidades, medidasCarga.get(m.plu)) })),
   )
 
+  const cierresDiarios = cierresPorDiaYPersona({
+    personas: delTurno,
+    cierres: [...cierresTareas, ...cierresPendientes],
+    turnos: ventanas,
+    desde,
+    hasta,
+  })
+
   return {
     success: true,
     rango: { desde, hasta },
@@ -359,6 +384,10 @@ export default defineEventHandler(async (event) => {
     equipo: equipo.map((u) => ({ id: u.id, nombre: u.name, rol: u.role, jornada: jornadas.get(u.id) ?? 'dia' })),
     data: datos,
     resurtido: resumirResurtidoPorOperario(datos.personas, cierresResurtido),
+    // Cuantas tareas y pendientes cierra cada persona por dia de turno, y quien
+    // empieza para que otro termine: la base para proyectar un turno.
+    cierresDiarios,
+    proyeccion: proyeccionDiaria(cierresDiarios),
     carga,
     muertos: agregarTiemposMuertos({
       personas: delTurno, tiempos: [...tiempos, ...enCurso], justificaciones, ventanas, desde, hasta,

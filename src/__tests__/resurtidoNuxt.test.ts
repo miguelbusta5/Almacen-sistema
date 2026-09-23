@@ -286,7 +286,7 @@ describe("pendientes — pasar a un ayudante", () => {
 
   it("en indicadores cada persona suma su tramo del pendiente", () => {
     const ind = leer("nuxt-app/server/api/indicadores/index.get.ts");
-    expect(ind).toContain("tramos: { select: { usuarioId: true, inicio: true, fin: true } }");
+    expect(ind).toContain("tramos: { select: { usuarioId: true, inicio: true, fin: true, orden: true } }");
     expect(ind).toContain("const base = { usuarioId: t.usuarioId, inicio: t.inicio, tipo: 'pendiente' as const, registro }");
   });
 
@@ -521,7 +521,8 @@ describe("resurtido — pasar una tarea a un ayudante", () => {
   it("indicadores reparte el tiempo de la tarea por persona", () => {
     const ind = leer("nuxt-app/server/api/indicadores/index.get.ts");
     expect(ind).toContain("const tramosTarea = t.tramos.length > 0");
-    expect(ind).toContain("usuarioId: t.responsableId ?? t.montaje.operarioId");
+    // El PLU es de quien la cerro (ultimo tramo); sin tramos, el responsable.
+    expect(ind).toContain("usuarioId: cerradoPor(t.tramos, t.responsableId ?? t.montaje.operarioId)");
   });
 
   it("la tabla de tramos esta en los dos schemas, en un script aditivo y con RLS", () => {

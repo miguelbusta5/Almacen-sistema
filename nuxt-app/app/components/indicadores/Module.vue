@@ -20,7 +20,7 @@ import {
   etiquetaNoche, MIN_SEGUNDOS_PRODUCTIVIDAD, PRESETS_NOCHE, PRESETS_RANGO, rangoDePreset, ROL_MEDIDO_LABEL,
   TIPO_TAREA_COLOR, TIPO_TAREA_LABEL, TIPOS_TAREA,
   type BarraH, type ColumnaTabla, type IndicadoresPeriodo, type Jornada, type PresetRango,
-  type CargaPersona, type RespuestaIndicadores, type ResurtidoOperario, type TiemposMuertosPeriodo,
+  type CargaPersona, type CierresDiaPersona, type ProyeccionPersona, type RespuestaIndicadores, type ResurtidoOperario, type TiemposMuertosPeriodo,
 } from '~/utils/indicadores'
 import { fmtKg, fmtM3 } from '~/utils/carga'
 
@@ -85,6 +85,8 @@ const datos = ref<IndicadoresPeriodo | null>(null)
 const muertos = ref<TiemposMuertosPeriodo | null>(null)
 const resurtido = ref<ResurtidoOperario[]>([])
 const carga = ref<CargaPersona[]>([])
+const cierresDiarios = ref<CierresDiaPersona[]>([])
+const proyeccion = ref<ProyeccionPersona[]>([])
 const cargando = ref(false)
 
 // Tiempo laborado y tiempos muertos salen de la misma consulta y de los mismos
@@ -113,6 +115,8 @@ async function cargar() {
     muertos.value = res.muertos
     resurtido.value = res.resurtido ?? []
     carga.value = res.carga ?? []
+    cierresDiarios.value = res.cierresDiarios ?? []
+    proyeccion.value = res.proyeccion ?? []
     equipo.value = res.equipo
   } catch (e) {
     showToast(apiErr(e, 'No se pudieron cargar los indicadores'), true)
@@ -588,6 +592,11 @@ const formatoHoras = (v: number) => fmtHorasDecimal(v)
             <IndicadoresTabla :columnas="columnasResurtido" :filas="tablaResurtido" principal="nombre" />
           </template>
         </IndicadoresTarjeta>
+
+        <IndicadoresCierresPorDia
+          v-if="cierresDiarios.length" class="bloque"
+          :cierres="cierresDiarios" :proyeccion="proyeccion"
+        />
 
         <IndicadoresTarjeta
           class="bloque" titulo="Efectividad del turno por persona"
