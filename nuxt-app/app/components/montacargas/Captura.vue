@@ -9,20 +9,25 @@ import { ref, reactive, computed, onMounted, watch } from 'vue'
 import { useDebounceFn } from '@vueuse/core'
 import { Search, TriangleAlert, Play } from '@lucide/vue'
 import {
-  esUbicacionCanonica, normalizarCodigoProducto, normalizarUbicacion,
-  requiereUbicacionInicial, type FlujoConfig, type ProductoBuscado,
+  esUbicacionCanonica, normalizarCodigoProducto, normalizarPedidoContenedor, normalizarUbicacion,
+  pidePedido, requiereUbicacionInicial, type FlujoConfig, type ProductoBuscado,
 } from '~/utils/montacargas'
+import { hoyBogota } from '~/utils/exportaciones'
 
 const props = defineProps<{ flujo: FlujoConfig; saving: boolean }>()
 const emit = defineEmits<{
-  (e: 'submit', payload: { codigo: string; ubicacionInicial?: string }): void
+  (e: 'submit', payload: { codigo: string; ubicacionInicial?: string; numeroPedido?: string }): void
   (e: 'dirty', value: boolean): void
 }>()
 
 const codigoInput = ref<HTMLInputElement | null>(null)
-const form = reactive({ codigo: '', ubicacionInicial: '' })
+const form = reactive({ codigo: '', ubicacionInicial: '', numeroPedido: '' })
 
 const pideOrigen = computed(() => requiereUbicacionInicial(props.flujo.tipo))
+// Recepcion desde el 24-09: el pedido del contenedor une el registro con su
+// Recepcion de Contenedores (m3, PLU y tiempo de almacenamiento por contenedor).
+const conPedido = computed(() => pidePedido(props.flujo.tipo, hoyBogota()))
+const pedidoNorm = computed(() => normalizarPedidoContenedor(form.numeroPedido))
 
 const producto = ref<ProductoBuscado | null>(null)
 // idle -> sin codigo · buscando -> lookup en vuelo · ok -> producto resuelto
@@ -74,7 +79,8 @@ function onCodigoInput() {
 const puedeAbrir = computed(() =>
   !props.saving &&
   lookupState.value === 'ok' &&
-  (!pideOrigen.value || Boolean(ubicacionInicialNorm.value)),
+  (!pideOrigen.value || Boolean(ubicacionInicialNorm.value)) &&
+  (!conPedido.value || Boolean(pedidoNorm.value)),
 )
 
 // La pistola teclea el codigo y manda Enter. Si ya esta todo, arranca el reloj
@@ -89,11 +95,12 @@ function submit() {
   emit('submit', {
     codigo: normalizarCodigoProducto(form.codigo),
     ...(pideOrigen.value ? { ubicacionInicial: ubicacionInicialNorm.value } : {}),
+    ...(conPedido.value ? { numeroPedido: pedidoNorm.value } : {}),
   })
 }
 
-// El padre lo llama tras abrir. La ubicacion inicial NO se limpia: en una tanda
-// de movimientos la mercancia suele salir del mismo sitio.
+// El padre lo llama tras abrir. La ubicacion inicial y el pedido NO se limpian:
+// en una tanda la mercancia sale del mismo sitio, o del mismo contenedor.
 function reset() {
   form.codigo = ''
   producto.value = null
@@ -136,6 +143,17 @@ defineExpose({ reset })
         >
         <span v-if="origenEsLibre" class="hint warn-txt">
           <TriangleAlert :size="11" /> Fuera del formato 05-B-25-03-01
+        </span>
+      </label>
+
+      <label v-if="conPedido" class="f f-origen">
+        <span class="lbl">N.º de pedido del contenedor</span>
+        <input
+          v-model="form.numeroPedido" class="field mono" placeholder="PEDDM11887"
+          autocomplete="off" autocapitalize="characters" :disabled="saving"
+        >
+        <span v-if="!pedidoNorm" class="hint warn-txt">
+          <TriangleAlert :size="11" /> Obligatorio: une el PLU con su contenedor
         </span>
       </label>
 

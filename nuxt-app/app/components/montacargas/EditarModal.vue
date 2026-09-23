@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { reactive, ref, computed } from 'vue'
 import {
-  API_MONTACARGAS, calcularCantidadTotal, normalizarCodigoProducto, normalizarUbicacion,
+  API_MONTACARGAS, calcularCantidadTotal, normalizarCodigoProducto, normalizarPedidoContenedor, normalizarUbicacion,
   requiereUbicacionInicial, type Movimiento,
 } from '~/utils/montacargas'
 
@@ -26,6 +26,7 @@ const form = reactive({
   hayReguero: props.item.hayReguero,
   unidadesSueltas: String(props.item.unidadesSueltas),
   ubicacionInicial: props.item.ubicacionInicial ?? '',
+  numeroPedido: props.item.numeroPedido ?? '',
   ubicacionFinal: props.item.ubicacionFinal ?? '',
   horaInicio: toLocalInput(props.item.horaInicio),
   horaFinalizacion: toLocalInput(props.item.horaFinalizacion),
@@ -65,6 +66,10 @@ async function submit() {
     unidadesPorCaja: Number(form.unidadesPorCaja),
     hayReguero: form.hayReguero,
     unidadesSueltas: sueltasNum.value,
+  }
+  // Solo recepcion lleva pedido; se manda aunque quede vacio para poder borrarlo.
+  if (props.item.tipo === 'RECEPCION' && form.numeroPedido.trim() !== (props.item.numeroPedido ?? '')) {
+    payload.numeroPedido = normalizarPedidoContenedor(form.numeroPedido) || null
   }
   if (pideOrigen.value && form.ubicacionInicial.trim()) {
     payload.ubicacionInicial = normalizarUbicacion(form.ubicacionInicial)
@@ -127,6 +132,10 @@ async function submit() {
       </div>
 
       <div class="row">
+        <label v-if="item.tipo === 'RECEPCION'" class="f">
+          <span class="lbl">N.º de pedido del contenedor</span>
+          <input v-model="form.numeroPedido" class="field mono" autocapitalize="characters" placeholder="PEDDM11887">
+        </label>
         <label v-if="pideOrigen" class="f">
           <span class="lbl">Ubicación inicial</span>
           <input v-model="form.ubicacionInicial" class="field" autocapitalize="characters" placeholder="05-B-25-03-01">

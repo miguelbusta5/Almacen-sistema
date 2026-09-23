@@ -84,7 +84,10 @@ const librs = computed(
             <span v-if="item.hayReguero" class="reguero">{{ item.unidadesSueltas }}</span>
             <span v-else class="muted">—</span>
           </td>
-          <td class="tnum strong">{{ item.cantidadTotal }}</td>
+          <td class="tnum strong">
+            {{ item.cantidadTotal }}
+            <span v-if="item.numeroPedido" class="pedido mono" :title="`Pedido ${item.numeroPedido}`">{{ item.numeroPedido }}</span>
+          </td>
           <td class="op">{{ item.responsableNombre ?? '—' }}</td>
           <td v-if="muestraOrigen">
             <span v-if="item.ubicacionInicial" class="ubic">{{ item.ubicacionInicial }}</span>
@@ -239,4 +242,5 @@ const librs = computed(
   color: var(--u-aviso);
   vertical-align: middle;
 }
+.pedido { display: block; font-size: 10.5px; font-weight: 600; color: var(--muted); }
 </style>

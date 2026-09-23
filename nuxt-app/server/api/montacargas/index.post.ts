@@ -7,7 +7,7 @@ import { mapMovimientoMontacargas } from '../../utils/mapRow'
 import { todayBogota } from '../../utils/exportacionesCalc'
 import { assertUsuarioMontacargas, MOVIMIENTO_INCLUDE, resolverProducto } from '../../utils/montacargas'
 import {
-  normalizarUbicacion, puedeCrearMovimiento,
+  normalizarPedidoContenedor, normalizarUbicacion, puedeCrearMovimiento,
   requiereUbicacionInicial, validarApertura,
 } from '../../utils/montacargasCalc'
 
@@ -17,6 +17,8 @@ const createSchema = z.object({
   codigo: z.string().min(1).max(100),
   // Obligatoria en MOVIMIENTO y RESURTIDO; ignorada en RECEPCION.
   ubicacionInicial: z.string().max(120).optional(),
+  // Solo RECEPCION: el pedido del contenedor (obligatorio desde el 24-09).
+  numeroPedido: z.string().max(60).optional(),
 })
 
 // POST /api/montacargas - abre el registro y ARRANCA EL RELOJ.
@@ -37,7 +39,7 @@ export default defineOperacionAlmacenHandler(async (event) => {
   }
   const { tipo } = parsed.data
 
-  const validation = validarApertura(parsed.data)
+  const validation = validarApertura({ ...parsed.data, dia: todayBogota(new Date()).toISOString().slice(0, 10) })
   if (validation) throw createError({ statusCode: 400, statusMessage: validation })
 
   // Varios PLUs en curso a la vez, en todos los flujos: el montacarguista baja
@@ -71,6 +73,7 @@ export default defineOperacionAlmacenHandler(async (event) => {
         ubicacionInicial: requiereUbicacionInicial(tipo)
           ? normalizarUbicacion(parsed.data.ubicacionInicial)
           : null,
+        numeroPedido: tipo === 'RECEPCION' ? normalizarPedidoContenedor(parsed.data.numeroPedido) || null : null,
         fecha: todayBogota(now),
         horaInicio: now,
         creadoPorId: actor.id,

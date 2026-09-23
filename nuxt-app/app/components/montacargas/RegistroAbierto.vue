@@ -183,6 +183,7 @@ function ubicar() {
       </template>
       <template v-else>Sin cantidades todavía</template>
       <template v-if="m.ubicacionInicial"> · desde {{ m.ubicacionInicial }}</template>
+      <template v-if="m.numeroPedido"> · pedido <b class="mono">{{ m.numeroPedido }}</b></template>
       · desde {{ fmtHoraMovimiento(m.horaInicio) }}
       <template v-if="m.responsableNombre"> · {{ m.responsableNombre }}</template>
     </p>

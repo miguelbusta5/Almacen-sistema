@@ -62,7 +62,7 @@ export default defineOperacionAlmacenHandler(async (event) => {
       responsableId: true, estado: true, deletedAt: true, tipo: true,
       cajas: true, unidadesPorCaja: true, hayReguero: true, unidadesSueltas: true,
       cantidadTotal: true, plu: true, ean: true, descripcion: true,
-      unidadesManuales: true, ubicacionInicial: true, creadoPorId: true,
+      unidadesManuales: true, ubicacionInicial: true, numeroPedido: true, creadoPorId: true,
       tramos: { select: { usuarioId: true, orden: true, usuario: { select: { name: true } } } },
     },
   })
@@ -191,6 +191,8 @@ export default defineOperacionAlmacenHandler(async (event) => {
           unidadesSueltas: restante.unidadesSueltas,
           cantidadTotal: sobrante,
           ubicacionInicial: record.ubicacionInicial,
+          // El sobrante es del mismo contenedor: conserva su pedido.
+          numeroPedido: record.numeroPedido,
           fecha: todayBogota(now),
           horaInicio: now,
           origenId: id,

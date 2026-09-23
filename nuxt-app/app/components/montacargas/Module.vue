@@ -244,7 +244,7 @@ function onKpiFilter(key: string) { fEstado.value = key }
 const capturaRef = ref<{ reset: () => void } | null>(null)
 const saving = ref(false)
 
-async function abrir(payload: { codigo: string; ubicacionInicial?: string }) {
+async function abrir(payload: { codigo: string; ubicacionInicial?: string; numeroPedido?: string }) {
   saving.value = true
   try {
     await $fetch<{ success: boolean }>(API_MONTACARGAS, { method: 'POST', body: { ...payload, tipo: tipo.value } })

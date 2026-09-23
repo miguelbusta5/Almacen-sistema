@@ -1345,6 +1345,9 @@ model MovimientoMontacargas {
   // Solo en MOVIMIENTO y RESURTIDO: de donde sale la mercancia. En RECEPCION es
   // null porque el contenedor no tiene ubicacion previa.
   ubicacionInicial String? @map("ubicacion_inicial") @db.VarChar(120)
+  // Pedido del contenedor en una RECEPCION (obligatorio desde el 24-09): une el
+  // registro con su Recepcion de Contenedores para sumar m3, PLU y tiempo.
+  numeroPedido     String? @map("numero_pedido") @db.VarChar(50)
   // Ubicacion final. Null mientras el registro esta abierto: asignarla es lo
   // que lo cierra.
   ubicacionFinal   String? @map("ubicacion_final") @db.VarChar(120)
@@ -1383,6 +1386,7 @@ model MovimientoMontacargas {
   @@index([tipo, fecha])
   @@index([plu])
   @@index([origenId])
+  @@index([numeroPedido], map: "movimientos_montacargas_pedido_idx")
   @@map("movimientos_montacargas")
 }
 

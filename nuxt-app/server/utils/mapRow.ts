@@ -397,6 +397,7 @@ export function mapMovimientoMontacargas(r: any) {
     unidadesSueltas: r.unidadesSueltas,
     cantidadTotal: r.cantidadTotal,
     ubicacionInicial: r.ubicacionInicial ?? null,
+    numeroPedido: r.numeroPedido ?? null,
     ubicacionFinal: r.ubicacionFinal ?? null,
     fecha: formatDateOnly(r.fecha),
     horaInicio: r.horaInicio.toISOString(),

@@ -121,6 +121,22 @@ export function requiereUbicacionInicial(tipo: TipoMovimiento): boolean {
   return tipo !== 'RECEPCION'
 }
 
+/**
+ * Desde este dia la RECEPCION del montacarguista lleva el numero de pedido del
+ * contenedor: con el, Recepcion de Contenedores suma los m3, los PLU y el
+ * tiempo de almacenamiento de cada contenedor. Lo de antes no lo tiene.
+ */
+export const PEDIDO_RECEPCION_DESDE = '2026-09-24'
+
+export function pidePedido(tipo: TipoMovimiento, dia: string): boolean {
+  return tipo === 'RECEPCION' && dia >= PEDIDO_RECEPCION_DESDE
+}
+
+/** Igual que el pedido de Recepcion de Contenedores: mayusculas y sin espacios. */
+export function normalizarPedidoContenedor(valor: unknown): string {
+  return String(valor ?? '').trim().toUpperCase().replace(/\s+/g, '')
+}
+
 // ── Estados ──────────────────────────────────────────────────────────
 export type EstadoMovimiento = 'EN_CURSO' | 'NOVEDAD' | 'CERRADO'
 
@@ -200,9 +216,17 @@ export function validarApertura(input: {
   tipo?: unknown
   codigo?: string
   ubicacionInicial?: string
+  numeroPedido?: string
+  /** Dia de Bogota de la apertura: decide si ya se exige el pedido. */
+  dia?: string
 }): string | null {
   if (!esTipoMovimiento(input.tipo)) return 'Tipo de registro inválido'
   if (!input.codigo?.trim()) return 'El PLU o código de barras es obligatorio'
+  if (input.dia && pidePedido(input.tipo, input.dia)) {
+    const pedido = normalizarPedidoContenedor(input.numeroPedido)
+    if (!pedido) return 'Escribe el número de pedido del contenedor'
+    if (pedido.length > 50) return 'El número de pedido es demasiado largo'
+  }
   if (requiereUbicacionInicial(input.tipo)) {
     const err = validarUbicacion(
       normalizarUbicacion(input.ubicacionInicial),

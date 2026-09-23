@@ -6,7 +6,7 @@ import { requireAuth } from '../../../utils/auth'
 import { mapMovimientoMontacargas } from '../../../utils/mapRow'
 import { assertUsuarioMontacargas, MOVIMIENTO_INCLUDE, resolverProducto } from '../../../utils/montacargas'
 import {
-  calcularCantidadTotal, normalizarUbicacion, puedeGestionarMontacargas,
+  calcularCantidadTotal, normalizarPedidoContenedor, normalizarUbicacion, puedeGestionarMontacargas,
 } from '../../../utils/montacargasCalc'
 
 // Correccion a posteriori. El flujo normal del operario NO pasa por aqui:
@@ -20,6 +20,8 @@ const patchSchema = z.object({
   hayReguero: z.boolean().optional(),
   unidadesSueltas: z.number().int().min(0).optional(),
   ubicacionInicial: z.string().max(120).optional(),
+  // Pedido del contenedor de una RECEPCION: corregirlo reasigna sus m3 al contenedor bueno.
+  numeroPedido: z.string().max(60).nullable().optional(),
   ubicacionFinal: z.string().min(1).max(120).optional(),
   horaInicio: z.string().datetime().optional(),
   horaFinalizacion: z.string().datetime().nullable().optional(),
@@ -71,6 +73,7 @@ export default defineOperacionAlmacenHandler(async (event) => {
     ...(d.hayReguero !== undefined && { hayReguero: d.hayReguero }),
     ...(d.unidadesSueltas !== undefined && { unidadesSueltas: d.unidadesSueltas }),
     ...(d.ubicacionInicial !== undefined && { ubicacionInicial: normalizarUbicacion(d.ubicacionInicial) }),
+    ...(d.numeroPedido !== undefined && { numeroPedido: normalizarPedidoContenedor(d.numeroPedido) || null }),
     ...(d.ubicacionFinal !== undefined && { ubicacionFinal: normalizarUbicacion(d.ubicacionFinal) }),
     ...(d.horaInicio !== undefined && { horaInicio: new Date(d.horaInicio) }),
     ...(d.horaFinalizacion !== undefined && {
