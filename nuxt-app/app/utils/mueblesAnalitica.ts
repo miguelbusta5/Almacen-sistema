@@ -30,6 +30,8 @@ export interface AnaliticaMueblesDTO {
   topPlus: Array<{ plu: string; descripcion: string | null; veces: number; ordenes: number; unidades: number; promedioPickingMin: number | null }>
   ciudades: Array<{ ciudad: string; ordenes: number; promedioDia: number; porcentaje: number; m3: number; kg: number }>
   proyeccion: {
+    pickingRelojMin: number | null
+    pickingRitmoMin: number | null
     plantilla: { operarios: number; inspectores: number }
     operariosDia: number | null
     inspectoresDia: number | null

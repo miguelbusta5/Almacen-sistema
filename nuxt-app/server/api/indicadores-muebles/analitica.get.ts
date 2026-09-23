@@ -67,7 +67,7 @@ export default defineEventHandler(async (event) => {
         OR: [{ horaInicio: enRango }, { horaFinInspeccion: enRango }, { entregadaTransporteAt: enRango }],
       },
       select: {
-        id: true, codigo: true, tipoOrden: true, estado: true,
+        id: true, codigo: true, tipoOrden: true, estado: true, operarioId: true,
         horaInicio: true, horaPasoInspeccion: true, horaFinInspeccion: true, entregadaTransporteAt: true,
         ciudadEnvio: true, pausaSegundos: true, tiendaOrigenCodigo: true,
         lineas: { select: SELECT_LINEA },
@@ -108,6 +108,7 @@ export default defineEventHandler(async (event) => {
 
   const entrada: OrdenAnalitica[] = ordenes.map((o) => ({
     id: o.id,
+    operarioId: o.operarioId,
     codigo: o.codigo,
     // De tienda va aparte: sin picking en el CEDI, mezclarla con las OVDM
     // bajaria su tiempo de picking y inflaria la capacidad.

@@ -154,6 +154,23 @@ describe("proyección del turno", () => {
     expect(p.realDia).toBe(5);
   });
 
+  it("el picking va a ritmo real: de la primera a la última orden del operario, sin pausas", () => {
+    // Un operario: 3 órdenes de 10 min de reloj, de 8:00 a 9:30, una con 5 min de pausa → (90 − 5) / 3.
+    const mk = (h: number, m: number, o: Partial<any> = {}) => orden({
+      operarioId: "sanayder", horaInicio: t("2026-09-22", h, m), horaPasoInspeccion: t("2026-09-22", h, m + 10), ...o,
+    });
+    const ords = [mk(8, 0), mk(8, 40, { pausaSegundos: 300 }), mk(9, 20)];
+    const p = correr(ords, { plantilla: { operarios: 1, inspectores: 1 } }).proyeccion;
+    expect(p.pickingRelojMin).toBeCloseTo(25 / 3, 2); // el reloj descuenta la pausa de su orden
+    expect(p.pickingRitmoMin).toBe(Math.round((85 / 3) * 100) / 100);
+    // La mezcla usa el ritmo: la capacidad de picking baja en la misma proporción.
+    expect(p.pickingMinMezcla).toBeCloseTo(p.pickingRitmoMin, 1);
+    // Contado no se pickea en el CEDI: no entra en el ritmo.
+    const conContado = correr([...ords, orden({ tipoOrden: "CONTADO", operarioId: "muebles", horaPasoInspeccion: t("2026-09-22", 8) })],
+      { plantilla: { operarios: 1, inspectores: 1 } }).proyeccion;
+    expect(conContado.pickingRitmoMin).toBe(p.pickingRitmoMin);
+  });
+
   it("la ocupación compara lo medido con las horas del turno de ese día", () => {
     // 20 min de inspección un martes (9 h): contra 1 inspector, 20/540; contra los 5 reales, 20/2700.
     expect(correr([orden()], { plantilla: { operarios: 1, inspectores: 1 } }).proyeccion.ocupacionInspeccion).toBe(3.7);

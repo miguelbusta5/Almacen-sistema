@@ -384,7 +384,11 @@ defineExpose({
         Con <b class="tnum">{{ p.plantilla.operarios }}</b> {{ p.plantilla.operarios === 1 ? 'operario' : 'operarios' }} y
         <b class="tnum">{{ p.plantilla.inspectores }}</b> {{ p.plantilla.inspectores === 1 ? 'inspector' : 'inspectores' }}, y
         <b>{{ fmtMinutos(p.pickingMinMezcla) }}</b> de picking y <b>{{ fmtMinutos(p.inspeccionMinMezcla) }}</b>
-        de inspección por orden (con la mezcla real de tipos). Cada orden trae en promedio
+        de inspección por orden (con la mezcla real de tipos).
+        <template v-if="p.pickingRitmoMin != null && p.pickingRelojMin != null">
+          El picking va a <b>ritmo real</b>: una orden pickeada toma {{ fmtMinutos(p.pickingRitmoMin) }} contando el tiempo
+          entre órdenes (con la orden abierta son {{ fmtMinutos(p.pickingRelojMin) }}).
+        </template> Cada orden trae en promedio
         <b class="tnum">{{ fmtDec(p.plusPorOrdenMezcla) }}</b> PLU y <b class="tnum">{{ fmtDec(p.unidadesPorOrdenMezcla) }}</b> unidades,
         y con eso se pasa a PLU y unidades. En un turno de 9 h (martes a jueves) cabe esto por etapa:
       </p>

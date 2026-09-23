@@ -49,6 +49,8 @@ export interface LineaAnalitica {
 
 export interface OrdenAnalitica {
   id: string
+  /** Quien abrio el picking: con el se mide su ritmo real en el dia. */
+  operarioId?: string
   codigo: string
   tipoOrden: string
   estado: string
@@ -182,6 +184,11 @@ export interface JornadaProyectada {
 }
 
 export interface Proyeccion {
+  /** Minutos por orden con la orden abierta (lo que marca el reloj). */
+  pickingRelojMin: number | null
+  /** Minutos por orden a ritmo real: de la primera a la ultima orden de cada
+   *  operario en su dia, sin pausas. Incluye el tiempo ENTRE ordenes. */
+  pickingRitmoMin: number | null
   /** Con esta gente se calcula la capacidad. */
   plantilla: { operarios: number; inspectores: number }
   /** Los que aparecieron en los registros, por dia con actividad (referencia). */
@@ -479,10 +486,37 @@ export function analiticaMuebles(entrada: {
   // ── Proyeccion por capacidad y tipo ──
   const base = inspeccionadas.map((o) => medidas.get(o.id)!).filter((m) => m.pickingMin != null && m.inspeccionTrabajoMin != null)
   const tipos = [...new Set([...TIPOS_ORDEN_MUEBLES, ...base.map((m) => m.tipoOrden)])]
+
+  // ── Picking a ritmo real (CEDI, 23-09) ──
+  // El reloj de la orden solo corre con la orden abierta: volver, buscar la
+  // siguiente orden y rotular no estan en ningun reloj, y la capacidad salia
+  // inflada (133 ordenes con 2 operarios). El ritmo real es, por operario y
+  // dia, de la primera orden que abrio a la ultima que paso a inspeccion, sin
+  // pausas, dividido entre las ordenes. Contado y ordenes de tienda no se
+  // pickean en el CEDI: no entran.
+  const pickeadas = inspeccionadas.filter((o) => o.operarioId && o.horaPasoInspeccion
+    && o.tipoOrden !== 'CONTADO' && o.tipoOrden !== 'TIENDA' && (medidas.get(o.id)!.pickingMin ?? 0) > 0)
+  const porOperarioDia = new Map<string, OrdenAnalitica[]>()
+  for (const o of pickeadas) {
+    const k = `${o.operarioId}|${diaBogota(o.horaPasoInspeccion!)}`
+    porOperarioDia.set(k, [...(porOperarioDia.get(k) ?? []), o])
+  }
+  let spanMin = 0
+  for (const l of porOperarioDia.values()) {
+    const ini = Math.min(...l.map((o) => o.horaInicio.getTime()))
+    const fin = Math.max(...l.map((o) => o.horaPasoInspeccion!.getTime()))
+    spanMin += Math.max(0, (fin - ini) / 60_000 - l.reduce((s, o) => s + o.pausaSegundos, 0) / 60)
+  }
+  const pickingRitmoMin = pickeadas.length ? r(spanMin / pickeadas.length, 2) : null
+  const pickingRelojMin = prom(pickeadas.map((o) => medidas.get(o.id)!.pickingMin!))
+  // Cuanto mas largo es el ritmo real que el reloj: se aplica a cada tipo para
+  // conservar que una TSDM tarda mas que una OVDM.
+  const factorRitmo = pickingRitmoMin && pickingRelojMin ? Math.max(1, pickingRitmoMin / pickingRelojMin) : 1
   const porTipo: CapacidadTipo[] = tipos
     .map((tipoOrden) => {
       const g = base.filter((m) => m.tipoOrden === tipoOrden)
-      const pickingMin = prom(g.map((m) => m.pickingMin!))
+      const reloj = prom(g.map((m) => m.pickingMin!))
+      const pickingMin = reloj == null ? null : r(reloj * factorRitmo, 2)
       const inspeccionMin = prom(g.map((m) => m.inspeccionTrabajoMin!))
       return {
         tipoOrden,
@@ -508,7 +542,7 @@ export function analiticaMuebles(entrada: {
   const enPlus = (n: number | null) => (n == null || plusPorOrdenMezcla == null ? null : Math.round(n * plusPorOrdenMezcla))
   const enUnidades = (n: number | null) => (n == null || unidadesPorOrdenMezcla == null ? null : Math.round(n * unidadesPorOrdenMezcla))
   // Con la mezcla real: el promedio ponderado es el promedio de toda la base.
-  const pickingMinMezcla = prom(base.map((m) => m.pickingMin!))
+  const pickingMinMezcla = base.length ? r(prom(base.map((m) => m.pickingMin!))! * factorRitmo, 2) : null
   const inspeccionMinMezcla = prom(base.map((m) => m.inspeccionTrabajoMin!))
   const jornadas: JornadaProyectada[] = [
     { etiqueta: 'Lunes', horas: 9.5, dias: 1 },
@@ -557,6 +591,8 @@ export function analiticaMuebles(entrada: {
   }
 
   const proyeccion: Proyeccion = {
+    pickingRelojMin,
+    pickingRitmoMin,
     plantilla,
     operariosDia,
     inspectoresDia,
