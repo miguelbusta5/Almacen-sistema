@@ -1500,6 +1500,14 @@ enum TipoProductoRecepcion {
   MUEBLES
 }
 
+/// Contenedor en que llego la mercancia. Nulo en las recepciones anteriores
+/// a 2026-09-23: se corrigen a mano, no se adivinan.
+enum TipoContenedorRecepcion {
+  CARGA_SUELTA
+  PIES_20
+  PIES_40
+}
+
 enum EstadoRecepcion {
   EN_CURSO
   CERRADO
@@ -1533,6 +1541,7 @@ model RecepcionContenedor {
   numeroPedido String                @map("numero_pedido") @db.VarChar(50)
   proveedor    String                @db.VarChar(160)
   tipoProducto TipoProductoRecepcion @map("tipo_producto")
+  tipoContenedor TipoContenedorRecepcion? @map("tipo_contenedor")
 
   /// Peso del contenedor en kilos, tal como viene en la documentacion.
   pesoKg               Decimal @map("peso_kg") @db.Decimal(10, 2)

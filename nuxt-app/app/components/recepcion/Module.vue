@@ -67,6 +67,7 @@ const conteos = ref<RecepcionConteos>({
 const capturaRef = ref<{ reset: () => void } | null>(null)
 const formDirty = ref(false)
 const novedadesDe = ref<Recepcion | null>(null)
+const editando = ref<Recepcion | null>(null)
 
 async function loadLista() {
   loading.value = true
@@ -120,7 +121,7 @@ useAutoRefresh({
     if (!puedeVer.value) return
     // Nunca refrescar con trabajo a medias: se le robaría al operario lo que
     // está escribiendo en la planilla.
-    if (formDirty.value || saving.value || guardando.value || novedadesDe.value) return
+    if (formDirty.value || saving.value || guardando.value || novedadesDe.value || editando.value) return
     return Promise.all([loadLista(), loadAbierta(), loadConteos()])
   },
 })
@@ -222,6 +223,12 @@ async function borrar(item: Recepcion) {
   }
 }
 
+async function corregido(r: Recepcion) {
+  editando.value = null
+  showToast(`Recepción ${r.numeroPedido} corregida`)
+  await Promise.all([loadLista(), loadConteos()])
+}
+
 function filtrarPor(key: string) {
   estado.value = key
 }
@@ -297,7 +304,7 @@ const totalPaginas = computed(() => Math.max(1, Math.ceil(total.value / pageSize
         <RecepcionTabla
           v-else
           :items="items" :can-manage="canManage" :user-id="userId" :es-compacto="esCompacto"
-          @novedades="novedadesDe = $event" @borrar="borrar"
+          @novedades="novedadesDe = $event" @borrar="borrar" @editar="editando = $event"
         />
 
         <div v-if="totalPaginas > 1" class="pag">
@@ -306,6 +313,11 @@ const totalPaginas = computed(() => Math.max(1, Math.ceil(total.value / pageSize
           <button class="btn btn-sm" :disabled="page >= totalPaginas" @click="page += 1">Siguiente</button>
         </div>
     </template>
+
+    <RecepcionEditarModal
+      v-if="editando" :item="editando"
+      @close="editando = null" @saved="corregido"
+    />
 
     <RecepcionNovedadModal
       v-if="novedadesDe"

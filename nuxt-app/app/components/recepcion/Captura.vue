@@ -5,8 +5,8 @@
 import { ref, reactive, computed, watch } from 'vue'
 import { Play, Users } from '@lucide/vue'
 import {
-  TIPO_PRODUCTO_LABEL, TIPOS_PRODUCTO, validarApertura,
-  type TipoProductoRecepcion,
+  TIPO_CONTENEDOR_LABEL, TIPO_PRODUCTO_LABEL, TIPOS_CONTENEDOR, TIPOS_PRODUCTO, validarApertura,
+  type TipoContenedorRecepcion, type TipoProductoRecepcion,
 } from '~/utils/recepcion'
 
 interface Descargador { id: string; nombre: string; rol: string }
@@ -20,6 +20,7 @@ const emit = defineEmits<{
     numeroPedido: string
     proveedor: string
     tipoProducto: TipoProductoRecepcion
+    tipoContenedor: TipoContenedorRecepcion
     pesoKg: number
     referenciasEsperadas: number
     cajas: number
@@ -33,6 +34,8 @@ const form = reactive({
   numeroPedido: '',
   proveedor: '',
   tipoProducto: 'GOURMET' as TipoProductoRecepcion,
+  // Sin valor por defecto: el contenedor se elige, no se asume.
+  tipoContenedor: null as TipoContenedorRecepcion | null,
   pesoKg: '',
   referenciasEsperadas: '',
   cajas: '',
@@ -45,6 +48,7 @@ const payload = computed(() => ({
   numeroPedido: form.numeroPedido,
   proveedor: form.proveedor,
   tipoProducto: form.tipoProducto,
+  tipoContenedor: form.tipoContenedor,
   pesoKg: Number(form.pesoKg || 0),
   referenciasEsperadas: Number(form.referenciasEsperadas || 0),
   cajas: Number(form.cajas || 0),
@@ -58,7 +62,7 @@ const puedeGuardar = computed(() => !props.saving && !error.value)
 // Avisa al módulo de que hay trabajo a medias: el auto-refresh no debe
 // re-renderizar y robarle al operario lo que está escribiendo.
 const sucio = computed(() => Boolean(
-  form.numeroPedido || form.proveedor || form.pesoKg || form.referenciasEsperadas
+  form.numeroPedido || form.proveedor || form.tipoContenedor || form.pesoKg || form.referenciasEsperadas
   || form.cajas || form.unidades || seleccionados.value.length,
 ))
 watch(sucio, (v) => emit('dirty', v))
@@ -75,13 +79,14 @@ function alternar(id: string) {
 
 function enviar() {
   if (!puedeGuardar.value) return
-  emit('submit', payload.value)
+  emit('submit', { ...payload.value, tipoContenedor: form.tipoContenedor! })
 }
 
 function reset() {
   form.numeroPedido = ''
   form.proveedor = ''
   form.tipoProducto = 'GOURMET'
+  form.tipoContenedor = null
   form.pesoKg = ''
   form.referenciasEsperadas = ''
   form.cajas = ''
@@ -122,6 +127,20 @@ defineExpose({ reset })
             @click="form.tipoProducto = t"
           >
             {{ TIPO_PRODUCTO_LABEL[t] }}
+          </button>
+        </div>
+      </div>
+
+      <div class="f f-contenedor">
+        <span class="lbl">Tipo de contenedor</span>
+        <div class="segmented" role="radiogroup" aria-label="Tipo de contenedor">
+          <button
+            v-for="t in TIPOS_CONTENEDOR" :key="t" type="button" class="seg"
+            role="radio" :aria-checked="form.tipoContenedor === t"
+            :class="{ on: form.tipoContenedor === t }" :disabled="saving"
+            @click="form.tipoContenedor = t"
+          >
+            {{ TIPO_CONTENEDOR_LABEL[t] }}
           </button>
         </div>
       </div>
@@ -189,6 +208,7 @@ defineExpose({ reset })
 .f { display: flex; flex-direction: column; gap: 5px; min-width: 0; }
 .f-pedido { grid-column: span 1; }
 .f-prov { grid-column: span 2; }
+.f-contenedor { grid-column: span 2; }
 .f-personas { grid-column: 1 / -1; position: relative; }
 .f-submit { grid-column: 1 / -1; flex-direction: row; align-items: center; justify-content: flex-end; gap: 12px; }
 .lbl { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); }

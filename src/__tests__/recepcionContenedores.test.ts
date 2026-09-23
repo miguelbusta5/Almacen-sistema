@@ -7,7 +7,9 @@ import {
   puedeGestionarRecepcion,
   puedeUsarRecepcion,
   segundosRecepcion,
+  TIPO_CONTENEDOR_LABEL,
   validarApertura,
+  validarCorreccionRecepcion,
   validarCierre,
   validarLineaNovedad,
 } from "@/lib/recepcionContenedores";
@@ -16,6 +18,7 @@ const apertura = {
   numeroPedido: "PEDDM11887",
   proveedor: "Importadora del Norte",
   tipoProducto: "GOURMET",
+  tipoContenedor: "PIES_40",
   pesoKg: 12500.5,
   referenciasEsperadas: 40,
   cajas: 900,
@@ -70,6 +73,17 @@ describe("recepcion — apertura", () => {
   // media razon de ser del modulo.
   it("no deja abrir sin personas descargando", () => {
     expect(validarApertura({ ...apertura, descargadores: [] })).toMatch(/persona descargando/);
+  });
+
+  // 23-09: el CEDI pidió saber en qué llegó cada contenedor. Se elige siempre:
+  // no hay valor por defecto que se cuele sin mirar.
+  it("exige el tipo de contenedor", () => {
+    expect(validarApertura({ ...apertura, tipoContenedor: undefined })).toMatch(/tipo de contenedor/);
+    expect(validarApertura({ ...apertura, tipoContenedor: "PIES_30" })).toMatch(/tipo de contenedor/);
+    for (const t of ["CARGA_SUELTA", "PIES_20", "PIES_40"]) {
+      expect(validarApertura({ ...apertura, tipoContenedor: t })).toBeNull();
+    }
+    expect(TIPO_CONTENEDOR_LABEL).toEqual({ CARGA_SUELTA: "Carga suelta", PIES_20: "20 pies", PIES_40: "40 pies" });
   });
 
   it("normaliza el pedido y el proveedor", () => {
@@ -138,5 +152,23 @@ describe("recepcion — tiempo", () => {
   it("sin cierre no hay duracion, salvo que se pida contra ahora", () => {
     expect(segundosRecepcion(t(8, 0), null)).toBeNull();
     expect(segundosRecepcion(t(8, 0), null, new Date(Date.UTC(2026, 8, 10, 8, 5)))).toBe(300);
+  });
+});
+
+describe("recepcion — corrección de lo ya registrado", () => {
+  it("el motivo es obligatorio siempre", () => {
+    expect(validarCorreccionRecepcion({ tipoContenedor: "PIES_20", motivo: "" })).toMatch(/motivo/);
+    expect(validarCorreccionRecepcion({ tipoContenedor: "PIES_20", motivo: " ab " })).toMatch(/motivo/);
+    expect(validarCorreccionRecepcion({ tipoContenedor: "PIES_20", motivo: "Faltaba el tipo" })).toBeNull();
+  });
+
+  it("solo valida lo que llega: lo ausente no cambia", () => {
+    expect(validarCorreccionRecepcion({ motivo: "Solo el peso", pesoKg: 800 })).toBeNull();
+    expect(validarCorreccionRecepcion({ motivo: "Peso mal", pesoKg: 0 })).toMatch(/peso/);
+    expect(validarCorreccionRecepcion({ motivo: "Contenedor", tipoContenedor: "OTRO" })).toMatch(/tipo de contenedor/);
+    expect(validarCorreccionRecepcion({ motivo: "Unidades", unidades: 0 })).toMatch(/unidades/);
+    expect(validarCorreccionRecepcion({ motivo: "Cajas", cajas: -1 })).toMatch(/cajas/);
+    expect(validarCorreccionRecepcion({ motivo: "Cajas", cajas: 0 })).toBeNull();
+    expect(validarCorreccionRecepcion({ motivo: "Pedido", numeroPedido: "  " })).toMatch(/pedido/);
   });
 });

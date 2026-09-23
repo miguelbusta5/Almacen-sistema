@@ -7,6 +7,19 @@
 export const TIPOS_PRODUCTO = ["GOURMET", "MUEBLES"] as const
 export type TipoProductoRecepcion = (typeof TIPOS_PRODUCTO)[number]
 
+export const TIPOS_CONTENEDOR = ["CARGA_SUELTA", "PIES_20", "PIES_40"] as const
+export type TipoContenedorRecepcion = (typeof TIPOS_CONTENEDOR)[number]
+
+export function esTipoContenedor(v: unknown): v is TipoContenedorRecepcion {
+  return typeof v === "string" && (TIPOS_CONTENEDOR as readonly string[]).includes(v)
+}
+
+export const TIPO_CONTENEDOR_LABEL: Record<TipoContenedorRecepcion, string> = {
+  CARGA_SUELTA: "Carga suelta",
+  PIES_20: "20 pies",
+  PIES_40: "40 pies",
+}
+
 export const ESTADOS_RECEPCION = ["EN_CURSO", "CERRADO"] as const
 export type EstadoRecepcion = (typeof ESTADOS_RECEPCION)[number]
 
@@ -89,6 +102,7 @@ export interface AperturaRecepcion {
   numeroPedido: string
   proveedor: string
   tipoProducto: unknown
+  tipoContenedor: unknown
   pesoKg: number
   referenciasEsperadas: number
   cajas: number
@@ -117,6 +131,7 @@ export function validarApertura(d: AperturaRecepcion): string | null {
   if (!normalizarPedido(d.numeroPedido)) return "Escribe el número del pedido"
   if (!normalizarProveedor(d.proveedor)) return "Escribe el nombre del proveedor"
   if (!esTipoProducto(d.tipoProducto)) return "Elige si es gourmet o muebles"
+  if (!esTipoContenedor(d.tipoContenedor)) return "Elige el tipo de contenedor: carga suelta, 20 o 40 pies"
   if (!Number.isFinite(d.pesoKg) || d.pesoKg <= 0) return "El peso del contenedor debe ser mayor que cero"
   if (!Number.isInteger(d.referenciasEsperadas) || d.referenciasEsperadas < 1) {
     return "Indica cuántas referencias se van a recibir"
@@ -125,6 +140,47 @@ export function validarApertura(d: AperturaRecepcion): string | null {
   if (!Number.isInteger(d.unidades) || d.unidades < 1) return "Indica cuántas unidades trae el contenedor"
   if (!Array.isArray(d.descargadores) || d.descargadores.length === 0) {
     return "Selecciona al menos una persona descargando"
+  }
+  return null
+}
+
+// ── Corrección ───────────────────────────────────────────────────────
+/**
+ * Corrección de una recepción ya guardada (supervisión o el dueño).
+ *
+ * Solo se valida lo que llega: los campos ausentes no cambian. El motivo es
+ * siempre obligatorio porque estos datos alimentan los indicadores; un cambio
+ * sin traza los vuelve imposibles de auditar.
+ */
+export interface CorreccionRecepcion {
+  numeroPedido?: string
+  proveedor?: string
+  tipoProducto?: unknown
+  tipoContenedor?: unknown
+  pesoKg?: number
+  referenciasEsperadas?: number
+  cajas?: number
+  unidades?: number
+  motivo: string
+}
+
+export function validarCorreccionRecepcion(d: CorreccionRecepcion): string | null {
+  if (String(d.motivo ?? "").trim().length < 5) return "Escribe el motivo de la corrección (mínimo 5 caracteres)"
+  if (d.numeroPedido !== undefined && !normalizarPedido(d.numeroPedido)) return "Escribe el número del pedido"
+  if (d.proveedor !== undefined && !normalizarProveedor(d.proveedor)) return "Escribe el nombre del proveedor"
+  if (d.tipoProducto !== undefined && !esTipoProducto(d.tipoProducto)) return "Elige si es gourmet o muebles"
+  if (d.tipoContenedor !== undefined && !esTipoContenedor(d.tipoContenedor)) {
+    return "Elige el tipo de contenedor"
+  }
+  if (d.pesoKg !== undefined && (!Number.isFinite(d.pesoKg) || d.pesoKg <= 0)) {
+    return "El peso del contenedor debe ser mayor que cero"
+  }
+  if (d.referenciasEsperadas !== undefined && (!Number.isInteger(d.referenciasEsperadas) || d.referenciasEsperadas < 1)) {
+    return "Indica cuántas referencias se van a recibir"
+  }
+  if (d.cajas !== undefined && (!Number.isInteger(d.cajas) || d.cajas < 0)) return "La cantidad de cajas no es válida"
+  if (d.unidades !== undefined && (!Number.isInteger(d.unidades) || d.unidades < 1)) {
+    return "Indica cuántas unidades trae el contenedor"
   }
   return null
 }
@@ -232,6 +288,8 @@ export interface Recepcion {
   numeroPedido: string
   proveedor: string
   tipoProducto: TipoProductoRecepcion
+  /** Null en las recepciones anteriores al 23-09: se corrigen a mano. */
+  tipoContenedor: TipoContenedorRecepcion | null
   pesoKg: number
   referenciasEsperadas: number
   cajas: number

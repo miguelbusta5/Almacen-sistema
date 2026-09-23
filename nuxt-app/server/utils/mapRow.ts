@@ -444,6 +444,7 @@ export function mapRecepcion(r: any) {
     numeroPedido: r.numeroPedido,
     proveedor: r.proveedor,
     tipoProducto: r.tipoProducto,
+    tipoContenedor: r.tipoContenedor ?? null,
     // Decimal de Prisma: al cliente va como number, que es lo que espera el DTO.
     pesoKg: Number(r.pesoKg),
     referenciasEsperadas: r.referenciasEsperadas,

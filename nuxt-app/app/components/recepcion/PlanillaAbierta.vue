@@ -5,7 +5,7 @@
 import { ref, reactive, computed, watch } from 'vue'
 import { Timer, CheckCircle2, Users, Package } from '@lucide/vue'
 import {
-  cronometroRecepcion, fmtHoraRecepcion, TIPO_PRODUCTO_LABEL, validarCierre,
+  cronometroRecepcion, fmtHoraRecepcion, TIPO_CONTENEDOR_LABEL, TIPO_PRODUCTO_LABEL, validarCierre,
   type Recepcion,
 } from '~/utils/recepcion'
 
@@ -58,6 +58,7 @@ function cerrar() {
       <div class="cab-der">
         <span v-if="r.pausaId" class="tipo">En pausa</span>
         <span class="tipo">{{ TIPO_PRODUCTO_LABEL[r.tipoProducto] }}</span>
+        <span v-if="r.tipoContenedor" class="tipo">{{ TIPO_CONTENEDOR_LABEL[r.tipoContenedor] }}</span>
         <span class="crono tnum"><Timer :size="15" />{{ crono ?? '—' }}</span>
       </div>
     </header>

@@ -24,6 +24,8 @@ describe("recepcion — las tres copias de la logica pura", () => {
     "exigeFoto",
     "segundosRecepcion",
     "normalizarPedido",
+    "esTipoContenedor",
+    "validarCorreccionRecepcion",
   ];
 
   it.each(funciones)("%s existe en las tres", (fn) => {
@@ -148,5 +150,53 @@ describe("recepcion — paginacion del listado", () => {
     const get = leer("nuxt-app/server/api/recepcion-contenedores/index.get.ts");
     expect(get).toContain("skip: (page - 1) * pageSize");
     expect(get).not.toMatch(/\{ page, pageSize, skip \}/);
+  });
+});
+
+describe("recepcion — tipo de contenedor y corrección", () => {
+  const sql = leer("prisma/migrate-recepcion-tipo-contenedor.sql");
+  const patch = leer("nuxt-app/server/api/recepcion-contenedores/[id]/index.patch.ts");
+  const post = leer("nuxt-app/server/api/recepcion-contenedores/index.post.ts");
+
+  it("el SQL es aditivo, idempotente y sin backfill", () => {
+    expect(sql).toContain("IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'TipoContenedorRecepcion')");
+    expect(sql).toContain("ADD COLUMN IF NOT EXISTS tipo_contenedor \"TipoContenedorRecepcion\";");
+    expect(sql).not.toMatch(/NOT NULL|UPDATE recepciones_contenedor/);
+  });
+
+  it("los dos schema.prisma tienen la columna opcional", () => {
+    for (const f of ["prisma/schema.prisma", "nuxt-app/prisma/schema.prisma"]) {
+      expect(leer(f)).toContain('tipoContenedor TipoContenedorRecepcion? @map("tipo_contenedor")');
+    }
+  });
+
+  it("abrir exige el tipo; la lista lo devuelve", () => {
+    expect(post).toContain("tipoContenedor: z.enum(['CARGA_SUELTA', 'PIES_20', 'PIES_40']");
+    expect(post).toContain("tipoContenedor: d.tipoContenedor,");
+    expect(leer("nuxt-app/server/utils/mapRow.ts")).toContain("tipoContenedor: r.tipoContenedor ?? null,");
+  });
+
+  it("corregir: dueño o supervisión, con motivo, sin tocar borradas, con auditoría", () => {
+    expect(patch).toContain("validarCorreccionRecepcion(d)");
+    expect(patch).toContain("esDuenoOGestor(actor, current)");
+    expect(patch).toContain("current.deletedAt");
+    expect(patch).toContain("motivoCorreccion: motivo");
+    expect(patch).toContain("actualizadoPorId: actor.id");
+    expect(patch).toContain("prisma.activityLog.create");
+    // Las horas son la métrica: esta ruta no las toca.
+    expect(patch).not.toMatch(/horaInicio|horaFinalizacion/);
+  });
+
+  it("la pantalla pide el tipo, lo muestra y deja corregir", () => {
+    const cap = leer("nuxt-app/app/components/recepcion/Captura.vue");
+    const tabla = leer("nuxt-app/app/components/recepcion/Tabla.vue");
+    const modal = leer("nuxt-app/app/components/recepcion/EditarModal.vue");
+    expect(cap).toContain("tipoContenedor: null as TipoContenedorRecepcion | null");
+    expect(cap).toContain('v-for="t in TIPOS_CONTENEDOR"');
+    expect(tabla).toContain("<th>Contenedor</th>");
+    expect(tabla).toContain("Sin tipo");
+    expect(tabla).toContain("props.canManage || item.creadoPorId === props.userId");
+    expect(modal).toContain("method: 'PATCH'");
+    expect(modal).toContain("Motivo de la corrección (obligatorio)");
   });
 });
