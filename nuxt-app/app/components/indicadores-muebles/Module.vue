@@ -8,13 +8,14 @@ import { enRefrescoSilencioso, useAutoRefresh } from '~/composables/useAutoRefre
 // propios guards, y meter picking/inspección ahí obligaría a tocar todo lo de
 // montacargas. Ver mueblesIndicadoresCalc.ts.
 import { computed, onMounted, ref, watch } from 'vue'
-import { ChartColumnIncreasing, RefreshCw, Loader2 } from '@lucide/vue'
+import { ChartColumnIncreasing, RefreshCw, Loader2, LayoutList, ChartPie } from '@lucide/vue'
 import { useToast } from '~/composables/useToast'
 import { ensureSession, useSessionState } from '~/composables/useSession'
 import { canSeeModule } from '~/utils/modulePermissions'
 import { API_INDICADORES_MUEBLES, TIPO_ERROR_PICKING_LABEL, fmtM3, mensajeError } from '~/utils/muebles'
 import { PRESETS_RANGO, rangoDePreset, type BarraH, type ColumnaTabla, type PresetRango } from '~/utils/indicadores'
 import { hoyBogota } from '~/utils/exportaciones'
+import { API_ANALITICA_MUEBLES, type AnaliticaMueblesDTO } from '~/utils/mueblesAnalitica'
 
 interface FilaOperario {
   id: string; nombre: string; plus: number; minutosPicking: number
@@ -108,9 +109,42 @@ async function cargar() {
   }
 }
 
+// ── Analítica ──
+// Pestaña aparte con su propio endpoint: no se pide hasta que se abre, y no
+// depende del filtro de operario (mira el proceso entero).
+const pestana = ref<'operacion' | 'analitica'>('operacion')
+const analitica = ref<AnaliticaMueblesDTO | null>(null)
+const analiticaDe = ref('')
+const cargandoAnalitica = ref(false)
+
+async function cargarAnalitica() {
+  if (!desde.value || !hasta.value) return
+  if (!enRefrescoSilencioso()) cargandoAnalitica.value = true
+  try {
+    const res = await $fetch<{ data: AnaliticaMueblesDTO }>(API_ANALITICA_MUEBLES, {
+      query: { desde: desde.value, hasta: hasta.value },
+    })
+    analitica.value = res.data
+    analiticaDe.value = `${desde.value}|${hasta.value}`
+  } catch (e) {
+    show(mensajeError(e, 'No se pudo cargar la analítica'), true)
+  } finally {
+    cargandoAnalitica.value = false
+  }
+}
+
+/** Recarga solo lo que se está viendo. */
+function refrescar() {
+  return pestana.value === 'analitica' ? cargarAnalitica() : cargar()
+}
+
 onMounted(ensureSession)
 watch(puedeVer, (v) => { if (v && !datos.value) cargar() }, { immediate: true })
-watch([desde, hasta, operarioId], () => { if (puedeVer.value) cargar() })
+watch([desde, hasta, operarioId], () => { if (puedeVer.value) refrescar() })
+watch(pestana, (v) => {
+  if (v === 'analitica' && analiticaDe.value !== `${desde.value}|${hasta.value}`) cargarAnalitica()
+  if (v === 'operacion' && !datos.value) cargar()
+})
 
 // ── Formato ──
 // Los tiempos llegan en minutos con decimales. Un picking de segundos se ve en
@@ -303,7 +337,7 @@ const filasOrden = computed(() => (datos.value?.ordenes ?? []).slice(0, 40).map(
 })))
 
 // Los indicadores se ponen al dia solos; cada minuto basta (son consultas pesadas).
-useAutoRefresh({ intervalMs: 60_000, onRefresh: () => cargar() })
+useAutoRefresh({ intervalMs: 60_000, onRefresh: () => refrescar() })
 </script>
 
 <template>
@@ -317,7 +351,7 @@ useAutoRefresh({ intervalMs: 60_000, onRefresh: () => cargar() })
         <h1 class="hero-title">Indicadores Muebles</h1>
         <p class="hero-desc">Tiempos por persona, tipo de mercancía, volumen y peso.</p>
       </div>
-      <button class="btn btn-ghost btn-sm" :disabled="cargando" @click="cargar">
+      <button class="btn btn-ghost btn-sm" :disabled="cargando || cargandoAnalitica" @click="refrescar">
         <RefreshCw :size="14" /> Actualizar
       </button>
     </section>
@@ -334,7 +368,7 @@ useAutoRefresh({ intervalMs: 60_000, onRefresh: () => cargar() })
         </div>
         <label class="campo"><span>Desde</span><input v-model="desde" class="input" type="date"></label>
         <label class="campo"><span>Hasta</span><input v-model="hasta" class="input" type="date"></label>
-        <label class="campo">
+        <label v-if="pestana === 'operacion'" class="campo">
           <span>Operario</span>
           <select v-model="operarioId" class="input">
             <option value="">Todos</option>
@@ -343,7 +377,27 @@ useAutoRefresh({ intervalMs: 60_000, onRefresh: () => cargar() })
         </label>
       </section>
 
-      <div v-if="cargando && !datos" class="cargando"><Loader2 :size="18" class="spin" /> Cargando…</div>
+      <nav class="tabs" role="tablist" aria-label="Vista de indicadores">
+        <button
+          class="tab" role="tab" :class="{ on: pestana === 'operacion' }"
+          :aria-selected="pestana === 'operacion'" @click="pestana = 'operacion'"
+        >
+          <LayoutList :size="14" /> Operación
+        </button>
+        <button
+          class="tab" role="tab" :class="{ on: pestana === 'analitica' }"
+          :aria-selected="pestana === 'analitica'" @click="pestana = 'analitica'"
+        >
+          <ChartPie :size="14" /> Analítica
+        </button>
+      </nav>
+
+      <template v-if="pestana === 'analitica'">
+        <div v-if="cargandoAnalitica && !analitica" class="cargando"><Loader2 :size="18" class="spin" /> Cargando…</div>
+        <IndicadoresMueblesAnalitica v-else-if="analitica" :datos="analitica" />
+      </template>
+
+      <div v-else-if="cargando && !datos" class="cargando"><Loader2 :size="18" class="spin" /> Cargando…</div>
 
       <template v-else-if="datos">
         <div class="tiles">
@@ -493,6 +547,17 @@ useAutoRefresh({ intervalMs: 60_000, onRefresh: () => cargar() })
 .tile-label { font-size: 10.5px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
 
 .bloque { margin-bottom: 18px; }
+
+.tabs { display: flex; gap: 4px; margin-bottom: 18px; border-bottom: 1px solid var(--border); }
+.tab {
+  appearance: none; border: none; background: none; cursor: pointer;
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 9px 15px; font-size: 13px; font-weight: 600; color: var(--muted);
+  border-bottom: 2px solid transparent; margin-bottom: -1px;
+}
+.tab:hover { color: var(--ink-2); }
+.tab.on { color: var(--brand); border-bottom-color: var(--brand); }
+.tab:focus-visible { outline: none; box-shadow: var(--ring); border-radius: var(--r-xs); }
 .dos { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 18px; }
 
 .eban { display: flex; gap: 26px; flex-wrap: wrap; }
