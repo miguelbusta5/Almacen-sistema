@@ -1,6 +1,7 @@
 <script setup lang="ts">
-// Cuántas tareas de resurtido y pendientes cierra cada persona por día, y la
-// proyección de un turno a partir de eso.
+// Cuántas tareas de resurtido (por capacidad), pendientes y movimientos de
+// Control Montacargas cierra cada persona por día, y la proyección de un turno a
+// partir de eso. La recepción no entra: su medida es el contenedor.
 //
 // Una tarea cuenta para QUIEN LA CERRÓ. Si otro la había empezado, a ese le
 // suma en «Iniciadas y pasadas», que no entra en el total: así el total del
@@ -31,6 +32,7 @@ const barras = computed<BarraH[]>(() => props.proyeccion
     detalle: [
       { etiqueta: 'Tareas de resurtido / día', valor: dec(p.tareasDia) },
       { etiqueta: 'Pendientes / día', valor: dec(p.pendientesDia) },
+      { etiqueta: 'Movimientos / día', valor: dec(p.movimientosDia) },
       { etiqueta: 'Iniciadas y pasadas / día', valor: dec(p.pasadasDia) },
       { etiqueta: 'Mejor día', valor: String(p.maxTotal) },
       { etiqueta: 'Días trabajados', valor: String(p.dias) },
@@ -42,6 +44,7 @@ const colsProyeccion: ColumnaTabla[] = [
   { key: 'dias', label: 'Días trabajados', num: true },
   { key: 'tareasDia', label: 'Tareas / día', num: true },
   { key: 'pendientesDia', label: 'Pendientes / día', num: true },
+  { key: 'movimientosDia', label: 'Movimientos / día', num: true },
   { key: 'totalDia', label: 'Total / día', num: true },
   { key: 'maxTotal', label: 'Mejor día', num: true },
   { key: 'pasadasDia', label: 'Iniciadas y pasadas / día', num: true },
@@ -51,6 +54,7 @@ const filasProyeccion = computed(() => props.proyeccion.map((p) => ({
   dias: p.dias,
   tareasDia: dec(p.tareasDia),
   pendientesDia: dec(p.pendientesDia),
+  movimientosDia: dec(p.movimientosDia),
   totalDia: dec(p.totalDia),
   maxTotal: p.maxTotal,
   pasadasDia: dec(p.pasadasDia),
@@ -70,6 +74,7 @@ const colsDia: ColumnaTabla[] = [
   { key: 'nombre', label: 'Persona' },
   { key: 'tareas', label: 'Tareas', num: true },
   { key: 'pendientes', label: 'Pendientes', num: true },
+  { key: 'movimientos', label: 'Movimientos', num: true },
   { key: 'total', label: 'Total cerradas', num: true },
   { key: 'pasadas', label: 'Iniciadas y pasadas', num: true },
 ]
@@ -78,6 +83,7 @@ const filasDia = computed(() => props.cierres.map((c) => ({
   nombre: c.nombre,
   tareas: c.tareas,
   pendientes: c.pendientes,
+  movimientos: c.movimientos,
   total: c.total,
   pasadas: c.pasadas,
 })))
@@ -86,8 +92,8 @@ const filasDia = computed(() => props.cierres.map((c) => ({
 <template>
   <div class="cpd">
     <IndicadoresTarjeta
-      titulo="Proyección diaria de resurtido"
-      subtitulo="Tareas de resurtido y pendientes que cierra cada persona en un día trabajado. Es lo que se puede esperar de un turno."
+      titulo="Proyección diaria"
+      subtitulo="Tareas de resurtido, pendientes y movimientos de Control Montacargas que cierra cada persona en un día trabajado. Es lo que se puede esperar de un turno."
     >
       <p v-if="equipoDia" class="cpd-equipo">
         Entre todos: <b class="tnum">{{ dec(equipoDia.promedio) }}</b> cerradas por día
@@ -97,7 +103,7 @@ const filasDia = computed(() => props.cierres.map((c) => ({
         v-if="barras.length" :items="barras" medida="cerradas por día"
         :formato-eje="(v: number) => dec(v)" :reserva="130"
       />
-      <p v-else class="cpd-muted">Nadie cerró tareas ni pendientes en el periodo.</p>
+      <p v-else class="cpd-muted">Nadie cerró tareas, pendientes ni movimientos en el periodo.</p>
       <p class="cpd-regla">
         Cada tarea cuenta para quien la terminó. Si otro la había empezado, a ese le suma en
         «Iniciadas y pasadas», que no entra en el total.

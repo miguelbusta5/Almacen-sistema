@@ -140,7 +140,9 @@ export interface CierresDiaPersona {
   nombre: string
   tareas: number
   pendientes: number
-  /** tareas + pendientes: lo que termino. */
+  /** Movimientos de Control Montacargas (movimiento y resurtido). */
+  movimientos: number
+  /** tareas + pendientes + movimientos: lo que termino. */
   total: number
   /** Empezadas por esta persona y cerradas por otra: NO suman al total. */
   pasadas: number
@@ -152,6 +154,7 @@ export interface ProyeccionPersona {
   dias: number
   tareasDia: number
   pendientesDia: number
+  movimientosDia: number
   totalDia: number
   pasadasDia: number
   maxTotal: number

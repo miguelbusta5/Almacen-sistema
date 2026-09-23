@@ -1240,7 +1240,8 @@ export interface CierreResurtido {
   /** Quien la empezó; null o igual a usuarioId si fue la misma persona. */
   iniciadoPorId: string | null
   cuando: Date
-  tipo: "tarea" | "pendiente"
+  /** movimiento = Control Montacargas (movimiento y resurtido; la recepcion va por contenedor). */
+  tipo: "tarea" | "pendiente" | "movimiento"
 }
 
 export interface CierresDiaPersona {
@@ -1251,7 +1252,9 @@ export interface CierresDiaPersona {
   tareas: number
   /** Pendientes que cerró ese día. */
   pendientes: number
-  /** tareas + pendientes: lo que terminó. */
+  /** Movimientos de Control Montacargas (movimiento y resurtido) que cerró. */
+  movimientos: number
+  /** tareas + pendientes + movimientos: lo que terminó. */
   total: number
   /**
    * Las que empezó y terminó otra persona. NO suman al total: si Juan la empieza
@@ -1280,7 +1283,7 @@ export function cierresPorDiaYPersona(entrada: {
     const k = `${dia}|${usuarioId}`
     let f = filas.get(k)
     if (!f) {
-      f = { dia, usuarioId, nombre: nombres.get(usuarioId) ?? usuarioId, tareas: 0, pendientes: 0, total: 0, pasadas: 0 }
+      f = { dia, usuarioId, nombre: nombres.get(usuarioId) ?? usuarioId, tareas: 0, pendientes: 0, movimientos: 0, total: 0, pasadas: 0 }
       filas.set(k, f)
     }
     return f
@@ -1291,7 +1294,8 @@ export function cierresPorDiaYPersona(entrada: {
     if (nombres.has(c.usuarioId)) {
       const f = fila(dia, c.usuarioId)
       if (c.tipo === "tarea") f.tareas++
-      else f.pendientes++
+      else if (c.tipo === "pendiente") f.pendientes++
+      else f.movimientos++
       f.total++
     }
     if (c.iniciadoPorId && c.iniciadoPorId !== c.usuarioId && nombres.has(c.iniciadoPorId)) {
@@ -1310,6 +1314,7 @@ export interface ProyeccionPersona {
   dias: number
   tareasDia: number
   pendientesDia: number
+  movimientosDia: number
   totalDia: number
   pasadasDia: number
   /** El mejor día: el techo que ya demostró. */
@@ -1322,12 +1327,13 @@ export interface ProyeccionPersona {
  * descansó o estuvo en otra cosa.
  */
 export function proyeccionDiaria(filas: readonly CierresDiaPersona[]): ProyeccionPersona[] {
-  const acc = new Map<string, { nombre: string; dias: number; tareas: number; pendientes: number; total: number; pasadas: number; max: number }>()
+  const acc = new Map<string, { nombre: string; dias: number; tareas: number; pendientes: number; movimientos: number; total: number; pasadas: number; max: number }>()
   for (const f of filas) {
-    const a = acc.get(f.usuarioId) ?? { nombre: f.nombre, dias: 0, tareas: 0, pendientes: 0, total: 0, pasadas: 0, max: 0 }
+    const a = acc.get(f.usuarioId) ?? { nombre: f.nombre, dias: 0, tareas: 0, pendientes: 0, movimientos: 0, total: 0, pasadas: 0, max: 0 }
     a.dias++
     a.tareas += f.tareas
     a.pendientes += f.pendientes
+    a.movimientos += f.movimientos
     a.total += f.total
     a.pasadas += f.pasadas
     a.max = Math.max(a.max, f.total)
@@ -1341,9 +1347,44 @@ export function proyeccionDiaria(filas: readonly CierresDiaPersona[]): Proyeccio
       dias: a.dias,
       tareasDia: prom(a.tareas, a.dias),
       pendientesDia: prom(a.pendientes, a.dias),
+      movimientosDia: prom(a.movimientos, a.dias),
       totalDia: prom(a.total, a.dias),
       pasadasDia: prom(a.pasadas, a.dias),
       maxTotal: a.max,
     }))
     .sort((a, b) => b.totalDia - a.totalDia || a.nombre.localeCompare(b.nombre))
+}
+
+// ── Fuera de turno ───────────────────────────────────────────────────
+
+/**
+ * Margen despues del fin del turno. Un registro que sigue abierto mas alla no
+ * es trabajo: es algo que quedo a nombre de alguien que ya se fue (las dos
+ * tareas que le pasaron a EYDER a las 14:45 del 22-09 y que corrieron hasta
+ * las 20:02; las tareas generales del 21-09 cerradas a las 6:00 del otro dia).
+ * Una hora cubre al que de verdad se quedo terminando algo.
+ */
+export const MARGEN_FUERA_TURNO_SEG = 60 * 60
+
+/**
+ * Recorta un tramo al fin de su turno + margen. El turno es el de la persona
+ * que contiene el inicio (con el mismo margen antes, por quien llega temprano).
+ * Sin cuadro de turnos no se toca: queda la regla de las 16 h. Recortar ANTES
+ * de esa regla recupera lo trabajado de un registro olvidado toda la noche,
+ * que antes se descartaba entero.
+ */
+export function recortarAlTurno<T extends { usuarioId: string; inicio: Date; fin: Date }>(
+  t: T,
+  turnos: readonly VentanaTurno[],
+  margenSeg: number = MARGEN_FUERA_TURNO_SEG,
+): T {
+  const m = margenSeg * 1000
+  const ini = t.inicio.getTime()
+  const turno = turnos.find(
+    (v) => v.usuarioId === t.usuarioId && v.inicio.getTime() - m <= ini && ini < v.fin.getTime(),
+  )
+  if (!turno) return t
+  const tope = turno.fin.getTime() + m
+  if (t.fin.getTime() <= tope) return t
+  return { ...t, fin: new Date(Math.max(ini, tope)) }
 }

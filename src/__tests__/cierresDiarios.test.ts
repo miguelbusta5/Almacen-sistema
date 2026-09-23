@@ -6,7 +6,10 @@
 import { readFileSync } from "node:fs";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
+import * as indicadoresLib from "@/lib/indicadores";
 import {
+  MARGEN_FUERA_TURNO_SEG,
+  recortarAlTurno,
   cerradoPor,
   cierresPorDiaYPersona,
   diaDeTurnoDeInstante,
@@ -23,7 +26,7 @@ const personas = [
 const rango = { desde: "2026-09-21", hasta: "2026-09-23" };
 // 10:00 de Bogotá del día dado.
 const a = (dia: string, hora = 15) => new Date(`${dia}T${String(hora).padStart(2, "0")}:00:00Z`);
-const cierre = (usuarioId: string, cuando: Date, tipo: "tarea" | "pendiente" = "tarea", iniciadoPorId: string | null = null): CierreResurtido =>
+const cierre = (usuarioId: string, cuando: Date, tipo: "tarea" | "pendiente" | "movimiento" = "tarea", iniciadoPorId: string | null = null): CierreResurtido =>
   ({ usuarioId, cuando, tipo, iniciadoPorId });
 
 describe("quién empezó y quién cerró", () => {
@@ -44,7 +47,7 @@ describe("cierres por día y persona", () => {
       personas, turnos: [], ...rango,
       cierres: [cierre("juan", a("2026-09-22")), cierre("juan", a("2026-09-22")), cierre("juan", a("2026-09-22"), "pendiente")],
     });
-    expect(r).toEqual([{ dia: "2026-09-22", usuarioId: "juan", nombre: "Juan", tareas: 2, pendientes: 1, total: 3, pasadas: 0 }]);
+    expect(r).toEqual([{ dia: "2026-09-22", usuarioId: "juan", nombre: "Juan", tareas: 2, pendientes: 1, movimientos: 0, total: 3, pasadas: 0 }]);
   });
 
   it("Juan empieza y Pedro cierra: Pedro +1 cerrada, Juan +1 pasada, total del día 1", () => {
@@ -82,12 +85,24 @@ describe("cierres por día y persona", () => {
       personas: [{ id: "juan", nombre: "Juan" }], turnos: [], ...rango,
       cierres: [cierre("pedro", a("2026-09-22"), "tarea", "juan"), cierre("pedro", a("2026-09-22"))],
     });
-    expect(r).toEqual([{ dia: "2026-09-22", usuarioId: "juan", nombre: "Juan", tareas: 0, pendientes: 0, total: 0, pasadas: 1 }]);
+    expect(r).toEqual([{ dia: "2026-09-22", usuarioId: "juan", nombre: "Juan", tareas: 0, pendientes: 0, movimientos: 0, total: 0, pasadas: 1 }]);
   });
 
   it("ordena del día más reciente al más viejo", () => {
     const r = cierresPorDiaYPersona({ personas, turnos: [], ...rango, cierres: [cierre("juan", a("2026-09-21")), cierre("juan", a("2026-09-23"))] });
     expect(r.map((f) => f.dia)).toEqual(["2026-09-23", "2026-09-21"]);
+  });
+});
+
+describe("movimientos de Control Montacargas", () => {
+  it("cuentan en su columna y en el total, con sus pasadas", () => {
+    const r = cierresPorDiaYPersona({
+      personas, turnos: [], ...rango,
+      cierres: [cierre("juan", a("2026-09-22"), "movimiento"), cierre("pedro", a("2026-09-22"), "movimiento", "juan"), cierre("juan", a("2026-09-22"))],
+    });
+    expect(r.find((f) => f.usuarioId === "juan")).toMatchObject({ tareas: 1, movimientos: 1, total: 2, pasadas: 1 });
+    expect(r.find((f) => f.usuarioId === "pedro")).toMatchObject({ movimientos: 1, total: 1 });
+    expect(proyeccionDiaria(r).find((p) => p.usuarioId === "juan")).toMatchObject({ movimientosDia: 1, totalDia: 2 });
   });
 });
 
@@ -121,7 +136,9 @@ describe("el endpoint y la pantalla", () => {
   it("trae el orden de los tramos e incluye los pendientes", () => {
     expect(api.match(/tramos: \{ select: \{ usuarioId: true, inicio: true, fin: true, orden: true \} \}/g)).toHaveLength(2);
     expect(api).toContain("const cierresPendientes: CierreResurtido[] = pendientes");
-    expect(api).toContain("cierres: [...cierresTareas, ...cierresPendientes]");
+    expect(api).toContain("cierres: [...cierresTareas, ...cierresPendientes, ...cierresMovimientos]");
+    // Movimientos de Control Montacargas sí; la recepción va por contenedor.
+    expect(api).toContain(".filter((m) => m.tipo !== 'RECEPCION' && enRango(m.horaFinalizacion))");
     expect(api).toContain("proyeccion: proyeccionDiaria(cierresDiarios)");
   });
 
@@ -131,5 +148,42 @@ describe("el endpoint y la pantalla", () => {
     expect(vista).toContain("'Iniciadas y pasadas'");
     expect(vista).toContain("que no entra en el total");
     expect(leer("nuxt-app/app/components/indicadores/Module.vue")).toContain("<IndicadoresCierresPorDia");
+  });
+});
+
+describe("fuera de turno: se recorta al fin del turno + 1 h", () => {
+  // Turno de EYDER: 9:00 a 17:00 (Bogotá) del 22-09.
+  const turno: VentanaTurno = { usuarioId: "eyder", dia: "2026-09-22", inicio: new Date("2026-09-22T14:00:00Z"), fin: new Date("2026-09-22T22:00:00Z") };
+  const t = (ini: string, fin: string, usuarioId = "eyder") => ({ usuarioId, inicio: new Date(ini), fin: new Date(fin), tipo: "resurtido" });
+
+  it("las tareas que le pasaron a las 14:45 y corrieron hasta las 20:02 cuentan hasta las 18:00", () => {
+    expect(MARGEN_FUERA_TURNO_SEG).toBe(3600);
+    const r = recortarAlTurno(t("2026-09-22T19:45:00Z", "2026-09-23T01:02:00Z"), [turno]);
+    expect(r.fin.toISOString()).toBe("2026-09-22T23:00:00.000Z"); // 18:00 Bogotá
+    expect(r.tipo).toBe("resurtido"); // conserva todo lo demás
+  });
+
+  it("la tarea general olvidada toda la noche ya no se borra: cuenta hasta la salida + 1 h", () => {
+    const olvidada = t("2026-09-22T14:03:00Z", "2026-09-23T11:00:00Z"); // 9:03 → 6:00 del otro día
+    expect(indicadoresLib.tramoImposible(olvidada)).toBe(true); // antes se descartaba entera
+    const r = recortarAlTurno(olvidada, [turno]);
+    expect(r.fin.toISOString()).toBe("2026-09-22T23:00:00.000Z");
+    expect(indicadoresLib.tramoImposible(r)).toBe(false);
+  });
+
+  it("dentro del turno o del margen no se toca; sin turno tampoco", () => {
+    const dentro = t("2026-09-22T15:00:00Z", "2026-09-22T22:40:00Z"); // hasta 17:40
+    expect(recortarAlTurno(dentro, [turno])).toBe(dentro);
+    const sinTurno = t("2026-09-22T19:45:00Z", "2026-09-23T01:02:00Z", "otro");
+    expect(recortarAlTurno(sinTurno, [turno])).toBe(sinTurno);
+    // Llegó 30 min antes: es de ese turno.
+    const temprano = t("2026-09-22T13:30:00Z", "2026-09-23T02:00:00Z");
+    expect(recortarAlTurno(temprano, [turno]).fin.toISOString()).toBe("2026-09-22T23:00:00.000Z");
+  });
+
+  it("el endpoint recorta antes de calcular", () => {
+    const api = readFileSync(path.join(process.cwd(), "nuxt-app/server/api/indicadores/index.get.ts"), "utf8");
+    expect(api).toContain("tiempos.splice(0, tiempos.length, ...tiempos.map((t) => recortarAlTurno(t, ventanas)))");
+    expect(api.indexOf("recortarAlTurno(t, ventanas)")).toBeLessThan(api.indexOf("agregarIndicadores({"));
   });
 });

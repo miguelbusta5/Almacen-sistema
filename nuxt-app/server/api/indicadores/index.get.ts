@@ -7,7 +7,7 @@ import {
   agregarIndicadores, agregarTiemposMuertos, clasificarJornadas, diaBogota, diasDelRango, esJornada,
   esMotivoTiempoMuerto,
   finDelDiaBogota, limitesRango, resumirResurtidoPorOperario,
-  cerradoPor, cierresPorDiaYPersona, iniciadoPor, proyeccionDiaria, type CierreResurtido,
+  cerradoPor, cierresPorDiaYPersona, iniciadoPor, proyeccionDiaria, recortarAlTurno, type CierreResurtido,
   type JustificacionTiempoMuerto, type TiempoRegistrado, type TipoTarea, type UnidadesRegistradas,
   type VentanaTurno,
 } from '../../utils/indicadoresCalc'
@@ -114,7 +114,11 @@ export default defineEventHandler(async (event) => {
     // Las unidades son de quien UBICO la mercancia: el responsable al cerrar.
     prisma.movimientoMontacargas.findMany({
       where: { deletedAt: null, estado: 'CERRADO', horaFinalizacion: { gte: ini, lte: finConsulta } },
-      select: { responsableId: true, cantidadTotal: true, horaFinalizacion: true, plu: true },
+      select: {
+        responsableId: true, cantidadTotal: true, horaFinalizacion: true, plu: true, tipo: true,
+        // Quien lo empezo y quien lo cerro, para la proyeccion diaria.
+        tramos: { select: { usuarioId: true, orden: true } },
+      },
     }),
     // 2. Tareas de resurtido por archivo. Sin las de montajes borrados: hay mas
     // de mil de pruebas que ensuciarian todo.
@@ -331,6 +335,16 @@ export default defineEventHandler(async (event) => {
       cuando: p.horaFin!,
       tipo: 'pendiente',
     }))
+  // Movimientos de Control Montacargas (movimiento y resurtido). La recepcion no
+  // entra: su medida es el contenedor (Recepcion de Contenedores).
+  const cierresMovimientos: CierreResurtido[] = cerrados
+    .filter((m) => m.tipo !== 'RECEPCION' && enRango(m.horaFinalizacion))
+    .map((m) => ({
+      usuarioId: cerradoPor(m.tramos, m.responsableId),
+      iniciadoPorId: iniciadoPor(m.tramos),
+      cuando: m.horaFinalizacion!,
+      tipo: 'movimiento',
+    }))
   // El promedio por operario de siempre sigue siendo solo de tareas de resurtido.
   const cierresResurtido = cierresTareas.map((c) => ({ usuarioId: c.usuarioId, cuando: c.cuando }))
 
@@ -347,6 +361,12 @@ export default defineEventHandler(async (event) => {
         justificadoAt: j.createdAt,
       }]
       : [])
+
+  // Nada cuenta despues del fin del turno + 1 h: un registro que quedo a nombre
+  // de alguien que ya se fue no es trabajo suyo (ver recortarAlTurno). Va antes
+  // de todo lo demas para que tiempo laborado, muertos y jornadas lo vean igual.
+  tiempos.splice(0, tiempos.length, ...tiempos.map((t) => recortarAlTurno(t, ventanas)))
+  enCurso.splice(0, enCurso.length, ...enCurso.map((t) => recortarAlTurno(t, ventanas)))
 
   // Dia o noche por el cuadro de turnos (o, sin cuadro, por la hora a la que
   // empezo a trabajar). La noche se mide entera, con su madrugada.
@@ -371,7 +391,7 @@ export default defineEventHandler(async (event) => {
 
   const cierresDiarios = cierresPorDiaYPersona({
     personas: delTurno,
-    cierres: [...cierresTareas, ...cierresPendientes],
+    cierres: [...cierresTareas, ...cierresPendientes, ...cierresMovimientos],
     turnos: ventanas,
     desde,
     hasta,
