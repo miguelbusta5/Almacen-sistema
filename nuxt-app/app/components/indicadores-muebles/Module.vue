@@ -365,11 +365,18 @@ const barrasEbanPlu = computed<BarraH[]>(() => (procesos.value?.ebanisteria.porP
 // ── Excel de la pestana abierta ──
 const vistaPicking = ref<{ hojas: () => HojaExcel[] } | null>(null)
 const vistaInspeccion = ref<{ hojas: () => HojaExcel[] } | null>(null)
+const vistaOrdenes = ref<{ hojas: () => HojaExcel[] } | null>(null)
 const exportando = ref(false)
 async function exportar() {
-  if (exportando.value || !datos.value) return
+  if (exportando.value) return
+  if (pestana.value !== 'ordenes' && !datos.value) return
   exportando.value = true
   try {
+    if (pestana.value === 'ordenes') {
+      await exportarExcel(`indicadores-muebles-ordenes-${desde.value}_${hasta.value}`, vistaOrdenes.value?.hojas() ?? [])
+      return
+    }
+    if (!datos.value) return
     const grupo = (nombre: string, g: FilaGrupo[]) => ({ nombre, columnas: colsGrupo, filas: filasDe(g) })
     const hojas: HojaExcel[] = pestana.value === 'picking'
       ? [
@@ -461,7 +468,7 @@ useAutoRefresh({ intervalMs: 60_000, onRefresh: () => refrescar() })
             <option v-for="i in procesos?.inspectores ?? []" :key="i.id" :value="i.id">{{ i.nombre }}</option>
           </select>
         </label>
-        <button v-if="pestana !== 'ordenes'" class="btn btn-sm exportar" :disabled="!datos || exportando" @click="exportar">
+        <button class="btn btn-sm exportar" :disabled="(pestana === 'ordenes' ? !analitica : !datos) || exportando" @click="exportar">
           <Loader2 v-if="exportando" :size="13" class="spin" /><Download v-else :size="13" /> Exportar a Excel
         </button>
       </section>
@@ -490,7 +497,7 @@ useAutoRefresh({ intervalMs: 60_000, onRefresh: () => refrescar() })
       <template v-if="pestana === 'ordenes'">
         <div v-if="cargandoAnalitica && !analitica" class="cargando"><Loader2 :size="18" class="spin" /> Cargando…</div>
         <IndicadoresMueblesAnalitica
-          v-else-if="analitica" :datos="analitica"
+          v-else-if="analitica" ref="vistaOrdenes" :datos="analitica"
           @plantilla="(v) => { plantilla = v; cargarAnalitica() }"
         />
       </template>

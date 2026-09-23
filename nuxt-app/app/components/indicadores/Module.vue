@@ -24,6 +24,8 @@ import {
 } from '~/utils/indicadores'
 import { fmtKg, fmtM3 } from '~/utils/carga'
 import { PESTANAS_PROCESO, type PestanaProceso } from '~/utils/procesos'
+import { exportarExcel } from '~/utils/exportarExcel'
+import { Download } from '@lucide/vue'
 
 const { me, sessionLoaded } = useSessionState()
 const { show: showToast } = useToast()
@@ -95,6 +97,36 @@ const cargando = ref(false)
 // Primero los procesos (lo que se hace), despues lo de las personas (23-09).
 const pestana = ref<PestanaProceso | 'laborado' | 'muertos' | 'turnos' | 'pausas' | 'ubicaciones'>('recepcion')
 const esProceso = computed(() => PESTANAS_PROCESO.some((x) => x.key === pestana.value))
+
+// Excel de "Tiempo trabajado": las mismas tablas de la pantalla.
+const exportando = ref(false)
+async function exportarLaborado() {
+  if (exportando.value || !datos.value) return
+  exportando.value = true
+  try {
+    await exportarExcel(`indicadores-tiempo-trabajado-${desde.value}_${hasta.value}`, [
+      { nombre: 'Efectividad por persona', columnas: columnasEfectividad, filas: tablaEfectividad.value },
+      { nombre: 'Productividad por persona', columnas: columnasProd, filas: tablaProd.value },
+      { nombre: 'Reparto por tipo', columnas: columnasReparto, filas: tablaReparto.value },
+      { nombre: 'Peso y volumen', columnas: columnasCarga, filas: tablaCarga.value },
+      { nombre: 'Resurtido por operario', columnas: columnasResurtido, filas: tablaResurtido.value },
+      {
+        nombre: 'Cierres por día',
+        columnas: [
+          { key: 'dia', label: 'Día' }, { key: 'nombre', label: 'Persona' },
+          { key: 'tareas', label: 'Tareas', num: true }, { key: 'pendientes', label: 'Pendientes', num: true },
+          { key: 'movimientos', label: 'Movimientos', num: true }, { key: 'total', label: 'Total', num: true },
+          { key: 'pasadas', label: 'Iniciadas y pasadas', num: true },
+        ],
+        filas: cierresDiarios.value.map((c) => ({ ...c })),
+      },
+    ])
+  } catch (e) {
+    showToast(apiErr(e, 'No se pudo exportar'), true)
+  } finally {
+    exportando.value = false
+  }
+}
 // El registro de pausas es solo para el administrador y quien reparte el
 // trabajo (permiso por persona: Felipe Ossa y Eduardo Zurita). El servidor lo
 // vuelve a comprobar.
@@ -574,6 +606,9 @@ const formatoHoras = (v: number) => fmtHorasDecimal(v)
         </div>
         <p class="nota-cerrados">
           Solo cuenta lo cerrado: un PLU que sigue en curso entra cuando se ubica.
+          <button class="btn btn-sm exportar-lab" :disabled="exportando" @click="exportarLaborado">
+            <Spinner v-if="exportando" :size="13" /><Download v-else :size="13" /> Exportar a Excel
+          </button>
         </p>
 
         <IndicadoresTiempoPersonas class="bloque" :personas="datos.personas" />
@@ -763,6 +798,7 @@ const formatoHoras = (v: number) => fmtHorasDecimal(v)
 .tab:hover { color: var(--ink-2); }
 .tab.on { color: var(--brand); border-bottom-color: var(--brand); }
 .tab-sep { width: 1px; margin: 8px 6px; background: var(--border-strong); }
+.exportar-lab { margin-left: 10px; vertical-align: middle; }
 .tab:focus-visible { outline: none; box-shadow: var(--ring); border-radius: var(--r-xs); }
 .badge-tab {
   display: inline-grid; place-items: center; min-width: 18px; height: 18px; padding: 0 5px;

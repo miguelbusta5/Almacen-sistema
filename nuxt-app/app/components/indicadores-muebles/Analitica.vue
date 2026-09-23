@@ -285,7 +285,7 @@ const colsOrdenes: ColumnaTabla[] = [
   { key: 'estado', label: 'Estado' },
   { key: 'calidad', label: 'Novedades' },
 ]
-const filasOrdenes = computed(() => ordenesVisibles.value.slice(0, MAX_FILAS).map((o) => ({
+const filaOrden = (o: AnaliticaMueblesDTO['ordenes'][number]) => ({
   codigo: o.codigo,
   tipo: tipo(o.tipoOrden),
   ciudad: o.ciudad ?? '—',
@@ -302,7 +302,23 @@ const filasOrdenes = computed(() => ordenesVisibles.value.slice(0, MAX_FILAS).ma
     o.averia ? 'Avería' : '',
     o.pendientes ? 'Pendiente' : '',
   ].filter(Boolean).join(' · ') || '—',
-})))
+})
+const filasOrdenes = computed(() => ordenesVisibles.value.slice(0, MAX_FILAS).map(filaOrden))
+
+// El Excel lleva TODAS las ordenes (la pantalla muestra 200).
+defineExpose({
+  hojas: () => [
+    { nombre: 'Órdenes completadas', columnas: colsOrdenes, filas: props.datos.ordenes.map(filaOrden) },
+    { nombre: 'Proyección por tipo', columnas: colsTipo, filas: filasTipo.value },
+    { nombre: 'Completadas por día', columnas: colsDia, filas: filasDia.value },
+    { nombre: 'Dónde se detiene', columnas: colsEtapas, filas: filasEtapas.value },
+    { nombre: 'Entregas por ciudad', columnas: colsCiudad, filas: filasCiudad.value },
+    { nombre: 'Mezcla', columnas: colsMezcla, filas: filasMezcla.value },
+    { nombre: 'PLU más pickeados', columnas: colsPlu, filas: filasPlu.value },
+    { nombre: 'Horas pico por día', columnas: colsDiaSemana, filas: filasDiaSemana.value },
+    { nombre: 'Calidad', columnas: colsCalidad, filas: filasCalidad.value },
+  ],
+})
 </script>
 
 <template>
