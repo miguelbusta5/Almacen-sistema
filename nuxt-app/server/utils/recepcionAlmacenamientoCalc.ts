@@ -50,6 +50,8 @@ export interface AlmacenamientoContenedor {
   /** PLU sin medida en el maestro: sus m3/kg no se cuentan. */
   sinMedida: number
   montacarguistas: number
+  /** Quienes almacenaron: para contar personas sin repetir con los descargadores. */
+  montacarguistaIds: string[]
   descargaSeg: number | null
   /** Reloj en que al menos un montacarguista estuvo con un PLU del contenedor. */
   almacenamientoRelojSeg: number
@@ -141,6 +143,7 @@ export function almacenamientoContenedor(rec: RecepcionAlm, movs: readonly Movim
     kg: r(movs.reduce((s, m) => s + (m.kg ?? 0), 0), 1),
     sinMedida: movs.filter((m) => m.m3 == null).length,
     montacarguistas: porPersona.size,
+    montacarguistaIds: [...porPersona.keys()],
     descargaSeg,
     almacenamientoRelojSeg: reloj,
     almacenamientoPersonaSeg: persona,

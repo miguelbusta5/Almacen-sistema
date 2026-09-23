@@ -23,6 +23,7 @@ import {
   type CargaPersona, type CierresDiaPersona, type ProyeccionPersona, type RespuestaIndicadores, type ResurtidoOperario, type TiemposMuertosPeriodo,
 } from '~/utils/indicadores'
 import { fmtKg, fmtM3 } from '~/utils/carga'
+import { PESTANAS_PROCESO, type PestanaProceso } from '~/utils/procesos'
 
 const { me, sessionLoaded } = useSessionState()
 const { show: showToast } = useToast()
@@ -91,7 +92,9 @@ const cargando = ref(false)
 
 // Tiempo laborado y tiempos muertos salen de la misma consulta y de los mismos
 // filtros: cambiar de pestaña no recarga nada.
-const pestana = ref<'laborado' | 'muertos' | 'turnos' | 'pausas' | 'ubicaciones'>('laborado')
+// Primero los procesos (lo que se hace), despues lo de las personas (23-09).
+const pestana = ref<PestanaProceso | 'laborado' | 'muertos' | 'turnos' | 'pausas' | 'ubicaciones'>('recepcion')
+const esProceso = computed(() => PESTANAS_PROCESO.some((x) => x.key === pestana.value))
 // El registro de pausas es solo para el administrador y quien reparte el
 // trabajo (permiso por persona: Felipe Ossa y Eduardo Zurita). El servidor lo
 // vuelve a comprobar.
@@ -467,7 +470,7 @@ const formatoHoras = (v: number) => fmtHorasDecimal(v)
 
       <!-- En noche, que quede claro que la fecha es la noche que empieza y que va
            completa hasta la mañana siguiente. -->
-      <p v-if="jornada === 'noche' && pestana !== 'pausas' && pestana !== 'ubicaciones'" class="aviso-noche">
+      <p v-if="jornada === 'noche' && !esProceso && pestana !== 'pausas' && pestana !== 'ubicaciones'" class="aviso-noche">
         <Moon :size="14" />
         <span>
           <b v-if="tituloNoche">{{ tituloNoche }}.</b>
@@ -477,10 +480,18 @@ const formatoHoras = (v: number) => fmtHorasDecimal(v)
 
       <nav class="tabs" role="tablist">
         <button
+          v-for="t in PESTANAS_PROCESO" :key="t.key"
+          class="tab" role="tab" :class="{ on: pestana === t.key }"
+          :aria-selected="pestana === t.key" @click="pestana = t.key"
+        >
+          {{ t.label }}
+        </button>
+        <span class="tab-sep" aria-hidden="true" />
+        <button
           class="tab" role="tab" :class="{ on: pestana === 'laborado' }"
           :aria-selected="pestana === 'laborado'" @click="pestana = 'laborado'"
         >
-          Tiempo laborado
+          Tiempo trabajado
         </button>
         <button
           class="tab" role="tab" :class="{ on: pestana === 'muertos' }"
@@ -512,9 +523,15 @@ const formatoHoras = (v: number) => fmtHorasDecimal(v)
         </button>
       </nav>
 
+      <!-- Los procesos traen sus propios datos (una consulta para todos). -->
+      <IndicadoresProcesos
+        v-if="esProceso" :pestana="(pestana as PestanaProceso)"
+        :desde="desde" :hasta="hasta" :usuario-id="usuarioId"
+      />
+
       <!-- El cuadro de turnos no depende del periodo ni de los datos: se ve
            aunque el rango elegido no tenga trabajo. -->
-      <IndicadoresTurnos v-if="pestana === 'turnos'" @actualizar="cargar" />
+      <IndicadoresTurnos v-else-if="pestana === 'turnos'" @actualizar="cargar" />
 
       <!-- Alimentación y cambio de baterías: cuántas veces y cuánto tiempo. -->
       <IndicadoresPausas
@@ -735,7 +752,8 @@ const formatoHoras = (v: number) => fmtHorasDecimal(v)
 .preset.on { background: var(--surface); color: var(--ink); box-shadow: var(--shadow-xs); }
 .preset:focus-visible { outline: none; box-shadow: var(--ring); }
 
-.tabs { display: flex; gap: 4px; margin-bottom: 16px; border-bottom: 1px solid var(--border); }
+.tabs { display: flex; gap: 4px; margin-bottom: 16px; border-bottom: 1px solid var(--border); overflow-x: auto; scrollbar-width: thin; }
+.tabs .tab { flex-shrink: 0; white-space: nowrap; }
 .tab {
   appearance: none; border: none; background: none; cursor: pointer;
   display: inline-flex; align-items: center; gap: 6px;
@@ -744,6 +762,7 @@ const formatoHoras = (v: number) => fmtHorasDecimal(v)
 }
 .tab:hover { color: var(--ink-2); }
 .tab.on { color: var(--brand); border-bottom-color: var(--brand); }
+.tab-sep { width: 1px; margin: 8px 6px; background: var(--border-strong); }
 .tab:focus-visible { outline: none; box-shadow: var(--ring); border-radius: var(--r-xs); }
 .badge-tab {
   display: inline-grid; place-items: center; min-width: 18px; height: 18px; padding: 0 5px;
