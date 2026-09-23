@@ -67,7 +67,8 @@ export interface OrdenAnalitica {
 /** Horas de turno por dia ISO (1 = lunes). Sabado y domingo no hay turno. */
 export const JORNADA_MUEBLES_HORAS: Readonly<Record<number, number>> = { 1: 9, 2: 9, 3: 9, 4: 9, 5: 8 }
 
-export const TIPOS_ORDEN_MUEBLES = ['TSDM', 'OVDM', 'CONTADO'] as const
+/** TIENDA = OVDM/TSDM que llega de tienda: sin picking en el CEDI, se mide aparte. */
+export const TIPOS_ORDEN_MUEBLES = ['TSDM', 'OVDM', 'TIENDA', 'CONTADO'] as const
 
 /** Plantilla del turno de muebles (CEDI, 23-09). La pantalla deja simular otra. */
 export const PLANTILLA_MUEBLES_DEFECTO = { operarios: 2, inspectores: 5 } as const

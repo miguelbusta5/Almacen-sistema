@@ -11,7 +11,7 @@ import { enRefrescoSilencioso, useAutoRefresh } from '~/composables/useAutoRefre
 // para no reelegir el nombre en cada acción, no una sesión. La verdad de quién
 // hizo qué está en la DB, en el inspector que se guardó con cada tiempo.
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
-import { ClipboardCheck, RefreshCw, Loader2, Receipt } from '@lucide/vue'
+import { ClipboardCheck, RefreshCw, Loader2, Receipt, Store } from '@lucide/vue'
 import { useToast } from '~/composables/useToast'
 import { useSessionState } from '~/composables/useSession'
 import {
@@ -43,6 +43,7 @@ const pidiendoFaltante = ref(false)
 const lineaAveriada = ref<Linea | null>(null)
 const agregandoPlu = ref(false)
 const creandoContado = ref(false)
+const creandoTienda = ref(false)
 const pidiendoCiudad = ref(false)
 // Al entrar a una orden se pregunta quien la toma, SIN nombre preseleccionado:
 // con el nombre recordado de la PC los inspectores trabajaban a nombre de otro.
@@ -344,6 +345,27 @@ function confirmarContado(datos: { factura: string; cliente: string }) {
   })
 }
 
+/** Orden de tienda: su OVDM/TSDM llega de una tienda y se inspecciona directo. */
+function confirmarTienda(datos: { orden: string; tiendaCodigo: string; cliente: string }) {
+  creandoTienda.value = false
+  conInspector(async (id) => {
+    if (guardando.value) return
+    guardando.value = true
+    try {
+      const res = await $fetch<{ data: Orden }>(`${API_INSPECCION}/tienda`, {
+        method: 'POST',
+        body: { inspectorId: id, orden: datos.orden, tiendaCodigo: datos.tiendaCodigo, cliente: datos.cliente || null },
+      })
+      abierta.value = res.data
+      show(`Orden ${res.data.codigo} de ${res.data.tiendaOrigenNombre ?? 'tienda'} lista para inspeccionar`)
+    } catch (e) {
+      show(mensajeError(e, 'No se pudo crear la orden de tienda'), true)
+    } finally {
+      guardando.value = false
+    }
+  })
+}
+
 /** Toda acción devuelve la orden completa: la pantalla se repinta con eso. */
 async function accion(url: string, body: Record<string, unknown>, exito: string) {
   if (guardando.value) return
@@ -382,6 +404,9 @@ useAutoRefresh({ onRefresh: () => (guardando.value ? undefined : cargar()) })
       </div>
 
       <div class="hero-yo">
+        <button class="btn btn-sm" @click="creandoTienda = true">
+          <Store :size="14" /> Orden de tienda
+        </button>
         <button class="btn btn-sm" @click="creandoContado = true">
           <Receipt :size="14" /> Factura de contado
         </button>
@@ -450,6 +475,9 @@ useAutoRefresh({ onRefresh: () => (guardando.value ? undefined : cargar()) })
     <InspeccionMueblesCiudadModal
       :abierto="pidiendoCiudad" :actual="abierta?.ciudadEnvio ?? null" :sugeridas="ciudadesUsadas"
       @cerrar="pidiendoCiudad = false" @confirmar="confirmarCiudad"
+    />
+    <InspeccionMueblesTiendaModal
+      :abierto="creandoTienda" @cerrar="creandoTienda = false" @confirmar="confirmarTienda"
     />
     <InspeccionMueblesContadoModal
       :abierto="creandoContado" @cerrar="creandoContado = false" @confirmar="confirmarContado"

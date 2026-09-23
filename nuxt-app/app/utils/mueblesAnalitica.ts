@@ -60,7 +60,7 @@ export const DIA_SEMANA_CORTO: Record<number, string> = { 1: 'Lun', 2: 'Mar', 3:
 export const DIA_SEMANA_LARGO: Record<number, string> = {
   1: 'Lunes', 2: 'Martes', 3: 'Miércoles', 4: 'Jueves', 5: 'Viernes', 6: 'Sábado', 7: 'Domingo',
 }
-export const TIPO_ORDEN_MUEBLES_LABEL: Record<string, string> = { TSDM: 'TSDM', OVDM: 'OVDM', CONTADO: 'Contado' }
+export const TIPO_ORDEN_MUEBLES_LABEL: Record<string, string> = { TSDM: 'TSDM', OVDM: 'OVDM', TIENDA: 'De tienda', CONTADO: 'Contado' }
 export const ESTADO_ORDEN_MUEBLES_LABEL: Record<string, string> = {
   EN_PICKING: 'En picking', EN_INSPECCION: 'En inspección', INSPECCIONADA: 'Inspeccionada', ENTREGADA_TRANSPORTE: 'Entregada',
 }

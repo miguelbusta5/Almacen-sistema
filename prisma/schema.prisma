@@ -2039,6 +2039,11 @@ model OrdenMuebles {
   /// Cliente de una factura de contado (tipoOrden = CONTADO). Null en las de NetSuite.
   cliente String? @db.VarChar(160)
 
+  /// Orden que llega DE TIENDA: tiene su OVDM/TSDM pero no se pickea en el CEDI.
+  /// Codigo y nombre sellados del maestro de tiendas. Null = orden del CEDI o contado.
+  tiendaOrigenCodigo String? @map("tienda_origen_codigo") @db.VarChar(50)
+  tiendaOrigenNombre String? @map("tienda_origen_nombre") @db.VarChar(255)
+
   /// Ciudad a la que va la orden. La escribe el inspector al empezar y se
   /// normaliza (normalizarCiudad) para que el filtro del patinador no se parta
   /// entre "medellin", "MEDELLÍN" y "Medellin ".

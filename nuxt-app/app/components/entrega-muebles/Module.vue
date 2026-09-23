@@ -206,6 +206,7 @@ useAutoRefresh({ onRefresh: () => (guardando.value ? undefined : cargar()) })
             <span class="o-ciudad"><MapPin :size="12" /> {{ o.ciudadEnvio || 'Sin ciudad' }}</span>
             <span class="o-plus">{{ o.resumen.total }} PLU</span>
             <span class="o-carga">{{ fmtKg(o.volumen.kg) }} · {{ fmtM3(o.volumen.m3) }}</span>
+            <span v-if="o.tiendaOrigenNombre" class="o-cliente">De {{ o.tiendaOrigenNombre }}</span>
             <span v-if="o.cliente" class="o-cliente">{{ o.cliente }}</span>
           </div>
 

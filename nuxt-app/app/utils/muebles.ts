@@ -11,6 +11,24 @@ export const MINIMO_PARTES_AVISO = 2
 export const API_ADMIN_MUEBLES = '/api/muebles-admin'
 export const API_INDICADORES_MUEBLES = '/api/indicadores-muebles'
 
+/** Mismo criterio que el servidor (mueblesCalc.normalizarCodigoOrden). */
+export function normalizarCodigoOrden(value: unknown): string {
+  return String(value ?? '').trim().toUpperCase().replace(/\s+/g, '')
+}
+
+/**
+ * La orden de tienda es una OVDM/TSDM de NetSuite: misma regla que el
+ * servidor (mueblesCalc.validarCodigoOrden), aqui solo para avisar antes.
+ */
+export function validarCodigoOrdenTienda(value: unknown): string | null {
+  const codigo = normalizarCodigoOrden(value)
+  if (!codigo) return 'Escribe el numero de la orden'
+  if (!/^(TSDM|OVDM)[-]?\d{3,}$/.test(codigo)) {
+    return 'La orden debe empezar por TSDM u OVDM seguido de numeros (ej. OVDM121831)'
+  }
+  return null
+}
+
 export type EstadoLinea = 'EN_PICKING' | 'PICKEADA' | 'EN_INSPECCION' | 'EN_EBANISTERIA' | 'LISTO'
 export type EstadoOrden = 'EN_PICKING' | 'EN_INSPECCION' | 'INSPECCIONADA' | 'ENTREGADA_TRANSPORTE'
 export type TipoEquipo = 'ORDER_PICKER' | 'GENIE'
@@ -133,8 +151,11 @@ export interface Orden {
   inspector: Inspector | null
   /** Todos los inspectores que han entrado (una TSDM la revisan varios). */
   inspectores: Array<{ id: string; nombre: string; seUnioAt: string | null }>
-  /** Cliente de una factura de contado. */
+  /** Cliente de una factura de contado o de una orden de tienda. */
   cliente: string | null
+  /** Orden que llega de tienda (no se pickea en el CEDI). Null = orden normal o contado. */
+  tiendaOrigenCodigo?: string | null
+  tiendaOrigenNombre?: string | null
   /** Ciudad a la que va la orden; con esto agrupa el patinador. */
   ciudadEnvio: string | null
   entregadaTransporteAt: string | null

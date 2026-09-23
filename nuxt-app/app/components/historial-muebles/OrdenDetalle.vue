@@ -68,6 +68,7 @@ async function corregido() {
           <p class="p-meta">
             {{ ESTADO_ORDEN_LABEL[orden.estado] }}
             <span v-if="orden.ciudadEnvio"> · <MapPin :size="12" /> {{ orden.ciudadEnvio }}</span>
+            <span v-if="orden.tiendaOrigenNombre"> · De {{ orden.tiendaOrigenNombre }}</span>
             <span v-if="orden.cliente"> · {{ orden.cliente }}</span>
             · {{ orden.resumen.total }} PLU
             · {{ fmtKg(orden.volumen.kg) }} · {{ fmtM3(orden.volumen.m3) }}
