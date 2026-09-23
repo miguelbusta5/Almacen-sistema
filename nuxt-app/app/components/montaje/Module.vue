@@ -41,13 +41,48 @@ const archivo = ref<File | null>(null)
 const operarioId = ref('')
 const fileInput = ref<HTMLInputElement | null>(null)
 const detalle = ref<MontajeResurtidoDTO | null>(null)
-const tareasAyudante = ref<string[]>([]), ayudanteId = ref(''), repartiendo = ref(false)
+// ── Repartir tareas a un ayudante ──
+// Solo lo que nadie ha empezado: el reloj de cada tarea arranca cuando el
+// ayudante escanea la ubicacion, no al repartirla. Con montajes de 40 o mas
+// tareas, la lista sin buscador era imposible de usar (22-09).
+const tareasAyudante = ref<string[]>([])
+const ayudanteId = ref('')
+const repartiendo = ref(false)
+const buscaTarea = ref('')
+
+/** Lo que se puede repartir: sin empezar y sin pausa. */
+const repartibles = computed(() => (detalle.value?.tareas ?? [])
+  .filter((t) => t.estado === 'PENDIENTE' && !t.horaInicio))
+
+const repartiblesVisibles = computed(() => {
+  const q = buscaTarea.value.trim().toUpperCase()
+  if (!q) return repartibles.value
+  return repartibles.value.filter((t) => t.plu.includes(q) || t.altura.toUpperCase().includes(q))
+})
+
+// El titular no es "ayudante" de si mismo: repartirle sus propias tareas no
+// cambia nada y confunde al que reparte.
+const ayudantesPosibles = computed(() => operarios.value.filter((o) => o.id !== detalle.value?.operarioId))
+
+function marcarVisibles() {
+  tareasAyudante.value = [...new Set([...tareasAyudante.value, ...repartiblesVisibles.value.map((t) => t.id)])]
+}
+
 async function repartirAyudante() {
   if (!detalle.value || repartiendo.value) return
   repartiendo.value = true
   try {
-    const res = await $fetch<{ data: MontajeResurtidoDTO }>(`${API_MONTAJE}/${detalle.value.id}/ayudante`, { method: 'POST', body: { ayudanteId: ayudanteId.value, tareas: tareasAyudante.value } })
-    detalle.value = res.data; tareasAyudante.value = []; await cargar(); showToast('Tareas asignadas al ayudante')
+    const res = await $fetch<{ data: MontajeResurtidoDTO }>(`${API_MONTAJE}/${detalle.value.id}/ayudante`, {
+      method: 'POST',
+      body: { ayudanteId: ayudanteId.value, tareas: tareasAyudante.value },
+    })
+    const cuantas = tareasAyudante.value.length
+    const nombre = operarios.value.find((o) => o.id === ayudanteId.value)?.nombre ?? 'el ayudante'
+    detalle.value = res.data
+    tareasAyudante.value = []
+    buscaTarea.value = ''
+    await cargar()
+    showToast(`${cuantas} ${cuantas === 1 ? 'tarea asignada' : 'tareas asignadas'} a ${nombre}`)
   } catch (e) { showToast(apiErr(e, 'No se pudieron repartir las tareas'), true) }
   finally { repartiendo.value = false }
 }
@@ -407,12 +442,73 @@ function transcurrido(m: MontajeResurtidoDTO): string {
           <h3>Realización por operario y ayudantes</h3>
           <p class="muted">Porcentaje de tareas cerradas por cada persona sobre el total del resurtido. Las participaciones incluyen los apoyos.</p>
           <ul><li v-for="p in detalle.personas" :key="p.id">{{ p.nombre }}: <strong>{{ p.porcentaje }}%</strong> · {{ p.completadas }} tareas cerradas · participó en {{ p.participadas }}</li></ul>
-          <fieldset v-if="puedeMontar && !detalle.detenidoAt && detalle.estado!=='COMPLETADO'" :disabled="repartiendo">
-            <legend>Agregar ayudante</legend><p>Selecciona tareas sin empezar. El tiempo iniciará cuando el ayudante escanee la ubicación.</p>
-            <label>Ayudante <select v-model="ayudanteId"><option value="">Selecciona</option><option v-for="o in operarios" :key="o.id" :value="o.id">{{o.nombre}}</option></select></label>
-            <label v-for="t in detalle.tareas.filter(t=>t.estado==='PENDIENTE'&&!t.horaInicio)" :key="t.id" style="display:block"><input v-model="tareasAyudante" type="checkbox" :value="t.id" /> {{t.plu}} · {{t.altura}} · {{t.responsableNombre??detalle.operarioNombre}}</label>
-            <button class="btn btn-sm" :disabled="!ayudanteId||!tareasAyudante.length" @click="repartirAyudante">Asignar seleccionadas</button>
-          </fieldset>
+          <section
+            v-if="puedeMontar && !detalle.detenidoAt && detalle.estado !== 'COMPLETADO' && repartibles.length"
+            class="ayudante"
+          >
+            <h3 class="ay-titulo"><UserPlus :size="15" /> Repartir tareas a un ayudante</h3>
+            <p class="ay-desc">
+              Solo las que nadie ha empezado. El reloj del ayudante arranca cuando escanee la ubicación,
+              no ahora.
+            </p>
+
+            <div class="ay-campos">
+              <label class="ay-campo">
+                <span class="ay-label">Ayudante</span>
+                <select v-model="ayudanteId" class="field" :disabled="repartiendo">
+                  <option value="">Selecciona</option>
+                  <option v-for="o in ayudantesPosibles" :key="o.id" :value="o.id">{{ o.nombre }}</option>
+                </select>
+              </label>
+              <label class="ay-campo">
+                <span class="ay-label">Buscar por PLU o altura</span>
+                <input v-model="buscaTarea" class="field mono" type="search" placeholder="28324 · 04-A-07" :disabled="repartiendo">
+              </label>
+            </div>
+
+            <div class="ay-acciones">
+              <span class="ay-cuenta">
+                <b class="tnum">{{ tareasAyudante.length }}</b>
+                {{ tareasAyudante.length === 1 ? 'seleccionada' : 'seleccionadas' }} de
+                <b class="tnum">{{ repartiblesVisibles.length }}</b>
+                {{ repartiblesVisibles.length === 1 ? 'visible' : 'visibles' }}
+                <template v-if="repartiblesVisibles.length !== repartibles.length">
+                  ({{ repartibles.length }} sin empezar en total)
+                </template>
+              </span>
+              <button class="btn btn-sm" :disabled="repartiendo || !repartiblesVisibles.length" @click="marcarVisibles">
+                Marcar visibles
+              </button>
+              <button class="btn btn-sm" :disabled="repartiendo || !tareasAyudante.length" @click="tareasAyudante = []">
+                Ninguna
+              </button>
+              <button
+                class="btn btn-sm btn-primary"
+                :disabled="repartiendo || !ayudanteId || !tareasAyudante.length"
+                @click="repartirAyudante"
+              >
+                <UserPlus :size="13" /> Asignar seleccionadas
+              </button>
+            </div>
+
+            <ul class="ay-lista">
+              <li v-for="t in repartiblesVisibles.slice(0, 200)" :key="t.id">
+                <label class="ay-check">
+                  <input v-model="tareasAyudante" type="checkbox" :value="t.id" :disabled="repartiendo">
+                  <span class="ay-plu mono">{{ t.plu }}</span>
+                  <span class="ay-desc-plu">{{ t.descripcion }}</span>
+                  <span class="ay-alt mono">{{ t.altura }}</span>
+                  <span class="ay-quien">{{ t.responsableNombre ?? detalle.operarioNombre }}</span>
+                </label>
+              </li>
+            </ul>
+            <p v-if="repartiblesVisibles.length > 200" class="ay-desc">
+              Se muestran 200 de {{ repartiblesVisibles.length }}: busca por PLU o altura para acotar.
+            </p>
+            <p v-else-if="!repartiblesVisibles.length" class="ay-desc">
+              Nada coincide con «{{ buscaTarea }}».
+            </p>
+          </section>
           <table class="table">
             <thead>
               <tr>
@@ -520,4 +616,21 @@ function transcurrido(m: MontajeResurtidoDTO): string {
   .subir { grid-template-columns: 1fr; }
   .hero-title { font-size: 24px; }
 }
+.ayudante { padding: 16px; margin: 14px 0; border: 1px solid var(--border); border-radius: var(--r-md); background: var(--surface-2, var(--surface)); }
+.ay-titulo { display: flex; align-items: center; gap: 7px; margin: 0 0 4px; font-size: 14px; font-weight: 800; color: var(--ink); }
+.ay-titulo > svg { color: var(--brand); }
+.ay-desc { margin: 0 0 12px; font-size: 12.5px; color: var(--muted); max-width: 70ch; }
+.ay-campos { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; margin-bottom: 12px; }
+.ay-campo { display: grid; gap: 5px; }
+.ay-label { font-size: 11.5px; font-weight: 700; color: var(--ink-2); }
+.ay-acciones { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 10px; }
+.ay-cuenta { margin-right: auto; font-size: 12.5px; color: var(--muted); }
+.ay-cuenta b { color: var(--ink); }
+.ay-lista { list-style: none; margin: 0; padding: 0; max-height: 300px; overflow: auto; display: grid; gap: 4px; }
+.ay-check { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding: 8px 10px; border-radius: var(--r-sm); font-size: 12.5px; cursor: pointer; }
+.ay-check:hover { background: var(--surface-3); }
+.ay-plu { font-weight: 800; color: var(--ink); }
+.ay-desc-plu { flex: 1 1 160px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ay-alt { color: var(--ink-2); }
+.ay-quien { color: var(--muted); }
 </style>

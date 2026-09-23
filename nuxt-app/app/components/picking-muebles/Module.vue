@@ -6,7 +6,7 @@ import { enRefrescoSilencioso, useAutoRefresh } from '~/composables/useAutoRefre
 // y la pantalla se repinta con eso. No se mantiene una copia local que pueda
 // desincronizarse, que es justo lo que arruina un modulo con relojes.
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
-import { Hammer, Plus, ClipboardCheck, Loader2 } from '@lucide/vue'
+import { Hammer, Plus, ClipboardCheck, Loader2, UserPlus } from '@lucide/vue'
 import { useToast } from '~/composables/useToast'
 import { ensureSession, useSessionState } from '~/composables/useSession'
 import { usePausaOperativa } from '~/composables/usePausaOperativa'
@@ -23,10 +23,23 @@ const { me } = useSessionState()
 const esGestion = computed(() => esGestionMuebles(me.value?.role))
 
 const orden = ref<Orden | null>(null)
-const reasignables = ref<{id:string;name:string}[]>([])
+// ── Pasar la orden a otro operario ──
+// El que se va conserva la autoría de los PLU que ya hizo; el que entra sigue
+// agregando sobre la misma orden. Quien se va queda libre para abrir otra.
+const reasignables = ref<{ id: string; name: string }[]>([])
 const nuevoOperario = ref('')
+const buscandoOperarios = ref(false)
 async function prepararReasignacion() {
-  try { reasignables.value=await $fetch<{id:string;name:string}[]>('/api/picking-muebles/reasignables') } catch(e){show(mensajeError(e,'No se pudo consultar operarios'),true)}
+  buscandoOperarios.value = true
+  nuevoOperario.value = ''
+  try {
+    reasignables.value = await $fetch<{ id: string; name: string }[]>('/api/picking-muebles/reasignables')
+    if (!reasignables.value.length) show('No hay otro operario de picking disponible', true)
+  } catch (e) {
+    show(mensajeError(e, 'No se pudo consultar operarios'), true)
+  } finally {
+    buscandoOperarios.value = false
+  }
 }
 async function reasignarOrden() {
   if(!orden.value||!nuevoOperario.value||guardando.value)return
@@ -227,9 +240,37 @@ useAutoRefresh({ onRefresh: () => (guardando.value ? undefined : cargar()) })
     </section>
 
     <PickingMueblesVolumenOrden :equipo="equipo" :volumen="volumen" :participantes="orden?.participantes" />
-    <section v-if="orden && orden.estado==='EN_PICKING' && orden.participantes?.some(p=>p.id===me?.id&&!p.salioAt)" class="card" style="padding:16px;margin:12px 0">
-      <button class="btn" :disabled="guardando || !!lineaEnCurso" @click="prepararReasignacion">Reasignar orden y quedar libre</button>
-      <template v-if="reasignables.length"><label>Nuevo operario <select v-model="nuevoOperario"><option value="">Selecciona</option><option v-for="p in reasignables" :key="p.id" :value="p.id">{{p.name}}</option></select></label><button class="btn" :disabled="!nuevoOperario||guardando" @click="reasignarOrden">Confirmar reasignación</button></template>
+    <section
+      v-if="orden && orden.estado === 'EN_PICKING' && orden.participantes?.some((p) => p.id === me?.id && !p.salioAt)"
+      class="card reasignar"
+    >
+      <h2 class="r-titulo"><UserPlus :size="15" /> Pasar la orden a otro operario</h2>
+      <p class="r-desc">
+        Los PLU que ya hiciste siguen a tu nombre; el otro operario continúa sobre la misma orden
+        y tú quedas libre para abrir otra.
+      </p>
+      <div class="r-acciones">
+        <button
+          class="btn" :disabled="guardando || buscandoOperarios || !!lineaEnCurso"
+          :title="lineaEnCurso ? 'Cierra el PLU que tienes abierto' : ''"
+          @click="prepararReasignacion"
+        >
+          <UserPlus :size="14" /> Buscar operario
+        </button>
+        <template v-if="reasignables.length">
+          <label class="r-campo">
+            <span class="r-label">Nuevo operario</span>
+            <select v-model="nuevoOperario" class="field">
+              <option value="">Selecciona</option>
+              <option v-for="p in reasignables" :key="p.id" :value="p.id">{{ p.name }}</option>
+            </select>
+          </label>
+          <button class="btn btn-primary" :disabled="!nuevoOperario || guardando" @click="reasignarOrden">
+            Confirmar
+          </button>
+        </template>
+      </div>
+      <p v-if="lineaEnCurso" class="r-aviso">Tienes un PLU abierto: ciérralo antes de pasar la orden.</p>
     </section>
 
     <!-- Pendientes asignados: van arriba porque son trabajo que alguien esta
@@ -337,4 +378,13 @@ useAutoRefresh({ onRefresh: () => (guardando.value ? undefined : cargar()) })
 @keyframes girar { to { transform: rotate(360deg); } }
 
 @media (max-width: 720px) { .hero-title { font-size: 24px; } }
+.reasignar { padding: 16px 18px; margin: 12px 0; }
+.r-titulo { display: flex; align-items: center; gap: 7px; margin: 0 0 4px; font-size: 14px; font-weight: 800; color: var(--ink); }
+.r-titulo > svg { color: var(--brand); }
+.r-desc { margin: 0 0 12px; font-size: 12.5px; color: var(--muted); max-width: 70ch; }
+.r-acciones { display: flex; align-items: flex-end; gap: 10px; flex-wrap: wrap; }
+.r-campo { display: grid; gap: 5px; flex: 1 1 220px; }
+.r-label { font-size: 11.5px; font-weight: 700; color: var(--ink-2); }
+.r-aviso { margin: 10px 0 0; font-size: 12.5px; font-weight: 700; color: var(--u-aviso); }
+@media (max-width: 640px) { .r-acciones .btn, .r-campo { width: 100%; } .r-acciones .btn { justify-content: center; } }
 </style>

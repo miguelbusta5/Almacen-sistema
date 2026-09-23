@@ -187,6 +187,33 @@ const filasErrDetalle = computed(() => (errores.value?.detalle ?? []).map((e) =>
   marco: e.marcadoPorNombre,
 })))
 
+// ── Genie / Order Picker ──
+const EQUIPO_LABEL: Record<string, string> = { GENIE: 'Genie', ORDER_PICKER: 'Order Picker' }
+const colsEquipos: ColumnaTabla[] = [
+  { key: 'equipo', label: 'Equipo' },
+  { key: 'ordenes', label: 'Órdenes', num: true },
+  { key: 'plus', label: 'PLU distintos', num: true },
+  { key: 'unidades', label: 'Unidades', num: true },
+  { key: 'minutos', label: 'Minutos efectivos', num: true },
+  { key: 'unidadesHora', label: 'Unidades / hora', num: true },
+]
+const filasEquipos = computed(() => (datos.value?.comparacionEquipos ?? []).map((e) => ({
+  equipo: EQUIPO_LABEL[e.tipo] ?? e.tipo,
+  ordenes: String(e.ordenes),
+  plus: String(e.plus),
+  unidades: String(e.unidades),
+  minutos: e.minutos.toFixed(1),
+  unidadesHora: e.unidadesHora?.toFixed(1) ?? '—',
+})))
+const barrasEquipos = computed<BarraH[]>(() => (datos.value?.comparacionEquipos ?? [])
+  .filter((e) => e.unidadesHora != null)
+  .map((e) => ({
+    id: e.tipo,
+    etiqueta: EQUIPO_LABEL[e.tipo] ?? e.tipo,
+    valor: e.unidadesHora!,
+    texto: `${e.unidadesHora!.toFixed(1)} und/h`,
+  })))
+
 const colsOperario: ColumnaTabla[] = [
   { key: 'nombre', label: 'Operario' },
   { key: 'plus', label: 'PLUs', num: true },
@@ -319,20 +346,28 @@ useAutoRefresh({ intervalMs: 60_000, onRefresh: () => cargar() })
       <div v-if="cargando && !datos" class="cargando"><Loader2 :size="18" class="spin" /> Cargando…</div>
 
       <template v-else-if="datos">
-        <section class="panel" aria-label="Comparación por equipo">
-          <h2>Genie / Order Picker</h2>
-          <p>Picking terminado en el período, descontando pausas. Una orden compartida puede aparecer en ambos equipos.</p>
-          <div style="overflow-x:auto"><table class="tabla">
-            <thead><tr><th>Equipo</th><th>Órdenes</th><th>PLU distintos</th><th>Unidades</th><th>Minutos efectivos</th><th>Unidades / hora</th></tr></thead>
-            <tbody><tr v-for="e in datos.comparacionEquipos" :key="e.tipo"><td>{{ e.tipo === 'GENIE' ? 'Genie' : 'Order Picker' }}</td><td>{{ e.ordenes }}</td><td>{{ e.plus }}</td><td>{{ e.unidades }}</td><td>{{ e.minutos.toFixed(1) }}</td><td>{{ e.unidadesHora?.toFixed(1) ?? '—' }}</td></tr></tbody>
-          </table></div>
-        </section>
         <div class="tiles">
           <div v-for="t in tiles" :key="t.label" class="tile">
             <span class="tile-num mono tnum">{{ t.valor }}</span>
             <span class="tile-label">{{ t.label }}</span>
           </div>
         </div>
+
+        <!-- Genie contra Order Picker: va DESPUÉS de las cifras del módulo,
+             porque es un desglose, no el titular. -->
+        <IndicadoresTarjeta
+          class="bloque" titulo="Genie / Order Picker"
+          subtitulo="Picking terminado en el periodo, descontando pausas. Una orden compartida puede aportar a los dos equipos."
+        >
+          <IndicadoresBarrasH
+            v-if="barrasEquipos.length" :items="barrasEquipos" medida="und/hora"
+            :formato-eje="(v: number) => v.toFixed(0)"
+          />
+          <p v-else class="sin-errores">Todavía no hay picking terminado en el periodo.</p>
+          <template #tabla>
+            <IndicadoresTabla :columnas="colsEquipos" :filas="filasEquipos" principal="equipo" />
+          </template>
+        </IndicadoresTarjeta>
 
         <!-- Desplazamiento: el tiempo que no está en ningún reloj pero que el
              operario sí gasta. Verlo junto al de picking es lo que le da sentido. -->
