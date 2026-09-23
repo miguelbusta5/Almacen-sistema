@@ -129,11 +129,12 @@ describe("proyección del turno", () => {
     // Lo observado (1 y 1) queda solo de referencia.
     expect(p).toMatchObject({ operariosDia: 1, inspectoresDia: 1 });
     // Picking 10 min, inspección 20 min: 2×540/10 = 108 y 5×540/20 = 135 → manda el picking.
-    expect(p.jornadas[0]).toMatchObject({ capacidadPicking: 108, capacidadInspeccion: 135, capacidad: 108 });
+    // Martes a jueves (9 h).
+    expect(p.jornadas.find((j: any) => j.horas === 9)).toMatchObject({ capacidadPicking: 108, capacidadInspeccion: 135, capacidad: 108 });
     expect(p.cuello).toBe("picking");
   });
 
-  it("9 h de lunes a jueves, 8 h el viernes y la semana; separa por tipo", () => {
+  it("turno fijo de muebles: lunes 9 h 30, martes a jueves 9 h, viernes 8 h; separa por tipo", () => {
     const ords = [
       ...Array.from({ length: 4 }, () => orden()),
       orden({ tipoOrden: "TSDM", horaPasoInspeccion: t("2026-09-22", 8, 30),
@@ -142,14 +143,14 @@ describe("proyección del turno", () => {
     const p = correr(ords, { plantilla: { operarios: 1, inspectores: 1 } }).proyeccion;
     // Picking: (4×10 + 30)/5 = 14 min. Inspección: (4×20 + 120)/5 = 40 min. Simulando 1 y 1.
     expect(p).toMatchObject({ operariosDia: 1, inspectoresDia: 1, pickingMinMezcla: 14, inspeccionMinMezcla: 40, cuello: "inspeccion" });
-    expect(p.jornadas.map((j: any) => [j.etiqueta, j.horas, j.capacidad])).toEqual([["Lunes a jueves", 9, 13], ["Viernes", 8, 12]]);
-    expect(p.semana).toBe(13 * 4 + 12);
+    expect(p.jornadas.map((j: any) => [j.etiqueta, j.horas, j.capacidad])).toEqual([["Lunes", 9.5, 14], ["Martes a jueves", 9, 13], ["Viernes", 8, 12]]);
+    expect(p.semana).toBe(14 + 13 * 3 + 12);
     const tsdm = p.porTipo.find((x: any) => x.tipoOrden === "TSDM");
     expect(tsdm).toMatchObject({ muestra: 1, porcentajeMezcla: 20, plusPorOrden: 2, pickingMin: 30, inspeccionMin: 120, capacidad9h: 4, plus9h: 8, unidades9h: 8 });
     // En PLU y unidades: 6 PLU y 6 unidades en 5 órdenes → 1,2 por orden.
     expect(p).toMatchObject({ plusPorOrdenMezcla: 1.2, unidadesPorOrdenMezcla: 1.2 });
-    expect(p.jornadas[0]).toMatchObject({ capacidad: 13, capacidadPlus: 16, capacidadUnidades: 16 });
-    expect(p).toMatchObject({ semanaPlus: Math.round(64 * 1.2), semanaUnidades: Math.round(64 * 1.2) });
+    expect(p.jornadas[1]).toMatchObject({ capacidad: 13, capacidadPlus: 16, capacidadUnidades: 16 });
+    expect(p).toMatchObject({ semanaPlus: Math.round(65 * 1.2), semanaUnidades: Math.round(65 * 1.2) });
     expect(p.realDia).toBe(5);
   });
 

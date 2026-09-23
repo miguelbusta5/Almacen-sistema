@@ -59,7 +59,7 @@ const tiles = computed(() => [
 // ── Proyección ──
 const cuelloTexto = computed(() => p.value.cuello === 'inspeccion' ? 'Inspección' : p.value.cuello === 'picking' ? 'Picking' : '—')
 const barrasEtapaCapacidad = computed<BarraH[]>(() => {
-  const j = p.value.jornadas[0]
+  const j = p.value.jornadas.find((x) => x.horas === 9) ?? p.value.jornadas[0]
   if (!j) return []
   return [
     { id: 'picking', etiqueta: 'Picking', valor: j.capacidadPicking ?? 0, texto: `${entero(j.capacidadPicking)} órdenes` },
@@ -324,7 +324,7 @@ const filasOrdenes = computed(() => ordenesVisibles.value.slice(0, MAX_FILAS).ma
     >
       <div class="proy">
         <div v-for="j in p.jornadas" :key="j.etiqueta" class="proy-dato">
-          <span class="proy-label">{{ j.etiqueta }} · {{ j.horas }} h</span>
+          <span class="proy-label">{{ j.etiqueta }} · {{ String(j.horas).replace('.5', ' h 30').replace(/^(\d+)$/, '$1 h') }}</span>
           <span class="proy-num tnum">{{ entero(j.capacidad) }}</span>
           <span class="proy-hint">órdenes por día</span>
           <span class="proy-equiv tnum">{{ entero(j.capacidadPlus) }} PLU · {{ entero(j.capacidadUnidades) }} und</span>
@@ -370,7 +370,7 @@ const filasOrdenes = computed(() => ordenesVisibles.value.slice(0, MAX_FILAS).ma
         <b>{{ fmtMinutos(p.pickingMinMezcla) }}</b> de picking y <b>{{ fmtMinutos(p.inspeccionMinMezcla) }}</b>
         de inspección por orden (con la mezcla real de tipos). Cada orden trae en promedio
         <b class="tnum">{{ fmtDec(p.plusPorOrdenMezcla) }}</b> PLU y <b class="tnum">{{ fmtDec(p.unidadesPorOrdenMezcla) }}</b> unidades,
-        y con eso se pasa a PLU y unidades. En un turno de 9 h cabe esto por etapa:
+        y con eso se pasa a PLU y unidades. En un turno de 9 h (martes a jueves) cabe esto por etapa:
       </p>
       <IndicadoresBarrasH
         v-if="barrasEtapaCapacidad.length" :items="barrasEtapaCapacidad" medida="órdenes en 9 h"

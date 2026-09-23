@@ -9,7 +9,8 @@
 //   entregada a transporte (salio del CEDI).
 // - La proyeccion es por CAPACIDAD y por tipo de orden: el tiempo de trabajo
 //   real (picking + inspeccion, sin colas) contra la gente que hubo, en un
-//   turno de 9 h de lunes a jueves y 8 h el viernes. Una TSDM (6 PLU de
+//   turno fijo de muebles (lunes 7:00-16:30, martes a jueves 7:00-16:00,
+//   viernes 7:00-15:00; CEDI, 23-09). Una TSDM (6 PLU de
 //   promedio) y una OVDM (1,3) no pesan lo mismo, por eso va por tipo.
 // - Los promedios por dia son por DIA CON ACTIVIDAD, no por dias del rango: un
 //   domingo sin nadie no es un dia flojo.
@@ -65,7 +66,8 @@ export interface OrdenAnalitica {
 // ── Constantes ──────────────────────────────────────────────────────────────
 
 /** Horas de turno por dia ISO (1 = lunes). Sabado y domingo no hay turno. */
-export const JORNADA_MUEBLES_HORAS: Readonly<Record<number, number>> = { 1: 9, 2: 9, 3: 9, 4: 9, 5: 8 }
+/** Turno fijo de muebles: lunes 9 h 30, martes a jueves 9 h, viernes 8 h. */
+export const JORNADA_MUEBLES_HORAS: Readonly<Record<number, number>> = { 1: 9.5, 2: 9, 3: 9, 4: 9, 5: 8 }
 
 /** TIENDA = OVDM/TSDM que llega de tienda: sin picking en el CEDI, se mide aparte. */
 export const TIPOS_ORDEN_MUEBLES = ['TSDM', 'OVDM', 'TIENDA', 'CONTADO'] as const
@@ -509,7 +511,8 @@ export function analiticaMuebles(entrada: {
   const pickingMinMezcla = prom(base.map((m) => m.pickingMin!))
   const inspeccionMinMezcla = prom(base.map((m) => m.inspeccionTrabajoMin!))
   const jornadas: JornadaProyectada[] = [
-    { etiqueta: 'Lunes a jueves', horas: 9, dias: 4 },
+    { etiqueta: 'Lunes', horas: 9.5, dias: 1 },
+    { etiqueta: 'Martes a jueves', horas: 9, dias: 3 },
     { etiqueta: 'Viernes', horas: 8, dias: 1 },
   ].map((j) => {
     const c = capacidadTurno({ horas: j.horas, operarios: plantilla.operarios, inspectores: plantilla.inspectores, pickingMin: pickingMinMezcla, inspeccionMin: inspeccionMinMezcla })
@@ -521,7 +524,8 @@ export function analiticaMuebles(entrada: {
   const semana = jornadas.every((j) => j.capacidad != null)
     ? jornadas.reduce((s, j) => s + j.capacidad! * j.dias, 0)
     : null
-  const j9 = jornadas[0]!
+  // El cuello se lee en el dia tipo (martes a jueves, 9 h).
+  const j9 = jornadas.find((j) => j.horas === 9)!
   const cuello = j9.capacidadPicking == null || j9.capacidadInspeccion == null
     ? null
     : j9.capacidadInspeccion <= j9.capacidadPicking ? 'inspeccion' : 'picking'

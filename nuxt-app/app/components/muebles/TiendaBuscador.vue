@@ -9,7 +9,9 @@ import type { TiendaOpcion } from '~/utils/muebles'
 const props = defineProps<{ modelValue: TiendaOpcion | null; inicial?: string }>()
 const emit = defineEmits<{ (e: 'update:modelValue', v: TiendaOpcion | null): void }>()
 
-const busca = ref(props.inicial ?? (props.modelValue ? `${props.modelValue.tienda} · ${props.modelValue.ciudad}` : ''))
+// E-commerce (998) no tiene ciudad: sin separador colgando.
+const etiqueta = (t: TiendaOpcion) => [t.tienda, t.ciudad].filter(Boolean).join(' · ')
+const busca = ref(props.inicial ?? (props.modelValue ? etiqueta(props.modelValue) : ''))
 const sugerencias = ref<TiendaOpcion[]>([])
 const buscando = ref(false)
 const buscado = ref(false)
@@ -35,7 +37,7 @@ function buscar(valor: string) {
 
 function elegir(t: TiendaOpcion) {
   emit('update:modelValue', t)
-  busca.value = `${t.tienda} · ${t.ciudad}`
+  busca.value = etiqueta(t)
   sugerencias.value = []
   buscado.value = false
 }
@@ -58,7 +60,7 @@ function elegir(t: TiendaOpcion) {
         @click="elegir(t)"
       >
         <span class="tb-nom">{{ t.tienda }}</span>
-        <span class="tb-meta">{{ t.ciudad }} · {{ t.codigo }}</span>
+        <span class="tb-meta">{{ [t.ciudad, t.codigo].filter(Boolean).join(' · ') }}</span>
       </button>
     </div>
     <p v-else-if="buscado && busca && !modelValue && !buscando" class="tb-error">Ninguna tienda coincide.</p>
