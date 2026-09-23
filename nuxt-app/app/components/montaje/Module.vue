@@ -6,7 +6,7 @@ import { enRefrescoSilencioso, useAutoRefresh } from '~/composables/useAutoRefre
 // ve por montaje es el tiempo transcurrido desde que se repartió y cuánto lleva
 // hecho el operario, que es lo que sirve para saber si va a tiempo.
 import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
-import { RefreshCw, Upload, ClipboardList, Trash2, User, UserPlus, CirclePause, CalendarDays, Weight } from '@lucide/vue'
+import { RefreshCw, Upload, ClipboardList, Trash2, User, UserPlus, CirclePause, CalendarDays, Weight, Users } from '@lucide/vue'
 import { avisoSinMedida, fmtKg, fmtM3 } from '~/utils/carga'
 import { ensureSession, useSessionState } from '~/composables/useSession'
 import { useToast } from '~/composables/useToast'
@@ -15,6 +15,7 @@ import {
   type MontajeResurtidoDTO,
 } from '~/utils/resurtidoTareas'
 import { canSeeModule } from '~/utils/modulePermissions'
+import type { ColumnaTabla } from '~/utils/indicadores'
 
 const { me, sessionLoaded } = useSessionState()
 const { show: showToast } = useToast()
@@ -41,6 +42,21 @@ const archivo = ref<File | null>(null)
 const operarioId = ref('')
 const fileInput = ref<HTMLInputElement | null>(null)
 const detalle = ref<MontajeResurtidoDTO | null>(null)
+
+// Realización por persona (el cálculo vive en el servidor: resurtidoAvance.ts).
+const colsRealizacion: ColumnaTabla[] = [
+  { key: 'nombre', label: 'Persona' },
+  { key: 'completadas', label: 'Cerradas', num: true },
+  { key: 'porcentaje', label: '% de lo cerrado', num: true },
+  { key: 'participadas', label: 'Participó en', num: true },
+]
+const filasRealizacion = computed(() => (detalle.value?.personas ?? []).map((p) => ({
+  nombre: p.id === detalle.value?.operarioId ? `${p.nombre} (titular)` : p.nombre,
+  completadas: p.completadas,
+  porcentaje: `${p.porcentaje.toLocaleString('es-CO')} %`,
+  participadas: p.participadas,
+})))
+
 // ── Repartir tareas a un ayudante ──
 // Solo lo que nadie ha empezado: el reloj de cada tarea arranca cuando el
 // ayudante escanea la ubicacion, no al repartirla. Con montajes de 40 o mas
@@ -439,9 +455,18 @@ function transcurrido(m: MontajeResurtidoDTO): string {
           <button class="btn btn-sm" @click="detalle = null">Cerrar</button>
         </header>
         <div class="m-body">
-          <h3>Realización por operario y ayudantes</h3>
-          <p class="muted">Porcentaje de tareas cerradas por cada persona sobre el total del resurtido. Las participaciones incluyen los apoyos.</p>
-          <ul><li v-for="p in detalle.personas" :key="p.id">{{ p.nombre }}: <strong>{{ p.porcentaje }}%</strong> · {{ p.completadas }} tareas cerradas · participó en {{ p.participadas }}</li></ul>
+          <section class="realizacion">
+            <h3 class="rz-titulo"><Users :size="15" /> Quién cerró las tareas</h3>
+            <p class="rz-desc">
+              <b class="tnum">{{ detalle.progreso.completadas }}</b> de <b class="tnum">{{ detalle.progreso.total }}</b>
+              tareas cerradas. Cada tarea cuenta para quien la terminó; si alguien la empezó y la pasó,
+              le suma en «Participó en», no en cerradas. El porcentaje es sobre lo ya cerrado, por eso suma 100 %.
+            </p>
+            <div v-if="detalle.progreso.completadas" class="rz-tabla">
+              <IndicadoresTabla :columnas="colsRealizacion" :filas="filasRealizacion" principal="nombre" />
+            </div>
+            <p v-else class="rz-desc">Todavía nadie ha cerrado tareas en este montaje.</p>
+          </section>
           <section
             v-if="puedeMontar && !detalle.detenidoAt && detalle.estado !== 'COMPLETADO' && repartibles.length"
             class="ayudante"
@@ -633,4 +658,10 @@ function transcurrido(m: MontajeResurtidoDTO): string {
 .ay-desc-plu { flex: 1 1 160px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .ay-alt { color: var(--ink-2); }
 .ay-quien { color: var(--muted); }
+.realizacion { margin: 4px 0 14px; }
+.rz-titulo { display: flex; align-items: center; gap: 7px; margin: 0 0 4px; font-size: 14px; font-weight: 800; color: var(--ink); }
+.rz-titulo > svg { color: var(--brand); }
+.rz-desc { margin: 0 0 10px; font-size: 12.5px; color: var(--muted); max-width: 72ch; }
+.rz-desc b { color: var(--ink); }
+.rz-tabla { overflow-x: auto; border: 1px solid var(--border); border-radius: var(--r-md); }
 </style>

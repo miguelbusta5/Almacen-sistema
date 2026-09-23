@@ -64,7 +64,8 @@ describe('Equipos y ayudantes',()=>{
     expect(r[0]).toMatchObject({ordenes:1,plus:1,unidades:10,minutos:5,unidadesHora:120});expect(r[1].unidades).toBe(10)
   })
   it('separa participaciones del porcentaje de cierre sin duplicar tareas',()=>{
-    const r=avancePersonas({operarioId:'a',operario:{name:'A'},tareas:[{estado:'COMPLETADA',responsableId:'b',responsable:{name:'B'},tramos:[{usuarioId:'a'},{usuarioId:'b'},{usuarioId:'a'}]},{estado:'PENDIENTE'}]})
-    expect(r.find((p:any)=>p.id==='b')).toMatchObject({completadas:1,porcentaje:50,participadas:1});expect(r.find((p:any)=>p.id==='a')).toMatchObject({porcentaje:0,participadas:1})
+    // Cuenta quien cerro (ultimo tramo); el detalle esta en montajeRealizacion.test.ts.
+    const r=avancePersonas({operarioId:'a',operario:{name:'A'},tareas:[{estado:'COMPLETADA',responsableId:'b',responsable:{name:'B'},tramos:[{usuarioId:'a',orden:1},{usuarioId:'b',orden:2}]},{estado:'PENDIENTE'}]})
+    expect(r.find((p:any)=>p.id==='b')).toMatchObject({completadas:1,porcentaje:100,participadas:1});expect(r.find((p:any)=>p.id==='a')).toMatchObject({completadas:0,porcentaje:0,participadas:1})
   })
 })
