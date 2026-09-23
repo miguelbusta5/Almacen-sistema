@@ -72,7 +72,10 @@ const colsTipo: ColumnaTabla[] = [
   { key: 'plus', label: 'PLU por orden', num: true },
   { key: 'picking', label: 'Picking por orden', num: true },
   { key: 'inspeccion', label: 'Inspección por orden', num: true },
-  { key: 'capacidad', label: 'Si todo fuera este tipo (9 h)', num: true },
+  { key: 'unidadesOrden', label: 'Unidades por orden', num: true },
+  { key: 'capacidad', label: 'Órdenes en 9 h (todo de este tipo)', num: true },
+  { key: 'plus9h', label: 'PLU en 9 h', num: true },
+  { key: 'unidades9h', label: 'Unidades en 9 h', num: true },
   { key: 'muestra', label: 'Órdenes medidas', num: true },
 ]
 const filasTipo = computed(() => p.value.porTipo.map((t) => ({
@@ -81,7 +84,10 @@ const filasTipo = computed(() => p.value.porTipo.map((t) => ({
   plus: fmtDec(t.plusPorOrden),
   picking: fmtMinutos(t.pickingMin),
   inspeccion: fmtMinutos(t.inspeccionMin),
+  unidadesOrden: fmtDec(t.unidadesPorOrden),
   capacidad: entero(t.capacidad9h),
+  plus9h: entero(t.plus9h),
+  unidades9h: entero(t.unidades9h),
   muestra: t.muestra,
 })))
 
@@ -321,11 +327,13 @@ const filasOrdenes = computed(() => ordenesVisibles.value.slice(0, MAX_FILAS).ma
           <span class="proy-label">{{ j.etiqueta }} · {{ j.horas }} h</span>
           <span class="proy-num tnum">{{ entero(j.capacidad) }}</span>
           <span class="proy-hint">órdenes por día</span>
+          <span class="proy-equiv tnum">{{ entero(j.capacidadPlus) }} PLU · {{ entero(j.capacidadUnidades) }} und</span>
         </div>
         <div class="proy-dato">
           <span class="proy-label">Semana (lun–vie)</span>
           <span class="proy-num tnum">{{ entero(p.semana) }}</span>
           <span class="proy-hint">órdenes</span>
+          <span class="proy-equiv tnum">{{ entero(p.semanaPlus) }} PLU · {{ entero(p.semanaUnidades) }} und</span>
         </div>
         <div class="proy-dato proy-cuello">
           <span class="proy-label"><Gauge :size="12" /> Cuello de botella</span>
@@ -360,7 +368,9 @@ const filasOrdenes = computed(() => ordenesVisibles.value.slice(0, MAX_FILAS).ma
         Con <b class="tnum">{{ p.plantilla.operarios }}</b> {{ p.plantilla.operarios === 1 ? 'operario' : 'operarios' }} y
         <b class="tnum">{{ p.plantilla.inspectores }}</b> {{ p.plantilla.inspectores === 1 ? 'inspector' : 'inspectores' }}, y
         <b>{{ fmtMinutos(p.pickingMinMezcla) }}</b> de picking y <b>{{ fmtMinutos(p.inspeccionMinMezcla) }}</b>
-        de inspección por orden (con la mezcla real de tipos). En un turno de 9 h cabe esto por etapa:
+        de inspección por orden (con la mezcla real de tipos). Cada orden trae en promedio
+        <b class="tnum">{{ fmtDec(p.plusPorOrdenMezcla) }}</b> PLU y <b class="tnum">{{ fmtDec(p.unidadesPorOrdenMezcla) }}</b> unidades,
+        y con eso se pasa a PLU y unidades. En un turno de 9 h cabe esto por etapa:
       </p>
       <IndicadoresBarrasH
         v-if="barrasEtapaCapacidad.length" :items="barrasEtapaCapacidad" medida="órdenes en 9 h"
@@ -554,6 +564,7 @@ const filasOrdenes = computed(() => ordenesVisibles.value.slice(0, MAX_FILAS).ma
 .proy-label { display: flex; align-items: center; gap: 5px; font-size: 10.5px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
 .proy-num { font-size: 30px; font-weight: 800; letter-spacing: -.03em; color: var(--brand); }
 .proy-hint { font-size: 12px; color: var(--muted); }
+.proy-equiv { margin-top: 4px; font-size: 12.5px; font-weight: 700; color: var(--ink-2); }
 .proy-cuello .proy-num { font-size: 22px; color: var(--ink); padding: 5px 0 3px; }
 .plantilla { display: flex; align-items: flex-end; gap: 12px; flex-wrap: wrap; margin-bottom: 14px; }
 .pl-campo { display: grid; gap: 5px; width: 150px; }

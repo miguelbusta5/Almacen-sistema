@@ -11,6 +11,9 @@ export const MINIMO_PARTES_AVISO = 2
 export const API_ADMIN_MUEBLES = '/api/muebles-admin'
 export const API_INDICADORES_MUEBLES = '/api/indicadores-muebles'
 
+/** Una tienda del maestro de tiendas (el catalogo de Tienda y Cargue Gourmet). */
+export interface TiendaOpcion { codigo: string; tienda: string; ciudad: string }
+
 /** Mismo criterio que el servidor (mueblesCalc.normalizarCodigoOrden). */
 export function normalizarCodigoOrden(value: unknown): string {
   return String(value ?? '').trim().toUpperCase().replace(/\s+/g, '')

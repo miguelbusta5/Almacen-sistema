@@ -7,10 +7,8 @@
 // cosas en los indicadores. Nace directamente en inspección, igual que el
 // contado, y los PLU se agregan dentro de la orden.
 import { computed, ref, watch } from 'vue'
-import { Store, Search } from '@lucide/vue'
-import { normalizarCodigoOrden, validarCodigoOrdenTienda } from '~/utils/muebles'
-
-interface TiendaOption { codigo: string; tienda: string; ciudad: string }
+import { Store } from '@lucide/vue'
+import { normalizarCodigoOrden, validarCodigoOrdenTienda, type TiendaOpcion } from '~/utils/muebles'
 
 const props = defineProps<{ abierto: boolean }>()
 const emit = defineEmits<{
@@ -20,37 +18,14 @@ const emit = defineEmits<{
 
 const orden = ref('')
 const cliente = ref('')
-const busca = ref('')
-const tienda = ref<TiendaOption | null>(null)
-const sugerencias = ref<TiendaOption[]>([])
-const buscando = ref(false)
-let espera: ReturnType<typeof setTimeout> | null = null
+const tienda = ref<TiendaOpcion | null>(null)
+// Cambia al abrir: recrea el buscador para que no arrastre la búsqueda anterior.
+const vez = ref(0)
 
 watch(() => props.abierto, (a) => {
   if (!a) return
-  orden.value = ''; cliente.value = ''; busca.value = ''; tienda.value = null; sugerencias.value = []
+  orden.value = ''; cliente.value = ''; tienda.value = null; vez.value++
 })
-
-function buscarTienda(valor: string) {
-  busca.value = valor
-  tienda.value = null
-  if (espera) clearTimeout(espera)
-  if (!valor.trim()) { sugerencias.value = []; return }
-  espera = setTimeout(async () => {
-    buscando.value = true
-    try {
-      const res = await $fetch<{ data: TiendaOption[] }>('/api/cargue-gourmet/maestro-tiendas', { query: { q: valor.trim() } })
-      sugerencias.value = res.data ?? []
-    } catch { sugerencias.value = [] }
-    finally { buscando.value = false }
-  }, 250)
-}
-
-function elegir(t: TiendaOption) {
-  tienda.value = t
-  busca.value = `${t.tienda} · ${t.ciudad}`
-  sugerencias.value = []
-}
 
 const errorOrden = computed(() => (orden.value.trim() ? validarCodigoOrdenTienda(orden.value) : null))
 const puede = computed(() => !!orden.value.trim() && !errorOrden.value && !!tienda.value)
@@ -80,25 +55,7 @@ function confirmar() {
 
       <div class="campo">
         <span class="campo-label">Tienda de origen</span>
-        <div class="busca">
-          <Search :size="14" class="busca-ic" />
-          <input
-            :value="busca" class="input busca-input" type="text" autocomplete="off"
-            placeholder="Busca por nombre, código o ciudad"
-            @input="buscarTienda(($event.target as HTMLInputElement).value)"
-          >
-        </div>
-        <div v-if="busca && !tienda && (sugerencias.length || buscando)" class="sug" role="listbox">
-          <p v-if="buscando" class="sug-vacio">Buscando…</p>
-          <button
-            v-for="t in sugerencias" :key="t.codigo" type="button" class="sug-item" role="option"
-            @click="elegir(t)"
-          >
-            <span class="sug-nom">{{ t.tienda }}</span>
-            <span class="sug-meta">{{ t.ciudad }} · {{ t.codigo }}</span>
-          </button>
-        </div>
-        <p v-else-if="busca && !tienda && !buscando" class="campo-error">Ninguna tienda coincide.</p>
+        <MueblesTiendaBuscador :key="vez" v-model="tienda" />
       </div>
 
       <label class="campo">
@@ -124,15 +81,6 @@ function confirmar() {
 .campo-label { display: block; margin-bottom: 4px; font-size: 11.5px; font-weight: 700; color: var(--ink-2); }
 .campo-error { display: block; margin-top: 4px; font-size: 12px; color: var(--u-aviso); }
 .input { width: 100%; padding: 9px 11px; border: 1px solid var(--border-strong); border-radius: var(--r-sm); background: var(--surface); color: var(--ink); font-size: 13px; }
-.busca { position: relative; }
-.busca-ic { position: absolute; left: 10px; top: 50%; transform: translateY(-50%); color: var(--muted); }
-.busca-input { padding-left: 30px; }
-.sug { position: absolute; z-index: 5; left: 0; right: 0; top: calc(100% + 4px); max-height: 220px; overflow: auto; padding: 5px; background: var(--surface); border: 1px solid var(--border-strong); border-radius: var(--r-sm); box-shadow: var(--shadow-lg, 0 10px 30px rgba(0,0,0,.18)); }
-.sug-item { display: flex; flex-direction: column; align-items: flex-start; width: 100%; padding: 7px 9px; border: none; border-radius: var(--r-xs); background: none; text-align: left; cursor: pointer; }
-.sug-item:hover { background: var(--surface-3); }
-.sug-nom { font-size: 13px; font-weight: 600; color: var(--ink); }
-.sug-meta { font-size: 11.5px; color: var(--muted); }
-.sug-vacio { margin: 0; padding: 8px; font-size: 12.5px; color: var(--muted); }
 .m-pie { display: flex; justify-content: flex-end; gap: 8px; margin-top: 6px; flex-wrap: wrap; }
 @media (max-width: 480px) { .m-pie, .m-pie .btn { width: 100%; } .m-pie .btn { justify-content: center; } }
 </style>

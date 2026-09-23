@@ -2,9 +2,12 @@
 // Detalle de una orden en el historial: la cabecera con los relojes de la orden
 // y, debajo, cada PLU con quién lo hizo y cuánto tardó en cada etapa.
 import { computed, onMounted, ref } from 'vue'
-import { X, Loader2, Pencil, MapPin, TriangleAlert, Hammer } from '@lucide/vue'
+import { X, Loader2, Pencil, MapPin, TriangleAlert, Hammer, Store } from '@lucide/vue'
 import { useToast } from '~/composables/useToast'
-import { ESTADO_LINEA_LABEL, ESTADO_ORDEN_LABEL, fmtKg, fmtM3, fmtMin, mensajeError, type Linea, type Orden } from '~/utils/muebles'
+import {
+  ESTADO_LINEA_LABEL, ESTADO_ORDEN_LABEL, fmtKg, fmtM3, fmtMin, mensajeError, validarCodigoOrdenTienda,
+  type Linea, type Orden, type TiendaOpcion,
+} from '~/utils/muebles'
 
 const props = defineProps<{ ordenId: string; puedeCorregir: boolean }>()
 const emit = defineEmits<{
@@ -51,6 +54,42 @@ const relojes = computed(() => {
   ]
 })
 
+// ── Tienda de origen ──
+// Poner, cambiar o quitar la tienda. Una factura de contado con su OVDM/TSDM
+// dentro (CONTADO-OVDM121831) pasa a orden de tienda y recupera su código.
+const editandoTienda = ref(false)
+const tiendaNueva = ref<TiendaOpcion | null>(null)
+const motivoTienda = ref('')
+const guardandoTienda = ref(false)
+const codigoSinContado = computed(() => orden.value?.codigo.replace(/^CONTADO-/, '') ?? '')
+const contadoConvertible = computed(() => orden.value?.tipoOrden === 'CONTADO' && !validarCodigoOrdenTienda(codigoSinContado.value))
+const contadoSinOrden = computed(() => orden.value?.tipoOrden === 'CONTADO' && !contadoConvertible.value)
+
+function abrirTienda() {
+  tiendaNueva.value = null
+  motivoTienda.value = ''
+  editandoTienda.value = true
+}
+
+async function guardarTienda(quitar = false) {
+  if (!orden.value || guardandoTienda.value) return
+  guardandoTienda.value = true
+  try {
+    await $fetch(`/api/historial-muebles/${orden.value.id}/tienda`, {
+      method: 'POST',
+      body: { tiendaCodigo: quitar ? null : tiendaNueva.value?.codigo, motivo: motivoTienda.value.trim() },
+    })
+    editandoTienda.value = false
+    show(quitar ? 'Tienda quitada' : 'Tienda de origen actualizada')
+    await cargar()
+    if (orden.value) emit('actualizada', orden.value)
+  } catch (e) {
+    show(mensajeError(e, 'No se pudo cambiar la tienda'), true)
+  } finally {
+    guardandoTienda.value = false
+  }
+}
+
 async function corregido() {
   corrigiendo.value = null
   await cargar()
@@ -95,7 +134,48 @@ async function corregido() {
           <span>Pickeó: <strong>{{ orden.participantes.map((p) => p.nombre).join(', ') || orden.operario?.nombre || '—' }}</strong></span>
           <span>Inspeccionó: <strong>{{ orden.inspectores.map((i) => i.nombre).join(', ') || orden.inspector?.nombre || '—' }}</strong></span>
           <span v-if="orden.entregadaPor">Entregó: <strong>{{ orden.entregadaPor.nombre }}</strong></span>
+          <button v-if="!editandoTienda" class="btn btn-sm t-abrir" @click="abrirTienda">
+            <Store :size="13" /> {{ orden.tiendaOrigenNombre ? 'Cambiar tienda de origen' : 'Poner tienda de origen' }}
+          </button>
         </p>
+
+        <section v-if="editandoTienda" class="tienda">
+          <h3 class="t-titulo"><Store :size="15" /> Tienda de origen</h3>
+          <p class="t-desc">
+            <template v-if="orden.tiendaOrigenNombre">Hoy: <strong>{{ orden.tiendaOrigenNombre }}</strong>. </template>
+            <template v-if="contadoConvertible">
+              Está como factura de contado: al ponerle tienda pasa a <strong class="mono">{{ codigoSinContado }}</strong>
+              como orden de tienda.
+            </template>
+            <template v-else-if="contadoSinOrden">
+              Esta factura de contado no tiene una OVDM/TSDM, así que no se puede pasar a orden de tienda.
+            </template>
+            <template v-else>Úsalo para las órdenes que llegaron de una tienda.</template>
+          </p>
+          <template v-if="!contadoSinOrden">
+            <MueblesTiendaBuscador v-model="tiendaNueva" />
+            <label class="t-campo">
+              <span class="t-label">Motivo (obligatorio)</span>
+              <input v-model="motivoTienda" class="field" type="text" maxlength="300" placeholder="Ej. llegó de AL Calle 109, se registró como contado">
+            </label>
+          </template>
+          <div class="t-acciones">
+            <button class="btn btn-sm btn-ghost" :disabled="guardandoTienda" @click="editandoTienda = false">Cancelar</button>
+            <button
+              v-if="orden.tiendaOrigenNombre" class="btn btn-sm" :disabled="guardandoTienda || motivoTienda.trim().length < 5"
+              @click="guardarTienda(true)"
+            >
+              Quitar tienda
+            </button>
+            <button
+              v-if="!contadoSinOrden" class="btn btn-sm btn-primary"
+              :disabled="guardandoTienda || !tiendaNueva || motivoTienda.trim().length < 5"
+              @click="guardarTienda()"
+            >
+              Guardar
+            </button>
+          </div>
+        </section>
 
         <div class="tabla-wrap">
           <table class="tabla">
@@ -195,6 +275,15 @@ async function corregido() {
 .marca.error { color: var(--error); }
 .estado { font-size: 11.5px; font-weight: 700; white-space: nowrap; }
 
+.t-abrir { margin-left: auto; }
+.tienda { margin: 0 0 16px; padding: 14px 16px; border: 1px solid var(--border); border-radius: var(--r-md); background: var(--surface-2); display: grid; gap: 10px; }
+.t-titulo { display: flex; align-items: center; gap: 7px; margin: 0; font-size: 14px; font-weight: 800; color: var(--ink); }
+.t-titulo > svg { color: var(--brand); }
+.t-desc { margin: 0; font-size: 12.5px; color: var(--muted); }
+.t-desc strong { color: var(--ink); }
+.t-campo { display: grid; gap: 5px; }
+.t-label { font-size: 11.5px; font-weight: 700; color: var(--ink-2); }
+.t-acciones { display: flex; justify-content: flex-end; gap: 8px; flex-wrap: wrap; }
 .correcciones { margin-top: 18px; padding: 14px 16px; border: 1px solid var(--border); border-radius: var(--r-md); background: var(--surface); }
 .c-titulo { margin: 0 0 8px; font-size: 13px; font-weight: 800; color: var(--ink); }
 .correcciones ul { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }

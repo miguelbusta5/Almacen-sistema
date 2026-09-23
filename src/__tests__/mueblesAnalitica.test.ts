@@ -145,7 +145,11 @@ describe("proyección del turno", () => {
     expect(p.jornadas.map((j: any) => [j.etiqueta, j.horas, j.capacidad])).toEqual([["Lunes a jueves", 9, 13], ["Viernes", 8, 12]]);
     expect(p.semana).toBe(13 * 4 + 12);
     const tsdm = p.porTipo.find((x: any) => x.tipoOrden === "TSDM");
-    expect(tsdm).toMatchObject({ muestra: 1, porcentajeMezcla: 20, plusPorOrden: 2, pickingMin: 30, inspeccionMin: 120, capacidad9h: 4 });
+    expect(tsdm).toMatchObject({ muestra: 1, porcentajeMezcla: 20, plusPorOrden: 2, pickingMin: 30, inspeccionMin: 120, capacidad9h: 4, plus9h: 8, unidades9h: 8 });
+    // En PLU y unidades: 6 PLU y 6 unidades en 5 órdenes → 1,2 por orden.
+    expect(p).toMatchObject({ plusPorOrdenMezcla: 1.2, unidadesPorOrdenMezcla: 1.2 });
+    expect(p.jornadas[0]).toMatchObject({ capacidad: 13, capacidadPlus: 16, capacidadUnidades: 16 });
+    expect(p).toMatchObject({ semanaPlus: Math.round(64 * 1.2), semanaUnidades: Math.round(64 * 1.2) });
     expect(p.realDia).toBe(5);
   });
 

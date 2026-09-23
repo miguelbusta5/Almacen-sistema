@@ -158,8 +158,12 @@ export interface CapacidadTipo {
   plusPorOrden: number
   pickingMin: number | null
   inspeccionMin: number | null
+  unidadesPorOrden: number
   /** Si TODO el dia fuera de este tipo, cuantas caben en un turno de 9 h. */
   capacidad9h: number | null
+  /** Lo mismo en PLU y en unidades (ordenes x PLU / unidades por orden). */
+  plus9h: number | null
+  unidades9h: number | null
 }
 
 export interface JornadaProyectada {
@@ -170,6 +174,9 @@ export interface JornadaProyectada {
   capacidadInspeccion: number | null
   /** La menor de las dos: el proceso no va mas rapido que su etapa mas lenta. */
   capacidad: number | null
+  /** La capacidad en PLU y en unidades, con los PLU y unidades por orden reales. */
+  capacidadPlus: number | null
+  capacidadUnidades: number | null
 }
 
 export interface Proyeccion {
@@ -181,8 +188,13 @@ export interface Proyeccion {
   /** Minutos por orden con la mezcla real de tipos. */
   pickingMinMezcla: number | null
   inspeccionMinMezcla: number | null
+  /** PLU y unidades por orden con la mezcla real: para pasar ordenes a PLU y unidades. */
+  plusPorOrdenMezcla: number | null
+  unidadesPorOrdenMezcla: number | null
   jornadas: JornadaProyectada[]
   semana: number | null
+  semanaPlus: number | null
+  semanaUnidades: number | null
   cuello: 'picking' | 'inspeccion' | null
   porTipo: CapacidadTipo[]
   /** Lo que se hizo de verdad: inspeccionadas por dia con actividad. */
@@ -475,12 +487,24 @@ export function analiticaMuebles(entrada: {
         muestra: g.length,
         porcentajeMezcla: base.length ? r((g.length / base.length) * 100) : 0,
         plusPorOrden: g.length ? r(g.reduce((s, m) => s + m.plus, 0) / g.length) : 0,
+        unidadesPorOrden: g.length ? r(g.reduce((s, m) => s + m.unidades, 0) / g.length) : 0,
         pickingMin,
         inspeccionMin,
         capacidad9h: capacidadTurno({ horas: 9, operarios: plantilla.operarios, inspectores: plantilla.inspectores, pickingMin, inspeccionMin }).capacidad,
       }
     })
     .filter((t) => t.muestra > 0)
+    .map((t) => ({
+      ...t,
+      plus9h: t.capacidad9h == null ? null : Math.round(t.capacidad9h * t.plusPorOrden),
+      unidades9h: t.capacidad9h == null ? null : Math.round(t.capacidad9h * t.unidadesPorOrden),
+    }))
+  // PLU y unidades por orden con la mezcla real: pasan la capacidad de ordenes
+  // a PLU y a unidades, que es como se planea el trabajo del dia.
+  const plusPorOrdenMezcla = base.length ? r(base.reduce((s, m) => s + m.plus, 0) / base.length, 2) : null
+  const unidadesPorOrdenMezcla = base.length ? r(base.reduce((s, m) => s + m.unidades, 0) / base.length, 2) : null
+  const enPlus = (n: number | null) => (n == null || plusPorOrdenMezcla == null ? null : Math.round(n * plusPorOrdenMezcla))
+  const enUnidades = (n: number | null) => (n == null || unidadesPorOrdenMezcla == null ? null : Math.round(n * unidadesPorOrdenMezcla))
   // Con la mezcla real: el promedio ponderado es el promedio de toda la base.
   const pickingMinMezcla = prom(base.map((m) => m.pickingMin!))
   const inspeccionMinMezcla = prom(base.map((m) => m.inspeccionTrabajoMin!))
@@ -489,7 +513,10 @@ export function analiticaMuebles(entrada: {
     { etiqueta: 'Viernes', horas: 8, dias: 1 },
   ].map((j) => {
     const c = capacidadTurno({ horas: j.horas, operarios: plantilla.operarios, inspectores: plantilla.inspectores, pickingMin: pickingMinMezcla, inspeccionMin: inspeccionMinMezcla })
-    return { ...j, capacidadPicking: c.picking, capacidadInspeccion: c.inspeccion, capacidad: c.capacidad }
+    return {
+      ...j, capacidadPicking: c.picking, capacidadInspeccion: c.inspeccion, capacidad: c.capacidad,
+      capacidadPlus: enPlus(c.capacidad), capacidadUnidades: enUnidades(c.capacidad),
+    }
   })
   const semana = jornadas.every((j) => j.capacidad != null)
     ? jornadas.reduce((s, j) => s + j.capacidad! * j.dias, 0)
@@ -531,8 +558,12 @@ export function analiticaMuebles(entrada: {
     inspectoresDia,
     pickingMinMezcla,
     inspeccionMinMezcla,
+    plusPorOrdenMezcla,
+    unidadesPorOrdenMezcla,
     jornadas,
     semana,
+    semanaPlus: enPlus(semana),
+    semanaUnidades: enUnidades(semana),
     cuello,
     porTipo,
     realDia: diasConInspeccion ? r(inspeccionadas.length / diasConInspeccion) : null,

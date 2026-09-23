@@ -35,10 +35,21 @@ export interface AnaliticaMueblesDTO {
     inspectoresDia: number | null
     pickingMinMezcla: number | null
     inspeccionMinMezcla: number | null
-    jornadas: Array<{ etiqueta: string; horas: number; dias: number; capacidadPicking: number | null; capacidadInspeccion: number | null; capacidad: number | null }>
+    plusPorOrdenMezcla: number | null
+    unidadesPorOrdenMezcla: number | null
+    jornadas: Array<{
+      etiqueta: string; horas: number; dias: number; capacidadPicking: number | null; capacidadInspeccion: number | null
+      capacidad: number | null; capacidadPlus: number | null; capacidadUnidades: number | null
+    }>
     semana: number | null
+    semanaPlus: number | null
+    semanaUnidades: number | null
     cuello: 'picking' | 'inspeccion' | null
-    porTipo: Array<{ tipoOrden: string; muestra: number; porcentajeMezcla: number; plusPorOrden: number; pickingMin: number | null; inspeccionMin: number | null; capacidad9h: number | null }>
+    porTipo: Array<{
+      tipoOrden: string; muestra: number; porcentajeMezcla: number; plusPorOrden: number; unidadesPorOrden: number
+      pickingMin: number | null; inspeccionMin: number | null
+      capacidad9h: number | null; plus9h: number | null; unidades9h: number | null
+    }>
     realDia: number | null
     ocupacionPicking: number | null
     ocupacionInspeccion: number | null
