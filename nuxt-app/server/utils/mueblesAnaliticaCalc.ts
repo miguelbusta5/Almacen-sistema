@@ -13,6 +13,12 @@
 //   promedio) y una OVDM (1,3) no pesan lo mismo, por eso va por tipo.
 // - Los promedios por dia son por DIA CON ACTIVIDAD, no por dias del rango: un
 //   domingo sin nadie no es un dia flojo.
+// - La capacidad se calcula con la PLANTILLA del turno (2 operarios y 5
+//   inspectores, dato del CEDI), no con quien aparecio en los registros: quien
+//   hizo un solo PLU contaba como un dia entero. Lo observado va de referencia.
+// - Solo es picking lo que hizo un usuario de picking. El login compartido de
+//   inspeccion ("MUEBLES") agrega PLU a la orden con 0 s de picking: no es un
+//   operario y no entra en el conteo, las horas pico ni el top de PLU.
 
 import { diaBogota } from './indicadoresCalc'
 
@@ -20,6 +26,8 @@ import { diaBogota } from './indicadoresCalc'
 
 export interface LineaAnalitica {
   ordenId: string
+  /** Lo hizo un usuario de picking (no el login de inspeccion que agrega PLU). */
+  esPicking: boolean
   plu: string
   descripcion: string | null
   unidades: number
@@ -60,6 +68,10 @@ export interface OrdenAnalitica {
 export const JORNADA_MUEBLES_HORAS: Readonly<Record<number, number>> = { 1: 9, 2: 9, 3: 9, 4: 9, 5: 8 }
 
 export const TIPOS_ORDEN_MUEBLES = ['TSDM', 'OVDM', 'CONTADO'] as const
+
+/** Plantilla del turno de muebles (CEDI, 23-09). La pantalla deja simular otra. */
+export const PLANTILLA_MUEBLES_DEFECTO = { operarios: 2, inspectores: 5 } as const
+export const MAX_PLANTILLA_MUEBLES = 30
 
 /** Etapas del proceso, en orden: lo que se usa para ver donde se detiene. */
 export const ETAPAS_MUEBLES = [
@@ -160,6 +172,9 @@ export interface JornadaProyectada {
 }
 
 export interface Proyeccion {
+  /** Con esta gente se calcula la capacidad. */
+  plantilla: { operarios: number; inspectores: number }
+  /** Los que aparecieron en los registros, por dia con actividad (referencia). */
   operariosDia: number | null
   inspectoresDia: number | null
   /** Minutos por orden con la mezcla real de tipos. */
@@ -336,8 +351,12 @@ export function analiticaMuebles(entrada: {
   lineasPeriodo: readonly LineaAnalitica[]
   desde: string
   hasta: string
+  plantilla?: { operarios: number; inspectores: number }
 }): AnaliticaMuebles {
   const { desde, hasta } = entrada
+  const plantilla = entrada.plantilla ?? { ...PLANTILLA_MUEBLES_DEFECTO }
+  // Picking de verdad: sin los PLU que agrega el login de inspeccion.
+  const picking = entrada.lineasPeriodo.filter((l) => l.esPicking)
   const inspeccionadas = entrada.ordenes.filter((o) => dentro(o.horaFinInspeccion, desde, hasta))
   const entregadas = entrada.ordenes.filter((o) => dentro(o.entregadaTransporteAt, desde, hasta))
   const medidas = new Map(entrada.ordenes.map((o) => [o.id, medirOrden(o)]))
@@ -382,7 +401,7 @@ export function analiticaMuebles(entrada: {
 
   // ── PLU mas pickeados ──
   const plus = new Map<string, { descripcion: string | null; veces: number; ordenes: Set<string>; unidades: number; min: number[] }>()
-  for (const l of entrada.lineasPeriodo) {
+  for (const l of picking) {
     const p = plus.get(l.plu) ?? { descripcion: l.descripcion, veces: 0, ordenes: new Set<string>(), unidades: 0, min: [] }
     p.veces++
     p.ordenes.add(l.ordenId)
@@ -421,7 +440,7 @@ export function analiticaMuebles(entrada: {
 
   // ── Personal por dia (para la capacidad) ──
   const operariosPorDia = new Map<string, Set<string>>()
-  for (const l of entrada.lineasPeriodo) {
+  for (const l of picking) {
     const d = diaBogota(l.horaInicio)
     const s = operariosPorDia.get(d) ?? new Set<string>()
     s.add(l.operarioId)
@@ -457,7 +476,7 @@ export function analiticaMuebles(entrada: {
         plusPorOrden: g.length ? r(g.reduce((s, m) => s + m.plus, 0) / g.length) : 0,
         pickingMin,
         inspeccionMin,
-        capacidad9h: capacidadTurno({ horas: 9, operarios: operariosDia, inspectores: inspectoresDia, pickingMin, inspeccionMin }).capacidad,
+        capacidad9h: capacidadTurno({ horas: 9, operarios: plantilla.operarios, inspectores: plantilla.inspectores, pickingMin, inspeccionMin }).capacidad,
       }
     })
     .filter((t) => t.muestra > 0)
@@ -468,7 +487,7 @@ export function analiticaMuebles(entrada: {
     { etiqueta: 'Lunes a jueves', horas: 9, dias: 4 },
     { etiqueta: 'Viernes', horas: 8, dias: 1 },
   ].map((j) => {
-    const c = capacidadTurno({ horas: j.horas, operarios: operariosDia, inspectores: inspectoresDia, pickingMin: pickingMinMezcla, inspeccionMin: inspeccionMinMezcla })
+    const c = capacidadTurno({ horas: j.horas, operarios: plantilla.operarios, inspectores: plantilla.inspectores, pickingMin: pickingMinMezcla, inspeccionMin: inspeccionMinMezcla })
     return { ...j, capacidadPicking: c.picking, capacidadInspeccion: c.inspeccion, capacidad: c.capacidad }
   })
   const semana = jornadas.every((j) => j.capacidad != null)
@@ -479,19 +498,20 @@ export function analiticaMuebles(entrada: {
     ? null
     : j9.capacidadInspeccion <= j9.capacidadPicking ? 'inspeccion' : 'picking'
 
-  // Ocupacion: minutos medidos contra (personas x horas del turno de ese dia).
-  const ocupacion = (minPorDia: Map<string, number>, personas: Map<string, Set<string>>) => {
+  // Ocupacion: minutos medidos contra (plantilla x horas del turno de ese dia),
+  // en los dias habiles con actividad.
+  const ocupacion = (minPorDia: Map<string, number>, personas: number) => {
     let usado = 0, disponible = 0
-    for (const [dia, gente] of personas) {
+    for (const [dia, min] of minPorDia) {
       const horas = JORNADA_MUEBLES_HORAS[diaSemanaIso(dia)]
       if (!horas) continue
-      usado += minPorDia.get(dia) ?? 0
-      disponible += gente.size * horas * 60
+      usado += min
+      disponible += personas * horas * 60
     }
     return disponible > 0 ? r((usado / disponible) * 100) : null
   }
   const pickPorDia = new Map<string, number>()
-  for (const l of entrada.lineasPeriodo) {
+  for (const l of picking) {
     const m = minEntre(l.horaInicio, l.horaFin, l.pausaSegundos)
     if (m != null) pickPorDia.set(diaBogota(l.horaInicio), (pickPorDia.get(diaBogota(l.horaInicio)) ?? 0) + m)
   }
@@ -505,6 +525,7 @@ export function analiticaMuebles(entrada: {
   }
 
   const proyeccion: Proyeccion = {
+    plantilla,
     operariosDia,
     inspectoresDia,
     pickingMinMezcla,
@@ -514,15 +535,15 @@ export function analiticaMuebles(entrada: {
     cuello,
     porTipo,
     realDia: diasConInspeccion ? r(inspeccionadas.length / diasConInspeccion) : null,
-    ocupacionPicking: ocupacion(pickPorDia, operariosPorDia),
-    ocupacionInspeccion: ocupacion(inspPorDia, inspectoresPorDia),
+    ocupacionPicking: ocupacion(pickPorDia, plantilla.operarios),
+    ocupacionInspeccion: ocupacion(inspPorDia, plantilla.inspectores),
   }
 
   // ── Horas pico: PLU pickeados por dia de la semana y hora ──
   const celdas = new Map<string, number>()
   const porHora = new Map<number, { plus: number; ordenes: Set<string> }>()
   const porDiaSemana = new Map<number, { plus: number; ordenes: Set<string>; dias: Set<string> }>()
-  for (const l of entrada.lineasPeriodo) {
+  for (const l of picking) {
     const ds = diaSemanaIso(diaBogota(l.horaInicio))
     const h = horaBogota(l.horaInicio)
     celdas.set(`${ds}|${h}`, (celdas.get(`${ds}|${h}`) ?? 0) + 1)
@@ -588,7 +609,7 @@ export function analiticaMuebles(entrada: {
       inspeccionadasDia: diasConInspeccion ? r(inspeccionadas.length / diasConInspeccion) : null,
       entregadasDia: diasConEntrega ? r(entregadas.length / diasConEntrega) : null,
       leadTimeMedianaMin: medianaMuebles(leads),
-      plusPickeados: entrada.lineasPeriodo.length,
+      plusPickeados: picking.length,
       m3Entregado: r(entregadas.reduce((s, o) => s + volumen(o), 0), 3),
       kgEntregado: r(entregadas.reduce((s, o) => s + peso(o), 0), 1),
     },

@@ -1,9 +1,11 @@
 import { defineEventHandler, getQuery, createError } from 'h3'
 import { prisma } from '../../utils/prisma'
 import { requireAuth } from '../../utils/auth'
-import { esGestionMuebles, inspeccionRepartida } from '../../utils/mueblesCalc'
+import { esGestionMuebles, inspeccionRepartida, ROL_PICKING } from '../../utils/mueblesCalc'
 import { diaBogota, limitesRango } from '../../utils/indicadoresCalc'
-import { analiticaMuebles, type LineaAnalitica, type OrdenAnalitica } from '../../utils/mueblesAnaliticaCalc'
+import {
+  analiticaMuebles, MAX_PLANTILLA_MUEBLES, PLANTILLA_MUEBLES_DEFECTO, type LineaAnalitica, type OrdenAnalitica,
+} from '../../utils/mueblesAnaliticaCalc'
 
 const RE_DIA = /^\d{4}-\d{2}-\d{2}$/
 /** Un año basta para cualquier comparación y acota el peor caso de la consulta. */
@@ -11,6 +13,8 @@ const MAX_DIAS = 366
 
 const SELECT_LINEA = {
   ordenId: true, plu: true, descripcion: true, unidades: true, operarioId: true,
+  // El login compartido de inspeccion tambien agrega PLU: eso no es picking.
+  operario: { select: { role: true } },
   horaInicio: true, horaFin: true, pausaSegundos: true,
   inspectorId: true, inspHoraInicio: true, inspHoraFin: true, inspPausaSegundos: true,
   ebanisteriaInicio: true, ebanisteriaFin: true, reposicionInicio: true, reposicionFin: true,
@@ -45,6 +49,16 @@ export default defineEventHandler(async (event) => {
   const { inicio, fin } = limitesRango(desde, hasta)
   const enRango = { gte: inicio, lte: fin }
 
+  // Plantilla del turno: la real por defecto; la pantalla deja simular otra.
+  const gente = (v: unknown, defecto: number) => {
+    const n = Number(v)
+    return Number.isInteger(n) && n >= 1 && n <= MAX_PLANTILLA_MUEBLES ? n : defecto
+  }
+  const plantilla = {
+    operarios: gente(sp.operarios, PLANTILLA_MUEBLES_DEFECTO.operarios),
+    inspectores: gente(sp.inspectores, PLANTILLA_MUEBLES_DEFECTO.inspectores),
+  }
+
   const [ordenes, lineasPeriodo] = await Promise.all([
     // Toda orden que se movió en el rango: empezó, terminó inspección o salió.
     prisma.ordenMuebles.findMany({
@@ -74,6 +88,7 @@ export default defineEventHandler(async (event) => {
 
   const aLinea = (l: (typeof todas)[number], inspMin: number | null): LineaAnalitica => ({
     ordenId: l.ordenId,
+    esPicking: l.operario?.role === ROL_PICKING,
     plu: l.plu,
     descripcion: l.descripcion,
     unidades: l.unidades,
@@ -115,6 +130,7 @@ export default defineEventHandler(async (event) => {
       lineasPeriodo: lineasPeriodo.map((l) => aLinea(l, null)),
       desde,
       hasta,
+      plantilla,
     }),
   }
 })

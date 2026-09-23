@@ -19,7 +19,7 @@ const t = (dia: string, hora: number, min = 0) =>
 let n = 0;
 function linea(ordenId: string, o: Partial<any> = {}) {
   return {
-    ordenId, plu: "100", descripcion: "SILLA", unidades: 1, operarioId: "op1",
+    ordenId, esPicking: true, plu: "100", descripcion: "SILLA", unidades: 1, operarioId: "op1",
     horaInicio: t("2026-09-22", 8), horaFin: t("2026-09-22", 8, 5), pausaSegundos: 0,
     inspectorId: "in1", inspHoraInicio: t("2026-09-22", 10), inspHoraFin: t("2026-09-22", 10, 20),
     inspMin: 20, ebanisteriaInicio: null, averiado: false, volumenTotalM3: 1, pesoTotalKg: 10, ...o,
@@ -123,14 +123,24 @@ describe("proyección del turno", () => {
     expect(capacidadTurno({ horas: 9, operarios: null, inspectores: null, pickingMin: 9, inspeccionMin: 54 }).capacidad).toBeNull();
   });
 
+  it("por defecto usa la plantilla real del turno: 2 operarios y 5 inspectores", () => {
+    const p = correr([orden()]).proyeccion;
+    expect(p.plantilla).toEqual({ operarios: 2, inspectores: 5 });
+    // Lo observado (1 y 1) queda solo de referencia.
+    expect(p).toMatchObject({ operariosDia: 1, inspectoresDia: 1 });
+    // Picking 10 min, inspección 20 min: 2×540/10 = 108 y 5×540/20 = 135 → manda el picking.
+    expect(p.jornadas[0]).toMatchObject({ capacidadPicking: 108, capacidadInspeccion: 135, capacidad: 108 });
+    expect(p.cuello).toBe("picking");
+  });
+
   it("9 h de lunes a jueves, 8 h el viernes y la semana; separa por tipo", () => {
     const ords = [
       ...Array.from({ length: 4 }, () => orden()),
       orden({ tipoOrden: "TSDM", horaPasoInspeccion: t("2026-09-22", 8, 30),
         lineas: [linea("t", { inspMin: 60 }), linea("t", { plu: "2", inspMin: 60 })] }),
     ];
-    const p = correr(ords).proyeccion;
-    // Picking: (4×10 + 30)/5 = 14 min. Inspección: (4×20 + 120)/5 = 40 min. 1 operario, 1 inspector.
+    const p = correr(ords, { plantilla: { operarios: 1, inspectores: 1 } }).proyeccion;
+    // Picking: (4×10 + 30)/5 = 14 min. Inspección: (4×20 + 120)/5 = 40 min. Simulando 1 y 1.
     expect(p).toMatchObject({ operariosDia: 1, inspectoresDia: 1, pickingMinMezcla: 14, inspeccionMinMezcla: 40, cuello: "inspeccion" });
     expect(p.jornadas.map((j: any) => [j.etiqueta, j.horas, j.capacidad])).toEqual([["Lunes a jueves", 9, 13], ["Viernes", 8, 12]]);
     expect(p.semana).toBe(13 * 4 + 12);
@@ -140,9 +150,27 @@ describe("proyección del turno", () => {
   });
 
   it("la ocupación compara lo medido con las horas del turno de ese día", () => {
-    // Un inspector, 20 min de inspección un martes (9 h) → 20 / 540.
-    const p = correr([orden()]).proyeccion;
-    expect(p.ocupacionInspeccion).toBe(3.7);
+    // 20 min de inspección un martes (9 h): contra 1 inspector, 20/540; contra los 5 reales, 20/2700.
+    expect(correr([orden()], { plantilla: { operarios: 1, inspectores: 1 } }).proyeccion.ocupacionInspeccion).toBe(3.7);
+    expect(correr([orden()]).proyeccion.ocupacionInspeccion).toBe(0.7);
+  });
+});
+
+describe("el login de inspección no es un operario", () => {
+  // «MUEBLES» es el usuario compartido de inspección: agrega PLU a la orden con
+  // 0 s de picking. Contarlo inflaba los operarios (2,4 en vez de 2).
+  it("no cuenta en operarios, horas pico, top de PLU ni PLU pickeados", () => {
+    const o = orden({ id: "c", lineas: [
+      linea("c", { plu: "900", operarioId: "sanayder" }),
+      linea("c", { plu: "901", operarioId: "muebles", esPicking: false, horaFin: t("2026-09-22", 8) }),
+    ] });
+    const a = correr([o]);
+    expect(a.proyeccion.operariosDia).toBe(1);
+    expect(a.resumen.plusPickeados).toBe(1);
+    expect(a.topPlus.map((x: any) => x.plu)).toEqual(["900"]);
+    expect(a.horasPico.celdas.reduce((s: number, c: any) => s + c.plus, 0)).toBe(1);
+    // La orden sigue siendo completada y su PLU cuenta para la orden.
+    expect(a.ordenes[0].plus).toBe(2);
   });
 });
 
@@ -183,6 +211,8 @@ describe("endpoint y pantalla", () => {
     expect(api).toContain("MAX_DIAS");
     expect(api).toContain("inspeccionRepartida(todas)");
     expect(api).toContain("erroresPicking: { where: { deletedAt: null } }");
+    expect(api).toContain("esPicking: l.operario?.role === ROL_PICKING");
+    expect(api).toContain("PLANTILLA_MUEBLES_DEFECTO.inspectores");
   });
 
   it("la pestaña Analítica carga su endpoint solo al abrirse", () => {
@@ -195,6 +225,8 @@ describe("endpoint y pantalla", () => {
     for (const x of ["IndicadoresTarjeta", "IndicadoresBarrasH", "IndicadoresTabla", "IndicadoresLineaDiaria"]) expect(vista).toContain(x);
     expect(vista).toContain("es el techo, no la meta");
     expect(vista).toContain("Cuello de botella");
+    expect(vista).toContain("Volver a 2 y 5");
+    expect(vista).toContain("emit('plantilla'");
     expect(vista).not.toMatch(/#[0-9a-fA-F]{6}/); // todo color sale de tokens
   });
 });

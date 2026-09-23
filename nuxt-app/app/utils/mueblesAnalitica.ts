@@ -30,6 +30,7 @@ export interface AnaliticaMueblesDTO {
   topPlus: Array<{ plu: string; descripcion: string | null; veces: number; ordenes: number; unidades: number; promedioPickingMin: number | null }>
   ciudades: Array<{ ciudad: string; ordenes: number; promedioDia: number; porcentaje: number; m3: number; kg: number }>
   proyeccion: {
+    plantilla: { operarios: number; inspectores: number }
     operariosDia: number | null
     inspectoresDia: number | null
     pickingMinMezcla: number | null
@@ -51,6 +52,9 @@ export interface AnaliticaMueblesDTO {
   calidad: { ordenes: number; conError: number; conEbanisteria: number; conAveria: number; conPendientes: number; perfectas: number }
   mezcla: Array<{ tipoOrden: string; ordenes: number; porcentaje: number; plusPorOrden: number; m3: number; kg: number }>
 }
+
+/** Plantilla real del turno (CEDI, 23-09); igual que en el servidor. */
+export const PLANTILLA_MUEBLES = { operarios: 2, inspectores: 5 } as const
 
 export const DIA_SEMANA_CORTO: Record<number, string> = { 1: 'Lun', 2: 'Mar', 3: 'Mié', 4: 'Jue', 5: 'Vie', 6: 'Sáb', 7: 'Dom' }
 export const DIA_SEMANA_LARGO: Record<number, string> = {

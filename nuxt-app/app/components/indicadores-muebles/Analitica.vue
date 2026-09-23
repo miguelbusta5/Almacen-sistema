@@ -4,15 +4,42 @@
 // Va primero lo que decide el día (la proyección del turno y dónde se detiene
 // la orden); después el detalle. Cada gráfico tiene su tabla ("Ver tabla") y
 // ninguna cifra depende solo del color.
-import { computed, ref } from 'vue'
-import { CalendarClock, Gauge, Hourglass, Truck, PackageCheck, Sparkles } from '@lucide/vue'
+import { computed, ref, watch } from 'vue'
+import { CalendarClock, Gauge, Hourglass, Truck, PackageCheck, Sparkles, RotateCcw } from '@lucide/vue'
 import { fmtDiaCorto, type BarraH, type ColumnaTabla } from '~/utils/indicadores'
 import {
-  DIA_SEMANA_CORTO, DIA_SEMANA_LARGO, ESTADO_ORDEN_MUEBLES_LABEL, TIPO_ORDEN_MUEBLES_LABEL,
+  DIA_SEMANA_CORTO, DIA_SEMANA_LARGO, ESTADO_ORDEN_MUEBLES_LABEL, PLANTILLA_MUEBLES, TIPO_ORDEN_MUEBLES_LABEL,
   fmtDec, fmtMinutos, fmtPct, type AnaliticaMueblesDTO,
 } from '~/utils/mueblesAnalitica'
 
 const props = defineProps<{ datos: AnaliticaMueblesDTO }>()
+const emit = defineEmits<{ (e: 'plantilla', v: { operarios: number; inspectores: number }): void }>()
+
+// ── Plantilla para simular ──
+// Por defecto la real (2 operarios y 5 inspectores). Cambiarla recalcula la
+// proyección en el servidor: "¿y con un inspector más?".
+const operarios = ref(String(props.datos.proyeccion.plantilla.operarios))
+const inspectores = ref(String(props.datos.proyeccion.plantilla.inspectores))
+watch(() => props.datos.proyeccion.plantilla, (v) => {
+  operarios.value = String(v.operarios)
+  inspectores.value = String(v.inspectores)
+})
+// v-model de un input number entrega número: se normaliza a texto para validar.
+const valida = (s: string | number) => /^\d+$/.test(String(s)) && Number(s) >= 1 && Number(s) <= 30
+let espera: ReturnType<typeof setTimeout> | null = null
+watch([operarios, inspectores], ([o, i]) => {
+  if (!valida(o) || !valida(i)) return
+  const pl = props.datos.proyeccion.plantilla
+  if (Number(o) === pl.operarios && Number(i) === pl.inspectores) return
+  if (espera) clearTimeout(espera)
+  espera = setTimeout(() => emit('plantilla', { operarios: Number(o), inspectores: Number(i) }), 450)
+})
+const esReal = computed(() => props.datos.proyeccion.plantilla.operarios === PLANTILLA_MUEBLES.operarios
+  && props.datos.proyeccion.plantilla.inspectores === PLANTILLA_MUEBLES.inspectores)
+function volverAReal() {
+  operarios.value = String(PLANTILLA_MUEBLES.operarios)
+  inspectores.value = String(PLANTILLA_MUEBLES.inspectores)
+}
 
 const r = computed(() => props.datos.resumen)
 const p = computed(() => props.datos.proyeccion)
@@ -307,9 +334,31 @@ const filasOrdenes = computed(() => ordenesVisibles.value.slice(0, MAX_FILAS).ma
         </div>
       </div>
 
+      <div class="plantilla">
+        <label class="pl-campo">
+          <span class="pl-label">Operarios de picking</span>
+          <input v-model="operarios" class="field tnum" type="number" min="1" max="30" inputmode="numeric">
+        </label>
+        <label class="pl-campo">
+          <span class="pl-label">Inspectores</span>
+          <input v-model="inspectores" class="field tnum" type="number" min="1" max="30" inputmode="numeric">
+        </label>
+        <p class="pl-nota">
+          <template v-if="esReal">Plantilla real del turno. Cámbiala para simular.</template>
+          <template v-else>
+            Simulando otra plantilla.
+            <button type="button" class="btn btn-sm btn-ghost" @click="volverAReal"><RotateCcw :size="13" /> Volver a 2 y 5</button>
+          </template>
+          <span class="pl-obs">
+            En los registros aparecieron {{ fmtDec(p.operariosDia) }} operarios y {{ fmtDec(p.inspectoresDia) }}
+            inspectores por día (cuenta a quien hizo aunque sea un PLU).
+          </span>
+        </p>
+      </div>
+
       <p class="proy-como">
-        Con <b class="tnum">{{ fmtDec(p.operariosDia) }}</b> operarios y
-        <b class="tnum">{{ fmtDec(p.inspectoresDia) }}</b> inspectores por día, y
+        Con <b class="tnum">{{ p.plantilla.operarios }}</b> {{ p.plantilla.operarios === 1 ? 'operario' : 'operarios' }} y
+        <b class="tnum">{{ p.plantilla.inspectores }}</b> {{ p.plantilla.inspectores === 1 ? 'inspector' : 'inspectores' }}, y
         <b>{{ fmtMinutos(p.pickingMinMezcla) }}</b> de picking y <b>{{ fmtMinutos(p.inspeccionMinMezcla) }}</b>
         de inspección por orden (con la mezcla real de tipos). En un turno de 9 h cabe esto por etapa:
       </p>
@@ -506,6 +555,11 @@ const filasOrdenes = computed(() => ordenesVisibles.value.slice(0, MAX_FILAS).ma
 .proy-num { font-size: 30px; font-weight: 800; letter-spacing: -.03em; color: var(--brand); }
 .proy-hint { font-size: 12px; color: var(--muted); }
 .proy-cuello .proy-num { font-size: 22px; color: var(--ink); padding: 5px 0 3px; }
+.plantilla { display: flex; align-items: flex-end; gap: 12px; flex-wrap: wrap; margin-bottom: 14px; }
+.pl-campo { display: grid; gap: 5px; width: 150px; }
+.pl-label { font-size: 10.5px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+.pl-nota { flex: 1 1 260px; margin: 0; display: flex; flex-direction: column; align-items: flex-start; gap: 4px; font-size: 12.5px; color: var(--ink-2); }
+.pl-obs { font-size: 12px; color: var(--muted); }
 .proy-como, .proy-real { margin: 0 0 10px; font-size: 12.5px; line-height: 1.55; color: var(--ink-2); max-width: 90ch; }
 .proy-real { margin: 12px 0 0; padding: 10px 12px; border-radius: var(--r-sm); background: var(--surface-2); color: var(--muted); }
 .proy-como b, .proy-real b { color: var(--ink); }

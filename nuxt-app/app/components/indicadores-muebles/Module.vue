@@ -116,13 +116,15 @@ const pestana = ref<'operacion' | 'analitica'>('operacion')
 const analitica = ref<AnaliticaMueblesDTO | null>(null)
 const analiticaDe = ref('')
 const cargandoAnalitica = ref(false)
+/** Plantilla con la que se proyecta; null = la real (la pone el servidor). */
+const plantilla = ref<{ operarios: number; inspectores: number } | null>(null)
 
 async function cargarAnalitica() {
   if (!desde.value || !hasta.value) return
   if (!enRefrescoSilencioso()) cargandoAnalitica.value = true
   try {
     const res = await $fetch<{ data: AnaliticaMueblesDTO }>(API_ANALITICA_MUEBLES, {
-      query: { desde: desde.value, hasta: hasta.value },
+      query: { desde: desde.value, hasta: hasta.value, ...(plantilla.value ?? {}) },
     })
     analitica.value = res.data
     analiticaDe.value = `${desde.value}|${hasta.value}`
@@ -394,7 +396,10 @@ useAutoRefresh({ intervalMs: 60_000, onRefresh: () => refrescar() })
 
       <template v-if="pestana === 'analitica'">
         <div v-if="cargandoAnalitica && !analitica" class="cargando"><Loader2 :size="18" class="spin" /> Cargando…</div>
-        <IndicadoresMueblesAnalitica v-else-if="analitica" :datos="analitica" />
+        <IndicadoresMueblesAnalitica
+          v-else-if="analitica" :datos="analitica"
+          @plantilla="(v) => { plantilla = v; cargarAnalitica() }"
+        />
       </template>
 
       <div v-else-if="cargando && !datos" class="cargando"><Loader2 :size="18" class="spin" /> Cargando…</div>
