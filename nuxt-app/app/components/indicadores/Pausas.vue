@@ -102,15 +102,15 @@ const filasDetalle = computed(() => detalle.value.map((d) => ({
     />
     <template v-else>
       <div class="tiles">
-        <article class="tile card">
-          <span class="tile-lbl"><Coffee :size="14" /> Tiempo de alimentación</span>
-          <b class="tile-valor tnum">{{ fmtTiempo(totales.ALIMENTACION.segundos) }}</b>
-          <span class="tile-hint">{{ fmtNumero(totales.ALIMENTACION.veces) }} pausa{{ totales.ALIMENTACION.veces === 1 ? '' : 's' }}</span>
+        <article class="tile card" data-kpi>
+          <span class="tile-lbl" data-kpi-label><Coffee :size="14" /> Tiempo de alimentación</span>
+          <b class="tile-valor tnum" data-kpi-valor>{{ fmtTiempo(totales.ALIMENTACION.segundos) }}</b>
+          <span class="tile-hint" data-kpi-nota>{{ fmtNumero(totales.ALIMENTACION.veces) }} pausa{{ totales.ALIMENTACION.veces === 1 ? '' : 's' }}</span>
         </article>
-        <article class="tile card">
-          <span class="tile-lbl"><BatteryCharging :size="14" /> Cambio de baterías</span>
-          <b class="tile-valor tnum">{{ fmtTiempo(totales.CAMBIO_BATERIAS.segundos) }}</b>
-          <span class="tile-hint">{{ fmtNumero(totales.CAMBIO_BATERIAS.veces) }} pausa{{ totales.CAMBIO_BATERIAS.veces === 1 ? '' : 's' }}</span>
+        <article class="tile card" data-kpi>
+          <span class="tile-lbl" data-kpi-label><BatteryCharging :size="14" /> Cambio de baterías</span>
+          <b class="tile-valor tnum" data-kpi-valor>{{ fmtTiempo(totales.CAMBIO_BATERIAS.segundos) }}</b>
+          <span class="tile-hint" data-kpi-nota>{{ fmtNumero(totales.CAMBIO_BATERIAS.veces) }} pausa{{ totales.CAMBIO_BATERIAS.veces === 1 ? '' : 's' }}</span>
         </article>
       </div>
 

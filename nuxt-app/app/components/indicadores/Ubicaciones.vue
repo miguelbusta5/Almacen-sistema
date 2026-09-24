@@ -74,15 +74,15 @@ const tabla = computed(() => visibles.value.map((f) => ({
     />
     <template v-else>
       <div class="tiles">
-        <article class="tile card">
-          <span class="tile-lbl"><MapPinOff :size="14" /> Otra altura</span>
-          <b class="tile-valor tnum">{{ totalAltura }}</b>
-          <span class="tile-hint">pendientes sacados de una altura distinta a la sugerida</span>
+        <article class="tile card" data-kpi>
+          <span class="tile-lbl" data-kpi-label><MapPinOff :size="14" /> Otra altura</span>
+          <b class="tile-valor tnum" data-kpi-valor>{{ totalAltura }}</b>
+          <span class="tile-hint" data-kpi-nota>pendientes sacados de una altura distinta a la sugerida</span>
         </article>
-        <article class="tile card">
-          <span class="tile-lbl"><MapPinOff :size="14" /> Otro picking</span>
-          <b class="tile-valor tnum">{{ totalPicking }}</b>
-          <span class="tile-hint">pendientes ubicados en un picking distinto al sugerido</span>
+        <article class="tile card" data-kpi>
+          <span class="tile-lbl" data-kpi-label><MapPinOff :size="14" /> Otro picking</span>
+          <b class="tile-valor tnum" data-kpi-valor>{{ totalPicking }}</b>
+          <span class="tile-hint" data-kpi-nota>pendientes ubicados en un picking distinto al sugerido</span>
         </article>
       </div>
       <section class="card bloque">

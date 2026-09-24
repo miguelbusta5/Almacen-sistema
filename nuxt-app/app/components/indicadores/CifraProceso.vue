@@ -11,12 +11,12 @@ defineProps<{
 </script>
 
 <template>
-  <div class="cp">
-    <span class="cp-label">{{ label }}</span>
-    <span class="cp-num tnum">{{ valor }}</span>
-    <span v-if="hint" class="cp-hint">{{ hint }}</span>
-    <span v-if="cambio" class="cp-cambio" :class="cambio.tono">{{ cambio.texto }}</span>
-    <span v-if="meta" class="cp-meta">Meta: {{ meta }}</span>
+  <div class="cp" data-kpi>
+    <span class="cp-label" data-kpi-label>{{ label }}</span>
+    <span class="cp-num tnum" data-kpi-valor>{{ valor }}</span>
+    <span v-if="hint" class="cp-hint" data-kpi-nota>{{ hint }}</span>
+    <span v-if="cambio" class="cp-cambio" :class="cambio.tono" data-kpi-cambio>{{ cambio.texto }}</span>
+    <span v-if="meta" class="cp-meta" data-kpi-meta>{{ meta }}</span>
   </div>
 </template>
 

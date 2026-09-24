@@ -6,7 +6,7 @@
 // depender del color.
 import { computed, inject, provide, ref } from 'vue'
 import { BarChart3, Table2 } from '@lucide/vue'
-import { CLAVE_COLECTOR, CLAVE_TITULO_TARJETA } from '~/utils/exportarDashboard'
+import { CLAVE_COLECTOR, CLAVE_TARJETA } from '~/utils/exportarDashboard'
 
 const props = defineProps<{ titulo: string; subtitulo?: string }>()
 const verTabla = ref(false)
@@ -14,7 +14,7 @@ const verTabla = ref(false)
 // llegan al Excel aunque en pantalla se vea el gráfico.
 const colector = inject(CLAVE_COLECTOR, null)
 const exportando = computed(() => colector?.activo.value ?? false)
-provide(CLAVE_TITULO_TARJETA, () => props.titulo)
+provide(CLAVE_TARJETA, { id: Symbol('tarjeta'), titulo: () => props.titulo, subtitulo: () => props.subtitulo ?? '' })
 </script>
 
 <template>

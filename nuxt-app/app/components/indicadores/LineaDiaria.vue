@@ -6,6 +6,7 @@
 // lineas parezca decir algo que no dice.
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { fmtDiaCorto, ticksLimpios, type EstadoTooltip } from '~/utils/indicadores'
+import { colorHex, usarRegistroGrafico } from '~/utils/exportarDashboard'
 
 const props = defineProps<{
   /** Un punto por dia, en orden. */
@@ -22,6 +23,8 @@ const props = defineProps<{
   maximo?: number
   /** Alto en px. Las pequeñas (una por persona) van mas bajas. */
   alto?: number
+  /** Nombre de la serie en el Excel (una línea por persona). Sin él, `etiqueta`. */
+  serie?: string
 }>()
 
 const caja = ref<HTMLElement | null>(null)
@@ -41,6 +44,23 @@ const plotW = computed(() => Math.max(40, ancho.value - M.izq - M.der))
 const plotH = computed(() => ALTO.value - M.arr - M.aba)
 
 const div = computed(() => props.escalaEje ?? 1)
+
+// Al exportar el dashboard: línea nativa en Excel. Las de una misma tarjeta se
+// juntan en un solo gráfico de varias series.
+usarRegistroGrafico(caja, (el) => {
+  const unidad = (props.sufijoEje ?? '').trim()
+  const nombre = props.serie ?? props.etiqueta
+  return {
+    tipo: 'linea',
+    categoria: 'Día',
+    categorias: props.puntos.map((p) => p.dia),
+    series: [{
+      nombre: unidad ? `${nombre} (${unidad})` : nombre,
+      valores: props.puntos.map((p) => p.valor / div.value),
+      color: colorHex(el, 'var(--viz-medida)'),
+    }],
+  }
+})
 const ticks = computed(() => ticksLimpios(
   Math.max(0, props.maximo ?? 0, ...props.puntos.map((p) => p.valor)) / div.value,
   props.alto && props.alto < 160 ? 2 : 4,

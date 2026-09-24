@@ -6,6 +6,7 @@
 // entero de la fila, no solo el segmento que toca el puntero.
 import { computed, ref } from 'vue'
 import { anclaDeElemento, ticksLimpios, type EstadoTooltip, type FilaApilada } from '~/utils/indicadores'
+import { colorHex, unidadDeFormato, usarRegistroGrafico } from '~/utils/exportarDashboard'
 
 const props = defineProps<{
   filas: FilaApilada[]
@@ -22,6 +23,26 @@ const ticks = computed(() => ticksLimpios(
 const tope = computed(() => (ticks.value[ticks.value.length - 1] ?? 1) * div.value)
 const pct = (v: number) => (tope.value > 0 ? (v / tope.value) * 100 : 0)
 
+// Al exportar el dashboard: barras apiladas nativas en Excel, una serie por segmento.
+const raiz = ref<HTMLElement | null>(null)
+usarRegistroGrafico(raiz, (el) => {
+  const unidad = unidadDeFormato(props.formatoEje)
+  const claves: Array<{ key: string; nombre: string; color: string }> = []
+  for (const f of props.filas) for (const s of f.segmentos) {
+    if (!claves.some((c) => c.key === s.key)) claves.push({ key: s.key, nombre: s.nombre ?? s.key, color: s.color })
+  }
+  return {
+    tipo: 'apiladas',
+    categoria: 'Nombre',
+    categorias: props.filas.map((f) => f.etiqueta),
+    series: claves.map((c) => ({
+      nombre: unidad ? `${c.nombre} (${unidad})` : c.nombre,
+      valores: props.filas.map((f) => (f.segmentos.find((s) => s.key === c.key)?.valor ?? 0) / div.value),
+      color: colorHex(el, c.color),
+    })),
+  }
+})
+
 const tip = ref<EstadoTooltip | null>(null)
 const activa = ref<string | null>(null)
 function mostrar(e: PointerEvent, f: FilaApilada) {
@@ -36,7 +57,7 @@ function ocultar() { activa.value = null; tip.value = null }
 </script>
 
 <template>
-  <div class="plot">
+  <div ref="raiz" class="plot">
     <div class="rejilla" aria-hidden="true">
       <span
         v-for="t in ticks" :key="t" class="linea" :class="{ base: t === 0 }"

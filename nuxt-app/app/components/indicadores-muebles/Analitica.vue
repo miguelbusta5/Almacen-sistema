@@ -325,11 +325,11 @@ defineExpose({
   <div class="an">
     <!-- KPI del periodo -->
     <div class="an-tiles">
-      <div v-for="t in tiles" :key="t.label" class="an-tile">
+      <div v-for="t in tiles" :key="t.label" class="an-tile" data-kpi>
         <span class="an-tile-ic"><component :is="t.icono" :size="14" /></span>
-        <span class="an-tile-num tnum">{{ t.valor }}</span>
-        <span class="an-tile-label">{{ t.label }}</span>
-        <span class="an-tile-hint">{{ t.hint }}</span>
+        <span class="an-tile-num tnum" data-kpi-valor>{{ t.valor }}</span>
+        <span class="an-tile-label" data-kpi-label>{{ t.label }}</span>
+        <span class="an-tile-hint" data-kpi-nota>{{ t.hint }}</span>
       </div>
     </div>
 
@@ -339,22 +339,22 @@ defineExpose({
       subtitulo="Cuántas órdenes caben en un día con el equipo y los tiempos reales del periodo (trabajo medido, sin colas)."
     >
       <div class="proy">
-        <div v-for="j in p.jornadas" :key="j.etiqueta" class="proy-dato">
-          <span class="proy-label">{{ j.etiqueta }} · {{ String(j.horas).replace('.5', ' h 30').replace(/^(\d+)$/, '$1 h') }}</span>
-          <span class="proy-num tnum">{{ entero(j.capacidad) }}</span>
-          <span class="proy-hint">órdenes por día</span>
-          <span class="proy-equiv tnum">{{ entero(j.capacidadPlus) }} PLU · {{ entero(j.capacidadUnidades) }} und</span>
+        <div v-for="j in p.jornadas" :key="j.etiqueta" class="proy-dato" data-kpi>
+          <span class="proy-label" data-kpi-label>Proyección {{ j.etiqueta }} · {{ String(j.horas).replace('.5', ' h 30').replace(/^(\d+)$/, '$1 h') }}</span>
+          <span class="proy-num tnum" data-kpi-valor>{{ entero(j.capacidad) }}</span>
+          <span class="proy-hint" data-kpi-nota>órdenes por día</span>
+          <span class="proy-equiv tnum" data-kpi-nota>{{ entero(j.capacidadPlus) }} PLU · {{ entero(j.capacidadUnidades) }} und</span>
         </div>
-        <div class="proy-dato">
-          <span class="proy-label">Semana (lun–vie)</span>
-          <span class="proy-num tnum">{{ entero(p.semana) }}</span>
-          <span class="proy-hint">órdenes</span>
-          <span class="proy-equiv tnum">{{ entero(p.semanaPlus) }} PLU · {{ entero(p.semanaUnidades) }} und</span>
+        <div class="proy-dato" data-kpi>
+          <span class="proy-label" data-kpi-label>Proyección semana (lun–vie)</span>
+          <span class="proy-num tnum" data-kpi-valor>{{ entero(p.semana) }}</span>
+          <span class="proy-hint" data-kpi-nota>órdenes</span>
+          <span class="proy-equiv tnum" data-kpi-nota>{{ entero(p.semanaPlus) }} PLU · {{ entero(p.semanaUnidades) }} und</span>
         </div>
-        <div class="proy-dato proy-cuello">
-          <span class="proy-label"><Gauge :size="12" /> Cuello de botella</span>
-          <span class="proy-num">{{ cuelloTexto }}</span>
-          <span class="proy-hint">la etapa que limita el día</span>
+        <div class="proy-dato proy-cuello" data-kpi>
+          <span class="proy-label" data-kpi-label><Gauge :size="12" /> Cuello de botella</span>
+          <span class="proy-num" data-kpi-valor>{{ cuelloTexto }}</span>
+          <span class="proy-hint" data-kpi-nota>la etapa que limita el día</span>
         </div>
       </div>
 
@@ -380,7 +380,7 @@ defineExpose({
         </p>
       </div>
 
-      <p class="proy-como">
+      <p class="proy-como" data-export-nota>
         Con <b class="tnum">{{ p.plantilla.operarios }}</b> {{ p.plantilla.operarios === 1 ? 'operario' : 'operarios' }} y
         <b class="tnum">{{ p.plantilla.inspectores }}</b> {{ p.plantilla.inspectores === 1 ? 'inspector' : 'inspectores' }}, y
         <b>{{ fmtMinutos(p.pickingMinMezcla) }}</b> de picking y <b>{{ fmtMinutos(p.inspeccionMinMezcla) }}</b>
@@ -396,7 +396,7 @@ defineExpose({
         v-if="barrasEtapaCapacidad.length" :items="barrasEtapaCapacidad" medida="órdenes en 9 h"
         :formato-eje="entero" :reserva="100"
       />
-      <p class="proy-real">
+      <p class="proy-real" data-export-nota>
         <b>Lo que se hizo:</b> {{ fmtDec(p.realDia) }} inspeccionadas por día.
         El turno de inspección estuvo ocupado el <b>{{ fmtDec(p.ocupacionInspeccion) }} %</b>
         y el de picking de muebles el <b>{{ fmtDec(p.ocupacionPicking) }} %</b>

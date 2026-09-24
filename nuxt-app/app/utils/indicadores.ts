@@ -208,7 +208,8 @@ export interface FilaApilada {
   total: number
   /** Lo que se lee en la punta de la barra. */
   texto: string
-  segmentos: { key: string; valor: number; color: string }[]
+  /** `nombre`: cómo se llama el segmento en la leyenda del Excel exportado. */
+  segmentos: { key: string; valor: number; color: string; nombre?: string }[]
   tooltip: FilaTooltip[]
   /** Referencia detras de la barra (la jornada del turno), si se conoce. */
   fondo?: number

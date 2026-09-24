@@ -42,7 +42,7 @@ const filas = computed<FilaApilada[]>(() => props.personas.map((p) => {
     texto: p.jornadaSegundos > 0
       ? `${fmtTiempo(p.segundos)} · ${p.efectividad ?? 0} %`
       : fmtTiempo(p.segundos),
-    segmentos: TIPOS_TAREA.map((t) => ({ key: t, valor: p.porTipo[t], color: TIPO_TAREA_COLOR[t] })),
+    segmentos: TIPOS_TAREA.map((t) => ({ key: t, valor: p.porTipo[t], color: TIPO_TAREA_COLOR[t], nombre: TIPO_TAREA_LABEL[t] })),
     tooltip,
   }
 }))

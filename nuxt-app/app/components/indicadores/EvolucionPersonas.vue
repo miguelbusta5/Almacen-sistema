@@ -39,7 +39,7 @@ const tabla = computed(() => props.personas.map((p) => ({
         <h4 class="mini-titulo" :title="p.nombre">{{ p.nombre }}</h4>
         <IndicadoresLineaDiaria
           :puntos="p.porDia.map((d) => ({ dia: d.dia, valor: unidades ? d.unidades : d.segundos }))"
-          :etiqueta="unidades ? 'unidades' : 'tiempo laborado'"
+          :etiqueta="unidades ? 'unidades' : 'tiempo laborado'" :serie="p.nombre"
           :formato="formato"
           :formato-fin="unidades ? fmtNumero : fmtHorasDecimal"
           :escala-eje="unidades ? 1 : 3600"

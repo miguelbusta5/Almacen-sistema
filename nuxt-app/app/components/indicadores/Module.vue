@@ -25,7 +25,7 @@ import {
 import { fmtKg, fmtM3 } from '~/utils/carga'
 import { PESTANAS_PROCESO, type PestanaProceso } from '~/utils/procesos'
 import { FileSpreadsheet } from '@lucide/vue'
-import { CLAVE_COLECTOR, exportarDashboard, type ColectorExport } from '~/utils/exportarDashboard'
+import { CLAVE_COLECTOR, crearColector, exportarDashboard, type ColectorExport } from '~/utils/exportarDashboard'
 
 const { me, sessionLoaded } = useSessionState()
 const { show: showToast } = useToast()
@@ -102,7 +102,7 @@ const esProceso = computed(() => PESTANAS_PROCESO.some((x) => x.key === pestana.
 // ── Exportar el dashboard entero (24-09) ──
 // Una hoja por pestaña con sus tarjetas y gráficos, y debajo todos sus datos.
 // Se recorre cada pestaña de verdad: el Excel sale igual a lo que se ve.
-const colector: ColectorExport = { activo: ref(false), tablas: new Map() }
+const colector: ColectorExport = crearColector(ref(false))
 provide(CLAVE_COLECTOR, colector)
 const contenidoTab = ref<HTMLElement | null>(null)
 const exportandoTodo = ref<string | null>(null)
@@ -614,15 +614,15 @@ const formatoHoras = (v: number) => fmtHorasDecimal(v)
 
         <template v-else>
         <div class="cifras">
-          <div class="heroe card">
-            <span class="kpi-label">{{ heroe!.label }}</span>
-            <span class="heroe-valor">{{ heroe!.valor }}</span>
-            <p class="heroe-nota">{{ heroe!.nota }}</p>
+          <div class="heroe card" data-kpi>
+            <span class="kpi-label" data-kpi-label>{{ heroe!.label }}</span>
+            <span class="heroe-valor" data-kpi-valor>{{ heroe!.valor }}</span>
+            <p class="heroe-nota" data-kpi-nota>{{ heroe!.nota }}</p>
           </div>
-          <div v-for="t in tiles" :key="t.label" class="kpi card">
-            <span class="kpi-label">{{ t.label }}</span>
-            <span class="kpi-valor">{{ t.valor }}</span>
-            <span class="kpi-hint">{{ t.hint }}</span>
+          <div v-for="t in tiles" :key="t.label" class="kpi card" data-kpi>
+            <span class="kpi-label" data-kpi-label>{{ t.label }}</span>
+            <span class="kpi-valor" data-kpi-valor>{{ t.valor }}</span>
+            <span class="kpi-hint" data-kpi-nota>{{ t.hint }}</span>
           </div>
         </div>
         <p class="nota-cerrados">

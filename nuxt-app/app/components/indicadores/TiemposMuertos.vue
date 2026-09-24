@@ -39,7 +39,7 @@ const filasPersonas = computed<FilaApilada[]>(() => props.muertos.personas.map((
   etiqueta: p.nombre,
   total: p.segundos,
   texto: fmtTiempo(p.segundos),
-  segmentos: ESTADOS_TIEMPO_MUERTO.map((e) => ({ key: e.key, valor: valorEstado(p, e.key), color: e.color })),
+  segmentos: ESTADOS_TIEMPO_MUERTO.map((e) => ({ key: e.key, valor: valorEstado(p, e.key), color: e.color, nombre: e.label })),
   tooltip: [
     ...ESTADOS_TIEMPO_MUERTO.filter((e) => valorEstado(p, e.key) > 0).map((e) => ({
       color: e.color, etiqueta: e.label.toLowerCase(), valor: fmtTiempo(valorEstado(p, e.key)),
@@ -145,12 +145,12 @@ const ICONO = { pendiente: Clock, justificado: CheckCircle2, sin_justificacion: 
     </p>
 
     <div class="cifras">
-      <div v-for="t in tiles" :key="t.key" class="kpi card">
-        <span class="kpi-label">
+      <div v-for="t in tiles" :key="t.key" class="kpi card" data-kpi>
+        <span class="kpi-label" data-kpi-label>
           <span v-if="t.color" class="sw" :style="{ background: t.color }" />{{ t.label }}
         </span>
-        <span class="kpi-valor">{{ t.valor }}</span>
-        <span class="kpi-hint">{{ t.hint }}</span>
+        <span class="kpi-valor" data-kpi-valor>{{ t.valor }}</span>
+        <span class="kpi-hint" data-kpi-nota>{{ t.hint }}</span>
       </div>
     </div>
 

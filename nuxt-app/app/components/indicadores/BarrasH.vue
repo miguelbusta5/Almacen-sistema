@@ -5,6 +5,7 @@
 // vertical habria que girarlos o cortarlos.
 import { computed, ref } from 'vue'
 import { anclaDeElemento, ticksLimpios, type BarraH, type EstadoTooltip } from '~/utils/indicadores'
+import { colorHex, unidadDeFormato, usarRegistroGrafico } from '~/utils/exportarDashboard'
 
 const props = defineProps<{
   items: BarraH[]
@@ -33,6 +34,23 @@ const ticks = computed(() => ticksLimpios(
 const tope = computed(() => (ticks.value[ticks.value.length - 1] ?? 1) * div.value)
 const pct = (v: number) => (tope.value > 0 ? (v / tope.value) * 100 : 0)
 
+// Al exportar el dashboard: gráfico de barras nativo en Excel con estas cifras.
+const raiz = ref<HTMLElement | null>(null)
+usarRegistroGrafico(raiz, (el) => {
+  const unidad = unidadDeFormato(props.formatoEje)
+  return {
+    tipo: 'barras',
+    categoria: 'Nombre',
+    categorias: props.items.map((b) => b.etiqueta),
+    series: [{
+      nombre: unidad && !props.medida.includes(unidad) ? `${props.medida} (${unidad})` : props.medida,
+      valores: props.items.map((b) => b.valor / div.value),
+      color: colorHex(el, 'var(--viz-medida)'),
+      colores: props.items.some((b) => b.color) ? props.items.map((b) => (b.color ? colorHex(el, b.color) : null)) : undefined,
+    }],
+  }
+})
+
 const tip = ref<EstadoTooltip | null>(null)
 const activa = ref<string | null>(null)
 function contenido(b: BarraH): Omit<EstadoTooltip, 'x' | 'y'> {
@@ -53,7 +71,7 @@ function ocultar() { activa.value = null; tip.value = null }
 </script>
 
 <template>
-  <div class="plot" :style="vars">
+  <div ref="raiz" class="plot" :style="vars">
     <div class="rejilla" aria-hidden="true">
       <span
         v-for="t in ticks" :key="t" class="linea" :class="{ base: t === 0 }"

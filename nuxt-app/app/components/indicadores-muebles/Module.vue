@@ -17,7 +17,7 @@ import { PRESETS_RANGO, rangoDePreset, type BarraH, type ColumnaTabla, type Pres
 import { hoyBogota } from '~/utils/exportaciones'
 import { API_ANALITICA_MUEBLES, type AnaliticaMueblesDTO } from '~/utils/mueblesAnalitica'
 import type { HojaExcel } from '~/utils/exportarExcel'
-import { CLAVE_COLECTOR, exportarDashboard, type ColectorExport } from '~/utils/exportarDashboard'
+import { CLAVE_COLECTOR, crearColector, exportarDashboard, type ColectorExport } from '~/utils/exportarDashboard'
 import { fmtDuracion, variacion, type ProcesoDTO } from '~/utils/procesos'
 
 interface ProcesosMuebles {
@@ -426,7 +426,7 @@ const vistaOrdenes = ref<{ hojas: () => HojaExcel[] } | null>(null)
 // ── Exportar el dashboard entero (24-09) ──
 // Picking, Inspección y Órdenes: una hoja por pestaña con sus tarjetas y
 // gráficos, y debajo todos sus datos. Se recorre cada pestaña de verdad.
-const colector: ColectorExport = { activo: ref(false), tablas: new Map() }
+const colector: ColectorExport = crearColector(ref(false))
 provide(CLAVE_COLECTOR, colector)
 const contenidoTab = ref<HTMLElement | null>(null)
 const exportandoTodo = ref<string | null>(null)

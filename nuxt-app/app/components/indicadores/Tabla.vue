@@ -2,7 +2,7 @@
 // Vista de tabla de cualquier grafico: las mismas cifras, sin depender del color.
 import { inject, onBeforeUnmount, ref, watchEffect } from 'vue'
 import type { ColumnaTabla } from '~/utils/indicadores'
-import { CLAVE_COLECTOR, CLAVE_TITULO_TARJETA } from '~/utils/exportarDashboard'
+import { CLAVE_COLECTOR, CLAVE_TARJETA } from '~/utils/exportarDashboard'
 
 const props = defineProps<{
   columnas: ColumnaTabla[]
@@ -14,12 +14,12 @@ const props = defineProps<{
 // Al exportar el dashboard, la tabla se anota con sus datos tal cual (el Excel
 // los recibe como números) y con el título de su tarjeta.
 const colector = inject(CLAVE_COLECTOR, null)
-const tituloTarjeta = inject(CLAVE_TITULO_TARJETA, null)
+const tarjeta = inject(CLAVE_TARJETA, null)
 const raiz = ref<HTMLElement | null>(null)
 const id = Symbol('tabla')
 watchEffect(() => {
   if (!colector?.activo.value || !raiz.value) return
-  colector.tablas.set(id, { el: raiz.value, titulo: tituloTarjeta?.() ?? '', columnas: props.columnas, filas: props.filas })
+  colector.tablas.set(id, { el: raiz.value, titulo: tarjeta?.titulo() ?? '', columnas: props.columnas, filas: props.filas })
 })
 onBeforeUnmount(() => colector?.tablas.delete(id))
 </script>
