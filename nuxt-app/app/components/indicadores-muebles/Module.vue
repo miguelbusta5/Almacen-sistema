@@ -17,7 +17,7 @@ import { PRESETS_RANGO, rangoDePreset, type BarraH, type ColumnaTabla, type Pres
 import { hoyBogota } from '~/utils/exportaciones'
 import { API_ANALITICA_MUEBLES, type AnaliticaMueblesDTO } from '~/utils/mueblesAnalitica'
 import { exportarExcel, type HojaExcel } from '~/utils/exportarExcel'
-import { fmtDuracion, type ProcesoDTO } from '~/utils/procesos'
+import { fmtDuracion, variacion, type ProcesoDTO } from '~/utils/procesos'
 
 interface ProcesosMuebles {
   rango: { desde: string; hasta: string }
@@ -27,6 +27,12 @@ interface ProcesosMuebles {
   inspectores: Array<{ id: string; nombre: string }>
   picking: ProcesoDTO
   inspeccion: ProcesoDTO
+  /** Valor (precio de venta del maestro) de lo pickeado en OVDM, sin contado ni tienda. */
+  valorOvdm?: {
+    total: number; dias: number; porDia: number | null; sinPrecio: number
+    serie: Array<{ dia: string; valor: number; ordenes: number; plus: number; unidades: number }>
+    anterior: { total: number; dias: number; porDia: number | null }
+  }
   /** Órdenes que el operario pickeó sin registrar (las creó inspección). */
   sinCrear?: {
     total: number
@@ -351,6 +357,32 @@ const filasEbanPlu = computed(() => (procesos.value?.ebanisteria.porPlu ?? []).m
   plu: e.plu, descripcion: e.descripcion ?? '—', proveedor: e.proveedor, veces: e.veces,
   espera: fmtDuracion(e.esperaMin), motivos: e.motivos.join(' · ') || '—',
 })))
+// ── Valor movido en OVDM ──
+const fmtPesos = (n: number | null | undefined) =>
+  (n == null ? '—' : `$ ${Math.round(n).toLocaleString('es-CO')}`)
+// En millones para el eje y la etiqueta al final de la línea.
+const fmtMillones = (n: number) => `$ ${(n / 1_000_000).toLocaleString('es-CO', { maximumFractionDigits: 1 })} M`
+const valor = computed(() => procesos.value?.valorOvdm ?? null)
+const cifrasValor = computed(() => {
+  const v = valor.value
+  if (!v) return []
+  return [
+    { label: 'Total del periodo', valor: fmtPesos(v.total), hint: `${v.dias} ${v.dias === 1 ? 'día' : 'días'} con OVDM pickeadas`, cambio: variacion(v.total, v.anterior.total) },
+    { label: 'Promedio por día', valor: fmtPesos(v.porDia), hint: 'sobre los días con OVDM pickeadas', cambio: variacion(v.porDia, v.anterior.porDia) },
+  ]
+})
+const puntosValor = computed(() => (valor.value?.serie ?? []).map((d) => ({ dia: d.dia, valor: d.valor })))
+const colsValor: ColumnaTabla[] = [
+  { key: 'dia', label: 'Día' },
+  { key: 'ordenes', label: 'Órdenes', num: true },
+  { key: 'plus', label: 'PLU', num: true },
+  { key: 'unidades', label: 'Unidades', num: true },
+  { key: 'valor', label: 'Valor (precio de venta)', num: true },
+]
+const filasValor = computed(() => [...(valor.value?.serie ?? [])].reverse().map((d) => ({
+  dia: d.dia, ordenes: d.ordenes, plus: d.plus, unidades: d.unidades, valor: fmtPesos(d.valor),
+})))
+
 // ── Órdenes sin crear ──
 const colsSinCrear: ColumnaTabla[] = [
   { key: 'nombre', label: 'Operario' },
@@ -407,6 +439,7 @@ async function exportar() {
           ...(vistaPicking.value?.hojas() ?? []),
           { nombre: 'Tiempo por operario', columnas: colsOperario, filas: filasOperario.value },
           { nombre: 'Genie - Order Picker', columnas: colsEquipos, filas: filasEquipos.value },
+          { nombre: 'Valor OVDM por día', columnas: colsValor, filas: filasValor.value },
           grupo('Picking por descripción', datos.value.porDescripcion),
           grupo('Picking por volumen', datos.value.porVolumen),
           grupo('Picking por peso', datos.value.porPeso),
@@ -533,6 +566,22 @@ useAutoRefresh({ intervalMs: 60_000, onRefresh: () => refrescar() })
         <IndicadoresProcesoPlu
           ref="vistaPicking" :proceso="procesos.picking" titulo="Picking" que="PLU pickeados" titulo-top="PLU con más demanda"
         />
+
+        <IndicadoresTarjeta
+          v-if="valor" class="bloque" titulo="Valor movido en OVDM"
+          :subtitulo="`Unidades pickeadas × precio de venta del maestro, por día. Sin facturas de contado ni órdenes de tienda.${valor.sinPrecio ? ` ${valor.sinPrecio} PLU sin precio en el maestro no suman.` : ''}`"
+        >
+          <div class="valor-cifras">
+            <IndicadoresCifraProceso v-for="c in cifrasValor" :key="c.label" v-bind="c" />
+          </div>
+          <IndicadoresLineaDiaria
+            v-if="puntosValor.length > 1" :puntos="puntosValor" :formato="fmtPesos" :formato-fin="fmtMillones"
+            :escala-eje="1000000" sufijo-eje=" M" etiqueta="Valor OVDM"
+          />
+          <template v-if="filasValor.length" #tabla>
+            <IndicadoresTabla :columnas="colsValor" :filas="filasValor" principal="dia" />
+          </template>
+        </IndicadoresTarjeta>
 
         <IndicadoresTarjeta
           class="bloque" titulo="Órdenes sin crear"
@@ -723,6 +772,7 @@ useAutoRefresh({ intervalMs: 60_000, onRefresh: () => refrescar() })
 .tab:hover { color: var(--ink-2); }
 .tab.on { color: var(--brand); border-bottom-color: var(--brand); }
 .tab:focus-visible { outline: none; box-shadow: var(--ring); border-radius: var(--r-xs); }
+.valor-cifras { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; margin-bottom: 14px; }
 .dos { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 18px; }
 
 .eban { display: flex; gap: 26px; flex-wrap: wrap; }

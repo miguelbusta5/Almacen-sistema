@@ -44,7 +44,7 @@ export default defineEventHandler(async (event) => {
   const enVentana = (d: string, v: { desde: string; hasta: string }) => d >= v.desde && d <= v.hasta
 
   const inicioActual = limitesRango(desde, hasta).inicio
-  const [lineas, operarios, inspectores, sinCrear] = await Promise.all([
+  const [lineas, operarios, inspectores, sinCrear, lineasOvdm] = await Promise.all([
     prisma.lineaMuebles.findMany({
       where: {
         orden: { deletedAt: null },
@@ -69,6 +69,16 @@ export default defineEventHandler(async (event) => {
         inspector: { select: { nombre: true } }, _count: { select: { lineas: true } },
       },
       orderBy: { horaPasoInspeccion: 'desc' },
+    }),
+    // Valor de lo que se mueve en OVDM (24-09): PLU pickeados en el periodo y en
+    // el anterior. Sin facturas de contado (tipo CONTADO) ni ordenes de tienda.
+    prisma.lineaMuebles.findMany({
+      where: {
+        horaFin: { gte: limitesRango(anterior.desde, hasta).inicio, lte: fin },
+        orden: { deletedAt: null, tipoOrden: 'OVDM', tiendaOrigenCodigo: null },
+        ...(operarioId && { operarioId }),
+      },
+      select: { plu: true, unidades: true, horaFin: true, ordenId: true },
     }),
   ])
 
@@ -131,6 +141,34 @@ export default defineEventHandler(async (event) => {
     esperaMin: r1(l.reduce((s, x) => s + esperaMin(x), 0) / l.length),
   })).sort((a, b) => b.veces - a.veces)
 
+  // ── Valor movido en OVDM: unidades x precio de venta del maestro ──
+  const precios = new Map((await prisma.productoMaestro.findMany({
+    where: { plu: { in: [...new Set(lineasOvdm.map((l) => l.plu))] } },
+    select: { plu: true, precio: true },
+  })).map((p) => [p.plu, p.precio == null ? null : Number(p.precio)]))
+  const valorDe = (v: { desde: string; hasta: string }) => {
+    const dias = new Map<string, { dia: string; valor: number; ordenes: Set<string>; plus: number; unidades: number }>()
+    let sinPrecio = 0
+    for (const l of lineasOvdm) {
+      const dia = diaBogota(l.horaFin!)
+      if (!enVentana(dia, v)) continue
+      const precio = precios.get(l.plu)
+      if (precio == null || precio <= 0) sinPrecio++
+      const d = dias.get(dia) ?? { dia, valor: 0, ordenes: new Set<string>(), plus: 0, unidades: 0 }
+      d.valor += (precio ?? 0) * l.unidades
+      d.ordenes.add(l.ordenId)
+      d.plus++
+      d.unidades += l.unidades
+      dias.set(dia, d)
+    }
+    const porDia = [...dias.values()].sort((a, b) => a.dia.localeCompare(b.dia))
+      .map((d) => ({ dia: d.dia, valor: Math.round(d.valor), ordenes: d.ordenes.size, plus: d.plus, unidades: d.unidades }))
+    const total = porDia.reduce((s, d) => s + d.valor, 0)
+    return { total, dias: porDia.length, porDia: porDia.length ? Math.round(total / porDia.length) : null, sinPrecio, serie: porDia }
+  }
+  const valorActual = valorDe(actual)
+  const valorAnterior = valorDe(anterior)
+
   // Cuantas deja sin registrar cada operario.
   const sinCrearPorOperario = new Map<string, { ordenes: number; plus: number }>()
   for (const o of sinCrear) {
@@ -149,6 +187,10 @@ export default defineEventHandler(async (event) => {
     inspectores: inspectores.map((i) => ({ id: i.id, nombre: i.nombre })),
     picking: proceso(cPicking, operarioId),
     inspeccion: proceso(cInspeccion, inspectorId),
+    valorOvdm: {
+      ...valorActual,
+      anterior: { total: valorAnterior.total, dias: valorAnterior.dias, porDia: valorAnterior.porDia },
+    },
     sinCrear: {
       total: sinCrear.length,
       porOperario: [...sinCrearPorOperario.entries()]
