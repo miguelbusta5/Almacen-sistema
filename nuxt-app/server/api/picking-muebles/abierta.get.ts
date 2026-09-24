@@ -1,5 +1,6 @@
 import { defineEventHandler } from 'h3'
-import { equipoDelDia, ordenAbierta, requirePicking, volumenDeOrden } from '../../utils/muebles'
+import { prisma } from '../../utils/prisma'
+import { equipoDelDia, ordenAbierta, ORDEN_INCLUDE, requirePicking, volumenDeOrden } from '../../utils/muebles'
 import { mapEquipoMuebles, mapOrdenMuebles } from '../../utils/mapRow'
 
 /**
@@ -8,7 +9,16 @@ import { mapEquipoMuebles, mapOrdenMuebles } from '../../utils/mapRow'
  */
 export default defineEventHandler(async (event) => {
   const actor = await requirePicking(event)
-  const [orden, equipo] = await Promise.all([ordenAbierta(actor.id), equipoDelDia(actor.id)])
+  const [orden, equipo, transferidas] = await Promise.all([
+    ordenAbierta(actor.id),
+    equipoDelDia(actor.id),
+    // Ordenes que le pasaron mientras tenia otra abierta: pendientes de picking.
+    prisma.ordenMuebles.findMany({
+      where: { transferidaAId: actor.id, estado: 'EN_PICKING', deletedAt: null },
+      include: ORDEN_INCLUDE,
+      orderBy: { transferidaAt: 'asc' },
+    }),
+  ])
 
   return {
     success: true,
@@ -16,6 +26,7 @@ export default defineEventHandler(async (event) => {
       orden: orden ? mapOrdenMuebles(orden) : null,
       equipo: equipo ? mapEquipoMuebles(equipo) : null,
       volumen: volumenDeOrden(orden),
+      transferidas: transferidas.map(mapOrdenMuebles),
     },
   }
 })

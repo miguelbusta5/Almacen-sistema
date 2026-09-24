@@ -49,20 +49,39 @@ export default defineOperacionAlmacenHandler(async (event) => {
     })
   }
 
+  // Orden transferida (24-09): solo la toma aquel a quien se la pasaron; la
+  // espera no es tiempo de picking y se descuenta del reloj de la orden.
+  if (orden.transferidaAId && orden.transferidaAId !== actor.id) {
+    throw createError({
+      statusCode: 409,
+      statusMessage: `La orden ${orden.codigo} esta transferida a ${orden.transferidaA?.name ?? 'otro operario'}`,
+    })
+  }
+  const now = new Date()
+  const esperaSeg = orden.transferidaAt ? Math.max(0, (now.getTime() - orden.transferidaAt.getTime()) / 1000) : 0
+
   const actualizada = await prisma.$transaction(async (tx) => {
+    if (orden.transferidaAId) {
+      await tx.ordenMuebles.update({
+        where: { id: orden.id },
+        data: { transferidaAId: null, transferidaAt: null, pausaSegundos: { increment: esperaSeg } },
+      })
+    }
     const previo = orden.participantes.find(p => p.usuarioId === actor.id)
     if (previo?.equipo) await tx.lineaMuebles.updateMany({ where: { ordenId: orden.id, operarioId: actor.id, tipoEquipo: null }, data: { tipoEquipo: previo.equipo.tipo } })
     await tx.participanteOrdenMuebles.upsert({
       where: { ordenId_usuarioId: { ordenId: orden.id, usuarioId: actor.id } },
       create: { ordenId: orden.id, usuarioId: actor.id, equipoId: equipo.id, esCreador: false },
-      update: { salioAt: null, seUnioAt: new Date(), equipoId: equipo.id },
+      update: { salioAt: null, seUnioAt: now, equipoId: equipo.id },
     })
     return tx.ordenMuebles.findUniqueOrThrow({ where: { id: orden.id }, include: ORDEN_INCLUDE })
   })
 
   await auditar(
     actor.id, 'UPDATE', 'picking-muebles', orden.id,
-    `Se unio a ${orden.codigo} con ${equipo.codigo} por PLU reasignados (la abrio ${orden.operario?.name ?? '?'})`,
+    orden.transferidaAId
+      ? `Tomo la orden transferida ${orden.codigo} con ${equipo.codigo} (espera de ${Math.round(esperaSeg / 60)} min fuera del reloj)`
+      : `Se unio a ${orden.codigo} con ${equipo.codigo} por PLU reasignados (la abrio ${orden.operario?.name ?? '?'})`,
   )
 
   return { success: true, data: mapOrdenMuebles(actualizada) }

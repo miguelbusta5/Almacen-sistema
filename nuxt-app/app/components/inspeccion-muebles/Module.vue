@@ -7,9 +7,10 @@ import { enRefrescoSilencioso, useAutoRefresh } from '~/composables/useAutoRefre
 // ninguna asignación, así que un inspector puede dejarle la PC a otro y volver
 // a encontrar su orden en el punto exacto en que la dejó.
 //
-// El inspector activo se recuerda en sessionStorage de esa PC: es una comodidad
-// para no reelegir el nombre en cada acción, no una sesión. La verdad de quién
-// hizo qué está en la DB, en el inspector que se guardó con cada tiempo.
+// Todo lo que se hace dentro de una orden va a nombre de quien ENTRÓ a ella
+// (el nombre que eligió en «¿Quién toma la orden?» o al crearla). Desde el 24-09
+// ya no se recuerda el nombre en la PC: con el nombre recordado se trabajaba a
+// nombre de otro. Al salir de la orden se olvida.
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { ClipboardCheck, FilePlus2, RefreshCw, Loader2, Receipt, Store } from '@lucide/vue'
 import { useToast } from '~/composables/useToast'
@@ -33,8 +34,8 @@ const abierta = ref<Orden | null>(null)
 const cargando = ref(true)
 const guardando = ref(false)
 
+// Quien entró a la orden abierta. Null fuera de una orden.
 const inspectorActivo = ref<string | null>(null)
-const CLAVE = 'inspector-muebles'
 
 // Modales
 const pidiendoInspector = ref(false)
@@ -88,7 +89,6 @@ let tick: ReturnType<typeof setInterval> | null = null
 
 onMounted(() => {
   tick = setInterval(() => { ahora.value = Date.now() }, 1000)
-  try { inspectorActivo.value = sessionStorage.getItem(CLAVE) } catch { /* PC sin storage */ }
   cargar()
 })
 onBeforeUnmount(() => { if (tick) clearInterval(tick) })
@@ -113,6 +113,7 @@ async function cargar() {
     if (abierta.value) {
       const actualizada = lista.data.find((o) => o.id === abierta.value!.id)
       abierta.value = actualizada ?? null
+      if (!actualizada) inspectorActivo.value = null
     }
   } catch (e) {
     show(mensajeError(e, 'No se pudieron cargar las órdenes'), true)
@@ -166,7 +167,6 @@ function confirmarCreador(id: string) {
   const tipo = pidiendoCreador.value
   pidiendoCreador.value = null
   creadorId.value = id
-  recordar(id)
   if (tipo === 'tienda') creandoTienda.value = true
   else if (tipo === 'sinCrear') creandoSinCrear.value = true
   else if (tipo === 'contado') creandoContado.value = true
@@ -180,6 +180,8 @@ async function crearOrden(url: string, body: Record<string, unknown>, exito: (o:
   try {
     const res = await $fetch<{ data: Orden }>(url, { method: 'POST', body: { ...body, inspectorId: id } })
     abierta.value = res.data
+    // Quien la creó es quien está dentro: lo que haga en ella va a su nombre.
+    recordar(id)
     show(exito(res.data))
   } catch (e) {
     show(mensajeError(e, fallo), true)
@@ -193,15 +195,16 @@ function cancelarQuien() {
   salir()
 }
 
-/** Salir es solo volver a la parrilla. Nada más — a propósito. */
+/** Salir es volver a la parrilla y olvidar el nombre: el siguiente que entre elige el suyo. */
 function salir() {
   abierta.value = null
+  inspectorActivo.value = null
   cargar()
 }
 
+/** Quien entró a la orden (o la creó): a su nombre va todo lo que se haga dentro. */
 function recordar(id: string) {
   inspectorActivo.value = id
-  try { sessionStorage.setItem(CLAVE, id) } catch { /* sin storage: se reelige */ }
 }
 
 /** Corre la acción; si aún no hay nombre elegido, lo pide primero. */
@@ -462,9 +465,7 @@ useAutoRefresh({ onRefresh: () => (guardando.value ? undefined : cargar()) })
         <button class="btn btn-sm" @click="crear('contado')">
           <Receipt :size="14" /> Factura de contado
         </button>
-        <button class="btn btn-sm" @click="pidiendoInspector = true">
-          {{ nombreActivo ? `Eres: ${nombreActivo}` : 'Elegir mi nombre' }}
-        </button>
+        <span v-if="abierta && nombreActivo" class="en-orden">En la orden: <strong>{{ nombreActivo }}</strong></span>
         <button class="btn btn-ghost btn-sm" :disabled="cargando" @click="cargar">
           <RefreshCw :size="14" /> Actualizar
         </button>
@@ -560,7 +561,9 @@ useAutoRefresh({ onRefresh: () => (guardando.value ? undefined : cargar()) })
 .hero-ic { display: grid; place-items: center; width: 22px; height: 22px; border-radius: 7px; color: var(--brand); background: color-mix(in srgb, var(--brand) 12%, transparent); }
 .hero-title { margin: 7px 0 3px; font-family: var(--display); font-size: 30px; font-weight: 800; letter-spacing: -.035em; color: var(--ink); }
 .hero-desc { margin: 0; font-size: 13px; color: var(--muted); }
-.hero-yo { display: flex; gap: 8px; flex-wrap: wrap; }
+.hero-yo { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.en-orden { padding: 5px 11px; border-radius: var(--r-pill); font-size: 12.5px; color: var(--ink-2); background: var(--brand-tint); }
+.en-orden strong { color: var(--ink); }
 
 .cargando { display: flex; align-items: center; gap: 9px; padding: 26px; justify-content: center; color: var(--muted); font-size: 13px; }
 .vacio { padding: 32px; text-align: center; color: var(--muted); font-size: 13px; border: 1px dashed var(--border-strong); border-radius: var(--r-md); }

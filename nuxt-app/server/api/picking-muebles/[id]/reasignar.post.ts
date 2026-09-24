@@ -10,11 +10,24 @@ export default defineOperacionAlmacenHandler(async event => {
   const otro = await prisma.user.findFirst({where:{id:b.operarioId,role:'PICKING_MUEBLES',active:true}})
   if (!otro) throw createError({statusCode:400,statusMessage:'Operario no disponible'})
   const abierta = await ordenAbierta(otro.id)
-  if (abierta && abierta.id !== orden.id) throw createError({statusCode:409,statusMessage:'El operario ya tiene otra orden abierta'})
   const equipo = await equipoDelDia(otro.id)
   if (!equipo) throw createError({statusCode:409,statusMessage:'El operario debe tener equipo asignado hoy'})
   const now = new Date()
   const previo = orden.participantes.find(p => p.usuarioId === otro.id)
+
+  // Si el otro ya tiene una orden abierta (24-09): antes se bloqueaba. Ahora la
+  // orden queda TRANSFERIDA a su nombre, pendiente de picking: el que la pasa
+  // sale y queda libre, y el otro la toma cuando pase la suya a inspeccion
+  // (entra por /unirse). El reloj de la orden no cuenta esa espera.
+  if (abierta && abierta.id !== orden.id) {
+    await prisma.$transaction(async tx => {
+      await tx.participanteOrdenMuebles.update({ where: { ordenId_usuarioId: { ordenId: orden.id, usuarioId: actor.id } }, data: { salioAt: now } })
+      await tx.ordenMuebles.update({ where: { id: orden.id }, data: { transferidaAId: otro.id, transferidaAt: now } })
+      await tx.notificacion.create({ data: { userId: otro.id, titulo: 'Orden de muebles transferida: pendiente de picking', descripcion: `${orden.codigo} · tómala al pasar ${abierta.codigo} a inspección`, tipo: 'ASIGNACION', enlace: '/dashboard/picking-muebles' } })
+    })
+    await auditar(actor.id, 'UPDATE', 'picking-muebles', orden.id, `Orden ${orden.codigo} transferida a ${otro.name} (tenia abierta ${abierta.codigo}): pendiente de picking; ${actor.name} queda libre.`)
+    return { success: true, transferida: true, operario: otro.name }
+  }
 
   // Todo junto o nada: entre sacar al saliente y meter al entrante la orden
   // queda SIN participante activo, y esParticipante() filtra por salioAt, asi
@@ -30,6 +43,7 @@ export default defineOperacionAlmacenHandler(async event => {
       create: { ordenId: orden.id, usuarioId: otro.id, equipoId: equipo.id, seUnioAt: now },
       update: { salioAt: null, seUnioAt: now, equipoId: equipo.id },
     })
+    if (orden.transferidaAId) await tx.ordenMuebles.update({ where: { id: orden.id }, data: { transferidaAId: null, transferidaAt: null } })
     await tx.notificacion.create({ data: { userId: otro.id, titulo: 'Orden de muebles reasignada', descripcion: orden.codigo, tipo: 'ASIGNACION', enlace: '/dashboard/picking-muebles' } })
   })
 

@@ -109,6 +109,7 @@ async function corregido() {
             <span v-if="orden.ciudadEnvio"> · <MapPin :size="12" /> {{ orden.ciudadEnvio }}</span>
             <span v-if="orden.tiendaOrigenNombre"> · De {{ orden.tiendaOrigenNombre }}</span>
             <span v-if="orden.sinCrearPicking"> · Sin crear en picking (la creó inspección)</span>
+            <span v-if="orden.transferidaA"> · Transferida a {{ orden.transferidaA.nombre }}, pendiente de picking</span>
             <span v-if="orden.cliente"> · {{ orden.cliente }}</span>
             · {{ orden.resumen.total }} PLU
             · {{ fmtKg(orden.volumen.kg) }} · {{ fmtM3(orden.volumen.m3) }}

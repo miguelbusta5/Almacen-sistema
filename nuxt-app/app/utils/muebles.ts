@@ -161,6 +161,9 @@ export interface Orden {
   tiendaOrigenNombre?: string | null
   /** Orden sin crear: la pickearon pero el operario no la registró; la creó el inspector. */
   sinCrearPicking?: boolean
+  /** Transferida a un operario que tenía otra orden abierta: pendiente de que la tome. */
+  transferidaA?: { id: string; nombre: string } | null
+  transferidaAt?: string | null
   /** Ciudad a la que va la orden; con esto agrupa el patinador. */
   ciudadEnvio: string | null
   entregadaTransporteAt: string | null

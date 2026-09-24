@@ -6,7 +6,7 @@ import { enRefrescoSilencioso, useAutoRefresh } from '~/composables/useAutoRefre
 // y la pantalla se repinta con eso. No se mantiene una copia local que pueda
 // desincronizarse, que es justo lo que arruina un modulo con relojes.
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
-import { Hammer, Plus, ClipboardCheck, Loader2, UserPlus } from '@lucide/vue'
+import { ArrowRightLeft, Hammer, Plus, ClipboardCheck, Loader2, UserPlus } from '@lucide/vue'
 import { useToast } from '~/composables/useToast'
 import { ensureSession, useSessionState } from '~/composables/useSession'
 import { usePausaOperativa } from '~/composables/usePausaOperativa'
@@ -44,7 +44,14 @@ async function prepararReasignacion() {
 async function reasignarOrden() {
   if(!orden.value||!nuevoOperario.value||guardando.value)return
   guardando.value=true
-  try { await $fetch(`/api/picking-muebles/${orden.value.id}/reasignar`,{method:'POST',body:{operarioId:nuevoOperario.value}});reasignables.value=[];nuevoOperario.value='';await cargar();show('Orden reasignada. Ya puedes crear otra orden.') }
+  try {
+    const res = await $fetch<{ transferida?: boolean; operario?: string }>(`/api/picking-muebles/${orden.value.id}/reasignar`,{method:'POST',body:{operarioId:nuevoOperario.value}})
+    reasignables.value=[];nuevoOperario.value='';await cargar()
+    // Si el otro tenía una orden abierta, le queda transferida y pendiente de picking.
+    show(res.transferida
+      ? `Orden transferida a ${res.operario}: queda pendiente hasta que termine la suya. Ya puedes crear otra orden.`
+      : 'Orden reasignada. Ya puedes crear otra orden.')
+  }
   catch(e){show(mensajeError(e,'No se pudo reasignar'),true)}finally{guardando.value=false}
 }
 const equipo = ref<Equipo | null>(null)
@@ -56,6 +63,8 @@ const volumen = computed<VolumenOrden>(() => orden.value?.volumen ?? VACIO)
 // Orden ajena con la que se choco al intentar crear: dispara el modal de unirse.
 const choque = ref<{ ordenId: string; orden: string; operario: string; equipo: string | null } | null>(null)
 const pendientes = ref<Pendiente[]>([])
+// Órdenes que me pasaron mientras tenía otra abierta: pendientes de picking (24-09).
+const transferidas = ref<Orden[]>([])
 const cargando = ref(true)
 const guardando = ref(false)
 const codigoNuevo = ref('')
@@ -110,11 +119,12 @@ async function cargar() {
   if (!enRefrescoSilencioso()) cargando.value = true
   try {
     const [abierta, pend] = await Promise.all([
-      $fetch<{ data: { orden: Orden | null; equipo: Equipo | null } }>(`${API_PICKING}/abierta`),
+      $fetch<{ data: { orden: Orden | null; equipo: Equipo | null; transferidas?: Orden[] } }>(`${API_PICKING}/abierta`),
       $fetch<{ data: Pendiente[] }>(`${API_PICKING}/mis-pendientes`).catch(() => ({ data: [] })),
     ])
     orden.value = abierta.data.orden
     equipo.value = abierta.data.equipo
+    transferidas.value = abierta.data.transferidas ?? []
     pendientes.value = pend.data
   } catch (e) {
     show(mensajeError(e, 'No se pudo cargar tu orden'), true)
@@ -158,6 +168,22 @@ async function unirse() {
     show(`Te uniste a ${destino.orden}`)
   } catch (e) {
     show(mensajeError(e, 'No te pudiste unir a la orden'), true)
+  } finally {
+    guardando.value = false
+  }
+}
+
+/** Tomar una orden que me transfirieron: entro a ella y sigue su picking. */
+async function tomarTransferida(t: Orden) {
+  if (guardando.value) return
+  guardando.value = true
+  try {
+    const res = await $fetch<{ data: Orden }>(`${API_PICKING}/${t.id}/unirse`, { method: 'POST' })
+    orden.value = res.data
+    transferidas.value = transferidas.value.filter((x) => x.id !== t.id)
+    show(`Tomaste la orden ${t.codigo}`)
+  } catch (e) {
+    show(mensajeError(e, 'No se pudo tomar la orden'), true)
   } finally {
     guardando.value = false
   }
@@ -247,7 +273,8 @@ useAutoRefresh({ onRefresh: () => (guardando.value ? undefined : cargar()) })
       <h2 class="r-titulo"><UserPlus :size="15" /> Pasar la orden a otro operario</h2>
       <p class="r-desc">
         Los PLU que ya hiciste siguen a tu nombre; el otro operario continúa sobre la misma orden
-        y tú quedas libre para abrir otra.
+        y tú quedas libre para abrir otra. Si el otro tiene una orden abierta, le queda transferida
+        y pendiente de picking hasta que pase la suya a inspección.
       </p>
       <div class="r-acciones">
         <button
@@ -271,6 +298,30 @@ useAutoRefresh({ onRefresh: () => (guardando.value ? undefined : cargar()) })
         </template>
       </div>
       <p v-if="lineaEnCurso" class="r-aviso">Tienes un PLU abierto: ciérralo antes de pasar la orden.</p>
+    </section>
+
+    <!-- Órdenes transferidas a mí: pendientes de picking. Van arriba de todo:
+         hay que tomarlas antes de abrir otra. -->
+    <section v-if="transferidas.length" class="card transf">
+      <h2 class="transf-titulo"><ArrowRightLeft :size="15" /> Órdenes transferidas a ti · pendientes de picking</h2>
+      <ul class="transf-lista">
+        <li v-for="t in transferidas" :key="t.id" class="transf-item">
+          <div>
+            <strong class="transf-codigo">{{ t.codigo }}</strong>
+            <span class="transf-meta">
+              {{ t.lineas.length }} PLU · la abrió {{ t.operario?.nombre ?? '—' }}
+            </span>
+          </div>
+          <button
+            class="btn btn-primary btn-sm" :disabled="guardando || !!orden"
+            :title="orden ? `Pasa ${orden.codigo} a inspección para tomarla` : ''"
+            @click="tomarTransferida(t)"
+          >
+            Tomar orden
+          </button>
+        </li>
+      </ul>
+      <p v-if="orden" class="transf-nota">Pasa {{ orden.codigo }} a inspección para tomarlas.</p>
     </section>
 
     <!-- Pendientes asignados: van arriba porque son trabajo que alguien esta
@@ -298,14 +349,17 @@ useAutoRefresh({ onRefresh: () => (guardando.value ? undefined : cargar()) })
           <span class="campo-label">Número de orden</span>
           <input
             v-model="codigoNuevo" class="input scan" type="text" autocomplete="off" autofocus
-            placeholder="Ej. TSDM123456" :disabled="guardando || !equipo"
+            placeholder="Ej. TSDM123456" :disabled="guardando || !equipo || transferidas.length > 0"
             @keyup.enter="crearOrden"
           >
         </label>
-        <button class="btn btn-primary" :disabled="!codigoNuevo.trim() || guardando || !equipo" @click="crearOrden">
+        <button class="btn btn-primary" :disabled="!codigoNuevo.trim() || guardando || !equipo || transferidas.length > 0" @click="crearOrden">
           <Loader2 v-if="guardando" :size="15" class="spin" /><Plus v-else :size="15" />
           Abrir orden
         </button>
+        <p v-if="transferidas.length" class="nueva-aviso">
+          Toma primero la orden que te transfirieron: después podrás abrir otra.
+        </p>
         <p v-if="!equipo" class="nueva-aviso">
           Necesitas un equipo asignado hoy. Pide al administrador que te asigne el Order Picker o el Genie.
         </p>
@@ -387,4 +441,12 @@ useAutoRefresh({ onRefresh: () => (guardando.value ? undefined : cargar()) })
 .r-label { font-size: 11.5px; font-weight: 700; color: var(--ink-2); }
 .r-aviso { margin: 10px 0 0; font-size: 12.5px; font-weight: 700; color: var(--u-aviso); }
 @media (max-width: 640px) { .r-acciones .btn, .r-campo { width: 100%; } .r-acciones .btn { justify-content: center; } }
+.transf { padding: 14px 16px; margin: 12px 0 18px; border-color: color-mix(in srgb, var(--brand) 35%, var(--border)); }
+.transf-titulo { display: flex; align-items: center; gap: 7px; margin: 0 0 10px; font-size: 13px; font-weight: 800; color: var(--ink); }
+.transf-titulo > svg { color: var(--brand); }
+.transf-lista { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 9px; }
+.transf-item { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; font-size: 13px; }
+.transf-codigo { font-size: 15px; color: var(--ink); }
+.transf-meta { margin-left: 8px; font-size: 12px; color: var(--muted); }
+.transf-nota { margin: 10px 0 0; font-size: 12.5px; font-weight: 700; color: var(--u-aviso); }
 </style>

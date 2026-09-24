@@ -36,6 +36,20 @@ export default defineOperacionAlmacenHandler(async (event) => {
     })
   }
 
+  // Una orden transferida pendiente va primero (24-09): si no, se queda sin
+  // pickear mientras el operario abre otras.
+  const transferida = await prisma.ordenMuebles.findFirst({
+    where: { transferidaAId: actor.id, estado: 'EN_PICKING', deletedAt: null },
+    select: { codigo: true },
+    orderBy: { transferidaAt: 'asc' },
+  })
+  if (transferida) {
+    throw createError({
+      statusCode: 409,
+      statusMessage: `Tienes la orden ${transferida.codigo} transferida pendiente de picking: tómala antes de abrir otra`,
+    })
+  }
+
   // Sin equipo asignado no hay contra que medir la capacidad, que es la mitad
   // del valor del modulo. Lo asigna el ADMIN cada dia.
   const equipo = await equipoDelDia(actor.id)

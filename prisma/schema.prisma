@@ -348,6 +348,7 @@ model User {
   tareasResurtidoResponsable         TareaResurtido[]               @relation("TareasResurtidoResponsable")
   tareasResurtidoPasadas             TareaResurtido[]               @relation("TareasResurtidoPasadas")
   ordenesMueblesEntregadas   OrdenMuebles[]         @relation("OrdenesMueblesEntregadas")
+  ordenesMueblesTransferidas OrdenMuebles[]         @relation("OrdenesMueblesTransferidas")
   erroresPickingOperario     ErrorPickingMuebles[]  @relation("ErroresPickingOperario")
   erroresPickingMarcados     ErrorPickingMuebles[]  @relation("ErroresPickingMarcados")
   tareasGeneralesApoyo       AsignadoTareaGeneral[] @relation("TareasGeneralesApoyo")
@@ -2052,6 +2053,13 @@ model OrdenMuebles {
   /// el inspector a nombre del operario que la pickeo; sin tiempo de picking.
   sinCrearPicking Boolean @default(false) @map("sin_crear_picking")
 
+  /// Orden transferida a un operario que ya tenia otra abierta: queda a su
+  /// nombre, pendiente de picking, hasta que la toma (24-09). La espera se
+  /// descuenta del reloj de picking al tomarla.
+  transferidaAId String?   @map("transferida_a_id")
+  transferidaA   User?     @relation("OrdenesMueblesTransferidas", fields: [transferidaAId], references: [id])
+  transferidaAt  DateTime? @map("transferida_at")
+
   /// Ciudad a la que va la orden. La escribe el inspector al empezar y se
   /// normaliza (normalizarCiudad) para que el filtro del patinador no se parta
   /// entre "medellin", "MEDELLÍN" y "Medellin ".
@@ -2086,6 +2094,7 @@ model OrdenMuebles {
   @@index([inspectorId, estado])
   @@index([ciudadEnvio, estado], map: "ordenes_muebles_ciudad_estado_idx")
   @@index([entregadaTransporteAt], map: "ordenes_muebles_entregada_idx")
+  @@index([transferidaAId], map: "ordenes_muebles_transferida_a_id_idx")
   @@map("ordenes_muebles")
 }
 

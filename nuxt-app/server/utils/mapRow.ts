@@ -700,6 +700,9 @@ export function mapOrdenMuebles(o: any) {
     ciudadEnvio: o.ciudadEnvio ?? null,
     entregadaTransporteAt: o.entregadaTransporteAt?.toISOString?.() ?? o.entregadaTransporteAt ?? null,
     entregadaPor: o.entregadaPor ? { id: o.entregadaPor.id, nombre: o.entregadaPor.name } : null,
+    // Pasada a un operario que tenia otra orden abierta: pendiente de que la tome.
+    transferidaA: o.transferidaA ? { id: o.transferidaA.id, nombre: o.transferidaA.name } : null,
+    transferidaAt: o.transferidaAt?.toISOString?.() ?? o.transferidaAt ?? null,
     // Todo el proceso: del primer PLU bajado a la entrega a transporte.
     leadTimeMin: leadTimeMinutos(o),
     almuerzoInicio: o.inspPausaInicio?.toISOString?.() ?? o.inspPausaInicio ?? null,
