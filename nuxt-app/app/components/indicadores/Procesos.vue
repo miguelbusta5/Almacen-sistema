@@ -9,7 +9,7 @@ import { fmtDiaCorto } from '~/utils/indicadores'
 import { exportarExcel, type HojaExcel } from '~/utils/exportarExcel'
 import { API_PROCESOS, fmtCifra, type PestanaProceso, type RespuestaProcesos } from '~/utils/procesos'
 
-const props = defineProps<{ pestana: PestanaProceso; desde: string; hasta: string; usuarioId: string }>()
+const props = defineProps<{ pestana: PestanaProceso; desde: string; hasta: string; usuarioId: string; turno: 'dia' | 'noche' }>()
 const { show } = useToast()
 
 const datos = ref<RespuestaProcesos | null>(null)
@@ -22,7 +22,7 @@ async function cargar() {
   cargando.value = true
   try {
     const res = await $fetch<RespuestaProcesos>(API_PROCESOS, {
-      query: { desde: props.desde, hasta: props.hasta, usuarioId: props.usuarioId || undefined },
+      query: { desde: props.desde, hasta: props.hasta, usuarioId: props.usuarioId || undefined, turno: props.turno },
     })
     if (este === pedido) datos.value = res
   } catch (e) {
@@ -31,7 +31,7 @@ async function cargar() {
     if (este === pedido) cargando.value = false
   }
 }
-watch(() => [props.desde, props.hasta, props.usuarioId], cargar, { immediate: true })
+watch(() => [props.desde, props.hasta, props.usuarioId, props.turno], cargar, { immediate: true })
 defineExpose({ cargar })
 
 const TITULO: Record<PestanaProceso, string> = {

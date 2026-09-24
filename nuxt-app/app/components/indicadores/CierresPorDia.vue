@@ -3,10 +3,9 @@
 // Control Montacargas cierra cada persona por día, y la proyección de un turno a
 // partir de eso. La recepción no entra: su medida es el contenedor.
 //
-// Una tarea cuenta para QUIEN LA CERRÓ. Si otro la había empezado, a ese le
-// suma en «Iniciadas y pasadas», que no entra en el total: así el total del
-// día es el número real de tareas terminadas, y se ve igual quién arranca para
-// que otro termine (el operario y su ayudante).
+// Desde el 24-09 un registro cuenta a TODOS los que lo tuvieron: el que lo
+// empezó y el que lo terminó suman uno cada uno. Lo del equipo cuenta cada
+// registro una vez (equipoDiario), por eso no es la suma de las personas.
 import { computed } from 'vue'
 import {
   fmtDiaCorto,
@@ -16,6 +15,7 @@ import {
 const props = defineProps<{
   cierres: CierresDiaPersona[]
   proyeccion: ProyeccionPersona[]
+  equipo?: Array<{ dia: string; total: number }>
 }>()
 
 const dec = (n: number) => n.toLocaleString('es-CO', { maximumFractionDigits: 1 })
@@ -33,7 +33,7 @@ const barras = computed<BarraH[]>(() => props.proyeccion
       { etiqueta: 'Tareas de resurtido / día', valor: dec(p.tareasDia) },
       { etiqueta: 'Pendientes / día', valor: dec(p.pendientesDia) },
       { etiqueta: 'Movimientos / día', valor: dec(p.movimientosDia) },
-      { etiqueta: 'Iniciadas y pasadas / día', valor: dec(p.pasadasDia) },
+      { etiqueta: 'Compartidas con otro / día', valor: dec(p.compartidasDia) },
       { etiqueta: 'Mejor día', valor: String(p.maxTotal) },
       { etiqueta: 'Días trabajados', valor: String(p.dias) },
     ],
@@ -47,7 +47,7 @@ const colsProyeccion: ColumnaTabla[] = [
   { key: 'movimientosDia', label: 'Movimientos / día', num: true },
   { key: 'totalDia', label: 'Total / día', num: true },
   { key: 'maxTotal', label: 'Mejor día', num: true },
-  { key: 'pasadasDia', label: 'Iniciadas y pasadas / día', num: true },
+  { key: 'compartidasDia', label: 'Compartidas / día', num: true },
 ]
 const filasProyeccion = computed(() => props.proyeccion.map((p) => ({
   nombre: p.nombre,
@@ -57,13 +57,14 @@ const filasProyeccion = computed(() => props.proyeccion.map((p) => ({
   movimientosDia: dec(p.movimientosDia),
   totalDia: dec(p.totalDia),
   maxTotal: p.maxTotal,
-  pasadasDia: dec(p.pasadasDia),
+  compartidasDia: dec(p.compartidasDia),
 })))
 
 // El equipo junto: cuánto se cierra en un día típico entre todos.
 const equipoDia = computed(() => {
   const porDia = new Map<string, number>()
-  for (const c of props.cierres) porDia.set(c.dia, (porDia.get(c.dia) ?? 0) + c.total)
+  // Cada registro una vez: sumar las filas por persona contaría dos veces lo compartido.
+  for (const c of props.equipo ?? []) porDia.set(c.dia, (porDia.get(c.dia) ?? 0) + c.total)
   const dias = [...porDia.values()].filter((n) => n > 0)
   return dias.length ? { promedio: dias.reduce((s, n) => s + n, 0) / dias.length, dias: dias.length } : null
 })
@@ -76,7 +77,7 @@ const colsDia: ColumnaTabla[] = [
   { key: 'pendientes', label: 'Pendientes', num: true },
   { key: 'movimientos', label: 'Movimientos', num: true },
   { key: 'total', label: 'Total cerradas', num: true },
-  { key: 'pasadas', label: 'Iniciadas y pasadas', num: true },
+  { key: 'compartidas', label: 'Compartidas', num: true },
 ]
 const filasDia = computed(() => props.cierres.map((c) => ({
   dia: fmtDiaCorto(c.dia),
@@ -85,7 +86,7 @@ const filasDia = computed(() => props.cierres.map((c) => ({
   pendientes: c.pendientes,
   movimientos: c.movimientos,
   total: c.total,
-  pasadas: c.pasadas,
+  compartidas: c.compartidas,
 })))
 </script>
 
@@ -105,8 +106,8 @@ const filasDia = computed(() => props.cierres.map((c) => ({
       />
       <p v-else class="cpd-muted">Nadie cerró tareas, pendientes ni movimientos en el periodo.</p>
       <p class="cpd-regla">
-        Cada tarea cuenta para quien la terminó. Si otro la había empezado, a ese le suma en
-        «Iniciadas y pasadas», que no entra en el total.
+        Un registro cuenta a todos los que lo tuvieron: si uno lo empieza y otro lo termina, les suma a los dos.
+        Por eso la suma de las personas puede ser mayor que lo del equipo, que cuenta cada registro una vez.
       </p>
       <template #tabla>
         <IndicadoresTabla :columnas="colsProyeccion" :filas="filasProyeccion" principal="nombre" />
@@ -116,7 +117,7 @@ const filasDia = computed(() => props.cierres.map((c) => ({
     <IndicadoresTarjeta
       v-if="cierres.length"
       titulo="Cierres por día"
-      subtitulo="Lo que terminó cada persona cada día de turno. La madrugada del turno de noche cuenta para el día en que empezó."
+      subtitulo="En lo que participó cada persona cada día de turno. La madrugada del turno de noche cuenta para el día en que empezó."
     >
       <div class="cpd-tabla">
         <IndicadoresTabla :columnas="colsDia" :filas="filasDia" principal="nombre" />

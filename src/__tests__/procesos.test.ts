@@ -43,6 +43,26 @@ describe("un proceso por PLU", () => {
     const r = resumenProceso([c("juan", "2026-09-22")], nombres, { plus: 20 });
     expect(r.personas[0].semaforo).toBe("rojo");
   });
+
+  it("un registro cuenta completo a todos los que lo tuvieron; el equipo, una vez", () => {
+    const r = resumenProceso([c("pedro", "2026-09-22", { participantes: ["juan", "pedro"] })], nombres);
+    expect(r.total).toMatchObject({ plus: 1, unidades: 10 });
+    expect(r.personas.map((p: any) => [p.nombre, p.total.plus, p.total.unidades])).toEqual(
+      expect.arrayContaining([["Juan", 1, 10], ["Pedro", 1, 10]]),
+    );
+    // La meta también acredita a los dos.
+    expect(metaDeProceso([c("pedro", "2026-09-01", { participantes: ["juan", "pedro"] })])).toEqual({ plus: 1, unidades: 10 });
+  });
+
+  it("filtro de turno o persona: solo se acredita a los permitidos y solo cuentan sus registros", () => {
+    const cierres = [
+      c("pedro", "2026-09-22", { participantes: ["juan", "pedro"] }),
+      c("pedro", "2026-09-22"),
+    ];
+    const r = resumenProceso(cierres, nombres, null, new Set(["juan"]));
+    expect(r.total.plus).toBe(1);
+    expect(r.personas.map((p: any) => p.nombre)).toEqual(["Juan"]);
+  });
 });
 
 describe("tareas generales", () => {
@@ -101,6 +121,15 @@ describe("endpoint y pantalla", () => {
     expect(api).toContain("tipo: { in: ['MOVIMIENTO', 'RESURTIDO'] }");
     expect(api).toContain("/^capacidad/i.test(t.montaje.nombreArchivo ?? '')");
     expect(api).toContain("recortarAlTurno({ usuarioId: a.usuarioId, inicio: a.horaInicio, fin: a.horaFin! }, ventanas)");
+  });
+
+  it("respeta el turno día / noche y acredita a todos los que tuvieron el registro", () => {
+    expect(api).toContain("const turno = esJornada(sp.turno) ? sp.turno : null");
+    expect(api).toContain("clasificarJornadas({");
+    expect(api).toContain("participantes: participantesDe(tramos, usuario)");
+    expect(api).toContain("resumenProceso(todos.filter((c) => enVentana(c.dia, actual)), nombres, meta, permitidas)");
+    expect(leer("nuxt-app/app/components/indicadores/Procesos.vue")).toContain("turno: props.turno");
+    expect(leer("nuxt-app/app/components/indicadores/Module.vue")).toContain(':turno="jornada"');
   });
 
   it("las pestañas de proceso van primero y exportan a Excel", () => {

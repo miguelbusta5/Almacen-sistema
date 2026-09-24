@@ -89,6 +89,7 @@ const muertos = ref<TiemposMuertosPeriodo | null>(null)
 const resurtido = ref<ResurtidoOperario[]>([])
 const carga = ref<CargaPersona[]>([])
 const cierresDiarios = ref<CierresDiaPersona[]>([])
+const equipoDiario = ref<NonNullable<RespuestaIndicadores['equipoDiario']>>([])
 const proyeccion = ref<ProyeccionPersona[]>([])
 const cargando = ref(false)
 
@@ -116,7 +117,7 @@ async function exportarLaborado() {
           { key: 'dia', label: 'Día' }, { key: 'nombre', label: 'Persona' },
           { key: 'tareas', label: 'Tareas', num: true }, { key: 'pendientes', label: 'Pendientes', num: true },
           { key: 'movimientos', label: 'Movimientos', num: true }, { key: 'total', label: 'Total', num: true },
-          { key: 'pasadas', label: 'Iniciadas y pasadas', num: true },
+          { key: 'compartidas', label: 'Compartidas', num: true },
         ],
         filas: cierresDiarios.value.map((c) => ({ ...c })),
       },
@@ -151,6 +152,7 @@ async function cargar() {
     resurtido.value = res.resurtido ?? []
     carga.value = res.carga ?? []
     cierresDiarios.value = res.cierresDiarios ?? []
+    equipoDiario.value = res.equipoDiario ?? []
     proyeccion.value = res.proyeccion ?? []
     equipo.value = res.equipo
   } catch (e) {
@@ -558,7 +560,7 @@ const formatoHoras = (v: number) => fmtHorasDecimal(v)
       <!-- Los procesos traen sus propios datos (una consulta para todos). -->
       <IndicadoresProcesos
         v-if="esProceso" :pestana="(pestana as PestanaProceso)"
-        :desde="desde" :hasta="hasta" :usuario-id="usuarioId"
+        :desde="desde" :hasta="hasta" :usuario-id="usuarioId" :turno="jornada"
       />
 
       <!-- El cuadro de turnos no depende del periodo ni de los datos: se ve
@@ -647,7 +649,7 @@ const formatoHoras = (v: number) => fmtHorasDecimal(v)
 
         <IndicadoresCierresPorDia
           v-if="cierresDiarios.length" class="bloque"
-          :cierres="cierresDiarios" :proyeccion="proyeccion"
+          :cierres="cierresDiarios" :proyeccion="proyeccion" :equipo="equipoDiario"
         />
 
         <IndicadoresTarjeta

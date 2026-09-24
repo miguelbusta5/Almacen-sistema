@@ -201,6 +201,8 @@ export interface UnidadesRegistradas {
   usuarioId: string;
   cuando: Date;
   unidades: number;
+  /** Mismo registro en varias personas (todos los que lo tuvieron): el equipo lo cuenta una vez. */
+  registro?: string;
 }
 
 /**
@@ -532,6 +534,8 @@ export function agregarIndicadores(entrada: {
 
   const unidadesPorDia = new Map<string, number>();
   const unidadesPersonaDia = new Map<string, Map<string, number>>();
+  const unidadesVistas = new Set<string>();
+  let unidadesEquipo = 0;
   for (const u of entrada.unidades) {
     const periodo = periodos.get(u.usuarioId);
     if (!periodo) continue;
@@ -540,7 +544,13 @@ export function agregarIndicadores(entrada: {
     de(u.usuarioId).unidades += u.unidades;
     // Las de la madrugada de un turno de noche son del día en que empezó.
     const dia = diaDeTrabajo(t, periodo.turnos, entrada.desde, entrada.hasta);
-    unidadesPorDia.set(dia, (unidadesPorDia.get(dia) ?? 0) + u.unidades);
+    // El equipo cuenta cada registro una vez aunque le sume a varias personas.
+    const primeraVez = !u.registro || !unidadesVistas.has(u.registro);
+    if (u.registro) unidadesVistas.add(u.registro);
+    if (primeraVez) {
+      unidadesEquipo += u.unidades;
+      unidadesPorDia.set(dia, (unidadesPorDia.get(dia) ?? 0) + u.unidades);
+    }
     const suyas = unidadesPersonaDia.get(u.usuarioId) ?? new Map<string, number>();
     suyas.set(dia, (suyas.get(dia) ?? 0) + u.unidades);
     unidadesPersonaDia.set(u.usuarioId, suyas);
@@ -608,7 +618,8 @@ export function agregarIndicadores(entrada: {
   personas.sort((x, y) => y.segundos - x.segundos || x.nombre.localeCompare(y.nombre));
 
   const sumar = (f: (p: IndicadorPersona) => number) => personas.reduce((s, p) => s + f(p), 0);
-  const unidadesTotal = sumar((p) => p.unidades);
+  // Del equipo: cada registro una vez (la suma de las personas puede ser mayor).
+  const unidadesTotal = unidadesEquipo;
 
   return {
     resumen: {
@@ -1241,11 +1252,28 @@ export function iniciadoPor(tramos: readonly { usuarioId: string; orden?: number
   return [...tramos].sort((a, b) => (a.orden ?? 0) - (b.orden ?? 0))[0]!.usuarioId;
 }
 
+/**
+ * Todos los que tuvieron el registro en la mano, sin repetir y en el orden en
+ * que lo tuvieron. Sin tramos (registros viejos), el respaldo que diga quien llama.
+ */
+export function participantesDe(
+  tramos: readonly { usuarioId: string; orden?: number | null }[],
+  respaldo: string,
+): string[] {
+  if (!tramos.length) return [respaldo];
+  return [...new Set([...tramos].sort((a, b) => (a.orden ?? 0) - (b.orden ?? 0)).map((t) => t.usuarioId))];
+}
+
 export interface CierreResurtido {
-  /** Quien la cerró. */
+  /** Quien lo cerró. */
   usuarioId: string;
-  /** Quien la empezó; null o igual a usuarioId si fue la misma persona. */
-  iniciadoPorId: string | null;
+  /**
+   * Todos los que lo tuvieron en la mano, sin repetir (incluye a quien lo
+   * cerró). Desde el 24-09 el registro CUENTA A TODOS: si Juan lo empieza y
+   * Pedro lo termina, a los dos les suma uno. El total del equipo lo cuenta una
+   * sola vez (equipoPorDia).
+   */
+  participantes: string[];
   cuando: Date;
   /** movimiento = Control Montacargas (movimiento y resurtido; la recepcion va por contenedor). */
   tipo: "tarea" | "pendiente" | "movimiento";
@@ -1255,27 +1283,23 @@ export interface CierresDiaPersona {
   dia: string;
   usuarioId: string;
   nombre: string;
-  /** Tareas de resurtido que cerró ese día. */
+  /** Tareas de resurtido en las que participó (empezó, siguió o cerró) ese día. */
   tareas: number;
-  /** Pendientes que cerró ese día. */
+  /** Pendientes en los que participó ese día. */
   pendientes: number;
-  /** Movimientos de Control Montacargas (movimiento y resurtido) que cerró. */
+  /** Movimientos de Control Montacargas (movimiento y resurtido) en los que participó. */
   movimientos: number;
-  /** tareas + pendientes + movimientos: lo que terminó. */
+  /** tareas + pendientes + movimientos. */
   total: number;
-  /**
-   * Las que empezó y terminó otra persona. NO suman al total: si Juan la empieza
-   * y Pedro la cierra, a Pedro le cuenta una cerrada y a Juan una pasada; el
-   * total del día sigue siendo una.
-   */
-  pasadas: number;
+  /** De ese total, los que hizo con otra persona (también le cuentan a ella). */
+  compartidas: number;
 }
 
 /**
- * Cierres de resurtido y pendientes por día de turno y persona.
+ * Tareas, pendientes y movimientos por día de turno y persona.
  *
- * El día de una pasada es el del cierre: es cuando la tarea deja de estar
- * abierta. Solo salen las personas pedidas (respeta el filtro de turno).
+ * Cada persona que tuvo el registro suma uno, en el día de SU turno en que se
+ * cerró. Solo salen las personas pedidas (respeta el filtro de turno).
  */
 export function cierresPorDiaYPersona(entrada: {
   personas: readonly { id: string; nombre: string }[];
@@ -1286,63 +1310,97 @@ export function cierresPorDiaYPersona(entrada: {
 }): CierresDiaPersona[] {
   const nombres = new Map(entrada.personas.map((p) => [p.id, p.nombre]));
   const filas = new Map<string, CierresDiaPersona>();
-  const fila = (dia: string, usuarioId: string) => {
-    const k = `${dia}|${usuarioId}`;
-    let f = filas.get(k);
-    if (!f) {
-      f = { dia, usuarioId, nombre: nombres.get(usuarioId) ?? usuarioId, tareas: 0, pendientes: 0, movimientos: 0, total: 0, pasadas: 0 };
-      filas.set(k, f);
-    }
-    return f;
-  };
   for (const c of entrada.cierres) {
-    const deQuien = entrada.turnos.filter((v) => v.usuarioId === c.usuarioId);
-    const dia = diaDeTurnoDeInstante(c.cuando, deQuien, entrada.desde, entrada.hasta);
-    if (nombres.has(c.usuarioId)) {
-      const f = fila(dia, c.usuarioId);
+    const compartida = c.participantes.length > 1;
+    for (const u of c.participantes) {
+      if (!nombres.has(u)) continue;
+      const deQuien = entrada.turnos.filter((v) => v.usuarioId === u);
+      const dia = diaDeTurnoDeInstante(c.cuando, deQuien, entrada.desde, entrada.hasta);
+      const k = `${dia}|${u}`;
+      let f = filas.get(k);
+      if (!f) {
+        f = { dia, usuarioId: u, nombre: nombres.get(u)!, tareas: 0, pendientes: 0, movimientos: 0, total: 0, compartidas: 0 };
+        filas.set(k, f);
+      }
       if (c.tipo === "tarea") f.tareas++;
       else if (c.tipo === "pendiente") f.pendientes++;
       else f.movimientos++;
       f.total++;
-    }
-    if (c.iniciadoPorId && c.iniciadoPorId !== c.usuarioId && nombres.has(c.iniciadoPorId)) {
-      fila(dia, c.iniciadoPorId).pasadas++;
+      if (compartida) f.compartidas++;
     }
   }
   return [...filas.values()].sort(
-    (a, b) => b.dia.localeCompare(a.dia) || b.total - a.total || b.pasadas - a.pasadas || a.nombre.localeCompare(b.nombre),
+    (a, b) => b.dia.localeCompare(a.dia) || b.total - a.total || a.nombre.localeCompare(b.nombre),
   );
+}
+
+export interface EquipoDia {
+  dia: string;
+  tareas: number;
+  pendientes: number;
+  movimientos: number;
+  total: number;
+}
+
+/**
+ * Lo que cerró el equipo cada día, contando cada registro UNA vez (en el día
+ * del turno de quien lo cerró). Sumar las filas por persona lo inflaría: un
+ * registro de dos personas está en las dos filas. Solo cuenta los registros en
+ * que participó alguien de `personas` (el filtro de turno).
+ */
+export function equipoPorDia(entrada: {
+  personas: readonly { id: string }[];
+  cierres: readonly CierreResurtido[];
+  turnos: readonly VentanaTurno[];
+  desde: string;
+  hasta: string;
+}): EquipoDia[] {
+  const ids = new Set(entrada.personas.map((p) => p.id));
+  const dias = new Map<string, EquipoDia>();
+  for (const c of entrada.cierres) {
+    if (!c.participantes.some((u) => ids.has(u))) continue;
+    const deQuien = entrada.turnos.filter((v) => v.usuarioId === c.usuarioId);
+    const dia = diaDeTurnoDeInstante(c.cuando, deQuien, entrada.desde, entrada.hasta);
+    const d = dias.get(dia) ?? { dia, tareas: 0, pendientes: 0, movimientos: 0, total: 0 };
+    if (c.tipo === "tarea") d.tareas++;
+    else if (c.tipo === "pendiente") d.pendientes++;
+    else d.movimientos++;
+    d.total++;
+    dias.set(dia, d);
+  }
+  return [...dias.values()].sort((a, b) => a.dia.localeCompare(b.dia));
 }
 
 export interface ProyeccionPersona {
   usuarioId: string;
   nombre: string;
-  /** Días con algo cerrado o pasado: los que trabajó en esto. */
+  /** Días con algo hecho: los que trabajó en esto. */
   dias: number;
   tareasDia: number;
   pendientesDia: number;
   movimientosDia: number;
   totalDia: number;
-  pasadasDia: number;
+  /** Compartidas con otra persona por día (ya dentro del total). */
+  compartidasDia: number;
   /** El mejor día: el techo que ya demostró. */
   maxTotal: number;
 }
 
 /**
  * Promedio por DÍA TRABAJADO de cada persona: lo que se puede esperar que
- * cierre en un turno. Sobre los días del rango saldría más bajo solo porque
+ * haga en un turno. Sobre los días del rango saldría más bajo solo porque
  * descansó o estuvo en otra cosa.
  */
 export function proyeccionDiaria(filas: readonly CierresDiaPersona[]): ProyeccionPersona[] {
-  const acc = new Map<string, { nombre: string; dias: number; tareas: number; pendientes: number; movimientos: number; total: number; pasadas: number; max: number }>();
+  const acc = new Map<string, { nombre: string; dias: number; tareas: number; pendientes: number; movimientos: number; total: number; compartidas: number; max: number }>();
   for (const f of filas) {
-    const a = acc.get(f.usuarioId) ?? { nombre: f.nombre, dias: 0, tareas: 0, pendientes: 0, movimientos: 0, total: 0, pasadas: 0, max: 0 };
+    const a = acc.get(f.usuarioId) ?? { nombre: f.nombre, dias: 0, tareas: 0, pendientes: 0, movimientos: 0, total: 0, compartidas: 0, max: 0 };
     a.dias++;
     a.tareas += f.tareas;
     a.pendientes += f.pendientes;
     a.movimientos += f.movimientos;
     a.total += f.total;
-    a.pasadas += f.pasadas;
+    a.compartidas += f.compartidas;
     a.max = Math.max(a.max, f.total);
     acc.set(f.usuarioId, a);
   }
@@ -1356,7 +1414,7 @@ export function proyeccionDiaria(filas: readonly CierresDiaPersona[]): Proyeccio
       pendientesDia: prom(a.pendientes, a.dias),
       movimientosDia: prom(a.movimientos, a.dias),
       totalDia: prom(a.total, a.dias),
-      pasadasDia: prom(a.pasadas, a.dias),
+      compartidasDia: prom(a.compartidas, a.dias),
       maxTotal: a.max,
     }))
     .sort((a, b) => b.totalDia - a.totalDia || a.nombre.localeCompare(b.nombre));

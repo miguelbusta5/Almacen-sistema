@@ -7,7 +7,7 @@ import {
   agregarIndicadores, agregarTiemposMuertos, clasificarJornadas, diaBogota, diasDelRango, esJornada,
   esMotivoTiempoMuerto,
   finDelDiaBogota, limitesRango, resumirResurtidoPorOperario,
-  cerradoPor, cierresPorDiaYPersona, iniciadoPor, proyeccionDiaria, recortarAlTurno, type CierreResurtido,
+  cerradoPor, cierresPorDiaYPersona, equipoPorDia, participantesDe, proyeccionDiaria, recortarAlTurno, type CierreResurtido,
   type JustificacionTiempoMuerto, type TiempoRegistrado, type TipoTarea, type UnidadesRegistradas,
   type VentanaTurno,
 } from '../../utils/indicadoresCalc'
@@ -115,7 +115,7 @@ export default defineEventHandler(async (event) => {
     prisma.movimientoMontacargas.findMany({
       where: { deletedAt: null, estado: 'CERRADO', horaFinalizacion: { gte: ini, lte: finConsulta } },
       select: {
-        responsableId: true, cantidadTotal: true, horaFinalizacion: true, plu: true, tipo: true,
+        id: true, responsableId: true, cantidadTotal: true, horaFinalizacion: true, plu: true, tipo: true,
         // Quien lo empezo y quien lo cerro, para la proyeccion diaria.
         tramos: { select: { usuarioId: true, orden: true } },
       },
@@ -240,8 +240,13 @@ export default defineEventHandler(async (event) => {
   const movidos: { usuarioId: string; tipo: TipoCarga; plu: string; unidades: number }[] = []
   for (const m of cerrados) {
     if (m.horaFinalizacion) {
-      unidades.push({ usuarioId: m.responsableId, cuando: m.horaFinalizacion, unidades: m.cantidadTotal })
-      movidos.push({ usuarioId: m.responsableId, tipo: 'montacargas', plu: m.plu, unidades: m.cantidadTotal })
+      // Desde el 24-09 el registro cuenta a TODOS los que lo tuvieron (el
+      // montacarguista que lo empezo y el ayudante que lo ubico). El equipo lo
+      // cuenta una vez por el `registro`.
+      for (const u of participantesDe(m.tramos, m.responsableId)) {
+        unidades.push({ usuarioId: u, cuando: m.horaFinalizacion, unidades: m.cantidadTotal, registro: `m:${m.id}` })
+        movidos.push({ usuarioId: u, tipo: 'montacargas', plu: m.plu, unidades: m.cantidadTotal })
+      }
     }
   }
   for (const t of tareas) {
@@ -258,11 +263,12 @@ export default defineEventHandler(async (event) => {
       if (cerrada && tr.fin) tiempos.push({ ...base, fin: tr.fin })
       else enCurso.push({ ...base, fin: tr.fin ?? finAbierto(tr.inicio, tr.usuarioId) })
     }
-    // Las unidades son de quien la cerro.
+    // Las unidades cuentan a todos los que la tuvieron (24-09).
     if (cerrada) {
-      const quien = t.responsableId ?? t.montaje.operarioId
-      unidades.push({ usuarioId: quien, cuando: t.horaFin!, unidades: t.unidadesBajadas ?? 0 })
-      movidos.push({ usuarioId: quien, tipo: 'resurtido', plu: t.plu, unidades: t.unidadesBajadas ?? 0 })
+      for (const u of participantesDe(t.tramos, t.responsableId ?? t.montaje.operarioId)) {
+        unidades.push({ usuarioId: u, cuando: t.horaFin!, unidades: t.unidadesBajadas ?? 0, registro })
+        movidos.push({ usuarioId: u, tipo: 'resurtido', plu: t.plu, unidades: t.unidadesBajadas ?? 0 })
+      }
     }
   }
   for (const p of pendientes) {
@@ -279,10 +285,12 @@ export default defineEventHandler(async (event) => {
       if (cerrado && t.fin) tiempos.push({ ...base, fin: t.fin })
       else enCurso.push({ ...base, fin: t.fin ?? finAbierto(t.inicio, t.usuarioId) })
     }
-    // Las unidades son de quien lo ubico.
+    // Las unidades cuentan a todos los que lo tuvieron (24-09).
     if (cerrado) {
-      unidades.push({ usuarioId: p.operarioId, cuando: p.horaFin!, unidades: p.unidadesBajadas ?? 0 })
-      movidos.push({ usuarioId: p.operarioId, tipo: 'pendiente', plu: p.plu, unidades: p.unidadesBajadas ?? 0 })
+      for (const u of participantesDe(p.tramos, p.operarioId)) {
+        unidades.push({ usuarioId: u, cuando: p.horaFin!, unidades: p.unidadesBajadas ?? 0, registro })
+        movidos.push({ usuarioId: u, tipo: 'pendiente', plu: p.plu, unidades: p.unidadesBajadas ?? 0 })
+      }
     }
   }
   // Un contenedor no es un PLU: su tiempo cuenta, pero no entra en el promedio
@@ -323,7 +331,7 @@ export default defineEventHandler(async (event) => {
     .filter((t) => t.estado === 'COMPLETADA' && enRango(t.horaFin))
     .map((t) => ({
       usuarioId: cerradoPor(t.tramos, t.responsableId ?? t.montaje.operarioId),
-      iniciadoPorId: iniciadoPor(t.tramos),
+      participantes: participantesDe(t.tramos, t.responsableId ?? t.montaje.operarioId),
       cuando: t.horaFin!,
       tipo: 'tarea',
     }))
@@ -331,7 +339,7 @@ export default defineEventHandler(async (event) => {
     .filter((p) => p.estado === 'COMPLETADO' && p.operarioId && enRango(p.horaFin))
     .map((p) => ({
       usuarioId: cerradoPor(p.tramos, p.operarioId!),
-      iniciadoPorId: iniciadoPor(p.tramos),
+      participantes: participantesDe(p.tramos, p.operarioId!),
       cuando: p.horaFin!,
       tipo: 'pendiente',
     }))
@@ -341,12 +349,13 @@ export default defineEventHandler(async (event) => {
     .filter((m) => m.tipo !== 'RECEPCION' && enRango(m.horaFinalizacion))
     .map((m) => ({
       usuarioId: cerradoPor(m.tramos, m.responsableId),
-      iniciadoPorId: iniciadoPor(m.tramos),
+      participantes: participantesDe(m.tramos, m.responsableId),
       cuando: m.horaFinalizacion!,
       tipo: 'movimiento',
     }))
   // El promedio por operario de siempre sigue siendo solo de tareas de resurtido.
-  const cierresResurtido = cierresTareas.map((c) => ({ usuarioId: c.usuarioId, cuando: c.cuando }))
+  // Cada tarea cuenta a todos los que la tuvieron (24-09).
+  const cierresResurtido = cierresTareas.flatMap((c) => c.participantes.map((u) => ({ usuarioId: u, cuando: c.cuando })))
 
   const justificaciones: JustificacionTiempoMuerto[] = justificadas.flatMap((j) =>
     esMotivoTiempoMuerto(j.motivo)
@@ -407,6 +416,14 @@ export default defineEventHandler(async (event) => {
     // Cuantas tareas y pendientes cierra cada persona por dia de turno, y quien
     // empieza para que otro termine: la base para proyectar un turno.
     cierresDiarios,
+    // Lo del equipo cuenta cada registro una vez (las filas por persona no se suman).
+    equipoDiario: equipoPorDia({
+      personas: delTurno,
+      cierres: [...cierresTareas, ...cierresPendientes, ...cierresMovimientos],
+      turnos: ventanas,
+      desde,
+      hasta,
+    }),
     proyeccion: proyeccionDiaria(cierresDiarios),
     carga,
     muertos: agregarTiemposMuertos({

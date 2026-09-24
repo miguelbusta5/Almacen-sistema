@@ -13,11 +13,19 @@
 //   las 4 semanas anteriores al periodo, sobre todos los (persona, dia)
 //   trabajados. Nadie la edita. Semaforo: verde >= meta, amarillo >= 80 %.
 // - Todo se compara con el periodo anterior del mismo largo.
+// - Desde el 24-09 un registro CUENTA A TODOS los que lo tuvieron (el que lo
+//   empezo, el que lo siguio y el que lo cerro suman uno cada uno, con sus
+//   unidades, m3 y kg). Lo del EQUIPO cuenta cada registro una vez: la suma de
+//   las personas puede ser mayor que el total del equipo.
 
 // ── Cierres por PLU (movimientos, pendientes, resurtido) ───────────────────
 
 export interface CierreProceso {
+  /** Quien lo cerro. */
   usuarioId: string
+  /** Todos los que lo tuvieron, sin repetir (incluye a quien lo cerro). Sin
+   *  dato, solo quien lo cerro. A cada uno le cuenta completo. */
+  participantes?: string[]
   /** Dia de turno al que pertenece (lo resuelve quien llama, con el cuadro). */
   dia: string
   plu: string
@@ -82,14 +90,21 @@ export function medianaProceso(v: readonly number[]): number | null {
 }
 
 /** La meta: el dia tipico de una persona (mediana de PLU por persona-dia). */
+/** A quienes les cuenta un registro: todos los que lo tuvieron (o quien lo cerro). */
+export function acreditados(c: CierreProceso): string[] {
+  return c.participantes?.length ? c.participantes : [c.usuarioId]
+}
+
 export function metaDeProceso(historico: readonly CierreProceso[]): { plus: number; unidades: number } | null {
   const pd = new Map<string, { plus: number; unidades: number }>()
   for (const c of historico) {
-    const k = `${c.usuarioId}|${c.dia}`
-    const x = pd.get(k) ?? { plus: 0, unidades: 0 }
-    x.plus++
-    x.unidades += c.unidades
-    pd.set(k, x)
+    for (const u of acreditados(c)) {
+      const k = `${u}|${c.dia}`
+      const x = pd.get(k) ?? { plus: 0, unidades: 0 }
+      x.plus++
+      x.unidades += c.unidades
+      pd.set(k, x)
+    }
   }
   const plus = medianaProceso([...pd.values()].map((x) => x.plus))
   const unidades = medianaProceso([...pd.values()].map((x) => x.unidades))
@@ -102,10 +117,15 @@ export function semaforo(valor: number, meta: number | null | undefined): 'verde
   return valor >= meta * 0.8 ? 'amarillo' : 'rojo'
 }
 
+/**
+ * `personas`: si viene, solo a ellas se les acredita y solo cuentan los
+ * registros en que participo alguna (el filtro de turno o de persona).
+ */
 export function resumenProceso(
   cierres: readonly CierreProceso[],
   nombres: ReadonlyMap<string, string>,
   meta: { plus: number } | null = null,
+  personas: ReadonlySet<string> | null = null,
 ): ResumenProceso {
   const total = cero()
   const porDia = new Map<string, Cifras>()
@@ -114,19 +134,25 @@ export function resumenProceso(
   const plus = new Map<string, { descripcion: string | null; veces: number; unidades: number }>()
   let sinMedida = 0
   for (const c of cierres) {
+    const quienes = acreditados(c).filter((u) => !personas || personas.has(u))
+    if (!quienes.length) continue
+    // El equipo: el registro una vez.
     sumar(total, c)
     if (c.m3 == null) sinMedida++
     const d = porDia.get(c.dia) ?? cero()
     sumar(d, c)
     porDia.set(c.dia, d)
-    const p = porPersona.get(c.usuarioId) ?? { total: cero(), dias: new Set<string>() }
-    sumar(p.total, c)
-    p.dias.add(c.dia)
-    porPersona.set(c.usuarioId, p)
-    const k = `${c.usuarioId}|${c.dia}`
-    const pdx = personaDia.get(k) ?? cero()
-    sumar(pdx, c)
-    personaDia.set(k, pdx)
+    // Cada persona que lo tuvo: completo.
+    for (const u of quienes) {
+      const p = porPersona.get(u) ?? { total: cero(), dias: new Set<string>() }
+      sumar(p.total, c)
+      p.dias.add(c.dia)
+      porPersona.set(u, p)
+      const k = `${u}|${c.dia}`
+      const pdx = personaDia.get(k) ?? cero()
+      sumar(pdx, c)
+      personaDia.set(k, pdx)
+    }
     const x = plus.get(c.plu) ?? { descripcion: c.descripcion ?? null, veces: 0, unidades: 0 }
     x.veces++
     x.unidades += c.unidades

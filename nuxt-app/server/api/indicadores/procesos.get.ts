@@ -3,7 +3,8 @@ import { prisma } from '../../utils/prisma'
 import { requireAuth } from '../../utils/auth'
 import { assertGestorMontacargas } from '../../utils/montacargas'
 import {
-  cerradoPor, diaBogota, diaDeTurnoDeInstante, limitesRango, recortarAlTurno, type VentanaTurno,
+  cerradoPor, clasificarJornadas, diaBogota, diaDeTurnoDeInstante, esJornada, limitesRango, participantesDe,
+  recortarAlTurno, type VentanaTurno,
 } from '../../utils/indicadoresCalc'
 import { ventanaTurno } from '../../utils/turnosCalc'
 import { medidasDePlus } from '../../utils/carga'
@@ -20,7 +21,7 @@ const MAX_DIAS = 93
 const diaMas = (dia: string, n: number) => diaBogota(new Date(new Date(`${dia}T12:00:00-05:00`).getTime() + n * MS_DIA))
 
 /**
- * GET /api/indicadores/procesos?desde&hasta&usuarioId - Indicadores por
+ * GET /api/indicadores/procesos?desde&hasta&usuarioId&turno - Indicadores por
  * proceso del area de almacenamiento: recepcion de contenedores, movimientos
  * (Control Montacargas: movimiento y resurtido), pendientes, resurtido (normal
  * y por capacidad) y tareas generales.
@@ -42,6 +43,7 @@ export default defineEventHandler(async (event) => {
   if (largo > MAX_DIAS) desde = diaMas(hasta, -(MAX_DIAS - 1))
   const n = Math.min(largo, MAX_DIAS)
   const usuarioId = sp.usuarioId ? String(sp.usuarioId) : null
+  const turno = esJornada(sp.turno) ? sp.turno : null
 
   // Tres ventanas: el periodo, el anterior del mismo largo y las 4 semanas de la meta.
   const anterior = { desde: diaMas(desde, -n), hasta: diaMas(desde, -1) }
@@ -108,15 +110,19 @@ export default defineEventHandler(async (event) => {
 
   // ── Cierres de cada proceso ──
   const medidas = await medidasDePlus([...movs, ...pends, ...tareas].map((x) => x.plu))
-  const cierre = (usuario: string, cuando: Date, plu: string, descripcion: string | null, unidades: number): CierreProceso => {
+  // El registro cuenta a todos los que lo tuvieron (24-09); cae en el dia de
+  // turno de quien lo cerro.
+  type Tramo = { usuarioId: string; orden: number }
+  const cierre = (tramos: Tramo[], respaldo: string, cuando: Date, plu: string, descripcion: string | null, unidades: number): CierreProceso => {
+    const usuario = cerradoPor(tramos, respaldo)
     const c = cargaDeUnidades(unidades, medidas.get(plu))
-    return { usuarioId: usuario, dia: diaDe(usuario, cuando), plu, descripcion, unidades, m3: c.m3, kg: c.kg }
+    return { usuarioId: usuario, participantes: participantesDe(tramos, usuario), dia: diaDe(usuario, cuando), plu, descripcion, unidades, m3: c.m3, kg: c.kg }
   }
-  const cMovs = movs.map((m) => cierre(cerradoPor(m.tramos, m.responsableId), m.horaFinalizacion!, m.plu, m.descripcion, m.cantidadTotal))
-  const cPends = pends.map((p) => cierre(cerradoPor(p.tramos, p.operarioId!), p.horaFin!, p.plu, p.descripcion, p.unidadesBajadas ?? 0))
+  const cMovs = movs.map((m) => cierre(m.tramos, m.responsableId, m.horaFinalizacion!, m.plu, m.descripcion, m.cantidadTotal))
+  const cPends = pends.map((p) => cierre(p.tramos, p.operarioId!, p.horaFin!, p.plu, p.descripcion, p.unidadesBajadas ?? 0))
   const esCapacidad = (t: (typeof tareas)[number]) => /^capacidad/i.test(t.montaje.nombreArchivo ?? '')
   const cTarea = (t: (typeof tareas)[number]) =>
-    cierre(cerradoPor(t.tramos, t.responsableId ?? t.montaje.operarioId), t.horaFin!, t.plu, t.descripcion, t.unidadesBajadas ?? 0)
+    cierre(t.tramos, t.responsableId ?? t.montaje.operarioId, t.horaFin!, t.plu, t.descripcion, t.unidadesBajadas ?? 0)
   const cResNormal = tareas.filter((t) => !esCapacidad(t)).map(cTarea)
   const cResCapacidad = tareas.filter(esCapacidad).map(cTarea)
 
@@ -132,16 +138,47 @@ export default defineEventHandler(async (event) => {
   })
 
   // ── Nombres ──
-  const ids = new Set([...cMovs, ...cPends, ...cResNormal, ...cResCapacidad, ...tGen].map((c) => c.usuarioId))
+  const todosCierres = [...cMovs, ...cPends, ...cResNormal, ...cResCapacidad]
+  const ids = new Set([...todosCierres.flatMap((c) => c.participantes ?? [c.usuarioId]), ...tGen.map((t) => t.usuarioId)])
   const usuarios = await prisma.user.findMany({ where: { id: { in: [...ids] } }, select: { id: true, name: true } })
   const nombres = new Map(usuarios.map((u) => [u.id, u.name]))
 
-  // Filtro por persona: el equipo sigue siendo la referencia de la meta.
-  const dePersona = <T extends { usuarioId: string }>(l: T[]) => (usuarioId ? l.filter((x) => x.usuarioId === usuarioId) : l)
+  // ── Turno dia / noche, como en el resto de indicadores: manda el cuadro y,
+  // sin cuadro, la hora a la que trabajo. Se clasifica por el periodo; quien no
+  // trabajo en el, por toda la ventana (cuenta para la meta y el anterior).
+  const personasIds = [...ids].map((id) => ({ id, nombre: nombres.get(id) ?? '', rol: '' }))
+  const deRegistro = (tramos: Tramo[], respaldo: string, cuando: Date) =>
+    participantesDe(tramos, cerradoPor(tramos, respaldo)).map((u) => ({ usuarioId: u, inicio: cuando }))
+  const tiemposJ = [
+    ...movs.flatMap((m) => deRegistro(m.tramos, m.responsableId, m.horaFinalizacion!)),
+    ...pends.flatMap((p) => deRegistro(p.tramos, p.operarioId!, p.horaFin!)),
+    ...tareas.flatMap((t) => deRegistro(t.tramos, t.responsableId ?? t.montaje.operarioId, t.horaFin!)),
+    ...generales.map((a) => ({ usuarioId: a.usuarioId, inicio: a.horaInicio })),
+  ]
+  const enPeriodo = (d: Date) => d >= limitesRango(desde, hasta).inicio && d <= fin
+  const jPeriodo = clasificarJornadas({ personas: personasIds, ventanas, tiempos: tiemposJ.filter((t) => enPeriodo(t.inicio)), desde, hasta })
+  const jVentana = clasificarJornadas({ personas: personasIds, ventanas, tiempos: tiemposJ, desde: primero, hasta })
+  const activosPeriodo = new Set([
+    ...ventanas.filter((v) => enVentana(v.dia, actual)).map((v) => v.usuarioId),
+    ...tiemposJ.filter((t) => enPeriodo(t.inicio)).map((t) => t.usuarioId),
+  ])
+  const jornadaDe = (id: string) => (activosPeriodo.has(id) ? jPeriodo.get(id) : jVentana.get(id))
+  const delTurno = turno ? new Set([...ids].filter((id) => jornadaDe(id) === turno)) : null
+  // A quienes se acredita: las del turno pedido y, si se filtra, solo esa persona.
+  const permitidas = turno || usuarioId
+    ? new Set([...ids].filter((id) => (!delTurno || delTurno.has(id)) && (!usuarioId || id === usuarioId)))
+    : null
+
+  const dePersona = <T extends { usuarioId: string }>(l: T[]) => (permitidas ? l.filter((x) => permitidas.has(x.usuarioId)) : l)
+  // La meta es del equipo del turno, aunque se filtre una persona.
+  const delTurnoMeta = (l: CierreProceso[]) => delTurno
+    ? l.map((c) => ({ ...c, participantes: (c.participantes ?? [c.usuarioId]).filter((u) => delTurno.has(u)) }))
+      .filter((c) => c.participantes.length)
+    : l
   const proceso = (todos: CierreProceso[]) => {
-    const meta = metaDeProceso(todos.filter((c) => enVentana(c.dia, metaVentana)))
-    const act = resumenProceso(dePersona(todos.filter((c) => enVentana(c.dia, actual))), nombres, meta)
-    const ant = resumenProceso(dePersona(todos.filter((c) => enVentana(c.dia, anterior))), nombres)
+    const meta = metaDeProceso(delTurnoMeta(todos.filter((c) => enVentana(c.dia, metaVentana))))
+    const act = resumenProceso(todos.filter((c) => enVentana(c.dia, actual)), nombres, meta, permitidas)
+    const ant = resumenProceso(todos.filter((c) => enVentana(c.dia, anterior)), nombres, null, permitidas)
     return { actual: act, anterior: { total: ant.total, dias: ant.dias, equipoDia: ant.equipoDia, personaDia: ant.personaDia }, meta }
   }
 
@@ -158,12 +195,13 @@ export default defineEventHandler(async (event) => {
     },
   })
   const { porRecepcion } = await almacenamientoDeRecepciones(recs)
-  const contenedor = (x: (typeof recs)[number]): ContenedorProceso & { dia: string } => {
+  const contenedor = (x: (typeof recs)[number]): ContenedorProceso & { dia: string; ids: string[] } => {
     const alm = porRecepcion.get(x.id)
     const descargaMin = Math.max(0, ((x.horaFinalizacion!.getTime() - x.horaInicio.getTime()) / 1000 - (x.pausaSegundos ?? 0)) / 60)
     const conAlm = !!alm && alm.movimientos > 0
     const personas = new Set([x.creadoPorId, ...x.descargadores.map((d) => d.usuarioId), ...(alm?.montacarguistaIds ?? [])])
     return {
+      ids: [...personas],
       dia: diaBogota(x.horaFinalizacion!),
       proveedor: x.proveedor,
       tipoContenedor: x.tipoContenedor,
@@ -177,7 +215,8 @@ export default defineEventHandler(async (event) => {
       personas: personas.size,
     }
   }
-  const cont = recs.map(contenedor)
+  // Con filtro de turno o persona: los contenedores en que participo alguien que entra.
+  const cont = recs.map(contenedor).filter((c) => !permitidas || c.ids.some((id) => permitidas.has(id)))
 
   const genAct = resumenGenerales(dePersona(tGen.filter((t) => enVentana(t.dia, actual))), nombres)
   const genAnt = resumenGenerales(dePersona(tGen.filter((t) => enVentana(t.dia, anterior))), nombres)

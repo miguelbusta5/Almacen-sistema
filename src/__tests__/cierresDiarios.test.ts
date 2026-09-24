@@ -3,6 +3,7 @@
 // Pedido del CEDI: «por día la cantidad de tareas realizadas, tanto del
 // resurtido como de los pendientes, tanto del operario como del ayudante (el
 // que comienza y el que termina)», para proyectar cuántas caben en un turno.
+// Desde el 24-09 el registro cuenta a TODOS los que lo tuvieron.
 import { readFileSync } from "node:fs";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
@@ -13,7 +14,9 @@ import {
   cerradoPor,
   cierresPorDiaYPersona,
   diaDeTurnoDeInstante,
+  equipoPorDia,
   iniciadoPor,
+  participantesDe,
   proyeccionDiaria,
   type CierreResurtido,
   type VentanaTurno,
@@ -26,18 +29,21 @@ const personas = [
 const rango = { desde: "2026-09-21", hasta: "2026-09-23" };
 // 10:00 de Bogotá del día dado.
 const a = (dia: string, hora = 15) => new Date(`${dia}T${String(hora).padStart(2, "0")}:00:00Z`);
-const cierre = (usuarioId: string, cuando: Date, tipo: "tarea" | "pendiente" | "movimiento" = "tarea", iniciadoPorId: string | null = null): CierreResurtido =>
-  ({ usuarioId, cuando, tipo, iniciadoPorId });
+// `con`: los demás que lo tuvieron (además de quien lo cerró).
+const cierre = (usuarioId: string, cuando: Date, tipo: "tarea" | "pendiente" | "movimiento" = "tarea", con: string[] = []): CierreResurtido =>
+  ({ usuarioId, participantes: [...con, usuarioId], cuando, tipo });
 
-describe("quién empezó y quién cerró", () => {
-  const tramos = [{ usuarioId: "pedro", orden: 2 }, { usuarioId: "juan", orden: 1 }];
+describe("quién empezó, quién cerró y quiénes la tuvieron", () => {
+  const tramos = [{ usuarioId: "pedro", orden: 2 }, { usuarioId: "juan", orden: 1 }, { usuarioId: "juan", orden: 3 }];
   it("por orden de tramo, aunque lleguen desordenados", () => {
     expect(iniciadoPor(tramos)).toBe("juan");
-    expect(cerradoPor(tramos, "x")).toBe("pedro");
+    expect(cerradoPor(tramos, "x")).toBe("juan");
+    expect(participantesDe(tramos, "x")).toEqual(["juan", "pedro"]);
   });
-  it("sin tramos: el respaldo cierra y nadie más la empezó", () => {
+  it("sin tramos: el respaldo cierra y es el único que la tuvo", () => {
     expect(cerradoPor([], "responsable")).toBe("responsable");
     expect(iniciadoPor([])).toBeNull();
+    expect(participantesDe([], "responsable")).toEqual(["responsable"]);
   });
 });
 
@@ -47,25 +53,23 @@ describe("cierres por día y persona", () => {
       personas, turnos: [], ...rango,
       cierres: [cierre("juan", a("2026-09-22")), cierre("juan", a("2026-09-22")), cierre("juan", a("2026-09-22"), "pendiente")],
     });
-    expect(r).toEqual([{ dia: "2026-09-22", usuarioId: "juan", nombre: "Juan", tareas: 2, pendientes: 1, movimientos: 0, total: 3, pasadas: 0 }]);
+    expect(r).toEqual([{ dia: "2026-09-22", usuarioId: "juan", nombre: "Juan", tareas: 2, pendientes: 1, movimientos: 0, total: 3, compartidas: 0 }]);
   });
 
-  it("Juan empieza y Pedro cierra: Pedro +1 cerrada, Juan +1 pasada, total del día 1", () => {
-    const r = cierresPorDiaYPersona({
-      personas, turnos: [], ...rango,
-      cierres: [cierre("pedro", a("2026-09-22"), "tarea", "juan")],
-    });
-    const pedro = r.find((f) => f.usuarioId === "pedro")!;
-    const juan = r.find((f) => f.usuarioId === "juan")!;
-    expect(pedro).toMatchObject({ tareas: 1, total: 1, pasadas: 0 });
-    expect(juan).toMatchObject({ tareas: 0, total: 0, pasadas: 1 });
-    expect(r.reduce((s, f) => s + f.total, 0)).toBe(1);
+  it("Juan empieza y Pedro cierra: a los dos les suma una; el equipo cuenta una", () => {
+    const cierres = [cierre("pedro", a("2026-09-22"), "tarea", ["juan"])];
+    const r = cierresPorDiaYPersona({ personas, turnos: [], ...rango, cierres });
+    expect(r.find((f) => f.usuarioId === "pedro")).toMatchObject({ tareas: 1, total: 1, compartidas: 1 });
+    expect(r.find((f) => f.usuarioId === "juan")).toMatchObject({ tareas: 1, total: 1, compartidas: 1 });
+    expect(equipoPorDia({ personas, turnos: [], ...rango, cierres })).toEqual([
+      { dia: "2026-09-22", tareas: 1, pendientes: 0, movimientos: 0, total: 1 },
+    ]);
   });
 
-  it("si la empezó y la cerró la misma persona no hay pasada", () => {
-    const r = cierresPorDiaYPersona({ personas, turnos: [], ...rango, cierres: [cierre("juan", a("2026-09-22"), "pendiente", "juan")] });
+  it("si la hizo sola no es compartida", () => {
+    const r = cierresPorDiaYPersona({ personas, turnos: [], ...rango, cierres: [cierre("juan", a("2026-09-22"), "pendiente")] });
     expect(r).toHaveLength(1);
-    expect(r[0]).toMatchObject({ pendientes: 1, pasadas: 0 });
+    expect(r[0]).toMatchObject({ pendientes: 1, compartidas: 0 });
   });
 
   it("la madrugada del turno de noche cuenta para el día en que empezó", () => {
@@ -81,11 +85,12 @@ describe("cierres por día y persona", () => {
   });
 
   it("solo salen las personas pedidas (respeta el filtro de turno)", () => {
-    const r = cierresPorDiaYPersona({
-      personas: [{ id: "juan", nombre: "Juan" }], turnos: [], ...rango,
-      cierres: [cierre("pedro", a("2026-09-22"), "tarea", "juan"), cierre("pedro", a("2026-09-22"))],
-    });
-    expect(r).toEqual([{ dia: "2026-09-22", usuarioId: "juan", nombre: "Juan", tareas: 0, pendientes: 0, movimientos: 0, total: 0, pasadas: 1 }]);
+    const soloJuan = [{ id: "juan", nombre: "Juan" }];
+    const cierres = [cierre("pedro", a("2026-09-22"), "tarea", ["juan"]), cierre("pedro", a("2026-09-22"))];
+    const r = cierresPorDiaYPersona({ personas: soloJuan, turnos: [], ...rango, cierres });
+    expect(r).toEqual([{ dia: "2026-09-22", usuarioId: "juan", nombre: "Juan", tareas: 1, pendientes: 0, movimientos: 0, total: 1, compartidas: 1 }]);
+    // El equipo del turno: solo los registros en que estuvo alguien del turno.
+    expect(equipoPorDia({ personas: soloJuan, turnos: [], ...rango, cierres })[0]!.total).toBe(1);
   });
 
   it("ordena del día más reciente al más viejo", () => {
@@ -95,14 +100,14 @@ describe("cierres por día y persona", () => {
 });
 
 describe("movimientos de Control Montacargas", () => {
-  it("cuentan en su columna y en el total, con sus pasadas", () => {
+  it("cuentan en su columna y en el total de todos los que los tuvieron", () => {
     const r = cierresPorDiaYPersona({
       personas, turnos: [], ...rango,
-      cierres: [cierre("juan", a("2026-09-22"), "movimiento"), cierre("pedro", a("2026-09-22"), "movimiento", "juan"), cierre("juan", a("2026-09-22"))],
+      cierres: [cierre("juan", a("2026-09-22"), "movimiento"), cierre("pedro", a("2026-09-22"), "movimiento", ["juan"]), cierre("juan", a("2026-09-22"))],
     });
-    expect(r.find((f) => f.usuarioId === "juan")).toMatchObject({ tareas: 1, movimientos: 1, total: 2, pasadas: 1 });
-    expect(r.find((f) => f.usuarioId === "pedro")).toMatchObject({ movimientos: 1, total: 1 });
-    expect(proyeccionDiaria(r).find((p) => p.usuarioId === "juan")).toMatchObject({ movimientosDia: 1, totalDia: 2 });
+    expect(r.find((f) => f.usuarioId === "juan")).toMatchObject({ tareas: 1, movimientos: 2, total: 3, compartidas: 1 });
+    expect(r.find((f) => f.usuarioId === "pedro")).toMatchObject({ movimientos: 1, total: 1, compartidas: 1 });
+    expect(proyeccionDiaria(r).find((p) => p.usuarioId === "juan")).toMatchObject({ movimientosDia: 2, totalDia: 3 });
   });
 });
 
@@ -114,17 +119,35 @@ describe("proyección", () => {
         ...Array.from({ length: 30 }, () => cierre("juan", a("2026-09-21"))),
         ...Array.from({ length: 20 }, () => cierre("juan", a("2026-09-23"))),
         ...Array.from({ length: 5 }, () => cierre("juan", a("2026-09-23"), "pendiente")),
-        cierre("pedro", a("2026-09-23"), "tarea", "juan"),
+        cierre("pedro", a("2026-09-23"), "tarea", ["juan"]),
       ],
     });
     const [juan, pedro] = proyeccionDiaria(filas);
     // 22-09 no trabajó: el promedio es sobre 2 días, no 3.
-    expect(juan).toMatchObject({ nombre: "Juan", dias: 2, tareasDia: 25, pendientesDia: 2.5, totalDia: 27.5, maxTotal: 30, pasadasDia: 0.5 });
-    expect(pedro).toMatchObject({ dias: 1, totalDia: 1, pasadasDia: 0 });
+    expect(juan).toMatchObject({ nombre: "Juan", dias: 2, tareasDia: 25.5, pendientesDia: 2.5, totalDia: 28, maxTotal: 30, compartidasDia: 0.5 });
+    expect(pedro).toMatchObject({ dias: 1, totalDia: 1, compartidasDia: 1 });
   });
 
   it("vacío sin cierres", () => {
     expect(proyeccionDiaria([])).toEqual([]);
+  });
+});
+
+describe("unidades: la persona suma todo lo que tuvo, el equipo cada registro una vez", () => {
+  it("un registro de dos personas: 10 a cada una y 10 al equipo", () => {
+    const personasMedidas = [{ id: "juan", nombre: "Juan", rol: "" }, { id: "pedro", nombre: "Pedro", rol: "" }];
+    const cuando = a("2026-09-22");
+    const r = indicadoresLib.agregarIndicadores({
+      personas: personasMedidas, tiempos: [], ventanas: [], ...rango,
+      unidades: [
+        { usuarioId: "juan", cuando, unidades: 10, registro: "m:1" },
+        { usuarioId: "pedro", cuando, unidades: 10, registro: "m:1" },
+        { usuarioId: "pedro", cuando, unidades: 4, registro: "m:2" },
+      ],
+    });
+    expect(r.personas.find((p) => p.id === "juan")!.unidades).toBe(10);
+    expect(r.personas.find((p) => p.id === "pedro")!.unidades).toBe(14);
+    expect(r.resumen.unidades).toBe(14);
   });
 });
 
@@ -140,14 +163,22 @@ describe("el endpoint y la pantalla", () => {
     // Movimientos de Control Montacargas sí; la recepción va por contenedor.
     expect(api).toContain(".filter((m) => m.tipo !== 'RECEPCION' && enRango(m.horaFinalizacion))");
     expect(api).toContain("proyeccion: proyeccionDiaria(cierresDiarios)");
+    expect(api).toContain("equipoDiario: equipoPorDia({");
+  });
+
+  it("acredita a todos los que lo tuvieron y el equipo no repite", () => {
+    expect(api).toContain("participantes: participantesDe(");
+    expect(api).not.toContain("iniciadoPorId");
+    expect(api).toContain("registro: `m:${m.id}`");
   });
 
   it("la pantalla usa las piezas del sistema y explica la regla", () => {
     expect(vista).toContain("IndicadoresTarjeta");
     expect(vista).toContain("IndicadoresTabla");
-    expect(vista).toContain("'Iniciadas y pasadas'");
-    expect(vista).toContain("que no entra en el total");
-    expect(leer("nuxt-app/app/components/indicadores/Module.vue")).toContain("<IndicadoresCierresPorDia");
+    expect(vista).toContain("'Compartidas'");
+    expect(vista).toContain("Un registro cuenta a todos los que lo tuvieron");
+    expect(vista).toContain("props.equipo");
+    expect(leer("nuxt-app/app/components/indicadores/Module.vue")).toContain(':equipo="equipoDiario"');
   });
 });
 

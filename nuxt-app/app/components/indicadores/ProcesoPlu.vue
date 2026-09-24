@@ -132,6 +132,10 @@ defineExpose({
         <p v-if="a.sinMedida" class="pp-nota">
           {{ a.sinMedida }} {{ a.sinMedida === 1 ? 'cierre no tiene' : 'cierres no tienen' }} medidas en el maestro: no suman m³ ni kg.
         </p>
+        <p class="pp-nota">
+          Un registro cuenta completo a todos los que lo tuvieron (el que lo empezó y el que lo terminó). Por eso
+          la suma de las personas puede ser mayor que lo del equipo, que cuenta cada registro una vez.
+        </p>
         <template #tabla>
           <IndicadoresTabla :columnas="colsPersonas" :filas="filasPersonas" principal="nombre" />
         </template>

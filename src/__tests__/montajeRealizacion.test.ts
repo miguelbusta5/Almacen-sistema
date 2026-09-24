@@ -1,7 +1,8 @@
 // Realización de un montaje por persona (fase 5, 23-09).
 //
 // Lo que el CEDI no entendía: los porcentajes no sumaban 100 y la tarea que
-// Juan empezó y Pedro terminó no se sabía de quién era.
+// Juan empezó y Pedro terminó no se sabía de quién era. Desde el 24-09 es de
+// los dos: cuenta a todos los que la tuvieron (los % pueden pasar de 100).
 import { readFileSync } from "node:fs";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
@@ -26,7 +27,7 @@ describe("quién cerró", () => {
 });
 
 describe("realización por persona", () => {
-  it("el porcentaje es sobre lo cerrado y suma 100", () => {
+  it("el porcentaje es sobre lo cerrado (sin tareas compartidas suma 100)", () => {
     const r = avancePersonas({
       operarioId: "a", operario: A,
       tareas: [hecha("a"), hecha("a"), hecha("a"), hecha("b"), { estado: "PENDIENTE" }, { estado: "EN_CURSO", tramos: [{ usuarioId: "b", orden: 1 }] }],
@@ -36,18 +37,18 @@ describe("realización por persona", () => {
     expect(suma(r, "porcentaje")).toBe(100);
   });
 
-  it("Juan empieza y Pedro cierra: la cerrada es de Pedro, Juan participó", () => {
-    const r = avancePersonas({ operarioId: "a", operario: A, tareas: [hecha("b", "c")] });
-    expect(por(r, "c")).toMatchObject({ nombre: "Pedro", completadas: 1, porcentaje: 100, participadas: 1 });
-    expect(por(r, "b")).toMatchObject({ nombre: "Juan", completadas: 0, porcentaje: 0, participadas: 1 });
-    // El total no se infla: una tarea, una cerrada.
-    expect(suma(r, "completadas")).toBe(1);
+  it("Juan empieza y Pedro cierra: la cerrada cuenta a los dos", () => {
+    const r = avancePersonas({ operarioId: "a", operario: A, tareas: [hecha("b", "c"), hecha("c")] });
+    expect(por(r, "c")).toMatchObject({ nombre: "Pedro", completadas: 2, porcentaje: 100, participadas: 2 });
+    expect(por(r, "b")).toMatchObject({ nombre: "Juan", completadas: 1, porcentaje: 50, participadas: 1 });
+    // Lo compartido cuenta a los dos: la columna pasa de 100.
+    expect(suma(r, "porcentaje")).toBe(150);
   });
 
   it("quien vuelve a la tarea varias veces participa una sola vez", () => {
     const r = avancePersonas({ operarioId: "a", operario: A, tareas: [hecha("a", "b", "a")] });
     expect(por(r, "a")).toMatchObject({ completadas: 1, participadas: 1 });
-    expect(por(r, "b")).toMatchObject({ completadas: 0, participadas: 1 });
+    expect(por(r, "b")).toMatchObject({ completadas: 1, participadas: 1 });
   });
 
   it("tareas viejas sin tramos: responsable y, si no hay, el titular", () => {
@@ -64,10 +65,9 @@ describe("realización por persona", () => {
     expect(r).toEqual([{ id: "a", nombre: "Keiner", completadas: 0, participadas: 0, porcentaje: 0 }]);
   });
 
-  it("con tercios también suma 100 exacto (datos reales daban 99,9 y 100,1)", () => {
+  it("porcentajes a una décima", () => {
     const r = avancePersonas({ operarioId: "a", operario: A, tareas: [hecha("a"), hecha("b"), hecha("c")] });
-    expect(r.reduce((s: number, p: any) => s + Math.round(p.porcentaje * 10), 0)).toBe(1000);
-    expect(r.map((p: any) => p.porcentaje).sort()).toEqual([33.3, 33.3, 33.4]);
+    expect(r.map((p: any) => p.porcentaje)).toEqual([33.3, 33.3, 33.3]);
     expect(repartirDecimas([37, 3, 1, 0], 41).reduce((s: number, n: number) => s + n, 0)).toBe(1000);
     expect(repartirDecimas([0, 0], 0)).toEqual([0, 0]);
   });
@@ -83,7 +83,8 @@ describe("la pantalla lo explica", () => {
   it("tabla del sistema con la regla escrita", () => {
     expect(mod).toContain(':columnas="colsRealizacion"');
     expect(mod).toContain("'% de lo cerrado'");
-    expect(mod).toContain("por eso suma 100 %");
+    expect(mod).toContain("pueden sumar más de 100 %");
+    expect(mod).toContain("cuenta a todos los que la tuvieron");
     expect(mod).not.toContain("sobre el total del resurtido");
   });
 });

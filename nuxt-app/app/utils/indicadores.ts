@@ -128,8 +128,10 @@ export interface RespuestaIndicadores {
   resurtido?: ResurtidoOperario[]
   /** Kg y m3 que movio cada persona, con el desglose por modulo. */
   carga?: CargaPersona[]
-  /** Tareas y pendientes que cerro cada persona por dia de turno. */
+  /** Tareas, pendientes y movimientos de cada persona por dia de turno. */
   cierresDiarios?: CierresDiaPersona[]
+  /** Lo del equipo por dia, cada registro una vez (no es la suma de las personas). */
+  equipoDiario?: Array<{ dia: string; tareas: number; pendientes: number; movimientos: number; total: number }>
   /** Promedio por dia trabajado: lo que se puede esperar de un turno. */
   proyeccion?: ProyeccionPersona[]
 }
@@ -142,10 +144,10 @@ export interface CierresDiaPersona {
   pendientes: number
   /** Movimientos de Control Montacargas (movimiento y resurtido). */
   movimientos: number
-  /** tareas + pendientes + movimientos: lo que termino. */
+  /** tareas + pendientes + movimientos: todo en lo que participo. */
   total: number
-  /** Empezadas por esta persona y cerradas por otra: NO suman al total. */
-  pasadas: number
+  /** De ese total, las que hizo con otra persona (tambien le cuentan a ella). */
+  compartidas: number
 }
 
 export interface ProyeccionPersona {
@@ -156,7 +158,7 @@ export interface ProyeccionPersona {
   pendientesDia: number
   movimientosDia: number
   totalDia: number
-  pasadasDia: number
+  compartidasDia: number
   maxTotal: number
 }
 

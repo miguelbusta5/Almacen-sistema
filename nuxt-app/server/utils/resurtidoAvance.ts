@@ -1,13 +1,12 @@
-// Realización de un montaje por persona: quién cerró cuántas tareas.
+// Realización de un montaje por persona: en cuántas tareas cerradas estuvo.
 //
-// Dos reglas (decididas con el CEDI el 22-09):
-// - El porcentaje es sobre las tareas YA CERRADAS, así la columna suma 100 %.
-//   Contra el total del montaje nunca cuadraba mientras hubiera pendientes, y
-//   parecía que faltaba gente.
-// - La tarea cuenta para QUIEN LA CERRÓ: el dueño del último tramo de reloj.
-//   Si Juan la empieza y se la pasa a Pedro, es de Pedro; Juan aparece en
-//   «participó en». Las tareas viejas sin tramos caen en su responsable, y si
-//   no hay, en el titular del montaje.
+// Reglas (CEDI, 22-09 y 24-09):
+// - El porcentaje es sobre las tareas YA CERRADAS: contra el total del montaje
+//   nunca cuadraba mientras hubiera pendientes.
+// - Desde el 24-09 una tarea cerrada CUENTA A TODOS los que la tuvieron: si
+//   Juan la empieza y Pedro la termina, les suma a los dos. Por eso la columna
+//   puede pasar de 100 %. Las tareas viejas sin tramos caen en su responsable,
+//   y si no hay, en el titular del montaje.
 
 type Tramo = { usuarioId: string; orden?: number | null; usuario?: { name: string } | null }
 type Tarea = {
@@ -20,11 +19,11 @@ type Tarea = {
 export interface AvancePersona {
   id: string
   nombre: string
-  /** Tareas que cerró esta persona. */
+  /** Tareas cerradas en las que estuvo (las empezara, siguiera o terminara). */
   completadas: number
   /** Tareas en las que tuvo reloj, las haya cerrado o no. */
   participadas: number
-  /** Parte de lo cerrado que es suya: la columna suma 100. */
+  /** De lo cerrado, en qué parte estuvo. Lo compartido cuenta a todos: la columna puede pasar de 100. */
   porcentaje: number
 }
 
@@ -75,15 +74,12 @@ export function avancePersonas(m: {
     }
     if (t.estado !== 'COMPLETADA') continue
     cerradas++
-    const ultimo = quienCerro(t.tramos)
-    if (ultimo) obtener(ultimo.usuarioId, ultimo.usuario?.name).completadas++
+    if (vistos.size) for (const id of vistos) obtener(id).completadas++
     else if (t.responsableId) obtener(t.responsableId, t.responsable?.name).completadas++
     else obtener(m.operarioId, m.operario?.name).completadas++
   }
 
-  const lista = [...personas.values()]
-  const decimas = repartirDecimas(lista.map((p) => p.completadas), cerradas)
-  return lista
-    .map((p, i) => ({ ...p, porcentaje: decimas[i]! / 10 }))
+  return [...personas.values()]
+    .map((p) => ({ ...p, porcentaje: cerradas ? Math.round((p.completadas / cerradas) * 1000) / 10 : 0 }))
     .sort((a, b) => b.completadas - a.completadas || b.participadas - a.participadas || a.nombre.localeCompare(b.nombre))
 }

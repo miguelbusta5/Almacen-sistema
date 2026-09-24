@@ -46,7 +46,7 @@ const detalle = ref<MontajeResurtidoDTO | null>(null)
 // Realización por persona (el cálculo vive en el servidor: resurtidoAvance.ts).
 const colsRealizacion: ColumnaTabla[] = [
   { key: 'nombre', label: 'Persona' },
-  { key: 'completadas', label: 'Cerradas', num: true },
+  { key: 'completadas', label: 'Cerradas en que estuvo', num: true },
   { key: 'porcentaje', label: '% de lo cerrado', num: true },
   { key: 'participadas', label: 'Participó en', num: true },
 ]
@@ -456,11 +456,12 @@ function transcurrido(m: MontajeResurtidoDTO): string {
         </header>
         <div class="m-body">
           <section class="realizacion">
-            <h3 class="rz-titulo"><Users :size="15" /> Quién cerró las tareas</h3>
+            <h3 class="rz-titulo"><Users :size="15" /> Quién hizo las tareas</h3>
             <p class="rz-desc">
               <b class="tnum">{{ detalle.progreso.completadas }}</b> de <b class="tnum">{{ detalle.progreso.total }}</b>
-              tareas cerradas. Cada tarea cuenta para quien la terminó; si alguien la empezó y la pasó,
-              le suma en «Participó en», no en cerradas. El porcentaje es sobre lo ya cerrado, por eso suma 100 %.
+              tareas cerradas. Una tarea cerrada cuenta a todos los que la tuvieron: si uno la empezó y otro la
+              terminó, les suma a los dos. Por eso los porcentajes, sobre lo ya cerrado, pueden sumar más de 100 %.
+              «Participó en» incluye también las que siguen abiertas.
             </p>
             <div v-if="detalle.progreso.completadas" class="rz-tabla">
               <IndicadoresTabla :columnas="colsRealizacion" :filas="filasRealizacion" principal="nombre" />
