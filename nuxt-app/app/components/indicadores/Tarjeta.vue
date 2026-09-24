@@ -4,11 +4,17 @@
 // La tabla no es un extra: es donde vive cada cifra que el grafico no rotula, y
 // la unica forma de leer los colores claros (aqua, amarillo, magenta) sin
 // depender del color.
-import { ref } from 'vue'
+import { computed, inject, provide, ref } from 'vue'
 import { BarChart3, Table2 } from '@lucide/vue'
+import { CLAVE_COLECTOR, CLAVE_TITULO_TARJETA } from '~/utils/exportarDashboard'
 
-defineProps<{ titulo: string; subtitulo?: string }>()
+const props = defineProps<{ titulo: string; subtitulo?: string }>()
 const verTabla = ref(false)
+// Al exportar el dashboard se monta también la tabla (oculta): así sus datos
+// llegan al Excel aunque en pantalla se vea el gráfico.
+const colector = inject(CLAVE_COLECTOR, null)
+const exportando = computed(() => colector?.activo.value ?? false)
+provide(CLAVE_TITULO_TARJETA, () => props.titulo)
 </script>
 
 <template>
@@ -29,6 +35,7 @@ const verTabla = ref(false)
     <slot v-if="!verTabla" name="leyenda" />
     <div v-if="verTabla" class="tj-tabla"><slot name="tabla" /></div>
     <slot v-else />
+    <div v-if="exportando && !verTabla" class="tj-solo-export" data-export-omitir><slot name="tabla" /></div>
   </section>
 </template>
 
@@ -38,4 +45,5 @@ const verTabla = ref(false)
 .tj-titulo { margin: 0; font-size: 15px; font-weight: 700; color: var(--ink); }
 .tj-sub { margin: 3px 0 0; font-size: 12.5px; color: var(--muted); }
 .tj-tabla { overflow-x: auto; margin: 0 -18px -18px; }
+.tj-solo-export { display: none; }
 </style>

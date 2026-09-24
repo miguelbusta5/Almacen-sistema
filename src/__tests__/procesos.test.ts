@@ -136,6 +136,7 @@ describe("endpoint y pantalla", () => {
     const mod = leer("nuxt-app/app/components/indicadores/Module.vue");
     expect(mod).toContain("<IndicadoresProcesos");
     expect(mod).toContain("('recepcion')");
-    expect(leer("nuxt-app/app/components/indicadores/Procesos.vue")).toContain("exportarExcel(");
+    // Se exporta el dashboard entero desde el módulo (todas las pestañas).
+    expect(mod).toContain("exportarDashboard({");
   });
 });

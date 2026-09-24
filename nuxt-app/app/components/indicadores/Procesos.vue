@@ -3,10 +3,9 @@
 // todos los procesos para el periodo (y el anterior, y la meta): cambiar de
 // pestaña no recarga.
 import { computed, ref, watch } from 'vue'
-import { Download } from '@lucide/vue'
 import { useToast } from '~/composables/useToast'
 import { fmtDiaCorto } from '~/utils/indicadores'
-import { exportarExcel, type HojaExcel } from '~/utils/exportarExcel'
+import type { HojaExcel } from '~/utils/exportarExcel'
 import { API_PROCESOS, fmtCifra, type PestanaProceso, type RespuestaProcesos } from '~/utils/procesos'
 
 const props = defineProps<{ pestana: PestanaProceso; desde: string; hasta: string; usuarioId: string; turno: 'dia' | 'noche' }>()
@@ -44,36 +43,10 @@ const TITULO: Record<PestanaProceso, string> = {
 
 const rango = (r: { desde: string; hasta: string }) => (r.desde === r.hasta ? fmtDiaCorto(r.desde) : `${fmtDiaCorto(r.desde)} – ${fmtDiaCorto(r.hasta)}`)
 
-// Cada componente de proceso expone sus tablas para el Excel.
+// Cada componente de proceso expone sus tablas (hojas).
 const vista = ref<{ hojas: () => HojaExcel[] } | null>(null)
 const vistaNormal = ref<{ hojas: () => HojaExcel[] } | null>(null)
 const vistaCapacidad = ref<{ hojas: () => HojaExcel[] } | null>(null)
-const exportando = ref(false)
-async function exportar() {
-  if (!datos.value || exportando.value) return
-  exportando.value = true
-  try {
-    const hojas = props.pestana === 'resurtido'
-      ? [...(vistaNormal.value?.hojas() ?? []), ...(vistaCapacidad.value?.hojas() ?? [])]
-      : [...(vista.value?.hojas() ?? [])]
-    if (props.pestana === 'pendientes') {
-      hojas.push({
-        nombre: 'PLU más solicitados',
-        columnas: [
-          { key: 'plu', label: 'PLU' }, { key: 'descripcion', label: 'Descripción' },
-          { key: 'veces', label: 'Veces solicitado', num: true }, { key: 'unidades', label: 'Unidades solicitadas', num: true },
-        ],
-        filas: datos.value.pendientes.solicitados.map((s) => ({ ...s })),
-      })
-    }
-    await exportarExcel(`indicadores-${props.pestana}-${props.desde}_${props.hasta}`, hojas)
-  } catch (e) {
-    show(apiErr(e, 'No se pudo exportar'), true)
-  } finally {
-    exportando.value = false
-  }
-}
-
 // Resurtido: normal y por capacidad lado a lado.
 const comparaResurtido = computed(() => {
   const r = datos.value?.resurtido
@@ -104,9 +77,6 @@ const comparaResurtido = computed(() => {
           </template>
         </p>
       </div>
-      <button class="btn btn-sm" :disabled="!datos || exportando" @click="exportar">
-        <Spinner v-if="exportando" :size="13" /><Download v-else :size="13" /> Exportar a Excel
-      </button>
     </header>
 
     <ListSkeleton v-if="!datos" />

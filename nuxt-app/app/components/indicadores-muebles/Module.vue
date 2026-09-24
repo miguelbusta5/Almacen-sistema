@@ -7,8 +7,8 @@ import { enRefrescoSilencioso, useAutoRefresh } from '~/composables/useAutoRefre
 // aquel gira sobre un `TipoTarea` cerrado de cinco valores, triplicado y con sus
 // propios guards, y meter picking/inspección ahí obligaría a tocar todo lo de
 // montacargas. Ver mueblesIndicadoresCalc.ts.
-import { computed, onMounted, ref, watch } from 'vue'
-import { ChartColumnIncreasing, RefreshCw, Loader2, LayoutList, ChartPie, ClipboardCheck, Download } from '@lucide/vue'
+import { computed, onMounted, provide, ref, watch } from 'vue'
+import { ChartColumnIncreasing, RefreshCw, Loader2, LayoutList, ChartPie, ClipboardCheck, FileSpreadsheet } from '@lucide/vue'
 import { useToast } from '~/composables/useToast'
 import { ensureSession, useSessionState } from '~/composables/useSession'
 import { canSeeModule } from '~/utils/modulePermissions'
@@ -16,7 +16,8 @@ import { API_INDICADORES_MUEBLES, TIPO_ERROR_PICKING_LABEL, fmtM3, mensajeError 
 import { PRESETS_RANGO, rangoDePreset, type BarraH, type ColumnaTabla, type PresetRango } from '~/utils/indicadores'
 import { hoyBogota } from '~/utils/exportaciones'
 import { API_ANALITICA_MUEBLES, type AnaliticaMueblesDTO } from '~/utils/mueblesAnalitica'
-import { exportarExcel, type HojaExcel } from '~/utils/exportarExcel'
+import type { HojaExcel } from '~/utils/exportarExcel'
+import { CLAVE_COLECTOR, exportarDashboard, type ColectorExport } from '~/utils/exportarDashboard'
 import { fmtDuracion, variacion, type ProcesoDTO } from '~/utils/procesos'
 
 interface ProcesosMuebles {
@@ -422,43 +423,42 @@ const barrasEbanPlu = computed<BarraH[]>(() => (procesos.value?.ebanisteria.porP
 const vistaPicking = ref<{ hojas: () => HojaExcel[] } | null>(null)
 const vistaInspeccion = ref<{ hojas: () => HojaExcel[] } | null>(null)
 const vistaOrdenes = ref<{ hojas: () => HojaExcel[] } | null>(null)
-const exportando = ref(false)
-async function exportar() {
-  if (exportando.value) return
-  if (pestana.value !== 'ordenes' && !datos.value) return
-  exportando.value = true
+// ── Exportar el dashboard entero (24-09) ──
+// Picking, Inspección y Órdenes: una hoja por pestaña con sus tarjetas y
+// gráficos, y debajo todos sus datos. Se recorre cada pestaña de verdad.
+const colector: ColectorExport = { activo: ref(false), tablas: new Map() }
+provide(CLAVE_COLECTOR, colector)
+const contenidoTab = ref<HTMLElement | null>(null)
+const exportandoTodo = ref<string | null>(null)
+const PESTANAS_EXPORT = [
+  { key: 'picking', label: 'Picking' },
+  { key: 'inspeccion', label: 'Inspección' },
+  { key: 'ordenes', label: 'Órdenes' },
+] as const
+async function exportarTodo() {
+  if (exportandoTodo.value) return
+  exportandoTodo.value = 'Preparando…'
   try {
-    if (pestana.value === 'ordenes') {
-      await exportarExcel(`indicadores-muebles-ordenes-${desde.value}_${hasta.value}`, vistaOrdenes.value?.hojas() ?? [])
-      return
-    }
-    if (!datos.value) return
-    const grupo = (nombre: string, g: FilaGrupo[]) => ({ nombre, columnas: colsGrupo, filas: filasDe(g) })
-    const hojas: HojaExcel[] = pestana.value === 'picking'
-      ? [
-          ...(vistaPicking.value?.hojas() ?? []),
-          { nombre: 'Tiempo por operario', columnas: colsOperario, filas: filasOperario.value },
-          { nombre: 'Genie - Order Picker', columnas: colsEquipos, filas: filasEquipos.value },
-          { nombre: 'Valor OVDM por día', columnas: colsValor, filas: filasValor.value },
-          grupo('Picking por descripción', datos.value.porDescripcion),
-          grupo('Picking por volumen', datos.value.porVolumen),
-          grupo('Picking por peso', datos.value.porPeso),
-          { nombre: 'Errores de picking', columnas: colsErrDetalle, filas: filasErrDetalle.value },
-        ]
-      : [
-          ...(vistaInspeccion.value?.hojas() ?? []),
-          { nombre: 'Tiempo por inspector', columnas: colsInspector, filas: filasInspector.value },
-          grupo('Inspección por descripción', porInspeccion(datos.value.porDescripcion)),
-          grupo('Inspección por volumen', porInspeccion(datos.value.porVolumen)),
-          grupo('Inspección por peso', porInspeccion(datos.value.porPeso)),
-          { nombre: 'Ebanistería por PLU', columnas: colsEbanPlu, filas: filasEbanPlu.value },
-          { nombre: 'Ebanistería por proveedor', columnas: colsEbanProv, filas: filasEbanProv.value },
-        ]
-    await exportarExcel(`indicadores-muebles-${pestana.value}-${desde.value}_${hasta.value}`, hojas)
+    await exportarDashboard({
+      archivo: `indicadores-muebles-${desde.value}_${hasta.value}`,
+      titulo: 'Indicadores · Muebles',
+      filtros: [
+        ['Periodo', desde.value === hasta.value ? desde.value : `${desde.value} a ${hasta.value}`],
+        ['Operario (picking)', equipo.value.find((o) => o.id === operarioId.value)?.nombre ?? 'Todos'],
+        ['Inspector (inspección)', procesos.value?.inspectores.find((x) => x.id === inspectorId.value)?.nombre ?? 'Todos'],
+      ],
+      pestanas: PESTANAS_EXPORT,
+      actual: pestana.value,
+      irA: (k) => { pestana.value = k as typeof pestana.value },
+      raiz: () => contenidoTab.value,
+      colector,
+      progreso: (t) => { exportandoTodo.value = t },
+    })
+    show('Dashboard exportado')
   } catch (e) {
     show(mensajeError(e, 'No se pudo exportar'), true)
   } finally {
-    exportando.value = false
+    exportandoTodo.value = null
   }
 }
 
@@ -494,9 +494,14 @@ useAutoRefresh({ intervalMs: 60_000, onRefresh: () => refrescar() })
         <h1 class="hero-title">Indicadores</h1>
         <p class="hero-desc">Picking, inspección y órdenes: por día, por persona, por producto.</p>
       </div>
-      <button class="btn btn-ghost btn-sm" :disabled="cargando || cargandoAnalitica" @click="refrescar">
-        <RefreshCw :size="14" /> Actualizar
-      </button>
+      <div class="hero-acciones">
+        <button class="btn btn-sm" :disabled="!!exportandoTodo || !datos" @click="exportarTodo">
+          <Loader2 v-if="exportandoTodo" :size="14" class="spin" /><FileSpreadsheet v-else :size="14" /> Exportar dashboard
+        </button>
+        <button class="btn btn-ghost btn-sm" :disabled="cargando || cargandoAnalitica" @click="refrescar">
+          <RefreshCw :size="14" /> Actualizar
+        </button>
+      </div>
     </section>
 
     <p v-if="!puedeVer" class="vacio">Estos indicadores son para supervisión del área.</p>
@@ -525,9 +530,6 @@ useAutoRefresh({ intervalMs: 60_000, onRefresh: () => refrescar() })
             <option v-for="i in procesos?.inspectores ?? []" :key="i.id" :value="i.id">{{ i.nombre }}</option>
           </select>
         </label>
-        <button class="btn btn-sm exportar" :disabled="(pestana === 'ordenes' ? !analitica : !datos) || exportando" @click="exportar">
-          <Loader2 v-if="exportando" :size="13" class="spin" /><Download v-else :size="13" /> Exportar a Excel
-        </button>
       </section>
 
       <nav class="tabs" role="tablist" aria-label="Proceso">
@@ -551,6 +553,8 @@ useAutoRefresh({ intervalMs: 60_000, onRefresh: () => refrescar() })
         </button>
       </nav>
 
+      <!-- Lo de la pestaña abierta: es lo que se fotografía al exportar. -->
+      <div ref="contenidoTab">
       <template v-if="pestana === 'ordenes'">
         <div v-if="cargandoAnalitica && !analitica" class="cargando"><Loader2 :size="18" class="spin" /> Cargando…</div>
         <IndicadoresMueblesAnalitica
@@ -736,7 +740,19 @@ useAutoRefresh({ intervalMs: 60_000, onRefresh: () => refrescar() })
           </IndicadoresTarjeta>
         </div>
       </template>
+      </div>
     </template>
+
+    <!-- Mientras se exporta se recorren las pestañas: que no se toque nada. -->
+    <div v-if="exportandoTodo" class="exp-overlay" role="status" aria-live="polite">
+      <div class="exp-caja card">
+        <Loader2 :size="18" class="spin" />
+        <div>
+          <strong>Exportando el dashboard</strong>
+          <p>{{ exportandoTodo }}</p>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -752,7 +768,11 @@ useAutoRefresh({ intervalMs: 60_000, onRefresh: () => refrescar() })
 .chip { padding: 6px 12px; border-radius: var(--r-pill); border: 1px solid var(--border-strong); background: var(--surface); font-size: 12px; font-weight: 600; color: var(--muted); cursor: pointer; }
 .chip.on { color: var(--brand); border-color: var(--brand); background: var(--brand-tint); }
 .campo { display: flex; flex-direction: column; gap: 4px; }
-.exportar { margin-left: auto; }
+.hero-acciones { display: flex; gap: 8px; flex-wrap: wrap; }
+.exp-overlay { position: fixed; inset: 0; z-index: 80; display: grid; place-items: center; background: rgba(10,14,20,.35); }
+.exp-caja { display: flex; align-items: center; gap: 12px; padding: 16px 20px; min-width: 280px; }
+.exp-caja strong { font-size: 14px; color: var(--ink); }
+.exp-caja p { margin: 2px 0 0; font-size: 12.5px; color: var(--muted); }
 .campo span { font-size: 10.5px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
 
 .tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin-bottom: 18px; }

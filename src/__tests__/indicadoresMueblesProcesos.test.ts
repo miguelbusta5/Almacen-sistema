@@ -44,7 +44,7 @@ describe("la pantalla de muebles", () => {
     expect(mod).toContain('titulo-top="PLU con más demanda"');
     expect(mod).toContain('persona="inspector"');
     expect(mod).toContain('<select v-model="inspectorId"');
-    expect(mod).toContain("exportarExcel(");
+    expect(mod).toContain("exportarDashboard({");
   });
 
   it("el área Muebles vive en Indicadores y el menú tiene una sola entrada", () => {

@@ -25,6 +25,7 @@ describe("valor movido en OVDM", () => {
   it("la tarjeta avisa los PLU sin precio y se exporta a Excel", () => {
     expect(mod).toContain('titulo="Valor movido en OVDM"');
     expect(mod).toContain("PLU sin precio en el maestro no suman");
-    expect(mod).toContain("{ nombre: 'Valor OVDM por día', columnas: colsValor, filas: filasValor.value }");
+    // Sus datos llegan al Excel del dashboard por la tabla de la tarjeta.
+    expect(mod).toContain('<IndicadoresTabla :columnas="colsValor" :filas="filasValor" principal="dia" />');
   });
 });

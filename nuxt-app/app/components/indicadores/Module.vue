@@ -8,7 +8,7 @@
 // se contaba dos y tres veces. Aqui el tiempo de una persona es RELOJ DE PARED:
 // cada PLU conserva su tiempo en su modulo, pero a la persona se le cuenta el
 // rato que tuvo trabajo en la mano, una sola vez.
-import { computed, onMounted, ref, watch } from 'vue'
+import { computed, onMounted, provide, ref, watch } from 'vue'
 import { BarChart3, Moon, RefreshCw, Sun } from '@lucide/vue'
 import { ensureSession, useSessionState } from '~/composables/useSession'
 import { useToast } from '~/composables/useToast'
@@ -24,8 +24,8 @@ import {
 } from '~/utils/indicadores'
 import { fmtKg, fmtM3 } from '~/utils/carga'
 import { PESTANAS_PROCESO, type PestanaProceso } from '~/utils/procesos'
-import { exportarExcel } from '~/utils/exportarExcel'
-import { Download } from '@lucide/vue'
+import { FileSpreadsheet } from '@lucide/vue'
+import { CLAVE_COLECTOR, exportarDashboard, type ColectorExport } from '~/utils/exportarDashboard'
 
 const { me, sessionLoaded } = useSessionState()
 const { show: showToast } = useToast()
@@ -99,33 +99,46 @@ const cargando = ref(false)
 const pestana = ref<PestanaProceso | 'laborado' | 'muertos' | 'turnos' | 'pausas' | 'ubicaciones'>('recepcion')
 const esProceso = computed(() => PESTANAS_PROCESO.some((x) => x.key === pestana.value))
 
-// Excel de "Tiempo trabajado": las mismas tablas de la pantalla.
-const exportando = ref(false)
-async function exportarLaborado() {
-  if (exportando.value || !datos.value) return
-  exportando.value = true
+// ── Exportar el dashboard entero (24-09) ──
+// Una hoja por pestaña con sus tarjetas y gráficos, y debajo todos sus datos.
+// Se recorre cada pestaña de verdad: el Excel sale igual a lo que se ve.
+const colector: ColectorExport = { activo: ref(false), tablas: new Map() }
+provide(CLAVE_COLECTOR, colector)
+const contenidoTab = ref<HTMLElement | null>(null)
+const exportandoTodo = ref<string | null>(null)
+const pestanasExport = computed(() => [
+  ...PESTANAS_PROCESO,
+  { key: 'laborado', label: 'Tiempo trabajado' },
+  { key: 'muertos', label: 'Tiempos muertos' },
+  { key: 'turnos', label: 'Turnos' },
+  ...(puedeVerPausas.value ? [{ key: 'pausas', label: 'Pausas' }, { key: 'ubicaciones', label: 'Ubicaciones' }] : []),
+])
+async function exportarTodo() {
+  if (exportandoTodo.value) return
+  exportandoTodo.value = 'Preparando…'
+  const persona = equipo.value.find((u) => u.id === usuarioId.value)?.nombre
   try {
-    await exportarExcel(`indicadores-tiempo-trabajado-${desde.value}_${hasta.value}`, [
-      { nombre: 'Efectividad por persona', columnas: columnasEfectividad, filas: tablaEfectividad.value },
-      { nombre: 'Productividad por persona', columnas: columnasProd, filas: tablaProd.value },
-      { nombre: 'Reparto por tipo', columnas: columnasReparto, filas: tablaReparto.value },
-      { nombre: 'Peso y volumen', columnas: columnasCarga, filas: tablaCarga.value },
-      { nombre: 'Resurtido por operario', columnas: columnasResurtido, filas: tablaResurtido.value },
-      {
-        nombre: 'Cierres por día',
-        columnas: [
-          { key: 'dia', label: 'Día' }, { key: 'nombre', label: 'Persona' },
-          { key: 'tareas', label: 'Tareas', num: true }, { key: 'pendientes', label: 'Pendientes', num: true },
-          { key: 'movimientos', label: 'Movimientos', num: true }, { key: 'total', label: 'Total', num: true },
-          { key: 'compartidas', label: 'Compartidas', num: true },
-        ],
-        filas: cierresDiarios.value.map((c) => ({ ...c })),
-      },
-    ])
+    await exportarDashboard({
+      archivo: `indicadores-almacenamiento-${desde.value}_${hasta.value}`,
+      titulo: 'Indicadores · Almacenamiento',
+      filtros: [
+        ['Periodo', desde.value === hasta.value ? desde.value : `${desde.value} a ${hasta.value}`],
+        ['Turno', jornada.value === 'noche' ? 'Noche' : 'Día'],
+        ['Rol', rol.value === 'MONTACARGAS' ? 'Montacarguistas' : rol.value === 'OPERARIO_ALMACENAMIENTO' ? 'Operarios' : 'Todos'],
+        ['Persona', persona ?? 'Todo el equipo'],
+      ],
+      pestanas: pestanasExport.value,
+      actual: pestana.value,
+      irA: (k) => { pestana.value = k as typeof pestana.value },
+      raiz: () => contenidoTab.value,
+      colector,
+      progreso: (t) => { exportandoTodo.value = t },
+    })
+    showToast('Dashboard exportado')
   } catch (e) {
     showToast(apiErr(e, 'No se pudo exportar'), true)
   } finally {
-    exportando.value = false
+    exportandoTodo.value = null
   }
 }
 // El registro de pausas es solo para el administrador y quien reparte el
@@ -438,6 +451,10 @@ const formatoHoras = (v: number) => fmtHorasDecimal(v)
         </p>
       </div>
       <div class="hero-actions">
+        <button class="btn btn-sm" :disabled="!!exportandoTodo || !datos" @click="exportarTodo">
+          <Spinner v-if="exportandoTodo" :size="14" /><FileSpreadsheet v-else :size="14" />
+          Exportar dashboard
+        </button>
         <button class="btn btn-sm" :disabled="cargando" @click="cargar">
           <Spinner v-if="cargando" :size="14" /><RefreshCw v-else :size="14" />
           Actualizar
@@ -557,6 +574,8 @@ const formatoHoras = (v: number) => fmtHorasDecimal(v)
         </button>
       </nav>
 
+      <!-- Lo de la pestaña abierta: es lo que se fotografía al exportar. -->
+      <div ref="contenidoTab">
       <!-- Los procesos traen sus propios datos (una consulta para todos). -->
       <IndicadoresProcesos
         v-if="esProceso" :pestana="(pestana as PestanaProceso)"
@@ -608,9 +627,6 @@ const formatoHoras = (v: number) => fmtHorasDecimal(v)
         </div>
         <p class="nota-cerrados">
           Solo cuenta lo cerrado: un PLU que sigue en curso entra cuando se ubica.
-          <button class="btn btn-sm exportar-lab" :disabled="exportando" @click="exportarLaborado">
-            <Spinner v-if="exportando" :size="13" /><Download v-else :size="13" /> Exportar a Excel
-          </button>
         </p>
 
         <IndicadoresTiempoPersonas class="bloque" :personas="datos.personas" />
@@ -751,7 +767,19 @@ const formatoHoras = (v: number) => fmtHorasDecimal(v)
         </IndicadoresTarjeta>
         </template>
       </div>
+      </div>
     </template>
+
+    <!-- Mientras se exporta se recorren las pestañas: que no se toque nada. -->
+    <div v-if="exportandoTodo" class="exp-overlay" role="status" aria-live="polite">
+      <div class="exp-caja card">
+        <Spinner :size="18" />
+        <div>
+          <strong>Exportando el dashboard</strong>
+          <p>{{ exportandoTodo }}</p>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -800,7 +828,10 @@ const formatoHoras = (v: number) => fmtHorasDecimal(v)
 .tab:hover { color: var(--ink-2); }
 .tab.on { color: var(--brand); border-bottom-color: var(--brand); }
 .tab-sep { width: 1px; margin: 8px 6px; background: var(--border-strong); }
-.exportar-lab { margin-left: 10px; vertical-align: middle; }
+.exp-overlay { position: fixed; inset: 0; z-index: 80; display: grid; place-items: center; background: rgba(10,14,20,.35); }
+.exp-caja { display: flex; align-items: center; gap: 12px; padding: 16px 20px; min-width: 280px; }
+.exp-caja strong { font-size: 14px; color: var(--ink); }
+.exp-caja p { margin: 2px 0 0; font-size: 12.5px; color: var(--muted); }
 .tab:focus-visible { outline: none; box-shadow: var(--ring); border-radius: var(--r-xs); }
 .badge-tab {
   display: inline-grid; place-items: center; min-width: 18px; height: 18px; padding: 0 5px;
