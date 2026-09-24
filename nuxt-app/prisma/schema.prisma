@@ -2048,6 +2048,10 @@ model OrdenMuebles {
   tiendaOrigenCodigo String? @map("tienda_origen_codigo") @db.VarChar(50)
   tiendaOrigenNombre String? @map("tienda_origen_nombre") @db.VarChar(255)
 
+  /// Orden sin crear: OVDM/TSDM que el operario de picking no registro. La crea
+  /// el inspector a nombre del operario que la pickeo; sin tiempo de picking.
+  sinCrearPicking Boolean @default(false) @map("sin_crear_picking")
+
   /// Ciudad a la que va la orden. La escribe el inspector al empezar y se
   /// normaliza (normalizarCiudad) para que el filtro del patinador no se parta
   /// entre "medellin", "MEDELLÍN" y "Medellin ".

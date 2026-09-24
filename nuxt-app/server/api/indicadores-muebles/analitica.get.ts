@@ -69,7 +69,7 @@ export default defineEventHandler(async (event) => {
       select: {
         id: true, codigo: true, tipoOrden: true, estado: true, operarioId: true,
         horaInicio: true, horaPasoInspeccion: true, horaFinInspeccion: true, entregadaTransporteAt: true,
-        ciudadEnvio: true, pausaSegundos: true, tiendaOrigenCodigo: true,
+        ciudadEnvio: true, pausaSegundos: true, tiendaOrigenCodigo: true, sinCrearPicking: true,
         lineas: { select: SELECT_LINEA },
         _count: { select: { erroresPicking: { where: { deletedAt: null } }, pendientes: true } },
       },
@@ -120,6 +120,7 @@ export default defineEventHandler(async (event) => {
     entregadaTransporteAt: o.entregadaTransporteAt,
     ciudadEnvio: o.ciudadEnvio,
     pausaSegundos: o.pausaSegundos ?? 0,
+    sinCrearPicking: o.sinCrearPicking,
     lineas: o.lineas.map((l) => aLinea(l, repartida.get(l) ?? null)),
     errores: o._count.erroresPicking,
     pendientes: o._count.pendientes,

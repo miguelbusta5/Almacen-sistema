@@ -159,6 +159,8 @@ export interface Orden {
   /** Orden que llega de tienda (no se pickea en el CEDI). Null = orden normal o contado. */
   tiendaOrigenCodigo?: string | null
   tiendaOrigenNombre?: string | null
+  /** Orden sin crear: la pickearon pero el operario no la registró; la creó el inspector. */
+  sinCrearPicking?: boolean
   /** Ciudad a la que va la orden; con esto agrupa el patinador. */
   ciudadEnvio: string | null
   entregadaTransporteAt: string | null

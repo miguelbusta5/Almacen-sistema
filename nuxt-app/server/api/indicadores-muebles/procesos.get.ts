@@ -43,7 +43,8 @@ export default defineEventHandler(async (event) => {
   const fin = limitesRango(hasta, hasta).fin
   const enVentana = (d: string, v: { desde: string; hasta: string }) => d >= v.desde && d <= v.hasta
 
-  const [lineas, operarios, inspectores] = await Promise.all([
+  const inicioActual = limitesRango(desde, hasta).inicio
+  const [lineas, operarios, inspectores, sinCrear] = await Promise.all([
     prisma.lineaMuebles.findMany({
       where: {
         orden: { deletedAt: null },
@@ -57,6 +58,18 @@ export default defineEventHandler(async (event) => {
     }),
     prisma.user.findMany({ where: { role: ROL_PICKING }, select: { id: true, name: true }, orderBy: { name: 'asc' } }),
     prisma.inspector.findMany({ select: { id: true, nombre: true }, orderBy: { nombre: 'asc' } }),
+    // Ordenes sin crear (24-09): las pickearon sin registrarlas; las creo inspeccion.
+    prisma.ordenMuebles.findMany({
+      where: {
+        deletedAt: null, sinCrearPicking: true, horaPasoInspeccion: { gte: inicioActual, lte: fin },
+        ...(operarioId && { operarioId }),
+      },
+      select: {
+        codigo: true, horaPasoInspeccion: true, operarioId: true,
+        inspector: { select: { nombre: true } }, _count: { select: { lineas: true } },
+      },
+      orderBy: { horaPasoInspeccion: 'desc' },
+    }),
   ])
 
   const num = (v: unknown) => (v == null ? null : Number(v))
@@ -118,6 +131,15 @@ export default defineEventHandler(async (event) => {
     esperaMin: r1(l.reduce((s, x) => s + esperaMin(x), 0) / l.length),
   })).sort((a, b) => b.veces - a.veces)
 
+  // Cuantas deja sin registrar cada operario.
+  const sinCrearPorOperario = new Map<string, { ordenes: number; plus: number }>()
+  for (const o of sinCrear) {
+    const x = sinCrearPorOperario.get(o.operarioId) ?? { ordenes: 0, plus: 0 }
+    x.ordenes++
+    x.plus += o._count.lineas
+    sinCrearPorOperario.set(o.operarioId, x)
+  }
+
   return {
     success: true,
     rango: actual,
@@ -127,6 +149,16 @@ export default defineEventHandler(async (event) => {
     inspectores: inspectores.map((i) => ({ id: i.id, nombre: i.nombre })),
     picking: proceso(cPicking, operarioId),
     inspeccion: proceso(cInspeccion, inspectorId),
+    sinCrear: {
+      total: sinCrear.length,
+      porOperario: [...sinCrearPorOperario.entries()]
+        .map(([id, x]) => ({ operarioId: id, nombre: nombres.get(id) ?? '—', ...x }))
+        .sort((a, b) => b.ordenes - a.ordenes),
+      ordenes: sinCrear.slice(0, 50).map((o) => ({
+        codigo: o.codigo, dia: diaBogota(o.horaPasoInspeccion!), operario: nombres.get(o.operarioId) ?? '—',
+        inspector: o.inspector?.nombre ?? '—', plus: o._count.lineas,
+      })),
+    },
     ebanisteria: {
       enviados: eban.length,
       enTaller: eban.filter((l) => !l.ebanisteriaFin).length,

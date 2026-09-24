@@ -10,6 +10,7 @@ const props = defineProps<{
   inspectores: Inspector[]
   seleccionado: string | null
   titulo?: string
+  descripcion?: string
 }>()
 const emit = defineEmits<{ (e: 'cerrar'): void; (e: 'confirmar', inspectorId: string): void }>()
 
@@ -21,7 +22,7 @@ watch(() => props.abierto, (a) => { if (a) elegido.value = props.seleccionado ??
   <div v-if="abierto" class="overlay" @click.self="emit('cerrar')">
     <div class="modal" role="dialog" aria-modal="true">
       <h3 class="m-titulo">{{ titulo || '¿Quién eres?' }}</h3>
-      <p class="m-desc">Tu nombre queda en los tiempos de esta orden.</p>
+      <p class="m-desc">{{ descripcion || 'Tu nombre queda en los tiempos de esta orden.' }}</p>
 
       <select v-model="elegido" class="input">
         <option value="" disabled>Elige tu nombre</option>

@@ -60,6 +60,8 @@ export interface OrdenAnalitica {
   entregadaTransporteAt: Date | null
   ciudadEnvio: string | null
   pausaSegundos: number
+  /** Orden sin crear (24-09): la pickearon sin registrarla; no hay tiempo de picking medido. */
+  sinCrearPicking?: boolean
   lineas: LineaAnalitica[]
   errores: number
   pendientes: number
@@ -328,7 +330,8 @@ export function medirOrden(o: OrdenAnalitica): OrdenCompletada {
     ciudad: o.ciudadEnvio,
     plus: o.lineas.length,
     unidades: o.lineas.reduce((s, l) => s + l.unidades, 0),
-    pickingMin: minEntre(o.horaInicio, o.horaPasoInspeccion, o.pausaSegundos),
+    // Sin crear: el reloj de picking no corrio (un 0 bajaria los promedios).
+    pickingMin: o.sinCrearPicking ? null : minEntre(o.horaInicio, o.horaPasoInspeccion, o.pausaSegundos),
     esperaInspeccionMin: minEntre(o.horaPasoInspeccion, primerInsp),
     inspeccionRelojMin: minEntre(primerInsp, o.horaFinInspeccion),
     inspeccionTrabajoMin: trabajo.length ? r(trabajo.reduce((s, x) => s + x, 0), 2) : null,

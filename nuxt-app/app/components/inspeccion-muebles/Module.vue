@@ -11,7 +11,7 @@ import { enRefrescoSilencioso, useAutoRefresh } from '~/composables/useAutoRefre
 // para no reelegir el nombre en cada acción, no una sesión. La verdad de quién
 // hizo qué está en la DB, en el inspector que se guardó con cada tiempo.
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
-import { ClipboardCheck, RefreshCw, Loader2, Receipt, Store } from '@lucide/vue'
+import { ClipboardCheck, FilePlus2, RefreshCw, Loader2, Receipt, Store } from '@lucide/vue'
 import { useToast } from '~/composables/useToast'
 import { useSessionState } from '~/composables/useSession'
 import {
@@ -44,6 +44,27 @@ const lineaAveriada = ref<Linea | null>(null)
 const agregandoPlu = ref(false)
 const creandoContado = ref(false)
 const creandoTienda = ref(false)
+const creandoSinCrear = ref(false)
+// Crear una orden (tienda, sin crear o contado) pregunta ANTES quién la crea,
+// en su propia ventana y sin nombre preseleccionado (24-09): con el nombre
+// recordado de la PC se creaban a nombre de otro inspector.
+type TipoCreacion = 'tienda' | 'sinCrear' | 'contado'
+const pidiendoCreador = ref<TipoCreacion | null>(null)
+const creadorId = ref<string | null>(null)
+const nombreCreador = computed(() => inspectores.value.find((i) => i.id === creadorId.value)?.nombre ?? null)
+const TITULO_CREACION: Record<TipoCreacion, string> = {
+  tienda: '¿Quién crea la orden de tienda?',
+  sinCrear: '¿Quién crea la orden sin crear?',
+  contado: '¿Quién crea la factura de contado?',
+}
+// Orden que ya tiene inspector: se avisa antes de entrar (24-09).
+const ordenOcupada = ref<Orden | null>(null)
+const nombresOcupada = computed(() => {
+  const o = ordenOcupada.value
+  if (!o) return ''
+  const nombres = [...new Set([o.inspector?.nombre, ...o.inspectores.map((i) => i.nombre)].filter(Boolean))]
+  return nombres.join(', ')
+})
 const pidiendoCiudad = ref(false)
 // Al entrar a una orden se pregunta quien la toma, SIN nombre preseleccionado:
 // con el nombre recordado de la PC los inspectores trabajaban a nombre de otro.
@@ -103,6 +124,11 @@ async function cargar() {
 async function abrirOrden(o: Orden) {
   try {
     const res = await $fetch<{ data: Orden }>(`${API_INSPECCION}/${o.id}`)
+    // Si ya la tiene un inspector, primero el aviso: «¿desea continuar?».
+    if (res.data.inspector || res.data.inspectores.length) {
+      ordenOcupada.value = res.data
+      return
+    }
     abierta.value = res.data
     // Primero quien toma la orden; la ciudad (si falta) se pide despues.
     pidiendoQuien.value = true
@@ -124,6 +150,44 @@ async function confirmarQuien(id: string) {
   // Sin ciudad no se puede inspeccionar: se pide de una, no al fallar.
   if (abierta.value && !abierta.value.ciudadEnvio) pidiendoCiudad.value = true
 }
+/** Aviso de orden ocupada: Continuar sigue a «¿quién toma la orden?». */
+function continuarOcupada() {
+  abierta.value = ordenOcupada.value
+  ordenOcupada.value = null
+  pidiendoQuien.value = true
+}
+
+/** Botón de crear: primero quién la crea, después el formulario. */
+function crear(tipo: TipoCreacion) {
+  creadorId.value = null
+  pidiendoCreador.value = tipo
+}
+function confirmarCreador(id: string) {
+  const tipo = pidiendoCreador.value
+  pidiendoCreador.value = null
+  creadorId.value = id
+  recordar(id)
+  if (tipo === 'tienda') creandoTienda.value = true
+  else if (tipo === 'sinCrear') creandoSinCrear.value = true
+  else if (tipo === 'contado') creandoContado.value = true
+}
+
+/** Crea la orden a nombre de quien se eligió en la ventana de creación. */
+async function crearOrden(url: string, body: Record<string, unknown>, exito: (o: Orden) => string, fallo: string) {
+  const id = creadorId.value
+  if (!id || guardando.value) return
+  guardando.value = true
+  try {
+    const res = await $fetch<{ data: Orden }>(url, { method: 'POST', body: { ...body, inspectorId: id } })
+    abierta.value = res.data
+    show(exito(res.data))
+  } catch (e) {
+    show(mensajeError(e, fallo), true)
+  } finally {
+    guardando.value = false
+  }
+}
+
 function cancelarQuien() {
   pidiendoQuien.value = false
   salir()
@@ -327,43 +391,28 @@ function unirse() {
 /** Factura de contado: la orden nace ya en inspección, sin pasar por picking. */
 function confirmarContado(datos: { factura: string; cliente: string }) {
   creandoContado.value = false
-  conInspector(async (id) => {
-    if (guardando.value) return
-    guardando.value = true
-    try {
-      const res = await $fetch<{ data: Orden }>(`${API_INSPECCION}/contado`, {
-        method: 'POST',
-        body: { inspectorId: id, factura: datos.factura, cliente: datos.cliente || null },
-      })
-      abierta.value = res.data
-      show(`Factura ${datos.factura} lista para inspeccionar`)
-    } catch (e) {
-      show(mensajeError(e, 'No se pudo crear la factura'), true)
-    } finally {
-      guardando.value = false
-    }
-  })
+  void crearOrden(
+    `${API_INSPECCION}/contado`, { factura: datos.factura, cliente: datos.cliente || null },
+    () => `Factura ${datos.factura} lista para inspeccionar`, 'No se pudo crear la factura',
+  )
 }
 
 /** Orden de tienda: su OVDM/TSDM llega de una tienda y se inspecciona directo. */
 function confirmarTienda(datos: { orden: string; tiendaCodigo: string; cliente: string }) {
   creandoTienda.value = false
-  conInspector(async (id) => {
-    if (guardando.value) return
-    guardando.value = true
-    try {
-      const res = await $fetch<{ data: Orden }>(`${API_INSPECCION}/tienda`, {
-        method: 'POST',
-        body: { inspectorId: id, orden: datos.orden, tiendaCodigo: datos.tiendaCodigo, cliente: datos.cliente || null },
-      })
-      abierta.value = res.data
-      show(`Orden ${res.data.codigo} de ${res.data.tiendaOrigenNombre ?? 'tienda'} lista para inspeccionar`)
-    } catch (e) {
-      show(mensajeError(e, 'No se pudo crear la orden de tienda'), true)
-    } finally {
-      guardando.value = false
-    }
-  })
+  void crearOrden(
+    `${API_INSPECCION}/tienda`, { orden: datos.orden, tiendaCodigo: datos.tiendaCodigo, cliente: datos.cliente || null },
+    (o) => `Orden ${o.codigo} de ${o.tiendaOrigenNombre ?? 'tienda'} lista para inspeccionar`, 'No se pudo crear la orden de tienda',
+  )
+}
+
+/** Orden sin crear: la pickearon pero el operario no la registró. */
+function confirmarSinCrear(datos: { orden: string; operarioId: string; cliente: string }) {
+  creandoSinCrear.value = false
+  void crearOrden(
+    `${API_INSPECCION}/sin-crear`, { orden: datos.orden, operarioId: datos.operarioId, cliente: datos.cliente || null },
+    (o) => `Orden ${o.codigo} (${o.operario?.nombre ?? 'sin operario'}) lista para inspeccionar`, 'No se pudo crear la orden',
+  )
 }
 
 /** Toda acción devuelve la orden completa: la pantalla se repinta con eso. */
@@ -404,10 +453,13 @@ useAutoRefresh({ onRefresh: () => (guardando.value ? undefined : cargar()) })
       </div>
 
       <div class="hero-yo">
-        <button class="btn btn-sm" @click="creandoTienda = true">
+        <button class="btn btn-sm" @click="crear('tienda')">
           <Store :size="14" /> Orden de tienda
         </button>
-        <button class="btn btn-sm" @click="creandoContado = true">
+        <button class="btn btn-sm" @click="crear('sinCrear')">
+          <FilePlus2 :size="14" /> Orden sin crear
+        </button>
+        <button class="btn btn-sm" @click="crear('contado')">
           <Receipt :size="14" /> Factura de contado
         </button>
         <button class="btn btn-sm" @click="pidiendoInspector = true">
@@ -476,11 +528,28 @@ useAutoRefresh({ onRefresh: () => (guardando.value ? undefined : cargar()) })
       :abierto="pidiendoCiudad" :actual="abierta?.ciudadEnvio ?? null" :sugeridas="ciudadesUsadas"
       @cerrar="pidiendoCiudad = false" @confirmar="confirmarCiudad"
     />
+    <InspeccionMueblesSelectorInspector
+      :abierto="pidiendoCreador != null" :inspectores="inspectores" :seleccionado="null"
+      :titulo="pidiendoCreador ? TITULO_CREACION[pidiendoCreador] : ''"
+      descripcion="La orden queda creada a tu nombre."
+      @cerrar="pidiendoCreador = null" @confirmar="confirmarCreador"
+    />
     <InspeccionMueblesTiendaModal
-      :abierto="creandoTienda" @cerrar="creandoTienda = false" @confirmar="confirmarTienda"
+      :abierto="creandoTienda" :inspector="nombreCreador" @cerrar="creandoTienda = false" @confirmar="confirmarTienda"
+    />
+    <InspeccionMueblesSinCrearModal
+      :abierto="creandoSinCrear" :operarios="operarios" :inspector="nombreCreador"
+      @cerrar="creandoSinCrear = false" @confirmar="confirmarSinCrear"
     />
     <InspeccionMueblesContadoModal
-      :abierto="creandoContado" @cerrar="creandoContado = false" @confirmar="confirmarContado"
+      :abierto="creandoContado" :inspector="nombreCreador" @cerrar="creandoContado = false" @confirmar="confirmarContado"
+    />
+    <ConfirmModal
+      v-if="ordenOcupada"
+      title="Orden en inspección"
+      :message="`La orden ${ordenOcupada.codigo} la está inspeccionando ${nombresOcupada}. ¿Desea continuar?`"
+      confirm-label="Continuar" :danger="false"
+      @close="ordenOcupada = null" @confirm="continuarOcupada"
     />
   </div>
 </template>

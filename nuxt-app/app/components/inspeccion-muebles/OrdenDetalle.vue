@@ -113,6 +113,9 @@ function reloj(l: Linea): string {
           </template>
         </p>
         <p v-if="orden.tiendaOrigenNombre" class="orden-meta">De tienda: <strong>{{ orden.tiendaOrigenNombre }}</strong></p>
+        <p v-if="orden.sinCrearPicking" class="orden-meta">
+          Sin crear en picking · la pickeó <strong>{{ orden.operario?.nombre ?? '—' }}</strong>
+        </p>
         <p v-if="orden.cliente" class="orden-meta">Cliente: {{ orden.cliente }}</p>
         <p v-if="orden.inspectores.length" class="orden-meta">
           En la orden: <span v-for="(i, n) in orden.inspectores" :key="i.id">{{ n ? ', ' : '' }}{{ i.nombre }}</span>

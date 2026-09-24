@@ -27,6 +27,12 @@ interface ProcesosMuebles {
   inspectores: Array<{ id: string; nombre: string }>
   picking: ProcesoDTO
   inspeccion: ProcesoDTO
+  /** Órdenes que el operario pickeó sin registrar (las creó inspección). */
+  sinCrear?: {
+    total: number
+    porOperario: Array<{ operarioId: string; nombre: string; ordenes: number; plus: number }>
+    ordenes: Array<{ codigo: string; dia: string; operario: string; inspector: string; plus: number }>
+  }
   ebanisteria: {
     enviados: number; enTaller: number; esperaMin: number | null
     porPlu: Array<{ plu: string; descripcion: string | null; proveedor: string; veces: number; enTaller: number; esperaMin: number; motivos: string[] }>
@@ -345,6 +351,24 @@ const filasEbanPlu = computed(() => (procesos.value?.ebanisteria.porPlu ?? []).m
   plu: e.plu, descripcion: e.descripcion ?? '—', proveedor: e.proveedor, veces: e.veces,
   espera: fmtDuracion(e.esperaMin), motivos: e.motivos.join(' · ') || '—',
 })))
+// ── Órdenes sin crear ──
+const colsSinCrear: ColumnaTabla[] = [
+  { key: 'nombre', label: 'Operario' },
+  { key: 'ordenes', label: 'Órdenes sin crear', num: true },
+  { key: 'plus', label: 'PLU', num: true },
+]
+const filasSinCrear = computed(() => (procesos.value?.sinCrear?.porOperario ?? []).map((o) => ({
+  nombre: o.nombre, ordenes: o.ordenes, plus: o.plus,
+})))
+const colsSinCrearDetalle: ColumnaTabla[] = [
+  { key: 'dia', label: 'Día' },
+  { key: 'codigo', label: 'Orden' },
+  { key: 'operario', label: 'La pickeó' },
+  { key: 'inspector', label: 'La creó' },
+  { key: 'plus', label: 'PLU', num: true },
+]
+const filasSinCrearDetalle = computed(() => procesos.value?.sinCrear?.ordenes ?? [])
+
 const colsEbanProv: ColumnaTabla[] = [
   { key: 'proveedor', label: 'Proveedor' },
   { key: 'veces', label: 'Envíos', num: true },
@@ -509,6 +533,18 @@ useAutoRefresh({ intervalMs: 60_000, onRefresh: () => refrescar() })
         <IndicadoresProcesoPlu
           ref="vistaPicking" :proceso="procesos.picking" titulo="Picking" que="PLU pickeados" titulo-top="PLU con más demanda"
         />
+
+        <IndicadoresTarjeta
+          class="bloque" titulo="Órdenes sin crear"
+          :subtitulo="procesos.sinCrear?.total
+            ? `${procesos.sinCrear.total} ${procesos.sinCrear.total === 1 ? 'orden pickeada' : 'órdenes pickeadas'} sin registrar en picking: las creó inspección. Sus PLU sí le cuentan al operario; el tiempo no se midió.`
+            : 'Todas las órdenes del periodo se registraron en picking.'"
+        >
+          <IndicadoresTabla v-if="filasSinCrear.length" :columnas="colsSinCrear" :filas="filasSinCrear" principal="nombre" />
+          <template v-if="filasSinCrearDetalle.length" #tabla>
+            <IndicadoresTabla :columnas="colsSinCrearDetalle" :filas="filasSinCrearDetalle" principal="codigo" />
+          </template>
+        </IndicadoresTarjeta>
 
         <IndicadoresTarjeta
           class="bloque" titulo="Tiempo por PLU según la descripción"
