@@ -300,8 +300,8 @@ useAutoRefresh({ onRefresh: () => (guardando.value ? undefined : cargar()) })
       <p v-if="lineaEnCurso" class="r-aviso">Tienes un PLU abierto: ciérralo antes de pasar la orden.</p>
     </section>
 
-    <!-- Órdenes transferidas a mí: pendientes de picking. Van arriba de todo:
-         hay que tomarlas antes de abrir otra. -->
+    <!-- Órdenes transferidas a mí: pendientes de picking. Van arriba de todo para
+         que no se olviden; se puede abrir otra orden antes de tomarlas. -->
     <section v-if="transferidas.length" class="card transf">
       <h2 class="transf-titulo"><ArrowRightLeft :size="15" /> Órdenes transferidas a ti · pendientes de picking</h2>
       <ul class="transf-lista">
@@ -349,17 +349,14 @@ useAutoRefresh({ onRefresh: () => (guardando.value ? undefined : cargar()) })
           <span class="campo-label">Número de orden</span>
           <input
             v-model="codigoNuevo" class="input scan" type="text" autocomplete="off" autofocus
-            placeholder="Ej. TSDM123456" :disabled="guardando || !equipo || transferidas.length > 0"
+            placeholder="Ej. TSDM123456" :disabled="guardando || !equipo"
             @keyup.enter="crearOrden"
           >
         </label>
-        <button class="btn btn-primary" :disabled="!codigoNuevo.trim() || guardando || !equipo || transferidas.length > 0" @click="crearOrden">
+        <button class="btn btn-primary" :disabled="!codigoNuevo.trim() || guardando || !equipo" @click="crearOrden">
           <Loader2 v-if="guardando" :size="15" class="spin" /><Plus v-else :size="15" />
           Abrir orden
         </button>
-        <p v-if="transferidas.length" class="nueva-aviso">
-          Toma primero la orden que te transfirieron: después podrás abrir otra.
-        </p>
         <p v-if="!equipo" class="nueva-aviso">
           Necesitas un equipo asignado hoy. Pide al administrador que te asigne el Order Picker o el Genie.
         </p>

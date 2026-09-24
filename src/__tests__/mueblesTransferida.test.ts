@@ -82,10 +82,10 @@ describe("tomar la orden transferida", () => {
 describe("pantallas, esquema y reglas", () => {
   const leer = (rel: string) => readFileSync(path.join(process.cwd(), rel), "utf8");
 
-  it("no se abre otra orden con una transferida pendiente", () => {
+  it("con una transferida pendiente igual puede abrir otras órdenes", () => {
     const crear = leer("nuxt-app/server/api/picking-muebles/index.post.ts");
-    expect(crear).toContain("where: { transferidaAId: actor.id, estado: 'EN_PICKING', deletedAt: null }");
-    expect(crear).toContain("tómala antes de abrir otra");
+    expect(crear).not.toContain("transferidaAId");
+    expect(leer("nuxt-app/app/components/picking-muebles/Module.vue")).not.toContain("transferidas.length > 0");
   });
 
   it("la pantalla del operario lista las transferidas y las toma por /unirse", () => {
