@@ -22,7 +22,7 @@ const cifras = computed(() => {
     { label: 'Descarga promedio', valor: fmtDuracion(x.descargaMin), cambio: variacion(x.descargaMin, ant.value?.descargaMin, true) },
     {
       label: 'Almacenamiento promedio', valor: fmtDuracion(x.almacenamientoMin),
-      hint: x.conAlmacenamiento ? `sobre ${x.conAlmacenamiento} con PLU del montacarguista` : 'se mide desde el 24-09',
+      hint: x.conAlmacenamiento ? `montacargas ubicando PLU · promedio de ${x.conAlmacenamiento} contenedor${x.conAlmacenamiento === 1 ? '' : "es"}` : 'se mide desde el 24-09',
       cambio: variacion(x.almacenamientoMin, ant.value?.almacenamientoMin, true),
     },
     // Sin sumar (25-09): el almacenamiento va en paralelo a la descarga. El tiempo
