@@ -70,12 +70,30 @@ describe("un contenedor", () => {
       movimientos: 2, abiertos: 0, plus: 2, unidades: 15, m3: 1, kg: 50, sinMedida: 1, montacarguistas: 2,
       descargaSeg: 50 * 60, almacenamientoRelojSeg: 45 * 60, almacenamientoPersonaSeg: 60 * 60,
       trabajoSeg: 95 * 60, cicloSeg: 105 * 60, completo: true, // 8:00 → 9:45
+      // EL tiempo de recepcion: descarga neta (50) + lo que faltaba al cerrarla (9:00 → 9:45).
+      totalSeg: 95 * 60, colaSeg: 45 * 60,
     });
+  });
+
+  it("si todo quedo ubicado antes de cerrar la descarga, el tiempo de recepcion es la descarga", () => {
+    const a = almacenamientoContenedor(rec(), [mov({ horaFinalizacion: h(8, 40), tramos: [{ usuarioId: "a", inicio: h(8, 30), fin: h(8, 40) }] })]);
+    expect(a).toMatchObject({ descargaSeg: 60 * 60, colaSeg: 0, totalSeg: 60 * 60 });
+  });
+
+  it("el promedio de las partes suma exacto el total (al segundo)", () => {
+    const { partesTiempo } = cargarNuxt("utils/recepcionAlmacenamientoCalc.ts");
+    const p = partesTiempo([
+      { totalSeg: 14832, descargaSeg: 13361 }, // ARAMORO 25-09: 4 h 07 min 12 s = 3 h 42 min 41 s + 24 min 31 s
+      { totalSeg: 16068, descargaSeg: 16068 },
+      { totalSeg: null, descargaSeg: 999 },
+    ]);
+    expect(p).toEqual({ totalSeg: 15450, descargaSeg: 14715, colaSeg: 735 });
+    expect(p.descargaSeg + p.colaSeg).toBe(p.totalSeg);
   });
 
   it("no está completo mientras falte ubicar un PLU o la descarga siga abierta", () => {
     expect(almacenamientoContenedor(rec(), [mov({ estado: "EN_CURSO", horaFinalizacion: null })]))
-      .toMatchObject({ abiertos: 1, completo: false, cicloSeg: null });
+      .toMatchObject({ abiertos: 1, completo: false, cicloSeg: null, totalSeg: null, colaSeg: null });
     expect(almacenamientoContenedor(rec({ estado: "EN_CURSO", horaFinalizacion: null }), [mov()]))
       .toMatchObject({ descargaSeg: null, trabajoSeg: null, completo: false });
     // Sin PLU del montacarguista (lo de antes del 24-09) no entra.

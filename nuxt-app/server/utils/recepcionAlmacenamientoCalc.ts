@@ -64,6 +64,14 @@ export interface AlmacenamientoContenedor {
   cicloSeg: number | null
   /** Recepcion cerrada, con PLU y todos ubicados: entra en promedios y proyeccion. */
   completo: boolean
+  /**
+   * EL tiempo de recepcion (25-09, el que se reporta a la direccion): de abrir
+   * la descarga a dejar el ultimo PLU ubicado, sin las pausas de la planilla.
+   * = descargaSeg + colaSeg, exacto al segundo. Null hasta que todo cierre.
+   */
+  totalSeg: number | null
+  /** Lo que se tardo en ubicar lo que quedaba al cerrar la descarga (0 si ya estaba). */
+  colaSeg: number | null
 }
 
 // ── Utilidades ──────────────────────────────────────────────────────────────
@@ -146,6 +154,8 @@ export function almacenamientoContenedor(rec: RecepcionAlm, movs: readonly Movim
     rec.horaFinalizacion?.getTime() ?? 0,
     ...movs.map((m) => m.horaFinalizacion?.getTime() ?? 0),
   )
+  // completo => la descarga cerro: lo que paso despues es almacenamiento pendiente.
+  const colaSeg = completo ? Math.max(0, Math.round((ultimo - rec.horaFinalizacion!.getTime()) / 1000)) : null
   return {
     movimientos: movs.length,
     abiertos,
@@ -162,6 +172,8 @@ export function almacenamientoContenedor(rec: RecepcionAlm, movs: readonly Movim
     trabajoSeg: descargaSeg == null ? null : descargaSeg + reloj,
     cicloSeg: completo ? Math.round((ultimo - rec.horaInicio.getTime()) / 1000) : null,
     completo,
+    totalSeg: colaSeg == null ? null : descargaSeg! + colaSeg,
+    colaSeg,
   }
 }
 
@@ -179,6 +191,10 @@ export interface ProyeccionTipoContenedor {
   almacenamientoPersonaMin: number
   trabajoMin: number
   cicloMin: number
+  /** Tiempo de recepcion promedio (ver totalSeg) y sus dos partes, en segundos. */
+  totalSeg: number
+  descargaSeg: number
+  colaSeg: number
   /** Cuantos caben en un dia en cada etapa, y la menor de las dos. */
   capacidadDescarga: number | null
   capacidadAlmacenamiento: number | null
@@ -187,6 +203,20 @@ export interface ProyeccionTipoContenedor {
 }
 
 const prom = (v: readonly number[]) => (v.length ? v.reduce((s, x) => s + x, 0) / v.length : 0)
+
+/**
+ * Promedio del tiempo de recepcion y sus dos partes, al segundo, sobre los
+ * mismos contenedores: la cola sale de restar, asi descarga + cola = total
+ * exacto tambien en el promedio (si no, el redondeo lo descuadra).
+ */
+export function partesTiempo(g: ReadonlyArray<{ totalSeg: number | null; descargaSeg: number | null }>): {
+  totalSeg: number; descargaSeg: number; colaSeg: number
+} {
+  const c = g.filter((x) => x.totalSeg != null)
+  const totalSeg = Math.round(prom(c.map((x) => x.totalSeg!)))
+  const descargaSeg = Math.min(totalSeg, Math.round(prom(c.map((x) => x.descargaSeg ?? 0))))
+  return { totalSeg, descargaSeg, colaSeg: totalSeg - descargaSeg }
+}
 
 /**
  * Contenedores por dia: la descarga va de a un contenedor (un muelle); el
@@ -226,6 +256,7 @@ export function proyeccionContenedores(
         almacenamientoPersonaMin: r(almacenamientoPersonaMin),
         trabajoMin: r(prom(g.map((x) => x.trabajoSeg! / 60))),
         cicloMin: r(prom(g.map((x) => x.cicloSeg! / 60))),
+        ...partesTiempo(g),
         capacidadDescarga,
         capacidadAlmacenamiento,
         capacidad: validas.length ? Math.min(...validas) : null,

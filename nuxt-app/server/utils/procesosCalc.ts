@@ -286,6 +286,9 @@ export interface ContenedorProceso {
   almacenamientoMin: number | null
   trabajoMin: number | null
   cicloMin: number | null
+  /** Tiempo de recepcion al segundo (descarga + lo que faltaba ubicar). Null si no esta completo. */
+  totalSeg: number | null
+  descargaSeg: number
   /** Descargadores + montacarguistas, sin repetir. */
   personas: number
 }
@@ -298,6 +301,15 @@ export interface GrupoRecepcion {
   almacenamientoMin: number | null
   trabajoMin: number | null
   cicloMin: number | null
+  /**
+   * EL tiempo de recepcion (25-09): de abrir la descarga a dejar el ultimo PLU
+   * ubicado, sin pausas, al segundo. Promedio sobre los `completos`, y sus dos
+   * partes sobre los mismos contenedores: tiempoDescarga + tiempoCola = total.
+   */
+  tiempoTotalSeg: number | null
+  tiempoDescargaSeg: number | null
+  tiempoColaSeg: number | null
+  completos: number
   personas: number
   unidades: number
   kg: number
@@ -318,6 +330,9 @@ function agrupar(items: readonly ContenedorProceso[], clave: (c: ContenedorProce
     .map(([k, l]) => {
       const alm = l.filter((c) => c.almacenamientoMin != null)
       const m3 = l.filter((c) => c.m3 != null)
+      const comp = l.filter((c) => c.totalSeg != null)
+      const tTotal = comp.length ? Math.round(prom(comp.map((c) => c.totalSeg!))!) : null
+      const tDesc = tTotal == null ? null : Math.min(tTotal, Math.round(prom(comp.map((c) => c.descargaSeg))!))
       return {
         clave: k,
         contenedores: l.length,
@@ -325,6 +340,10 @@ function agrupar(items: readonly ContenedorProceso[], clave: (c: ContenedorProce
         almacenamientoMin: alm.length ? r(prom(alm.map((c) => c.almacenamientoMin!))!) : null,
         trabajoMin: alm.length ? r(prom(alm.map((c) => c.trabajoMin!))!) : null,
         cicloMin: alm.filter((c) => c.cicloMin != null).length ? r(prom(alm.filter((c) => c.cicloMin != null).map((c) => c.cicloMin!))!) : null,
+        tiempoTotalSeg: tTotal,
+        tiempoDescargaSeg: tDesc,
+        tiempoColaSeg: tTotal == null || tDesc == null ? null : tTotal - tDesc,
+        completos: comp.length,
         personas: r(prom(l.map((c) => c.personas)) ?? 0),
         unidades: Math.round(prom(l.map((c) => c.unidades)) ?? 0),
         kg: Math.round(prom(l.map((c) => c.pesoKg)) ?? 0),

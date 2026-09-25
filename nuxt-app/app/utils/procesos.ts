@@ -39,6 +39,11 @@ export interface GrupoRecepcionDTO {
   almacenamientoMin: number | null
   trabajoMin: number | null
   cicloMin: number | null
+  /** Tiempo de recepcion al segundo = descarga + cola (ver procesosCalc). */
+  tiempoTotalSeg: number | null
+  tiempoDescargaSeg: number | null
+  tiempoColaSeg: number | null
+  completos: number
   personas: number
   unidades: number
   kg: number
@@ -97,6 +102,19 @@ export const fmtM3Proceso = (n: number | null | undefined) => (n == null ? '—'
 export const fmtKgProceso = (n: number | null | undefined) => (n == null ? '—' : `${Math.round(n).toLocaleString('es-CO')} kg`)
 
 /** Minutos o segundos a "2 h 05 min". */
+/** Al segundo: "4 h 07 min 12 s", "24 min 31 s", "0 s". */
+export function fmtTiempoExacto(segundos: number | null | undefined): string {
+  if (segundos == null) return '—'
+  const s = Math.max(0, Math.round(segundos))
+  const h = Math.floor(s / 3600)
+  const m = Math.floor((s % 3600) / 60)
+  const x = s % 60
+  const dos = (n: number) => String(n).padStart(2, '0')
+  if (h) return `${h} h ${dos(m)} min ${dos(x)} s`
+  if (m) return `${m} min ${dos(x)} s`
+  return `${x} s`
+}
+
 export function fmtDuracion(min: number | null | undefined): string {
   if (min == null) return '—'
   if (min < 1) return `${Math.round(min * 60)} s`
