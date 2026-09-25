@@ -25,7 +25,9 @@ const cifras = computed(() => {
       hint: x.conAlmacenamiento ? `sobre ${x.conAlmacenamiento} con PLU del montacarguista` : 'se mide desde el 24-09',
       cambio: variacion(x.almacenamientoMin, ant.value?.almacenamientoMin, true),
     },
-    { label: 'Trabajo total promedio', valor: fmtDuracion(x.trabajoMin), hint: 'descarga + almacenamiento', cambio: variacion(x.trabajoMin, ant.value?.trabajoMin, true) },
+    // Sin sumar (25-09): el almacenamiento va en paralelo a la descarga. El tiempo
+    // real es de abrir la descarga a ubicar el último PLU.
+    { label: 'Tiempo real promedio', valor: fmtDuracion(x.cicloMin), hint: 'de abrir la descarga al último PLU ubicado', cambio: variacion(x.cicloMin, ant.value?.cicloMin, true) },
     { label: 'Personas por contenedor', valor: fmtCifra(x.personas), hint: 'descargan + almacenan', cambio: variacion(x.personas, ant.value?.personas) },
   ]
 })
@@ -41,16 +43,16 @@ type Vista = (typeof VISTAS)[number]['key']
 const vista = ref<Vista>('porProveedor')
 const grupos = computed<GrupoRecepcionDTO[]>(() => props.recepcion.actual[vista.value])
 
-// La barra es el tiempo total si hay almacenamiento; si no, la descarga.
+// La barra es el tiempo real si el contenedor quedó todo ubicado; si no, la descarga.
 const barras = computed<BarraH[]>(() => grupos.value.map((x) => ({
   id: x.clave,
   etiqueta: x.clave,
-  valor: x.trabajoMin ?? x.descargaMin,
-  texto: `${fmtDuracion(x.trabajoMin ?? x.descargaMin)} · ${x.contenedores} cont.`,
+  valor: x.cicloMin ?? x.descargaMin,
+  texto: `${fmtDuracion(x.cicloMin ?? x.descargaMin)} · ${x.contenedores} cont.`,
   detalle: [
     { etiqueta: 'Descarga', valor: fmtDuracion(x.descargaMin) },
     { etiqueta: 'Almacenamiento', valor: fmtDuracion(x.almacenamientoMin) },
-    { etiqueta: 'Ciclo completo', valor: fmtDuracion(x.cicloMin) },
+    { etiqueta: 'Tiempo real', valor: fmtDuracion(x.cicloMin) },
     { etiqueta: 'Personas', valor: fmtCifra(x.personas) },
   ],
 })))
@@ -60,8 +62,7 @@ const cols: ColumnaTabla[] = [
   { key: 'n', label: 'Contenedores', num: true },
   { key: 'descarga', label: 'Descarga', num: true },
   { key: 'alm', label: 'Almacenamiento', num: true },
-  { key: 'trabajo', label: 'Trabajo total', num: true },
-  { key: 'ciclo', label: 'Ciclo completo', num: true },
+  { key: 'ciclo', label: 'Tiempo real', num: true },
   { key: 'personas', label: 'Personas', num: true },
   { key: 'und', label: 'Unidades (prom.)', num: true },
   { key: 'm3', label: 'm³ (prom.)', num: true },
@@ -72,7 +73,6 @@ const filasDe = (l: GrupoRecepcionDTO[]) => l.map((x) => ({
   n: x.contenedores,
   descarga: fmtDuracion(x.descargaMin),
   alm: fmtDuracion(x.almacenamientoMin),
-  trabajo: fmtDuracion(x.trabajoMin),
   ciclo: fmtDuracion(x.cicloMin),
   personas: fmtCifra(x.personas),
   und: fmtCifra(x.unidades),
@@ -95,7 +95,7 @@ defineExpose({
 
     <IndicadoresTarjeta
       v-if="g" titulo="Tiempo por contenedor"
-      subtitulo="Promedio por grupo. Trabajo total = descarga + almacenamiento (montacargas, mismo pedido, desde el 24-09); sin almacenamiento se muestra la descarga."
+      subtitulo="Promedio por grupo. El almacenamiento (montacargas, mismo pedido, desde el 24-09) va en paralelo a la descarga, así que no se suman: tiempo real = de abrir la descarga al último PLU ubicado. Sin almacenamiento se muestra la descarga."
     >
       <div class="rc-vistas" role="tablist" aria-label="Clasificar por">
         <button

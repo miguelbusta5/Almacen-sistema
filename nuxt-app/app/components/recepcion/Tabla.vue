@@ -40,6 +40,15 @@ function resumenNovedades(item: Recepcion): string {
     .join(' · ')
 }
 
+// Tiempo real: de abrir la descarga al último PLU ubicado (no suma descarga y
+// almacenamiento, que van en paralelo). Mientras falten PLU no hay cifra.
+function tiempoReal(item: Recepcion): string {
+  const a = item.almacenamiento
+  if (!a?.movimientos) return '—'
+  if (a.cicloSeg != null) return fmtTiempoRecepcion(a.cicloSeg)
+  return a.abiertos ? 'ubicando…' : 'descargando…'
+}
+
 // Lo que el montacarguista almacenó de este contenedor (mismo pedido, 24-09).
 const m3Fmt = (v: number) => v.toLocaleString('es-CO', { maximumFractionDigits: 2 })
 function almacenado(item: Recepcion): string {
@@ -62,7 +71,7 @@ const conFoto = computed(
           <th class="num">Peso</th><th class="num">Refs.</th><th class="num">Cajas</th>
           <th class="num">Unidades</th><th class="num">Estibas</th>
           <th class="num">Refs. nuevas</th><th class="num">Und. nuevas</th>
-          <th>Almacenado (montacargas)</th><th class="num">Trabajo total</th>
+          <th>Almacenado (montacargas)</th><th class="num">Tiempo real</th>
           <th>Personas</th><th>Operario</th><th>Inicio</th><th>Estado</th>
           <th class="num">Duración</th><th>Novedades</th><th />
         </tr>
@@ -91,8 +100,8 @@ const conFoto = computed(
             </template>
             <span v-else class="muted">—</span>
           </td>
-          <td class="tnum" :title="item.almacenamiento?.cicloSeg ? `Ciclo completo: ${fmtTiempoRecepcion(item.almacenamiento.cicloSeg)}` : ''">
-            {{ item.almacenamiento?.movimientos ? fmtTiempoRecepcion(item.almacenamiento.trabajoSeg) : '—' }}
+          <td class="tnum" title="De abrir la descarga al último PLU ubicado">
+            {{ tiempoReal(item) }}
           </td>
           <td class="pers" :title="item.descargadores.map((d) => d.nombre).join(', ')">
             {{ item.descargadores.length }}
@@ -155,7 +164,7 @@ const conFoto = computed(
         <p v-if="almacenado(item)" class="rc-alm">
           Almacenado: {{ almacenado(item) }}
           <template v-if="item.almacenamiento!.abiertos"> · {{ item.almacenamiento!.abiertos }} sin ubicar</template>
-          · trabajo total {{ fmtTiempoRecepcion(item.almacenamiento!.trabajoSeg) }}
+          · tiempo real {{ tiempoReal(item) }}
         </p>
         <p v-if="item.novedades.length" class="rc-nov">{{ resumenNovedades(item) }}</p>
         <div class="rc-acc">

@@ -61,8 +61,7 @@ const colsTipo: ColumnaTabla[] = [
   { key: 'm3', label: 'm³', num: true },
   { key: 'descarga', label: 'Descarga', num: true },
   { key: 'alm', label: 'Almacenamiento', num: true },
-  { key: 'trabajo', label: 'Trabajo total', num: true },
-  { key: 'ciclo', label: 'Ciclo completo', num: true },
+  { key: 'ciclo', label: 'Tiempo real', num: true },
   { key: 'cap', label: 'Contenedores por día', num: true },
 ]
 const filasTipo = computed(() => (datos.value?.porTipo ?? []).map((t) => ({
@@ -73,7 +72,6 @@ const filasTipo = computed(() => (datos.value?.porTipo ?? []).map((t) => ({
   m3: dec(t.m3),
   descarga: min(t.descargaMin),
   alm: min(t.almacenamientoMin),
-  trabajo: min(t.trabajoMin),
   ciclo: min(t.cicloMin),
   cap: t.capacidad == null ? '—' : `${t.capacidad}${t.cuello ? ` (limita ${t.cuello === 'descarga' ? 'la descarga' : 'el almacenamiento'})` : ''}`,
 })))
@@ -86,8 +84,7 @@ const colsCont: ColumnaTabla[] = [
   { key: 'm3', label: 'm³', num: true },
   { key: 'descarga', label: 'Descarga', num: true },
   { key: 'alm', label: 'Almacenamiento', num: true },
-  { key: 'trabajo', label: 'Trabajo total', num: true },
-  { key: 'ciclo', label: 'Ciclo', num: true },
+  { key: 'ciclo', label: 'Tiempo real', num: true },
   { key: 'estado', label: 'Estado' },
 ]
 const filasCont = computed(() => conDatos.value.map((c) => ({
@@ -98,7 +95,6 @@ const filasCont = computed(() => conDatos.value.map((c) => ({
   m3: dec(c.alm.m3),
   descarga: fmtTiempoRecepcion(c.alm.descargaSeg),
   alm: fmtTiempoRecepcion(c.alm.almacenamientoRelojSeg),
-  trabajo: fmtTiempoRecepcion(c.alm.trabajoSeg),
   ciclo: fmtTiempoRecepcion(c.alm.cicloSeg),
   estado: c.alm.completo ? 'Completo' : c.alm.abiertos ? `${c.alm.abiertos} PLU sin ubicar` : 'Descarga abierta',
 })))
@@ -135,7 +131,7 @@ const filasCont = computed(() => conDatos.value.map((c) => ({
           <span class="pj-t-num tnum">{{ entero(t.capacidad) }}</span>
           <span class="pj-t-hint">contenedores por día</span>
           <span class="pj-t-det">
-            Trabajo {{ min(t.trabajoMin) }} · ciclo {{ min(t.cicloMin) }}
+            Tiempo real {{ min(t.cicloMin) }}
             <template v-if="t.cuello"> · limita {{ t.cuello === 'descarga' ? 'la descarga' : 'el almacenamiento' }}</template>
           </span>
         </div>
@@ -146,8 +142,8 @@ const filasCont = computed(() => conDatos.value.map((c) => ({
       </p>
 
       <p class="pj-regla">
-        <b>Trabajo total</b> = descarga + almacenamiento (el reloj de los montacarguistas, sin duplicar cuando trabajan a la vez):
-        es lo que cuesta el contenedor. <b>Ciclo</b> = de empezar la descarga a ubicar el último PLU, con esperas.
+        Descarga y almacenamiento van en paralelo, así que no se suman. <b>Tiempo real</b> = de abrir la descarga a
+        ubicar el último PLU, con esperas.
         Por día: la descarga va de a un contenedor y el almacenamiento se reparte entre los montacarguistas; manda la etapa más lenta.
       </p>
 
