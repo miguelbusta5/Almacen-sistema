@@ -7,7 +7,7 @@
 // existe desde el 24-09; antes solo hay descarga.
 import { computed, ref } from 'vue'
 import type { BarraH, ColumnaTabla } from '~/utils/indicadores'
-import { fmtCifra, fmtDuracion, fmtTiempoExacto, variacion, type GrupoRecepcionDTO, type RespuestaProcesos } from '~/utils/procesos'
+import { fmtCifra, fmtDuracion, variacion, type GrupoRecepcionDTO, type RespuestaProcesos } from '~/utils/procesos'
 
 const props = defineProps<{ recepcion: RespuestaProcesos['recepcion'] }>()
 
@@ -19,21 +19,13 @@ const cifras = computed(() => {
   if (!x) return []
   return [
     { label: 'Contenedores', valor: String(x.contenedores), cambio: variacion(x.contenedores, ant.value?.contenedores) },
-    // UN solo tiempo para la dirección (25-09): de abrir la descarga a dejar el
-    // último PLU ubicado, al segundo. Sus dos partes suman exacto el total.
+    { label: 'Descarga promedio', valor: fmtDuracion(x.descargaMin), cambio: variacion(x.descargaMin, ant.value?.descargaMin, true) },
     {
-      label: 'Tiempo de recepción promedio', valor: fmtTiempoExacto(x.tiempoTotalSeg),
-      hint: x.completos ? `de abrir la descarga al último PLU ubicado · ${x.completos} contenedor${x.completos === 1 ? '' : 'es'}` : 'sin contenedores completos (con todos sus PLU ubicados)',
-      cambio: variacion(x.tiempoTotalSeg, ant.value?.tiempoTotalSeg, true),
+      label: 'Almacenamiento promedio', valor: fmtDuracion(x.almacenamientoMin),
+      hint: x.conAlmacenamiento ? `sobre ${x.conAlmacenamiento} con PLU del montacarguista` : 'se mide desde el 24-09',
+      cambio: variacion(x.almacenamientoMin, ant.value?.almacenamientoMin, true),
     },
-    {
-      label: 'Descarga', valor: fmtTiempoExacto(x.tiempoDescargaSeg), hint: 'abrir y cerrar la planilla, sin pausas',
-      cambio: variacion(x.tiempoDescargaSeg, ant.value?.tiempoDescargaSeg, true),
-    },
-    {
-      label: 'Almacenamiento tras la descarga', valor: fmtTiempoExacto(x.tiempoColaSeg), hint: 'lo que faltaba ubicar al cerrar la descarga',
-      cambio: variacion(x.tiempoColaSeg, ant.value?.tiempoColaSeg, true),
-    },
+    { label: 'Trabajo total promedio', valor: fmtDuracion(x.trabajoMin), hint: 'descarga + almacenamiento', cambio: variacion(x.trabajoMin, ant.value?.trabajoMin, true) },
     { label: 'Personas por contenedor', valor: fmtCifra(x.personas), hint: 'descargan + almacenan', cambio: variacion(x.personas, ant.value?.personas) },
   ]
 })
@@ -49,17 +41,16 @@ type Vista = (typeof VISTAS)[number]['key']
 const vista = ref<Vista>('porProveedor')
 const grupos = computed<GrupoRecepcionDTO[]>(() => props.recepcion.actual[vista.value])
 
-// La barra es el tiempo de recepción; sin contenedores completos, solo la descarga.
+// La barra es el tiempo total si hay almacenamiento; si no, la descarga.
 const barras = computed<BarraH[]>(() => grupos.value.map((x) => ({
   id: x.clave,
   etiqueta: x.clave,
-  valor: x.tiempoTotalSeg != null ? x.tiempoTotalSeg / 60 : x.descargaMin,
-  texto: x.tiempoTotalSeg != null
-    ? `${fmtTiempoExacto(x.tiempoTotalSeg)} · ${x.completos} cont.`
-    : `${fmtTiempoExacto(x.descargaMin * 60)} (solo descarga) · ${x.contenedores} cont.`,
+  valor: x.trabajoMin ?? x.descargaMin,
+  texto: `${fmtDuracion(x.trabajoMin ?? x.descargaMin)} · ${x.contenedores} cont.`,
   detalle: [
-    { etiqueta: 'Descarga', valor: fmtTiempoExacto(x.tiempoDescargaSeg) },
-    { etiqueta: 'Almacenamiento tras la descarga', valor: fmtTiempoExacto(x.tiempoColaSeg) },
+    { etiqueta: 'Descarga', valor: fmtDuracion(x.descargaMin) },
+    { etiqueta: 'Almacenamiento', valor: fmtDuracion(x.almacenamientoMin) },
+    { etiqueta: 'Ciclo completo', valor: fmtDuracion(x.cicloMin) },
     { etiqueta: 'Personas', valor: fmtCifra(x.personas) },
   ],
 })))
@@ -67,9 +58,10 @@ const barras = computed<BarraH[]>(() => grupos.value.map((x) => ({
 const cols: ColumnaTabla[] = [
   { key: 'clave', label: 'Grupo' },
   { key: 'n', label: 'Contenedores', num: true },
-  { key: 'total', label: 'Tiempo de recepción', num: true },
   { key: 'descarga', label: 'Descarga', num: true },
-  { key: 'cola', label: 'Almacenamiento tras la descarga', num: true },
+  { key: 'alm', label: 'Almacenamiento', num: true },
+  { key: 'trabajo', label: 'Trabajo total', num: true },
+  { key: 'ciclo', label: 'Ciclo completo', num: true },
   { key: 'personas', label: 'Personas', num: true },
   { key: 'und', label: 'Unidades (prom.)', num: true },
   { key: 'm3', label: 'm³ (prom.)', num: true },
@@ -78,9 +70,10 @@ const cols: ColumnaTabla[] = [
 const filasDe = (l: GrupoRecepcionDTO[]) => l.map((x) => ({
   clave: x.clave,
   n: x.contenedores,
-  total: fmtTiempoExacto(x.tiempoTotalSeg),
-  descarga: fmtTiempoExacto(x.tiempoDescargaSeg ?? x.descargaMin * 60),
-  cola: fmtTiempoExacto(x.tiempoColaSeg),
+  descarga: fmtDuracion(x.descargaMin),
+  alm: fmtDuracion(x.almacenamientoMin),
+  trabajo: fmtDuracion(x.trabajoMin),
+  ciclo: fmtDuracion(x.cicloMin),
   personas: fmtCifra(x.personas),
   und: fmtCifra(x.unidades),
   m3: fmtCifra(x.m3),
@@ -102,7 +95,7 @@ defineExpose({
 
     <IndicadoresTarjeta
       v-if="g" titulo="Tiempo por contenedor"
-      subtitulo="Tiempo de recepción = de abrir la descarga a dejar el último PLU ubicado (montacargas, mismo pedido), sin pausas. Es la suma exacta de la descarga y el almacenamiento que quedaba al cerrarla. Promedio por grupo."
+      subtitulo="Promedio por grupo. Trabajo total = descarga + almacenamiento (montacargas, mismo pedido, desde el 24-09); sin almacenamiento se muestra la descarga."
     >
       <div class="rc-vistas" role="tablist" aria-label="Clasificar por">
         <button

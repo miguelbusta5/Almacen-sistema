@@ -327,9 +327,6 @@ export interface AlmacenamientoContenedor {
   trabajoSeg: number | null
   cicloSeg: number | null
   completo: boolean
-  /** Tiempo de recepcion al segundo: descarga + colaSeg. Null hasta que todo cierre. */
-  totalSeg: number | null
-  colaSeg: number | null
 }
 
 export interface ProyeccionTipoContenedor {
@@ -343,9 +340,6 @@ export interface ProyeccionTipoContenedor {
   almacenamientoPersonaMin: number
   trabajoMin: number
   cicloMin: number
-  totalSeg: number
-  descargaSeg: number
-  colaSeg: number
   capacidadDescarga: number | null
   capacidadAlmacenamiento: number | null
   capacidad: number | null

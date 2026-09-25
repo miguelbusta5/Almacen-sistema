@@ -99,14 +99,6 @@ describe("recepción de contenedores clasificada", () => {
       cont({ proveedor: "WISHINE", tipoContenedor: "PIES_20", unidades: 6000, pesoKg: 12000 }),
     ]);
     expect(r.general).toMatchObject({ contenedores: 3, descargaMin: 100, almacenamientoMin: 90, trabajoMin: 150, conAlmacenamiento: 1, personas: 4.7 });
-    // Un solo tiempo, al segundo, solo sobre los completos: sin ninguno, vacio.
-    expect(r.general).toMatchObject({ tiempoTotalSeg: null, tiempoDescargaSeg: null, tiempoColaSeg: null, completos: 0 });
-    const t = resumenRecepcion([
-      cont({ totalSeg: 14832, descargaSeg: 13361 }),
-      cont({ totalSeg: 16068, descargaSeg: 16068 }),
-      cont({ totalSeg: null, descargaSeg: 7200 }),
-    ]);
-    expect(t.general).toMatchObject({ tiempoTotalSeg: 15450, tiempoDescargaSeg: 14715, tiempoColaSeg: 735, completos: 2 });
     expect(r.porProveedor.find((g: any) => g.clave === "EHL")).toMatchObject({ contenedores: 2, descargaMin: 90 });
     expect(r.porTipo.map((g: any) => g.clave)).toEqual(["40 pies", "20 pies"]);
     expect(r.porUnidades.map((g: any) => g.clave)).toEqual(["500 – 2.000 und", "Más de 5.000 und"]);

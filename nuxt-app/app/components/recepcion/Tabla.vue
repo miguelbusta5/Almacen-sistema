@@ -9,7 +9,6 @@ import {
   TIPO_CONTENEDOR_LABEL, TIPO_PRODUCTO_LABEL, TIPO_NOVEDAD_RECEPCION_LABEL,
   type Recepcion,
 } from '~/utils/recepcion'
-import { fmtTiempoExacto } from '~/utils/procesos'
 
 const props = defineProps<{
   items: Recepcion[]
@@ -41,20 +40,6 @@ function resumenNovedades(item: Recepcion): string {
     .join(' · ')
 }
 
-// EL tiempo de recepción (25-09): de abrir la descarga al último PLU ubicado,
-// al segundo. Mientras falten PLU no hay cifra: se dice qué falta.
-function tiempoRecepcion(item: Recepcion): string {
-  const a = item.almacenamiento
-  if (!a?.movimientos) return '—'
-  if (a.totalSeg != null) return fmtTiempoExacto(a.totalSeg)
-  return a.abiertos ? 'ubicando…' : 'descargando…'
-}
-function tituloTiempo(item: Recepcion): string {
-  const a = item.almacenamiento
-  if (a?.totalSeg == null) return ''
-  return `Descarga ${fmtTiempoExacto(a.descargaSeg)} + almacenamiento tras la descarga ${fmtTiempoExacto(a.colaSeg)}`
-}
-
 // Lo que el montacarguista almacenó de este contenedor (mismo pedido, 24-09).
 const m3Fmt = (v: number) => v.toLocaleString('es-CO', { maximumFractionDigits: 2 })
 function almacenado(item: Recepcion): string {
@@ -77,7 +62,7 @@ const conFoto = computed(
           <th class="num">Peso</th><th class="num">Refs.</th><th class="num">Cajas</th>
           <th class="num">Unidades</th><th class="num">Estibas</th>
           <th class="num">Refs. nuevas</th><th class="num">Und. nuevas</th>
-          <th>Almacenado (montacargas)</th><th class="num">Tiempo de recepción</th>
+          <th>Almacenado (montacargas)</th><th class="num">Trabajo total</th>
           <th>Personas</th><th>Operario</th><th>Inicio</th><th>Estado</th>
           <th class="num">Duración</th><th>Novedades</th><th />
         </tr>
@@ -106,7 +91,9 @@ const conFoto = computed(
             </template>
             <span v-else class="muted">—</span>
           </td>
-          <td class="tnum" :title="tituloTiempo(item)">{{ tiempoRecepcion(item) }}</td>
+          <td class="tnum" :title="item.almacenamiento?.cicloSeg ? `Ciclo completo: ${fmtTiempoRecepcion(item.almacenamiento.cicloSeg)}` : ''">
+            {{ item.almacenamiento?.movimientos ? fmtTiempoRecepcion(item.almacenamiento.trabajoSeg) : '—' }}
+          </td>
           <td class="pers" :title="item.descargadores.map((d) => d.nombre).join(', ')">
             {{ item.descargadores.length }}
           </td>
@@ -168,7 +155,7 @@ const conFoto = computed(
         <p v-if="almacenado(item)" class="rc-alm">
           Almacenado: {{ almacenado(item) }}
           <template v-if="item.almacenamiento!.abiertos"> · {{ item.almacenamiento!.abiertos }} sin ubicar</template>
-          · tiempo de recepción {{ tiempoRecepcion(item) }}
+          · trabajo total {{ fmtTiempoRecepcion(item.almacenamiento!.trabajoSeg) }}
         </p>
         <p v-if="item.novedades.length" class="rc-nov">{{ resumenNovedades(item) }}</p>
         <div class="rc-acc">

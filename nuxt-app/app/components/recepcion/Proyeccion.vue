@@ -9,9 +9,8 @@ import { computed, onMounted, ref, watch } from 'vue'
 import { Container, TriangleAlert, RotateCcw } from '@lucide/vue'
 import { useToast } from '~/composables/useToast'
 import type { ColumnaTabla } from '~/utils/indicadores'
-import { fmtTiempoExacto } from '~/utils/procesos'
 import {
-  API_ALMACENAMIENTO_RECEPCION, TIPO_CONTENEDOR_LABEL,
+  API_ALMACENAMIENTO_RECEPCION, TIPO_CONTENEDOR_LABEL, fmtTiempoRecepcion,
   type RespuestaAlmacenamiento, type TipoContenedorRecepcion,
 } from '~/utils/recepcion'
 
@@ -48,6 +47,7 @@ watch([horas, montacarguistas], ([h, m]) => {
 })
 
 const tipo = (t: string) => TIPO_CONTENEDOR_LABEL[t as TipoContenedorRecepcion] ?? 'Sin tipo'
+const min = (v: number) => fmtTiempoRecepcion(v * 60)
 const entero = (v: number | null) => (v == null ? '—' : v.toLocaleString('es-CO'))
 const dec = (v: number) => v.toLocaleString('es-CO', { maximumFractionDigits: 2 })
 
@@ -59,9 +59,10 @@ const colsTipo: ColumnaTabla[] = [
   { key: 'plus', label: 'PLU', num: true },
   { key: 'und', label: 'Unidades', num: true },
   { key: 'm3', label: 'm³', num: true },
-  { key: 'total', label: 'Tiempo de recepción', num: true },
   { key: 'descarga', label: 'Descarga', num: true },
-  { key: 'cola', label: 'Almac. tras la descarga', num: true },
+  { key: 'alm', label: 'Almacenamiento', num: true },
+  { key: 'trabajo', label: 'Trabajo total', num: true },
+  { key: 'ciclo', label: 'Ciclo completo', num: true },
   { key: 'cap', label: 'Contenedores por día', num: true },
 ]
 const filasTipo = computed(() => (datos.value?.porTipo ?? []).map((t) => ({
@@ -70,9 +71,10 @@ const filasTipo = computed(() => (datos.value?.porTipo ?? []).map((t) => ({
   plus: dec(t.plus),
   und: entero(t.unidades),
   m3: dec(t.m3),
-  total: fmtTiempoExacto(t.totalSeg),
-  descarga: fmtTiempoExacto(t.descargaSeg),
-  cola: fmtTiempoExacto(t.colaSeg),
+  descarga: min(t.descargaMin),
+  alm: min(t.almacenamientoMin),
+  trabajo: min(t.trabajoMin),
+  ciclo: min(t.cicloMin),
   cap: t.capacidad == null ? '—' : `${t.capacidad}${t.cuello ? ` (limita ${t.cuello === 'descarga' ? 'la descarga' : 'el almacenamiento'})` : ''}`,
 })))
 
@@ -82,9 +84,10 @@ const colsCont: ColumnaTabla[] = [
   { key: 'plus', label: 'PLU', num: true },
   { key: 'und', label: 'Unidades', num: true },
   { key: 'm3', label: 'm³', num: true },
-  { key: 'total', label: 'Tiempo de recepción', num: true },
   { key: 'descarga', label: 'Descarga', num: true },
-  { key: 'cola', label: 'Almac. tras la descarga', num: true },
+  { key: 'alm', label: 'Almacenamiento', num: true },
+  { key: 'trabajo', label: 'Trabajo total', num: true },
+  { key: 'ciclo', label: 'Ciclo', num: true },
   { key: 'estado', label: 'Estado' },
 ]
 const filasCont = computed(() => conDatos.value.map((c) => ({
@@ -93,9 +96,10 @@ const filasCont = computed(() => conDatos.value.map((c) => ({
   plus: c.alm.plus,
   und: entero(c.alm.unidades),
   m3: dec(c.alm.m3),
-  total: fmtTiempoExacto(c.alm.totalSeg),
-  descarga: fmtTiempoExacto(c.alm.descargaSeg),
-  cola: fmtTiempoExacto(c.alm.colaSeg),
+  descarga: fmtTiempoRecepcion(c.alm.descargaSeg),
+  alm: fmtTiempoRecepcion(c.alm.almacenamientoRelojSeg),
+  trabajo: fmtTiempoRecepcion(c.alm.trabajoSeg),
+  ciclo: fmtTiempoRecepcion(c.alm.cicloSeg),
   estado: c.alm.completo ? 'Completo' : c.alm.abiertos ? `${c.alm.abiertos} PLU sin ubicar` : 'Descarga abierta',
 })))
 </script>
@@ -131,7 +135,7 @@ const filasCont = computed(() => conDatos.value.map((c) => ({
           <span class="pj-t-num tnum">{{ entero(t.capacidad) }}</span>
           <span class="pj-t-hint">contenedores por día</span>
           <span class="pj-t-det">
-            Recepción {{ fmtTiempoExacto(t.totalSeg) }}
+            Trabajo {{ min(t.trabajoMin) }} · ciclo {{ min(t.cicloMin) }}
             <template v-if="t.cuello"> · limita {{ t.cuello === 'descarga' ? 'la descarga' : 'el almacenamiento' }}</template>
           </span>
         </div>
@@ -142,10 +146,9 @@ const filasCont = computed(() => conDatos.value.map((c) => ({
       </p>
 
       <p class="pj-regla">
-        <b>Tiempo de recepción</b> = de abrir la descarga a dejar el último PLU ubicado, sin pausas, al segundo.
-        Es la suma exacta de la <b>descarga</b> y el <b>almacenamiento tras la descarga</b> (lo que quedaba por ubicar
-        al cerrar la planilla; 0 si ya estaba todo). Los contenedores por día se calculan con el tiempo de la
-        descarga (un muelle) y el de los montacarguistas, repartido entre ellos.
+        <b>Trabajo total</b> = descarga + almacenamiento (el reloj de los montacarguistas, sin duplicar cuando trabajan a la vez):
+        es lo que cuesta el contenedor. <b>Ciclo</b> = de empezar la descarga a ubicar el último PLU, con esperas.
+        Por día: la descarga va de a un contenedor y el almacenamiento se reparte entre los montacarguistas; manda la etapa más lenta.
       </p>
 
       <div v-if="datos.sinContenedor.length" class="pj-aviso" role="status">

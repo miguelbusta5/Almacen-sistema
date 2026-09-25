@@ -197,8 +197,7 @@ export default defineEventHandler(async (event) => {
   const { porRecepcion } = await almacenamientoDeRecepciones(recs)
   const contenedor = (x: (typeof recs)[number]): ContenedorProceso & { dia: string; ids: string[] } => {
     const alm = porRecepcion.get(x.id)
-    const descargaSeg = Math.max(0, Math.round((x.horaFinalizacion!.getTime() - x.horaInicio.getTime()) / 1000 - (x.pausaSegundos ?? 0)))
-    const descargaMin = descargaSeg / 60
+    const descargaMin = Math.max(0, ((x.horaFinalizacion!.getTime() - x.horaInicio.getTime()) / 1000 - (x.pausaSegundos ?? 0)) / 60)
     const conAlm = !!alm && alm.movimientos > 0
     const personas = new Set([x.creadoPorId, ...x.descargadores.map((d) => d.usuarioId), ...(alm?.montacarguistaIds ?? [])])
     return {
@@ -213,8 +212,6 @@ export default defineEventHandler(async (event) => {
       almacenamientoMin: conAlm ? alm!.almacenamientoRelojSeg / 60 : null,
       trabajoMin: conAlm && alm!.trabajoSeg != null ? alm!.trabajoSeg / 60 : null,
       cicloMin: conAlm && alm!.cicloSeg != null ? alm!.cicloSeg / 60 : null,
-      totalSeg: conAlm ? alm!.totalSeg : null,
-      descargaSeg,
       personas: personas.size,
     }
   }
