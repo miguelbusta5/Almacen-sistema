@@ -2,11 +2,11 @@
 // Detalle de una orden en el historial: la cabecera con los relojes de la orden
 // y, debajo, cada PLU con quién lo hizo y cuánto tardó en cada etapa.
 import { computed, onMounted, ref } from 'vue'
-import { X, Loader2, Pencil, MapPin, TriangleAlert, Hammer, Store } from '@lucide/vue'
+import { X, Loader2, Pencil, MapPin, TriangleAlert, Hammer, Store, UserPen } from '@lucide/vue'
 import { useToast } from '~/composables/useToast'
 import {
   ESTADO_LINEA_LABEL, ESTADO_ORDEN_LABEL, fmtKg, fmtM3, fmtMin, mensajeError, validarCodigoOrdenTienda,
-  type Linea, type Orden, type TiendaOpcion,
+  type Inspector, type Linea, type Orden, type TiendaOpcion,
 } from '~/utils/muebles'
 
 const props = defineProps<{ ordenId: string; puedeCorregir: boolean }>()
@@ -87,6 +87,41 @@ async function guardarTienda(quitar = false) {
     show(mensajeError(e, 'No se pudo cambiar la tienda'), true)
   } finally {
     guardandoTienda.value = false
+  }
+}
+
+// ── Corregir el inspector de un PLU (25-09) ──
+// También en órdenes ya inspeccionadas o entregadas a transporte: el historial
+// es solo de supervisión, que es quien puede corregirlo.
+const lineaInspector = ref<Linea | null>(null)
+const inspectores = ref<Inspector[]>([])
+const guardandoInspector = ref(false)
+const conInspector = (l: Linea) => l.estado === 'EN_INSPECCION' || l.estado === 'EN_EBANISTERIA' || l.estado === 'LISTO'
+async function abrirInspector(l: Linea) {
+  try {
+    if (!inspectores.value.length) {
+      inspectores.value = (await $fetch<{ data: Inspector[] }>('/api/inspeccion-muebles/inspectores')).data
+    }
+    lineaInspector.value = l
+  } catch (e) {
+    show(mensajeError(e, 'No se pudieron cargar los inspectores'), true)
+  }
+}
+async function corregirInspector(datos: { inspectorId: string; motivo: string }) {
+  const l = lineaInspector.value
+  if (!l || !orden.value || guardandoInspector.value) return
+  guardandoInspector.value = true
+  try {
+    await $fetch(`/api/inspeccion-muebles/${orden.value.id}/linea/${l.id}/inspector`, { method: 'POST', body: datos })
+    const nombre = inspectores.value.find((i) => i.id === datos.inspectorId)?.nombre ?? ''
+    lineaInspector.value = null
+    show(`PLU ${l.plu} ahora a nombre de ${nombre}`)
+    await cargar()
+    if (orden.value) emit('actualizada', orden.value)
+  } catch (e) {
+    show(mensajeError(e, 'No se pudo corregir el inspector'), true)
+  } finally {
+    guardandoInspector.value = false
   }
 }
 
@@ -215,6 +250,12 @@ async function corregido() {
                 <td>
                   <strong class="tnum">{{ fmtMin(l.duracionInspeccionMin) }}</strong>
                   <span class="desc">{{ l.inspector?.nombre ?? '—' }}<template v-if="l.inspHoraInicio"> · {{ hora(l.inspHoraInicio) }}</template></span>
+                  <button
+                    v-if="conInspector(l)" class="btn btn-ghost btn-sm cambiar-insp"
+                    title="El PLU quedó a nombre de otro inspector" @click="abrirInspector(l)"
+                  >
+                    <UserPen :size="12" /> Cambiar inspector
+                  </button>
                   <span v-if="l.duracionEbanisteriaMin != null" class="marca"><Hammer :size="11" /> Ebanistería {{ fmtMin(l.duracionEbanisteriaMin) }}</span>
                   <span v-if="l.averiado" class="marca error"><TriangleAlert :size="11" /> Averiado{{ l.motivoAveria ? `: ${l.motivoAveria}` : '' }}</span>
                 </td>
@@ -244,9 +285,14 @@ async function corregido() {
       @cerrar="corrigiendo = null" @corregido="corregido"
     />
   </div>
+  <InspeccionMueblesCorregirInspectorModal
+    :linea="lineaInspector" :inspectores="inspectores" :guardando="guardandoInspector"
+    @cerrar="lineaInspector = null" @confirmar="corregirInspector"
+  />
 </template>
 
 <style scoped>
+.cambiar-insp { display: inline-flex; margin-top: 3px; padding: 2px 6px; font-size: 11px; }
 .overlay { position: fixed; inset: 0; z-index: 50; display: flex; justify-content: flex-end; background: rgba(10,14,20,.45); }
 .panel { width: min(1100px, 100%); height: 100%; overflow-y: auto; padding: 20px 22px 32px; background: var(--bg, var(--surface)); border-left: 1px solid var(--border); box-shadow: -18px 0 50px rgba(0,0,0,.18); }
 .p-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; margin-bottom: 16px; }

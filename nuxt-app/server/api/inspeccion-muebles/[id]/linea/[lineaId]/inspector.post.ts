@@ -17,8 +17,9 @@ const schema = z.object({
  * Las PCs se comparten y a veces el PLU queda a nombre de otro inspector: sus
  * tiempos se le contaban a quien no los hizo. Solo supervision (ADMIN, GERENTE,
  * SUPERVISOR_ALMACENAMIENTO) lo corrige, con motivo, y queda en auditoria quien
- * era y quien quedo. Sirve para el PLU en curso y para el que ya esta listo:
- * los relojes no se tocan, solo cambia de quien son.
+ * era y quien quedo. Sirve para el PLU en curso, el que ya esta listo y el de
+ * una orden ya inspeccionada o entregada (desde el historial): los relojes no
+ * se tocan, solo cambia de quien son.
  */
 export default defineEventHandler(async (event) => {
   const actor = await requireInspeccion(event)
@@ -59,7 +60,8 @@ export default defineEventHandler(async (event) => {
 
   await auditar(
     actor.id, 'UPDATE', 'inspeccion-muebles', orden.id,
-    `${orden.codigo} PLU ${linea.plu}: inspector ${linea.inspector?.nombre ?? 'sin inspector'} -> ${nuevo.nombre}. Motivo: ${d.motivo.trim()}`,
+    // Empieza por «Correccion»: asi sale en las correcciones del historial de la orden.
+    `Correccion de inspector ${orden.codigo} PLU ${linea.plu}: inspector ${linea.inspector?.nombre ?? 'sin inspector'} -> ${nuevo.nombre}. Motivo: ${d.motivo.trim()}`,
   )
 
   return { success: true, data: mapOrdenMuebles(actualizada) }

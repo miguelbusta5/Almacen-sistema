@@ -43,6 +43,8 @@ describe("corregir el inspector de un PLU", () => {
     expect(m.update).toHaveBeenCalledWith({ where: { id: "l1" }, data: { inspectorId: "i2" } });
     expect(m.upsert.mock.calls[0][0].where).toEqual({ ordenId_inspectorId: { ordenId: "o1", inspectorId: "i2" } });
     expect(m.audit.mock.calls[0][4]).toContain("PLU 26279: inspector DIEGO -> LAURA. Motivo: Lo hizo Laura");
+    // Empieza por «Correccion»: sale en «Correcciones hechas a mano» del historial.
+    expect(m.audit.mock.calls[0][4]).toMatch(/^Correccion de inspector OVDM1/);
   });
 
   it("también el PLU que sigue en inspección o en ebanistería", async () => {
@@ -92,5 +94,14 @@ describe("pantalla", () => {
     expect(mod).toContain("/linea/${l.id}/inspector`");
     const modal = leer("nuxt-app/app/components/inspeccion-muebles/CorregirInspectorModal.vue");
     expect(modal).toContain("motivo.value.trim().length >= 5");
+  });
+
+  it("también desde el historial: orden inspeccionada o ya entregada a transporte", () => {
+    const hist = leer("nuxt-app/app/components/historial-muebles/OrdenDetalle.vue");
+    expect(hist).toContain('v-if="conInspector(l)"');
+    expect(hist).toContain("/linea/${l.id}/inspector`, { method: 'POST', body: datos }");
+    expect(hist).toContain("<InspeccionMueblesCorregirInspectorModal");
+    // El historial ya es solo de supervisión.
+    expect(leer("nuxt-app/server/api/historial-muebles/[id]/index.get.ts")).toContain("if (!esGestionMuebles(actor.role))");
   });
 });

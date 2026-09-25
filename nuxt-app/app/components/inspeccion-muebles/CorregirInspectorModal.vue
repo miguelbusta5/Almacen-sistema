@@ -26,7 +26,7 @@ const puede = computed(() => !!elegido.value && motivo.value.trim().length >= 5 
 </script>
 
 <template>
-  <div v-if="linea" class="overlay" @click.self="emit('cerrar')">
+  <div v-if="linea" class="ci-overlay" @click.self="emit('cerrar')">
     <div class="modal" role="dialog" aria-modal="true" aria-labelledby="ci-titulo">
       <h3 id="ci-titulo" class="m-titulo"><UserPen :size="16" /> Corregir inspector</h3>
       <p class="m-desc">
@@ -61,7 +61,7 @@ const puede = computed(() => !!elegido.value && motivo.value.trim().length >= 5 
 </template>
 
 <style scoped>
-.overlay { position: fixed; inset: 0; z-index: 60; display: grid; place-items: center; padding: 18px; background: rgba(10,14,20,.5); }
+.ci-overlay { position: fixed; inset: 0; z-index: 60; display: grid; place-items: center; padding: 18px; background: rgba(10,14,20,.5); }
 .modal { width: 100%; max-width: 440px; padding: 20px; border-radius: var(--r-md); background: var(--surface); border: 1px solid var(--border); box-shadow: 0 18px 50px rgba(0,0,0,.2); }
 .m-titulo { display: flex; align-items: center; gap: 7px; margin: 0 0 4px; font-size: 17px; font-weight: 800; color: var(--ink); }
 .m-titulo > svg { color: var(--brand); }
