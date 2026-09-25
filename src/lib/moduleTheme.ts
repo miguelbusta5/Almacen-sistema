@@ -51,6 +51,8 @@ export const MODULE_THEME: Record<ModuleThemeKey, ModuleTheme> = {
   'historial-muebles': mod('historial-muebles', 'Historial de ordenes', 'Historial', 'Tiempos de cada orden de muebles, PLU por PLU'),
   'entrega-muebles': mod('entrega-muebles', 'Entrega a Transporte', 'Entrega', 'Ordenes de muebles listas para salir del CEDI'),
   'tareas-generales': mod('tareas-generales', 'Tareas generales', 'Tareas', 'Tareas sueltas que manda supervision, con su tiempo'),
+  'cargue-camiones': mod('cargue-camiones', 'Cargue de camiones', 'Cargue', 'Ordenes que suben a cada camion, con su tiempo y sus bultos'),
+  'indicadores-transporte': mod('indicadores-transporte', 'Indicadores Transporte', 'Ind. Transporte', 'Camiones, bultos y tiempos de cargue'),
   home: mod("home", PRODUCT.displayName, PRODUCT.shortName, PRODUCT.tagline),
   transporte: mod("transporte", "Guardados Transporte", "Transporte", "Custodia, guardados y pendientes operativos"),
   tienda: mod("tienda", "Facturas Contado", "Facturas", "Facturas contado desde tienda hacia el flujo CEDI"),

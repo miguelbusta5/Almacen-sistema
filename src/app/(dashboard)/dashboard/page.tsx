@@ -32,6 +32,8 @@ const MODULE_HREF: Record<ModuleKey, string> = {
   "inspeccion-muebles": "/dashboard/inspeccion-muebles",
   "indicadores-muebles": "/dashboard/indicadores-muebles",
   "admin-muebles": "/dashboard/admin-muebles",
+  "cargue-camiones": "/dashboard/cargue-camiones",
+  "indicadores-transporte": "/dashboard/indicadores?area=transporte",
 };
 
 // Mismo orden visual que el Sidebar: el primer módulo visible del rol es el
@@ -41,6 +43,7 @@ const PRIORITY_ORDER: ModuleKey[] = [
   "transporte",
   "integracion",
   "cargue-gourmet",
+  "cargue-camiones",
   "recepcion-contenedores",
   "control-montacargas",
   "montaje-resurtido",
@@ -56,6 +59,7 @@ const PRIORITY_ORDER: ModuleKey[] = [
   "solicitudes-transporte",
   "indicadores",
   "indicadores-muebles",
+  "indicadores-transporte",
   "historial-muebles",
   "admin-muebles",
   "centro-control",

@@ -53,6 +53,7 @@ const ALL_ITEMS: NavItem[] = [
   { href: "/dashboard/tienda", label: "Facturas Contado", icon: <Store size={16} strokeWidth={2.1} />, moduleKey: "tienda" },
   { href: "/dashboard/integracion", label: "Integracion Pedidos", icon: <GitMerge size={16} strokeWidth={2.1} />, moduleKey: "integracion" },
   { href: "/dashboard/cargue-gourmet", label: "Cargue Gourmet", icon: <ScanLine size={16} strokeWidth={2.1} />, moduleKey: "cargue-gourmet" },
+  { href: "/dashboard/cargue-camiones", label: "Cargue de camiones", icon: <Truck size={16} strokeWidth={2.1} />, moduleKey: "cargue-camiones" },
   { href: "/dashboard/picking-muebles", label: "Picking Muebles", icon: <Hammer size={16} strokeWidth={2.1} />, moduleKey: "picking-muebles" },
   { href: "/dashboard/inspeccion-muebles", label: "Inspeccion Muebles", icon: <ClipboardCheck size={16} strokeWidth={2.1} />, moduleKey: "inspeccion-muebles" },
   { href: "/dashboard/entrega-muebles", label: "Entrega a Transporte", icon: <Truck size={16} strokeWidth={2.1} />, moduleKey: "entrega-muebles" },
@@ -70,6 +71,8 @@ const ALL_ITEMS: NavItem[] = [
   { href: "/dashboard/solicitudes-transporte", label: "Solicitudes Transporte", icon: <FileText size={16} strokeWidth={2.1} />, moduleKey: "solicitudes-transporte" },
   { href: "/dashboard/transporte", label: "Guardados", icon: <Truck size={16} strokeWidth={2.1} />, moduleKey: "transporte" },
   { href: "/dashboard/indicadores", label: "Indicadores", icon: <ChartColumnIncreasing size={16} strokeWidth={2.1} />, moduleKey: "indicadores" },
+  // Quien no ve Indicadores (supervision de transporte) entra directo a su area.
+  { href: "/dashboard/indicadores?area=transporte", label: "Indicadores Transporte", icon: <ChartColumnIncreasing size={16} strokeWidth={2.1} />, moduleKey: "indicadores-transporte" },
   { href: "/dashboard/centro-control", label: "Centro de Control", icon: <BarChart3 size={16} strokeWidth={2.1} />, moduleKey: "centro-control" },
   { href: "/dashboard/usuarios", label: "Usuarios", icon: <Users size={16} strokeWidth={2.1} />, moduleKey: "usuarios" },
   { href: "/dashboard/auditoria", label: "Auditoria", icon: <ScrollText size={16} strokeWidth={2.1} />, moduleKey: "auditoria" },
@@ -81,6 +84,7 @@ const GROUPS = [
     "/dashboard/tienda",
     "/dashboard/integracion",
     "/dashboard/cargue-gourmet",
+    "/dashboard/cargue-camiones",
     "/dashboard/control-montacargas",
     "/dashboard/resurtido",
     "/dashboard/recepcion-contenedores",
@@ -120,7 +124,7 @@ export default function Sidebar({ role }: SidebarProps) {
   useEffect(() => { setOpen(false); }, [path]);
 
   const visibleItems = ALL_ITEMS.filter((item) =>
-    (item.moduleKey === null || canSeeModule(role, item.moduleKey)) && (item.moduleKey !== 'capacidad-picking' || pickingAccess) && (item.moduleKey !== 'inventarios' || inventariosAccess) && (item.moduleKey !== 'stretch-film' || stretchAccess) && item.label.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().includes(query.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase())
+    (item.moduleKey === null || canSeeModule(role, item.moduleKey)) && (item.moduleKey !== 'indicadores-transporte' || !canSeeModule(role, 'indicadores')) && (item.moduleKey !== 'capacidad-picking' || pickingAccess) && (item.moduleKey !== 'inventarios' || inventariosAccess) && (item.moduleKey !== 'stretch-film' || stretchAccess) && item.label.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().includes(query.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase())
   );
 
   const isActive = (href: string) =>

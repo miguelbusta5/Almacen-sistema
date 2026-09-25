@@ -14,6 +14,19 @@ export default defineNuxtConfig({
   runtimeConfig: { buildId: BUILD_ID },
   vite: { define: { __BUILD_ID__: JSON.stringify(BUILD_ID) } },
   compatibilityDate: '2025-07-15',
+  nitro: {
+    hooks: {
+      // Sin tipar las respuestas de $fetch por ruta (25-09): Nitro compara cada
+      // $fetch('/api/...') contra TODAS las rutas del servidor y, pasadas ~210,
+      // TypeScript revienta ("Type instantiation is excessively deep") en
+      // llamadas que no tienen nada que ver. Cada llamada ya declara su tipo
+      // con $fetch<T>(...), que es lo que se usa. Solo toca los .d.ts
+      // generados, no lo que corre.
+      'types:extend'(types) {
+        types.routes = {}
+      },
+    },
+  },
   devtools: { enabled: true },
   devServer: { port: 3001 },
   css: ['~/assets/tokens.css'],

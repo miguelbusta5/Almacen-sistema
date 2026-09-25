@@ -30,6 +30,8 @@ export type ModuleKey =
   | 'tareas-generales'
   | 'entrega-muebles'
   | 'historial-muebles'
+  | 'cargue-camiones'
+  | 'indicadores-transporte'
 
 export const MODULE_ACCESS: Record<ModuleKey, string[]> = {
   'stretch-film': ['ADMIN', 'GERENTE', 'SUPERVISOR_ALMACENAMIENTO', 'OPERACIONES_GOURMET'],
@@ -95,6 +97,10 @@ export const MODULE_ACCESS: Record<ModuleKey, string[]> = {
   'historial-muebles': ['SUPERVISOR_ALMACENAMIENTO', 'GERENTE', 'ADMIN'],
   'entrega-muebles': ['PATINADOR_MUEBLES', 'SUPERVISOR_ALMACENAMIENTO', 'GERENTE', 'ADMIN'],
   'tareas-generales': ['SUPERVISOR_ALMACENAMIENTO', 'GERENTE', 'ADMIN', 'OPERARIO_ALMACENAMIENTO', 'MONTACARGAS'],
+  // Cargue de camiones (25-09): el equipo de transporte sube las ordenes al camion.
+  'cargue-camiones': ['TRANSPORTE', 'SUPERVISOR_TRANSPORTE', 'GERENTE', 'ADMIN'],
+  // Area «Transporte» de Indicadores. Solo gestion.
+  'indicadores-transporte': ['SUPERVISOR_TRANSPORTE', 'GERENTE', 'ADMIN'],
 }
 
 export function canSeeModule(role: string | undefined | null, moduleKey: ModuleKey): boolean {

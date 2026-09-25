@@ -349,6 +349,8 @@ model User {
   tareasResurtidoPasadas             TareaResurtido[]               @relation("TareasResurtidoPasadas")
   ordenesMueblesEntregadas   OrdenMuebles[]         @relation("OrdenesMueblesEntregadas")
   ordenesMueblesTransferidas OrdenMuebles[]         @relation("OrdenesMueblesTransferidas")
+  carguesCamionCreados       CargueCamion[]         @relation("CarguesCamionCreados")
+  carguesCamionCerrados      CargueCamion[]         @relation("CarguesCamionCerrados")
   erroresPickingOperario     ErrorPickingMuebles[]  @relation("ErroresPickingOperario")
   erroresPickingMarcados     ErrorPickingMuebles[]  @relation("ErroresPickingMarcados")
   tareasGeneralesApoyo       AsignadoTareaGeneral[] @relation("TareasGeneralesApoyo")
@@ -1167,6 +1169,8 @@ model GourmetPedido {
   cajas     GourmetPedidoCaja[]
   cargues   GourmetCargue[]
   novedades GourmetCargueNovedad[]
+  /// Camiones en que se subio (Cargue de camiones).
+  carguesCamion CargueCamionOrden[]
 
   @@index([orden])
   @@index([tipoOrden])
@@ -2085,6 +2089,8 @@ model OrdenMuebles {
   lineas        LineaMuebles[]
   pendientes    PendienteMuebles[]
   participantes ParticipanteOrdenMuebles[]
+  /// Camiones en que se subio (Cargue de camiones).
+  carguesCamion CargueCamionOrden[]
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
@@ -2537,4 +2543,123 @@ model ErrorPickingMuebles {
   @@index([lineaId], map: "errores_picking_muebles_linea_idx")
   @@index([operarioId, createdAt], map: "errores_picking_muebles_operario_idx")
   @@map("errores_picking_muebles")
+}
+
+// ── Cargue de camiones (25-09-2026) ─────────────────────────────────────────
+// Como Recepcion de contenedores pero de salida: un camion con quienes lo
+// cargan, al que se le suben ordenes OVDM/TSDM (de Cargue Gourmet y/o Muebles),
+// cada una con su reloj y sus bultos contados.
+
+enum EstadoCargueCamion {
+  EN_CURSO
+  CERRADO
+}
+
+/// De donde salio la orden: Cargue Gourmet, Muebles, las dos (la misma OVDM
+/// trae gourmet y muebles) o escrita a mano (no existe en ninguno).
+enum OrigenOrdenCargue {
+  GOURMET
+  MUEBLES
+  AMBOS
+  MANUAL
+}
+
+/// Quienes cargan los camiones. NO son usuarios: como los inspectores de
+/// muebles, un catalogo de nombres que edita el administrador.
+model OperarioCargue {
+  id        String   @id @default(cuid())
+  nombre    String   @db.VarChar(120)
+  activo    Boolean  @default(true)
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  cargues CargueCamionOperario[]
+
+  @@map("operarios_cargue")
+}
+
+model CargueCamion {
+  id             String             @id @default(cuid())
+  estado         EstadoCargueCamion @default(EN_CURSO)
+  tipoVehiculo   String             @map("tipo_vehiculo") @db.VarChar(80)
+  transportadora String             @db.VarChar(120)
+  placa          String?            @db.VarChar(20)
+  observacion    String?            @db.VarChar(300)
+
+  fecha            DateTime  @db.Date
+  /// Reloj del camion: de iniciar el cargue a finalizarlo.
+  horaInicio       DateTime  @map("hora_inicio")
+  horaFinalizacion DateTime? @map("hora_finalizacion")
+
+  creadoPorId  String  @map("creado_por_id")
+  creadoPor    User    @relation("CarguesCamionCreados", fields: [creadoPorId], references: [id])
+  cerradoPorId String? @map("cerrado_por_id")
+  cerradoPor   User?   @relation("CarguesCamionCerrados", fields: [cerradoPorId], references: [id])
+
+  motivoCorreccion String?   @map("motivo_correccion")
+  deletedAt        DateTime? @map("deleted_at")
+
+  operarios CargueCamionOperario[]
+  ordenes   CargueCamionOrden[]
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([estado, fecha], map: "cargues_camion_estado_fecha_idx")
+  @@map("cargues_camion")
+}
+
+model CargueCamionOperario {
+  id         String         @id @default(cuid())
+  cargueId   String         @map("cargue_id")
+  cargue     CargueCamion   @relation(fields: [cargueId], references: [id], onDelete: Cascade)
+  operarioId String         @map("operario_id")
+  operario   OperarioCargue @relation(fields: [operarioId], references: [id])
+  createdAt  DateTime       @default(now()) @map("created_at")
+
+  @@unique([cargueId, operarioId], map: "cargue_camion_operarios_cargue_id_operario_id_key")
+  @@map("cargue_camion_operarios")
+}
+
+/// Una orden subida al camion. Lo que se trae de Gourmet/Muebles (tienda,
+/// cliente, ciudad, bultos declarados, m3, kg, valor) se SELLA aqui: el
+/// registro del cargue no cambia si despues se edita la orden de origen.
+model CargueCamionOrden {
+  id              String            @id @default(cuid())
+  cargueId        String            @map("cargue_id")
+  cargue          CargueCamion      @relation(fields: [cargueId], references: [id], onDelete: Cascade)
+  codigo          String            @db.VarChar(100)
+  tipoOrden       String            @map("tipo_orden") @db.VarChar(10)
+  origen          OrigenOrdenCargue
+  gourmetPedidoId String?           @map("gourmet_pedido_id")
+  gourmetPedido   GourmetPedido?    @relation(fields: [gourmetPedidoId], references: [id], onDelete: SetNull)
+  ordenMueblesId  String?           @map("orden_muebles_id")
+  ordenMuebles    OrdenMuebles?     @relation(fields: [ordenMueblesId], references: [id], onDelete: SetNull)
+
+  tienda  String? @db.VarChar(255)
+  cliente String? @db.VarChar(160)
+  ciudad  String? @db.VarChar(80)
+
+  /// Declarados por Cargue Gourmet (cajas) y por Muebles (unidades x partes).
+  bultosGourmet    Int?    @map("bultos_gourmet")
+  bultosMuebles    Int?    @map("bultos_muebles")
+  bultosDeclarados Int?    @map("bultos_declarados")
+  /// Lo que se conto al subirlos al camion (manual).
+  bultosCargados   Int?    @map("bultos_cargados")
+  /// Obligatoria si los cargados no coinciden con los declarados.
+  notaDiferencia   String? @map("nota_diferencia") @db.VarChar(300)
+
+  /// De la parte de muebles, sellado al finalizar.
+  m3        Decimal? @db.Decimal(12, 4)
+  kg        Decimal? @db.Decimal(12, 2)
+  /// Unidades x precio de venta: solo OVDM de muebles, sin contado ni tienda.
+  valorOvdm Decimal? @map("valor_ovdm") @db.Decimal(14, 2)
+
+  horaInicio DateTime  @map("hora_inicio")
+  horaFin    DateTime? @map("hora_fin")
+  createdAt  DateTime  @default(now()) @map("created_at")
+
+  @@index([cargueId], map: "cargue_camion_ordenes_cargue_id_idx")
+  @@index([codigo], map: "cargue_camion_ordenes_codigo_idx")
+  @@map("cargue_camion_ordenes")
 }

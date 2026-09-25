@@ -4,9 +4,10 @@
 //   tareas generales) y lo de las personas (tiempo trabajado, muertos, turnos…).
 //   La lógica vive en components/indicadores/Module.vue.
 // - Muebles: picking, inspección y órdenes. components/indicadores-muebles/Module.vue.
+// - Transporte (25-09): el Cargue de camiones. components/indicadores-transporte/Module.vue.
 // El área va en la URL (?area=muebles) para poder enlazarla y volver a ella.
 import { computed } from 'vue'
-import { Warehouse, Sofa } from '@lucide/vue'
+import { Warehouse, Sofa, Truck } from '@lucide/vue'
 import { useSessionState } from '~/composables/useSession'
 import { canSeeModule } from '~/utils/modulePermissions'
 
@@ -19,10 +20,11 @@ const { me } = useSessionState()
 const areas = computed(() => [
   { key: 'almacenamiento', label: 'Almacenamiento', icono: Warehouse, ve: canSeeModule(me.value?.role, 'indicadores') },
   { key: 'muebles', label: 'Muebles', icono: Sofa, ve: canSeeModule(me.value?.role, 'indicadores-muebles') },
+  { key: 'transporte', label: 'Transporte', icono: Truck, ve: canSeeModule(me.value?.role, 'indicadores-transporte') },
 ].filter((a) => a.ve))
 
 const area = computed(() => {
-  const pedida = route.query.area === 'muebles' ? 'muebles' : 'almacenamiento'
+  const pedida = route.query.area === 'muebles' || route.query.area === 'transporte' ? String(route.query.area) : 'almacenamiento'
   return areas.value.some((a) => a.key === pedida) ? pedida : (areas.value[0]?.key ?? 'almacenamiento')
 })
 
@@ -42,7 +44,8 @@ function elegir(key: string) {
       </button>
     </nav>
     <IndicadoresMueblesModule v-if="area === 'muebles'" />
-    <IndicadoresModule v-else />
+    <IndicadoresTransporteModule v-else-if="area === 'transporte'" />
+    <IndicadoresModule v-else-if="area === 'almacenamiento'" />
   </div>
 </template>
 

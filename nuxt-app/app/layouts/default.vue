@@ -69,6 +69,7 @@ const NAV_GROUPS: NavGroup[] = [
       { icon: Forklift, label: 'Control Montacargas', href: '/dashboard/control-montacargas', key: 'control-montacargas', moduleKey: 'control-montacargas' },
       { icon: PackageOpen, label: 'Resurtido', href: '/dashboard/resurtido', key: 'resurtido', moduleKey: 'resurtido' },
       { icon: ScanLine, label: 'Cargue Gourmet', href: '/dashboard/cargue-gourmet', key: 'cargue-gourmet', moduleKey: 'cargue-gourmet' },
+      { icon: Truck, label: 'Cargue de camiones', href: '/dashboard/cargue-camiones', key: 'cargue-camiones', moduleKey: 'cargue-camiones' },
       { icon: Hammer, label: 'Picking Muebles', href: '/dashboard/picking-muebles', key: 'picking-muebles', moduleKey: 'picking-muebles' },
       { icon: ClipboardCheck, label: 'Inspección Muebles', href: '/dashboard/inspeccion-muebles', key: 'inspeccion-muebles', moduleKey: 'inspeccion-muebles' },
       { icon: Truck, label: 'Entrega a Transporte', href: '/dashboard/entrega-muebles', key: 'entrega-muebles', moduleKey: 'entrega-muebles' },
@@ -95,6 +96,8 @@ const NAV_GROUPS: NavGroup[] = [
     titulo: 'Gestión',
     items: [
       { icon: ChartColumnIncreasing, label: 'Indicadores', href: '/dashboard/indicadores', key: 'indicadores', moduleKey: 'indicadores' },
+      // Quien no ve Indicadores (supervision de transporte) entra directo a su area.
+      { icon: ChartColumnIncreasing, label: 'Indicadores Transporte', href: '/dashboard/indicadores?area=transporte', key: 'indicadores-transporte', moduleKey: 'indicadores-transporte' },
       { icon: ScrollText, label: 'Historial Muebles', href: '/dashboard/historial-muebles', key: 'historial-muebles', moduleKey: 'historial-muebles' },
       { icon: BarChart3, label: 'Centro de Control', href: '/dashboard/centro-control', key: null, moduleKey: 'centro-control' },
       { icon: SlidersHorizontal, label: 'Admin Muebles', href: '/dashboard/admin-muebles', key: 'admin-muebles', moduleKey: 'admin-muebles' },
@@ -109,7 +112,7 @@ const normalizeNav = (s: string) => s.normalize('NFD').replace(/[\u0300-\u036f]/
 const visibleGroups = computed(() => NAV_GROUPS
   .map((g) => ({
     titulo: g.titulo,
-    items: g.items.filter((item) => (item.moduleKey === null || canSeeModule(me.value?.role, item.moduleKey)) && (item.moduleKey !== 'capacidad-picking' || me.value?.can.capacidadPicking) && (item.moduleKey !== 'inventarios' || me.value?.can.gestionarInventarios || me.value?.can.contarInventarios) && (item.moduleKey !== 'stretch-film' || me.value?.can.stretch?.gestionar || me.value?.can.stretch?.solicitar) && normalizeNav(item.label).includes(normalizeNav(navSearch.value))),
+    items: g.items.filter((item) => (item.moduleKey === null || canSeeModule(me.value?.role, item.moduleKey)) && (item.moduleKey !== 'indicadores-transporte' || !canSeeModule(me.value?.role, 'indicadores')) && (item.moduleKey !== 'capacidad-picking' || me.value?.can.capacidadPicking) && (item.moduleKey !== 'inventarios' || me.value?.can.gestionarInventarios || me.value?.can.contarInventarios) && (item.moduleKey !== 'stretch-film' || me.value?.can.stretch?.gestionar || me.value?.can.stretch?.solicitar) && normalizeNav(item.label).includes(normalizeNav(navSearch.value))),
   }))
   .filter((g) => g.items.length > 0))
 // Igualdad exacta, NO startsWith: con `startsWith`, la clave 'exportaciones'
