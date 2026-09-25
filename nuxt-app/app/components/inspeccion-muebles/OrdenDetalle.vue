@@ -6,7 +6,7 @@
 // hacer lo suyo, y quien estaba aqui encuentra la orden exactamente como la dejo.
 // Esa es la garantia central del modulo, con 2 PCs para ~5 personas.
 import { computed } from 'vue'
-import { ArrowLeft, Play, Check, Hammer, PackageX, Undo2, Utensils, TriangleAlert, Plus, UserPlus, MapPin, Flag, CircleCheckBig } from '@lucide/vue'
+import { ArrowLeft, Play, Check, Hammer, PackageX, Undo2, Utensils, TriangleAlert, Plus, UserPlus, MapPin, Flag, CircleCheckBig, UserPen } from '@lucide/vue'
 import {
   ESTADO_LINEA_LABEL, ESTADO_LINEA_TONE, TIPO_ERROR_PICKING_LABEL, cronometro, fmtKg, fmtM3, fmtMin,
   type Linea, type Orden,
@@ -20,6 +20,8 @@ const props = defineProps<{
   guardando: boolean
   /** Solo el administrador marca errores de picking y termina la orden con ellos. */
   esAdmin?: boolean
+  /** Supervisión (admin, gerente, supervisor de almacenamiento): corrige el inspector de un PLU. */
+  esGestion?: boolean
 }>()
 
 const emit = defineEmits<{
@@ -37,7 +39,11 @@ const emit = defineEmits<{
   (e: 'ciudad'): void
   (e: 'error-picking', linea: Linea): void
   (e: 'terminar'): void
+  (e: 'corregir-inspector', linea: Linea): void
 }>()
+
+// Solo el PLU que ya tiene reloj de inspección tiene inspector que corregir.
+const conInspector = (l: Linea) => l.estado === 'EN_INSPECCION' || l.estado === 'EN_EBANISTERIA' || l.estado === 'LISTO'
 
 const conError = computed(() => props.orden.lineas.filter((l) => l.errorPicking).length)
 // Espejo de validarTerminarConErrores: los PLU sin error tienen que estar listos.
@@ -208,6 +214,12 @@ function reloj(l: Linea): string {
 
           <span v-else class="l-ok"><Check :size="14" /> Listo</span>
 
+          <button
+            v-if="esGestion && conInspector(l)" class="btn btn-sm" :disabled="guardando"
+            title="El PLU quedó a nombre de otro inspector" @click="emit('corregir-inspector', l)"
+          >
+            <UserPen :size="13" /> Corregir inspector
+          </button>
           <button
             v-if="esAdmin" class="btn btn-sm error-btn" :class="{ marcado: l.errorPicking }"
             :disabled="guardando" @click="emit('error-picking', l)"

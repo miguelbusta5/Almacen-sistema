@@ -587,3 +587,22 @@ export function validarTerminarConErrores(
   }
   return null
 }
+
+// ── Corregir el inspector de un PLU (25-09) ──
+// Las PCs se comparten y a veces el PLU queda a nombre de otro inspector. Solo
+// supervision lo corrige (el endpoint lo exige) y siempre con motivo.
+
+/** Estados en que el PLU ya tiene reloj de inspeccion y por tanto inspector. */
+export const ESTADOS_CON_INSPECTOR: readonly EstadoLinea[] = ['EN_INSPECCION', 'EN_EBANISTERIA', 'LISTO']
+
+export function validarCorreccionInspector(d: {
+  estado: EstadoLinea
+  inspectorActual: string | null
+  inspectorNuevo: string
+  motivo: string
+}): string | null {
+  if (!ESTADOS_CON_INSPECTOR.includes(d.estado)) return 'Ese PLU todavia no tiene inspeccion que corregir'
+  if (d.inspectorActual === d.inspectorNuevo) return 'Ese PLU ya esta a nombre de ese inspector'
+  if (d.motivo.trim().length < 5) return 'Escribe el motivo de la correccion (minimo 5 caracteres)'
+  return null
+}

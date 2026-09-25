@@ -15,6 +15,7 @@ import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { ClipboardCheck, FilePlus2, RefreshCw, Loader2, Receipt, Store } from '@lucide/vue'
 import { useToast } from '~/composables/useToast'
 import { useSessionState } from '~/composables/useSession'
+import { esGestionMuebles } from '~/utils/mueblesUi'
 import {
   API_INSPECCION, cajasDelPlu, mensajeError, MINIMO_PARTES_AVISO,
   type CajaPlu, type Inspector, type Linea, type Orden,
@@ -25,6 +26,9 @@ const { me } = useSessionState()
 // Errores de picking: solo el administrador (el servidor lo vuelve a exigir).
 const esAdmin = computed(() => me.value?.role === 'ADMIN')
 const lineaError = ref<Linea | null>(null)
+// Corregir a nombre de quién quedó un PLU: solo supervisión (el servidor lo exige).
+const esGestion = computed(() => esGestionMuebles(me.value?.role))
+const lineaCorregir = ref<Linea | null>(null)
 
 const ordenes = ref<Orden[]>([])
 const inspectores = ref<Inspector[]>([])
@@ -342,6 +346,15 @@ function quitarError() {
   lineaError.value = null
   accion(`${API_INSPECCION}/${abierta.value!.id}/linea/${l.id}/error-picking`, { quitar: true }, `Error quitado de ${l.plu}`)
 }
+/** El PLU quedó a nombre de otro inspector: supervisión lo corrige, con motivo. */
+function confirmarCorreccion(datos: { inspectorId: string; motivo: string }) {
+  const l = lineaCorregir.value
+  if (!l || !abierta.value) return
+  lineaCorregir.value = null
+  const nombre = inspectores.value.find((i) => i.id === datos.inspectorId)?.nombre ?? ''
+  accion(`${API_INSPECCION}/${abierta.value.id}/linea/${l.id}/inspector`, datos, `PLU ${l.plu} ahora a nombre de ${nombre}`)
+}
+
 /** Termina la orden con sus errores: pasa a Entrega a Transporte. */
 function terminarConErrores() {
   accion(`${API_INSPECCION}/${abierta.value!.id}/terminar`, {}, 'Orden terminada')
@@ -483,6 +496,7 @@ useAutoRefresh({ onRefresh: () => (guardando.value ? undefined : cargar()) })
       @agregar-plu="agregandoPlu = true" @almuerzo="almuerzo" @unirse="unirse"
       @ciudad="pidiendoCiudad = true"
       :es-admin="esAdmin" @error-picking="lineaError = $event" @terminar="terminarConErrores"
+      :es-gestion="esGestion" @corregir-inspector="lineaCorregir = $event"
     />
 
     <template v-else>
@@ -506,6 +520,10 @@ useAutoRefresh({ onRefresh: () => (guardando.value ? undefined : cargar()) })
     />
     <InspeccionMueblesAgregarPluModal
       :abierto="agregandoPlu" @cerrar="agregandoPlu = false" @confirmar="confirmarAgregarPlu"
+    />
+    <InspeccionMueblesCorregirInspectorModal
+      :linea="lineaCorregir" :inspectores="inspectores" :guardando="guardando"
+      @cerrar="lineaCorregir = null" @confirmar="confirmarCorreccion"
     />
     <InspeccionMueblesErrorPickingModal
       :linea="lineaError" :guardando="guardando"
