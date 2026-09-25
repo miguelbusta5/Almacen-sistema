@@ -7,7 +7,7 @@
 // existe desde el 24-09; antes solo hay descarga.
 import { computed, ref } from 'vue'
 import type { BarraH, ColumnaTabla } from '~/utils/indicadores'
-import { fmtCifra, fmtDuracion, fmtTiempoExacto, variacion, type GrupoRecepcionDTO, type RespuestaProcesos } from '~/utils/procesos'
+import { fmtCifra, fmtDuracion, fmtTiempoExacto, variacion, type GrupoRecepcionDTO, type MontacarguistaRecepcionDTO, type RespuestaProcesos } from '~/utils/procesos'
 
 const props = defineProps<{ recepcion: RespuestaProcesos['recepcion'] }>()
 
@@ -33,6 +33,14 @@ const cifras = computed(() => {
     {
       label: 'Almacenamiento tras la descarga', valor: fmtTiempoExacto(x.tiempoColaSeg), hint: 'lo que faltaba ubicar al cerrar la descarga',
       cambio: variacion(x.tiempoColaSeg, ant.value?.tiempoColaSeg, true),
+    },
+    {
+      label: 'Promedio por PLU', valor: fmtTiempoExacto(x.promPluSeg), hint: 'lo que tarda un montacarguista en ubicar un PLU',
+      cambio: variacion(x.promPluSeg, ant.value?.promPluSeg, true),
+    },
+    {
+      label: 'Promedio entre PLU', valor: fmtTiempoExacto(x.promEntrePluSeg), hint: 'espera de un montacarguista entre un PLU y el siguiente',
+      cambio: variacion(x.promEntrePluSeg, ant.value?.promEntrePluSeg, true),
     },
     { label: 'Personas por contenedor', valor: fmtCifra(x.personas), hint: 'descargan + almacenan', cambio: variacion(x.personas, ant.value?.personas) },
   ]
@@ -88,8 +96,66 @@ const filasDe = (l: GrupoRecepcionDTO[]) => l.map((x) => ({
 }))
 const filas = computed(() => filasDe(grupos.value))
 
+// Todas las variantes del tiempo, por el mismo grupo elegido arriba.
+const colsVar: ColumnaTabla[] = [
+  { key: 'clave', label: 'Grupo' },
+  { key: 'total', label: 'Tiempo de recepción', num: true },
+  { key: 'descarga', label: 'Descarga', num: true },
+  { key: 'cola', label: 'Almac. tras la descarga', num: true },
+  { key: 'ventana', label: 'Ventana de almacenamiento', num: true },
+  { key: 'ubicando', label: 'Ubicando', num: true },
+  { key: 'entre', label: 'Entre PLU', num: true },
+  { key: 'promPlu', label: 'Prom. por PLU', num: true },
+  { key: 'promEntre', label: 'Prom. entre PLU', num: true },
+  { key: 'trabajo', label: 'Trabajo', num: true },
+  { key: 'ciclo', label: 'Ciclo (con pausas)', num: true },
+]
+const filasVarDe = (l: GrupoRecepcionDTO[]) => l.map((x) => ({
+  clave: x.clave,
+  total: fmtTiempoExacto(x.tiempoTotalSeg),
+  descarga: fmtTiempoExacto(x.tiempoDescargaSeg ?? x.descargaMin * 60),
+  cola: fmtTiempoExacto(x.tiempoColaSeg),
+  ventana: fmtTiempoExacto(x.ventanaSeg),
+  ubicando: fmtTiempoExacto(x.ubicandoSeg),
+  entre: fmtTiempoExacto(x.entrePluSeg),
+  promPlu: fmtTiempoExacto(x.promPluSeg),
+  promEntre: fmtTiempoExacto(x.promEntrePluSeg),
+  trabajo: fmtTiempoExacto(x.trabajoSeg),
+  ciclo: fmtTiempoExacto(x.cicloSeg),
+}))
+const filasVar = computed(() => filasVarDe(grupos.value))
+
+// Cada montacarguista: cuánto tuvo PLU en la mano y cuánto esperó entre uno y otro.
+const colsMont: ColumnaTabla[] = [
+  { key: 'nombre', label: 'Montacarguista' },
+  { key: 'cont', label: 'Contenedores', num: true },
+  { key: 'plus', label: 'PLU', num: true },
+  { key: 'ubicando', label: 'Ubicando', num: true },
+  { key: 'entre', label: 'Entre PLU', num: true },
+  { key: 'pct', label: '% con PLU en la mano', num: true },
+  { key: 'promPlu', label: 'Prom. por PLU', num: true },
+  { key: 'promEntre', label: 'Prom. entre PLU', num: true },
+  { key: 'mayor', label: 'Mayor espera', num: true },
+]
+const filasMontDe = (l: MontacarguistaRecepcionDTO[]) => l.map((m) => ({
+  nombre: m.nombre,
+  cont: m.contenedores,
+  plus: m.plus,
+  ubicando: fmtTiempoExacto(m.ubicandoSeg),
+  entre: fmtTiempoExacto(m.entrePluSeg),
+  pct: m.pctUbicando == null ? '—' : `${fmtCifra(m.pctUbicando)} %`,
+  promPlu: fmtTiempoExacto(m.promPluSeg),
+  promEntre: fmtTiempoExacto(m.promEntrePluSeg),
+  mayor: fmtTiempoExacto(m.mayorHuecoSeg),
+}))
+const filasMont = computed(() => filasMontDe(props.recepcion.actual.montacarguistas ?? []))
+
 defineExpose({
-  hojas: () => VISTAS.map((v) => ({ nombre: `Recepción por ${v.label}`, columnas: cols, filas: filasDe(props.recepcion.actual[v.key]) })),
+  hojas: () => [
+    ...VISTAS.map((v) => ({ nombre: `Recepción por ${v.label}`, columnas: cols, filas: filasDe(props.recepcion.actual[v.key]) })),
+    ...VISTAS.map((v) => ({ nombre: `Tiempos por ${v.label}`, columnas: colsVar, filas: filasVarDe(props.recepcion.actual[v.key]) })),
+    { nombre: 'Montacarguistas recepción', columnas: colsMont, filas: filasMontDe(props.recepcion.actual.montacarguistas ?? []) },
+  ],
 })
 </script>
 
@@ -121,6 +187,35 @@ defineExpose({
         <IndicadoresTabla :columnas="cols" :filas="filas" principal="clave" />
       </template>
     </IndicadoresTarjeta>
+
+    <IndicadoresTarjeta
+      v-if="g" class="rc-sep" titulo="Todas las variantes del tiempo"
+      subtitulo="Promedio por contenedor, al segundo, por el mismo grupo de arriba. Solo cuenta desde que se abrió la descarga."
+    >
+        <dl class="rc-leyenda">
+          <div><dt>Tiempo de recepción</dt><dd>de abrir la descarga al último PLU ubicado, sin pausas = descarga + almac. tras la descarga</dd></div>
+          <div><dt>Ventana de almacenamiento</dt><dd>del primer PLU al último ubicado = ubicando + entre PLU</dd></div>
+          <div><dt>Ubicando</dt><dd>reloj con al menos un montacarguista con PLU en la mano</dd></div>
+          <div><dt>Entre PLU</dt><dd>dentro de la ventana, nadie tenía un PLU en la mano</dd></div>
+          <div><dt>Prom. por PLU / entre PLU</dt><dd>por montacarguista: lo que tarda cada PLU y cada espera entre uno y otro</dd></div>
+          <div><dt>Trabajo</dt><dd>descarga + ubicando (esfuerzo, aunque se traslape)</dd></div>
+          <div><dt>Ciclo</dt><dd>de abrir la descarga al último PLU, contando pausas</dd></div>
+        </dl>
+      <div class="rc-tabla"><IndicadoresTabla :columnas="colsVar" :filas="filasVar" principal="clave" /></div>
+      <template #tabla>
+        <IndicadoresTabla :columnas="colsVar" :filas="filasVar" principal="clave" />
+      </template>
+    </IndicadoresTarjeta>
+
+    <IndicadoresTarjeta
+      v-if="filasMont.length" class="rc-sep" titulo="Montacarguistas en recepción"
+      subtitulo="Ubicando + entre PLU = su ventana, de su primer PLU al último, en cada contenedor. La mayor espera es el hueco más largo entre dos PLU."
+    >
+      <div class="rc-tabla"><IndicadoresTabla :columnas="colsMont" :filas="filasMont" principal="nombre" /></div>
+      <template #tabla>
+        <IndicadoresTabla :columnas="colsMont" :filas="filasMont" principal="nombre" />
+      </template>
+    </IndicadoresTarjeta>
   </div>
 </template>
 
@@ -131,4 +226,9 @@ defineExpose({
 .chip { padding: 6px 12px; border-radius: var(--r-pill); border: 1px solid var(--border-strong); background: var(--surface); font-size: 12px; font-weight: 600; color: var(--muted); cursor: pointer; }
 .chip.on { color: var(--brand); border-color: var(--brand); background: var(--brand-tint); }
 .rc-tabla { margin: 14px -18px -18px; border-top: 1px solid var(--border); overflow-x: auto; }
+.rc-leyenda { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 6px 18px; margin: 0; font-size: 12px; }
+.rc-leyenda div { display: flex; flex-direction: column; gap: 1px; }
+.rc-leyenda dt { font-weight: 700; color: var(--ink); }
+.rc-leyenda dd { margin: 0; color: var(--muted); }
+.rc-sep { margin-top: 18px; }
 </style>

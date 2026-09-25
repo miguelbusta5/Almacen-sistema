@@ -330,6 +330,22 @@ export interface AlmacenamientoContenedor {
   /** Tiempo de recepcion al segundo: descarga + colaSeg. Null hasta que todo cierre. */
   totalSeg: number | null
   colaSeg: number | null
+  desglose: {
+    ventanaSeg: number | null
+    ubicandoSeg: number
+    entrePluSeg: number
+    mayorHuecoSeg: number
+    personaUbicandoSeg: number
+    personaEntrePluSeg: number
+    promPluSeg: number | null
+    promEntrePluSeg: number | null
+    nPlu: number
+    nHuecos: number
+    porMontacarguista: Array<{
+      usuarioId: string; nombre?: string; plus: number; ubicandoSeg: number; entrePluSeg: number; ventanaSeg: number
+      promPluSeg: number | null; promEntrePluSeg: number | null; mayorHuecoSeg: number; huecos: number
+    }>
+  }
 }
 
 export interface ProyeccionTipoContenedor {

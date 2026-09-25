@@ -80,6 +80,26 @@ describe("un contenedor", () => {
     expect(a).toMatchObject({ descargaSeg: 60 * 60, colaSeg: 0, totalSeg: 60 * 60 });
   });
 
+  it("desglose: ubicando + entre PLU = ventana, por contenedor y por montacarguista", () => {
+    const { desgloseAlmacenamiento } = cargarNuxt("utils/recepcionAlmacenamientoCalc.ts");
+    const movs = [
+      // a: 9:00-9:10 y 9:30-9:40 (espera de 20 min); b a la vez 9:05-9:15.
+      mov({ tramos: [{ usuarioId: "a", inicio: h(9), fin: h(9, 10) }] }),
+      mov({ tramos: [{ usuarioId: "a", inicio: h(9, 30), fin: h(9, 40) }] }),
+      mov({ tramos: [{ usuarioId: "b", inicio: h(9, 5), fin: h(9, 15) }] }),
+      // Registrado antes de abrir la descarga (8:00): no alarga el contenedor.
+      mov({ tramos: [{ usuarioId: "c", inicio: h(7), fin: h(7, 5) }] }),
+    ];
+    const d = desgloseAlmacenamiento(rec({ horaInicio: h(8) }), movs);
+    // Ventana 9:00-9:40 = 40; ubicando 9:00-9:15 + 9:30-9:40 = 25; entre = 15.
+    expect(d).toMatchObject({ ventanaSeg: 40 * 60, ubicandoSeg: 25 * 60, entrePluSeg: 15 * 60, mayorHuecoSeg: 15 * 60 });
+    const a = d.porMontacarguista.find((m: any) => m.usuarioId === "a");
+    expect(a).toMatchObject({ plus: 2, ubicandoSeg: 20 * 60, entrePluSeg: 20 * 60, ventanaSeg: 40 * 60, promPluSeg: 10 * 60, promEntrePluSeg: 20 * 60, huecos: 1 });
+    expect(d.porMontacarguista.map((m: any) => m.usuarioId)).not.toContain("c");
+    // Por persona: (20 + 10) min / 3 PLU; esperas 20 min / 1 hueco.
+    expect(d).toMatchObject({ promPluSeg: 10 * 60, promEntrePluSeg: 20 * 60, nPlu: 3, nHuecos: 1 });
+  });
+
   it("el promedio de las partes suma exacto el total (al segundo)", () => {
     const { partesTiempo } = cargarNuxt("utils/recepcionAlmacenamientoCalc.ts");
     const p = partesTiempo([

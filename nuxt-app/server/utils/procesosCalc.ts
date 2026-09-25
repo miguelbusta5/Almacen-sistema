@@ -289,6 +289,16 @@ export interface ContenedorProceso {
   /** Tiempo de recepcion al segundo (descarga + lo que faltaba ubicar). Null si no esta completo. */
   totalSeg: number | null
   descargaSeg: number
+  /** Las variantes del almacenamiento (ver DesgloseAlmacenamiento). Null sin PLU. */
+  desglose?: {
+    ventanaSeg: number | null; ubicandoSeg: number; entrePluSeg: number
+    personaUbicandoSeg: number; personaEntrePluSeg: number; nPlu: number; nHuecos: number
+    trabajoSeg: number | null; cicloSeg: number | null
+    porMontacarguista: ReadonlyArray<{
+      usuarioId: string; plus: number; ubicandoSeg: number; entrePluSeg: number; ventanaSeg: number
+      mayorHuecoSeg: number; huecos: number
+    }>
+  } | null
   /** Descargadores + montacarguistas, sin repetir. */
   personas: number
 }
@@ -310,6 +320,18 @@ export interface GrupoRecepcion {
   tiempoDescargaSeg: number | null
   tiempoColaSeg: number | null
   completos: number
+  /**
+   * Las variantes del almacenamiento, promedio por contenedor (los que tienen
+   * PLU), al segundo: ventana = ubicando + entre PLU. Los promedios por PLU y
+   * entre PLU son por persona (suma de personas / PLU o huecos).
+   */
+  ventanaSeg: number | null
+  ubicandoSeg: number | null
+  entrePluSeg: number | null
+  promPluSeg: number | null
+  promEntrePluSeg: number | null
+  trabajoSeg: number | null
+  cicloSeg: number | null
   personas: number
   unidades: number
   kg: number
@@ -333,6 +355,15 @@ function agrupar(items: readonly ContenedorProceso[], clave: (c: ContenedorProce
       const comp = l.filter((c) => c.totalSeg != null)
       const tTotal = comp.length ? Math.round(prom(comp.map((c) => c.totalSeg!))!) : null
       const tDesc = tTotal == null ? null : Math.min(tTotal, Math.round(prom(comp.map((c) => c.descargaSeg))!))
+      const des = l.map((c) => c.desglose).filter((d): d is NonNullable<ContenedorProceso['desglose']> => !!d && d.ventanaSeg != null)
+      const vent = des.length ? Math.round(prom(des.map((d) => d.ventanaSeg!))!) : null
+      const ubic = vent == null ? null : Math.min(vent, Math.round(prom(des.map((d) => d.ubicandoSeg))!))
+      const nPlu = des.reduce((s, d) => s + d.nPlu, 0)
+      const nHuecos = des.reduce((s, d) => s + d.nHuecos, 0)
+      const promSeg = (v: Array<number | null>) => {
+        const x = v.filter((n): n is number => n != null)
+        return x.length ? Math.round(prom(x)!) : null
+      }
       return {
         clave: k,
         contenedores: l.length,
@@ -344,6 +375,13 @@ function agrupar(items: readonly ContenedorProceso[], clave: (c: ContenedorProce
         tiempoDescargaSeg: tDesc,
         tiempoColaSeg: tTotal == null || tDesc == null ? null : tTotal - tDesc,
         completos: comp.length,
+        ventanaSeg: vent,
+        ubicandoSeg: ubic,
+        entrePluSeg: vent == null || ubic == null ? null : vent - ubic,
+        promPluSeg: nPlu ? Math.round(des.reduce((s, d) => s + d.personaUbicandoSeg, 0) / nPlu) : null,
+        promEntrePluSeg: nHuecos ? Math.round(des.reduce((s, d) => s + d.personaEntrePluSeg, 0) / nHuecos) : null,
+        trabajoSeg: promSeg(des.map((d) => d.trabajoSeg)),
+        cicloSeg: promSeg(des.map((d) => d.cicloSeg)),
         personas: r(prom(l.map((c) => c.personas)) ?? 0),
         unidades: Math.round(prom(l.map((c) => c.unidades)) ?? 0),
         kg: Math.round(prom(l.map((c) => c.pesoKg)) ?? 0),
@@ -352,6 +390,52 @@ function agrupar(items: readonly ContenedorProceso[], clave: (c: ContenedorProce
       }
     })
     .sort((a, b) => (orden ? orden.indexOf(a.clave) - orden.indexOf(b.clave) : 0) || b.contenedores - a.contenedores)
+}
+
+export interface MontacarguistaRecepcion {
+  usuarioId: string
+  nombre: string
+  contenedores: number
+  plus: number
+  ubicandoSeg: number
+  entrePluSeg: number
+  /** ubicando / (ubicando + entre PLU): cuanto de su ventana tuvo PLU en la mano. */
+  pctUbicando: number | null
+  promPluSeg: number | null
+  promEntrePluSeg: number | null
+  mayorHuecoSeg: number
+}
+
+/** Cada montacarguista en los contenedores del periodo, con su tiempo entre PLU. */
+export function montacarguistasRecepcion(
+  items: readonly ContenedorProceso[],
+  nombres: ReadonlyMap<string, string>,
+): MontacarguistaRecepcion[] {
+  const acc = new Map<string, { cont: number; plus: number; ub: number; en: number; huecos: number; mayor: number }>()
+  for (const c of items) {
+    for (const m of c.desglose?.porMontacarguista ?? []) {
+      const a = acc.get(m.usuarioId) ?? { cont: 0, plus: 0, ub: 0, en: 0, huecos: 0, mayor: 0 }
+      a.cont++
+      a.plus += m.plus
+      a.ub += m.ubicandoSeg
+      a.en += m.entrePluSeg
+      a.huecos += m.huecos
+      a.mayor = Math.max(a.mayor, m.mayorHuecoSeg)
+      acc.set(m.usuarioId, a)
+    }
+  }
+  return [...acc.entries()].map(([usuarioId, a]) => ({
+    usuarioId,
+    nombre: nombres.get(usuarioId) ?? '—',
+    contenedores: a.cont,
+    plus: a.plus,
+    ubicandoSeg: a.ub,
+    entrePluSeg: a.en,
+    pctUbicando: a.ub + a.en ? r((a.ub / (a.ub + a.en)) * 100) : null,
+    promPluSeg: a.plus ? Math.round(a.ub / a.plus) : null,
+    promEntrePluSeg: a.huecos ? Math.round(a.en / a.huecos) : null,
+    mayorHuecoSeg: a.mayor,
+  })).sort((x, y) => y.plus - x.plus)
 }
 
 export function resumenRecepcion(items: readonly ContenedorProceso[]) {

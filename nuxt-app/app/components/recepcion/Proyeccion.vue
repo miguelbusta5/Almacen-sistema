@@ -98,6 +98,63 @@ const filasCont = computed(() => conDatos.value.map((c) => ({
   cola: fmtTiempoExacto(c.alm.colaSeg),
   estado: c.alm.completo ? 'Completo' : c.alm.abiertos ? `${c.alm.abiertos} PLU sin ubicar` : 'Descarga abierta',
 })))
+
+// Todas las variantes del tiempo de cada contenedor, al segundo (25-09).
+const colsVar: ColumnaTabla[] = [
+  { key: 'pedido', label: 'Pedido' },
+  { key: 'total', label: 'Tiempo de recepción', num: true },
+  { key: 'descarga', label: 'Descarga', num: true },
+  { key: 'cola', label: 'Almac. tras la descarga', num: true },
+  { key: 'ventana', label: 'Ventana de almacenamiento', num: true },
+  { key: 'ubicando', label: 'Ubicando', num: true },
+  { key: 'entre', label: 'Entre PLU', num: true },
+  { key: 'promPlu', label: 'Prom. por PLU', num: true },
+  { key: 'promEntre', label: 'Prom. entre PLU', num: true },
+  { key: 'mayor', label: 'Mayor espera', num: true },
+  { key: 'trabajo', label: 'Trabajo', num: true },
+  { key: 'ciclo', label: 'Ciclo (con pausas)', num: true },
+]
+const filasVar = computed(() => conDatos.value.map((c) => {
+  const d = c.alm.desglose
+  return {
+    pedido: c.numeroPedido,
+    total: fmtTiempoExacto(c.alm.totalSeg),
+    descarga: fmtTiempoExacto(c.alm.descargaSeg),
+    cola: fmtTiempoExacto(c.alm.colaSeg),
+    ventana: fmtTiempoExacto(d?.ventanaSeg),
+    ubicando: fmtTiempoExacto(d?.ubicandoSeg),
+    entre: fmtTiempoExacto(d?.entrePluSeg),
+    promPlu: fmtTiempoExacto(d?.promPluSeg),
+    promEntre: fmtTiempoExacto(d?.promEntrePluSeg),
+    mayor: fmtTiempoExacto(d?.mayorHuecoSeg),
+    trabajo: fmtTiempoExacto(c.alm.trabajoSeg),
+    ciclo: fmtTiempoExacto(c.alm.cicloSeg),
+  }
+}))
+
+// Cada montacarguista en cada contenedor: ubicando + entre PLU = su ventana.
+const colsMont: ColumnaTabla[] = [
+  { key: 'pedido', label: 'Pedido' },
+  { key: 'nombre', label: 'Montacarguista' },
+  { key: 'plus', label: 'PLU', num: true },
+  { key: 'ventana', label: 'Ventana', num: true },
+  { key: 'ubicando', label: 'Ubicando', num: true },
+  { key: 'entre', label: 'Entre PLU', num: true },
+  { key: 'promPlu', label: 'Prom. por PLU', num: true },
+  { key: 'promEntre', label: 'Prom. entre PLU', num: true },
+  { key: 'mayor', label: 'Mayor espera', num: true },
+]
+const filasMont = computed(() => conDatos.value.flatMap((c) => (c.alm.desglose?.porMontacarguista ?? []).map((m) => ({
+  pedido: c.numeroPedido,
+  nombre: m.nombre ?? '—',
+  plus: m.plus,
+  ventana: fmtTiempoExacto(m.ventanaSeg),
+  ubicando: fmtTiempoExacto(m.ubicandoSeg),
+  entre: fmtTiempoExacto(m.entrePluSeg),
+  promPlu: fmtTiempoExacto(m.promPluSeg),
+  promEntre: fmtTiempoExacto(m.promEntrePluSeg),
+  mayor: fmtTiempoExacto(m.mayorHuecoSeg),
+}))))
 </script>
 
 <template>
@@ -160,6 +217,19 @@ const filasCont = computed(() => conDatos.value.map((c) => ({
         </div>
       </div>
 
+      <template v-if="filasVar.length">
+        <h3 class="pj-sub">Todas las variantes del tiempo, por contenedor</h3>
+        <p class="pj-regla">
+          <b>Ventana de almacenamiento</b> = del primer PLU al último ubicado = <b>ubicando</b> (algún montacarguista con PLU
+          en la mano) + <b>entre PLU</b> (nadie con PLU en la mano). <b>Trabajo</b> = descarga + ubicando.
+          <b>Ciclo</b> = de abrir la descarga al último PLU, contando pausas.
+        </p>
+        <div class="pj-sub-tabla"><IndicadoresTabla :columnas="colsVar" :filas="filasVar" principal="pedido" /></div>
+        <h3 class="pj-sub">Montacarguistas por contenedor</h3>
+        <div class="pj-sub-tabla"><IndicadoresTabla :columnas="colsMont" :filas="filasMont" principal="nombre" /></div>
+        <h3 class="pj-sub">Contenedores</h3>
+      </template>
+
       <div v-if="filasCont.length" class="pj-tabla">
         <IndicadoresTabla :columnas="colsCont" :filas="filasCont" principal="pedido" />
       </div>
@@ -188,5 +258,7 @@ const filasCont = computed(() => conDatos.value.map((c) => ({
 .pj-aviso { display: flex; gap: 10px; align-items: flex-start; margin: 0 0 12px; padding: 12px 14px; border-radius: var(--r-md); font-size: 12.5px; color: var(--ink-2); background: color-mix(in srgb, var(--u-aviso) 10%, var(--surface)); border: 1px solid color-mix(in srgb, var(--u-aviso) 35%, transparent); }
 .pj-aviso > svg { color: var(--u-aviso); flex-shrink: 0; margin-top: 2px; }
 .pj-aviso ul { margin: 6px 0 0; padding-left: 18px; }
+.pj-sub { margin: 16px 0 8px; font-size: 13px; font-weight: 800; color: var(--ink); }
+.pj-sub-tabla { max-height: 360px; overflow: auto; margin-bottom: 12px; border: 1px solid var(--border); border-radius: var(--r-sm); }
 .pj-tabla { max-height: 420px; overflow: auto; margin: 0 -18px -18px; border-top: 1px solid var(--border); }
 </style>
