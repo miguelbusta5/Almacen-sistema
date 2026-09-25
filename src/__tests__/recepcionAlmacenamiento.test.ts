@@ -6,7 +6,7 @@ import path from "node:path";
 import { describe, expect, it } from "vitest";
 import { cargarNuxt } from "./apoyo/nuxt";
 
-const { almacenamientoContenedor, asignarMovimientos, proyeccionContenedores, segundosUnidos } =
+const { almacenamientoContenedor, asignarMovimientos, clavePedidoRecepcion, proyeccionContenedores, segundosUnidos } =
   cargarNuxt("utils/recepcionAlmacenamientoCalc.ts");
 
 // Hora de Bogotá del 24-09 → Date.
@@ -40,6 +40,20 @@ describe("cada PLU a su contenedor", () => {
     expect(porRecepcion.get("r1").map((m: any) => m.id)).toEqual([a.id, c.id]); // c: ninguno antes → el primero
     expect(porRecepcion.get("r2").map((m: any) => m.id)).toEqual([b.id]);
     expect(sinContenedor).toEqual([otro]); // pedido mal escrito: se muestra para corregir
+  });
+
+  it("cruza por el número: '1921' es del contenedor PEDDM1921", () => {
+    expect(clavePedidoRecepcion("PEDDM1921")).toBe("1921");
+    expect(clavePedidoRecepcion(" peddm 1921 ")).toBe("1921");
+    expect(clavePedidoRecepcion("1921")).toBe("1921");
+    expect(clavePedidoRecepcion("PEDDM1974-1907")).toBe("1974-1907");
+    expect(clavePedidoRecepcion("PEDMAL")).toBe("PEDMAL");
+    const r = rec({ id: "r1", numeroPedido: "PEDDM1921", horaInicio: h(6) });
+    const solo = mov({ numeroPedido: "1921" }), completo = mov({ numeroPedido: "PEDDM1921" });
+    const otro = mov({ numeroPedido: "11921" });
+    const { porRecepcion, sinContenedor } = asignarMovimientos([r], [solo, completo, otro]);
+    expect(porRecepcion.get("r1").map((m: any) => m.id)).toEqual([solo.id, completo.id]);
+    expect(sinContenedor).toEqual([otro]);
   });
 });
 

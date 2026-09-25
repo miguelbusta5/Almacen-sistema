@@ -10,6 +10,7 @@
 //   montacargas, sin duplicar cuando trabajan a la vez): es lo que cuesta el
 //   contenedor y sirve para la capacidad. CICLO = de empezar la descarga a
 //   ubicar el ultimo PLU, con esperas: cuanto tarda en quedar guardado.
+// - El pedido cruza por su numero (clavePedidoRecepcion): "1921" = "PEDDM1921".
 // - Un PLU es del contenedor con su mismo pedido que empezo antes que el. Si
 //   el mismo pedido llega en dos contenedores, cada PLU va al ultimo abierto
 //   antes de el; si ninguno empezo antes, al primero.
@@ -88,22 +89,33 @@ const r = (v: number, d = 1) => Math.round(v * 10 ** d) / 10 ** d
 
 // ── Asignar cada PLU a su contenedor ────────────────────────────────────────
 
+/**
+ * El pedido sin su prefijo de letras: el montacarguista suele escribir solo el
+ * numero ("1921") y la recepcion lo tiene completo ("PEDDM1921"). Los dos cruzan
+ * por esta clave. Si no queda nada tras quitar las letras, el valor entero.
+ */
+export function clavePedidoRecepcion(valor: string): string {
+  const v = String(valor ?? '').trim().toUpperCase().replace(/\s+/g, '')
+  return v.replace(/^[A-Z]+/, '') || v
+}
+
 export function asignarMovimientos(
   recepciones: readonly RecepcionAlm[],
   movimientos: readonly MovimientoAlm[],
 ): { porRecepcion: Map<string, MovimientoAlm[]>; sinContenedor: MovimientoAlm[] } {
   const porPedido = new Map<string, RecepcionAlm[]>()
   for (const rec of recepciones) {
-    const lista = porPedido.get(rec.numeroPedido) ?? []
+    const k = clavePedidoRecepcion(rec.numeroPedido)
+    const lista = porPedido.get(k) ?? []
     lista.push(rec)
-    porPedido.set(rec.numeroPedido, lista)
+    porPedido.set(k, lista)
   }
   for (const lista of porPedido.values()) lista.sort((a, b) => a.horaInicio.getTime() - b.horaInicio.getTime())
 
   const porRecepcion = new Map<string, MovimientoAlm[]>(recepciones.map((x) => [x.id, []]))
   const sinContenedor: MovimientoAlm[] = []
   for (const m of movimientos) {
-    const cands = porPedido.get(m.numeroPedido)
+    const cands = porPedido.get(clavePedidoRecepcion(m.numeroPedido))
     if (!cands?.length) { sinContenedor.push(m); continue }
     const antes = cands.filter((c) => c.horaInicio.getTime() <= m.horaInicio.getTime())
     const elegida = antes.length ? antes[antes.length - 1]! : cands[0]!

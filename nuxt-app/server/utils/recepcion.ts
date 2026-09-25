@@ -10,7 +10,7 @@ import { puedeGestionarRecepcion, puedeUsarRecepcion } from './recepcionCalc'
 import { medidasDePlus } from './carga'
 import { cargaDeUnidades } from './cargaCalc'
 import {
-  almacenamientoContenedor, asignarMovimientos,
+  almacenamientoContenedor, asignarMovimientos, clavePedidoRecepcion,
   type AlmacenamientoContenedor, type MovimientoAlm, type RecepcionAlm,
 } from './recepcionAlmacenamientoCalc'
 
@@ -117,17 +117,23 @@ export async function almacenamientoDeRecepciones(
 ): Promise<{ porRecepcion: Map<string, AlmacenamientoContenedor>; sinContenedor: MovimientoAlm[] }> {
   const pedidos = [...new Set(recs.map((x) => x.numeroPedido).filter(Boolean))]
   if (!pedidos.length) return { porRecepcion: new Map(), sinContenedor: [] }
+  // Cruza por el numero: el montacarguista a veces escribe "1921" sin "PEDDM".
+  const claves = [...new Set(pedidos.map(clavePedidoRecepcion))]
+  const variantes = [...new Set([...pedidos, ...claves])]
 
   const [todas, movs] = await Promise.all([
     prisma.recepcionContenedor.findMany({
-      where: { deletedAt: null, numeroPedido: { in: pedidos } },
+      where: { deletedAt: null, numeroPedido: { in: variantes } },
       select: {
         id: true, numeroPedido: true, tipoContenedor: true, estado: true,
         horaInicio: true, horaFinalizacion: true, pausaSegundos: true,
       },
     }),
     prisma.movimientoMontacargas.findMany({
-      where: { deletedAt: null, tipo: 'RECEPCION', numeroPedido: { in: pedidos } },
+      where: {
+        deletedAt: null, tipo: 'RECEPCION',
+        OR: [{ numeroPedido: { in: variantes } }, ...claves.map((k) => ({ numeroPedido: { endsWith: k } }))],
+      },
       select: {
         id: true, numeroPedido: true, plu: true, cantidadTotal: true, estado: true,
         horaInicio: true, horaFinalizacion: true,

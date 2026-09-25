@@ -2,7 +2,7 @@ import { defineEventHandler, getQuery } from 'h3'
 import { prisma } from '../../utils/prisma'
 import { requireAuth } from '../../utils/auth'
 import { almacenamientoDeRecepciones, assertGestorRecepcion, assertUsuarioRecepcion } from '../../utils/recepcion'
-import { proyeccionContenedores } from '../../utils/recepcionAlmacenamientoCalc'
+import { clavePedidoRecepcion, proyeccionContenedores } from '../../utils/recepcionAlmacenamientoCalc'
 import { diaBogota, limitesRango } from '../../utils/indicadoresCalc'
 
 const RE_DIA = /^\d{4}-\d{2}-\d{2}$/
@@ -98,8 +98,11 @@ export default defineEventHandler(async (event) => {
     _count: { _all: true },
     _min: { horaInicio: true },
   })
+  const clavesRecs = new Set(recs.map((x) => clavePedidoRecepcion(x.numeroPedido)))
   for (const g of sueltos) {
     if (!g.numeroPedido || huerfanos.has(g.numeroPedido)) continue
+    // "1921" es del contenedor PEDDM1921 aunque no se escribiera igual.
+    if (clavesRecs.has(clavePedidoRecepcion(g.numeroPedido))) continue
     huerfanos.set(g.numeroPedido, { numeroPedido: g.numeroPedido, movimientos: g._count._all, plus: new Set(), desde: g._min.horaInicio! })
   }
 
