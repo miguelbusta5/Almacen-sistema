@@ -43,6 +43,10 @@ describe("reglas del cargue", () => {
 
   it("bultos de muebles = unidades x partes (cajas); origen", () => {
     expect(calc.bultosMuebles([{ unidades: 2, partes: 4 }, { unidades: 3, partes: null }, { unidades: 1, partes: 0 }])).toBe(12);
+    // Caja master: 8 sillas de a 4 por caja = 2 bultos; 9 = 3 (la ultima incompleta).
+    expect(calc.bultosMuebles([{ unidades: 8, partes: 1, unidadesPorCaja: 4 }])).toBe(2);
+    expect(calc.bultosMuebles([{ unidades: 9, partes: 1, unidadesPorCaja: 4 }])).toBe(3);
+    expect(calc.bultosMuebles([{ unidades: 2, partes: 3, unidadesPorCaja: 1 }, { unidades: 8, partes: 1, unidadesPorCaja: 4 }])).toBe(8);
     expect(calc.origenDe(true, true)).toBe("AMBOS");
     expect(calc.origenDe(true, false)).toBe("GOURMET");
     expect(calc.origenDe(false, true)).toBe("MUEBLES");

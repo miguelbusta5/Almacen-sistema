@@ -76,7 +76,7 @@ export async function buscarOrdenCargue(entrada: string): Promise<OrdenEncontrad
       where: { codigo, deletedAt: null },
       select: {
         id: true, estado: true, cliente: true, ciudadEnvio: true, tiendaOrigenNombre: true,
-        lineas: { select: { unidades: true, partes: true } },
+        lineas: { select: { plu: true, unidades: true, partes: true } },
       },
     }),
     prisma.cargueCamionOrden.findFirst({
@@ -91,7 +91,15 @@ export async function buscarOrdenCargue(entrada: string): Promise<OrdenEncontrad
   if (muebles && !mueblesCargable(muebles.estado)) bloqueos.push(`la orden de muebles sigue ${muebles.estado === 'EN_PICKING' ? 'en picking' : 'en inspeccion'}`)
 
   const bGourmet = pedido ? pedido.cajasEsperadas : null
-  const bMuebles = muebles ? bultosMuebles(muebles.lineas) : null
+  const porCaja = muebles?.lineas.length
+    ? new Map((await prisma.productoMaestro.findMany({
+        where: { plu: { in: [...new Set(muebles.lineas.map((l) => l.plu))] } },
+        select: { plu: true, unidadesPorCaja: true },
+      })).map((p) => [p.plu, p.unidadesPorCaja]))
+    : new Map<string, number | null>()
+  const bMuebles = muebles
+    ? bultosMuebles(muebles.lineas.map((l) => ({ ...l, unidadesPorCaja: porCaja.get(l.plu) ?? null })))
+    : null
   const declarados = bGourmet == null && bMuebles == null ? null : (bGourmet ?? 0) + (bMuebles ?? 0)
   const tiendaGourmet = pedido && !['CLIENTE', 'INSTITUCIONAL'].includes(pedido.codigoTienda.toUpperCase()) ? pedido.nombreTienda : null
 

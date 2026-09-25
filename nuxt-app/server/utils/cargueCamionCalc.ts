@@ -85,9 +85,19 @@ export function mueblesCargable(estado: string): boolean {
   return (ESTADOS_MUEBLES_CARGABLE as readonly string[]).includes(estado)
 }
 
-/** Bultos de muebles: lo que sube al camion son cajas (unidades x partes). */
-export function bultosMuebles(lineas: ReadonlyArray<{ unidades: number; partes: number | null }>): number {
-  return lineas.reduce((s, l) => s + l.unidades * Math.max(1, l.partes ?? 1), 0)
+/**
+ * Bultos de muebles: lo que sube al camion son cajas. Si el PLU viene en caja
+ * master de varias unidades ("Und Emp" del maestro > 1, p.ej. 4 sillas por
+ * caja), son las cajas master redondeadas hacia arriba: 8 sillas = 2 bultos.
+ * Si no, cada unidad lleva sus partes: unidades x partes.
+ */
+export function bultosMuebles(
+  lineas: ReadonlyArray<{ unidades: number; partes: number | null; unidadesPorCaja?: number | null }>,
+): number {
+  return lineas.reduce((s, l) => {
+    const porCaja = l.unidadesPorCaja ?? 1
+    return s + (porCaja > 1 ? Math.ceil(l.unidades / porCaja) : l.unidades * Math.max(1, l.partes ?? 1))
+  }, 0)
 }
 
 export type OrigenCargue = 'GOURMET' | 'MUEBLES' | 'AMBOS' | 'MANUAL'
