@@ -67,30 +67,15 @@ export default defineEventHandler(async (event) => {
     montacarguistas: entero(sp.montacarguistas, 1, 30) ?? Math.max(1, Math.round(observados ?? 1)),
   }
 
-  // Nombre de cada montacarguista del desglose (tiempo entre PLU por persona).
-  const idsMont = [...new Set([...porRecepcion.values()].flatMap((a) => a.desglose.porMontacarguista.map((m) => m.usuarioId)))]
-  const nombreMont = new Map(
-    (idsMont.length ? await prisma.user.findMany({ where: { id: { in: idsMont } }, select: { id: true, name: true } }) : [])
-      .map((u) => [u.id, u.name]),
-  )
-  const contenedores = recs.map((x) => {
-    const alm = porRecepcion.get(x.id)!
-    return {
-      id: x.id,
-      numeroPedido: x.numeroPedido,
-      proveedor: x.proveedor,
-      tipoContenedor: x.tipoContenedor,
-      tipoProducto: x.tipoProducto,
-      fecha: x.fecha.toISOString().slice(0, 10),
-      alm: {
-        ...alm,
-        desglose: {
-          ...alm.desglose,
-          porMontacarguista: alm.desglose.porMontacarguista.map((m) => ({ ...m, nombre: nombreMont.get(m.usuarioId) ?? '—' })),
-        },
-      },
-    }
-  })
+  const contenedores = recs.map((x) => ({
+    id: x.id,
+    numeroPedido: x.numeroPedido,
+    proveedor: x.proveedor,
+    tipoContenedor: x.tipoContenedor,
+    tipoProducto: x.tipoProducto,
+    fecha: x.fecha.toISOString().slice(0, 10),
+    alm: porRecepcion.get(x.id)!,
+  }))
 
   // PLU recibidos con un pedido que no coincide con ninguna recepcion: casi
   // siempre un pedido mal escrito. Se muestran para corregirlos.

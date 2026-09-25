@@ -11,7 +11,7 @@ import { medidasDePlus } from '../../utils/carga'
 import { cargaDeUnidades } from '../../utils/cargaCalc'
 import { almacenamientoDeRecepciones } from '../../utils/recepcion'
 import {
-  metaDeProceso, montacarguistasRecepcion, resumenGenerales, resumenProceso, resumenRecepcion,
+  metaDeProceso, resumenGenerales, resumenProceso, resumenRecepcion,
   type CierreProceso, type ContenedorProceso, type TramoGeneral,
 } from '../../utils/procesosCalc'
 
@@ -215,18 +215,11 @@ export default defineEventHandler(async (event) => {
       cicloMin: conAlm && alm!.cicloSeg != null ? alm!.cicloSeg / 60 : null,
       totalSeg: conAlm ? alm!.totalSeg : null,
       descargaSeg,
-      desglose: conAlm ? { ...alm!.desglose, trabajoSeg: alm!.trabajoSeg, cicloSeg: alm!.cicloSeg } : null,
       personas: personas.size,
     }
   }
   // Con filtro de turno o persona: los contenedores en que participo alguien que entra.
   const cont = recs.map(contenedor).filter((c) => !permitidas || c.ids.some((id) => permitidas.has(id)))
-  // Nombres de los montacarguistas de recepcion que no salieron en otro proceso.
-  const faltan = [...new Set(cont.flatMap((c) => c.desglose?.porMontacarguista.map((m) => m.usuarioId) ?? []))].filter((id) => !nombres.has(id))
-  const nombresRecepcion = new Map(nombres)
-  if (faltan.length) {
-    for (const u of await prisma.user.findMany({ where: { id: { in: faltan } }, select: { id: true, name: true } })) nombresRecepcion.set(u.id, u.name)
-  }
 
   const genAct = resumenGenerales(dePersona(tGen.filter((t) => enVentana(t.dia, actual))), nombres)
   const genAnt = resumenGenerales(dePersona(tGen.filter((t) => enVentana(t.dia, anterior))), nombres)
@@ -237,10 +230,7 @@ export default defineEventHandler(async (event) => {
     anterior,
     metaVentana,
     recepcion: {
-      actual: {
-        ...resumenRecepcion(cont.filter((c) => enVentana(c.dia, actual))),
-        montacarguistas: montacarguistasRecepcion(cont.filter((c) => enVentana(c.dia, actual)), nombresRecepcion),
-      },
+      actual: resumenRecepcion(cont.filter((c) => enVentana(c.dia, actual))),
       anterior: resumenRecepcion(cont.filter((c) => enVentana(c.dia, anterior))).general,
     },
     movimientos: proceso(cMovs),

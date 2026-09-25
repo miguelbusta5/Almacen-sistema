@@ -72,50 +72,6 @@ export interface AlmacenamientoContenedor {
   totalSeg: number | null
   /** Lo que se tardo en ubicar lo que quedaba al cerrar la descarga (0 si ya estaba). */
   colaSeg: number | null
-  /** Todas las variantes del almacenamiento, con el tiempo entre PLU (25-09). */
-  desglose: DesgloseAlmacenamiento
-}
-
-/** Tiempos de UN montacarguista en un contenedor. */
-export interface TiemposMontacarguista {
-  usuarioId: string
-  /** PLU en que trabajo (uno compartido cuenta para cada uno). */
-  plus: number
-  /** Con un PLU en la mano (union: dos a la vez cuentan una vez). */
-  ubicandoSeg: number
-  /** Entre un PLU y el siguiente: sin PLU en la mano. */
-  entrePluSeg: number
-  /** De su primer PLU a su ultimo = ubicando + entre PLU. */
-  ventanaSeg: number
-  promPluSeg: number | null
-  promEntrePluSeg: number | null
-  mayorHuecoSeg: number
-  /** Cuantos huecos hubo entre sus PLU (para promediar entre contenedores). */
-  huecos: number
-}
-
-/**
- * El almacenamiento de un contenedor por dentro. Solo cuenta desde que se abrio
- * la descarga (un PLU registrado antes no alarga el contenedor).
- * - ventana = de empezar el primer PLU a ubicar el ultimo = ubicando + entre PLU.
- * - ubicando = reloj con al menos un montacarguista con PLU en la mano.
- * - entre PLU = ventana - ubicando: nadie tenia un PLU en la mano.
- * - Por persona: lo mismo con sus propios PLU; los promedios salen de la suma
- *   de personas (por PLU = ubicando / PLU; entre PLU = huecos / cantidad de huecos).
- */
-export interface DesgloseAlmacenamiento {
-  ventanaSeg: number | null
-  ubicandoSeg: number
-  entrePluSeg: number
-  mayorHuecoSeg: number
-  personaUbicandoSeg: number
-  personaEntrePluSeg: number
-  promPluSeg: number | null
-  promEntrePluSeg: number | null
-  /** PLU-persona y huecos-persona: con esto se promedia entre contenedores. */
-  nPlu: number
-  nHuecos: number
-  porMontacarguista: TiemposMontacarguista[]
 }
 
 // ── Utilidades ──────────────────────────────────────────────────────────────
@@ -138,80 +94,6 @@ export function segundosUnidos(intervalos: readonly Tramo[]): number {
 }
 
 const r = (v: number, d = 1) => Math.round(v * 10 ** d) / 10 ** d
-
-/** Intervalos unidos en bloques continuos, en orden. */
-export function bloquesUnidos(intervalos: readonly Tramo[]): Tramo[] {
-  const o = intervalos.filter(([a, b]) => b > a).sort((x, y) => x[0] - y[0])
-  const out: Tramo[] = []
-  for (const [a, b] of o) {
-    const u = out[out.length - 1]
-    if (u && a <= u[1]) u[1] = Math.max(u[1], b)
-    else out.push([a, b])
-  }
-  return out
-}
-
-/** Ventana, tiempo con PLU en la mano y huecos de unos bloques ya unidos. */
-function partesDeBloques(bl: readonly Tramo[]) {
-  const seg = (ms: number) => Math.round(ms / 1000)
-  if (!bl.length) return { ventanaSeg: 0, ubicandoSeg: 0, entrePluSeg: 0, huecos: 0, mayorHuecoSeg: 0 }
-  const ventana = bl[bl.length - 1]![1] - bl[0]![0]
-  const ubicando = bl.reduce((s, [a, b]) => s + (b - a), 0)
-  let mayor = 0
-  for (let i = 1; i < bl.length; i++) mayor = Math.max(mayor, bl[i]![0] - bl[i - 1]![1])
-  const ventanaSeg = seg(ventana)
-  const ubicandoSeg = Math.min(ventanaSeg, seg(ubicando))
-  // Por resta: ubicando + entre PLU = ventana exacto al segundo.
-  return { ventanaSeg, ubicandoSeg, entrePluSeg: ventanaSeg - ubicandoSeg, huecos: bl.length - 1, mayorHuecoSeg: seg(mayor) }
-}
-
-export function desgloseAlmacenamiento(rec: RecepcionAlm, movs: readonly MovimientoAlm[]): DesgloseAlmacenamiento {
-  const desde = rec.horaInicio.getTime()
-  const porPersona = new Map<string, { iv: Tramo[]; movs: Set<string> }>()
-  const todos: Tramo[] = []
-  for (const m of movs) {
-    for (const t of m.tramos) {
-      if (!t.fin) continue
-      const iv: Tramo = [Math.max(desde, t.inicio.getTime()), t.fin.getTime()]
-      if (iv[1] <= iv[0]) continue
-      todos.push(iv)
-      const p = porPersona.get(t.usuarioId) ?? { iv: [], movs: new Set<string>() }
-      p.iv.push(iv)
-      p.movs.add(m.id)
-      porPersona.set(t.usuarioId, p)
-    }
-  }
-  const general = partesDeBloques(bloquesUnidos(todos))
-  const personas = [...porPersona.entries()].map(([usuarioId, p]) => ({ usuarioId, n: p.movs.size, x: partesDeBloques(bloquesUnidos(p.iv)) }))
-  const porMontacarguista: TiemposMontacarguista[] = personas.map(({ usuarioId, n, x }) => ({
-    usuarioId,
-    plus: n,
-    ubicandoSeg: x.ubicandoSeg,
-    entrePluSeg: x.entrePluSeg,
-    ventanaSeg: x.ventanaSeg,
-    promPluSeg: n ? Math.round(x.ubicandoSeg / n) : null,
-    promEntrePluSeg: x.huecos ? Math.round(x.entrePluSeg / x.huecos) : null,
-    mayorHuecoSeg: x.mayorHuecoSeg,
-    huecos: x.huecos,
-  })).sort((a, b) => b.plus - a.plus)
-  const pu = porMontacarguista.reduce((s, x) => s + x.ubicandoSeg, 0)
-  const pe = porMontacarguista.reduce((s, x) => s + x.entrePluSeg, 0)
-  const nPlu = porMontacarguista.reduce((s, x) => s + x.plus, 0)
-  const nHuecos = porMontacarguista.reduce((s, x) => s + x.huecos, 0)
-  return {
-    ventanaSeg: todos.length ? general.ventanaSeg : null,
-    ubicandoSeg: general.ubicandoSeg,
-    entrePluSeg: general.entrePluSeg,
-    mayorHuecoSeg: general.mayorHuecoSeg,
-    personaUbicandoSeg: pu,
-    personaEntrePluSeg: pe,
-    promPluSeg: nPlu ? Math.round(pu / nPlu) : null,
-    promEntrePluSeg: nHuecos ? Math.round(pe / nHuecos) : null,
-    nPlu,
-    nHuecos,
-    porMontacarguista,
-  }
-}
 
 // ── Asignar cada PLU a su contenedor ────────────────────────────────────────
 
@@ -292,7 +174,6 @@ export function almacenamientoContenedor(rec: RecepcionAlm, movs: readonly Movim
     completo,
     totalSeg: colaSeg == null ? null : descargaSeg! + colaSeg,
     colaSeg,
-    desglose: desgloseAlmacenamiento(rec, movs),
   }
 }
 

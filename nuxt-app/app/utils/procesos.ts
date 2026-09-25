@@ -32,19 +32,6 @@ export interface ProcesoDTO {
   meta: { plus: number; unidades: number } | null
 }
 
-export interface MontacarguistaRecepcionDTO {
-  usuarioId: string
-  nombre: string
-  contenedores: number
-  plus: number
-  ubicandoSeg: number
-  entrePluSeg: number
-  pctUbicando: number | null
-  promPluSeg: number | null
-  promEntrePluSeg: number | null
-  mayorHuecoSeg: number
-}
-
 export interface GrupoRecepcionDTO {
   clave: string
   contenedores: number
@@ -57,14 +44,6 @@ export interface GrupoRecepcionDTO {
   tiempoDescargaSeg: number | null
   tiempoColaSeg: number | null
   completos: number
-  /** Variantes del almacenamiento (ver procesosCalc.GrupoRecepcion). */
-  ventanaSeg: number | null
-  ubicandoSeg: number | null
-  entrePluSeg: number | null
-  promPluSeg: number | null
-  promEntrePluSeg: number | null
-  trabajoSeg: number | null
-  cicloSeg: number | null
   personas: number
   unidades: number
   kg: number
@@ -84,7 +63,6 @@ export interface RespuestaProcesos {
       porUnidades: GrupoRecepcionDTO[]
       porVolumen: GrupoRecepcionDTO[]
       porPeso: GrupoRecepcionDTO[]
-      montacarguistas: MontacarguistaRecepcionDTO[]
     }
     anterior: GrupoRecepcionDTO | null
   }
