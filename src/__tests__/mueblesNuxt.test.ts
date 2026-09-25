@@ -40,6 +40,8 @@ describe("muebles — las dos copias de la logica", () => {
     "ordenInspeccionCompleta",
     "validarAgregarPlu",
     "resumenOrden",
+    "tiendaPideCiudad",
+    "resolverDestino",
   ];
 
   it.each(funciones)("%s existe en las dos", (fn) => {
@@ -408,6 +410,7 @@ describe("muebles — entrega a transporte", () => {
       expect(src).toContain("toUpperCase()");
     }
     expect(ciudad).toContain("normalizarCiudad(parsed.data.ciudad)");
+    expect(ciudad).toContain("destinoDeTienda(parsed.data.tiendaCodigo");
     expect(ciudad).toContain("validarCiudad");
   });
 
@@ -576,5 +579,29 @@ describe("errores de picking — solo el administrador", () => {
   it("los botones solo salen al admin y el indicador trae los errores", () => {
     expect(detalle).toContain('v-if="esAdmin"');
     expect(ind).toContain("resumirErroresPicking(");
+  });
+});
+
+describe("muebles — destino por tienda (25-09)", () => {
+  const leerNuxt = (rel: string) => leer(`nuxt-app/${rel}`);
+  it("la ciudad sale de la tienda; E-commerce (sin ciudad) la pide", async () => {
+    const { cargarNuxt } = await import("./apoyo/nuxt");
+    const calc = cargarNuxt("utils/mueblesCalc.ts");
+    const bodega = { codigo: "101", tienda: "Andino", ciudad: "Bogotá" };
+    const ecommerce = { codigo: "998", tienda: "E-commerce", ciudad: "" };
+    expect(calc.tiendaPideCiudad(bodega)).toBe(false);
+    expect(calc.tiendaPideCiudad(ecommerce)).toBe(true);
+    expect(calc.resolverDestino(bodega, "Cali")).toEqual({ codigo: "101", nombre: "Andino", ciudad: "BOGOTA" });
+    expect(calc.resolverDestino(ecommerce, null)).toEqual({ error: "E-commerce: escribe la ciudad destino" });
+    expect(calc.resolverDestino(ecommerce, "medellín")).toEqual({ codigo: "998", nombre: "E-commerce", ciudad: "MEDELLIN" });
+  });
+
+  it("contado, orden de tienda y sin crear piden la tienda destino", () => {
+    for (const f of ["contado", "tienda", "sin-crear"]) {
+      expect(leerNuxt(`server/api/inspeccion-muebles/${f}.post.ts`)).toContain("destinoDeTienda(d.destino.tiendaCodigo");
+    }
+    for (const m of ["ContadoModal", "TiendaModal", "SinCrearModal", "CiudadModal"]) {
+      expect(leerNuxt(`app/components/inspeccion-muebles/${m}.vue`)).toContain("<MueblesDestinoCampo");
+    }
   });
 });

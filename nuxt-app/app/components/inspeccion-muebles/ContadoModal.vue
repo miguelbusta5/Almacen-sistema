@@ -4,18 +4,22 @@
 // La orden nace directamente en inspeccion con el numero de factura como
 // codigo; los PLU se agregan despues, uno a uno, dentro de la orden.
 import { ref, watch } from 'vue'
+import type { DestinoOrden } from '~/utils/muebles'
 
 // `inspector`: quién la crea, elegido antes en su propia ventana.
-const props = defineProps<{ abierto: boolean; inspector?: string | null }>()
+const props = defineProps<{ abierto: boolean; inspector?: string | null; sugeridas?: string[] }>()
 const emit = defineEmits<{
   (e: 'cerrar'): void
-  (e: 'confirmar', datos: { factura: string; cliente: string }): void
+  (e: 'confirmar', datos: { factura: string; cliente: string; destino: DestinoOrden }): void
 }>()
 
 const factura = ref('')
 const cliente = ref('')
 
-watch(() => props.abierto, (a) => { if (a) { factura.value = ''; cliente.value = '' } })
+const destino = ref<DestinoOrden | null>(null)
+const vez = ref(0)
+
+watch(() => props.abierto, (a) => { if (a) { factura.value = ''; cliente.value = ''; destino.value = null; vez.value++ } })
 </script>
 
 <template>
@@ -34,11 +38,13 @@ watch(() => props.abierto, (a) => { if (a) { factura.value = ''; cliente.value =
         <input v-model="cliente" class="input" type="text" autocomplete="off" placeholder="Nombre del cliente">
       </label>
 
+      <MueblesDestinoCampo :key="vez" v-model="destino" :sugeridas="sugeridas" />
+
       <footer class="m-pie">
         <button class="btn btn-ghost" @click="emit('cerrar')">Cancelar</button>
         <button
-          class="btn btn-primary" :disabled="!factura.trim()"
-          @click="emit('confirmar', { factura: factura.trim(), cliente: cliente.trim() })"
+          class="btn btn-primary" :disabled="!factura.trim() || !destino"
+          @click="destino && emit('confirmar', { factura: factura.trim(), cliente: cliente.trim(), destino })"
         >
           Crear e inspeccionar
         </button>

@@ -4,7 +4,7 @@ import { createError } from 'h3'
 import type { H3Event } from 'h3'
 import { prisma } from './prisma'
 import { requireAuth, type SessionUser } from './auth'
-import { puedeInspeccionar, puedePickear, volumenOrden, type VolumenOrden } from './mueblesCalc'
+import { puedeInspeccionar, puedePickear, resolverDestino, volumenOrden, type VolumenOrden } from './mueblesCalc'
 import { todayBogota } from './exportacionesCalc'
 import { assertSinPausa } from './operacionAlmacen'
 
@@ -127,6 +127,24 @@ export function esParticipante(
   usuarioId: string,
 ): boolean {
   return orden.participantes.some((p) => p.usuarioId === usuarioId && !p.salioAt)
+}
+
+/**
+ * Tienda a la que va la orden, desde el maestro de tiendas: sella codigo y
+ * nombre y saca de ella la ciudad de envio. E-commerce (sin ciudad en el
+ * maestro) exige la ciudad destino escrita a mano. Ver resolverDestino.
+ */
+export async function destinoDeTienda(tiendaCodigo: string, ciudad?: string | null) {
+  const tienda = await prisma.maestroTiendaGourmet.findUnique({
+    where: { codigo: tiendaCodigo },
+    select: { codigo: true, tienda: true, ciudad: true, activo: true },
+  })
+  if (!tienda || !tienda.activo) {
+    throw createError({ statusCode: 400, statusMessage: 'La tienda destino no existe o esta inactiva en el maestro' })
+  }
+  const r = resolverDestino(tienda, ciudad)
+  if ('error' in r) throw createError({ statusCode: 400, statusMessage: r.error })
+  return { tiendaDestinoCodigo: r.codigo, tiendaDestinoNombre: r.nombre, ciudadEnvio: r.ciudad }
 }
 
 export async function ordenPorId(id: string) {

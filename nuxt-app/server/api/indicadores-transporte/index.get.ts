@@ -43,6 +43,7 @@ export default defineEventHandler(async (event): Promise<RespuestaIndicadoresTra
     },
     select: {
       id: true, fecha: true, tipoVehiculo: true, transportadora: true, placa: true, horaInicio: true, horaFinalizacion: true,
+      otrosOperarios: true,
       operarios: { select: { operario: { select: { nombre: true } } } },
       ordenes: {
         where: { horaFin: { not: null } },
@@ -62,7 +63,7 @@ export default defineEventHandler(async (event): Promise<RespuestaIndicadoresTra
     placa: c.placa,
     horaInicio: c.horaInicio,
     horaFinalizacion: c.horaFinalizacion,
-    operarios: c.operarios.map((o) => o.operario.nombre),
+    operarios: [...c.operarios.map((o) => o.operario.nombre), ...(c.otrosOperarios ?? [])],
     ordenes: c.ordenes.map((o) => ({ ...o, m3: num(o.m3), kg: num(o.kg), valorOvdm: num(o.valorOvdm) })),
   }))
   const enRango = (c: CamionInd, v: { desde: string; hasta: string }) => c.fecha >= v.desde && c.fecha <= v.hasta

@@ -4,7 +4,8 @@
 // Cada vineta dice quien la tiene asignada. Con un solo login compartido entre
 // ~5 inspectores, ese chip es lo UNICO que evita que dos personas trabajen la
 // misma orden a la vez.
-import { ESTADO_ORDEN_LABEL, cronometro, type Orden } from '~/utils/muebles'
+import { MapPin } from '@lucide/vue'
+import { ESTADO_ORDEN_LABEL, cronometro, etiquetaDestino, type Orden } from '~/utils/muebles'
 
 defineProps<{ ordenes: Orden[]; ahora: number }>()
 defineEmits<{ (e: 'abrir', orden: Orden): void }>()
@@ -20,6 +21,9 @@ defineEmits<{ (e: 'abrir', orden: Orden): void }>()
         </header>
 
         <strong class="v-codigo">{{ o.codigo }}</strong>
+        <p class="v-destino" :class="{ falta: !o.ciudadEnvio }">
+          <MapPin :size="12" /> {{ etiquetaDestino(o) ?? 'Sin tienda destino' }}
+        </p>
 
         <p class="v-meta">
           {{ o.resumen.total }} PLU · {{ o.resumen.inspeccionadas }} listos
@@ -56,6 +60,9 @@ defineEmits<{ (e: 'abrir', orden: Orden): void }>()
 .v-reloj { font-size: 12px; font-weight: 700; color: var(--muted); }
 .v-codigo { font-size: 17px; font-weight: 800; color: var(--ink); }
 .v-meta { margin: 0; font-size: 11.5px; color: var(--muted); }
+.v-destino { display: flex; align-items: center; gap: 4px; margin: 0; font-size: 12px; font-weight: 600; color: var(--ink-2); }
+.v-destino > svg { color: var(--brand); flex: none; }
+.v-destino.falta { color: var(--muted); font-weight: 500; }
 .v-eban { font-weight: 700; color: var(--u-aviso); }
 
 .v-track { height: 5px; border-radius: var(--r-pill); background: var(--surface-3); overflow: hidden; }

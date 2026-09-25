@@ -75,7 +75,7 @@ export async function buscarOrdenCargue(entrada: string): Promise<OrdenEncontrad
     prisma.ordenMuebles.findFirst({
       where: { codigo, deletedAt: null },
       select: {
-        id: true, estado: true, cliente: true, ciudadEnvio: true, tiendaOrigenNombre: true,
+        id: true, estado: true, cliente: true, ciudadEnvio: true, tiendaOrigenNombre: true, tiendaDestinoNombre: true,
         lineas: { select: { plu: true, unidades: true, partes: true } },
       },
     }),
@@ -109,7 +109,8 @@ export async function buscarOrdenCargue(entrada: string): Promise<OrdenEncontrad
     origen: origenDe(!!pedido, !!muebles),
     gourmetPedidoId: pedido?.id ?? null,
     ordenMueblesId: muebles?.id ?? null,
-    tienda: tiendaGourmet,
+    // Muebles: la tienda destino que eligio el inspector (25-09).
+    tienda: tiendaGourmet ?? muebles?.tiendaDestinoNombre ?? null,
     cliente: muebles?.cliente ?? (pedido && pedido.codigoTienda.toUpperCase() === 'CLIENTE' ? 'Cliente final' : null),
     ciudad: pedido?.ciudadDestino && pedido.ciudadDestino !== 'CLIENTE' ? pedido.ciudadDestino : (muebles?.ciudadEnvio ?? null),
     bultosGourmet: bGourmet,
@@ -153,6 +154,8 @@ export interface CargueCamionDTO {
   creadoPor: { id: string; nombre: string } | null
   cerradoPor: { id: string; nombre: string } | null
   operarios: Array<{ id: string; nombre: string }>
+  /** Quienes cargan sin estar en el catalogo (nombre a mano). */
+  otrosOperarios: string[]
   ordenes: OrdenCargueDTO[]
 }
 
@@ -176,6 +179,7 @@ export function mapCargue(c: Awaited<ReturnType<typeof camionPorId>>): CargueCam
     creadoPor: c.creadoPor ? { id: c.creadoPor.id, nombre: c.creadoPor.name } : null,
     cerradoPor: c.cerradoPor ? { id: c.cerradoPor.id, nombre: c.cerradoPor.name } : null,
     operarios: c.operarios.map((o) => ({ id: o.operario.id, nombre: o.operario.nombre })),
+    otrosOperarios: c.otrosOperarios ?? [],
     ordenes: c.ordenes.map((o) => ({
       id: o.id,
       codigo: o.codigo,

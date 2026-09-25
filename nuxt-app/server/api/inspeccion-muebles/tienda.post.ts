@@ -1,7 +1,7 @@
 import { defineEventHandler, readBody, createError } from 'h3'
 import { z } from 'zod'
 import { prisma } from '../../utils/prisma'
-import { auditar, ORDEN_INCLUDE, requireInspeccion } from '../../utils/muebles'
+import { auditar, destinoDeTienda, ORDEN_INCLUDE, requireInspeccion } from '../../utils/muebles'
 import { derivarTipoOrden, normalizarCodigoOrden, validarCodigoOrden } from '../../utils/mueblesCalc'
 import { todayBogota } from '../../utils/exportacionesCalc'
 import { mapOrdenMuebles } from '../../utils/mapRow'
@@ -11,6 +11,11 @@ const schema = z.object({
   orden: z.string().min(1).max(40),
   tiendaCodigo: z.string().min(1).max(50),
   cliente: z.string().max(160).nullable().optional(),
+  /** Tienda a la que va (de ella sale la ciudad). */
+  destino: z.object({
+    tiendaCodigo: z.string().min(1).max(50),
+    ciudad: z.string().max(80).nullable().optional(),
+  }).optional(),
 })
 
 /**
@@ -50,6 +55,7 @@ export default defineEventHandler(async (event) => {
   if (repetida) throw createError({ statusCode: 409, statusMessage: `La orden ${codigo} ya existe en muebles` })
 
   // El reloj de picking nace y muere en el mismo instante: en el CEDI nadie la pickeo.
+  const destino = d.destino ? await destinoDeTienda(d.destino.tiendaCodigo, d.destino.ciudad) : null
   const now = new Date()
   const orden = await prisma.$transaction(async (tx) => {
     const creada = await tx.ordenMuebles.create({
@@ -63,6 +69,7 @@ export default defineEventHandler(async (event) => {
         operarioId: actor.id,
         inspectorId: inspector.id,
         cliente: d.cliente?.trim() || null,
+        ...(destino ?? {}),
         tiendaOrigenCodigo: tienda.codigo,
         tiendaOrigenNombre: tienda.tienda,
       },

@@ -698,6 +698,8 @@ export function mapOrdenMuebles(o: any) {
     tiendaOrigenNombre: o.tiendaOrigenNombre ?? null,
     sinCrearPicking: o.sinCrearPicking ?? false,
     ciudadEnvio: o.ciudadEnvio ?? null,
+    tiendaDestinoCodigo: o.tiendaDestinoCodigo ?? null,
+    tiendaDestinoNombre: o.tiendaDestinoNombre ?? null,
     entregadaTransporteAt: o.entregadaTransporteAt?.toISOString?.() ?? o.entregadaTransporteAt ?? null,
     entregadaPor: o.entregadaPor ? { id: o.entregadaPor.id, nombre: o.entregadaPor.name } : null,
     // Pasada a un operario que tenia otra orden abierta: pendiente de que la tome.

@@ -2069,6 +2069,11 @@ model OrdenMuebles {
   /// entre "medellin", "MEDELLÍN" y "Medellin ".
   ciudadEnvio String? @map("ciudad_envio") @db.VarChar(80)
 
+  /// Tienda a la que va la orden (maestro de tiendas, sellada). De ella sale
+  /// ciudadEnvio; E-commerce (998, sin ciudad) pide la ciudad aparte (25-09).
+  tiendaDestinoCodigo String? @map("tienda_destino_codigo") @db.VarChar(50)
+  tiendaDestinoNombre String? @map("tienda_destino_nombre") @db.VarChar(255)
+
   /// Entrega a transporte: aqui termina el lead time de la orden.
   entregadaTransporteAt DateTime? @map("entregada_transporte_at")
   entregadaPorId        String?   @map("entregada_por_id")
@@ -2585,6 +2590,8 @@ model CargueCamion {
   transportadora String             @db.VarChar(120)
   placa          String?            @db.VarChar(20)
   observacion    String?            @db.VarChar(300)
+  /// Quien cargo y no esta en el catalogo de operarios: nombre a mano (25-09).
+  otrosOperarios String[]           @default([]) @map("otros_operarios")
 
   fecha            DateTime  @db.Date
   /// Reloj del camion: de iniciar el cargue a finalizarlo.

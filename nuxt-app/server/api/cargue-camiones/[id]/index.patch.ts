@@ -2,7 +2,7 @@ import { defineEventHandler, getRouterParam, readBody, createError } from 'h3'
 import { z } from 'zod'
 import { prisma } from '../../../utils/prisma'
 import { auditarCargue, camionPorId, mapCargue, requireCargue } from '../../../utils/cargueCamion'
-import { esGestionCargue, normalizarPlaca, normalizarTextoCargue, validarInicioCamion } from '../../../utils/cargueCamionCalc'
+import { esGestionCargue, normalizarOtrosOperarios, normalizarPlaca, normalizarTextoCargue, validarInicioCamion } from '../../../utils/cargueCamionCalc'
 
 const schema = z.object({
   tipoVehiculo: z.string().max(80),
@@ -10,6 +10,7 @@ const schema = z.object({
   placa: z.string().max(30).nullable().optional(),
   observacion: z.string().max(300).nullable().optional(),
   operarios: z.array(z.string().min(1)).max(30),
+  otrosOperarios: z.array(z.string().max(80)).max(10).optional(),
   motivo: z.string().max(300).nullable().optional(),
 })
 
@@ -26,7 +27,9 @@ export default defineEventHandler(async (event) => {
   if (!parsed.success) throw createError({ statusCode: 400, statusMessage: parsed.error.issues[0]!.message })
   const d = parsed.data
   const operarios = [...new Set(d.operarios)]
-  const error = validarInicioCamion({ ...d, operarios })
+  // Sin el campo (pantalla vieja en cache) se conservan los que ya tenia.
+  const otros = d.otrosOperarios ? normalizarOtrosOperarios(d.otrosOperarios) : camion.otrosOperarios
+  const error = validarInicioCamion({ ...d, operarios, otros })
   if (error) throw createError({ statusCode: 400, statusMessage: error })
 
   const cerrado = camion.estado === 'CERRADO'
@@ -50,6 +53,7 @@ export default defineEventHandler(async (event) => {
         transportadora: normalizarTextoCargue(d.transportadora),
         placa: normalizarPlaca(d.placa),
         observacion: d.observacion?.trim() || null,
+        otrosOperarios: otros,
         ...(cerrado && { motivoCorreccion: d.motivo!.trim() }),
       },
     })
@@ -58,6 +62,6 @@ export default defineEventHandler(async (event) => {
   })
 
   await auditarCargue(actor.id, 'UPDATE', camion.id,
-    `${cerrado ? 'Correccion del camion' : 'Camion actualizado'}: ${operarios.length} personas cargando${cerrado ? `. Motivo: ${d.motivo!.trim()}` : ''}`)
+    `${cerrado ? 'Correccion del camion' : 'Camion actualizado'}: ${operarios.length + otros.length} personas cargando${cerrado ? `. Motivo: ${d.motivo!.trim()}` : ''}`)
   return { success: true, data: mapCargue(await camionPorId(camion.id)) }
 })

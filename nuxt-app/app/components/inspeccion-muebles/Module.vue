@@ -17,8 +17,8 @@ import { useToast } from '~/composables/useToast'
 import { useSessionState } from '~/composables/useSession'
 import { esGestionMuebles } from '~/utils/mueblesUi'
 import {
-  API_INSPECCION, cajasDelPlu, mensajeError, MINIMO_PARTES_AVISO,
-  type CajaPlu, type Inspector, type Linea, type Orden,
+  API_INSPECCION, cajasDelPlu, cuerpoDestino, etiquetaDestino, mensajeError, MINIMO_PARTES_AVISO,
+  type CajaPlu, type DestinoOrden, type Inspector, type Linea, type Orden,
 } from '~/utils/muebles'
 
 const { show } = useToast()
@@ -360,11 +360,12 @@ function terminarConErrores() {
   accion(`${API_INSPECCION}/${abierta.value!.id}/terminar`, {}, 'Orden terminada')
 }
 
-/** La ciudad a la que va la orden; con eso agrupa el patinador la entrega. */
-function confirmarCiudad(ciudad: string) {
+/** La tienda a la que va la orden (de ella sale la ciudad); con eso agrupa el patinador. */
+function confirmarCiudad(destino: DestinoOrden) {
   pidiendoCiudad.value = false
   conInspector((id) => accion(
-    `${API_INSPECCION}/${abierta.value!.id}/ciudad`, { inspectorId: id, ciudad }, `Orden hacia ${ciudad}`,
+    `${API_INSPECCION}/${abierta.value!.id}/ciudad`, { inspectorId: id, ...cuerpoDestino(destino) },
+    `Orden hacia ${destino.tiendaNombre} (${destino.ciudad})`,
   ))
 }
 
@@ -405,28 +406,28 @@ function unirse() {
 }
 
 /** Factura de contado: la orden nace ya en inspección, sin pasar por picking. */
-function confirmarContado(datos: { factura: string; cliente: string }) {
+function confirmarContado(datos: { factura: string; cliente: string; destino: DestinoOrden }) {
   creandoContado.value = false
   void crearOrden(
-    `${API_INSPECCION}/contado`, { factura: datos.factura, cliente: datos.cliente || null },
+    `${API_INSPECCION}/contado`, { factura: datos.factura, cliente: datos.cliente || null, destino: cuerpoDestino(datos.destino) },
     () => `Factura ${datos.factura} lista para inspeccionar`, 'No se pudo crear la factura',
   )
 }
 
 /** Orden de tienda: su OVDM/TSDM llega de una tienda y se inspecciona directo. */
-function confirmarTienda(datos: { orden: string; tiendaCodigo: string; cliente: string }) {
+function confirmarTienda(datos: { orden: string; tiendaCodigo: string; cliente: string; destino: DestinoOrden }) {
   creandoTienda.value = false
   void crearOrden(
-    `${API_INSPECCION}/tienda`, { orden: datos.orden, tiendaCodigo: datos.tiendaCodigo, cliente: datos.cliente || null },
+    `${API_INSPECCION}/tienda`, { orden: datos.orden, tiendaCodigo: datos.tiendaCodigo, cliente: datos.cliente || null, destino: cuerpoDestino(datos.destino) },
     (o) => `Orden ${o.codigo} de ${o.tiendaOrigenNombre ?? 'tienda'} lista para inspeccionar`, 'No se pudo crear la orden de tienda',
   )
 }
 
 /** Orden sin crear: la pickearon pero el operario no la registró. */
-function confirmarSinCrear(datos: { orden: string; operarioId: string; cliente: string }) {
+function confirmarSinCrear(datos: { orden: string; operarioId: string; cliente: string; destino: DestinoOrden }) {
   creandoSinCrear.value = false
   void crearOrden(
-    `${API_INSPECCION}/sin-crear`, { orden: datos.orden, operarioId: datos.operarioId, cliente: datos.cliente || null },
+    `${API_INSPECCION}/sin-crear`, { orden: datos.orden, operarioId: datos.operarioId, cliente: datos.cliente || null, destino: cuerpoDestino(datos.destino) },
     (o) => `Orden ${o.codigo} (${o.operario?.nombre ?? 'sin operario'}) lista para inspeccionar`, 'No se pudo crear la orden',
   )
 }
@@ -544,7 +545,7 @@ useAutoRefresh({ onRefresh: () => (guardando.value ? undefined : cargar()) })
       @cerrar="lineaCajas = null" @completas="cajasCompletas" @faltan="cajasFaltantes"
     />
     <InspeccionMueblesCiudadModal
-      :abierto="pidiendoCiudad" :actual="abierta?.ciudadEnvio ?? null" :sugeridas="ciudadesUsadas"
+      :abierto="pidiendoCiudad" :actual="abierta ? etiquetaDestino(abierta) : null" :sugeridas="ciudadesUsadas"
       @cerrar="pidiendoCiudad = false" @confirmar="confirmarCiudad"
     />
     <InspeccionMueblesSelectorInspector
@@ -554,14 +555,14 @@ useAutoRefresh({ onRefresh: () => (guardando.value ? undefined : cargar()) })
       @cerrar="pidiendoCreador = null" @confirmar="confirmarCreador"
     />
     <InspeccionMueblesTiendaModal
-      :abierto="creandoTienda" :inspector="nombreCreador" @cerrar="creandoTienda = false" @confirmar="confirmarTienda"
+      :abierto="creandoTienda" :inspector="nombreCreador" :sugeridas="ciudadesUsadas" @cerrar="creandoTienda = false" @confirmar="confirmarTienda"
     />
     <InspeccionMueblesSinCrearModal
-      :abierto="creandoSinCrear" :operarios="operarios" :inspector="nombreCreador"
+      :abierto="creandoSinCrear" :operarios="operarios" :inspector="nombreCreador" :sugeridas="ciudadesUsadas"
       @cerrar="creandoSinCrear = false" @confirmar="confirmarSinCrear"
     />
     <InspeccionMueblesContadoModal
-      :abierto="creandoContado" :inspector="nombreCreador" @cerrar="creandoContado = false" @confirmar="confirmarContado"
+      :abierto="creandoContado" :inspector="nombreCreador" :sugeridas="ciudadesUsadas" @cerrar="creandoContado = false" @confirmar="confirmarContado"
     />
     <ConfirmModal
       v-if="ordenOcupada"

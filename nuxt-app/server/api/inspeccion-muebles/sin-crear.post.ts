@@ -1,7 +1,7 @@
 import { defineEventHandler, readBody, createError } from 'h3'
 import { z } from 'zod'
 import { prisma } from '../../utils/prisma'
-import { auditar, equipoDelDia, ORDEN_INCLUDE, requireInspeccion } from '../../utils/muebles'
+import { auditar, destinoDeTienda, equipoDelDia, ORDEN_INCLUDE, requireInspeccion } from '../../utils/muebles'
 import { derivarTipoOrden, normalizarCodigoOrden, ROL_PICKING, validarCodigoOrden } from '../../utils/mueblesCalc'
 import { todayBogota } from '../../utils/exportacionesCalc'
 import { mapOrdenMuebles } from '../../utils/mapRow'
@@ -11,6 +11,11 @@ const schema = z.object({
   orden: z.string().min(1).max(40),
   operarioId: z.string().min(1),
   cliente: z.string().max(160).nullable().optional(),
+  /** Tienda a la que va (de ella sale la ciudad). */
+  destino: z.object({
+    tiendaCodigo: z.string().min(1).max(50),
+    ciudad: z.string().max(80).nullable().optional(),
+  }).optional(),
 })
 
 /**
@@ -47,6 +52,7 @@ export default defineEventHandler(async (event) => {
 
   // El equipo del dia del operario, si tiene: la carga de la orden es suya.
   const equipo = await equipoDelDia(operario.id)
+  const destino = d.destino ? await destinoDeTienda(d.destino.tiendaCodigo, d.destino.ciudad) : null
   const now = new Date()
   const orden = await prisma.$transaction(async (tx) => {
     const creada = await tx.ordenMuebles.create({
@@ -61,6 +67,7 @@ export default defineEventHandler(async (event) => {
         equipoId: equipo?.id ?? null,
         inspectorId: inspector.id,
         cliente: d.cliente?.trim() || null,
+        ...(destino ?? {}),
         sinCrearPicking: true,
         // Participante ya salido: no le ocupa el turno (ordenAbierta solo mira EN_PICKING).
         participantes: {

@@ -391,6 +391,28 @@ export function validarCiudad(value: unknown): string | null {
   return null
 }
 
+// ── Tienda destino ──────────────────────────────────────────────────────────
+
+/**
+ * El inspector ya no escribe la ciudad: elige la TIENDA a la que va la orden
+ * (maestro de tiendas) y la ciudad sale de ella. E-commerce (998) no tiene
+ * ciudad en el maestro, asi que ahi se escribe la ciudad destino a mano (25-09).
+ */
+export function tiendaPideCiudad(tienda: { ciudad: string | null }): boolean {
+  return !String(tienda.ciudad ?? "").trim()
+}
+
+export function resolverDestino(
+  tienda: { codigo: string; tienda: string; ciudad: string | null },
+  ciudadManual?: string | null,
+): { error: string } | { codigo: string; nombre: string; ciudad: string } {
+  const pide = tiendaPideCiudad(tienda)
+  const ciudad = pide ? ciudadManual : tienda.ciudad
+  const error = validarCiudad(ciudad)
+  if (error) return { error: pide ? `${tienda.tienda}: escribe la ciudad destino` : error }
+  return { codigo: tienda.codigo, nombre: tienda.tienda, ciudad: normalizarCiudad(ciudad) }
+}
+
 /**
  * Lead time de una orden: desde que el operario abrio el picking hasta que el
  * patinador la entrego a transporte. Es el numero que mide el proceso completo,

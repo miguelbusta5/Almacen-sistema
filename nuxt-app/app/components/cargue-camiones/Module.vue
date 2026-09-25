@@ -15,7 +15,7 @@ import { canSeeModule } from '~/utils/modulePermissions'
 import { cronometro, fmtMin } from '~/utils/muebles'
 import { hoyBogota } from '~/utils/exportaciones'
 import {
-  API_CARGUE, ORIGEN_CARGUE_LABEL, bultosCamion, esGestionCargueUi, fmtHoraCargue, minutosCargue, novedadesCamion,
+  API_CARGUE, ORIGEN_CARGUE_LABEL, bultosCamion, esGestionCargueUi, fmtHoraCargue, minutosCargue, novedadesCamion, personasCamion,
   type CamionCargue, type DatosCamion, type OperarioCargue,
 } from '~/utils/cargueCamiones'
 
@@ -113,6 +113,7 @@ const inicialEdicion = computed<DatosCamion | null>(() => editando.value
   ? {
       tipoVehiculo: editando.value.tipoVehiculo, transportadora: editando.value.transportadora,
       placa: editando.value.placa, observacion: editando.value.observacion, operarios: editando.value.operarios.map((o) => o.id),
+      otrosOperarios: editando.value.otrosOperarios ?? [],
     }
   : null)
 // Al corregir, las personas del camión se ofrecen aunque hoy estén inactivas.
@@ -200,7 +201,7 @@ const duracion = (a: string, b: string | null) => fmtMin(minutosCargue(a, b))
               <span v-if="novedadesCamion(c)" class="hist-nov">{{ novedadesCamion(c) }} con novedad</span>
             </button>
             <div v-if="expandido === c.id" class="hist-det">
-              <p class="desc">{{ c.tipoVehiculo }} · cargaron {{ c.operarios.map((o) => o.nombre).join(', ') }}<template v-if="c.observacion"> · {{ c.observacion }}</template></p>
+              <p class="desc">{{ c.tipoVehiculo }} · cargaron {{ personasCamion(c).join(', ') }}<template v-if="c.observacion"> · {{ c.observacion }}</template></p>
               <table class="tabla-c">
                 <thead><tr><th>Orden</th><th>Tienda / cliente</th><th>Ciudad</th><th class="num">Declarados</th><th class="num">Cargados</th><th class="num">Tiempo</th><th>Novedad</th></tr></thead>
                 <tbody>

@@ -43,17 +43,32 @@ export function validarInicioCamion(d: {
   transportadora: string
   placa?: string | null
   operarios: readonly string[]
+  /** Quienes cargan y no estan en el catalogo (nombre a mano). */
+  otros?: readonly string[]
 }): string | null {
   if (!limpio(d.tipoVehiculo)) return 'Escribe el tipo de vehiculo'
   if (!limpio(d.transportadora)) return 'Escribe la transportadora'
   if (d.placa && limpio(d.placa).length > 20) return 'La placa es muy larga'
-  if (!d.operarios.length) return 'Elige al menos una persona que cargue el camion'
+  if (!d.operarios.length && !d.otros?.length) return 'Elige al menos una persona que cargue el camion'
   return null
 }
 
 /** Texto libre en mayusculas y sin espacios de sobra (para agrupar en indicadores). */
 export function normalizarTextoCargue(v: unknown): string {
   return limpio(v).toUpperCase()
+}
+
+/**
+ * "Otra persona": quien carga el camion sin estar en el catalogo. Nombre a mano,
+ * en mayusculas, sin vacios ni repetidos (25-09).
+ */
+export function normalizarOtrosOperarios(v: readonly unknown[] | null | undefined): string[] {
+  const out: string[] = []
+  for (const x of v ?? []) {
+    const n = normalizarTextoCargue(x).slice(0, 80)
+    if (n.length >= 3 && !out.includes(n)) out.push(n)
+  }
+  return out
 }
 
 export function normalizarPlaca(v: unknown): string | null {

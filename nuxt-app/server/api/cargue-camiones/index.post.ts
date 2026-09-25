@@ -2,7 +2,7 @@ import { defineEventHandler, readBody, createError } from 'h3'
 import { z } from 'zod'
 import { prisma } from '../../utils/prisma'
 import { auditarCargue, CARGUE_INCLUDE, mapCargue, requireCargue } from '../../utils/cargueCamion'
-import { normalizarPlaca, normalizarTextoCargue, validarInicioCamion } from '../../utils/cargueCamionCalc'
+import { normalizarOtrosOperarios, normalizarPlaca, normalizarTextoCargue, validarInicioCamion } from '../../utils/cargueCamionCalc'
 import { todayBogota } from '../../utils/exportacionesCalc'
 
 const schema = z.object({
@@ -11,6 +11,7 @@ const schema = z.object({
   placa: z.string().max(30).nullable().optional(),
   observacion: z.string().max(300).nullable().optional(),
   operarios: z.array(z.string().min(1)).max(30),
+  otrosOperarios: z.array(z.string().max(80)).max(10).optional(),
 })
 
 /**
@@ -23,8 +24,9 @@ export default defineEventHandler(async (event) => {
   if (!parsed.success) throw createError({ statusCode: 400, statusMessage: parsed.error.issues[0]!.message })
   const d = parsed.data
   const operarios = [...new Set(d.operarios)]
+  const otros = normalizarOtrosOperarios(d.otrosOperarios)
 
-  const error = validarInicioCamion({ ...d, operarios })
+  const error = validarInicioCamion({ ...d, operarios, otros })
   if (error) throw createError({ statusCode: 400, statusMessage: error })
 
   const validos = await prisma.operarioCargue.count({ where: { id: { in: operarios }, activo: true } })
@@ -37,6 +39,7 @@ export default defineEventHandler(async (event) => {
       transportadora: normalizarTextoCargue(d.transportadora),
       placa: normalizarPlaca(d.placa),
       observacion: d.observacion?.trim() || null,
+      otrosOperarios: otros,
       fecha: todayBogota(now),
       // El reloj lo sella el servidor, no el telefono.
       horaInicio: now,

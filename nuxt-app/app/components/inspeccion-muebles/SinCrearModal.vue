@@ -5,35 +5,38 @@
 // picking (no se midió).
 import { computed, ref, watch } from 'vue'
 import { FilePlus2 } from '@lucide/vue'
-import { normalizarCodigoOrden, validarCodigoOrdenTienda } from '~/utils/muebles'
+import { normalizarCodigoOrden, validarCodigoOrdenTienda, type DestinoOrden } from '~/utils/muebles'
 
 const props = defineProps<{
   abierto: boolean
   operarios: Array<{ id: string; nombre: string }>
   /** Quién la crea (se eligió antes, en su propia ventana). */
   inspector: string | null
+  sugeridas?: string[]
 }>()
 const emit = defineEmits<{
   (e: 'cerrar'): void
-  (e: 'confirmar', datos: { orden: string; operarioId: string; cliente: string }): void
+  (e: 'confirmar', datos: { orden: string; operarioId: string; cliente: string; destino: DestinoOrden }): void
 }>()
 
 const orden = ref('')
 const operarioId = ref('')
 const cliente = ref('')
+const destino = ref<DestinoOrden | null>(null)
+const vez = ref(0)
 
 watch(() => props.abierto, (a) => {
   if (!a) return
-  orden.value = ''; operarioId.value = ''; cliente.value = ''
+  orden.value = ''; operarioId.value = ''; cliente.value = ''; destino.value = null; vez.value++
 })
 
 // Misma regla que la orden de tienda: OVDM o TSDM con su número.
 const errorOrden = computed(() => (orden.value.trim() ? validarCodigoOrdenTienda(orden.value) : null))
-const puede = computed(() => !!orden.value.trim() && !errorOrden.value && !!operarioId.value)
+const puede = computed(() => !!orden.value.trim() && !errorOrden.value && !!operarioId.value && !!destino.value)
 
 function confirmar() {
-  if (!puede.value) return
-  emit('confirmar', { orden: normalizarCodigoOrden(orden.value), operarioId: operarioId.value, cliente: cliente.value.trim() })
+  if (!puede.value || !destino.value) return
+  emit('confirmar', { orden: normalizarCodigoOrden(orden.value), operarioId: operarioId.value, cliente: cliente.value.trim(), destino: destino.value })
 }
 </script>
 
@@ -63,6 +66,8 @@ function confirmar() {
           <option v-for="o in operarios" :key="o.id" :value="o.id">{{ o.nombre }}</option>
         </select>
       </label>
+
+      <MueblesDestinoCampo :key="vez" v-model="destino" :sugeridas="sugeridas" />
 
       <label class="campo">
         <span class="campo-label">Cliente (opcional)</span>

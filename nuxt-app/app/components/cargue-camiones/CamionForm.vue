@@ -1,8 +1,8 @@
 <script setup lang="ts">
 // Datos del camion: tipo de vehiculo, transportadora, placa, observacion y
 // quienes lo cargan. Sirve para iniciar el cargue y para corregirlo.
-import { computed, reactive, watch } from 'vue'
-import { Truck, Users, Check } from '@lucide/vue'
+import { computed, reactive, ref, watch } from 'vue'
+import { Truck, Users, Check, UserPlus, X } from '@lucide/vue'
 import type { DatosCamion, OperarioCargue } from '~/utils/cargueCamiones'
 
 const props = withDefaults(defineProps<{
@@ -20,15 +20,29 @@ const emit = defineEmits<{
   (e: 'cancelar'): void
 }>()
 
-const f = reactive({ tipoVehiculo: '', transportadora: '', placa: '', observacion: '', motivo: '', operarios: [] as string[] })
+const f = reactive({ tipoVehiculo: '', transportadora: '', placa: '', observacion: '', motivo: '', operarios: [] as string[], otros: [] as string[] })
+// «Otra persona»: quien carga y no está en la lista; se escribe el nombre.
+const otro = ref('')
+const escribiendoOtro = ref(false)
 watch(() => props.inicial, (i) => {
   f.tipoVehiculo = i?.tipoVehiculo ?? ''
   f.transportadora = i?.transportadora ?? ''
   f.placa = i?.placa ?? ''
   f.observacion = i?.observacion ?? ''
   f.operarios = [...(i?.operarios ?? [])]
+  f.otros = [...(i?.otrosOperarios ?? [])]
+  otro.value = ''; escribiendoOtro.value = false
   f.motivo = ''
 }, { immediate: true })
+
+function agregarOtro() {
+  const n = otro.value.trim().replace(/\s+/g, ' ').toUpperCase()
+  if (n.length < 3) return
+  if (!f.otros.includes(n)) f.otros = [...f.otros, n]
+  otro.value = ''
+  escribiendoOtro.value = false
+}
+function quitarOtro(n: string) { f.otros = f.otros.filter((x) => x !== n) }
 
 function alternar(id: string) {
   f.operarios = f.operarios.includes(id) ? f.operarios.filter((x) => x !== id) : [...f.operarios, id]
@@ -37,7 +51,8 @@ function alternar(id: string) {
 const falta = computed(() => {
   if (!f.tipoVehiculo.trim()) return 'Escribe el tipo de vehículo'
   if (!f.transportadora.trim()) return 'Escribe la transportadora'
-  if (!f.operarios.length) return 'Elige quiénes cargan el camión'
+  if (escribiendoOtro.value && otro.value.trim()) return 'Toca «Agregar» para sumar a la otra persona'
+  if (!f.operarios.length && !f.otros.length) return 'Elige quiénes cargan el camión'
   if (props.pideMotivo && f.motivo.trim().length < 5) return 'Escribe el motivo de la corrección'
   return null
 })
@@ -50,6 +65,7 @@ function guardar() {
     placa: f.placa.trim() || null,
     observacion: f.observacion.trim() || null,
     operarios: f.operarios,
+    otrosOperarios: f.otros,
     motivo: props.pideMotivo ? f.motivo.trim() : null,
   })
 }
@@ -79,7 +95,7 @@ function guardar() {
     </div>
 
     <fieldset class="cf-personas">
-      <legend class="lbl"><Users :size="13" /> Quiénes cargan el camión <span class="cuenta">{{ f.operarios.length }} elegidos</span></legend>
+      <legend class="lbl"><Users :size="13" /> Quiénes cargan el camión <span class="cuenta">{{ f.operarios.length + f.otros.length }} elegidos</span></legend>
       <div class="chips">
         <button
           v-for="o in operarios" :key="o.id" type="button" class="chip"
@@ -87,6 +103,21 @@ function guardar() {
         >
           <Check v-if="f.operarios.includes(o.id)" :size="13" /> {{ o.nombre }}
         </button>
+        <span v-for="n in f.otros" :key="`o-${n}`" class="chip on otro">
+          <Check :size="13" /> {{ n }}
+          <button type="button" class="quitar" :aria-label="`Quitar a ${n}`" @click="quitarOtro(n)"><X :size="13" /></button>
+        </span>
+        <button v-if="!escribiendoOtro" type="button" class="chip" @click="escribiendoOtro = true">
+          <UserPlus :size="13" /> Otra persona
+        </button>
+      </div>
+      <div v-if="escribiendoOtro" class="otro-fila">
+        <input
+          v-model="otro" class="field" maxlength="80" placeholder="Nombre de quien carga (no está en la lista)"
+          autocomplete="off" autofocus @keydown.enter.prevent="agregarOtro"
+        >
+        <button type="button" class="btn btn-sm btn-primary" :disabled="otro.trim().length < 3" @click="agregarOtro">Agregar</button>
+        <button type="button" class="btn btn-sm btn-ghost" @click="escribiendoOtro = false; otro = ''">Cancelar</button>
       </div>
       <p v-if="!operarios.length" class="vacio">No hay personas en la lista: el administrador las agrega en «Personas que cargan».</p>
     </fieldset>
@@ -124,6 +155,11 @@ function guardar() {
 .chip.on { border-color: var(--brand); background: var(--brand-tint); color: var(--ink); }
 .chip:focus-visible { outline: none; box-shadow: var(--ring); }
 .vacio { margin: 6px 0 0; font-size: 12.5px; color: var(--muted); }
+.chip.otro { cursor: default; padding-right: 6px; }
+.quitar { display: inline-grid; place-items: center; width: 24px; height: 24px; border: none; border-radius: 50%; background: none; color: var(--muted); cursor: pointer; }
+.quitar:hover { color: var(--ink); background: var(--surface-3); }
+.otro-fila { display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap; }
+.otro-fila .field { flex: 1 1 220px; }
 .cf-pie { display: flex; align-items: center; justify-content: flex-end; gap: 10px; flex-wrap: wrap; }
 .falta { margin-right: auto; font-size: 12.5px; font-weight: 600; color: var(--u-aviso); }
 @media (max-width: 520px) { .cf-pie .btn { width: 100%; justify-content: center; } .falta { width: 100%; } }

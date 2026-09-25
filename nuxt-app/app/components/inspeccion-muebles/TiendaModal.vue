@@ -8,32 +8,33 @@
 // contado, y los PLU se agregan dentro de la orden.
 import { computed, ref, watch } from 'vue'
 import { Store } from '@lucide/vue'
-import { normalizarCodigoOrden, validarCodigoOrdenTienda, type TiendaOpcion } from '~/utils/muebles'
+import { normalizarCodigoOrden, validarCodigoOrdenTienda, type DestinoOrden, type TiendaOpcion } from '~/utils/muebles'
 
 // `inspector`: quién la crea, elegido antes en su propia ventana.
-const props = defineProps<{ abierto: boolean; inspector?: string | null }>()
+const props = defineProps<{ abierto: boolean; inspector?: string | null; sugeridas?: string[] }>()
 const emit = defineEmits<{
   (e: 'cerrar'): void
-  (e: 'confirmar', datos: { orden: string; tiendaCodigo: string; cliente: string }): void
+  (e: 'confirmar', datos: { orden: string; tiendaCodigo: string; cliente: string; destino: DestinoOrden }): void
 }>()
 
 const orden = ref('')
 const cliente = ref('')
 const tienda = ref<TiendaOpcion | null>(null)
+const destino = ref<DestinoOrden | null>(null)
 // Cambia al abrir: recrea el buscador para que no arrastre la búsqueda anterior.
 const vez = ref(0)
 
 watch(() => props.abierto, (a) => {
   if (!a) return
-  orden.value = ''; cliente.value = ''; tienda.value = null; vez.value++
+  orden.value = ''; cliente.value = ''; tienda.value = null; destino.value = null; vez.value++
 })
 
 const errorOrden = computed(() => (orden.value.trim() ? validarCodigoOrdenTienda(orden.value) : null))
-const puede = computed(() => !!orden.value.trim() && !errorOrden.value && !!tienda.value)
+const puede = computed(() => !!orden.value.trim() && !errorOrden.value && !!tienda.value && !!destino.value)
 
 function confirmar() {
-  if (!puede.value || !tienda.value) return
-  emit('confirmar', { orden: normalizarCodigoOrden(orden.value), tiendaCodigo: tienda.value.codigo, cliente: cliente.value.trim() })
+  if (!puede.value || !tienda.value || !destino.value) return
+  emit('confirmar', { orden: normalizarCodigoOrden(orden.value), tiendaCodigo: tienda.value.codigo, cliente: cliente.value.trim(), destino: destino.value })
 }
 </script>
 
@@ -59,6 +60,8 @@ function confirmar() {
         <span class="campo-label">Tienda de origen</span>
         <MueblesTiendaBuscador :key="vez" v-model="tienda" />
       </div>
+
+      <MueblesDestinoCampo :key="`d${vez}`" v-model="destino" :sugeridas="sugeridas" />
 
       <label class="campo">
         <span class="campo-label">Cliente (opcional)</span>

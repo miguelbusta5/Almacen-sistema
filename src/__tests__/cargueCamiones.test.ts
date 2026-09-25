@@ -29,6 +29,14 @@ describe("reglas del cargue", () => {
     expect(calc.normalizarTextoCargue("  turbo   doble ")).toBe("TURBO DOBLE");
   });
 
+  it("otra persona (fuera de la lista) tambien cuenta como quien carga", () => {
+    const base = { tipoVehiculo: "Turbo", transportadora: "X", operarios: [] };
+    expect(calc.validarInicioCamion({ ...base, otros: ["PEDRO PEREZ"] })).toBeNull();
+    expect(calc.validarInicioCamion({ ...base, otros: [] })).toMatch(/al menos una persona/);
+    expect(calc.normalizarOtrosOperarios([" pedro  perez ", "PEDRO PEREZ", "", "ab", "Ana Ruiz"])).toEqual(["PEDRO PEREZ", "ANA RUIZ"]);
+    expect(calc.normalizarOtrosOperarios(undefined)).toEqual([]);
+  });
+
   it("que ordenes se pueden subir", () => {
     // Gourmet: los listos quedan en UBICACION_ASIGNADA (el 25-09 habia 3.079 asi y 0 enviados).
     expect(calc.gourmetCargable("UBICACION_ASIGNADA")).toBe(true);

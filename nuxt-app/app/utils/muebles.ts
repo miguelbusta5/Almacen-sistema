@@ -14,6 +14,23 @@ export const API_INDICADORES_MUEBLES = '/api/indicadores-muebles'
 /** Una tienda del maestro de tiendas (el catalogo de Tienda y Cargue Gourmet). */
 export interface TiendaOpcion { codigo: string; tienda: string; ciudad: string }
 
+/** Tienda a la que va una orden de muebles; la ciudad sale de ella. */
+export interface DestinoOrden { tiendaCodigo: string; tiendaNombre: string; ciudad: string; ecommerce: boolean }
+
+/** E-commerce (998) no tiene ciudad en el maestro: la ciudad destino se escribe. */
+export function destinoPideCiudad(t: { ciudad: string | null }): boolean {
+  return !String(t.ciudad ?? '').trim()
+}
+
+/** Lo que se manda al servidor al crear una orden o fijar su destino. */
+export const cuerpoDestino = (d: DestinoOrden) => ({ tiendaCodigo: d.tiendaCodigo, ciudad: d.ecommerce ? d.ciudad : null })
+
+/** "Tienda · CIUDAD" o solo la ciudad en las órdenes viejas. */
+export function etiquetaDestino(o: { tiendaDestinoNombre?: string | null; ciudadEnvio: string | null }): string | null {
+  if (!o.ciudadEnvio) return null
+  return o.tiendaDestinoNombre ? `${o.tiendaDestinoNombre} · ${o.ciudadEnvio}` : o.ciudadEnvio
+}
+
 /** Mismo criterio que el servidor (mueblesCalc.normalizarCodigoOrden). */
 export function normalizarCodigoOrden(value: unknown): string {
   return String(value ?? '').trim().toUpperCase().replace(/\s+/g, '')
@@ -166,6 +183,9 @@ export interface Orden {
   transferidaAt?: string | null
   /** Ciudad a la que va la orden; con esto agrupa el patinador. */
   ciudadEnvio: string | null
+  /** Tienda destino del maestro (desde 25-09); de ella sale ciudadEnvio. */
+  tiendaDestinoCodigo?: string | null
+  tiendaDestinoNombre?: string | null
   entregadaTransporteAt: string | null
   entregadaPor: { id: string; nombre: string } | null
   /** Del primer PLU bajado a la entrega a transporte. Null si no ha salido. */

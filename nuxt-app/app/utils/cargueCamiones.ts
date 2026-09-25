@@ -51,7 +51,14 @@ export interface CamionCargue {
   creadoPor: { id: string; nombre: string } | null
   cerradoPor: { id: string; nombre: string } | null
   operarios: OperarioCargue[]
+  /** Quienes cargan sin estar en la lista (nombre a mano). */
+  otrosOperarios: string[]
   ordenes: OrdenCargue[]
+}
+
+/** Todas las personas del camion: las de la lista y las escritas a mano. */
+export function personasCamion(c: { operarios: OperarioCargue[]; otrosOperarios?: string[] }): string[] {
+  return [...c.operarios.map((o) => o.nombre), ...(c.otrosOperarios ?? [])]
 }
 
 export interface OrdenEncontradaCargue {
@@ -74,6 +81,7 @@ export interface DatosCamion {
   placa: string | null
   observacion: string | null
   operarios: string[]
+  otrosOperarios: string[]
   motivo?: string | null
 }
 

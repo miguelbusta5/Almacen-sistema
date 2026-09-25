@@ -8,7 +8,7 @@ import { Timer, Users, Search, Play, CheckCircle2, X, Pencil, Truck, TriangleAle
 import { useToast } from '~/composables/useToast'
 import { cronometro, fmtMin } from '~/utils/muebles'
 import {
-  API_CARGUE, ORIGEN_CARGUE_LABEL, bultosCamion, codigoCargueValido, fmtHoraCargue, minutosCargue, normalizarCodigoCargueUi,
+  API_CARGUE, ORIGEN_CARGUE_LABEL, bultosCamion, codigoCargueValido, fmtHoraCargue, minutosCargue, normalizarCodigoCargueUi, personasCamion,
   type CamionCargue, type OrdenEncontradaCargue,
 } from '~/utils/cargueCamiones'
 
@@ -150,7 +150,7 @@ const duracion = (o: { horaInicio: string; horaFin: string | null }) => fmtMin(m
         <button class="btn btn-ghost btn-sm" @click="emit('editar')"><Pencil :size="13" /> Editar</button>
       </div>
     </header>
-    <p class="pl-personas"><Users :size="13" /> {{ c.operarios.map((o) => o.nombre).join(', ') || 'Sin personas' }}</p>
+    <p class="pl-personas"><Users :size="13" /> {{ personasCamion(c).join(', ') || 'Sin personas' }}</p>
     <p v-if="c.observacion" class="pl-obs">{{ c.observacion }}</p>
     <p class="pl-resumen">
       Inició {{ fmtHoraCargue(c.horaInicio) }} · <b class="tnum">{{ cargadas.length }}</b> {{ cargadas.length === 1 ? 'orden cargada' : 'órdenes cargadas' }}
