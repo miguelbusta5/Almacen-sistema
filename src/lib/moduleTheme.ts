@@ -62,7 +62,6 @@ export const MODULE_THEME: Record<ModuleThemeKey, ModuleTheme> = {
   "exportaciones-eeuu": mod("exportaciones-eeuu", "Exportaciones EE.UU", "Export US", "Etiquetado operativo de cajas de exportacion a EE.UU"),
   usuarios: mod("usuarios", "Usuarios", "Usuarios", "Cuentas, roles y operacion base"),
   auditoria: mod("auditoria", "Auditoria", "Auditoria", "Historial de acciones del sistema"),
-  "centro-control": mod("centro-control", "Centro de Control", "Control", "Inteligencia operacional y KPIs"),
   integracion: mod("integracion", "Integracion Pedidos", "Integracion", "Picking OVDM/TSDM entre areas"),
   "cargue-gourmet": mod("cargue-gourmet", "Cargue Gourmet", "Cargue Gourmet", "Ubicacion y cargue verificado de pedidos Gourmet"),
   "control-montacargas": mod("control-montacargas", "Control Montacargas", "Montacargas", "Recepcion de contenedor y movimientos de deposito"),

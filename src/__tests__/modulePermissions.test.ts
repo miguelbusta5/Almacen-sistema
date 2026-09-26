@@ -11,7 +11,6 @@ describe("canSeeModule — Sprint 8", () => {
     it("NO ve tienda",      () => expect(canSeeModule("TRANSPORTISTA", "tienda")).toBe(false));
     it("NO ve usuarios",    () => expect(canSeeModule("TRANSPORTISTA", "usuarios")).toBe(false));
     it("NO ve auditoria",   () => expect(canSeeModule("TRANSPORTISTA", "auditoria")).toBe(false));
-    it("NO ve centro-control", () => expect(canSeeModule("TRANSPORTISTA", "centro-control")).toBe(false));
     it("NO ve solicitudes-transporte", () => expect(canSeeModule("TRANSPORTISTA", "solicitudes-transporte")).toBe(false));
     it("no tiene modulos activos", () =>
       expect(getVisibleModules("TRANSPORTISTA")).toEqual([])
@@ -36,7 +35,6 @@ describe("canSeeModule — Sprint 8", () => {
     it("ve auditoria",       () => expect(canSeeModule("ADMIN", "auditoria")).toBe(true));
     // Solo ADMIN: /api/activity exige ese rol y el menu debe decir lo mismo.
     it("GERENTE NO ve auditoria", () => expect(canSeeModule("GERENTE", "auditoria")).toBe(false));
-    it("ve centro-control",  () => expect(canSeeModule("ADMIN", "centro-control")).toBe(true));
     it("ve solicitudes-transporte", () => expect(canSeeModule("ADMIN", "solicitudes-transporte")).toBe(true));
     it("ve exportaciones", () => expect(canSeeModule("ADMIN", "exportaciones")).toBe(true));
   });
@@ -65,7 +63,6 @@ describe("canSeeModule — Sprint 8", () => {
     it("NO ve tienda",        () => expect(canSeeModule("OPERACIONES_MUEBLES", "tienda")).toBe(false));
     it("NO ve usuarios",      () => expect(canSeeModule("OPERACIONES_MUEBLES", "usuarios")).toBe(false));
     it("NO ve auditoria",     () => expect(canSeeModule("OPERACIONES_MUEBLES", "auditoria")).toBe(false));
-    it("NO ve centro-control",() => expect(canSeeModule("OPERACIONES_MUEBLES", "centro-control")).toBe(false));
   });
 
   describe("integracion — OPERACIONES_GOURMET", () => {

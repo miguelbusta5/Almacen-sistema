@@ -9,7 +9,7 @@ import { useSession } from "next-auth/react";
 import {
   Search, Home, Truck,
   Users, ScrollText, Plus, ArrowRight, X,
-  BarChart3, FileText, Store, GitMerge, CheckSquare, Tags,
+  FileText, Store, GitMerge, CheckSquare, Tags,
 } from "lucide-react";
 import { useCommandPalette } from "@/contexts/CommandPaletteContext";
 import { canSeeModule } from "@/lib/modulePermissions";
@@ -96,7 +96,6 @@ export default function CommandPalette() {
       ...(see("exportaciones") ? [{ id: "a-exportaciones", group: "actions" as ResultGroup, icon: <Tags size={14} />, label: "Registrar exportacion", description: "Capturar caja, PLU y unidad de empaque", color: getModuleColor("exportaciones"), action: () => go("/dashboard/exportaciones") }] : []),
       ...(see("tienda")     ? [{ id: "a-despacho", group: "actions" as ResultGroup, icon: <Store size={14} />, label: "Nueva Factura Contado", description: "Registrar factura contado para el flujo CEDI", color: getModuleColor("tienda"), action: () => go("/dashboard/tienda") }] : []),
       ...(see("integracion") ? [{ id: "a-integracion", group: "actions" as ResultGroup, icon: <GitMerge size={14} />, label: "Nueva integración de pedido", description: "Coordinar OVDM/TSDM entre áreas", color: getModuleColor("integracion"), action: () => go("/dashboard/integracion") }] : []),
-      ...(see("centro-control") ? [{ id: "a-control", group: "actions" as ResultGroup, icon: <BarChart3 size={14} />, label: "Abrir centro de control", description: "KPIs y señales operativas", color: getModuleColor("centro-control"), action: () => go("/dashboard/centro-control") }] : []),
       ...(see("usuarios") ? [{ id: "a-usuarios", group: "admin" as ResultGroup, icon: <Users size={14} />, label: "Gestionar usuarios", description: "Roles, vehículos y transportistas", color: getModuleColor("usuarios"), action: () => go("/dashboard/usuarios") }] : []),
     ];
 
@@ -107,7 +106,6 @@ export default function CommandPalette() {
       ...(see("exportaciones") ? [{ id: "n-exportaciones", group: "navigate" as ResultGroup, icon: <Tags size={14} />, label: "Exportaciones", action: () => go("/dashboard/exportaciones") }] : []),
       ...(see("transporte")    ? [{ id: "n-transporte",  group: "navigate" as ResultGroup, icon: <Truck size={14} />,          label: "Guardados Transporte",    action: () => go("/dashboard/transporte") }] : []),
       ...(see("integracion")   ? [{ id: "n-integracion", group: "navigate" as ResultGroup, icon: <GitMerge size={14} />,       label: "Integración Pedidos",     action: () => go("/dashboard/integracion") }] : []),
-      ...(see("centro-control")? [{ id: "n-control",     group: "navigate" as ResultGroup, icon: <BarChart3 size={14} />,      label: "Centro de Control",       action: () => go("/dashboard/centro-control") }] : []),
       ...(see("usuarios")      ? [{ id: "n-usuarios",    group: "navigate" as ResultGroup, icon: <Users size={14} />,          label: "Usuarios",                action: () => go("/dashboard/usuarios") }] : []),
       ...(see("auditoria")     ? [{ id: "n-auditoria",   group: "navigate" as ResultGroup, icon: <ScrollText size={14} />,     label: "Auditoría",               action: () => go("/dashboard/auditoria") }] : []),
     ];

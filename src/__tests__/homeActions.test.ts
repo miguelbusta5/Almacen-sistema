@@ -29,7 +29,6 @@ describe("getHomeActionsByRole", () => {
     it("NO ve nuevo-despacho-tienda", () => expect(hasAction("TRANSPORTE", "nuevo-despacho-tienda")).toBe(false));
     it("NO ve ir-conteo", () => expect(hasAction("TRANSPORTE", "ir-conteo")).toBe(false));
     it("NO ve gestionar-usuarios", () => expect(hasAction("TRANSPORTE", "gestionar-usuarios")).toBe(false));
-    it("NO ve centro-control", () => expect(hasAction("TRANSPORTE", "centro-control")).toBe(false));
     it("navega a /dashboard/transporte para guardado", () => {
       const action = getHomeActionsByRole("TRANSPORTE", 99).find((a) => a.id === "nuevo-guardado");
       expect(action?.href).toBe("/dashboard/transporte");
@@ -40,7 +39,6 @@ describe("getHomeActionsByRole", () => {
   describe("SUPERVISOR_TRANSPORTE", () => {
     it("ve nuevo-guardado", () => expect(hasAction("SUPERVISOR_TRANSPORTE", "nuevo-guardado")).toBe(true));
     it("ve nuevo-despacho-tienda", () => expect(hasAction("SUPERVISOR_TRANSPORTE", "nuevo-despacho-tienda")).toBe(true));
-    it("ve centro-control", () => expect(hasAction("SUPERVISOR_TRANSPORTE", "centro-control")).toBe(true));
     it("NO ve gestionar-usuarios", () => expect(hasAction("SUPERVISOR_TRANSPORTE", "gestionar-usuarios")).toBe(false));
   });
 
@@ -50,7 +48,6 @@ describe("getHomeActionsByRole", () => {
     it("NO ve nuevo-guardado", () => expect(hasAction("TIENDA", "nuevo-guardado")).toBe(false));
     it("NO ve ir-conteo", () => expect(hasAction("TIENDA", "ir-conteo")).toBe(false));
     it("NO ve gestionar-usuarios", () => expect(hasAction("TIENDA", "gestionar-usuarios")).toBe(false));
-    it("NO ve centro-control", () => expect(hasAction("TIENDA", "centro-control")).toBe(false));
     it("navega a /dashboard/tienda para despacho", () => {
       const action = getHomeActionsByRole("TIENDA", 99).find((a) => a.id === "nuevo-despacho-tienda");
       expect(action?.href).toBe("/dashboard/tienda");
@@ -60,7 +57,6 @@ describe("getHomeActionsByRole", () => {
   // ── SUPERVISOR_TIENDA ────────────────────────────────
   describe("SUPERVISOR_TIENDA", () => {
     it("ve nuevo-despacho-tienda", () => expect(hasAction("SUPERVISOR_TIENDA", "nuevo-despacho-tienda")).toBe(true));
-    it("ve centro-control", () => expect(hasAction("SUPERVISOR_TIENDA", "centro-control")).toBe(true));
     it("NO ve gestionar-usuarios", () => expect(hasAction("SUPERVISOR_TIENDA", "gestionar-usuarios")).toBe(false));
   });
 
@@ -70,7 +66,6 @@ describe("getHomeActionsByRole", () => {
     it("NO ve nuevo-guardado", () => expect(hasAction("TRANSPORTISTA", "nuevo-guardado")).toBe(false));
     it("NO ve nuevo-despacho-tienda", () => expect(hasAction("TRANSPORTISTA", "nuevo-despacho-tienda")).toBe(false));
     it("NO ve gestionar-usuarios", () => expect(hasAction("TRANSPORTISTA", "gestionar-usuarios")).toBe(false));
-    it("NO ve centro-control", () => expect(hasAction("TRANSPORTISTA", "centro-control")).toBe(false));
     it("NO ve indicadores-cedi", () => expect(hasAction("TRANSPORTISTA", "indicadores-cedi")).toBe(false));
   });
 
@@ -88,7 +83,6 @@ describe("getHomeActionsByRole", () => {
   describe("OPERADOR", () => {
     it("ve nuevo-guardado", () => expect(hasAction("OPERADOR", "nuevo-guardado")).toBe(true));
     it("NO ve gestionar-usuarios", () => expect(hasAction("OPERADOR", "gestionar-usuarios")).toBe(false));
-    it("NO ve centro-control", () => expect(hasAction("OPERADOR", "centro-control")).toBe(false));
     it("ve nuevo-guardado entre las acciones prioritarias", () => {
       const result = ids("OPERADOR", 4);
       expect(result).toContain("nuevo-guardado");
@@ -98,7 +92,6 @@ describe("getHomeActionsByRole", () => {
   // ── GERENTE ──────────────────────────────────────────
   describe("GERENTE", () => {
     it("ve nuevo-guardado", () => expect(hasAction("GERENTE", "nuevo-guardado")).toBe(true));
-    it("ve centro-control", () => expect(hasAction("GERENTE", "centro-control")).toBe(true));
     it("NO ve ver-auditoria", () => expect(hasAction("GERENTE", "ver-auditoria")).toBe(false));
     it("NO ve gestionar-usuarios", () => expect(hasAction("GERENTE", "gestionar-usuarios")).toBe(false));
   });
@@ -106,7 +99,6 @@ describe("getHomeActionsByRole", () => {
   // ── ADMIN ────────────────────────────────────────────
   describe("ADMIN", () => {
     it("ve gestionar-usuarios", () => expect(hasAction("ADMIN", "gestionar-usuarios")).toBe(true));
-    it("ve centro-control", () => expect(hasAction("ADMIN", "centro-control")).toBe(true));
     it("ve ver-auditoria", () => expect(hasAction("ADMIN", "ver-auditoria")).toBe(true));
     it("ve nuevo-guardado", () => expect(hasAction("ADMIN", "nuevo-guardado")).toBe(true));
     it("navega a /dashboard/usuarios para gestión de usuarios", () => {

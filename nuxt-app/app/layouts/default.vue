@@ -2,7 +2,7 @@
 import { computed, nextTick, onMounted, ref, watch } from 'vue'
 import {
   Store, GitMerge, ScanLine, Forklift, PackageOpen, Tags, Globe, FileText, Truck,
-  BarChart3, Users, ScrollText, Search, Bell, CheckCircle2, TriangleAlert, Container,
+  Users, ScrollText, Search, Bell, CheckCircle2, TriangleAlert, Container,
   Menu, X, LogOut, KeyRound, CornerDownLeft, Inbox, ClipboardList, PackageSearch, BellRing,
   ChartColumnIncreasing, Hammer, ClipboardCheck, SlidersHorizontal,
   Warehouse, UtensilsCrossed, Sofa, LayoutDashboard, ChevronDown,
@@ -120,7 +120,6 @@ const NAV_GROUPS: NavGroup[] = [
     icon: LayoutDashboard,
     items: [
       { icon: ChartColumnIncreasing, label: 'Indicadores', href: '/dashboard/indicadores', key: 'indicadores', moduleKey: 'indicadores' },
-      { icon: BarChart3, label: 'Centro de Control', href: '/dashboard/centro-control', key: null, moduleKey: 'centro-control' },
       { icon: Users, label: 'Usuarios', href: '/dashboard/usuarios', key: 'usuarios', moduleKey: 'usuarios' },
       { icon: ScrollText, label: 'Auditoría', href: '/dashboard/auditoria', key: 'auditoria', moduleKey: 'auditoria' },
     ],

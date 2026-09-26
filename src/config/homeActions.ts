@@ -101,20 +101,6 @@ export const HOME_ACTIONS: HomeAction[] = [
     priority: 1,
   },
   // ── Supervisión ─────────────────────────────────────────
-  {
-    id: "centro-control",
-    title: "Centro de control",
-    description: "Inteligencia operacional y KPIs de área",
-    href: "/dashboard/centro-control",
-    icon: "BarChart2",
-    color: getModuleColor("centro-control"),
-    moduleKey: "centro-control",
-    roles: [
-      "ADMIN", "GERENTE",
-      "SUPERVISOR_INVENTARIO", "SUPERVISOR_TRANSPORTE", "SUPERVISOR_TIENDA",
-    ],
-    priority: 1,
-  },
   // ── Administración ──────────────────────────────────────
   {
     id: "gestionar-usuarios",

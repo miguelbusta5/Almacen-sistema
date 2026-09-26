@@ -4,7 +4,6 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import {
-  BarChart3,
   ChartColumnIncreasing,
   ClipboardCheck,
   FileText,
@@ -73,7 +72,6 @@ const ALL_ITEMS: NavItem[] = [
   { href: "/dashboard/indicadores", label: "Indicadores", icon: <ChartColumnIncreasing size={16} strokeWidth={2.1} />, moduleKey: "indicadores" },
   // Quien no ve Indicadores (supervision de transporte) entra directo a su area.
   { href: "/dashboard/indicadores?area=transporte", label: "Indicadores Transporte", icon: <ChartColumnIncreasing size={16} strokeWidth={2.1} />, moduleKey: "indicadores-transporte" },
-  { href: "/dashboard/centro-control", label: "Centro de Control", icon: <BarChart3 size={16} strokeWidth={2.1} />, moduleKey: "centro-control" },
   { href: "/dashboard/usuarios", label: "Usuarios", icon: <Users size={16} strokeWidth={2.1} />, moduleKey: "usuarios" },
   { href: "/dashboard/auditoria", label: "Auditoria", icon: <ScrollText size={16} strokeWidth={2.1} />, moduleKey: "auditoria" },
 ];
@@ -103,7 +101,7 @@ const GROUPS = [
     "/dashboard/solicitudes-transporte",
     "/dashboard/transporte",
   ],
-  ["/dashboard/indicadores", "/dashboard/centro-control"],
+  ["/dashboard/indicadores"],
   // Configuracion del area, junto a Usuarios y Auditoria.
   ["/dashboard/admin-muebles", "/dashboard/usuarios", "/dashboard/auditoria"],
 ];

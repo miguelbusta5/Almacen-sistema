@@ -17,7 +17,6 @@ export type ModuleKey =
   | "exportaciones-eeuu"
   | "usuarios"
   | "auditoria"
-  | "centro-control"
   | "integracion"
   | "cargue-gourmet"
   | "control-montacargas"
@@ -64,14 +63,6 @@ export const MODULE_ACCESS: Record<ModuleKey, AppRole[]> = {
   // Solo ADMIN: /api/activity exige requireRole(["ADMIN"]), asi que un GERENTE
   // veia el modulo en el menu y recibia 403 al entrar.
   auditoria: ["ADMIN"],
-  "centro-control": [
-    "GERENTE",
-    "ADMIN",
-    "SUPERVISOR_INVENTARIO",
-    "SUPERVISOR_TRANSPORTE",
-    "SUPERVISOR_TIENDA",
-    "SUPERVISOR_ALMACENAMIENTO",
-  ],
   integracion: [
     "OPERACIONES_MUEBLES",
     "OPERACIONES_GOURMET",
@@ -169,9 +160,9 @@ export const ROLE_DESCRIPTION: Record<AppRole, string> = {
   INVENTARIO: "Solo ve el modulo de inventario.",
   TRANSPORTE: "Solo ve guardados y pendientes asignados.",
   SUPERVISOR_INVENTARIO: "Inventario + analisis operacional.",
-  SUPERVISOR_TRANSPORTE: "Facturas Contado + guardados + centro de control.",
+  SUPERVISOR_TRANSPORTE: "Facturas Contado + guardados + indicadores de transporte.",
   TIENDA: "Solo ve y gestiona Facturas Contado.",
-  SUPERVISOR_TIENDA: "Tienda + analisis + Centro de Control.",
+  SUPERVISOR_TIENDA: "Tienda + analisis.",
   OPERACIONES_MUEBLES: "Solo ve y gestiona el modulo Integracion de Pedidos.",
   OPERACIONES_GOURMET: "Solo ve y gestiona el modulo Integracion de Pedidos.",
   ETIQUETADO: "Solo ve y captura etiquetas de Exportaciones.",

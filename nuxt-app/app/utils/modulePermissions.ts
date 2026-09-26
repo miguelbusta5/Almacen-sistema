@@ -14,7 +14,6 @@ export type ModuleKey =
   | 'exportaciones-eeuu'
   | 'usuarios'
   | 'auditoria'
-  | 'centro-control'
   | 'integracion'
   | 'cargue-gourmet'
   | 'control-montacargas'
@@ -52,10 +51,6 @@ export const MODULE_ACCESS: Record<ModuleKey, string[]> = {
   // Solo ADMIN: /api/activity exige ese rol; antes el menu lo prometia a GERENTE
   // y el servidor le devolvia 403.
   auditoria: ['ADMIN'],
-  'centro-control': [
-    'GERENTE', 'ADMIN', 'SUPERVISOR_INVENTARIO', 'SUPERVISOR_TRANSPORTE',
-    'SUPERVISOR_TIENDA', 'SUPERVISOR_ALMACENAMIENTO',
-  ],
   integracion: [
     'OPERACIONES_MUEBLES', 'OPERACIONES_GOURMET', 'ADMIN', 'GERENTE',
     'SUPERVISOR_TRANSPORTE', 'TRANSPORTE',

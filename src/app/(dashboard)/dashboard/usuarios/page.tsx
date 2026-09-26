@@ -52,7 +52,7 @@ interface TransportistaOperativo {
 
 const ROLE_META: Record<Role, { label: string; color: string; icon: React.ReactNode }> = {
   ADMIN:                  { label: "Administrador",      color: getModuleColor("usuarios"), icon: <ShieldCheck size={13} /> },
-  GERENTE:                { label: "Gerente",            color: getModuleColor("centro-control"), icon: <Shield size={13} /> },
+  GERENTE:                { label: "Gerente",            color: getModuleColor("indicadores"), icon: <Shield size={13} /> },
   SUPERVISOR_INVENTARIO:  { label: "Sup. Inventario",    color: getModuleColor("inventario"), icon: <Shield size={13} /> },
   SUPERVISOR_TRANSPORTE:  { label: "Sup. Transporte",    color: getModuleColor("transporte"), icon: <Shield size={13} /> },
   INVENTARIO:             { label: "Op. Inventario",     color: "#64748b", icon: <ShieldAlert size={13} /> },
