@@ -1,10 +1,17 @@
 import { describe, expect, it } from 'vitest'
+import { readFileSync } from 'node:fs'
+import path from 'node:path'
 import { canSeeModule } from '@/lib/modulePermissions'
-import { minutosTarea, minutosUnicos, necesitaCaso } from '../../nuxt-app/server/utils/garantiasCalc'
+import { minutosTarea, minutosUnicos, necesitaCaso } from '@/lib/garantiasCalc'
 
 const t = (hora: string) => new Date(`2026-09-26T${hora}:00-05:00`)
 
 describe('Garantías', () => {
+  it('mantiene la misma lógica en Next y Nitro', () => {
+    const leer = (p: string) => readFileSync(path.join(process.cwd(), p), 'utf8').replace(/\r\n/g, '\n')
+    expect(leer('nuxt-app/server/utils/garantiasCalc.ts')).toBe(leer('src/lib/garantiasCalc.ts'))
+  })
+
   it('restringe el módulo al operario y a gerencia', () => {
     expect(canSeeModule('GARANTIAS', 'garantias')).toBe(true)
     expect(canSeeModule('ADMIN', 'garantias')).toBe(true)
