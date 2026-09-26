@@ -107,7 +107,7 @@ describe("sin nadie delante no se consulta", () => {
     expect(comp).toContain("if (estabaInactivo) avisarDatosCambiaron()");
   });
   it("avisos, pausa y version tambien respetan la inactividad y van mas espaciados", () => {
-    expect(leer("nuxt-app/app/layouts/default.vue")).toContain("hayActividadReciente()) void cargarAvisos() }, 60_000)");
+    expect(leer("nuxt-app/app/layouts/default.vue")).toContain("hayActividadReciente()) { void cargarAvisos(); void cargarAbiertos() } }, 60_000)");
     expect(leer("nuxt-app/app/components/PausaOperativa.vue")).toContain("hayActividadReciente() && !ocupada.value) void actualizar() }, 60_000)");
     expect(leer("nuxt-app/app/plugins/version.client.ts")).toContain("REVISAR_CADA_MS = 10 * 60_000");
   });

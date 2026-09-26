@@ -5,7 +5,7 @@ import {
   Users, ScrollText, Search, Bell, CheckCircle2, TriangleAlert, Container,
   Menu, X, LogOut, KeyRound, CornerDownLeft, Inbox, ClipboardList, PackageSearch, BellRing,
   ChartColumnIncreasing, Hammer, ClipboardCheck, SlidersHorizontal,
-  Warehouse, UtensilsCrossed, Sofa, LayoutDashboard, ChevronDown,
+  Warehouse, UtensilsCrossed, Sofa, LayoutDashboard, ChevronDown, Hourglass,
 } from '@lucide/vue'
 import { ensureSession, useSessionState } from '~/composables/useSession'
 import { useToastState } from '~/composables/useToast'
@@ -218,8 +218,32 @@ interface Aviso {
 const avisos = ref<Aviso[]>([])
 const sinLeer = computed(() => avisos.value.filter((a) => !a.leida).length)
 
+// Lo que lleva abierto mas de su limite (contenedor, PLU, orden, camion): se
+// calcula en vivo en el servidor y desaparece en cuanto se cierra.
+interface Abierto {
+  tipo: string; id: string; etiqueta: string; titulo: string; detalle: string | null
+  minutos: number; limite: number; enlace: string
+}
+const abiertos = ref<Abierto[]>([])
+async function cargarAbiertos() {
+  if (!me.value) { abiertos.value = []; return }
+  try {
+    const res = await $fetch<{ data: Abierto[] }>('/api/alertas/abiertas')
+    abiertos.value = res.data
+  } catch {
+    // Una alerta que no carga no puede tumbar la barra superior.
+    abiertos.value = []
+  }
+}
+function hace(min: number): string {
+  if (min < 60) return `${min} min`
+  const h = Math.floor(min / 60)
+  const m = min % 60
+  return m ? `${h} h ${String(m).padStart(2, '0')} min` : `${h} h`
+}
+
 const totalPendiente = computed(
-  () => pendientes.value.reduce((n, p) => n + p.total, 0) + sinLeer.value,
+  () => pendientes.value.reduce((n, p) => n + p.total, 0) + sinLeer.value + abiertos.value.length,
 )
 
 async function cargarPendientes() {
@@ -275,13 +299,14 @@ async function marcarVistos() {
 watch(() => me.value?.id, () => {
   void cargarPendientes()
   void cargarAvisos()
+  void cargarAbiertos()
 }, { immediate: true })
 
 // Los avisos llegan solos: sin esto habria que recargar para enterarse.
 let latido: ReturnType<typeof setInterval> | null = null
 // Cada 60 s y solo con alguien usando la pantalla: un aviso nuevo dispara el
 // refresco inmediato de la pantalla.
-onMounted(() => { latido = setInterval(() => { if (document.visibilityState === 'visible' && hayActividadReciente()) void cargarAvisos() }, 60_000) })
+onMounted(() => { latido = setInterval(() => { if (document.visibilityState === 'visible' && hayActividadReciente()) { void cargarAvisos(); void cargarAbiertos() } }, 60_000) })
 onBeforeUnmount(() => { if (latido) clearInterval(latido) })
 
 // ── Sesion ──────────────────────────────────────────────────────────
@@ -444,6 +469,20 @@ async function cerrarSesion() {
               <span v-if="totalPendiente > 0" class="dot" />
             </button>
             <div v-if="panel === 'avisos'" class="pop pop-avisos">
+              <template v-if="abiertos.length">
+                <div class="pop-head">Abierto hace mucho</div>
+                <ul class="pop-list">
+                  <li v-for="a in abiertos.slice(0, 10)" :key="a.tipo + a.id">
+                    <button class="pop-row aviso abierto" @click="irA({ href: a.enlace })">
+                      <Hourglass :size="15" />
+                      <span class="aviso-txt">
+                        <b>{{ a.titulo }} · {{ hace(a.minutos) }}</b>
+                        <em>{{ a.etiqueta }}<template v-if="a.detalle"> · {{ a.detalle }}</template> · límite {{ hace(a.limite) }}</em>
+                      </span>
+                    </button>
+                  </li>
+                </ul>
+              </template>
               <template v-if="avisos.length">
                 <div class="pop-head">Avisos</div>
                 <ul class="pop-list">
@@ -515,6 +554,16 @@ async function cerrarSesion() {
           <BellRing :size="16" />
           <span>
             Tienes <b>{{ sinLeer }}</b> aviso{{ sinLeer !== 1 ? 's' : '' }} sin leer
+          </span>
+          <span class="alerta-cta">Ver</span>
+        </button>
+
+        <!-- Algo lleva abierto mas de su limite: se queda hasta que se cierre. -->
+        <button v-if="abiertos.length" class="alerta alerta-abierto" @click="abrir('avisos')">
+          <Hourglass :size="16" />
+          <span>
+            <b>{{ abiertos.length }}</b> registro{{ abiertos.length !== 1 ? 's' : '' }} abierto{{ abiertos.length !== 1 ? 's' : '' }} hace mucho
+            · el más antiguo: {{ abiertos[0]!.titulo }} ({{ hace(abiertos[0]!.minutos) }})
           </span>
           <span class="alerta-cta">Ver</span>
         </button>
@@ -669,7 +718,7 @@ async function cerrarSesion() {
 }
 @keyframes popIn { from { opacity: 0; transform: translateY(-6px) } to { opacity: 1; transform: none } }
 .pop-buscar { width: 290px; }
-.pop-avisos { width: 268px; }
+.pop-avisos { width: 320px; }
 .pop-user { width: 244px; }
 
 .pop-input {
@@ -737,4 +786,10 @@ async function cerrarSesion() {
 .alerta b { font-weight: 700; }
 .alerta :deep(svg) { color: var(--brand); flex-shrink: 0; }
 .alerta-cta { flex: 0 0 auto !important; font-weight: 700; color: var(--brand); }
+/* Abierto hace mucho: color de aviso (no de marca), para no confundirlo con un aviso normal. */
+.alerta-abierto { border-color: color-mix(in srgb, var(--u-aviso) 45%, var(--border)); background: color-mix(in srgb, var(--u-aviso) 10%, var(--surface)); }
+.alerta-abierto:hover { border-color: var(--u-aviso); }
+.alerta-abierto :deep(svg), .alerta-abierto .alerta-cta { color: var(--u-aviso); }
+.pop-row.aviso.abierto { box-shadow: inset 2px 0 0 var(--u-aviso); }
+.pop-row.aviso.abierto > :deep(svg) { color: var(--u-aviso); }
 </style>
