@@ -186,3 +186,14 @@ textarea.field { height: auto; padding: 10px 12px; resize: vertical; line-height
 @keyframes shimmer { 100% { transform: translateX(100%); } }
 .fade-in { animation: auroraFade .3s cubic-bezier(.16,1,.3,1) both; }
 .scale-in { animation: auroraScale .2s cubic-bezier(.16,1,.3,1) both; }
+
+/* Menos movimiento para quien lo pide en su sistema (accesibilidad): las
+   animaciones y transiciones se vuelven instantaneas en toda la app. */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: .01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: .01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

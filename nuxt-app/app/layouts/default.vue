@@ -688,6 +688,13 @@ async function cerrarSesion() {
 /* Cajón móvil */
 .nav-overlay { position: fixed; inset: 0; z-index: 400; background: rgba(10, 15, 28, .5); backdrop-filter: blur(4px); }
 
+/* Pantallas medianas (1081-1320 px): sin nombre de marca ni iconos de area,
+   para que las seis areas y las herramientas quepan en una linea. */
+@media (min-width: 1081px) and (max-width: 1320px) {
+  .brand-top .brand-name, .area-btn > :deep(svg:first-child) { display: none; }
+  .area-btn { padding: 0 9px; }
+  .areas { gap: 0; }
+}
 /* Escritorio: la barra lateral no existe; solo vive como cajon en el celular. */
 @media (min-width: 1081px) { .sidebar, .nav-overlay { display: none; } }
 @media (max-width: 1080px) {

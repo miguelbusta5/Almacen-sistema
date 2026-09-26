@@ -67,6 +67,8 @@ Vehículos y transportistas operativos se gestionan desde **Usuarios** (solo ADM
 Se valida en servidor (`requireCan`) **y** en UI (ocultar botones). No confiar nunca solo en el cliente.
 
 ## Identidad visual
+> **Módulos Nuxt: claro por defecto, oscuro opcional** (decisión 2026-09-25, ver SOT §8). Lo de abajo aplica a Next.js.
+
 Marca **Grupo Ambiente**. Identidad **Dark Elegant (Obsidiana + Esmeralda)** — **oscuro por defecto** con un
 **modo claro opt-in** (toggle por dispositivo, `localStorage`; ver `docs/cerebro/decisiones.md` 2026-06-26).
 Base casi negra (o blanca en claro) y un **único acento esmeralda** (`#14DBA0`) para acción/foco/estado activo.

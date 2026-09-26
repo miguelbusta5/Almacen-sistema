@@ -145,6 +145,10 @@ verdad en base de datos; acceso desde móvil y escritorio.
 
 ## 8. Reglas de diseño — Dark Elegant (Obsidiana + Esmeralda)
 
+- **Módulos (Nuxt): CLARO por defecto, oscuro opcional (decisión del usuario, 2026-09-25).** Las pantallas de piso y
+  las Zebra se leen mejor en claro con la luz de bodega. `nuxt-app/app/assets/tokens.css` define el claro en `:root`;
+  el oscuro, cuando se haga, será opt-in por dispositivo. Lo de «oscuro por defecto» de abajo aplica solo a lo que
+  queda en Next.js (login y páginas heredadas).
 - **Oscuro por defecto + modo claro opt-in (2026-06-26).** `:root` = oscuro; `html[data-theme="light"]` = claro
   (override de tokens). Toggle por dispositivo (`localStorage` + script anti-parpadeo en `layout.tsx`), expuesto en
   el Header vía `THEME_TOGGLE_ENABLED`. Marca esmeralda en ambos. **Todo color desde tokens** (`var(--…)`), nunca
