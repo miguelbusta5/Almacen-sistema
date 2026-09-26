@@ -124,22 +124,34 @@ describe("recepcion — el modulo esta registrado en todas partes", () => {
   });
 });
 
-// Once modulos seguidos sin ningun corte son una pared: hay que leerlos todos
-// para encontrar uno.
-describe("menu lateral — bloques con nombre", () => {
+// Menu por AREAS en una barra arriba (25-09): libera el ancho de la barra
+// lateral para el contenido; en el celular las areas son secciones del cajon.
+describe("menu — barra superior por areas", () => {
   const layout = leer("nuxt-app/app/layouts/default.vue");
 
-  it("los grupos tienen titulo", () => {
-    expect(layout).toContain("interface NavGroup { titulo: string | null; items: NavItem[] }");
-    expect(layout).toContain("Centro de distribución");
-    expect(layout).toContain("Pedidos y exportación");
-    expect(layout).toContain('v-if="group.titulo" class="nav-titulo nav-toggle"');
+  it("las seis areas y donde va cada modulo", () => {
+    expect(layout).toContain("interface NavGroup { titulo: string; icon: unknown; items: NavItem[] }");
+    for (const a of ["'Almacenamiento'", "'Inventarios'", "'Gourmet'", "'Muebles'", "'Transporte'", "'Gestión'"]) expect(layout).toContain(`titulo: ${a}`);
+    const area = (t: string) => layout.slice(layout.indexOf(`titulo: '${t}'`), layout.indexOf("],", layout.indexOf(`titulo: '${t}'`)));
+    expect(area("Almacenamiento")).toContain("/dashboard/exportaciones-eeuu");
+    expect(area("Transporte")).toContain("/dashboard/tienda");
+    expect(area("Gourmet")).toContain("INTEGRACION");
+    expect(area("Muebles")).toContain("INTEGRACION");
+  });
+
+  it("desplegable por area; con un solo modulo entra directo", () => {
+    expect(layout).toContain('v-if="g.items.length === 1"');
+    expect(layout).toContain("abrir(`area:${g.titulo}`)");
     expect(layout).toContain(':aria-expanded=');
   });
 
-  // Un grupo cuyos items no pueda ver el rol no debe pintar ni su titulo.
-  it("un grupo sin items visibles no se pinta", () => {
+  // Un area cuyos items no pueda ver el rol no aparece.
+  it("un area sin items visibles no se pinta", () => {
     expect(layout).toContain("filter((g) => g.items.length > 0)");
+  });
+
+  it("la barra lateral solo existe como cajon en pantallas chicas", () => {
+    expect(layout).toContain("@media (min-width: 1081px) { .sidebar, .nav-overlay { display: none; } }");
   });
 });
 

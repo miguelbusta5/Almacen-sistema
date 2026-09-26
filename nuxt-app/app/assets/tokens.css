@@ -90,7 +90,7 @@
 
   /* ── Layout ── */
   --sidebar-w: 236px;
-  --page-max:  1320px;
+  --page-max:  1560px;
 }
 
 * { box-sizing: border-box; }

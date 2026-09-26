@@ -90,7 +90,7 @@ describe("el administrador entra a inventarios y stretch", () => {
 
   it("el menu sigue pidiendo el permiso, que ahora el admin tiene", () => {
     const layout = leer("nuxt-app/app/layouts/default.vue");
-    expect(layout).toContain("me.value?.can.gestionarInventarios || me.value?.can.contarInventarios");
-    expect(layout).toContain("me.value?.can.stretch?.gestionar || me.value?.can.stretch?.solicitar");
+    expect(layout).toContain("!!me.value?.can.gestionarInventarios || !!me.value?.can.contarInventarios");
+    expect(layout).toContain("!!me.value?.can.stretch?.gestionar || !!me.value?.can.stretch?.solicitar");
   });
 });
