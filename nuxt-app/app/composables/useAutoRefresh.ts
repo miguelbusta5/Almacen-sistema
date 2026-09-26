@@ -95,6 +95,8 @@ export function useAutoRefresh(opts: {
   const pause = opts.pause ?? false
   const refreshing = ref(false)
   const lastUpdatedAt = ref<Date | null>(null)
+  // La misma hora para la barra superior ("Actualizado hace 20 s").
+  const ultimaActualizacion = useUltimaActualizacion()
   let ultimo = Date.now()
 
   const refreshNow = async (forzar = false) => {
@@ -110,6 +112,7 @@ export function useAutoRefresh(opts: {
     try {
       await opts.onRefresh()
       lastUpdatedAt.value = new Date()
+      ultimaActualizacion.value = Date.now()
     } catch {
       // Un refresco automatico que falla no molesta: el siguiente lo reintenta.
     } finally {
@@ -138,6 +141,20 @@ export function useAutoRefresh(opts: {
   })
 
   return { refreshing, lastUpdatedAt, refreshNow }
+}
+
+/** Cuando se trajeron datos por ultima vez (ms), compartido con la barra superior. */
+export function useUltimaActualizacion() {
+  return useState<number | null>('ultimaActualizacion', () => null)
+}
+
+/** "hace 20 s", "hace 3 min", "hace 1 h". */
+export function haceCuanto(ms: number): string {
+  const s = Math.max(0, Math.round(ms / 1000))
+  if (s < 60) return `hace ${s} s`
+  const m = Math.floor(s / 60)
+  if (m < 60) return `hace ${m} min`
+  return `hace ${Math.floor(m / 60)} h`
 }
 
 export function formatLastUpdated(date: Date | null) {

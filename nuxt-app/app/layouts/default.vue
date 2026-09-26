@@ -5,13 +5,13 @@ import {
   Users, ScrollText, Search, Bell, CheckCircle2, TriangleAlert, Container,
   Menu, X, LogOut, KeyRound, CornerDownLeft, Inbox, ClipboardList, PackageSearch, BellRing,
   ChartColumnIncreasing, Hammer, ClipboardCheck, SlidersHorizontal,
-  Warehouse, UtensilsCrossed, Sofa, LayoutDashboard, ChevronDown, Hourglass,
+  Warehouse, UtensilsCrossed, Sofa, LayoutDashboard, ChevronDown, Hourglass, WifiOff, RefreshCw,
 } from '@lucide/vue'
 import { ensureSession, useSessionState } from '~/composables/useSession'
 import { useToastState } from '~/composables/useToast'
 import { canSeeModule, type ModuleKey } from '~/utils/modulePermissions'
 import { puedeUsarMontacargas } from '~/utils/montacargas'
-import { avisarDatosCambiaron, hayActividadReciente } from '~/composables/useAutoRefresh'
+import { avisarDatosCambiaron, haceCuanto, hayActividadReciente, useUltimaActualizacion } from '~/composables/useAutoRefresh'
 import { useVersionNueva } from '~/composables/useVersionNueva'
 
 const route = useRoute()
@@ -309,6 +309,30 @@ let latido: ReturnType<typeof setInterval> | null = null
 onMounted(() => { latido = setInterval(() => { if (document.visibilityState === 'visible' && hayActividadReciente()) { void cargarAvisos(); void cargarAbiertos() } }, 60_000) })
 onBeforeUnmount(() => { if (latido) clearInterval(latido) })
 
+// ── Estado de los datos ─────────────────────────────────────────────
+// "Actualizado hace 20 s" y aviso si se cae la conexion. No interrumpe nada:
+// lo que la persona esta capturando sigue en pantalla y el refresco reintenta solo.
+const ultimaActualizacion = useUltimaActualizacion()
+const enLinea = ref(true)
+const reloj = ref(Date.now())
+let tic: ReturnType<typeof setInterval> | null = null
+const alConectar = () => { enLinea.value = true }
+const alDesconectar = () => { enLinea.value = false }
+onMounted(() => {
+  enLinea.value = navigator.onLine
+  // Sin refresco todavia: cuenta desde que se abrio la pantalla.
+  if (ultimaActualizacion.value == null) ultimaActualizacion.value = Date.now()
+  window.addEventListener('online', alConectar)
+  window.addEventListener('offline', alDesconectar)
+  tic = setInterval(() => { reloj.value = Date.now() }, 10_000)
+})
+onBeforeUnmount(() => {
+  window.removeEventListener('online', alConectar)
+  window.removeEventListener('offline', alDesconectar)
+  if (tic) clearInterval(tic)
+})
+const textoActualizado = computed(() => ultimaActualizacion.value == null ? '' : `Actualizado ${haceCuanto(reloj.value - ultimaActualizacion.value)}`)
+
 // ── Sesion ──────────────────────────────────────────────────────────
 const cerrando = ref(false)
 /**
@@ -431,6 +455,8 @@ async function cerrarSesion() {
         </nav>
 
         <div class="top-right">
+          <span v-if="!enLinea" class="estado-datos off" role="status"><WifiOff :size="14" /> Sin conexión</span>
+          <span v-else-if="textoActualizado" class="estado-datos" :title="textoActualizado"><RefreshCw :size="13" /> {{ textoActualizado }}</span>
 
           <div class="top-item">
             <button
@@ -567,6 +593,12 @@ async function cerrarSesion() {
           </span>
           <span class="alerta-cta">Ver</span>
         </button>
+
+        <!-- Sin conexion: se avisa, pero no se bloquea ni se borra lo capturado. -->
+        <div v-if="!enLinea" class="alerta alerta-offline" role="alert">
+          <WifiOff :size="16" />
+          <span>Sin conexión a internet. Lo que guardes ahora puede fallar; la pantalla se pone al día sola cuando vuelva.</span>
+        </div>
 
         <PausaOperativa v-if="muestraPausa" />
         <div :inert="muestraPausa && (!!pausaOperativa || !pausaCargada)">
@@ -793,6 +825,12 @@ async function cerrarSesion() {
 .alerta b { font-weight: 700; }
 .alerta :deep(svg) { color: var(--brand); flex-shrink: 0; }
 .alerta-cta { flex: 0 0 auto !important; font-weight: 700; color: var(--brand); }
+/* Estado de los datos en la barra superior. */
+.estado-datos { display: inline-flex; align-items: center; gap: 5px; font-size: 11.5px; color: var(--faint); white-space: nowrap; }
+.estado-datos.off { color: var(--u-critico); font-weight: 700; }
+@media (max-width: 640px) { .estado-datos:not(.off) { display: none; } }
+.alerta-offline { cursor: default; border-color: color-mix(in srgb, var(--u-critico) 45%, var(--border)); background: color-mix(in srgb, var(--u-critico) 8%, var(--surface)); }
+.alerta-offline :deep(svg) { color: var(--u-critico); }
 /* Abierto hace mucho: color de aviso (no de marca), para no confundirlo con un aviso normal. */
 .alerta-abierto { border-color: color-mix(in srgb, var(--u-aviso) 45%, var(--border)); background: color-mix(in srgb, var(--u-aviso) 10%, var(--surface)); }
 .alerta-abierto:hover { border-color: var(--u-aviso); }
