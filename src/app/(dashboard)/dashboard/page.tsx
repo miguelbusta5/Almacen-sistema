@@ -33,6 +33,7 @@ const MODULE_HREF: Record<ModuleKey, string> = {
   "admin-muebles": "/dashboard/admin-muebles",
   "cargue-camiones": "/dashboard/cargue-camiones",
   "indicadores-transporte": "/dashboard/indicadores?area=transporte",
+  garantias: "/dashboard/garantias",
 };
 
 // Mismo orden visual que el Sidebar: el primer módulo visible del rol es el
@@ -55,6 +56,7 @@ const PRIORITY_ORDER: ModuleKey[] = [
   "inspeccion-muebles",
   "entrega-muebles",
   "tareas-generales",
+  "garantias",
   "solicitudes-transporte",
   "indicadores",
   "indicadores-muebles",

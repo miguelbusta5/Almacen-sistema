@@ -9,7 +9,7 @@ const MAX_SIZE = 5 * 1024 * 1024
 const RE_DIA = /^\d{4}-\d{2}-\d{2}$/
 // A quien se le mide el turno. Los supervisores salen en el cuadro, pero no se
 // les cronometra: no bajan mercancia.
-const MEDIDOS = ['MONTACARGAS', 'OPERARIO_ALMACENAMIENTO'] as const
+const MEDIDOS = ['MONTACARGAS', 'OPERARIO_ALMACENAMIENTO', 'GARANTIAS'] as const
 
 /**
  * POST /api/turnos - sube el cuadro de turnos en Excel.
@@ -84,7 +84,7 @@ export default defineEventHandler(async (event) => {
   if (datos.length === 0) {
     throw createError({
       statusCode: 400,
-      statusMessage: 'Ninguna persona del cuadro es montacarguista u operario de almacenamiento',
+      statusMessage: 'Ninguna persona del cuadro tiene un rol medido',
     })
   }
 

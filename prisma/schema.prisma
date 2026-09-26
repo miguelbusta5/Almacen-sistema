@@ -383,6 +383,8 @@ model User {
   lineasMueblesPickeadas             LineaMuebles[]                 @relation("LineasMueblesOperario")
   participacionesMuebles             ParticipanteOrdenMuebles[]     @relation("ParticipacionesMuebles")
   tiposMuebleActualizados            TipoMueblePlu[]                @relation("TiposMuebleActualizados")
+  tareasGarantias                     TareaGarantia[]               @relation("GarantiasOperario")
+  correccionesGarantias               TareaGarantia[]               @relation("GarantiasCorrector")
 
   @@index([email])
   @@map("users")
@@ -408,6 +410,43 @@ enum Role {
   PICKING_MUEBLES // Operario de picking de muebles — solo su módulo de picking
   PATINADOR_MUEBLES // Entrega a transporte las ordenes ya inspeccionadas
   INSPECCION_MUEBLES // Login compartido del área de inspección de muebles
+  GARANTIAS // Operario individual del area de garantias
+}
+
+model TareaGarantia {
+  id             String   @id @default(cuid())
+  usuarioId      String   @map("usuario_id")
+  usuario        User     @relation("GarantiasOperario", fields: [usuarioId], references: [id])
+  tipo           String   @db.VarChar(32)
+  numeroCaso     String?  @map("numero_caso") @db.VarChar(100)
+  observacion    String?  @db.VarChar(1000)
+  plu            String   @db.VarChar(100)
+  descripcion    String   @db.VarChar(500)
+  proveedor      String   @db.VarChar(255)
+  estado         String   @default("EN_CURSO") @db.VarChar(20)
+  horaInicio     DateTime @default(now()) @map("hora_inicio")
+  horaFin        DateTime? @map("hora_fin")
+  corregidoPorId String?  @map("corregido_por_id")
+  corregidoPor   User?    @relation("GarantiasCorrector", fields: [corregidoPorId], references: [id])
+  tramos         TramoGarantia[]
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  @@index([usuarioId, horaInicio])
+  @@index([numeroCaso])
+  @@index([proveedor, horaFin])
+  @@map("tareas_garantias")
+}
+
+model TramoGarantia {
+  id          String        @id @default(cuid())
+  tareaId     String        @map("tarea_id")
+  tarea       TareaGarantia @relation(fields: [tareaId], references: [id], onDelete: Cascade)
+  inicio      DateTime
+  fin         DateTime?
+
+  @@index([tareaId, inicio])
+  @@map("tramos_garantias")
 }
 
 enum EstadoDespacho {

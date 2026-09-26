@@ -33,7 +33,8 @@ export type ModuleKey =
   | "entrega-muebles"
   | "historial-muebles"
   | "cargue-camiones"
-  | "indicadores-transporte";
+  | "indicadores-transporte"
+  | "garantias";
 
 export const MODULE_ACCESS: Record<ModuleKey, AppRole[]> = {
   "stretch-film": ["ADMIN", "GERENTE", "SUPERVISOR_ALMACENAMIENTO", "OPERACIONES_GOURMET"],
@@ -118,6 +119,7 @@ export const MODULE_ACCESS: Record<ModuleKey, AppRole[]> = {
   // Indicadores del cargue: area «Transporte» dentro de Indicadores. Solo gestion.
   "indicadores-transporte": ["SUPERVISOR_TRANSPORTE", "GERENTE", "ADMIN"],
   "tareas-generales": ["SUPERVISOR_ALMACENAMIENTO", "GERENTE", "ADMIN", "OPERARIO_ALMACENAMIENTO", "MONTACARGAS"],
+  garantias: ["GARANTIAS", "GERENTE", "ADMIN"],
 };
 
 export function canSeeModule(role: string | undefined | null, moduleKey: ModuleKey): boolean {
@@ -150,6 +152,7 @@ export const ROLE_LABEL_EXT: Record<AppRole, string> = {
   PICKING_MUEBLES: "Picking Muebles",
   INSPECCION_MUEBLES: "Inspeccion Muebles",
   PATINADOR_MUEBLES: "Patinador Muebles",
+  GARANTIAS: "Garantías",
 };
 
 export const ROLE_DESCRIPTION: Record<AppRole, string> = {
@@ -172,4 +175,5 @@ export const ROLE_DESCRIPTION: Record<AppRole, string> = {
   PICKING_MUEBLES: "Solo ve su bandeja de picking de muebles.",
   INSPECCION_MUEBLES: "Login compartido del area de inspeccion de muebles.",
   PATINADOR_MUEBLES: "Entrega a transporte las ordenes de muebles inspeccionadas.",
+  GARANTIAS: "Registra sus tareas de garantías con acceso individual.",
 };

@@ -53,6 +53,7 @@ export const MODULE_THEME: Record<ModuleThemeKey, ModuleTheme> = {
   'tareas-generales': mod('tareas-generales', 'Tareas generales', 'Tareas', 'Tareas sueltas que manda supervision, con su tiempo'),
   'cargue-camiones': mod('cargue-camiones', 'Cargue de camiones', 'Cargue', 'Ordenes que suben a cada camion, con su tiempo y sus bultos'),
   'indicadores-transporte': mod('indicadores-transporte', 'Indicadores Transporte', 'Ind. Transporte', 'Camiones, bultos y tiempos de cargue'),
+  garantias: mod('garantias', 'Gestión de Garantías', 'Garantías', 'Tareas y casos del área de garantías'),
   home: mod("home", PRODUCT.displayName, PRODUCT.shortName, PRODUCT.tagline),
   transporte: mod("transporte", "Guardados Transporte", "Transporte", "Custodia, guardados y pendientes operativos"),
   tienda: mod("tienda", "Facturas Contado", "Facturas", "Facturas contado desde tienda hacia el flujo CEDI"),

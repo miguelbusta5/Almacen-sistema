@@ -32,6 +32,7 @@ export type ModuleKey =
   | 'tareas-generales'
   | 'entrega-muebles'
   | 'historial-muebles'
+  | 'garantias'
 
 export const MODULE_ACCESS: Record<ModuleKey, string[]> = {
   transporte: ['TRANSPORTE', 'SUPERVISOR_TRANSPORTE', 'GERENTE', 'ADMIN', 'OPERADOR'],
@@ -90,6 +91,7 @@ export const MODULE_ACCESS: Record<ModuleKey, string[]> = {
   'historial-muebles': ['SUPERVISOR_ALMACENAMIENTO', 'GERENTE', 'ADMIN'],
   'entrega-muebles': ['PATINADOR_MUEBLES', 'SUPERVISOR_ALMACENAMIENTO', 'GERENTE', 'ADMIN'],
   'tareas-generales': ['SUPERVISOR_ALMACENAMIENTO', 'GERENTE', 'ADMIN', 'OPERARIO_ALMACENAMIENTO', 'MONTACARGAS'],
+  garantias: ['GARANTIAS', 'GERENTE', 'ADMIN'],
 }
 
 export function canSeeModule(role: string | undefined | null, moduleKey: ModuleKey): boolean {

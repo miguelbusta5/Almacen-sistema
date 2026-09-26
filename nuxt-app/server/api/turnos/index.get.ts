@@ -29,7 +29,7 @@ export default defineEventHandler(async (event) => {
   })
 
   const medidos = await prisma.user.findMany({
-    where: { active: true, role: { in: ['MONTACARGAS', 'OPERARIO_ALMACENAMIENTO'] } },
+    where: { active: true, role: { in: ['MONTACARGAS', 'OPERARIO_ALMACENAMIENTO', 'GARANTIAS'] } },
     select: { id: true, name: true, role: true },
     orderBy: { name: 'asc' },
   })

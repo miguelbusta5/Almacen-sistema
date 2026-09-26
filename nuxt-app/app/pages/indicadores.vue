@@ -7,7 +7,7 @@
 // - Transporte (25-09): el Cargue de camiones. components/indicadores-transporte/Module.vue.
 // El área va en la URL (?area=muebles) para poder enlazarla y volver a ella.
 import { computed } from 'vue'
-import { Warehouse, Sofa, Truck } from '@lucide/vue'
+import { Warehouse, Sofa, Truck, ClipboardCheck } from '@lucide/vue'
 import { useSessionState } from '~/composables/useSession'
 import { canSeeModule } from '~/utils/modulePermissions'
 
@@ -21,10 +21,11 @@ const areas = computed(() => [
   { key: 'almacenamiento', label: 'Almacenamiento', icono: Warehouse, ve: canSeeModule(me.value?.role, 'indicadores') },
   { key: 'muebles', label: 'Muebles', icono: Sofa, ve: canSeeModule(me.value?.role, 'indicadores-muebles') },
   { key: 'transporte', label: 'Transporte', icono: Truck, ve: canSeeModule(me.value?.role, 'indicadores-transporte') },
+  { key: 'garantias', label: 'Garantías', icono: ClipboardCheck, ve: canSeeModule(me.value?.role, 'garantias') && canSeeModule(me.value?.role, 'indicadores') },
 ].filter((a) => a.ve))
 
 const area = computed(() => {
-  const pedida = route.query.area === 'muebles' || route.query.area === 'transporte' ? String(route.query.area) : 'almacenamiento'
+  const pedida = ['muebles', 'transporte', 'garantias'].includes(String(route.query.area ?? '')) ? String(route.query.area) : 'almacenamiento'
   return areas.value.some((a) => a.key === pedida) ? pedida : (areas.value[0]?.key ?? 'almacenamiento')
 })
 
@@ -45,6 +46,7 @@ function elegir(key: string) {
     </nav>
     <IndicadoresMueblesModule v-if="area === 'muebles'" />
     <IndicadoresTransporteModule v-else-if="area === 'transporte'" />
+    <IndicadoresGarantiasModule v-else-if="area === 'garantias'" />
     <IndicadoresModule v-else-if="area === 'almacenamiento'" />
   </div>
 </template>

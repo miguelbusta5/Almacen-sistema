@@ -1,5 +1,7 @@
 # PROJECT SOURCE OF TRUTH — Control Logístico CEDI (Grupo Ambiente)
 
+> **2026-09-26 — Garantías:** módulo Nuxt `/dashboard/garantias` con rol individual `GARANTIAS`. Cada operario inicia, pausa, reanuda y finaliza sus propias tareas; no recibe horas ni minutos en la API. ADMIN y GERENTE ven el historial, corrigen horas con motivo auditado y consultan `Indicadores?area=garantias`. Los minutos activos excluyen pausas; la efectividad diaria une los tramos superpuestos dentro del cuadro de turnos. PLU obligatorio, caso obligatorio para inspección, entrega y análisis; proveedor sellado desde el maestro o `Sin proveedor`. Esquemas Prisma sincronizados y tablas protegidas con RLS. Ver §23.
+
 > **2026-09-22 — Inventarios y pendientes operativos:** implementados localmente cronogramas, maestro PVP, conteo, reconteos y cierre Excel; Stretch film con inventario y sesión compartida; reasignación y comparación de equipos de Muebles; ayudantes y tiempo detenido de resurtidos. **Aún sin publicar esta actualización.** Confirmado: reguero entero y exclusión con aviso persistente de los 7 PLU con disponible cero sin teórico de hoja 2; seis sí tienen RETIRO. Excel original validado: 2.106 ubicaciones. Esquemas aplicados con `prisma db push` sin pérdida de datos, accesos individuales configurados y tablas privadas protegidas. `CONTADO-OVDM121515` eliminado por autorización expresa, conservando `OVDM121515`. Ver `docs/cerebro/inventarios-ciclicos.md` y `docs/cerebro/entrega-septiembre-2026.md`.
 
 > **2026-09-15 — Capacidad picking:** informes con pausas, capacidades acumuladas y resurtido por teórico, junto con búsqueda y grupos plegables del menú. **En producción**: tablas creadas con `prisma/migrate-capacidad-picking.sql` y permiso individual para Bryan Torres, Felipe Ossa y Eduardo Zurita. Detalle: `docs/cerebro/capacidad-picking.md`.
@@ -1199,3 +1201,23 @@ Lógica pura en `src/lib/tareasGenerales.ts` (copia de Nitro en
   cajas, `CajasCompletasModal` pregunta "¿Estaban las N cajas?". Si faltan, se pide cuántas
   y una nota: el PLU queda revisado igual (la orden no se frena) y se crea el faltante en la
   cola de picking con la observación "Faltaron X de N cajas del PLU".
+
+## 23. Gestión de Garantías (2026-09-26)
+
+- Rol `GARANTIAS`: usuario individual. Solo ve su módulo y sus propias tareas; puede iniciar,
+  pausar, reanudar y finalizar varias tareas paralelas. El servidor sella todas las horas.
+  La respuesta para el operario omite horas, tramos y duración.
+- Formulario: `INSPECCION`, `ENTREGA_TRANSPORTE`, `ANALISIS_CASO`, `OTRAS`. PLU y descripción
+  obligatorios; caso externo obligatorio salvo en `OTRAS`, donde la observación es obligatoria.
+  El maestro completa descripción y fabricante; un PLU ausente permite descripción manual y
+  queda con proveedor `Sin proveedor`.
+- ADMIN y GERENTE ven las horas, pueden corregir inicio y fin de una tarea finalizada con
+  motivo obligatorio y registro en `activity_logs`, y ven el área Garantías de Indicadores.
+  Allí hay tareas, minutos y promedio por tipo; casos únicos y tareas por proveedor; minutos
+  únicos por persona y día del turno frente a la jornada del cuadro de turnos. Sin cuadro,
+  se muestran minutos sin porcentaje. Las pausas y superposiciones no duplican tiempo.
+- Persistencia: `tareas_garantias` y `tramos_garantias` en ambos esquemas Prisma. Los cuadros
+  de turnos aceptan ahora el rol `GARANTIAS`. La conexión de esquema de `prisma.config.ts`
+  usa `DIRECT_URL` (pool de sesión) y la aplicación mantiene `DATABASE_URL` para consultas.
+  Después de `db push`, ejecutar `prisma/secure-garantias.sql` para activar RLS y revocar
+  acceso Data API a `anon` y `authenticated`.

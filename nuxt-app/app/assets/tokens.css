@@ -78,6 +78,7 @@
   --shadow:    0 12px 28px rgba(21, 31, 51, 0.10), 0 3px 8px rgba(16,22,35,0.05);
   --shadow-lg: 0 30px 70px rgba(18, 26, 44, 0.20), 0 8px 20px rgba(16,22,35,0.10);
   --ring:      0 0 0 3px var(--brand-ring);
+  --modal-backdrop: rgba(0, 0, 0, 0.65);
   --glass:     saturate(160%) blur(14px);
 
   /* ── Radios ── */

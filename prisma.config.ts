@@ -9,6 +9,8 @@ export default defineConfig({
     path: "prisma/migrations",
   },
   datasource: {
-    url: process.env["DATABASE_URL"],
+    // Schema operations need the session pooler (5432), not the transaction
+    // pooler (6543) used by runtime queries.
+    url: process.env["DIRECT_URL"] ?? process.env["DATABASE_URL"],
   },
 });

@@ -84,6 +84,13 @@ const NAV_GROUPS: NavGroup[] = [
     ],
   },
   {
+    titulo: 'Garantías',
+    icon: ClipboardCheck,
+    items: [
+      { icon: ClipboardList, label: 'Gestión de Garantías', href: '/dashboard/garantias', key: 'garantias', moduleKey: 'garantias' },
+    ],
+  },
+  {
     titulo: 'Gourmet',
     icon: UtensilsCrossed,
     items: [

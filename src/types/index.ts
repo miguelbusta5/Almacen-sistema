@@ -18,7 +18,8 @@ export type UserRole =
   | "OPERARIO_ALMACENAMIENTO"
   | "PICKING_MUEBLES"
   | "INSPECCION_MUEBLES"
-  | "PATINADOR_MUEBLES";
+  | "PATINADOR_MUEBLES"
+  | "GARANTIAS";
 
 export interface AppUser {
   id: string;

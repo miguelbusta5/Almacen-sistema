@@ -6,7 +6,7 @@ export const USER_ROLES = [
   'OPERACIONES_MUEBLES', 'OPERACIONES_GOURMET', 'ETIQUETADO', 'SUPERVISOR_ALMACENAMIENTO',
   'MONTACARGAS',
   'OPERARIO_ALMACENAMIENTO',
-  'PICKING_MUEBLES', 'INSPECCION_MUEBLES', 'PATINADOR_MUEBLES',
+  'PICKING_MUEBLES', 'INSPECCION_MUEBLES', 'PATINADOR_MUEBLES', 'GARANTIAS',
 ] as const
 
 export type UserRole = typeof USER_ROLES[number]
@@ -31,6 +31,7 @@ export const ROLE_LABEL: Record<UserRole, string> = {
   PICKING_MUEBLES: 'Picking Muebles',
   PATINADOR_MUEBLES: 'Patinador Muebles',
   INSPECCION_MUEBLES: 'Inspeccion Muebles',
+  GARANTIAS: 'Garantías',
 }
 
 export const ROLE_DESCRIPTION: Record<UserRole, string> = {
@@ -53,6 +54,7 @@ export const ROLE_DESCRIPTION: Record<UserRole, string> = {
   PICKING_MUEBLES: 'Picking de órdenes OVDM/TSDM del área de muebles.',
   PATINADOR_MUEBLES: 'Entrega a transporte las órdenes de muebles ya inspeccionadas.',
   INSPECCION_MUEBLES: 'Login compartido del área de inspección de muebles.',
+  GARANTIAS: 'Registra sus tareas de garantías con acceso individual.',
 }
 
 // Tono por familia de rol: administración, supervisión y operación.
@@ -76,6 +78,7 @@ export const ROLE_TONE: Record<UserRole, string> = {
   PICKING_MUEBLES: 'var(--muted)',
   PATINADOR_MUEBLES: 'var(--muted)',
   INSPECCION_MUEBLES: 'var(--muted)',
+  GARANTIAS: 'var(--muted)',
 }
 
 export interface Usuario {

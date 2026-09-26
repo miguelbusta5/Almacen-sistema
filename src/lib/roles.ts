@@ -20,6 +20,7 @@ export const USER_ROLE_VALUES = [
   "PICKING_MUEBLES",
   "INSPECCION_MUEBLES",
   "PATINADOR_MUEBLES",
+  "GARANTIAS",
 ] as const satisfies readonly UserRole[];
 
 export const GESTORES_EXPORTACIONES = [
